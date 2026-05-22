@@ -7,26 +7,6 @@ using Raven.Client.Documents.Indexes;
 
 namespace CampaignVault.Data;
 
-public class Lore_Search : AbstractIndexCreationTask<Lore>
-{
-    public Lore_Search()
-    {
-        Map = lores => from lore in lores
-                       select new
-                       {
-                           lore.Title,
-                           lore.Content,
-                           lore.Tags,
-                           lore.Category
-                       };
-        
-        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
-
-        Index(x => x.Title, FieldIndexing.Search);
-        Index(x => x.Content, FieldIndexing.Search);
-    }
-}
-
 public class CampaignRepository : IDisposable
 {
     private readonly IDocumentStore _store;
@@ -39,12 +19,21 @@ public class CampaignRepository : IDisposable
     public async Task<Character?> GetCharacterAsync(string identifier)
     {
         using var session = _store.OpenAsyncSession();
+
+        // 1. Try direct ID load (fastest path)
         var character = await session.LoadAsync<Character>(identifier);
-        if (character == null)
-        {
-            character = await session.Query<Character>()
-                .FirstOrDefaultAsync(x => x.Name == identifier);
-        }
+        if (character != null) return character;
+
+        // 2. Exact name match
+        character = await session.Query<Character>()
+            .FirstOrDefaultAsync(x => x.Name == identifier);
+        if (character != null) return character;
+
+        // 3. Fuzzy search on Name + Notes (using the new index)
+        character = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WhereEquals(x => x.Name, identifier).Fuzzy(0.4m)
+            .FirstOrDefaultAsync();
+
         return character;
     }
 
@@ -65,21 +54,42 @@ public class CampaignRepository : IDisposable
         {
             OptimisticConcurrencyMode = OptimisticConcurrencyMode.Writes
         });
-        
+
         var character = await GetCharacterAsync(identifier);
         if (character == null) return false;
 
         var sessionCharacter = await session.LoadAsync<Character>(character.Id);
+        if (sessionCharacter == null) return false;
 
-        if (updates.TryGetValue("currentHp", out var hp)) sessionCharacter.CurrentHp = Convert.ToInt32(hp);
-        if (updates.TryGetValue("maxHp", out var mhp)) sessionCharacter.MaxHp = Convert.ToInt32(mhp);
-        if (updates.TryGetValue("notes", out var notes)) sessionCharacter.Notes = notes?.ToString();
-        
-        if (updates.TryGetValue("needs", out var needsObj) && needsObj is Dictionary<string, object> needsDict)
+        // Robust field mapping (easy to extend)
+        foreach (var (key, value) in updates)
         {
-            foreach (var (key, value) in needsDict)
+            switch (key.ToLowerInvariant())
             {
-                sessionCharacter.Needs[key] = Convert.ToInt32(value);
+                case "currenthp":
+                case "current_hp":
+                    sessionCharacter.CurrentHp = Convert.ToInt32(value);
+                    break;
+                case "maxhp":
+                case "max_hp":
+                    sessionCharacter.MaxHp = Convert.ToInt32(value);
+                    break;
+                case "notes":
+                    sessionCharacter.Notes = value?.ToString();
+                    break;
+                case "needs":
+                    if (value is Dictionary<string, object> needsDict)
+                    {
+                        foreach (var (needKey, needValue) in needsDict)
+                        {
+                            sessionCharacter.Needs[needKey] = Convert.ToInt32(needValue);
+                        }
+                    }
+                    break;
+                // Add more fields here as your Character model grows
+                default:
+                    // Optional: log unknown key or ignore
+                    break;
             }
         }
 
@@ -102,9 +112,8 @@ public class CampaignRepository : IDisposable
     public async Task<IEnumerable<Lore>> QueryLoreAsync(string? query, string[]? tags, string? category, int limit = 5)
     {
         using var session = _store.OpenAsyncSession();
-        // Query the static Lucene index
         var q = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>();
-        
+
         if (!string.IsNullOrEmpty(query))
         {
             q = q.OpenSubclause()
@@ -113,7 +122,7 @@ public class CampaignRepository : IDisposable
                  .WhereEquals(x => x.Content, query).Fuzzy(0.4m)
                  .CloseSubclause();
         }
-        
+
         if (tags != null && tags.Length > 0)
         {
             foreach (var tag in tags)
@@ -121,12 +130,12 @@ public class CampaignRepository : IDisposable
                 q = q.AndAlso().ContainsAny(x => x.Tags, new[] { tag });
             }
         }
-        
+
         if (!string.IsNullOrEmpty(category))
         {
             q = q.AndAlso().WhereEquals(x => x.Category, category);
         }
-        
+
         return await q.Take(limit).ToListAsync();
     }
 
@@ -144,9 +153,8 @@ public class CampaignRepository : IDisposable
 
         if (!string.IsNullOrEmpty(query))
         {
-            q = q.Where(x => x.Summary.Contains(query));
+            q = q.Where(x => x.Summary.Contains(query)); // consider Search index later
         }
-
         if (!string.IsNullOrEmpty(type))
         {
             q = q.Where(x => x.Type == type);
@@ -157,5 +165,6 @@ public class CampaignRepository : IDisposable
 
     public void Dispose()
     {
+        // _store?.Dispose(); // only if this repo owns the store
     }
 }

@@ -1,0 +1,22 @@
+using Raven.Client.Documents.Indexes;
+using CampaignVault.Models;
+
+namespace CampaignVault.Data;
+
+public class Character_Search : AbstractIndexCreationTask<Character>
+{
+    public Character_Search()
+    {
+        Map = characters => from c in characters
+                            select new
+                            {
+                                c.Name,
+                                c.Notes,
+                                c.ClassLevel
+                            };
+
+        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
+        Index(x => x.Name, FieldIndexing.Search);
+        Index(x => x.Notes, FieldIndexing.Search);
+    }
+}

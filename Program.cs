@@ -3,6 +3,7 @@ using CampaignVault.Tools;
 using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Protocol;
 using Raven.Client.Documents;
+using Raven.Client.Documents.Indexes;
 using Raven.Embedded;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,7 +19,7 @@ EmbeddedServer.Instance.StartServer(new ServerOptions
     ServerUrl = "http://127.0.0.1:0" // Use a random port
 });
 var documentStore = EmbeddedServer.Instance.GetDocumentStore("CampaignVault");
-new Lore_Search().Execute(documentStore);
+IndexCreation.CreateIndexes(typeof(Program).Assembly, documentStore);
 
 // Services
 builder.Services.AddSingleton<IDocumentStore>(documentStore);
