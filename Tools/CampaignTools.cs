@@ -2,6 +2,7 @@ using CampaignVault.Data;
 using CampaignVault.Models;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
+using Raven.Client.Exceptions;
 
 namespace CampaignVault.Tools;
 
@@ -9,88 +10,133 @@ namespace CampaignVault.Tools;
 public class CampaignTools(CampaignRepository repository)
 {
     [McpServerTool]
-    [Description("Retrieve full details for a specific character by name or ID. Use this before narrating anything about a PC or important NPC.")]
+    [Description("Retrieve authoritative details for a character. Use this BEFORE describing an NPC or PC to ensure stats and status are correct.")]
     public async Task<object> GetCharacter(
-        [Description("Name, slug, or partial match.")] string identifier)
+        [Description("The unique ID (e.g., 'npcs/gandalf') or the full Name of the character.")] string identifier)
     {
         var character = await repository.GetCharacterAsync(identifier);
-        if (character == null) return new { error = "Character not found" };
+        if (character == null) 
+        {
+            return new { 
+                error = "CharacterNotFound", 
+                message = $"Could not find a character matching '{identifier}'. Use 'upsert_character' to create them if they are new." 
+            };
+        }
 
         return new
         {
             data = character,
-            summary = $"{character.Name} ({character.ClassLevel}). HP: {character.CurrentHp}/{character.MaxHp}."
+            summary = $"{character.Name} ({character.ClassLevel ?? "Unknown Level"}). HP: {character.CurrentHp}/{character.MaxHp}. Status: {string.Join(", ", character.Status)}. Needs: {string.Join(", ", character.Needs.Select(n => $"{n.Key}:{n.Value}"))}."
         };
     }
 
     [McpServerTool]
-    [Description("Create or fully replace a character record. Use when a character is created or when you have a complete updated sheet.")]
-    public async Task<object> UpsertCharacter(Character character)
+    [Description("Create a new character or fully overwrite an existing one. Use this for initial character creation or major sheet updates.")]
+    public async Task<object> UpsertCharacter(
+        [Description("The full character object. Ensure 'Id' follows 'npcs/name' or 'pcs/name' format.")] Character character)
     {
-        await repository.UpsertCharacterAsync(character);
-        return new 
-        { 
-            success = true, 
-            data = character, 
-            summary = $"Successfully saved character: {character.Name}" 
-        };
+        try 
+        {
+            await repository.UpsertCharacterAsync(character);
+            return new 
+            { 
+                success = true, 
+                data = character, 
+                summary = $"Authoritative record for {character.Name} has been saved." 
+            };
+        }
+        catch (ConcurrencyException)
+        {
+            return new { 
+                error = "StateDriftConflict", 
+                message = "The character was modified by another process (or a previous tool call) while you were thinking. Call 'get_character' to refresh your context before trying again." 
+            };
+        }
     }
 
     [McpServerTool]
-    [Description("Partial update to an existing character (preferred for most in-session changes: HP, status, notes, relationships, needs).")]
+    [Description("Update specific fields of a character (HP, status, notes, needs). Preferred for in-session changes.")]
     public async Task<object> UpdateCharacter(
-        [Description("The character ID or name.")] string identifier, 
-        [Description("Fields to merge/update (e.g. { \"currentHp\": 42, \"needs\": { \"hunger\": 20 } })")] Dictionary<string, object> updates)
+        [Description("The unique ID or full Name of the character.")] string identifier, 
+        [Description("Key-value pairs to update. Supported keys: 'currentHp', 'maxHp', 'notes', 'needs' (dictionary).")] Dictionary<string, object> updates)
     {
-        var success = await repository.UpdateCharacterAsync(identifier, updates);
-        if (!success) return new { error = "Character not found" };
-        
-        return new 
-        { 
-            success = true, 
-            summary = $"Updated character {identifier} with {updates.Count} changes." 
-        };
+        try 
+        {
+            var success = await repository.UpdateCharacterAsync(identifier, updates);
+            if (!success) 
+            {
+                return new { 
+                    error = "CharacterNotFound", 
+                    message = $"Update failed because character '{identifier}' does not exist." 
+                };
+            }
+            
+            return new 
+            { 
+                success = true, 
+                summary = $"Applied {updates.Count} changes to {identifier}. Authoritative state updated." 
+            };
+        }
+        catch (ConcurrencyException)
+        {
+            return new { 
+                error = "StateDriftConflict", 
+                message = "The character's state has changed since you last loaded it. Call 'get_character' to sync your context before re-applying updates." 
+            };
+        }
     }
 
     [McpServerTool]
-    [Description("Search lore entries by keywords, tags, or category. Supports fuzzy search.")]
+    [Description("Search for campaign world information. Supports fuzzy matching for typos.")]
     public async Task<object> QueryLore(
-        [Description("Free text or keywords (fuzzy)")] string? query = null, 
-        [Description("Tags to filter by")] string[]? tags = null, 
-        [Description("Category (e.g. 'npc', 'location', 'item', 'plot')")] string? category = null, 
-        [Description("Max results to return")] int limit = 5)
+        [Description("Search term (e.g., 'Sauron', 'Gondor'). Fuzzy matching is enabled, so slight typos are okay.")] string? query = null, 
+        [Description("Filter by tags (e.g., ['location', 'faction']).")] string[]? tags = null, 
+        [Description("Category filter (e.g., 'npc', 'history', 'item').")] string? category = null, 
+        [Description("Maximum results to return. Default is 5.")] int limit = 5)
     {
         var results = (await repository.QueryLoreAsync(query, tags, category, limit)).ToList();
         return new
         {
             data = results,
-            summary = $"Found {results.Count} lore entries."
+            summary = $"Retrieved {results.Count} matching lore entries from the Vault."
         };
     }
 
     [McpServerTool]
-    [Description("Create or fully replace a lore entry. Use this when you invent a new NPC, location, or historical fact.")]
-    public async Task<object> UpsertLore(Lore lore)
+    [Description("Create or update a lore entry (NPC backgrounds, location details, historical facts).")]
+    public async Task<object> UpsertLore(
+        [Description("The lore object. 'Id' should follow 'lore/slug' format. 'Title' and 'Content' are required.")] Lore lore)
     {
-        await repository.UpsertLoreAsync(lore);
-        return new 
-        { 
-            success = true, 
-            data = lore, 
-            summary = $"Successfully saved lore entry: {lore.Title}" 
-        };
+        try 
+        {
+            await repository.UpsertLoreAsync(lore);
+            return new 
+            { 
+                success = true, 
+                data = lore, 
+                summary = $"Lore entry '{lore.Title}' is now part of the campaign's permanent record." 
+            };
+        }
+        catch (ConcurrencyException)
+        {
+            return new { 
+                error = "StateDriftConflict", 
+                message = "This lore entry was updated while you were generating content. Call 'query_lore' to refresh your knowledge." 
+            };
+        }
     }
 
     [McpServerTool]
-    [Description("Append an important in-game event to the session log. Call this for major beats the party should remember.")]
+    [Description("Log a significant campaign event. Use this after major scenes, combats, or social breakthroughs.")]
     public async Task<object> LogEvent(
-        [Description("Short summary of the event")] string summary, 
-        [Description("Type (e.g. 'combat', 'social', 'discovery')")] string type, 
-        [Description("Arbitrary details object")] Dictionary<string, object>? details = null, 
-        [Description("Names of involved characters")] string[]? involved = null)
+        [Description("A concise summary of what happened.")] string summary, 
+        [Description("Type of event: 'combat', 'social', 'exploration', 'milestone'.")] string type, 
+        [Description("Optional extra details for the history log.")] Dictionary<string, object>? details = null, 
+        [Description("Names of characters or NPCs involved in this event.")] string[]? involved = null)
     {
         var @event = new Event
         {
+            Id = "events/" + Guid.NewGuid().ToString(),
             Summary = summary,
             Type = type,
             Details = details,
@@ -101,22 +147,22 @@ public class CampaignTools(CampaignRepository repository)
         { 
             success = true, 
             eventId = @event.Id, 
-            summary = $"Event logged: {summary}" 
+            summary = "The event has been etched into the campaign history." 
         };
     }
 
     [McpServerTool]
-    [Description("Retrieve recent in-game events. Use this to catch up on what happened in previous sessions.")]
+    [Description("Catch up on campaign history. Use this at the start of a session or when recalling past deeds.")]
     public async Task<object> QueryEvents(
-        [Description("Keywords to search for in event summaries")] string? query = null, 
-        [Description("Filter by event type (e.g. 'combat', 'social')")] string? type = null, 
-        [Description("Max results to return")] int limit = 10)
+        [Description("Search for keywords in past event summaries.")] string? query = null, 
+        [Description("Filter by event type (e.g., 'combat').")] string? type = null, 
+        [Description("Number of recent events to retrieve. Default is 10.")] int limit = 10)
     {
         var results = (await repository.QueryEventsAsync(query, type, limit)).ToList();
         return new
         {
             data = results,
-            summary = $"Found {results.Count} recent events."
+            summary = $"Found {results.Count} events in the campaign archives."
         };
     }
 }

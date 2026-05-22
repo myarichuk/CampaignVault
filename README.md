@@ -1,54 +1,56 @@
-# D&D Campaign Vault - MCP Server Prototype
+# D&D Campaign Vault - MCP Server (RavenDB)
 
-A minimal, reliable Model Context Protocol (MCP) server for managing D&D 5e campaign state. Designed to give Grok (or any LLM) structured, persistent access to characters, lore, and session events.
+A robust Model Context Protocol (MCP) server for managing D&D 5e campaign state. Powered by RavenDB Embedded, this vault provides Grok (or any DM LLM) with authoritative persistence for characters, lore, and session events.
 
 ## Features
-- **Persistent State**: Powered by LiteDB (single-file serverless database).
-- **Flexible Documents**: Supports core D&D fields with the ability to add arbitrary dynamic data.
-- **LLM-Optimized Tools**: Returns machine-readable data and human-friendly summaries.
-- **Secure**: Optional Bearer token authentication.
+- **Persistent State**: Powered by RavenDB (NoSQL document database).
+- **Fuzzy Search**: Lucene-based search for lore and history that handles typos and partial matches.
+- **Drift Hardening**: Optimistic concurrency prevents the LLM from overwriting data based on stale context.
+- **Enhanced NPC Models**: Track "Needs" (numerical key-values) and "Knowledge Graphs" (relationships).
+- **LLM-Optimized**: Rich descriptions and structured error handling for seamless AI interaction.
 
-## Core Tools
-1. `get_character`: Retrieve full character details.
-2. `upsert_character`: Create or fully replace a character sheet.
-3. `update_character`: Partial updates (HP, status, notes).
-4. `query_lore`: Search campaign world info by tags/keywords.
-5. `upsert_lore`: Create or update lore (NPCs, locations, history).
-6. `log_event`: Append session beats to the historical log.
-7. `query_events`: Retrieve recent in-game history.
+## Detailed Tool List
 
-## Getting Started
+| Tool | Purpose | Key Parameters |
+| :--- | :--- | :--- |
+| `get_character` | Retrieve authoritative stats and status. | `identifier` (ID or Name) |
+| `upsert_character` | Create or fully replace a character sheet. | `character` (Object) |
+| `update_character` | Partial updates (HP, Status, Needs, Notes). | `identifier`, `updates` (Dict) |
+| `query_lore` | Search world info using **fuzzy matching**. | `query`, `tags`, `category` |
+| `upsert_lore` | Create/update NPC bios, locations, facts. | `lore` (Object) |
+| `log_event` | Record significant campaign beats. | `summary`, `type`, `involved` |
+| `query_events` | Recall session history and past deeds. | `query`, `type`, `limit` |
 
-### Prerequisites
-- .NET 10 SDK (or compatible latest)
+## Grok-Side Setup
 
-### Configuration
-Environment variables or `appsettings.json`:
-- `CAMPAIGN_DB_PATH`: Path to the `.db` file (default: `campaign.db`).
-- `BEARER_TOKEN`: Optional secret token for authentication.
+### DM System Prompt
+Add this to your DM instructions to ensure Grok uses the tools effectively:
 
-### Running Locally
-```bash
-dotnet run
-```
-The server will start (usually on `http://localhost:5000` or `5001`). 
-The MCP endpoint is mapped to `/mcp`.
+> You are the Dungeon Master. You have access to the **CampaignVault** tools to maintain a persistent, authoritative world state. 
+> 
+> **Operational Protocol:**
+> 1. **Stat Verification**: ALWAYS call `get_character` before narrating NPC or PC actions to ensure HP, status, and needs are correct.
+> 2. **Real-time Updates**: 
+>    - Call `update_character` immediately after HP changes or status effects are applied.
+>    - Call `upsert_lore` when you invent new NPCs, locations, or historical facts.
+>    - Call `log_event` at the end of every major scene to record the "history" of the world.
+> 3. **Memory Retrieval**: At the start of every session, call `query_events` and `get_character` for all players to catch up.
+> 4. **Handling Conflicts**: If a tool returns a `StateDriftConflict` error, your context is stale. Call the corresponding `get` or `query` tool to refresh your memory, then retry your update.
+> 
+> Your goal is to keep the Vault so accurate that any other instance of yourself could take over the campaign seamlessly.
 
 ## Deployment to Fly.io
-
-This project is optimized for deployment on [Fly.io](https://fly.io/).
 
 ### 1. Create the App and Volume
 ```bash
 # Create the app
 fly apps create my-campaign-vault-for-grok
 
-# Create a 1GB persistent volume for LiteDB
+# Create a 1GB persistent volume for RavenDB
 fly volumes create campaign_data --region ams --size 1
 ```
 
 ### 2. Set Security Secrets
-Set your `BEARER_TOKEN` (used for both Bearer and X-API-Key auth):
 ```bash
 fly secrets set BEARER_TOKEN=your_secure_random_token
 ```
@@ -58,34 +60,11 @@ fly secrets set BEARER_TOKEN=your_secure_random_token
 fly deploy
 ```
 
-## Grok-Side Setup
-
-In your Grok custom connector configuration:
-1. **URL**: `https://your-app-name.fly.dev/mcp`
-2. **Authentication**: 
-   - Add a header `Authorization` with value `Bearer your_secure_random_token`
-   - OR add a header `X-API-Key` with value `your_secure_random_token`
-
-### DM System Prompt for Grok
-Add this to your DM instructions to ensure Grok uses the tools correctly:
-
-> You are the Dungeon Master for our D&D 5e campaign. You have access to the **CampaignVault** tools to maintain a persistent, authoritative world state. 
-> 
-> **Core Directives:**
-> 1. **authoritative State**: Never invent character stats or historical facts that contradict the Vault. If unsure, call `get_character` or `query_lore`.
-> 2. **Continuous Updates**: 
->    - Call `update_character` whenever HP, status, or relationships change.
->    - Call `upsert_lore` when you introduce new NPCs, locations, or world facts.
->    - Call `log_event` at the end of every major scene or combat to record the "history" of the world.
-> 3. **Session Prep**: At the start of a session, call `query_events` and `get_character` for all PCs to catch up on the current situation.
-> 4. **Lore Richness**: Use `query_lore` with tags (e.g., `location`, `faction`) to find connected world details before describing a new area.
-> 
-> Your goal is to keep the Vault so accurate that any other DM (or another instance of yourself) could take over the campaign seamlessly.
+## Configuration
+- `CAMPAIGN_DB_PATH`: Path to RavenDB data (Default: `./RavenData`).
+- `BEARER_TOKEN`: Secret key for API authentication.
 
 ## Development
-- **Models**: Located in `/Models`.
-- **Repository**: `/Data/CampaignRepository.cs` handles LiteDB logic.
-- **Tools**: `/Tools/CampaignTools.cs` defines the MCP interface.
-
-## Deployment
-This project is a standard ASP.NET Core app. It can be easily containerized or deployed to platforms like Fly.io, Railway, or Azure App Service. Ensure you persist the `campaign.db` file across deployments.
+- **Models**: `/Models` (POCOs).
+- **Repository**: `/Data/CampaignRepository.cs` (RavenDB logic).
+- **Tests**: `/CampaignVault.Tests` (Functional test suite).
