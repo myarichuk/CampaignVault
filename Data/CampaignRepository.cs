@@ -34,6 +34,14 @@ public class CampaignRepository : IDisposable
         col.Upsert(doc);
     }
 
+    public void UpsertLore(Lore lore)
+    {
+        var col = _db.GetCollection("lore");
+        var doc = _db.Mapper.ToDocument(lore);
+        doc["LastUpdated"] = DateTime.UtcNow;
+        col.Upsert(doc);
+    }
+
     public bool UpdateCharacter(string identifier, Dictionary<string, object> updates)
     {
         var col = _db.GetCollection("characters");
@@ -84,6 +92,24 @@ public class CampaignRepository : IDisposable
     {
         var col = _db.GetCollection("events");
         col.Insert(_db.Mapper.ToDocument(@event));
+    }
+
+    public IEnumerable<BsonDocument> QueryEvents(string? query, string? type, int limit = 10)
+    {
+        var col = _db.GetCollection("events");
+        var q = col.Query();
+
+        if (!string.IsNullOrEmpty(query))
+        {
+            q = q.Where(Query.Contains("Summary", query));
+        }
+
+        if (!string.IsNullOrEmpty(type))
+        {
+            q = q.Where(Query.EQ("Type", type));
+        }
+
+        return q.OrderByDescending(x => x["Timestamp"]).Limit(limit).ToEnumerable();
     }
 
     public void Dispose() => _db.Dispose();

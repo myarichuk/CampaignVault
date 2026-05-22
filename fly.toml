@@ -1,6 +1,6 @@
 # fly.toml app configuration file generated for campaign-vault
 
-app = "campaign-vault"
+app = "my-campaign-vault-for-grok"
 primary_region = "ams"
 
 [build]

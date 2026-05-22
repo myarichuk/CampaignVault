@@ -76,6 +76,19 @@ public class CampaignTools(CampaignRepository repository)
     }
 
     [McpServerTool]
+    [Description("Create or fully replace a lore entry. Use this when you invent a new NPC, location, or historical fact.")]
+    public async Task<object> UpsertLore(Lore lore)
+    {
+        repository.UpsertLore(lore);
+        return new 
+        { 
+            success = true, 
+            data = lore, 
+            summary = $"Successfully saved lore entry: {lore.Title}" 
+        };
+    }
+
+    [McpServerTool]
     [Description("Append an important in-game event to the session log. Call this for major beats the party should remember.")]
     public async Task<object> LogEvent(
         [Description("Short summary of the event")] string summary, 
@@ -96,6 +109,21 @@ public class CampaignTools(CampaignRepository repository)
             success = true, 
             eventId = @event.Id, 
             summary = $"Event logged: {summary}" 
+        };
+    }
+
+    [McpServerTool]
+    [Description("Retrieve recent in-game events. Use this to catch up on what happened in previous sessions.")]
+    public async Task<object> QueryEvents(
+        [Description("Keywords to search for in event summaries")] string? query = null, 
+        [Description("Filter by event type (e.g. 'combat', 'social')")] string? type = null, 
+        [Description("Max results to return")] int limit = 10)
+    {
+        var results = repository.QueryEvents(query, type, limit).Select(MapBsonDocument).ToList();
+        return new
+        {
+            data = results,
+            summary = $"Found {results.Count} recent events."
         };
     }
 

@@ -13,7 +13,9 @@ A minimal, reliable Model Context Protocol (MCP) server for managing D&D 5e camp
 2. `upsert_character`: Create or fully replace a character sheet.
 3. `update_character`: Partial updates (HP, status, notes).
 4. `query_lore`: Search campaign world info by tags/keywords.
-5. `log_event`: Append session beats to the historical log.
+5. `upsert_lore`: Create or update lore (NPCs, locations, history).
+6. `log_event`: Append session beats to the historical log.
+7. `query_events`: Retrieve recent in-game history.
 
 ## Getting Started
 
@@ -39,7 +41,7 @@ This project is optimized for deployment on [Fly.io](https://fly.io/).
 ### 1. Create the App and Volume
 ```bash
 # Create the app
-fly apps create campaign-vault
+fly apps create my-campaign-vault-for-grok
 
 # Create a 1GB persistent volume for LiteDB
 fly volumes create campaign_data --region ams --size 1
@@ -64,13 +66,21 @@ In your Grok custom connector configuration:
    - Add a header `Authorization` with value `Bearer your_secure_random_token`
    - OR add a header `X-API-Key` with value `your_secure_random_token`
 
-### System Prompt Hint
-Include this in your DM instructions:
-> You are the Dungeon Master. Use the **CampaignVault** tools to manage authoritative state. 
-> - Before describing a character or lore, call `get_character` or `query_lore`.
-> - After combat or social changes, call `update_character`.
-> - Log major campaign beats with `log_event`.
-> Never contradict the stored facts.
+### DM System Prompt for Grok
+Add this to your DM instructions to ensure Grok uses the tools correctly:
+
+> You are the Dungeon Master for our D&D 5e campaign. You have access to the **CampaignVault** tools to maintain a persistent, authoritative world state. 
+> 
+> **Core Directives:**
+> 1. **authoritative State**: Never invent character stats or historical facts that contradict the Vault. If unsure, call `get_character` or `query_lore`.
+> 2. **Continuous Updates**: 
+>    - Call `update_character` whenever HP, status, or relationships change.
+>    - Call `upsert_lore` when you introduce new NPCs, locations, or world facts.
+>    - Call `log_event` at the end of every major scene or combat to record the "history" of the world.
+> 3. **Session Prep**: At the start of a session, call `query_events` and `get_character` for all PCs to catch up on the current situation.
+> 4. **Lore Richness**: Use `query_lore` with tags (e.g., `location`, `faction`) to find connected world details before describing a new area.
+> 
+> Your goal is to keep the Vault so accurate that any other DM (or another instance of yourself) could take over the campaign seamlessly.
 
 ## Development
 - **Models**: Located in `/Models`.
