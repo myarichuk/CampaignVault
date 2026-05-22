@@ -26,7 +26,7 @@ public class RavenDBFixture : IDisposable
             ServerUrl = "http://127.0.0.1:0"
         });
         Store = EmbeddedServer.Instance.GetDocumentStore("TestDB");
-        new Lore_Search().Execute(Store);
+        Raven.Client.Documents.Indexes.IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, Store);
         Store.Initialize();
     }
 
@@ -99,6 +99,34 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         Assert.NotEmpty(results);
         Assert.Contains(results, x => x.Id == id);
+    }
+
+    [Fact]
+    public async Task Fuzzy_Search_Character_Works()
+    {
+        using var repository = new CampaignRepository(_store);
+        var id = "npcs/aragorn-" + Guid.NewGuid();
+        await repository.UpsertCharacterAsync(new Character
+        {
+            Id = id,
+            Name = "Aragorn",
+            Notes = "The rightful King of Gondor."
+        });
+
+        // Wait for indexing
+        while (true)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
+                break;
+            await Task.Delay(100);
+        }
+
+        // Try fuzzy name match
+        var result = await repository.GetCharacterAsync("Aragrn");
+
+        Assert.NotNull(result);
+        Assert.Equal("Aragorn", result!.Name);
     }
 
     [Fact]

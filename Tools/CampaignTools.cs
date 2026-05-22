@@ -10,9 +10,9 @@ namespace CampaignVault.Tools;
 public class CampaignTools(CampaignRepository repository)
 {
     [McpServerTool]
-    [Description("Retrieve authoritative details for a character. Use this BEFORE describing an NPC or PC to ensure stats and status are correct.")]
+    [Description("Retrieve authoritative details for a character. Use this BEFORE describing an NPC or PC to ensure stats and status are correct. Supports fuzzy name matching.")]
     public async Task<object> GetCharacter(
-        [Description("The unique ID (e.g., 'npcs/gandalf') or the full Name of the character.")] string identifier)
+        [Description("The unique ID (e.g., 'npcs/gandalf'), the full Name, or a partial/misspelled name of the character.")] string identifier)
     {
         var character = await repository.GetCharacterAsync(identifier);
         if (character == null) 
