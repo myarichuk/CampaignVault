@@ -31,7 +31,11 @@ public class CampaignRepository : IDisposable
 
         // 3. Fuzzy search on Name + Notes (using the new index)
         character = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
-            .WhereEquals(x => x.Name, identifier).Fuzzy(0.4m)
+            .OpenSubclause()
+                .WhereEquals(x => x.Name, identifier).Fuzzy(0.4m)
+                .OrElse()
+                .WhereEquals(x => x.Notes, identifier).Fuzzy(0.4m)
+            .CloseSubclause()
             .FirstOrDefaultAsync();
 
         return character;
