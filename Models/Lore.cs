@@ -1,10 +1,7 @@
-using LiteDB;
-
 namespace CampaignVault.Models;
 
 public class Lore
 {
-    [BsonId]
     public string Id { get; set; } = default!;
     
     public string Title { get; set; } = default!;

@@ -2,21 +2,33 @@ using CampaignVault.Data;
 using CampaignVault.Tools;
 using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Protocol;
+using Raven.Client.Documents;
+using Raven.Embedded;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configuration
-var dbPath = builder.Configuration["CAMPAIGN_DB_PATH"] ?? "campaign.db";
+var dbPath = builder.Configuration["CAMPAIGN_DB_PATH"] ?? Path.Combine(AppContext.BaseDirectory, "RavenData");
 var bearerToken = builder.Configuration["BEARER_TOKEN"];
 
+// RavenDB Embedded Setup
+EmbeddedServer.Instance.StartServer(new ServerOptions
+{
+    DataDirectory = dbPath,
+    ServerUrl = "http://127.0.0.1:0" // Use a random port
+});
+var documentStore = EmbeddedServer.Instance.GetDocumentStore("CampaignVault");
+new Lore_Search().Execute(documentStore);
+
 // Services
-builder.Services.AddSingleton(new CampaignRepository(dbPath));
+builder.Services.AddSingleton<IDocumentStore>(documentStore);
+builder.Services.AddSingleton<CampaignRepository>();
 builder.Services.AddMcpServer(options =>
 {
     options.ServerInfo = new Implementation
     {
         Name = "CampaignVault",
-        Version = "0.1.0"
+        Version = "0.2.0"
     };
 })
 .WithHttpTransport()
@@ -29,8 +41,6 @@ if (!string.IsNullOrEmpty(bearerToken))
 {
     app.Use(async (context, next) =>
     {
-        // Skip auth for root/health endpoints if needed, 
-        // but for a private prototype, we can protect everything except GET /
         if (context.Request.Path == "/" || context.Request.Path == "/health")
         {
             await next();
@@ -60,7 +70,7 @@ if (!string.IsNullOrEmpty(bearerToken))
 }
 
 app.MapMcp("mcp");
-app.MapGet("/", () => "D&D Campaign Vault MCP Server is running.");
+app.MapGet("/", () => "D&D Campaign Vault MCP Server (RavenDB) is running.");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.Run();

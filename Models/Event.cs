@@ -1,11 +1,8 @@
-using LiteDB;
-
 namespace CampaignVault.Models;
 
 public class Event
 {
-    [BsonId]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Id { get; set; } = default!;
     
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     

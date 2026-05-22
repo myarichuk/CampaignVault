@@ -8,14 +8,17 @@ RUN dotnet restore
 
 # Copy everything else and build
 COPY . .
-RUN dotnet publish -c Release -o /app
+RUN dotnet publish CampaignVault.csproj -c Release -o /app
 
 # Final stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview
 WORKDIR /app
 COPY --from=build /app .
 
-# Create data directory for LiteDB persistence
+# Install libicu for RavenDB Embedded
+RUN apt-get update && apt-get install -y libicu-dev && rm -rf /var/lib/apt/lists/*
+
+# Create data directory for RavenDB persistence
 RUN mkdir -p /app/data
 ENV CAMPAIGN_DB_PATH=/app/data/campaign.db
 

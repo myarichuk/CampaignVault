@@ -2,7 +2,6 @@ using CampaignVault.Data;
 using CampaignVault.Models;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
-using LiteDB;
 
 namespace CampaignVault.Tools;
 
@@ -14,19 +13,13 @@ public class CampaignTools(CampaignRepository repository)
     public async Task<object> GetCharacter(
         [Description("Name, slug, or partial match.")] string identifier)
     {
-        var doc = repository.GetCharacter(identifier);
-        if (doc == null) return new { error = "Character not found" };
-
-        var data = MapBsonDocument(doc);
-        var name = doc["Name"]?.AsString ?? "Unknown";
-        var level = doc["ClassLevel"]?.AsString ?? "Unknown";
-        var hp = doc["CurrentHp"]?.AsInt32 ?? 0;
-        var maxHp = doc["MaxHp"]?.AsInt32 ?? 0;
+        var character = await repository.GetCharacterAsync(identifier);
+        if (character == null) return new { error = "Character not found" };
 
         return new
         {
-            data,
-            summary = $"{name} ({level}). HP: {hp}/{maxHp}."
+            data = character,
+            summary = $"{character.Name} ({character.ClassLevel}). HP: {character.CurrentHp}/{character.MaxHp}."
         };
     }
 
@@ -34,7 +27,7 @@ public class CampaignTools(CampaignRepository repository)
     [Description("Create or fully replace a character record. Use when a character is created or when you have a complete updated sheet.")]
     public async Task<object> UpsertCharacter(Character character)
     {
-        repository.UpsertCharacter(character);
+        await repository.UpsertCharacterAsync(character);
         return new 
         { 
             success = true, 
@@ -44,12 +37,12 @@ public class CampaignTools(CampaignRepository repository)
     }
 
     [McpServerTool]
-    [Description("Partial update to an existing character (preferred for most in-session changes: HP, status, notes, relationships).")]
+    [Description("Partial update to an existing character (preferred for most in-session changes: HP, status, notes, relationships, needs).")]
     public async Task<object> UpdateCharacter(
         [Description("The character ID or name.")] string identifier, 
-        [Description("Fields to merge/update (e.g. { \"currentHp\": 42, \"status\": [\"poisoned\"] })")] Dictionary<string, object> updates)
+        [Description("Fields to merge/update (e.g. { \"currentHp\": 42, \"needs\": { \"hunger\": 20 } })")] Dictionary<string, object> updates)
     {
-        var success = repository.UpdateCharacter(identifier, updates);
+        var success = await repository.UpdateCharacterAsync(identifier, updates);
         if (!success) return new { error = "Character not found" };
         
         return new 
@@ -60,14 +53,14 @@ public class CampaignTools(CampaignRepository repository)
     }
 
     [McpServerTool]
-    [Description("Search lore entries by keywords, tags, or category. Returns the most relevant matches.")]
+    [Description("Search lore entries by keywords, tags, or category. Supports fuzzy search.")]
     public async Task<object> QueryLore(
-        [Description("Free text or keywords")] string? query = null, 
+        [Description("Free text or keywords (fuzzy)")] string? query = null, 
         [Description("Tags to filter by")] string[]? tags = null, 
         [Description("Category (e.g. 'npc', 'location', 'item', 'plot')")] string? category = null, 
         [Description("Max results to return")] int limit = 5)
     {
-        var results = repository.QueryLore(query, tags, category, limit).Select(MapBsonDocument).ToList();
+        var results = (await repository.QueryLoreAsync(query, tags, category, limit)).ToList();
         return new
         {
             data = results,
@@ -79,7 +72,7 @@ public class CampaignTools(CampaignRepository repository)
     [Description("Create or fully replace a lore entry. Use this when you invent a new NPC, location, or historical fact.")]
     public async Task<object> UpsertLore(Lore lore)
     {
-        repository.UpsertLore(lore);
+        await repository.UpsertLoreAsync(lore);
         return new 
         { 
             success = true, 
@@ -103,7 +96,7 @@ public class CampaignTools(CampaignRepository repository)
             Details = details,
             Involved = involved?.ToList() ?? []
         };
-        repository.LogEvent(@event);
+        await repository.LogEventAsync(@event);
         return new 
         { 
             success = true, 
@@ -119,23 +112,11 @@ public class CampaignTools(CampaignRepository repository)
         [Description("Filter by event type (e.g. 'combat', 'social')")] string? type = null, 
         [Description("Max results to return")] int limit = 10)
     {
-        var results = repository.QueryEvents(query, type, limit).Select(MapBsonDocument).ToList();
+        var results = (await repository.QueryEventsAsync(query, type, limit)).ToList();
         return new
         {
             data = results,
             summary = $"Found {results.Count} recent events."
         };
-    }
-
-    private static Dictionary<string, object?> MapBsonDocument(BsonDocument doc)
-    {
-        return doc.Keys.ToDictionary(k => k, k => MapBsonValue(doc[k]));
-    }
-
-    private static object? MapBsonValue(BsonValue value)
-    {
-        if (value.IsDocument) return MapBsonDocument(value.AsDocument);
-        if (value.IsArray) return value.AsArray.Select(MapBsonValue).ToList();
-        return value.RawValue;
     }
 }
