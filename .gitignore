@@ -25,3 +25,6 @@ appsettings.Development.json
 
 # Docker
 .docker/
+
+# Agent Planning
+conductor/
