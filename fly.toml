@@ -1,0 +1,22 @@
+# fly.toml app configuration file generated for campaign-vault
+
+app = "campaign-vault"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[mounts]]
+  source = "campaign_data"
+  destination = "/app/data"
+
+[env]
+  CAMPAIGN_DB_PATH = "/app/data/campaign.db"

@@ -1,0 +1,27 @@
+# .NET
+[Bb]in/
+[Oo]bj/
+out/
+log/
+
+# LiteDB
+*.db
+*.db-log
+
+# User-specific files
+*.user
+*.userosscache
+*.sln.docstates
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Fly.io / Environment
+.env
+appsettings.Development.json
+
+# Docker
+.docker/
