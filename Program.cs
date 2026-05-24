@@ -26,6 +26,16 @@ IndexCreation.CreateIndexes(typeof(Program).Assembly, documentStore);
 // Services
 builder.Services.AddSingleton<IDocumentStore>(documentStore);
 builder.Services.AddSingleton<CampaignRepository>();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .WithExposedHeaders("Mcp-Session-Id");
+    });
+});
 builder.Services.AddMcpServer(options =>
 {
     options.ServerInfo = new Implementation
@@ -34,10 +44,15 @@ builder.Services.AddMcpServer(options =>
         Version = "0.2.0"
     };
 })
-.WithHttpTransport()
+.WithHttpTransport(options =>
+{
+    options.Stateless = true;
+})
 .WithToolsFromAssembly();
 
 var app = builder.Build();
+
+app.UseCors();
 
 // Optional Bearer/X-API-Key Auth Middleware
 if (!string.IsNullOrEmpty(bearerToken))
@@ -72,8 +87,8 @@ if (!string.IsNullOrEmpty(bearerToken))
     });
 }
 
-app.MapMcp("mcp");
-app.MapGet("/", () => "D&D Campaign Vault MCP Server (RavenDB) is running.");
+app.MapMcp("/");
+app.MapGet("/info", () => "D&D Campaign Vault MCP Server (RavenDB) is running.");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 // Diagnostic Startup Info

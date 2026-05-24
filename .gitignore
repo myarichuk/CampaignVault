@@ -3,7 +3,7 @@
 [Oo]bj/
 out/
 log/
-
+docs/
 # LiteDB
 *.db
 *.db-log
