@@ -5,6 +5,8 @@ public class Event
     public string Id { get; set; } = default!;
     
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+    public int DayLogged { get; set; }
     
     public string? SessionId { get; set; }
     

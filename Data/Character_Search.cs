@@ -12,7 +12,8 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                             {
                                 c.Name,
                                 c.Notes,
-                                c.ClassLevel
+                                c.ClassLevel,
+                                Locations = c.Schedule == null ? new string[0] : new[] { c.Schedule.DefaultLocationId }.Concat(c.Schedule.Routines.Select(r => r.LocationId))
                             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

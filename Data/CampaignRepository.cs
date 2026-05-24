@@ -7,16 +7,17 @@ using Raven.Client.Documents.Indexes;
 
 namespace CampaignVault.Data;
 
-public class CampaignRepository : IDisposable
+public class CampaignRepository
 {
     private readonly IDocumentStore _store;
+    private readonly WorldSimulator _simulator = new();
 
     public CampaignRepository(IDocumentStore store)
     {
         _store = store;
     }
 
-    public async Task<Character?> GetCharacterAsync(string identifier)
+    public IAsyncDocumentSession OpenSession()
     {
         using var session = _store.OpenAsyncSession();
 
@@ -41,134 +42,291 @@ public class CampaignRepository : IDisposable
         return character;
     }
 
-    public async Task UpsertCharacterAsync(Character character)
+    // --- V4 Core: Commit Transactional Changes ---
+
+    public async Task<CommitResult> CommitChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
     {
-        using var session = _store.OpenAsyncSession(new Raven.Client.Documents.Session.SessionOptions
+        var summary = new List<string>();
+        foreach (var change in changes)
         {
-            OptimisticConcurrencyMode = OptimisticConcurrencyMode.Writes
-        });
-        character.LastUpdated = DateTime.UtcNow;
-        await session.StoreAsync(character);
-        await session.SaveChangesAsync();
-    }
-
-    public async Task<bool> UpdateCharacterAsync(string identifier, Dictionary<string, object> updates)
-    {
-        using var session = _store.OpenAsyncSession(new Raven.Client.Documents.Session.SessionOptions
-        {
-            OptimisticConcurrencyMode = OptimisticConcurrencyMode.Writes
-        });
-
-        var character = await GetCharacterAsync(identifier);
-        if (character == null) return false;
-
-        var sessionCharacter = await session.LoadAsync<Character>(character.Id);
-        if (sessionCharacter == null) return false;
-
-        // Robust field mapping (easy to extend)
-        foreach (var (key, value) in updates)
-        {
-            switch (key.ToLowerInvariant())
+            switch (change)
             {
-                case "currenthp":
-                case "current_hp":
-                    sessionCharacter.CurrentHp = Convert.ToInt32(value);
+                case HpChange hp:
+                    session.Advanced.Increment<Character, int>(hp.CharacterId, x => x.CurrentHp, hp.Delta);
+                    summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta}");
                     break;
-                case "maxhp":
-                case "max_hp":
-                    sessionCharacter.MaxHp = Convert.ToInt32(value);
-                    break;
-                case "notes":
-                    sessionCharacter.Notes = value?.ToString();
-                    break;
-                case "needs":
-                    if (value is Dictionary<string, object> needsDict)
+                
+                case ItemTransfer item:
+                    var doc = await session.LoadAsync<Item>(item.ItemId);
+                    if (doc != null)
                     {
-                        foreach (var (needKey, needValue) in needsDict)
-                        {
-                            sessionCharacter.Needs[needKey] = Convert.ToInt32(needValue);
-                        }
+                        doc.HolderId = item.ToHolderId;
+                        doc.LastUpdated = DateTime.UtcNow;
+                        summary.Add($"Item {item.ItemId} moved to {item.ToHolderId}");
                     }
                     break;
-                // Add more fields here as your Character model grows
-                default:
-                    // Optional: log unknown key or ignore
+
+                case StatusChange status:
+                    session.Advanced.Patch<Character, string>(status.CharacterId, x => x.Status, x => x.Add(status.Status));
+                    summary.Add($"Status '{status.Status}' added to {status.CharacterId}");
+                    break;
+
+                case EventOccurred ev:
+                    var currentTime = await GetTimeAsync(session);
+                    var e = new Event { Id = "events/" + Guid.NewGuid(), Summary = ev.Summary, Type = ev.Type, Involved = ev.Involved ?? [], DayLogged = currentTime.TotalDaysElapsed };
+                    await LogEventAsync(session, e);
+                    summary.Add($"Event logged: {ev.Summary}");
+                    break;
+
+                case RumorEvolves rumor:
+                    session.Advanced.Patch<Rumor, RumorState>(rumor.RumorId, x => x.State, rumor.NewState);
+                    if (rumor.NewText != null) session.Advanced.Patch<Rumor, string>(rumor.RumorId, x => x.CurrentText, rumor.NewText);
+                    var rtime = await GetTimeAsync(session);
+                    session.Advanced.Patch<Rumor, int>(rumor.RumorId, x => x.LastStateChangeDay, rtime.TotalDaysElapsed);
+                    summary.Add($"Rumor {rumor.RumorId} evolved to {rumor.NewState}");
+                    break;
+
+                case RelationshipChange rel:
+                    var source = await session.LoadAsync<Character>(rel.SourceId);
+                    if (source != null)
+                    {
+                        source.Mind ??= new NpcMind();
+                        source.Mind.Relationships ??= new Dictionary<string, int>();
+
+                        if (source.Mind.Relationships.TryGetValue(rel.TargetId, out var currentVal))
+                            source.Mind.Relationships[rel.TargetId] = currentVal + rel.Delta;
+                        else
+                            source.Mind.Relationships[rel.TargetId] = rel.Delta;
+                            
+                        summary.Add($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
+                    }
                     break;
             }
         }
 
-        sessionCharacter.LastUpdated = DateTime.UtcNow;
-        await session.SaveChangesAsync();
-        return true;
+        return new CommitResult { ChangesProcessed = changes.Length, Summary = summary };
     }
 
-    public async Task UpsertLoreAsync(Lore lore)
+    // --- V4 Core: Scene Synthesis ---
+
+    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId)
     {
-        using var session = _store.OpenAsyncSession(new Raven.Client.Documents.Session.SessionOptions
+        var location = await session
+            .Include<Location>(x => x.ParentLocationId)
+            .LoadAsync<Location>(locationId);
+
+        var regionId = location?.ParentLocationId ?? locationId;
+        var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20)).ToList();
+        
+        var targetIds = new List<string> { locationId };
+        targetIds.AddRange(subLocations.Select(l => l.Id));
+
+        var npcs = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .ContainsAny("Locations", targetIds)
+            .Take(20)
+            .ToListAsync();
+
+        var rumors = await QueryRumorsAsync(session, null, regionId, null, 5);
+        var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
+        var events = await session.Query<Event>().Where(x => x.Involved.Contains(locationId)).OrderByDescending(x => x.Timestamp).Take(5).ToListAsync();
+
+        var time = await GetTimeAsync(session);
+
+        return new SceneView
         {
-            OptimisticConcurrencyMode = OptimisticConcurrencyMode.Writes
-        });
-        lore.LastUpdated = DateTime.UtcNow;
-        await session.StoreAsync(lore);
-        await session.SaveChangesAsync();
+            Location = location!,
+            PresentNPCs = npcs, // Return full objects
+            LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
+            VisibleItems = items,
+            RecentEvents = events
+        };
     }
 
-    public async Task<IEnumerable<Lore>> QueryLoreAsync(string? query, string[]? tags, string? category, int limit = 5)
+    private string SynthesizeBehavior(Character npc, CampaignTime time)
     {
-        using var session = _store.OpenAsyncSession();
-        var q = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>();
+        if (npc.Mind == null) return $"{npc.Name} seems to be going about their day.";
 
-        if (!string.IsNullOrEmpty(query))
-        {
-            q = q.OpenSubclause()
-                 .WhereEquals(x => x.Title, query).Fuzzy(0.4m)
-                 .OrElse()
-                 .WhereEquals(x => x.Content, query).Fuzzy(0.4m)
-                 .CloseSubclause();
-        }
+        var mind = npc.Mind;
+        var context = new List<string>();
+        foreach (var (need, val) in mind.Needs) { if (val > 30) context.Add($"is feeling {need}"); }
+        if (!string.IsNullOrEmpty(mind.CurrentMood)) context.Add($"appears {mind.CurrentMood}");
+        return context.Any() ? $"{npc.Name} " + string.Join(", ", context) + "." : $"{npc.Name} seems to be in a neutral state.";
+    }
 
-        if (tags != null && tags.Length > 0)
+    // --- Time & Simulator ---
+
+    public async Task<AdvanceResult> AdvanceWorldAsync(IAsyncDocumentSession session, int days, TimeOfDay timeOfDay)
+    {
+        var time = await GetTimeAsync(session);
+        time.TotalDaysElapsed += days;
+        time.Day += days;
+        while (time.Day > 30) { time.Day -= 30; time.Month++; }
+        while (time.Month > 12) { time.Month -= 12; time.Year++; }
+        time.TimeOfDay = timeOfDay;
+
+        await session.StoreAsync(time); // Fix: Ensure time mutations are saved
+
+        var activeRumors = await session.Query<Rumor>().Where(x => x.State != RumorState.Resolved).ToListAsync();
+        var npcs = await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync();
+        var simEvents = _simulator.Run(time, activeRumors, npcs);
+
+        return new AdvanceResult { NewTime = time, SimulatorEvents = simEvents };
+    }
+
+    // --- Search & Recall ---
+
+    public async Task<IEnumerable<object>> UnifiedSearchAsync(IAsyncDocumentSession session, string query)
+    {
+        var charsTask = session.Advanced.AsyncDocumentQuery<Character, Character_Search>().Search(x => x.Name, $"*{query}*").Take(5).ToListAsync();
+        var loreTask = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>().Search(x => x.Title, $"*{query}*").Take(5).ToListAsync();
+        var locsTask = session.Advanced.AsyncDocumentQuery<Location, Location_Search>().Search(x => x.Name, $"*{query}*").Take(5).ToListAsync();
+        
+        await Task.WhenAll(charsTask, loreTask, locsTask);
+
+        // Crucial: Extract results while inside the session scope
+        var chars = await charsTask;
+        var lore = await loreTask;
+        var locs = await locsTask;
+
+        var results = new List<object>();
+        results.AddRange(chars);
+        results.AddRange(lore);
+        results.AddRange(locs);
+        return results;
+    }
+
+    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, string? type, int limit = 10)
+    {
+        var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
+        if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
+        if (!string.IsNullOrEmpty(type)) q = q.AndAlso().WhereEquals(x => x.Type, type);
+        var events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
+        foreach (var ev in events) { if (ev.Details != null) ev.Details = SanitizeDetails(ev.Details); }
+        return events;
+    }
+
+    // --- Base Helpers ---
+
+    public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier)
+    {
+        var character = await session.LoadAsync<Character>(identifier);
+        if (character != null) return character;
+        character = await session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
+        if (character != null) return character;
+        return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>().WhereEquals(x => x.Name, identifier).Fuzzy(0.4m).FirstOrDefaultAsync();
+    }
+
+    public async Task UpsertCharacterAsync(IAsyncDocumentSession session, Character character)
+    {
+        character.LastUpdated = DateTime.UtcNow;
+        await session.StoreAsync(character, null, character.Id);
+    }
+
+    public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session)
+    {
+        var time = await session.LoadAsync<CampaignTime>("state/time");
+        if (time == null) { time = new CampaignTime(); await session.StoreAsync(time); }
+        return time;
+    }
+
+    public async Task SaveTimeAsync(IAsyncDocumentSession session, CampaignTime time)
+    {
+        time.LastUpdated = DateTime.UtcNow;
+        await session.StoreAsync(time);
+    }
+
+    public async Task LogEventAsync(IAsyncDocumentSession session, Event @event)
+    {
+        if (@event.Details != null) @event.Details = SanitizeDetails(@event.Details);
+        await session.StoreAsync(@event);
+    }
+
+    private IDictionary<string, object> SanitizeDetails(IDictionary<string, object> details)
+    {
+        var sanitized = new Dictionary<string, object>();
+        foreach (var (key, value) in details) sanitized[key] = SanitizeValue(value);
+        return sanitized;
+    }
+
+    private object SanitizeValue(object value)
+    {
+        if (value is System.Text.Json.JsonElement je)
         {
-            foreach (var tag in tags)
+            switch (je.ValueKind)
             {
-                q = q.AndAlso().ContainsAny(x => x.Tags, new[] { tag });
+                case System.Text.Json.JsonValueKind.String: return je.GetString()!;
+                case System.Text.Json.JsonValueKind.Number: if (je.TryGetInt32(out var i)) return i; return je.GetDouble();
+                case System.Text.Json.JsonValueKind.True: return true;
+                case System.Text.Json.JsonValueKind.False: return false;
+                case System.Text.Json.JsonValueKind.Null: return null!;
+                case System.Text.Json.JsonValueKind.Object:
+                    var dict = new Dictionary<string, object>();
+                    foreach (var prop in je.EnumerateObject()) dict[prop.Name] = SanitizeValue(prop.Value);
+                    return dict;
+                case System.Text.Json.JsonValueKind.Array:
+                    var list = new List<object>();
+                    foreach (var item in je.EnumerateArray()) list.Add(SanitizeValue(item));
+                    return list;
+                default: return je.GetRawText();
             }
         }
+        return value;
+    }
 
-        if (!string.IsNullOrEmpty(category))
-        {
-            q = q.AndAlso().WhereEquals(x => x.Category, category);
-        }
+    public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore) { lore.LastUpdated = DateTime.UtcNow; await session.StoreAsync(lore); }
 
+    public async Task<IEnumerable<Lore>> QueryLoreAsync(IAsyncDocumentSession session, string? query, string[]? tags, string? category, int limit = 5)
+    {
+        var q = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>();
+        if (!string.IsNullOrEmpty(query)) q = q.OpenSubclause().WhereEquals(x => x.Title, query).Fuzzy(0.4m).OrElse().WhereEquals(x => x.Content, query).Fuzzy(0.4m).CloseSubclause();
+        if (tags != null && tags.Length > 0) { foreach (var tag in tags) q = q.AndAlso().ContainsAny(x => x.Tags, new[] { tag }); }
+        if (!string.IsNullOrEmpty(category)) q = q.AndAlso().WhereEquals(x => x.Category, category);
         return await q.Take(limit).ToListAsync();
     }
 
-    public async Task LogEventAsync(Event @event)
+    public async Task UpsertLocationAsync(IAsyncDocumentSession session, Location location) { location.LastUpdated = DateTime.UtcNow; await session.StoreAsync(location); }
+
+    public async Task<IEnumerable<Location>> QueryLocationsAsync(IAsyncDocumentSession session, string? query, LocationType? type = null, string? parentId = null, int limit = 10)
     {
-        using var session = _store.OpenAsyncSession();
-        await session.StoreAsync(@event);
-        await session.SaveChangesAsync();
+        var q = session.Advanced.AsyncDocumentQuery<Location, Location_Search>();
+        if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Name, $"*{query}*").OrElse().Search(x => x.Description, $"*{query}*");
+        if (type.HasValue) q = q.AndAlso().WhereEquals(x => x.Type, type.Value);
+        if (!string.IsNullOrEmpty(parentId)) q = q.AndAlso().WhereEquals(x => x.ParentLocationId, parentId);
+        return await q.Take(limit).ToListAsync();
     }
 
-    public async Task<IEnumerable<Event>> QueryEventsAsync(string? query, string? type, int limit = 10)
+    public async Task UpsertRumorAsync(IAsyncDocumentSession session, Rumor rumor)
     {
-        using var session = _store.OpenAsyncSession();
-        var q = session.Query<Event>();
-
-        if (!string.IsNullOrEmpty(query))
-        {
-            q = q.Where(x => x.Summary.Contains(query)); // consider Search index later
-        }
-        if (!string.IsNullOrEmpty(type))
-        {
-            q = q.Where(x => x.Type == type);
-        }
-
-        return await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
+        rumor.LastUpdated = DateTime.UtcNow;
+        if (rumor.DayCreated == 0) { var t = await GetTimeAsync(session); rumor.DayCreated = t.TotalDaysElapsed; rumor.LastStateChangeDay = t.TotalDaysElapsed; }
+        await session.StoreAsync(rumor);
     }
 
-    public void Dispose()
+    public async Task<IEnumerable<Rumor>> QueryRumorsAsync(IAsyncDocumentSession session, string? query, string? regionId = null, RumorState? state = null, int limit = 5)
     {
-        // _store?.Dispose(); // only if this repo owns the store
+        var q = session.Advanced.AsyncDocumentQuery<Rumor, Rumor_Search>();
+        if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Subject, $"*{query}*").OrElse().Search(x => x.CurrentText, $"*{query}*");
+        if (!string.IsNullOrEmpty(regionId)) q = q.AndAlso().WhereEquals(x => x.RegionLocationId, regionId);
+        if (state.HasValue) q = q.AndAlso().WhereEquals(x => x.State, state.Value);
+        return await q.Take(limit).ToListAsync();
+    }
+
+    public async Task<Location?> GetLocationAsync(IAsyncDocumentSession session, string id)
+    {
+        return await session.LoadAsync<Location>(id);
+    }
+
+    public async Task<Item?> GetItemAsync(IAsyncDocumentSession session, string id) => await session.LoadAsync<Item>(id);
+
+    public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item) { item.LastUpdated = DateTime.UtcNow; await session.StoreAsync(item); }
+
+    private string EvaluateCurrentActivity(Character npc, CampaignTime time)
+    {
+        if (npc.Schedule == null) return "Unknown";
+        var mod = npc.Schedule.ActiveModifiers.LastOrDefault();
+        if (mod != null) return $"{mod.OverrideActivity} ({mod.Type})";
+        var r = npc.Schedule.Routines.FirstOrDefault(x => x.Condition.Equals(time.TimeOfDay.ToString(), StringComparison.OrdinalIgnoreCase));
+        if (r != null) return r.Probability >= 1.0 ? r.Activity : $"{r.Activity} (Likely)";
+        return "Going about their day";
     }
 }

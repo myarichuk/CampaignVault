@@ -3,166 +3,187 @@ using CampaignVault.Models;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using Raven.Client.Exceptions;
+using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Tools;
+
+internal static class ToolErrors
+{
+    public const string NotFound = "NotFound";
+    public const string StateDrift = "StateDriftConflict";
+    public const string InternalError = "InternalError";
+}
 
 [McpServerToolType]
 public class CampaignTools(CampaignRepository repository)
 {
-    [McpServerTool]
-    [Description("Retrieve authoritative details for a character. Use this BEFORE describing an NPC or PC to ensure stats and status are correct. Supports fuzzy name matching.")]
-    public async Task<object> GetCharacter(
-        [Description("The unique ID (e.g., 'npcs/gandalf'), the full Name, or a partial/misspelled name of the character.")] string identifier)
+    private async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action)
     {
-        var character = await repository.GetCharacterAsync(identifier);
-        if (character == null) 
-        {
-            return new { 
-                error = "CharacterNotFound", 
-                message = $"Could not find a character matching '{identifier}'. Use 'upsert_character' to create them if they are new." 
-            };
-        }
+        using var session = repository.OpenSession();
+        ToolResult<T> result;
 
-        return new
+        try
         {
-            data = character,
-            summary = $"{character.Name} ({character.ClassLevel ?? "Unknown Level"}). HP: {character.CurrentHp}/{character.MaxHp}. Status: {string.Join(", ", character.Status)}. Needs: {string.Join(", ", character.Needs.Select(n => $"{n.Key}:{n.Value}"))}."
-        };
-    }
-
-    [McpServerTool]
-    [Description("Create a new character or fully overwrite an existing one. Use this for initial character creation or major sheet updates.")]
-    public async Task<object> UpsertCharacter(
-        [Description("The full character object. Ensure 'Id' follows 'npcs/name' or 'pcs/name' format.")] Character character)
-    {
-        try 
-        {
-            await repository.UpsertCharacterAsync(character);
-            return new 
-            { 
-                success = true, 
-                data = character, 
-                summary = $"Authoritative record for {character.Name} has been saved." 
-            };
+            result = await action(session);
         }
         catch (ConcurrencyException)
         {
-            return new { 
-                error = "StateDriftConflict", 
-                message = "The character was modified by another process (or a previous tool call) while you were thinking. Call 'get_character' to refresh your context before trying again." 
-            };
+            return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "State changed mid-operation. Re-fetch and retry.");
         }
+        catch (Exception ex)
+        {
+            return new ToolResult<T>(false, Error: ToolErrors.InternalError, Summary: ex.Message);
+        }
+
+        if (!result.Success) return result;
+
+        try
+        {
+            await session.SaveChangesAsync();
+        }
+        catch (ConcurrencyException)
+        {
+            return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "Commit failed due to concurrent modification. Re-fetch and retry.");
+        }
+
+        return result;
     }
 
     [McpServerTool]
-    [Description("Update specific fields of a character (HP, status, notes, needs). Preferred for in-session changes.")]
-    public async Task<object> UpdateCharacter(
-        [Description("The unique ID or full Name of the character.")] string identifier, 
-        [Description("Key-value pairs to update. Supported keys: 'currentHp', 'maxHp', 'notes', 'needs' (dictionary).")] Dictionary<string, object> updates)
+    [Description("KICKOFF TOOL: Call this at the start of every session to get the current time, active rumors, recent history, and current party location in one view.")]
+    public Task<ToolResult<WorldStateView>> GetWorldState(
+        [Description("The current ID of the location where the party is.")] string partyLocationId)
     {
-        try 
-        {
-            var success = await repository.UpdateCharacterAsync(identifier, updates);
-            if (!success) 
-            {
-                return new { 
-                    error = "CharacterNotFound", 
-                    message = $"Update failed because character '{identifier}' does not exist." 
-                };
-            }
+        return ExecuteAsync(async session => {
+            var time = await repository.GetTimeAsync(session);
             
-            return new 
-            { 
-                success = true, 
-                summary = $"Applied {updates.Count} changes to {identifier}. Authoritative state updated." 
-            };
-        }
-        catch (ConcurrencyException)
-        {
-            return new { 
-                error = "StateDriftConflict", 
-                message = "The character's state has changed since you last loaded it. Call 'get_character' to sync your context before re-applying updates." 
-            };
-        }
+            // Widen rumor search for kickoff
+            var spreading = await repository.QueryRumorsAsync(session, null, null, RumorState.Spreading, 3);
+            var peak = await repository.QueryRumorsAsync(session, null, null, RumorState.Peak, 3);
+            var rumors = peak.Concat(spreading).ToList();
+
+            var events = await repository.QueryEventsAsync(session, null, null, 5);
+            var location = await repository.GetLocationAsync(session, partyLocationId);
+            
+            var pressure = new List<string>();
+            foreach (var r in rumors.Where(r => time.TotalDaysElapsed - r.LastStateChangeDay > 5))
+            {
+                pressure.Add($"Rumor '{r.Subject}' has been spreading for {time.TotalDaysElapsed - r.LastStateChangeDay} days without resolution.");
+            }
+
+            var agingEvents = await repository.QueryEventsAsync(session, null, "unresolved", 5);
+            foreach (var e in agingEvents)
+            {
+                pressure.Add($"Unresolved thread: '{e.Summary}' ({time.TotalDaysElapsed - e.DayLogged} days old).");
+            }
+
+            LocationSummary? locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
+            
+            var view = new WorldStateView(time, rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)), events, locSummary, pressure);
+            return new ToolResult<WorldStateView>(true, view, "Authoritative world state retrieved for session start.");
+        });
     }
 
     [McpServerTool]
-    [Description("Search for campaign world information. Supports fuzzy matching for typos.")]
-    public async Task<object> QueryLore(
-        [Description("Search term (e.g., 'Sauron', 'Gondor'). Fuzzy matching is enabled, so slight typos are okay.")] string? query = null, 
-        [Description("Filter by tags (e.g., ['location', 'faction']).")] string[]? tags = null, 
-        [Description("Category filter (e.g., 'npc', 'history', 'item').")] string? category = null, 
-        [Description("Maximum results to return. Default is 5.")] int limit = 5)
+    [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors.")]
+    public Task<ToolResult<SceneView>> GetScene(
+        [Description("The unique ID of the location.")] string locationId)
     {
-        var results = (await repository.QueryLoreAsync(query, tags, category, limit)).ToList();
-        return new
-        {
-            data = results,
-            summary = $"Retrieved {results.Count} matching lore entries from the Vault."
-        };
+        return ExecuteAsync(async session => {
+            var scene = await repository.GetSceneAsync(session, locationId);
+            return new ToolResult<SceneView>(true, scene, $"Scene details for {locationId} retrieved.");
+        });
     }
 
     [McpServerTool]
-    [Description("Create or update a lore entry (NPC backgrounds, location details, historical facts).")]
-    public async Task<object> UpsertLore(
-        [Description("The lore object. 'Id' should follow 'lore/slug' format. 'Title' and 'Content' are required.")] Lore lore)
+    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of a combat, conversation, or discovery to atomically update the world. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships).")]
+    public Task<ToolResult<CommitResult>> Commit(
+        [Description("Array of world changes to apply.")] WorldChange[] changes,
+        [Description("Narrative summary of what happened (for the log).")] string narrative)
     {
-        try 
-        {
-            await repository.UpsertLoreAsync(lore);
-            return new 
-            { 
-                success = true, 
-                data = lore, 
-                summary = $"Lore entry '{lore.Title}' is now part of the campaign's permanent record." 
+        return ExecuteAsync(async session => {
+            var result = await repository.CommitChangesAsync(session, changes);
+            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Type = "scene-commit" });
+            return new ToolResult<CommitResult>(true, result, $"World updated with {changes.Length} changes.");
+        });
+    }
+
+    [McpServerTool]
+    [Description("TIME PASSAGE: Call this for travel, long rests, or downtime. Fast-forwards the world clock and runs background simulations (rumor decay, NPC needs). Returns narrative updates on what changed while the party was away.")]
+    public Task<ToolResult<AdvanceResult>> AdvanceWorld(
+        [Description("Number of days to skip.")] int days, 
+        [Description("The resulting time of day.")] TimeOfDay timeOfDay,
+        [Description("Summary of the rest or travel activity.")] string narrative)
+    {
+        return ExecuteAsync(async session => {
+            var result = await repository.AdvanceWorldAsync(session, days, timeOfDay);
+            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Type = "timeskip" });
+            return new ToolResult<AdvanceResult>(true, result, $"Advanced {days} days. {result.SimulatorEvents.Count} simulation events triggered.");
+        });
+    }
+
+    [McpServerTool]
+    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychological state. Returns their relationships, goals, fears, knowledge, and current emotional mood.")]
+    public Task<ToolResult<NpcContextView>> GetNpcContext(string characterId)
+    {
+        return ExecuteAsync(async session => {
+            var npc = await repository.GetCharacterAsync(session, characterId);
+            if (npc == null) return new ToolResult<NpcContextView>(false, Error: "NotFound");
+
+            var npcEvents = await session.Advanced.AsyncDocumentQuery<Event>()
+                .WhereEquals("Involved", characterId)
+                .OrderByDescending(x => x.Timestamp)
+                .Take(10)
+                .ToListAsync();
+            var context = new NpcContextView
+            {
+                Character = npc,
+                Mind = npc.Mind,
+                RecentInteractions = npcEvents
             };
-        }
-        catch (ConcurrencyException)
-        {
-            return new { 
-                error = "StateDriftConflict", 
-                message = "This lore entry was updated while you were generating content. Call 'query_lore' to refresh your knowledge." 
-            };
-        }
+
+            return new ToolResult<NpcContextView>(true, context, $"Psychological context for {npc.Name} retrieved.");
+        });
     }
 
     [McpServerTool]
-    [Description("Log a significant campaign event. Use this after major scenes, combats, or social breakthroughs.")]
-    public async Task<object> LogEvent(
-        [Description("A concise summary of what happened.")] string summary, 
-        [Description("Type of event: 'combat', 'social', 'exploration', 'milestone'.")] string type, 
-        [Description("Optional extra details for the history log.")] Dictionary<string, object>? details = null, 
-        [Description("Names of characters or NPCs involved in this event.")] string[]? involved = null)
+    [Description("UNIFIED SEARCH: Search across Lore, Characters, Locations, and Items in one shot. Use this when searching for anything by name or keyword.")]
+    public Task<ToolResult<IEnumerable<object>>> SearchWorld(string query)
     {
-        var @event = new Event
-        {
-            Id = "events/" + Guid.NewGuid().ToString(),
-            Summary = summary,
-            Type = type,
-            Details = details,
-            Involved = involved?.ToList() ?? []
-        };
-        await repository.LogEventAsync(@event);
-        return new 
-        { 
-            success = true, 
-            eventId = @event.Id, 
-            summary = "The event has been etched into the campaign history." 
-        };
+        return ExecuteAsync(async session => {
+            var results = await repository.UnifiedSearchAsync(session, query);
+            return new ToolResult<IEnumerable<object>>(true, results, $"Found {results.Count()} matches.");
+        });
     }
 
     [McpServerTool]
-    [Description("Catch up on campaign history. Use this at the start of a session or when recalling past deeds.")]
-    public async Task<object> QueryEvents(
-        [Description("Search for keywords in past event summaries.")] string? query = null, 
-        [Description("Filter by event type (e.g., 'combat').")] string? type = null, 
-        [Description("Number of recent events to retrieve. Default is 10.")] int limit = 10)
+    [Description("HISTORY RECALL: Semantic search over past events. Use this to remember 'what happened last time we were here' or recall specific plot points.")]
+    public Task<ToolResult<IEnumerable<Event>>> RecallHistory(string query, int limit = 5)
     {
-        var results = (await repository.QueryEventsAsync(query, type, limit)).ToList();
-        return new
-        {
-            data = results,
-            summary = $"Found {results.Count} events in the campaign archives."
-        };
+        return ExecuteAsync(async session => {
+            var results = await repository.QueryEventsAsync(session, query, null, limit);
+            return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events.");
+        });
     }
+
+    // --- Configuration Tools (Genuine state setup) ---
+
+    [McpServerTool]
+    [Description("Directly create or overwrite a character/NPC. For updates, use 'Commit'.")]
+    public Task<ToolResult<Character>> UpsertCharacter(Character c) => ExecuteAsync(async s => { await repository.UpsertCharacterAsync(s, c); return new ToolResult<Character>(true, c); });
+
+    [McpServerTool]
+    [Description("WORLD BUILDER TOOL: Register a new location on the world map. For first-time setup only.")]
+    public Task<ToolResult<Location>> UpsertLocation(Location l) => ExecuteAsync(async s => { await repository.UpsertLocationAsync(s, l); return new ToolResult<Location>(true, l); });
+
+    [McpServerTool]
+    [Description("WORLD BUILDER TOOL: Create or update a lore entry. Use SearchWorld to check it doesn't already exist before calling this.")]
+    public Task<ToolResult<Lore>> UpsertLore(Lore l) => ExecuteAsync(async s => { await repository.UpsertLoreAsync(s, l); return new ToolResult<Lore>(true, l); });
+}
+
+public class NpcContextView
+{
+    public Character Character { get; set; } = default!;
+    public NpcMind Mind { get; set; } = default!;
+    public IEnumerable<Event> RecentInteractions { get; set; } = [];
 }

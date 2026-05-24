@@ -1,5 +1,6 @@
 using CampaignVault.Data;
 using CampaignVault.Models;
+using CampaignVault.Tools;
 using Raven.Client.Documents;
 using Raven.Embedded;
 using System;
@@ -20,11 +21,16 @@ public class RavenDBFixture : IDisposable
     public RavenDBFixture()
     {
         _dataDir = Path.Combine(Path.GetTempPath(), "RavenDBTest_" + Guid.NewGuid());
-        EmbeddedServer.Instance.StartServer(new ServerOptions
+        try 
         {
-            DataDirectory = _dataDir,
-            ServerUrl = "http://127.0.0.1:0"
-        });
+            EmbeddedServer.Instance.StartServer(new ServerOptions
+            {
+                DataDirectory = _dataDir,
+                ServerUrl = "http://127.0.0.1:0"
+            });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already started")) { }
+
         Store = EmbeddedServer.Instance.GetDocumentStore("TestDB");
         Raven.Client.Documents.Indexes.IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, Store);
         Store.Initialize();
@@ -48,105 +54,122 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task Can_Upsert_And_Get_Character_With_KnowledgeGraph_And_Needs()
+    public async Task GetCharacter_Fuzzy_Match_Works()
     {
-        using var repository = new CampaignRepository(_store);
-        var character = new Character
-        {
-            Id = "npcs/gandalf-" + Guid.NewGuid(),
-            Name = "Gandalf",
-            ClassLevel = "Wizard 20",
-            CurrentHp = 100,
-            MaxHp = 100,
-            Needs = new Dictionary<string, int> { { "hunger", 10 }, { "thirst", 5 } },
-            KnowledgeGraph = new List<KnowledgeEdge> 
-            { 
-                new KnowledgeEdge("locations/shire", "Frequent visitor") 
-            }
-        };
-
-        await repository.UpsertCharacterAsync(character);
-        var result = await repository.GetCharacterAsync(character.Id);
-
-        Assert.NotNull(result);
-        Assert.Equal("Gandalf", result.Name);
-        Assert.Equal(10, result.Needs["hunger"]);
-        Assert.Single(result.KnowledgeGraph);
-    }
-
-    [Fact]
-    public async Task Fuzzy_Search_Lore_Works()
-    {
-        using var repository = new CampaignRepository(_store);
-        var id = "lore/the-one-ring-" + Guid.NewGuid();
-        await repository.UpsertLoreAsync(new Lore
-        {
-            Id = id,
-            Title = "The One Ring",
-            Content = "A powerful artifact created by Sauron."
-        });
-
-        // Wait for indexing
-        while (true)
-        {
-            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Lore/Search" && x.IsStale == false))
-                break;
-            await Task.Delay(100);
-        }
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
         
-        var results = await repository.QueryLoreAsync("Rng", null, null);
-
-        Assert.NotEmpty(results);
-        Assert.Contains(results, x => x.Id == id);
-    }
-
-    [Fact]
-    public async Task Fuzzy_Search_Character_Works()
-    {
-        using var repository = new CampaignRepository(_store);
-        var id = "npcs/aragorn-" + Guid.NewGuid();
-        await repository.UpsertCharacterAsync(new Character
-        {
-            Id = id,
-            Name = "Aragorn",
-            Notes = "The rightful King of Gondor."
-        });
+        var id = "npcs/gandalf-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session, new Character { Id = id, Name = "Gandalf the Grey" });
+        await session.SaveChangesAsync();
 
         // Wait for indexing
         while (true)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
-                break;
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false)) break;
             await Task.Delay(100);
         }
 
-        // Try fuzzy name match
-        var result = await repository.GetCharacterAsync("Aragrn");
-
+        // Fuzzy match
+        var result = await repo.GetCharacterAsync(session, "Gndlf");
         Assert.NotNull(result);
-        Assert.Equal("Aragorn", result!.Name);
+        Assert.Equal("Gandalf the Grey", result!.Name);
     }
 
     [Fact]
-    public async Task Optimistic_Concurrency_Prevents_Drift()
+    public async Task Commit_Updates_HP_Delta_Atomically()
     {
-        using var repository = new CampaignRepository(_store);
-        var id = "npcs/bilbo-" + Guid.NewGuid();
-        var character = new Character { Id = id, Name = "Bilbo", CurrentHp = 20 };
-        await repository.UpsertCharacterAsync(character);
+        var repo = new CampaignRepository(_store);
+        using (var session = _store.OpenAsyncSession())
+        {
+            var id = "npcs/gimli-" + Guid.NewGuid();
+            await repo.UpsertCharacterAsync(session, new Character { Id = id, Name = "Gimli", CurrentHp = 30 });
+            await session.SaveChangesAsync();
+        }
 
-        using var session1 = _store.OpenAsyncSession(new Raven.Client.Documents.Session.SessionOptions { OptimisticConcurrencyMode = Raven.Client.Documents.Session.OptimisticConcurrencyMode.Writes });
-        using var session2 = _store.OpenAsyncSession(new Raven.Client.Documents.Session.SessionOptions { OptimisticConcurrencyMode = Raven.Client.Documents.Session.OptimisticConcurrencyMode.Writes });
+        using (var session = _store.OpenAsyncSession())
+        {
+            var id = (await session.Query<Character>().FirstAsync(x => x.Name == "Gimli")).Id;
+            await repo.CommitChangesAsync(session, new WorldChange[] { new HpChange { CharacterId = id, Delta = -5 } });
+            await session.SaveChangesAsync();
+        }
 
-        var char1 = await session1.LoadAsync<Character>(id);
-        var char2 = await session2.LoadAsync<Character>(id);
+        using (var session = _store.OpenAsyncSession())
+        {
+            var result = await session.LoadAsync<Character>((await session.Query<Character>().FirstAsync(x => x.Name == "Gimli")).Id);
+            Assert.Equal(25, result.CurrentHp);
+        }
+    }
 
-        char1.CurrentHp = 15;
-        await session1.SaveChangesAsync();
+    [Fact]
+    public async Task AdvanceWorld_Is_Atomic_And_Runs_Simulation()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+        
+        await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 100 });
+        await repo.UpsertRumorAsync(session, new Rumor { Id = "rumors/1", Subject = "Aging Rumor", LastStateChangeDay = 100, RegionLocationId = "loc" });
+        await session.SaveChangesAsync();
 
-        char2.CurrentHp = 10;
-        await Assert.ThrowsAsync<Raven.Client.Exceptions.ConcurrencyException>(() => session2.SaveChangesAsync());
+        var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon);
+        await session.SaveChangesAsync();
+
+        Assert.Equal(115, result.NewTime.TotalDaysElapsed);
+        Assert.Contains(result.SimulatorEvents, e => e.Contains("starting to fade"));
+    }
+
+    [Fact]
+    public async Task GetWorldState_Aggregates_Context()
+    {
+        var repo = new CampaignRepository(_store);
+        var tools = new CampaignTools(repo);
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.SaveTimeAsync(session, new CampaignTime { Day = 10 });
+            await repo.LogEventAsync(session, new Event { Id = "e1", Summary = "History", Type = "test", Involved = new List<string> { "loc1" } });
+            await repo.UpsertLocationAsync(session, new Location { Id = "loc1", Name = "The Shire", Type = LocationType.Region });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.GetWorldState("loc1");
+        
+        Assert.True(result.Success);
+        Assert.Equal(10, result.Data!.Time.Day);
+        Assert.Equal("The Shire", result.Data.PartyLocation!.Name);
+    }
+
+    [Fact]
+    public async Task SanitizeValue_Prevents_JsonElement_Leakage()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+        
+        var id = "events/json-test-" + Guid.NewGuid();
+        var json = System.Text.Json.JsonSerializer.Serialize(new { power = 9001, tags = new[] { "over", "9000" } });
+        var details = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
+
+        await repo.LogEventAsync(session, new Event { Id = id, Summary = "Power Up", Type = "test", Details = details });
+        await session.SaveChangesAsync();
+
+        // Wait for indexing
+        while (true)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Event/Search" && x.IsStale == false)) break;
+            await Task.Delay(100);
+        }
+
+        var results = await repo.QueryEventsAsync(session, "Power", "test");
+        var ev = results.FirstOrDefault(x => x.Id == id);
+        Assert.NotNull(ev);
+        
+        // This should not contain JsonElements
+        Assert.IsType<int>(ev.Details!["power"]);
+        
+        // Final proof: Serialization should work perfectly
+        var finalJson = System.Text.Json.JsonSerializer.Serialize(ev);
+        Assert.Contains("\"power\":9001", finalJson);
     }
 }
