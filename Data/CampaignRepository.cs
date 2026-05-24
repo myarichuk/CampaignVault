@@ -117,15 +117,7 @@ public class CampaignRepository
         return new SceneView
         {
             Location = location!,
-            PresentNPCs = npcs.Select(n => new NpcSceneSummary 
-            { 
-                Id = n.Id, 
-                Name = n.Name, 
-                CurrentActivity = EvaluateCurrentActivity(n, time),
-                BehavioralSummary = SynthesizeBehavior(n, time),
-                CurrentHp = n.CurrentHp,
-                Status = n.Status
-            }),
+            PresentNPCs = npcs, // Return full objects
             LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
             VisibleItems = items,
             RecentEvents = events
@@ -173,10 +165,15 @@ public class CampaignRepository
         
         await Task.WhenAll(charsTask, loreTask, locsTask);
 
+        // Crucial: Extract results while inside the session scope
+        var chars = await charsTask;
+        var lore = await loreTask;
+        var locs = await locsTask;
+
         var results = new List<object>();
-        results.AddRange(charsTask.Result);
-        results.AddRange(loreTask.Result);
-        results.AddRange(locsTask.Result);
+        results.AddRange(chars);
+        results.AddRange(lore);
+        results.AddRange(locs);
         return results;
     }
 
