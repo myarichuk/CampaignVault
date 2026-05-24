@@ -19,27 +19,9 @@ public class CampaignRepository
 
     public IAsyncDocumentSession OpenSession()
     {
-        using var session = _store.OpenAsyncSession();
-
-        // 1. Try direct ID load (fastest path)
-        var character = await session.LoadAsync<Character>(identifier);
-        if (character != null) return character;
-
-        // 2. Exact name match
-        character = await session.Query<Character>()
-            .FirstOrDefaultAsync(x => x.Name == identifier);
-        if (character != null) return character;
-
-        // 3. Fuzzy search on Name + Notes (using the new index)
-        character = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
-            .OpenSubclause()
-                .WhereEquals(x => x.Name, identifier).Fuzzy(0.4m)
-                .OrElse()
-                .WhereEquals(x => x.Notes, identifier).Fuzzy(0.4m)
-            .CloseSubclause()
-            .FirstOrDefaultAsync();
-
-        return character;
+        var session = _store.OpenAsyncSession();
+        session.Advanced.UseOptimisticConcurrency = true;
+        return session;
     }
 
     // --- V4 Core: Commit Transactional Changes ---
