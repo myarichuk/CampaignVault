@@ -1,52 +1,46 @@
-# D&D Campaign Vault - MCP Server (RavenDB)
+# D&D Campaign Vault - Living World DM Engine (V4)
 
-A robust Model Context Protocol (MCP) server for managing D&D 5e campaign state. Powered by RavenDB Embedded, this vault provides Grok (or any DM LLM) with authoritative persistence for characters, lore, and session events.
+A high-bandwidth Model Context Protocol (MCP) server that transforms RavenDB into an authoritative, persistent simulation engine for D&D campaigns. Designed specifically for LLM Dungeon Masters, it minimizes tool-chatter while maximizing world fidelity.
 
 ## Features
-- **Persistent State**: Powered by RavenDB (NoSQL document database).
-- **Fuzzy Search**: Lucene-based search for lore and history that handles typos and partial matches.
-- **Drift Hardening**: Optimistic concurrency prevents the LLM from overwriting data based on stale context.
-- **Enhanced NPC Models**: Track "Needs" (numerical key-values) and "Knowledge Graphs" (relationships).
-- **LLM-Optimized**: Rich descriptions and structured error handling for seamless AI interaction.
+- **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC fatigue, and escalate unresolved plot threads via the `WorldSimulator`.
+- **Scene-Centric Workflow**: Load entire locations, NPCs, rumors, and visible items in a single call (`get_scene`).
+- **Psychological NPC Minds**: NPCs have Wants, Fears, Moods, and Relationships. The engine synthesizes behavioral summaries to help the LLM roleplay them authentically.
+- **Atomic Scene Resolution**: Commit an entire combat's worth of HP deltas, item transfers, and status changes in one transaction (`commit`).
+- **Situational Awareness**: Every tool response includes `WorldPressure`—proactive alerts about ticking clocks and background events.
+- **Unified Fuzzy Search**: Search across lore, characters, and locations in one shot.
 
-## Detailed Tool List
+## The V4 Tool Surface
 
 | Tool | Purpose | Key Parameters |
 | :--- | :--- | :--- |
-| `get_character` | Retrieve authoritative stats and status. | `identifier` (ID or Name) |
-| `upsert_character` | Create or fully replace a character sheet. | `character` (Object) |
-| `update_character` | Partial updates (HP, Status, Needs, Notes). | `identifier`, `updates` (Dict) |
-| `query_lore` | Search world info using **fuzzy matching**. | `query`, `tags`, `category` |
-| `upsert_lore` | Create/update NPC bios, locations, facts. | `lore` (Object) |
-| `log_event` | Record significant campaign beats. | `summary`, `type`, `involved` |
-| `query_events` | Recall session history and past deeds. | `query`, `type`, `limit` |
+| `get_world_state` | **KICKOFF**: Loads time, high-pressure rumors, and party location. | `partyLocationId` |
+| `get_scene` | **EXPLORATION**: Loads full NPC/Item data for a specific location. | `locationId` |
+| `commit` | **RESOLUTION**: Atomically applies a batch of typed world changes. | `changes[]`, `narrative` |
+| `advance_world` | **TIME PASSAGE**: Skips days, runs simulation, and logs rest/travel. | `days`, `timeOfDay` |
+| `get_npc_context` | **ROLEPLAY**: Psychological deep dive (Mind, Relationships, History). | `characterId` |
+| `search_world` | **GLOBAL SEARCH**: Unified fuzzy search across all world entities. | `query` |
+| `recall_history` | **MEMORY**: Semantic retrieval of past campaign events. | `query`, `limit` |
 
-## Grok-Side Setup
+## DM Operational Protocol (V4)
 
-### DM System Prompt
-Add this to your DM instructions to ensure Grok uses the tools effectively:
+Add this to your LLM system instructions:
 
-> You are the Dungeon Master. You have access to the **CampaignVault** tools to maintain a persistent, authoritative world state. 
+> You are the Dungeon Master. You operate using the **CampaignVault V4 Engine**.
 > 
-> **Operational Protocol:**
-> 1. **Stat Verification**: ALWAYS call `get_character` before narrating NPC or PC actions to ensure HP, status, and needs are correct.
-> 2. **Real-time Updates**: 
->    - Call `update_character` immediately after HP changes or status effects are applied.
->    - Call `upsert_lore` when you invent new NPCs, locations, or historical facts.
->    - Call `log_event` at the end of every major scene to record the "history" of the world.
-> 3. **Memory Retrieval**: At the start of every session, call `query_events` and `get_character` for all players to catch up.
-> 4. **Handling Conflicts**: If a tool returns a `StateDriftConflict` error, your context is stale. Call the corresponding `get` or `query` tool to refresh your memory, then retry your update.
-> 
-> Your goal is to keep the Vault so accurate that any other instance of yourself could take over the campaign seamlessly.
+> **Workflow Protocol:**
+> 1. **Session Start**: ALWAYS call `get_world_state` first to orient yourself to the time, active rumors, and world pressure.
+> 2. **Exploration**: When the party enters a new room or region, call `get_scene`. This provides you with ALL present NPCs and items; you do not need to search for them individually.
+> 3. **Roleplay**: Before an intense NPC interaction, call `get_npc_context` to understand their mood, goals, and history with the party.
+> 4. **Scene Resolution**: At the end of a combat or conversation, call `commit` with a batch of changes (HP adjustments, items moved, rumors evolved). Do not update characters piece-meal.
+> 5. **Downtime**: Use `advance_world` for travel or rests. This triggers background simulations that you must incorporate into your narration.
+> 6. **World Pressure**: Pay attention to the `WorldPressure` field in tool responses—it tells you which plot threads are aging or which rumors are about to peak.
 
 ## Deployment to Fly.io
 
 ### 1. Create the App and Volume
 ```bash
-# Create the app
-fly apps create my-campaign-vault-for-grok
-
-# Create a 1GB persistent volume for RavenDB
+fly apps create my-campaign-vault-v4
 fly volumes create campaign_data --region ams --size 1
 ```
 
@@ -65,6 +59,7 @@ fly deploy
 - `BEARER_TOKEN`: Secret key for API authentication.
 
 ## Development
-- **Models**: `/Models` (POCOs).
-- **Repository**: `/Data/CampaignRepository.cs` (RavenDB logic).
-- **Tests**: `/CampaignVault.Tests` (Functional test suite).
+- **Models**: `/Models` (NpcMind, WorldChanges, SceneView).
+- **Engine**: `/Data/WorldSimulator.cs` (Time-passage logic).
+- **Repository**: `/Data/CampaignRepository.cs` (RavenDB transactional logic).
+- **Tests**: `/CampaignVault.Tests` (Full V4 integration suite).
