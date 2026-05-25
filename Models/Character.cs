@@ -18,7 +18,7 @@ public class Character
 
     public List<KnowledgeEdge> KnowledgeGraph { get; set; } = [];
 
-    public Dictionary<string, int> Needs { get; set; } = [];
+    public Dictionary<string, int> Needs { get; set; } = []; // Legacy
     
     public string? Notes { get; set; }
     
@@ -31,12 +31,27 @@ public class Character
 
 public class NpcMind
 {
-    public Dictionary<string, int> Relationships { get; set; } = []; // TargetId -> Disposition (-100 to 100)
-    public List<string> Knows { get; set; } = [];                    // Rumor/Lore IDs
-    public List<string> Wants { get; set; } = [];                    // Short/long term goals
+    public Dictionary<string, int> Relationships { get; set; } = []; 
+    public List<string> Knows { get; set; } = [];                    
+    public List<string> Wants { get; set; } = [];                    
     public List<string> Fears { get; set; } = [];                    
     public string? CurrentMood { get; set; }                         
-    public Dictionary<string, int> Needs { get; set; } = [];         // Hunger, fatigue, etc.
+    
+    // Enhanced Needs
+    public Dictionary<string, float> Needs { get; set; } = new()
+    {
+        ["hunger"] = 25f,
+        ["thirst"] = 20f,
+        ["tiredness"] = 15f,
+        ["arousal"] = 10f
+    };
+
+    // Attributes
+    public float Willpower { get; set; } = 75f;
+    public float Temperature { get; set; } = 37f;
+    public float Morale { get; set; } = 65f;
+
+    public float LastSimulatedDay { get; set; }
 }
 
 public record Relationship(string Target, string Description);
@@ -54,7 +69,7 @@ public class Schedule
 
 public class Routine
 {
-    public string Condition { get; set; } = default!; // e.g. "Evening", "Sunday"
+    public string Condition { get; set; } = default!;
     
     public string LocationId { get; set; } = default!;
     
@@ -65,7 +80,7 @@ public class Routine
 
 public class StateModifier
 {
-    public string Type { get; set; } = default!; // Fear, Weather, Faction, Injury, Quest, Relationship
+    public string Type { get; set; } = default!;
     
     public string Description { get; set; } = default!;
     
