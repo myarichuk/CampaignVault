@@ -9,6 +9,8 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(EventOccurred), "event")]
 [JsonDerivedType(typeof(RumorEvolves), "rumor")]
 [JsonDerivedType(typeof(RelationshipChange), "relationship")]
+[JsonDerivedType(typeof(NeedChange), "need")]
+[JsonDerivedType(typeof(AttributeChange), "attribute")]
 public abstract class WorldChange;
 
 /// <summary>Adjust a character's HP by a positive or negative delta.</summary>
@@ -55,4 +57,20 @@ public class RelationshipChange : WorldChange
     public string TargetId { get; set; } = default!;
     public int Delta { get; set; }
     public string Reason { get; set; } = default!;
+}
+
+/// <summary>Adjust a need on a character (hunger, thirst, tiredness, arousal). Delta negative = satisfy/reduce need.</summary>
+public class NeedChange : WorldChange
+{
+    public string CharacterId { get; set; } = default!;
+    public string Need { get; set; } = default!; // hunger, thirst, tiredness, arousal
+    public float Delta { get; set; }
+}
+
+/// <summary>Set or adjust an attribute (willpower, temperature, morale). LLM/narrative driven.</summary>
+public class AttributeChange : WorldChange
+{
+    public string CharacterId { get; set; } = default!;
+    public string Attribute { get; set; } = default!; // willpower, temperature, morale
+    public float Value { get; set; }
 }
