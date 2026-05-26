@@ -44,6 +44,7 @@ public class RavenDBFixture : IDisposable
     }
 }
 
+[Collection("RavenDB")]
 public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
@@ -111,6 +112,14 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 100 });
         await repo.UpsertRumorAsync(session, new Rumor { Id = "rumors/1", Subject = "Aging Rumor", LastStateChangeDay = 100, RegionLocationId = "loc" });
         await session.SaveChangesAsync();
+
+        // Wait for indexing
+        while (true)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            await Task.Delay(50);
+        }
 
         var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon);
         await session.SaveChangesAsync();
@@ -332,9 +341,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(reloaded);
 
         // Legacy top-level fields must still be empty (V4 code never touches them)
+#pragma warning disable CS0618
         Assert.Empty(reloaded.Relationships);      // List<Relationship> legacy
         Assert.Empty(reloaded.KnowledgeGraph);     // List<KnowledgeEdge> legacy
         Assert.Empty(reloaded.Needs);              // Dictionary legacy
+#pragma warning restore CS0618
 
         // V4 data lives exclusively in Mind
         Assert.NotNull(reloaded.Mind);

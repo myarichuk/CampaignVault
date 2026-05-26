@@ -20,7 +20,7 @@ public class CampaignRepository
     public IAsyncDocumentSession OpenSession()
     {
         var session = _store.OpenAsyncSession();
-        session.Advanced.UseOptimisticConcurrency = true;
+        session.Advanced.OptimisticConcurrencyMode = OptimisticConcurrencyMode.Writes;
         return session;
     }
 
