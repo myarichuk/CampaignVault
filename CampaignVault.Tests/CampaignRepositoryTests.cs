@@ -142,7 +142,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             },
             Mind = new NpcMind
             {
-                Needs = new Dictionary<string, float> { ["fatigue"] = 40f }
+                Needs = new Dictionary<string, float> { ["tiredness"] = 40f }
             }
         };
         await repo.UpsertCharacterAsync(session, npc);
@@ -167,9 +167,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var reloaded = await session.LoadAsync<Character>(npcId);
         Assert.NotNull(reloaded);
         Assert.NotNull(reloaded.Mind);
-        Assert.True(reloaded.Mind.Needs.TryGetValue("fatigue", out var fatigueAfter), "fatigue key should exist after simulator run");
-        Assert.True(fatigueAfter > 40, "Simulator should have accumulated fatigue over 15 days");
-        if (fatigueAfter > 50)
+        Assert.True(reloaded.Mind.Needs.TryGetValue("tiredness", out var tirednessAfter), "tiredness key should exist after simulator run");
+        Assert.True(tirednessAfter > 40, "Simulator should have accumulated tiredness over 15 days");
+        if (tirednessAfter > 80)
         {
             Assert.Equal("Exhausted", reloaded.Mind.CurrentMood);
         }
@@ -308,7 +308,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Mind = new NpcMind
             {
                 Relationships = new Dictionary<string, int>(),
-                Needs = new Dictionary<string, float> { ["fatigue"] = 5f }
+                Needs = new Dictionary<string, float> { ["tiredness"] = 5f }
             }
         };
         await repo.UpsertCharacterAsync(session, character);
@@ -340,6 +340,6 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(reloaded.Mind);
         Assert.True(reloaded.Mind.Relationships.ContainsKey("target-1"));
         Assert.Equal(10, reloaded.Mind.Relationships["target-1"]);
-        Assert.True(reloaded.Mind.Needs.ContainsKey("fatigue"));
+        Assert.True(reloaded.Mind.Needs.ContainsKey("tiredness"));
     }
 }

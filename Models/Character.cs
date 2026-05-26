@@ -30,7 +30,7 @@ public class Character
 
     /// <summary>
     /// LEGACY V3 field. Do not use for new code.
-    /// NPC needs/fatigue/etc. now live in <see cref="Mind.Needs"/>.
+    /// NPC needs/tiredness/etc. now live in <see cref="Mind.Needs"/>.
     /// </summary>
     [Obsolete("Use Mind.Needs instead. This is a legacy V3 field and will be removed in a future version.")]
     public Dictionary<string, int> Needs { get; set; } = [];

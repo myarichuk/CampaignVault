@@ -27,6 +27,23 @@ public class CampaignRepository
     public async Task<CommitResult> CommitChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
     {
         var summary = new List<string>();
+        
+        // 1. Pre-identify and batch-load all required entities to minimize round-trips
+        var characterIds = new HashSet<string>();
+        var itemIds = new HashSet<string>();
+
+        foreach (var change in changes)
+        {
+            if (change is ItemTransfer it) itemIds.Add(it.ItemId);
+            if (change is RelationshipChange rc) characterIds.Add(rc.SourceId);
+            if (change is NeedChange nc) characterIds.Add(nc.CharacterId);
+            if (change is AttributeChange ac) characterIds.Add(ac.CharacterId);
+        }
+
+        var characters = await session.LoadAsync<Character>(characterIds);
+        var items = await session.LoadAsync<Item>(itemIds);
+
+        // 2. Process changes using loaded entities or atomic patches
         foreach (var change in changes)
         {
             switch (change)
@@ -37,11 +54,10 @@ public class CampaignRepository
                     break;
 
                 case ItemTransfer item:
-                    var doc = await session.LoadAsync<Item>(item.ItemId);
-                    if (doc != null)
+                    if (items.TryGetValue(item.ItemId, out var itemDoc) && itemDoc != null)
                     {
-                        doc.HolderId = item.ToHolderId;
-                        doc.LastUpdated = DateTime.UtcNow;
+                        itemDoc.HolderId = item.ToHolderId;
+                        itemDoc.LastUpdated = DateTime.UtcNow;
                         summary.Add($"Item {item.ItemId} moved to {item.ToHolderId}");
                     }
                     break;
@@ -67,40 +83,34 @@ public class CampaignRepository
                     break;
 
                 case RelationshipChange rel:
-                    var source = await session.LoadAsync<Character>(rel.SourceId);
-                    if (source != null)
+                    if (characters.TryGetValue(rel.SourceId, out var source) && source != null)
                     {
                         source.Mind ??= new NpcMind();
                         source.Mind.Relationships ??= new Dictionary<string, int>();
-                        if (source.Mind.Relationships.TryGetValue(rel.TargetId, out var currentVal))
-                            source.Mind.Relationships[rel.TargetId] = currentVal + rel.Delta;
-                        else
-                            source.Mind.Relationships[rel.TargetId] = rel.Delta;
+                        
+                        var currentVal = source.Mind.Relationships.GetValueOrDefault(rel.TargetId, 0);
+                        source.Mind.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
+                        
                         summary.Add($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
                     }
                     break;
 
-                // FIX: Handle NeedChange (LLM can now actually change hunger etc.)
-                case NeedChange needChange:
-                    var needChar = await session.LoadAsync<Character>(needChange.CharacterId);
-                    if (needChar?.Mind != null)
+                case NeedChange nc:
+                    if (characters.TryGetValue(nc.CharacterId, out var needChar) && needChar?.Mind != null)
                     {
-                        if (!needChar.Mind.Needs.ContainsKey(needChange.Need))
-                            needChar.Mind.Needs[needChange.Need] = 0f;
-                        needChar.Mind.Needs[needChange.Need] = Math.Clamp(needChar.Mind.Needs[needChange.Need] + needChange.Delta, 0f, 100f);
-                        summary.Add($"Need '{needChange.Need}' adjusted for {needChange.CharacterId} by {needChange.Delta}");
+                        var current = needChar.Mind.Needs.GetValueOrDefault(nc.Need, 0f);
+                        needChar.Mind.Needs[nc.Need] = Math.Clamp(current + nc.Delta, 0f, 100f);
+                        summary.Add($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
                     }
                     break;
 
-                // FIX: Handle AttributeChange (willpower, temperature, morale)
                 case AttributeChange attr:
-                    var attrChar = await session.LoadAsync<Character>(attr.CharacterId);
-                    if (attrChar?.Mind != null)
+                    if (characters.TryGetValue(attr.CharacterId, out var attrChar) && attrChar?.Mind != null)
                     {
                         switch (attr.Attribute.ToLowerInvariant())
                         {
                             case "willpower": attrChar.Mind.Willpower = Math.Clamp(attr.Value, 0f, 100f); break;
-                            case "temperature": attrChar.Mind.Temperature = attr.Value; break;
+                            case "temperature": attrChar.Mind.Temperature = Math.Clamp(attr.Value, -50f, 100f); break;
                             case "morale": attrChar.Mind.Morale = Math.Clamp(attr.Value, 0f, 100f); break;
                         }
                         summary.Add($"Attribute '{attr.Attribute}' set for {attr.CharacterId}");
@@ -108,7 +118,7 @@ public class CampaignRepository
                     break;
 
                 default:
-                    summary.Add($"WARNING: Unhandled change type");
+                    summary.Add($"WARNING: Unhandled change type: {change?.GetType().Name}");
                     break;
             }
         }
@@ -168,17 +178,28 @@ public class CampaignRepository
         while (time.Month > 12) { time.Month -= 12; time.Year++; }
         time.TimeOfDay = timeOfDay;
 
-        await session.StoreAsync(time); // Fix: Ensure time mutations are saved
+        await session.StoreAsync(time);
 
         var activeRumors = await session.Query<Rumor>().Where(x => x.State != RumorState.Resolved).ToListAsync();
         var npcs = await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync();
-        var simEvents = _simulator.Run(time, activeRumors, npcs);
+        
+        // Use the time-aware simulator
+        var simEvents = _simulator.Run(time, activeRumors, npcs, days);
 
-        // Ensure simulator mutations on complex nested objects (Mind.Needs dictionaries, rumor state) are
-        // explicitly registered with the session before returning. RavenDB change tracking on POCOs
-        // containing nested Dictionaries is not always reliable for deep in-memory mutations.
-        foreach (var npc in npcs) await session.StoreAsync(npc);
-        foreach (var rumor in activeRumors) await session.StoreAsync(rumor);
+        // Persist simulator events to the global event history
+        foreach (var narrative in simEvents)
+        {
+            await LogEventAsync(session, new Event 
+            { 
+                Id = "events/" + Guid.NewGuid(), 
+                Summary = narrative, 
+                Type = "simulation",
+                DayLogged = time.TotalDaysElapsed 
+            });
+        }
+
+        // RavenDB change tracking handles the mutations on npcs and rumors automatically
+        // as they were loaded via the session. No explicit StoreAsync loops needed.
 
         return new AdvanceResult { NewTime = time, SimulatorEvents = simEvents };
     }

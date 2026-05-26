@@ -3,7 +3,7 @@
 A high-bandwidth Model Context Protocol (MCP) server that transforms RavenDB into an authoritative, persistent simulation engine for D&D campaigns. Designed specifically for LLM Dungeon Masters, it minimizes tool-chatter while maximizing world fidelity.
 
 ## Features
-- **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC fatigue, and escalate unresolved plot threads via the `WorldSimulator`.
+- **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC tiredness, and escalate unresolved plot threads via the `WorldSimulator`.
 - **Scene-Centric Workflow**: Load entire locations, NPCs, rumors, and visible items in a single call (`get_scene`).
 - **Psychological NPC Minds**: NPCs have Wants, Fears, Moods, and Relationships. The engine synthesizes behavioral summaries to help the LLM roleplay them authentically.
 - **Atomic Scene Resolution**: Commit an entire combat's worth of HP deltas, item transfers, and status changes in one transaction (`commit`).
