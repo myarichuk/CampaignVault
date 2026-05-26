@@ -142,11 +142,19 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             },
             Mind = new NpcMind
             {
-                Needs = new Dictionary<string, int> { ["fatigue"] = 40 }
+                Needs = new Dictionary<string, float> { ["fatigue"] = 40f }
             }
         };
         await repo.UpsertCharacterAsync(session, npc);
         await session.SaveChangesAsync();
+
+        // Wait for indexing to ensure AdvanceWorld can find the rumor and NPC
+        while (true)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            await Task.Delay(50);
+        }
 
         // Act: advance (simulator mutates in-memory on tracked entities)
         var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon);
@@ -277,7 +285,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(ev);
 
         // Must be sanitized (no JsonElement leakage)
-        Assert.IsType<int>(ev.Details!["secret"]);
+        // Note: Depending on RavenDB/System.Text.Json versioning, whole numbers might be long or int.
+        // What matters is that it's NOT a JsonElement.
+        var secretValue = ev.Details!["secret"];
+        Assert.True(secretValue is int || secretValue is long, $"Expected numeric type, got {secretValue?.GetType().Name}");
 
         // The query path must not have blown up
         Assert.Contains("NPC involved event", ev.Summary);
@@ -297,7 +308,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Mind = new NpcMind
             {
                 Relationships = new Dictionary<string, int>(),
-                Needs = new Dictionary<string, int> { ["fatigue"] = 5 }
+                Needs = new Dictionary<string, float> { ["fatigue"] = 5f }
             }
         };
         await repo.UpsertCharacterAsync(session, character);
