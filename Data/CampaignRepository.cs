@@ -24,8 +24,6 @@ public class CampaignRepository
         return session;
     }
 
-    // --- V4 Core: Commit Transactional Changes ---
-
     public async Task<CommitResult> CommitChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
     {
         var summary = new List<string>();
@@ -37,7 +35,7 @@ public class CampaignRepository
                     session.Advanced.Increment<Character, int>(hp.CharacterId, x => x.CurrentHp, hp.Delta);
                     summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta}");
                     break;
-                
+
                 case ItemTransfer item:
                     var doc = await session.LoadAsync<Item>(item.ItemId);
                     if (doc != null)
@@ -74,18 +72,46 @@ public class CampaignRepository
                     {
                         source.Mind ??= new NpcMind();
                         source.Mind.Relationships ??= new Dictionary<string, int>();
-
                         if (source.Mind.Relationships.TryGetValue(rel.TargetId, out var currentVal))
                             source.Mind.Relationships[rel.TargetId] = currentVal + rel.Delta;
                         else
                             source.Mind.Relationships[rel.TargetId] = rel.Delta;
-                            
                         summary.Add($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
                     }
                     break;
+
+                // FIX: Handle NeedChange (LLM can now actually change hunger etc.)
+                case NeedChange needChange:
+                    var needChar = await session.LoadAsync<Character>(needChange.CharacterId);
+                    if (needChar?.Mind != null)
+                    {
+                        if (!needChar.Mind.Needs.ContainsKey(needChange.Need))
+                            needChar.Mind.Needs[needChange.Need] = 0f;
+                        needChar.Mind.Needs[needChange.Need] = Math.Clamp(needChar.Mind.Needs[needChange.Need] + needChange.Delta, 0f, 100f);
+                        summary.Add($"Need '{needChange.Need}' adjusted for {needChange.CharacterId} by {needChange.Delta}");
+                    }
+                    break;
+
+                // FIX: Handle AttributeChange (willpower, temperature, morale)
+                case AttributeChange attr:
+                    var attrChar = await session.LoadAsync<Character>(attr.CharacterId);
+                    if (attrChar?.Mind != null)
+                    {
+                        switch (attr.Attribute.ToLowerInvariant())
+                        {
+                            case "willpower": attrChar.Mind.Willpower = Math.Clamp(attr.Value, 0f, 100f); break;
+                            case "temperature": attrChar.Mind.Temperature = attr.Value; break;
+                            case "morale": attrChar.Mind.Morale = Math.Clamp(attr.Value, 0f, 100f); break;
+                        }
+                        summary.Add($"Attribute '{attr.Attribute}' set for {attr.CharacterId}");
+                    }
+                    break;
+
+                default:
+                    summary.Add($"WARNING: Unhandled change type");
+                    break;
             }
         }
-
         return new CommitResult { ChangesProcessed = changes.Length, Summary = summary };
     }
 
