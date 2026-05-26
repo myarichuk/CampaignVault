@@ -97,7 +97,14 @@ public class CampaignRepository
             .Include<Location>(x => x.ParentLocationId)
             .LoadAsync<Location>(locationId);
 
-        var regionId = location?.ParentLocationId ?? locationId;
+        if (location == null)
+        {
+            // Explicit guard instead of relying on location! below.
+            // Prevents NullReferenceException when an LLM passes a bad or deleted locationId.
+            throw new KeyNotFoundException($"Location '{locationId}' not found.");
+        }
+
+        var regionId = location.ParentLocationId ?? locationId;
         var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20)).ToList();
         
         var targetIds = new List<string> { locationId };
@@ -116,23 +123,12 @@ public class CampaignRepository
 
         return new SceneView
         {
-            Location = location!,
+            Location = location,
             PresentNPCs = npcs, // Return full objects
             LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
             VisibleItems = items,
             RecentEvents = events
         };
-    }
-
-    private string SynthesizeBehavior(Character npc, CampaignTime time)
-    {
-        if (npc.Mind == null) return $"{npc.Name} seems to be going about their day.";
-
-        var mind = npc.Mind;
-        var context = new List<string>();
-        foreach (var (need, val) in mind.Needs) { if (val > 30) context.Add($"is feeling {need}"); }
-        if (!string.IsNullOrEmpty(mind.CurrentMood)) context.Add($"appears {mind.CurrentMood}");
-        return context.Any() ? $"{npc.Name} " + string.Join(", ", context) + "." : $"{npc.Name} seems to be in a neutral state.";
     }
 
     // --- Time & Simulator ---
@@ -151,6 +147,12 @@ public class CampaignRepository
         var activeRumors = await session.Query<Rumor>().Where(x => x.State != RumorState.Resolved).ToListAsync();
         var npcs = await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync();
         var simEvents = _simulator.Run(time, activeRumors, npcs);
+
+        // Ensure simulator mutations on complex nested objects (Mind.Needs dictionaries, rumor state) are
+        // explicitly registered with the session before returning. RavenDB change tracking on POCOs
+        // containing nested Dictionaries is not always reliable for deep in-memory mutations.
+        foreach (var npc in npcs) await session.StoreAsync(npc);
+        foreach (var rumor in activeRumors) await session.StoreAsync(rumor);
 
         return new AdvanceResult { NewTime = time, SimulatorEvents = simEvents };
     }
@@ -255,6 +257,15 @@ public class CampaignRepository
         return value;
     }
 
+    /// <summary>
+    /// Applies JSON sanitization to an Event's Details (prevents JsonElement leakage).
+    /// Used by QueryEventsAsync, LogEventAsync, and GetNpcContext.
+    /// </summary>
+    internal void SanitizeEvent(Event ev)
+    {
+        if (ev.Details != null) ev.Details = SanitizeDetails(ev.Details);
+    }
+
     public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore) { lore.LastUpdated = DateTime.UtcNow; await session.StoreAsync(lore); }
 
     public async Task<IEnumerable<Lore>> QueryLoreAsync(IAsyncDocumentSession session, string? query, string[]? tags, string? category, int limit = 5)
@@ -301,14 +312,4 @@ public class CampaignRepository
     public async Task<Item?> GetItemAsync(IAsyncDocumentSession session, string id) => await session.LoadAsync<Item>(id);
 
     public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item) { item.LastUpdated = DateTime.UtcNow; await session.StoreAsync(item); }
-
-    private string EvaluateCurrentActivity(Character npc, CampaignTime time)
-    {
-        if (npc.Schedule == null) return "Unknown";
-        var mod = npc.Schedule.ActiveModifiers.LastOrDefault();
-        if (mod != null) return $"{mod.OverrideActivity} ({mod.Type})";
-        var r = npc.Schedule.Routines.FirstOrDefault(x => x.Condition.Equals(time.TimeOfDay.ToString(), StringComparison.OrdinalIgnoreCase));
-        if (r != null) return r.Probability >= 1.0 ? r.Activity : $"{r.Activity} (Likely)";
-        return "Going about their day";
-    }
 }

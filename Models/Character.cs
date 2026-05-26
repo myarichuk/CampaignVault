@@ -14,11 +14,26 @@ public class Character
     
     public List<string> Status { get; set; } = [];
     
+    /// <summary>
+    /// LEGACY V3 field. Do not use for new code.
+    /// All relationship tracking now lives in <see cref="Mind.Relationships"/>.
+    /// </summary>
+    [Obsolete("Use Mind.Relationships instead. This is a legacy V3 field and will be removed in a future version.")]
     public List<Relationship> Relationships { get; set; } = [];
 
+    /// <summary>
+    /// LEGACY V3 field. Do not use for new code.
+    /// Knowledge tracking now lives in <see cref="Mind.Knows"/>.
+    /// </summary>
+    [Obsolete("Use Mind.Knows instead. This is a legacy V3 field and will be removed in a future version.")]
     public List<KnowledgeEdge> KnowledgeGraph { get; set; } = [];
 
-    public Dictionary<string, int> Needs { get; set; } = []; // Legacy
+    /// <summary>
+    /// LEGACY V3 field. Do not use for new code.
+    /// NPC needs/fatigue/etc. now live in <see cref="Mind.Needs"/>.
+    /// </summary>
+    [Obsolete("Use Mind.Needs instead. This is a legacy V3 field and will be removed in a future version.")]
+    public Dictionary<string, int> Needs { get; set; } = [];
     
     public string? Notes { get; set; }
     

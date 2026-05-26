@@ -101,6 +101,11 @@ public class CampaignTools(CampaignRepository repository)
         [Description("Array of world changes to apply.")] WorldChange[] changes,
         [Description("Narrative summary of what happened (for the log).")] string narrative)
     {
+        if (changes == null || changes.Length == 0)
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
+        }
+
         return ExecuteAsync(async session => {
             var result = await repository.CommitChangesAsync(session, changes);
             await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Type = "scene-commit" });
@@ -115,6 +120,11 @@ public class CampaignTools(CampaignRepository repository)
         [Description("The resulting time of day.")] TimeOfDay timeOfDay,
         [Description("Summary of the rest or travel activity.")] string narrative)
     {
+        if (days < 0)
+        {
+            return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "BadRequest", Summary: "Cannot advance a negative number of days."));
+        }
+
         return ExecuteAsync(async session => {
             var result = await repository.AdvanceWorldAsync(session, days, timeOfDay);
             await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Type = "timeskip" });
@@ -130,11 +140,19 @@ public class CampaignTools(CampaignRepository repository)
             var npc = await repository.GetCharacterAsync(session, characterId);
             if (npc == null) return new ToolResult<NpcContextView>(false, Error: "NotFound");
 
+            // Query events involving the NPC, then explicitly sanitize Details using the central helper
+            // so complex JsonElement values never leak to the LLM (was missing before).
             var npcEvents = await session.Advanced.AsyncDocumentQuery<Event>()
                 .WhereEquals("Involved", characterId)
                 .OrderByDescending(x => x.Timestamp)
                 .Take(10)
                 .ToListAsync();
+
+            foreach (var ev in npcEvents)
+            {
+                repository.SanitizeEvent(ev);   // reuses the central sanitization logic
+            }
+
             var context = new NpcContextView
             {
                 Character = npc,
