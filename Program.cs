@@ -25,6 +25,16 @@ IndexCreation.CreateIndexes(typeof(Program).Assembly, documentStore);
 
 // Services
 builder.Services.AddSingleton<IDocumentStore>(documentStore);
+
+// Simulation engine + default rules (extensible via additional AddSingleton<ISimulationRule, ...>)
+builder.Services.AddSingleton<ISimulationRule, NeedsAccumulationRule>();
+builder.Services.AddSingleton<ISimulationRule, RumorDecayRule>();
+builder.Services.AddSingleton<ISimulationRule, ScheduleEvaluationRule>();
+builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>();
+
+// Behavioral synthesis (deterministic first, cheap & predictable)
+builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
+
 builder.Services.AddSingleton<CampaignRepository>();
 builder.Services.AddCors(options =>
 {
@@ -44,6 +54,7 @@ builder.Services.AddMcpServer(options =>
         Version = "0.2.0"
     };
 })
+.WithStdioServerTransport()
 .WithHttpTransport(options =>
 {
     options.Stateless = true;
@@ -66,15 +77,34 @@ if (!string.IsNullOrEmpty(bearerToken))
         }
 
         var authorized = false;
+
+        // Preferred: Authorization header (standard and more secure)
         if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) && 
             authHeader.ToString().Equals($"Bearer {bearerToken}", StringComparison.OrdinalIgnoreCase))
         {
             authorized = true;
         }
+        // Alternative header
         else if (context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyHeader) && 
                  apiKeyHeader.ToString().Equals(bearerToken, StringComparison.OrdinalIgnoreCase))
         {
             authorized = true;
+        }
+        // Query string fallback (for clients like Grok Web custom connectors that cannot set custom headers)
+        // WARNING: Query parameters are logged in many places (server logs, proxies, browser history, etc.).
+        // Only use this when header-based auth is not possible. Prefer headers whenever available.
+        else
+        {
+            var queryToken = context.Request.Query["token"].ToString();
+            if (string.IsNullOrEmpty(queryToken))
+                queryToken = context.Request.Query["auth"].ToString();
+            if (string.IsNullOrEmpty(queryToken))
+                queryToken = context.Request.Query["bearer"].ToString();
+
+            if (queryToken.Equals(bearerToken, StringComparison.OrdinalIgnoreCase))
+            {
+                authorized = true;
+            }
         }
 
         if (!authorized)
@@ -101,7 +131,8 @@ app.Lifetime.ApplicationStarted.Register(() =>
     var dbPathSetting = builder.Configuration["CAMPAIGN_DB_PATH"] ?? "RavenData (default)";
     var authEnabled = !string.IsNullOrEmpty(bearerToken);
 
-    Console.WriteLine(@"
+    // Write to Error stream to avoid corrupting Stdio MCP transport
+    Console.Error.WriteLine(@"
       ____                               _               __     __             _ _   
      / ___|__ _ _ __ ___  _ __   __ _(_) __ _ _ __   \ \   / /_ _ _   _| | |_ 
     | |   / _` | '_ ` _ \| '_ \ / _` | |/ _` | '_ \   \ \ / / _` | | | | | __|
@@ -109,15 +140,15 @@ app.Lifetime.ApplicationStarted.Register(() =>
      \____\__,_|_| |_| |_| .__/ \__,_|_|\__, |_| |_|    \_/ \__,_|\__,_|_|\__|
                          |_|            |___/                                 
     ");
-    Console.WriteLine($"MCP Version: 0.2.0");
-    Console.WriteLine($"Database Path: {dbPathSetting}");
-    Console.WriteLine($"Auth Enabled: {authEnabled}");
-    Console.WriteLine("Listening on:");
+    Console.Error.WriteLine($"MCP Version: 0.2.0");
+    Console.Error.WriteLine($"Database Path: {dbPathSetting}");
+    Console.Error.WriteLine($"Auth Enabled: {authEnabled}");
+    Console.Error.WriteLine("Listening on:");
     foreach (var address in addresses)
     {
-        Console.WriteLine($"  - {address}");
+        Console.Error.WriteLine($"  - {address}");
     }
-    Console.WriteLine("--------------------------------------------------");
+    Console.Error.WriteLine("--------------------------------------------------");
 });
 
 app.Run();
