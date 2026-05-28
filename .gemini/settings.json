@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "campaign-vault": {
+      "command": "dotnet",
+      "args": ["run", "--project", "."],
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "trust": true
+    }
+  }
+}
