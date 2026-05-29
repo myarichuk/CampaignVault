@@ -23,7 +23,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 | `recall_history`  | Semantic memory over past events             | — |
 | `get_npc_needs`   | Quick view of an NPC's current needs         | — |
 
-**World Builder / Seeding tools** (`upsert_character`, `upsert_location`, `upsert_lore`): These exist but have historically been less reliable with certain MCP clients (Grok Web, Gemini). Prefer seeding and ongoing mutations through `commit` where possible (especially `ActivityChange` for keeping `CurrentActivity`/`CurrentLocationId` in sync with narrative).
+**World Builder / Seeding tools** (`upsert_character`, `upsert_location`, `upsert_lore`): These are now strongly typed. They remain less reliable with Grok Web (the client often uses legacy parameter names 'c'/'l' due to caching when the connector was added). Prefer `commit` (with `ActivityChange` where relevant) for most ongoing work and many seeding tasks.
 
 ## Recommended DM Workflow
 
@@ -126,14 +126,14 @@ See the Deployment section for how to set `BEARER_TOKEN` on Fly.io.
 - **Models**: `/Models` (Character + NpcMind, WorldChanges including `ActivityChange`, SceneView, etc.).
 - **Core Logic**: `/Data/CampaignRepository.cs` + `JsonSanitizer.cs` (central protection against mixed STJ/Newtonsoft `JsonElement` leakage).
 - **Simulation**: `DefaultSimulationEngine` + rules in `/Data` (ScheduleEvaluation, NeedsAccumulation, RumorDecay).
-- **Tools**: `/Tools/CampaignTools.cs` (MCP surface + tolerant handling for `commit` and `upsert_*` tools).
+- **Tools**: `/Tools/CampaignTools.cs` (MCP surface; `upsert_*` tools are strongly typed, with notes on current Grok Web client behavior).
 - **Tests**: `/CampaignVault.Tests` (integration + regression tests for client compatibility fixes).
 
 ## Client Compatibility Notes (as of latest testing)
 
 - `commit` is the most reliable mutation tool across clients.
-- The `upsert_*` tools were changed to accept JSON as a plain string for better compatibility with Grok Web and similar connectors (they previously failed hard on parameter name binding). For initial creation of major characters/locations you may still need them once, then switch to `commit`.
-- `commit` accepts either strongly-typed changes (convenient for direct callers/tests) or `JsonElement[]` (more schema-friendly for strict validators like Gemini).
+- The `upsert_*` tools are now strongly typed (`UpsertCharacter(Character)`, `UpsertLocation(Location)`, `UpsertLore(Lore)`). They remain less reliable with Grok Web because the client still sends calls using the original legacy parameter names (`c` and `l`) from an early version of this server (likely due to client-side caching when the connector was first added). For Grok Web users, prefer `commit` (especially `ActivityChange`) for most work.
+- `commit` now exposes the full discriminated-union `WorldChange[]` shape directly (with rich per-variant and per-field `[Description]` annotations + `$type` discriminators). This is the clean .NET / STJ polymorphic form Gemini and similar models recommend. A non-exposed `Commit(string json)` fallback remains for clients that still struggle with complex input schemas.
 - Use the `activity` change type inside `commit` when narrative implies an NPC should have a new `CurrentActivity` / `CurrentLocationId` (this keeps `get_scene` consistent without requiring `advance_world`).
 
 **Recommended seeding / world-building pattern** (put this in your LLM instructions):

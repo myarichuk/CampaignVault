@@ -108,51 +108,31 @@ public class CampaignTools(CampaignRepository repository)
     }
 
     [McpServerTool]
-    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of a combat, conversation, or discovery to atomically update the world. This is currently the most reliable mutation path across clients. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, **Activity**). See the 'changes' parameter for a full recommended seeding pattern using multiple change types in one call (strongly preferred over the upsert_* tools for initial world building). Use ActivityChange liberally to keep get_scene in sync with your narrative.")]
+    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. This is currently the most reliable mutation path across MCP clients. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, **Activity**). Use ActivityChange liberally to keep get_scene in sync with your narrative.")]
     public Task<ToolResult<CommitResult>> Commit(
         [Description(@"Array of world changes. Each item must be a JSON object with a '$type' discriminator.
 
-Supported types: hp, item, status, event, rumor, relationship, need, attribute, mood, activity.
+Supported types (exact values for $type): hp, item, status, event, rumor, relationship, need, attribute, mood, activity.
 
-=== RECOMMENDED SEEDING PATTERN (copy-paste friendly) ===
+The server intentionally accepts this as JsonElement[] so that clients with strict or limited schema support (including some Gemini CLI versions) can still send native objects without fighting complex oneOf/polymorphic input schemas.
 
-When creating a new area + NPC from scratch, do it in ONE atomic commit instead of multiple upsert calls:
+Each object is then deserialized server-side using the rich definitions on the WorldChange subtypes (see the per-property descriptions on HpChange, ActivityChange, RelationshipChange, NeedChange, etc.).
+
+=== RECOMMENDED PATTERN (copy-paste friendly) ===
+When creating a new area + NPC from scratch, do it in ONE atomic commit:
 
 [
-  {
-    ""$type"": ""event"",
-    ""summary"": ""The party arrives in the village of Thornwatch and enters the Rusty Nail tavern."",
-    ""type"": ""arrival""
-  },
-  {
-    ""$type"": ""activity"",
-    ""characterId"": ""characters/bram-ironarm"",
-    ""newActivity"": ""tending bar and watching the door"",
-    ""newLocationId"": ""locations/rusty-nail"",
-    ""reason"": ""Bram is the sergeant on duty tonight""
-  },
-  {
-    ""$type"": ""relationship"",
-    ""sourceId"": ""characters/elara-voss"",
-    ""targetId"": ""characters/bram-ironarm"",
-    ""delta"": 5,
-    ""reason"": ""Elara buys Bram a drink and they swap stories about the old watchtower""
-  },
-  {
-    ""$type"": ""need"",
-    ""characterId"": ""characters/elara-voss"",
-    ""need"": ""wanderlust"",
-    ""delta"": 12
-  }
+  { ""$type"": ""event"", ""summary"": ""The party arrives in the village of Thornwatch..."", ""type"": ""arrival"" },
+  { ""$type"": ""activity"", ""characterId"": ""characters/bram-ironarm"", ""newActivity"": ""tending bar and watching the door"", ""newLocationId"": ""locations/rusty-nail"", ""reason"": ""Sergeant on duty tonight"" },
+  { ""$type"": ""relationship"", ""sourceId"": ""characters/elara-voss"", ""targetId"": ""characters/bram-ironarm"", ""delta"": 5, ""reason"": ""Elara buys Bram a drink..."" },
+  { ""$type"": ""need"", ""characterId"": ""characters/elara-voss"", ""need"": ""wanderlust"", ""delta"": 12 }
 ]
 
-This pattern is more reliable than the upsert_* tools across different MCP clients and ensures get_scene immediately reflects the correct CurrentActivity / CurrentLocationId.
-
 Example single activity change (very useful during play):
-{ ""$type"": ""activity"", ""characterId"": ""characters/bram"", ""newActivity"": ""on patrol at the old watchtower"", ""newLocationId"": ""locations/watchtower"", ""reason"": ""Bram decided to check the perimeter after the rumor"" }
+{ ""$type"": ""activity"", ""characterId"": ""characters/bram"", ""newActivity"": ""on patrol at the old watchtower"", ""newLocationId"": ""locations/watchtower"", ""reason"": ""Bram decided to check the perimeter"" }
 
-You can send the array as native objects or as JSON strings.")] JsonElement[] changes,
-        [Description("Narrative summary of what happened (for the log).")] string narrative)
+You can (and should) mix many different change kinds in one call.")] JsonElement[] changes,
+        [Description("Narrative summary of what happened (for the log and world pressure).")] string narrative)
     {
         if (changes == null || changes.Length == 0)
         {
@@ -160,19 +140,27 @@ You can send the array as native objects or as JSON strings.")] JsonElement[] ch
         }
 
         // Convert JsonElement array to strongly-typed WorldChange[]
-        // This makes the tool schema much more compatible with strict validators (Gemini, etc.)
-        // that struggle with STJ [JsonPolymorphic] generated schemas requiring '$type' explicitly.
+        // This approach keeps the tool schema very loose (array of any JSON object) so that
+        // clients that choke on STJ-generated polymorphic oneOf schemas (certain Gemini CLI
+        // versions, strict validators, some CLIs) can still successfully call the tool.
         var typedChanges = new List<WorldChange>(changes.Length);
         foreach (var elem in changes)
         {
-            var change = elem.Deserialize<WorldChange>();
-            if (change != null)
-                typedChanges.Add(change);
+            try
+            {
+                var change = elem.Deserialize<WorldChange>();
+                if (change != null)
+                    typedChanges.Add(change);
+            }
+            catch (JsonException)
+            {
+                // Skip malformed individual items; we'll validate count below.
+            }
         }
 
         if (typedChanges.Count == 0)
         {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "No valid changes could be parsed. Each item needs a $type."));
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "No valid changes could be parsed. Each item needs a $type that matches one of the supported WorldChange subtypes."));
         }
 
         return ExecuteAsync(async session => {
@@ -183,8 +171,37 @@ You can send the array as native objects or as JSON strings.")] JsonElement[] ch
     }
 
     /// <summary>
-    /// Convenience overload for tests and direct callers that already have strongly-typed WorldChange objects.
-    /// Internally converts to JsonElement[] so the main Commit implementation (and its schema) stays Gemini-friendly.
+    /// Fallback for callers (or future clients) that can only easily emit a raw JSON string for the changes batch.
+    /// Parses to JsonElement[] and delegates to the primary MCP Commit implementation (which does the typed deserialization).
+    /// Not exposed as an MCP tool.
+    /// </summary>
+    public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative)
+    {
+        if (string.IsNullOrWhiteSpace(changesJson))
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
+
+        JsonElement[] elements;
+        try
+        {
+            using var doc = JsonDocument.Parse(changesJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "changesJson must be a JSON array."));
+
+            elements = doc.RootElement.EnumerateArray()
+                .Select(e => e.Clone())
+                .ToArray();
+        }
+        catch (JsonException ex)
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: $"Invalid changes JSON: {ex.Message}"));
+        }
+
+        return Commit(elements, narrative);
+    }
+
+    /// <summary>
+    /// Convenience overload for tests, the simulation harness, and direct in-process callers that already have
+    /// strongly-typed WorldChange objects. Converts them to JsonElement[] and calls the primary MCP implementation.
     /// </summary>
     public Task<ToolResult<CommitResult>> Commit(WorldChange[] changes, string narrative)
     {
@@ -192,7 +209,7 @@ You can send the array as native objects or as JSON strings.")] JsonElement[] ch
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
 
         var elements = changes
-            .Select(c => JsonSerializer.SerializeToElement(c, new JsonSerializerOptions { WriteIndented = false }))
+            .Select(c => JsonSerializer.SerializeToElement(c))
             .ToArray();
 
         return Commit(elements, narrative);
@@ -298,18 +315,20 @@ You can send the array as native objects or as JSON strings.")] JsonElement[] ch
     [McpServerTool]
     [Description(@"WORLD BUILDER TOOL: Directly create or overwrite a character/NPC.
 
-STRONGLY encouraged to richly seed:
+Use this to seed or update full NPC records, including rich psychological data.
+
+STRONGLY encouraged to populate:
 - Mind.Wants, Mind.Fears, Mind.Knows
-- Backstory in Notes
+- Detailed backstory in Notes
 - Schedule + Routines + StateModifiers
-- Mind.NeedDescriptors (explain your custom needs)
-- Items with HolderId for equipment/inventory
+- Mind.NeedDescriptors (human-readable explanations for any custom needs)
+- Equipment via Items (set HolderId to the character)
 
-This is the best time to establish deep NPC psychology.
+This is the best opportunity to create deep, simulatable NPCs.
 
-**Grok Web compatibility note (May 2026):** Grok Web's client may still be sending calls to this tool using the legacy parameter name 'c' instead of 'character'. If you receive a 'missing required parameter' error, try providing the full character object under the key 'c'.")]
+**Note for Grok Web users (as of May 2026):** Grok Web's client may still send this tool using the legacy parameter name 'c' instead of 'character'. If you get a 'missing required parameter' error, try sending the Character object under the key 'c'.")]
     public Task<ToolResult<Character>> UpsertCharacter(
-        [Description("The complete Character document (strongly typed).")] Character character)
+        [Description("The full Character object to create or replace. Strongly typed.")] Character character)
         => ExecuteAsync(async s =>
         {
             await repository.UpsertCharacterAsync(s, character);
@@ -319,11 +338,11 @@ This is the best time to establish deep NPC psychology.
     [McpServerTool]
     [Description(@"WORLD BUILDER TOOL: Register a new location on the world map. For first-time setup only.
 
-Include rich metadata, exits, and parent relationships where relevant.
+Define hierarchical locations with exits, parent relationships, and rich metadata.
 
-**Grok Web compatibility note (May 2026):** Grok Web's client may still be sending calls to this tool using the legacy parameter name 'l' instead of 'location'. If you receive a 'missing required parameter' error, try providing the full location object under the key 'l'.")]
+**Note for Grok Web users (as of May 2026):** Grok Web's client may still send this tool using the legacy parameter name 'l' instead of 'location'. If you get a 'missing required parameter' error, try sending the Location object under the key 'l'.")]
     public Task<ToolResult<Location>> UpsertLocation(
-        [Description("The complete Location document (strongly typed).")] Location location)
+        [Description("The full Location object to create or replace. Strongly typed.")] Location location)
         => ExecuteAsync(async s =>
         {
             await repository.UpsertLocationAsync(s, location);
@@ -331,9 +350,9 @@ Include rich metadata, exits, and parent relationships where relevant.
         });
 
     [McpServerTool]
-    [Description("WORLD BUILDER TOOL: Create or update a lore entry. Use SearchWorld first to avoid creating duplicates.")]
+    [Description("WORLD BUILDER TOOL: Create or update a lore entry. Always use SearchWorld first to check whether similar lore already exists.")]
     public Task<ToolResult<Lore>> UpsertLore(
-        [Description("The complete Lore document (strongly typed).")] Lore lore)
+        [Description("The full Lore object to create or replace. Strongly typed.")] Lore lore)
         => ExecuteAsync(async s =>
         {
             await repository.UpsertLoreAsync(s, lore);
