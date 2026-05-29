@@ -23,7 +23,11 @@ builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.W
 
 // Configuration
 var dbPath = builder.Configuration["CAMPAIGN_DB_PATH"] ?? Path.Combine(AppContext.BaseDirectory, "RavenData");
-var bearerToken = builder.Configuration["BEARER_TOKEN"];
+
+// SECURITY: Read bearer token *only* from the explicit environment variable.
+// This prevents accidental leakage via appsettings.json, user secrets, command line, etc.
+// Auth is enabled only when the variable is present and non-empty (same behavior as before).
+var bearerToken = Environment.GetEnvironmentVariable("BEARER_TOKEN");
 
 // RavenDB Embedded Setup
 EmbeddedServer.Instance.StartServer(new ServerOptions
@@ -60,14 +64,31 @@ builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>()
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
 
 builder.Services.AddSingleton<CampaignRepository>();
+
+// CORS configuration (Issue #16 from code review)
+// - Default (or "*"): AllowAnyOrigin (current behavior, convenient for local MCP + LLM clients)
+// - Otherwise: comma-separated list of allowed origins (e.g. "https://app.example.com,https://dm.example.com")
+// Set via CORS_ALLOWED_ORIGINS environment variable for production deployments.
+var corsOrigins = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS");
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .WithExposedHeaders("Mcp-Session-Id");
+        if (string.IsNullOrWhiteSpace(corsOrigins) || corsOrigins.Trim() == "*")
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .WithExposedHeaders("Mcp-Session-Id");
+        }
+        else
+        {
+            var origins = corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            policy.WithOrigins(origins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .WithExposedHeaders("Mcp-Session-Id");
+        }
     });
 });
 builder.Services.AddMcpServer(options =>
@@ -90,6 +111,16 @@ var app = builder.Build();
 
 app.UseCors();
 
+// Timing-safe comparison for bearer tokens (prevents timing side-channel attacks).
+// Tokens are compared exactly (case-sensitive) per security best practice.
+static bool TimingSafeEquals(string? a, string? b)
+{
+    if (a is null || b is null) return false;
+    var aBytes = System.Text.Encoding.UTF8.GetBytes(a);
+    var bBytes = System.Text.Encoding.UTF8.GetBytes(b);
+    return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
+}
+
 // Optional Bearer/X-API-Key Auth Middleware
 if (!string.IsNullOrEmpty(bearerToken))
 {
@@ -104,20 +135,21 @@ if (!string.IsNullOrEmpty(bearerToken))
         var authorized = false;
 
         // Preferred: Authorization header (standard and more secure)
-        if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) && 
-            authHeader.ToString().Equals($"Bearer {bearerToken}", StringComparison.OrdinalIgnoreCase))
+        if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) &&
+            TimingSafeEquals(authHeader.ToString(), $"Bearer {bearerToken}"))
         {
             authorized = true;
         }
-        // Alternative header
-        else if (context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyHeader) && 
-                 apiKeyHeader.ToString().Equals(bearerToken, StringComparison.OrdinalIgnoreCase))
+        // Alternative header (exact match)
+        else if (context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyHeader) &&
+                 TimingSafeEquals(apiKeyHeader.ToString(), bearerToken))
         {
             authorized = true;
         }
         // Query string fallback (for clients like Grok Web custom connectors that cannot set custom headers)
-        // WARNING: Query parameters are logged in many places (server logs, proxies, browser history, etc.).
+        // SECURITY NOTE: Query parameters are logged in many places (server logs, proxies, browser history, etc.).
         // Only use this when header-based auth is not possible. Prefer headers whenever available.
+        // Tokens are case-sensitive (exact match).
         else
         {
             var queryToken = context.Request.Query["token"].ToString();
@@ -126,7 +158,7 @@ if (!string.IsNullOrEmpty(bearerToken))
             if (string.IsNullOrEmpty(queryToken))
                 queryToken = context.Request.Query["bearer"].ToString();
 
-            if (queryToken.Equals(bearerToken, StringComparison.OrdinalIgnoreCase))
+            if (TimingSafeEquals(queryToken, bearerToken))
             {
                 authorized = true;
             }

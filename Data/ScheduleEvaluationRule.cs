@@ -7,12 +7,12 @@ namespace CampaignVault.Data;
 /// 
 /// This is the core rule that brings the previously dead Schedule/Routine/StateModifier model to life.
 /// 
-/// Current behavior (v1 - reasonable expansion):
+/// Behavior:
 /// - Matches routines against current TimeOfDay (simple string contains or "Any"/empty).
 /// - Respects Probability (picks highest for determinism in first version; can become weighted random later).
 /// - Applies active non-expired StateModifiers (fear, weather, quest overrides, etc.).
-/// - Emits Mood/Need deltas or narrative when NPCs "move" or change activity (agency hook).
-/// - Sets CurrentLocationId + CurrentActivity on the Character (via deltas).
+/// - Emits ActivityChange deltas (plus narrative) when an NPC's location or activity actually changes.
+///   All deltas flow through the unified StageChangesAsync path (clamping, summary logging, etc.).
 /// 
 /// Future (agency/initiative):
 /// - NPCs with high Willpower or certain Wants can generate autonomous EventOccurred or RelationshipChange
@@ -69,16 +69,21 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
                 narratives.Add($"{npc.Name} is affected by: {mod.Description}");
             }
 
-            // 3. If location or activity actually changed, emit deltas + narrative
+            // 3. If location or activity actually changed, emit ActivityChange delta + narrative.
+            // Deltas are collected across all rules and applied in batch after the simulation step
+            // via StageChangesAsync (gives us consistent clamping, logging, optimistic concurrency, etc.).
             bool locationChanged = !string.Equals(npc.CurrentLocationId, effectiveLocation, StringComparison.Ordinal);
             bool activityChanged = !string.Equals(npc.CurrentActivity, effectiveActivity, StringComparison.Ordinal);
 
             if (locationChanged || activityChanged)
             {
-                // v1: mutate tracked entities (Raven change tracking persists them).
-                // Future: introduce dedicated NpcPresenceChange or similar WorldChange type for full delta purity.
-                npc.CurrentLocationId = effectiveLocation;
-                npc.CurrentActivity = effectiveActivity;
+                deltas.Add(new ActivityChange
+                {
+                    CharacterId = npc.Id,
+                    NewActivity = effectiveActivity,
+                    NewLocationId = effectiveLocation,
+                    Reason = activeModifiers.Count > 0 ? "Schedule evaluation + state modifier override" : "Schedule evaluation"
+                });
 
                 narratives.Add($"{npc.Name} is now {effectiveActivity} (at {effectiveLocation}).");
             }

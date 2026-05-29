@@ -16,7 +16,7 @@ internal static class ToolErrors
 }
 
 [McpServerToolType]
-public class CampaignTools(CampaignRepository repository)
+public class CampaignTools(CampaignRepository repository, INpcBehaviorSynthesizer behaviorSynthesizer)
 {
     private async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
     {
@@ -145,8 +145,9 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
         // versions, strict validators, some CLIs) can still successfully call the tool.
         var typedChanges = new List<WorldChange>(changes.Length);
         var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var parseErrors = new List<string>();
 
-        foreach (var elem in changes)
+        foreach (var (elem, idx) in changes.Select((e, i) => (e, i)))
         {
             try
             {
@@ -171,21 +172,38 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
                 if (change != null)
                     typedChanges.Add(change);
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
-                // Skip malformed individual items; we'll validate count below.
+                // Collect details so the LLM gets actionable feedback instead of silent loss.
+                var snippet = elem.GetRawText();
+                if (snippet.Length > 120) snippet = snippet[..120] + "...";
+                parseErrors.Add($"Item #{idx}: {ex.Message} (content: {snippet})");
             }
         }
 
         if (typedChanges.Count == 0)
         {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "No valid changes could be parsed. Each item needs a 'type' discriminator that matches one of the supported WorldChange subtypes."));
+            var errSummary = parseErrors.Count > 0
+                ? $"No valid changes could be parsed. Errors: {string.Join(" | ", parseErrors)}"
+                : "No valid changes could be parsed. Each item needs a 'type' discriminator that matches one of the supported WorldChange subtypes.";
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: errSummary));
         }
 
         return ExecuteAsync(async session => {
-            var result = await repository.CommitChangesAsync(session, typedChanges.ToArray());
+            var result = await repository.StageChangesAsync(session, typedChanges.ToArray());
+
+            if (parseErrors.Count > 0)
+            {
+                result.Summary.Insert(0, $"WARNING: {parseErrors.Count} change item(s) were skipped due to parse errors:");
+                foreach (var err in parseErrors)
+                    result.Summary.Insert(1, "  - " + err);
+            }
+
             await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = "scene-commit" });
-            return new ToolResult<CommitResult>(true, result, $"World updated with {typedChanges.Count} changes.");
+            var msg = parseErrors.Count == 0
+                ? $"World updated with {typedChanges.Count} changes."
+                : $"World updated with {typedChanges.Count} changes ({parseErrors.Count} skipped due to parse errors — see Summary).";
+            return new ToolResult<CommitResult>(true, result, msg);
         });
     }
 
@@ -282,8 +300,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
                 repository.SanitizeEvent(ev);   // reuses the central sanitization logic
             }
 
-            var behavioralSummary = repository.GetBehaviorSynthesizer()
-                .GenerateSummary(npc, null, npcEvents);
+            var behavioralSummary = behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
 
             var knownNeeds = npc.Mind?.Needs ?? new Dictionary<string, float>();
             var needDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>();
@@ -402,14 +419,24 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool]
-    [Description("WORLD BUILDER TOOL: Define or update a descriptor for a need type. This helps the LLM (and future simulation rules) understand what a custom need means. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
+    [Description("WORLD BUILDER TOOL: Define or update a descriptor for a need type. The descriptor is stored globally and can be referenced by NPCs (via Mind.NeedDescriptors) or surfaced by get_npc_needs / get_npc_context. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
     public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor)
     {
-        // This is a documentation / discoverability tool. We don't store global descriptors centrally yet.
-        // For now it serves as strong guidance + future-proofing. Real usage happens by setting NeedDescriptors on individual NPCs via UpsertCharacter or Commit.
-        _ = needName;
-        _ = descriptor;
-        return Task.FromResult(new ToolResult<string>(true, "Descriptor noted. Apply it to NPCs via UpsertCharacter (set Mind.NeedDescriptors) or during world-building.", $"Need descriptor recorded for '{needName}'."));
+        if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))
+            return Task.FromResult(new ToolResult<string>(false, Error: "BadRequest", Summary: "needName and descriptor are required."));
+
+        return ExecuteAsync(async session =>
+        {
+            const string docId = "config/need-descriptors";
+            var descriptors = await session.LoadAsync<Dictionary<string, string>>(docId) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            descriptors[needName.Trim()] = descriptor.Trim();
+
+            // Store (or re-Store) the doc. The ExecuteAsync wrapper will call SaveChangesAsync on success.
+            await session.StoreAsync(descriptors, docId);
+
+            return new ToolResult<string>(true, $"Descriptor for '{needName}' stored globally.", $"Need descriptor persisted for '{needName}'. NPCs can now reference it via Mind.NeedDescriptors or future simulation rules.");
+        });
     }
 }
 

@@ -66,13 +66,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.UpsertCharacterAsync(session, new Character { Id = id, Name = "Gandalf the Grey" });
         await session.SaveChangesAsync();
 
-        // Wait for indexing
-        while (true)
+        // Wait for indexing (with timeout to prevent CI hangs)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false)) break;
             await Task.Delay(100);
         }
+        if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+            throw new TimeoutException("Index 'Character/Search' did not become non-stale within 10s");
 
         // Fuzzy match
         var result = await repo.GetCharacterAsync(session, "Gndlf");
@@ -94,7 +97,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             var id = (await session.Query<Character>().FirstAsync(x => x.Name == "Gimli")).Id;
-            await repo.CommitChangesAsync(session, new WorldChange[] { new HpChange { CharacterId = id, Delta = -5 } });
+            await repo.StageChangesAsync(session, new WorldChange[] { new HpChange { CharacterId = id, Delta = -5 } });
             await session.SaveChangesAsync();
         }
 
@@ -103,6 +106,44 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             var result = await session.LoadAsync<Character>((await session.Query<Character>().FirstAsync(x => x.Name == "Gimli")).Id);
             Assert.Equal(25, result.CurrentHp);
         }
+    }
+
+    [Fact]
+    public async Task Commit_Supports_Arbitrary_Attributes_Via_Open_Dictionary()
+    {
+        // Regression / feature test for review issue #13
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var id = "npcs/attributetest-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session, new Character
+        {
+            Id = id,
+            Name = "Test Attr NPC",
+            Mind = new NpcMind { Morale = 60f }
+        });
+        await session.SaveChangesAsync();
+
+        // Commit a core attribute + a custom one
+        await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new AttributeChange { CharacterId = id, Attribute = "morale", Value = 42f },
+            new AttributeChange { CharacterId = id, Attribute = "corruption", Value = 77f },
+            new AttributeChange { CharacterId = id, Attribute = "Reputation", Value = 55f } // case insensitivity in handler
+        });
+        await session.SaveChangesAsync();
+
+        var npc = await session.LoadAsync<Character>(id);
+        Assert.NotNull(npc.Mind);
+
+        // Core promoted field still works
+        Assert.Equal(42f, npc.Mind.Morale);
+
+        // Custom attributes land in the open dict
+        Assert.True(npc.Mind.Attributes.TryGetValue("corruption", out var corr));
+        Assert.Equal(77f, corr);
+        Assert.True(npc.Mind.Attributes.TryGetValue("reputation", out var rep)); // lowercased key
+        Assert.Equal(55f, rep);
     }
 
     [Fact]
@@ -120,13 +161,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.UpsertRumorAsync(session, new Rumor { Id = "rumors/1", Subject = "Aging Rumor", LastStateChangeDay = 100, RegionLocationId = "loc" });
         await session.SaveChangesAsync();
 
-        // Wait for indexing
-        while (true)
+        // Wait for indexing (with timeout to prevent CI hangs)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.All(x => x.IsStale == false)) break;
             await Task.Delay(50);
         }
+        if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+            throw new TimeoutException("Indexes did not become non-stale within 10s");
 
         var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon);
         await session.SaveChangesAsync();
@@ -169,13 +213,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.UpsertCharacterAsync(session, npc);
         await session.SaveChangesAsync();
 
-        // Wait for indexing to ensure AdvanceWorld can find the rumor and NPC
-        while (true)
+        // Wait for indexing to ensure AdvanceWorld can find the rumor and NPC (with timeout)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.All(x => x.IsStale == false)) break;
             await Task.Delay(50);
         }
+        if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+            throw new TimeoutException("Indexes did not become non-stale within 10s (for AdvanceWorld test)");
 
         // Act: advance (simulator mutates in-memory on tracked entities)
         var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon);
@@ -197,6 +244,74 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task AdvanceWorld_CalendarMath_Handles_Large_Day_Jumps_Correctly()
+    {
+        // Regression test for review issue #6: the old Day += + while loops produced wrong Y/M/D on large advances.
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        // Start at a known point
+        var startTime = new CampaignTime { TotalDaysElapsed = 10, Year = 1492, Month = 1, Day = 11 };
+        await repo.SaveTimeAsync(session, startTime);
+        await session.SaveChangesAsync();
+
+        // Act: advance a large number of days (e.g. 400 days = 1 year + 1 month + 10 days in our 360-day calendar)
+        var result = await repo.AdvanceWorldAsync(session, 400, TimeOfDay.Dawn);
+        await session.SaveChangesAsync();
+
+        var t = result.NewTime;
+
+        // 10 + 400 = 410 total days
+        Assert.Equal(410, t.TotalDaysElapsed);
+
+        // With 360-day years: 410 / 360 = 1 year + 50 days remainder
+        // 50 / 30 = 1 month + 20 days → Year 1493, Month 2, Day 21  (1492 + 1)
+        Assert.Equal(1493, t.Year);
+        Assert.Equal(2, t.Month);
+        Assert.Equal(21, t.Day);
+    }
+
+    [Fact]
+    public async Task NeedsAccumulationRule_Does_Not_Exceed_Cap_And_Uses_Clean_Math()
+    {
+        // Verifies review issue #14 fixes: capped deltas + consistent float math
+        var engine = new DefaultSimulationEngine(
+            new ISimulationRule[] { new NeedsAccumulationRule() },
+            null);
+
+        var repo = new CampaignRepository(_store, engine,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
+            new DefaultBehaviorSynthesizer());
+
+        using var session = _store.OpenAsyncSession();
+
+        var id = "npcs/needscap-" + Guid.NewGuid();
+        var npc = new Character
+        {
+            Id = id,
+            Name = "Capped Needs NPC",
+            Schedule = new Schedule { DefaultLocationId = "loc-x", Routines = [] },
+            Mind = new NpcMind
+            {
+                Needs = new Dictionary<string, float> { ["hunger"] = 95f, ["thirst"] = 100f }
+            }
+        };
+        await repo.UpsertCharacterAsync(session, npc);
+        await session.SaveChangesAsync();
+
+        // Advance 2 days — hunger should go to 100 (capped delta), thirst should stay at 100 (no delta emitted for it)
+        var result = await repo.AdvanceWorldAsync(session, 2, TimeOfDay.Dawn);
+        await session.SaveChangesAsync();
+
+        var reloaded = await session.LoadAsync<Character>(id);
+        var hunger = reloaded.Mind.Needs["hunger"];
+        var thirst = reloaded.Mind.Needs["thirst"];
+
+        Assert.True(hunger <= 100f && hunger >= 99f, $"Hunger should be capped near 100, was {hunger}");
+        Assert.Equal(100f, thirst); // should not have gone over or emitted useless delta
+    }
+
+    [Fact]
     public async Task GetSceneAsync_WithMissingLocation_ThrowsExpectedException()
     {
         var repo = new CampaignRepository(_store);
@@ -213,10 +328,45 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task GetSceneAsync_Finds_NPCs_By_CurrentLocationId_Using_Index()
+    {
+        // Verifies the fix for review issue #3: simulation-updated NPCs are discovered via index, not client-side 100-char scan.
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var locId = "locations/test-scene-loc-" + Guid.NewGuid();
+        await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Test Scene Loc", Type = "room" });
+
+        var npcId = "npcs/sim-npc-" + Guid.NewGuid();
+        var npc = new Character
+        {
+            Id = npcId,
+            Name = "Simulated NPC",
+            CurrentLocationId = locId,           // <-- set directly (sim state), no Schedule
+            CurrentActivity = "lurking in shadows"
+        };
+        await repo.UpsertCharacterAsync(session, npc);
+        await session.SaveChangesAsync();
+
+        // Wait for the (now extended) Character/Search index
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && !x.IsStale)) break;
+            await Task.Delay(100);
+        }
+
+        var scene = await repo.GetSceneAsync(session, locId);
+
+        Assert.Contains(scene.PresentNPCs, p => p.Id == npcId && p.Name == "Simulated NPC");
+    }
+
+    [Fact]
     public async Task GetWorldState_Aggregates_Context()
     {
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo);
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -246,13 +396,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.LogEventAsync(session, new Event { Id = id, Summary = "Power Up", Category = "test", Details = details });
         await session.SaveChangesAsync();
 
-        // Wait for indexing
-        while (true)
+        // Wait for indexing (with timeout to prevent CI hangs)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.Any(x => x.Name == "Event/Search" && x.IsStale == false)) break;
             await Task.Delay(100);
         }
+        if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+            throw new TimeoutException("Index 'Event/Search' did not become non-stale within 10s");
 
         var results = await repo.QueryEventsAsync(session, "Power", "test");
         var ev = results.FirstOrDefault(x => x.Id == id);
@@ -272,7 +425,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetNpcContext_Sanitizes_Event_Details_And_Uses_Safe_Query()
     {
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo);
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
 
         using var session = _store.OpenAsyncSession();
 
@@ -293,13 +446,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         });
         await session.SaveChangesAsync();
 
-        // Wait for indexing (in case any auto-index is used)
-        while (true)
+        // Wait for indexing (in case any auto-index is used; with timeout)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.All(x => x.IsStale == false)) break;
             await Task.Delay(50);
         }
+        if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+            throw new TimeoutException("Indexes did not become non-stale within 10s");
 
         var result = await tools.GetNpcContext(charId);
 
@@ -338,7 +494,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         // Perform V4 operation that touches Mind (RelationshipChange via Commit)
-        await repo.CommitChangesAsync(session, new WorldChange[]
+        await repo.StageChangesAsync(session, new WorldChange[]
         {
             new RelationshipChange
             {
@@ -373,7 +529,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // The root cause was Task-capture + WhenAll + re-await inside UnifiedSearchAsync
         // combined with ExecuteAsync always doing SaveChanges + dispose.
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo);
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -400,7 +556,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Dictionary<string, object> bags that were unprotected and caused the exact
         // Newtonsoft "ValueIsEscaped" crash during SaveChanges in GetScene.
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo);
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
 
         var locId = "locations/meta-regression-" + Guid.NewGuid();
         var itemId = "items/prop-regression-" + Guid.NewGuid();
@@ -471,7 +627,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // (e.g. direct session.Store or old code paths). GetScene + ExecuteAsync SaveChanges
         // must not explode and should leave clean data behind.
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo);
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
 
         var locId = "locations/legacy-polluted-" + Guid.NewGuid();
 
@@ -542,5 +698,28 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     // ============================================================
     // REGRESSION TESTS FOR CLIENT COMPATIBILITY & RECENT FIXES
     // ============================================================
+
+    [Fact]
+    public void Rumor_TruthValue_Is_Proper_Enum_Not_Stringly_Typed()
+    {
+        // Wave 3 / review issue #17: Rumor.TruthValue is now a real enum instead of free text.
+        var rumor = new Rumor
+        {
+            Id = "rumors/test-truth-1",
+            RegionLocationId = "regions/test",
+            Subject = "Test Rumor",
+            CurrentText = "Something happened...",
+            TruthValue = RumorTruth.PartiallyTrue,
+            DayCreated = 42,
+            LastStateChangeDay = 42
+        };
+
+        Assert.Equal(RumorTruth.PartiallyTrue, rumor.TruthValue);
+        Assert.Equal(RumorTruth.True, new Rumor().TruthValue); // default
+
+        // Also ensure other values are usable
+        rumor.TruthValue = RumorTruth.Misleading;
+        Assert.Equal(RumorTruth.Misleading, rumor.TruthValue);
+    }
 
 }

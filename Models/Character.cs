@@ -55,12 +55,17 @@ public class NpcMind
     /// </summary>
     public Dictionary<string, string> NeedDescriptors { get; set; } = [];
 
-    // Attributes
+    // Attributes (core three are promoted for convenience + special ranges; others go in the open dict)
     public float Willpower { get; set; } = 75f;
     public float Temperature { get; set; } = 37f;
     public float Morale { get; set; } = 65f;
 
-    public float LastSimulatedDay { get; set; }
+    /// <summary>
+    /// Open-ended custom narrative attributes (e.g. "corruption", "reputation", "fear", "honor", "debt_pressure").
+    /// Any AttributeChange whose name is not one of the three core attributes lands here.
+    /// This matches the open-vocabulary design already used for Needs.
+    /// </summary>
+    public Dictionary<string, float> Attributes { get; set; } = [];
 }
 
 public class Schedule

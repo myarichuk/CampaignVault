@@ -30,7 +30,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
             new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
-        var tools = new CampaignTools(repo);
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
         var simulator = new LlmSimulator(tools, session);
 
         // Setup: Location and NPC
@@ -47,13 +47,16 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         });
         await session.SaveChangesAsync();
 
-        // Wait for indexes
-        while (true)
+        // Wait for indexes (with timeout to prevent CI hangs)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.All(x => x.IsStale == false)) break;
             await Task.Delay(30);
         }
+        if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+            throw new TimeoutException("Indexes did not become non-stale within 10s");
 
         // Small time advance so ScheduleEvaluationRule runs and populates CurrentActivity / CurrentLocationId.
         // This exercises the new dynamic presence behavior (Phase 1 goal).

@@ -28,12 +28,6 @@ public class CampaignRepository
     }
 
     /// <summary>
-    /// Temporary accessor so CampaignTools can use the synthesizer without major refactoring.
-    /// In a future cleanup we can inject INpcBehaviorSynthesizer directly into CampaignTools.
-    /// </summary>
-    public INpcBehaviorSynthesizer GetBehaviorSynthesizer() => _behaviorSynthesizer;
-
-    /// <summary>
     /// Convenience constructor primarily for test scenarios.
     /// In production, always use the two-parameter constructor via DI so the real simulation engine is injected.
     /// </summary>
@@ -62,10 +56,20 @@ public class CampaignRepository
         return session;
     }
 
-    public async Task<CommitResult> CommitChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
+    /// <summary>
+    /// Stages a batch of WorldChange deltas into the provided session (applies clamping, atomic patches,
+    /// relationship/need/attribute updates, etc.) and returns a summary.
+    ///
+    /// <para><b>Important:</b> This method does <b>not</b> call <c>SaveChangesAsync</c>. The caller
+    /// (typically <c>CampaignTools.ExecuteAsync</c> or an explicit test block) is responsible for
+    /// persisting. This keeps the method usable inside larger transactions and makes the contract explicit.</para>
+    ///
+    /// Use this for all atomic world mutations coming from tools or simulation rules.
+    /// </summary>
+    public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
     {
         changes ??= Array.Empty<WorldChange>();
-        _logger.LogDebug("CommitChangesAsync called with {ChangeCount} changes", changes.Length);
+        _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes", changes.Length);
 
         var summary = new List<string>();
         
@@ -88,99 +92,123 @@ public class CampaignRepository
         // 2. Process changes using loaded entities or atomic patches
         foreach (var change in changes)
         {
-            switch (change)
+            try
             {
-                case HpChange hp:
-                    session.Advanced.Increment<Character, int>(hp.CharacterId, x => x.CurrentHp, hp.Delta);
-                    summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta}");
-                    break;
+                switch (change)
+                {
+                    case HpChange hp:
+                        session.Advanced.Increment<Character, int>(hp.CharacterId, x => x.CurrentHp, hp.Delta);
+                        summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta}");
+                        break;
 
-                case ItemTransfer item:
-                    if (items.TryGetValue(item.ItemId, out var itemDoc) && itemDoc != null)
-                    {
-                        itemDoc.HolderId = item.ToHolderId;
-                        itemDoc.LastUpdated = DateTime.UtcNow;
-                        summary.Add($"Item {item.ItemId} moved to {item.ToHolderId}");
-                    }
-                    break;
-
-                case StatusChange status:
-                    session.Advanced.Patch<Character, string>(status.CharacterId, x => x.Status, x => x.Add(status.Status));
-                    summary.Add($"Status '{status.Status}' added to {status.CharacterId}");
-                    break;
-
-                case EventOccurred ev:
-                    var currentTime = await GetTimeAsync(session);
-                    var e = new Event { Id = "events/" + Guid.NewGuid(), Summary = ev.Summary, Category = ev.Category, Involved = ev.Involved ?? [], DayLogged = currentTime.TotalDaysElapsed };
-                    await LogEventAsync(session, e);
-                    summary.Add($"Event logged: {ev.Summary}");
-                    break;
-
-                case RumorEvolves rumor:
-                    session.Advanced.Patch<Rumor, RumorState>(rumor.RumorId, x => x.State, rumor.NewState);
-                    if (rumor.NewText != null) session.Advanced.Patch<Rumor, string>(rumor.RumorId, x => x.CurrentText, rumor.NewText);
-                    var rtime = await GetTimeAsync(session);
-                    session.Advanced.Patch<Rumor, int>(rumor.RumorId, x => x.LastStateChangeDay, rtime.TotalDaysElapsed);
-                    summary.Add($"Rumor {rumor.RumorId} evolved to {rumor.NewState}");
-                    break;
-
-                case RelationshipChange rel:
-                    if (characters.TryGetValue(rel.SourceId, out var source) && source != null)
-                    {
-                        source.Mind ??= new NpcMind();
-                        source.Mind.Relationships ??= new Dictionary<string, int>();
-                        
-                        var currentVal = source.Mind.Relationships.GetValueOrDefault(rel.TargetId, 0);
-                        source.Mind.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
-                        
-                        summary.Add($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
-                    }
-                    break;
-
-                case NeedChange nc:
-                    if (characters.TryGetValue(nc.CharacterId, out var needChar) && needChar?.Mind != null)
-                    {
-                        var current = needChar.Mind.Needs.GetValueOrDefault(nc.Need, 0f);
-                        needChar.Mind.Needs[nc.Need] = Math.Clamp(current + nc.Delta, 0f, 100f);
-                        summary.Add($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
-                    }
-                    break;
-
-                case AttributeChange attr:
-                    if (characters.TryGetValue(attr.CharacterId, out var attrChar) && attrChar?.Mind != null)
-                    {
-                        switch (attr.Attribute.ToLowerInvariant())
+                    case ItemTransfer item:
+                        if (items.TryGetValue(item.ItemId, out var itemDoc) && itemDoc != null)
                         {
-                            case "willpower": attrChar.Mind.Willpower = Math.Clamp(attr.Value, 0f, 100f); break;
-                            case "temperature": attrChar.Mind.Temperature = Math.Clamp(attr.Value, -50f, 100f); break;
-                            case "morale": attrChar.Mind.Morale = Math.Clamp(attr.Value, 0f, 100f); break;
+                            itemDoc.HolderId = item.ToHolderId;
+                            itemDoc.LastUpdated = DateTime.UtcNow;
+                            summary.Add($"Item {item.ItemId} moved to {item.ToHolderId}");
                         }
-                        summary.Add($"Attribute '{attr.Attribute}' set for {attr.CharacterId}");
-                    }
-                    break;
+                        break;
 
-                case MoodChange mood:
-                    if (characters.TryGetValue(mood.CharacterId, out var moodChar) && moodChar?.Mind != null)
-                    {
-                        moodChar.Mind.CurrentMood = mood.NewMood;
-                        summary.Add($"Mood set to '{mood.NewMood}' for {mood.CharacterId}");
-                    }
-                    break;
+                    case StatusChange status:
+                        session.Advanced.Patch<Character, string>(status.CharacterId, x => x.Status, x => x.Add(status.Status));
+                        summary.Add($"Status '{status.Status}' added to {status.CharacterId}");
+                        break;
 
-                case ActivityChange act:
-                    if (characters.TryGetValue(act.CharacterId, out var actChar) && actChar != null)
-                    {
-                        if (act.NewActivity != null)
-                            actChar.CurrentActivity = act.NewActivity;
-                        if (act.NewLocationId != null)
-                            actChar.CurrentLocationId = act.NewLocationId;
-                        summary.Add($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");
-                    }
-                    break;
+                    case EventOccurred ev:
+                        var currentTime = await GetTimeAsync(session);
+                        var e = new Event { Id = "events/" + Guid.NewGuid(), Summary = ev.Summary, Category = ev.Category, Involved = ev.Involved ?? [], DayLogged = currentTime.TotalDaysElapsed };
+                        await LogEventAsync(session, e);
+                        summary.Add($"Event logged: {ev.Summary}");
+                        break;
 
-                default:
-                    summary.Add($"WARNING: Unhandled change type: {change?.GetType().Name}");
-                    break;
+                    case RumorEvolves rumor:
+                        session.Advanced.Patch<Rumor, RumorState>(rumor.RumorId, x => x.State, rumor.NewState);
+                        if (rumor.NewText != null) session.Advanced.Patch<Rumor, string>(rumor.RumorId, x => x.CurrentText, rumor.NewText);
+                        var rtime = await GetTimeAsync(session);
+                        session.Advanced.Patch<Rumor, int>(rumor.RumorId, x => x.LastStateChangeDay, rtime.TotalDaysElapsed);
+                        summary.Add($"Rumor {rumor.RumorId} evolved to {rumor.NewState}");
+                        break;
+
+                    case RelationshipChange rel:
+                        if (characters.TryGetValue(rel.SourceId, out var source) && source != null)
+                        {
+                            source.Mind ??= new NpcMind();
+                            source.Mind.Relationships ??= new Dictionary<string, int>();
+                            
+                            var currentVal = source.Mind.Relationships.GetValueOrDefault(rel.TargetId, 0);
+                            source.Mind.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
+                            
+                            summary.Add($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
+                        }
+                        break;
+
+                    case NeedChange nc:
+                        if (characters.TryGetValue(nc.CharacterId, out var needChar) && needChar?.Mind != null)
+                        {
+                            var current = needChar.Mind.Needs.GetValueOrDefault(nc.Need, 0f);
+                            needChar.Mind.Needs[nc.Need] = Math.Clamp(current + nc.Delta, 0f, 100f);
+                            summary.Add($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
+                        }
+                        else
+                        {
+                            summary.Add($"WARNING: Character {nc.CharacterId} not found or has no Mind during NeedChange.");
+                        }
+                        break;
+
+                    case AttributeChange attr:
+                        if (characters.TryGetValue(attr.CharacterId, out var attrChar) && attrChar?.Mind != null)
+                        {
+                            var key = attr.Attribute.ToLowerInvariant();
+                            switch (key)
+                            {
+                                case "willpower":
+                                    attrChar.Mind.Willpower = Math.Clamp(attr.Value, 0f, 100f);
+                                    break;
+                                case "temperature":
+                                    attrChar.Mind.Temperature = Math.Clamp(attr.Value, -50f, 100f);
+                                    break;
+                                case "morale":
+                                    attrChar.Mind.Morale = Math.Clamp(attr.Value, 0f, 100f);
+                                    break;
+                                default:
+                                    // Open custom attribute (matches the documented "arbitrary" design in AttributeChange)
+                                    var current = attrChar.Mind.Attributes.GetValueOrDefault(key, 0f);
+                                    attrChar.Mind.Attributes[key] = Math.Clamp(attr.Value, 0f, 100f);
+                                    break;
+                            }
+                            summary.Add($"Attribute '{attr.Attribute}' set for {attr.CharacterId}");
+                        }
+                        break;
+
+                    case MoodChange mood:
+                        if (characters.TryGetValue(mood.CharacterId, out var moodChar) && moodChar?.Mind != null)
+                        {
+                            moodChar.Mind.CurrentMood = mood.NewMood;
+                            summary.Add($"Mood set to '{mood.NewMood}' for {mood.CharacterId}");
+                        }
+                        break;
+
+                    case ActivityChange act:
+                        if (characters.TryGetValue(act.CharacterId, out var actChar) && actChar != null)
+                        {
+                            if (act.NewActivity != null)
+                                actChar.CurrentActivity = act.NewActivity;
+                            if (act.NewLocationId != null)
+                                actChar.CurrentLocationId = act.NewLocationId;
+                            summary.Add($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");
+                        }
+                        break;
+
+                    default:
+                        summary.Add($"WARNING: Unhandled change type: {change?.GetType().Name}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing change of type {ChangeType}", change?.GetType().Name);
+                summary.Add($"ERROR: Failed to process {change?.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -227,12 +255,12 @@ public class CampaignRepository
                 .ToList();
         }
 
-        // Pull candidates that might have simulated current location and filter client-side (avoids Raven LINQ translation issues with local collections)
-        var potentialSimNpcs = await session.Query<Character>().Take(100).ToListAsync();
-        var npcsFromSimulation = potentialSimNpcs
-            .Where(x => x.CurrentLocationId != null && targetIds.Contains(x.CurrentLocationId))
-            .Take(10)
-            .ToList();
+        // Efficient query for simulation-updated locations using the extended Character_Search index.
+        // This replaces the previous unconditional .Take(100) + client-side LINQ filter (O(n) scan).
+        var npcsFromSimulation = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WhereIn("CurrentLocationId", targetIds)
+            .Take(20)
+            .ToListAsync();
 
         // Merge, dedupe by Id, prefer simulation-updated versions when both exist
         var npcMap = npcsFromIndex.ToDictionary(n => n.Id, n => n);
@@ -303,10 +331,17 @@ public class CampaignRepository
     public async Task<AdvanceResult> AdvanceWorldAsync(IAsyncDocumentSession session, int days, TimeOfDay timeOfDay)
     {
         var time = await GetTimeAsync(session);
+
         time.TotalDaysElapsed += days;
-        time.Day += days;
-        while (time.Day > 30) { time.Day -= 30; time.Month++; }
-        while (time.Month > 12) { time.Month -= 12; time.Year++; }
+
+        // Recompute Year/Month/Day from TotalDaysElapsed using the fixed 360-day (12×30) fantasy calendar.
+        // TotalDaysElapsed is the single source of truth (used by simulation rules, rumor expiry, etc.).
+        // This eliminates drift and long loops from the previous Day += + while-loop approach.
+        var total = time.TotalDaysElapsed;
+        time.Year = 1492 + (total / 360);
+        time.Month = ((total % 360) / 30) + 1;
+        time.Day = (total % 30) + 1;
+
         time.TimeOfDay = timeOfDay;
 
         await session.StoreAsync(time);
@@ -344,7 +379,7 @@ public class CampaignRepository
         if (simResult.Deltas.Count > 0)
         {
             _logger.LogDebug("Applying {DeltaCount} simulation deltas", simResult.Deltas.Count);
-            await CommitChangesAsync(session, simResult.Deltas.ToArray());
+            await StageChangesAsync(session, simResult.Deltas.ToArray());
         }
 
         // WorldPressure from the engine can be surfaced by the caller (AdvanceWorld tool) if desired.
@@ -411,6 +446,13 @@ public class CampaignRepository
     {
         character.LastUpdated = DateTime.UtcNow;
         await session.StoreAsync(character, null, character.Id);
+
+        // Help keep the Character/Search index fresh after writes that affect Schedule or CurrentLocation.
+        // This reduces (but does not eliminate) the need for the index-staleness fallbacks in GetSceneAsync.
+        session.Advanced.WaitForIndexesAfterSaveChanges(
+            timeout: TimeSpan.FromSeconds(3),
+            throwOnTimeout: false,
+            indexes: new[] { "Character/Search" });
     }
 
     public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session)

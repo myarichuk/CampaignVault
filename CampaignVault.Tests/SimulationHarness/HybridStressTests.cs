@@ -30,7 +30,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
             new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
-        var tools = new CampaignTools(repo);
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
         var simulator = new LlmSimulator(tools, session);
 
         // Setup: A small region with 3 NPCs

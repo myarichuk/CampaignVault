@@ -19,14 +19,6 @@ public class ToolResult<T>
     }
 }
 
-public class CharacterUpdate
-{
-    public int? CurrentHp { get; set; }
-    public int? MaxHp { get; set; }
-    public string? Notes { get; set; }
-    public Dictionary<string, int>? Needs { get; set; }
-}
-
 public class WorldStateView
 {
     public CampaignTime Time { get; set; } = default!;

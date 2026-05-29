@@ -8,8 +8,8 @@ namespace CampaignVault.Data;
 /// and registering the rule in DI.
 /// 
 /// Preferred contract: Rules emit WorldChange deltas (which are applied through the existing
-/// CommitChangesAsync machinery) + narrative strings for the DM. They should avoid direct mutation
-/// of entities when possible.
+/// StageChangesAsync / Commit machinery in CampaignRepository) + narrative strings for the DM.
+/// Rules should avoid direct mutation of entities when possible.
 /// </summary>
 public interface ISimulationRule
 {

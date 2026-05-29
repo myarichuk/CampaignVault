@@ -12,7 +12,11 @@ public class Rumor
     
     public RumorState State { get; set; } = RumorState.Nascent;
     
-    public string TruthValue { get; set; } = "True"; // Narrative metadata
+    /// <summary>
+    /// Narrative metadata about how truthful the rumor is considered to be.
+    /// Exposed to LLMs and DMs for roleplay and decision making.
+    /// </summary>
+    public RumorTruth TruthValue { get; set; } = RumorTruth.True;
     
     public int DayCreated { get; set; }
     
@@ -29,4 +33,17 @@ public enum RumorState
     Fading,
     Resolved,
     Forgotten
+}
+
+/// <summary>
+/// How truthful a rumor is considered (narrative metadata for DMs and LLMs).
+/// Replaces the previous free-text string for better discoverability and type safety.
+/// </summary>
+public enum RumorTruth
+{
+    True,
+    False,
+    PartiallyTrue,
+    Misleading,
+    Unknown
 }

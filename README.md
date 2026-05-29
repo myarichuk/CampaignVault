@@ -74,8 +74,11 @@ fly deploy
 
 Authentication is **optional** and is only enabled when the `BEARER_TOKEN` environment variable is set.
 
+**Important:** The token is read *exclusively* from the `BEARER_TOKEN` environment variable (never from appsettings.json, user secrets, or command-line arguments). This reduces the risk of accidental secret leakage.
+
 - If `BEARER_TOKEN` is **not set**, the server accepts all requests with no authentication (convenient for local development).
 - If `BEARER_TOKEN` **is set**, all requests (except `/` and `/health`) must present a valid token.
+- Tokens are compared using a **timing-safe, case-sensitive** match (`CryptographicOperations.FixedTimeEquals`). "MyToken" will **not** match "mytoken". Use a long, random, mixed-case value.
 
 ### Supported Authentication Methods
 
@@ -113,6 +116,7 @@ The server checks for a valid token in the following order:
 - Prefer header-based authentication whenever possible.
 - If you must use the query parameter method in production, consider using a dedicated token with limited scope (if you implement additional authorization logic later).
 - Rotate tokens periodically, especially if they ever appeared in logs or URLs.
+- Treat the token as case-sensitive (exact match). Store it securely (e.g. `fly secrets`, Kubernetes secrets, or a proper secrets manager).
 - For stronger protection in cloud environments, consider putting the service behind Cloudflare Access, Tailscale, or a similar identity-aware proxy instead of (or in addition to) the built-in token.
 
 See the Deployment section for how to set `BEARER_TOKEN` on Fly.io.
