@@ -23,7 +23,12 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task ChaoticCampaignLoop_StressTests_Invariants()
     {
-        var repo = new CampaignRepository(_store);
+        var engine = new DefaultSimulationEngine(
+            new ISimulationRule[] { new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule() },
+            null);
+        var repo = new CampaignRepository(_store, engine, 
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
+            new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
         var tools = new CampaignTools(repo);
         var simulator = new LlmSimulator(tools, session);

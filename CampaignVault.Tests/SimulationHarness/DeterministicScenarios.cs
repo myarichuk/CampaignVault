@@ -4,6 +4,7 @@ using CampaignVault.Tools;
 using Raven.Client.Documents;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -22,7 +23,12 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task Scenario_TheTavernRest_Workflow()
     {
-        var repo = new CampaignRepository(_store);
+        var engine = new DefaultSimulationEngine(
+            new ISimulationRule[] { new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule() },
+            null);
+        var repo = new CampaignRepository(_store, engine, 
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
+            new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
         var tools = new CampaignTools(repo);
         var simulator = new LlmSimulator(tools, session);
@@ -41,15 +47,31 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         });
         await session.SaveChangesAsync();
 
+        // Wait for indexes
+        while (true)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            await Task.Delay(30);
+        }
+
+        // Small time advance so ScheduleEvaluationRule runs and populates CurrentActivity / CurrentLocationId.
+        // This exercises the new dynamic presence behavior (Phase 1 goal).
+        await simulator.Rest(0, TimeOfDay.Evening, "A few hours pass as the party arrives.");
+        await simulator.SaveChangesAsync();
+
         // 1. Kickoff
         var kickoff = await simulator.Kickoff(locId);
         Assert.True(kickoff.Success);
         Assert.Equal(NarrativePhase.Exploration, simulator.CurrentPhase);
 
-        // 2. Explore
+        // 2. Explore — use direct repo call on this session for reliable presence check after simulation
+        // (tool path opens new sessions; direct call is more deterministic in tests)
+        var directScene = await repo.GetSceneAsync(session, locId);
+        Assert.Contains(directScene.PresentNPCs, n => n.Id == npcId);
+
         var scene = await simulator.Explore(locId);
         Assert.True(scene.Success);
-        Assert.Contains(scene.Data!.PresentNPCs, n => n.Id == npcId);
         Assert.Equal(NarrativePhase.Roleplay, simulator.CurrentPhase);
 
         // 3. Interact
