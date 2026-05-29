@@ -3,6 +3,12 @@ using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;
 
+/// <summary>
+/// LEGACY — This class is no longer used by the main engine.
+/// All simulation logic now lives in composable ISimulationRule implementations
+/// (NeedsAccumulationRule, ScheduleEvaluationRule, RumorDecayRule, etc.).
+/// </summary>
+[Obsolete("Replaced by the pluggable ISimulationRule system. Use DefaultSimulationEngine instead.")]
 public class WorldSimulator
 {
     public List<string> Run(CampaignTime time, List<Rumor> rumors, List<Character> npcs, double daysPassed)

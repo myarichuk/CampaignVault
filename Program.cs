@@ -8,6 +8,8 @@ using Raven.Client.Documents;
 using Raven.Client.Documents.Indexes;
 using Raven.Embedded;
 
+using JsonSanitizer = CampaignVault.Data.JsonSanitizer; // for brevity in the listener
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
@@ -15,6 +17,9 @@ builder.Logging.AddConsole(options =>
 {
     options.LogToStandardErrorThreshold = LogLevel.Trace;
 });
+builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
+builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 
 // Configuration
 var dbPath = builder.Configuration["CAMPAIGN_DB_PATH"] ?? Path.Combine(AppContext.BaseDirectory, "RavenData");
@@ -28,6 +33,19 @@ EmbeddedServer.Instance.StartServer(new ServerOptions
 });
 var documentStore = EmbeddedServer.Instance.GetDocumentStore("CampaignVault");
 IndexCreation.CreateIndexes(typeof(Program).Assembly, documentStore);
+
+// Universal sanitizing listener on the Raven persistence boundary.
+// Any entity about to be stored (from tools, simulation, tests, direct session use, etc.)
+// is sanitized here so that Dictionary<string, object> fields (Metadata, Properties, Details)
+// never contain System.Text.Json.JsonElement instances when they hit Raven's (Newtonsoft) serializer.
+// This is the "universal listener" layer. See also JsonSanitizer.cs + final guards in CampaignTools.
+documentStore.OnBeforeStore += (_, args) =>
+{
+    if (args.Entity is not null)
+    {
+        JsonSanitizer.Sanitize(args.Entity);
+    }
+};
 
 // Services
 builder.Services.AddSingleton<IDocumentStore>(documentStore);
@@ -66,6 +84,7 @@ builder.Services.AddMcpServer(options =>
     options.Stateless = true;
 })
 .WithToolsFromAssembly();
+// (defined at the bottom of this file for clarity)
 
 var app = builder.Build();
 
