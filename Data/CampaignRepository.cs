@@ -111,7 +111,7 @@ public class CampaignRepository
 
                 case EventOccurred ev:
                     var currentTime = await GetTimeAsync(session);
-                    var e = new Event { Id = "events/" + Guid.NewGuid(), Summary = ev.Summary, Type = ev.Type, Involved = ev.Involved ?? [], DayLogged = currentTime.TotalDaysElapsed };
+                    var e = new Event { Id = "events/" + Guid.NewGuid(), Summary = ev.Summary, Category = ev.Category, Involved = ev.Involved ?? [], DayLogged = currentTime.TotalDaysElapsed };
                     await LogEventAsync(session, e);
                     summary.Add($"Event logged: {ev.Summary}");
                     break;
@@ -334,7 +334,7 @@ public class CampaignRepository
             { 
                 Id = "events/" + Guid.NewGuid(), 
                 Summary = narrative, 
-                Type = "simulation",
+                Category = "simulation",
                 DayLogged = time.TotalDaysElapsed 
             });
         }
@@ -386,11 +386,11 @@ public class CampaignRepository
         return results;
     }
 
-    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, string? type, int limit = 10)
+    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, string? category, int limit = 10)
     {
         var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
-        if (!string.IsNullOrEmpty(type)) q = q.AndAlso().WhereEquals(x => x.Type, type);
+        if (!string.IsNullOrEmpty(category)) q = q.AndAlso().WhereEquals(x => x.Category, category);
         var events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
         foreach (var ev in events) { if (ev.Details != null) ev.Details = SanitizeDetails(ev.Details); }
         return events;

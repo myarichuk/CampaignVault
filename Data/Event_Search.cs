@@ -11,7 +11,7 @@ public class Event_Search : AbstractIndexCreationTask<Event>
                         select new
                         {
                             e.Summary,
-                            e.Type,
+                            Category = e.Category,
                             e.Timestamp
                         };
 

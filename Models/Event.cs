@@ -10,7 +10,7 @@ public class Event
     
     public string? SessionId { get; set; }
     
-    public string Type { get; set; } = default!;
+    public string Category { get; set; } = default!;
     
     public string Summary { get; set; } = default!;
     

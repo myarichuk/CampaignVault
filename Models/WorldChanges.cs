@@ -59,7 +59,7 @@ public class StatusChange : WorldChange
 }
 
 /// <summary>
-/// Record a noteworthy occurrence in the world. Use Type='unresolved' for open plot threads the party should care about.
+/// Record a noteworthy occurrence in the world. Use Category='unresolved' for open plot threads the party should care about.
 /// These appear in get_scene, recall_history, and get_world_state.
 /// </summary>
 public class EventOccurred : WorldChange
@@ -69,8 +69,8 @@ public class EventOccurred : WorldChange
     public string Summary { get; set; } = default!;
 
     [Description("Classification of the event. Use 'unresolved' for dangling plot hooks the party should follow up on. Other good values: 'combat', 'conversation', 'discovery', 'arrival', 'betrayal'.")]
-    [JsonPropertyName("type")]
-    public string Type { get; set; } = default!;
+    [JsonPropertyName("category")]
+    public string Category { get; set; } = default!;
 
     [Description("Optional list of entity IDs involved (characters, locations, items, etc.). Helps later queries and NPC context.")]
     [JsonPropertyName("involved")]

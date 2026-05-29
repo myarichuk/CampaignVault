@@ -221,7 +221,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await repo.SaveTimeAsync(session, new CampaignTime { Day = 10 });
-            await repo.LogEventAsync(session, new Event { Id = "e1", Summary = "History", Type = "test", Involved = new List<string> { "loc1" } });
+            await repo.LogEventAsync(session, new Event { Id = "e1", Summary = "History", Category = "test", Involved = new List<string> { "loc1" } });
             await repo.UpsertLocationAsync(session, new Location { Id = "loc1", Name = "The Shire", Type = LocationType.Region });
             await session.SaveChangesAsync();
         }
@@ -243,7 +243,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var json = System.Text.Json.JsonSerializer.Serialize(new { power = 9001, tags = new[] { "over", "9000" } });
         var details = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
 
-        await repo.LogEventAsync(session, new Event { Id = id, Summary = "Power Up", Type = "test", Details = details });
+        await repo.LogEventAsync(session, new Event { Id = id, Summary = "Power Up", Category = "test", Details = details });
         await session.SaveChangesAsync();
 
         // Wait for indexing
@@ -287,7 +287,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         {
             Id = eventId,
             Summary = "NPC involved event",
-            Type = "interaction",
+            Category = "interaction",
             Involved = new List<string> { charId },
             Details = details
         });

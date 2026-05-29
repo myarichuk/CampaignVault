@@ -122,7 +122,7 @@ Each object is then deserialized server-side using the rich definitions on the W
 When creating a new area + NPC from scratch, do it in ONE atomic commit:
 
 [
-  { ""type"": ""event"", ""summary"": ""The party arrives in the village of Thornwatch..."", ""type"": ""arrival"" },
+  { ""type"": ""event"", ""summary"": ""The party arrives in the village of Thornwatch..."", ""category"": ""arrival"" },
   { ""type"": ""activity"", ""characterId"": ""characters/bram-ironarm"", ""newActivity"": ""tending bar and watching the door"", ""newLocationId"": ""locations/rusty-nail"", ""reason"": ""Sergeant on duty tonight"" },
   { ""type"": ""relationship"", ""sourceId"": ""characters/elara-voss"", ""targetId"": ""characters/bram-ironarm"", ""delta"": 5, ""reason"": ""Elara buys Bram a drink..."" },
   { ""type"": ""need"", ""characterId"": ""characters/elara-voss"", ""need"": ""wanderlust"", ""delta"": 12 }
@@ -144,11 +144,30 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
         // clients that choke on STJ-generated polymorphic oneOf schemas (certain Gemini CLI
         // versions, strict validators, some CLIs) can still successfully call the tool.
         var typedChanges = new List<WorldChange>(changes.Length);
+        var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
         foreach (var elem in changes)
         {
             try
             {
-                var change = elem.Deserialize<WorldChange>();
+                // INTEROPERABILITY WRAPPER:
+                // Handle cases where the client sends "$type" (industry standard) or "type" (standard standard).
+                // If "$type" is present but "type" is not, we normalize it before deserializing.
+                WorldChange? change;
+                if (elem.TryGetProperty("$type", out var legacyType) && !elem.TryGetProperty("type", out _))
+                {
+                    // Create a mutated copy of the JSON object that has the 'type' property
+                    var rawJson = elem.GetRawText();
+                    // Simple string replacement of the key name is safe here because we've already
+                    // validated the properties exist via TryGetProperty.
+                    var normalizedJson = rawJson.Replace("\"$type\"", "\"type\"", StringComparison.Ordinal);
+                    change = JsonSerializer.Deserialize<WorldChange>(normalizedJson, serializerOptions);
+                }
+                else
+                {
+                    change = elem.Deserialize<WorldChange>(serializerOptions);
+                }
+
                 if (change != null)
                     typedChanges.Add(change);
             }
@@ -160,12 +179,12 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
 
         if (typedChanges.Count == 0)
         {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "No valid changes could be parsed. Each item needs a type that matches one of the supported WorldChange subtypes."));
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "No valid changes could be parsed. Each item needs a 'type' discriminator that matches one of the supported WorldChange subtypes."));
         }
 
         return ExecuteAsync(async session => {
             var result = await repository.CommitChangesAsync(session, typedChanges.ToArray());
-            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Type = "scene-commit" });
+            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = "scene-commit" });
             return new ToolResult<CommitResult>(true, result, $"World updated with {typedChanges.Count} changes.");
         });
     }
@@ -229,7 +248,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
 
         return ExecuteAsync(async session => {
             var result = await repository.AdvanceWorldAsync(session, days, timeOfDay);
-            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Type = "timeskip" });
+            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = "timeskip" });
 
             // Minimal WorldPressure wiring: surface simulation narratives as pressure for the DM
             var pressure = result.SimulatorEvents.Count > 0 
