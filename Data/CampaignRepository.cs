@@ -84,6 +84,7 @@ public class CampaignRepository
             if (change is NeedChange nc) characterIds.Add(nc.CharacterId);
             if (change is AttributeChange ac) characterIds.Add(ac.CharacterId);
             if (change is ActivityChange act) characterIds.Add(act.CharacterId);
+            if (change is MoodChange mc) characterIds.Add(mc.CharacterId);
         }
 
         var characters = await session.LoadAsync<Character>(characterIds);
@@ -284,6 +285,9 @@ public class CampaignRepository
 
         var time = await GetTimeAsync(session);
 
+        // Load global descriptors once (cheap) so we can merge them into every NPC's view
+        var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session);
+
         // Project to lightweight presence summaries + behavioral synthesis.
         // This fulfills the V4 goal of giving the DM synthesized insight instead of raw data.
         var presenceSummaries = npcs.Select(npc =>
@@ -296,9 +300,11 @@ public class CampaignRepository
                 .Take(3)
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
 
-            // Expose all known needs + descriptors so the LLM can discover and use the open vocabulary
+            // Expose all known needs + descriptors (merged global + per-NPC, per-NPC wins)
             var knownNeeds = mind.Needs.ToDictionary(kv => kv.Key, kv => kv.Value);
-            var needDescriptors = mind.NeedDescriptors ?? new Dictionary<string, string>();
+            var needDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in mind.NeedDescriptors ?? new Dictionary<string, string>())
+                needDescriptors[kv.Key] = kv.Value;
 
             // Generate behavioral summary using the injected synthesizer
             var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, time, events);
@@ -346,7 +352,9 @@ public class CampaignRepository
 
         await session.StoreAsync(time);
 
-        var activeRumors = await session.Query<Rumor>().Where(x => x.State != RumorState.Resolved).ToListAsync();
+        var activeRumors = await session.Query<Rumor>()
+            .Where(x => x.State != RumorState.Resolved && x.State != RumorState.Forgotten)
+            .ToListAsync();
         var npcs = await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync();
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
@@ -466,6 +474,20 @@ public class CampaignRepository
     {
         time.LastUpdated = DateTime.UtcNow;
         await session.StoreAsync(time);
+    }
+
+    /// <summary>
+    /// Returns globally defined need descriptors (populated via the DefineNeedDescriptor tool).
+    /// These act as a shared dictionary that individual NPCs can reference or override via Mind.NeedDescriptors.
+    /// </summary>
+    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session)
+    {
+        const string docId = "config/need-descriptors";
+        var loaded = await session.LoadAsync<Dictionary<string, string>>(docId);
+
+        // Raven deserializes Dictionary<string,string> using Ordinal comparer by default.
+        // Re-wrap with OrdinalIgnoreCase so lookups are case-insensitive everywhere.
+        return new Dictionary<string, string>(loaded ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task LogEventAsync(IAsyncDocumentSession session, Event @event)

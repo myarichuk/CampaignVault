@@ -21,9 +21,10 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 | `advance_world`   | Time passage + background simulation         | Runs needs, rumor decay, schedule evaluation |
 | `search_world`    | Unified fuzzy search                         | Characters, Locations, Lore |
 | `recall_history`  | Semantic memory over past events             | — |
-| `get_npc_needs`   | Quick view of an NPC's current needs         | — |
+| `get_npc_needs`   | Quick view of an NPC's current needs + descriptors | Includes merged global descriptors |
+| `get_need_descriptors` | List all globally defined need descriptors | Use with `define_need_descriptor` for world-building |
 
-**World Builder / Seeding tools** (`upsert_character`, `upsert_location`, `upsert_lore`): These are now strongly typed. They remain less reliable with Grok Web (the client often uses legacy parameter names 'c'/'l' due to caching when the connector was added). Prefer `commit` (with `ActivityChange` where relevant) for most ongoing work and many seeding tasks.
+**World Builder / Seeding tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These are now strongly typed. They remain less reliable with Grok Web (the client often uses legacy parameter names 'c'/'l' due to caching when the connector was added). Prefer `commit` (with `ActivityChange` where relevant) for most ongoing work and many seeding tasks. Use `define_need_descriptor` + `get_need_descriptors` to build a shared vocabulary of custom need descriptions.
 
 ## Recommended DM Workflow
 
@@ -34,7 +35,7 @@ Add guidance similar to this to your LLM system prompt:
 > **Core Loop:**
 > 1. Start every session with `get_world_state`.
 > 2. When the party moves to a new area, use `get_scene`.
-> 3. For deep NPC roleplay, call `get_npc_context` (and `get_npc_needs`).
+> 3. For deep NPC roleplay, call `get_npc_context` (and `get_npc_needs`). Use `get_need_descriptors` to discover globally defined need descriptions.
 > 4. At the end of scenes, use `commit` with a batch of changes. Use the `activity` change type when narrative implies an NPC has moved or changed what they are doing.
 > 5. For travel, long rests, or downtime, call `advance_world` (this runs background simulation).
 >
@@ -44,11 +45,14 @@ Add guidance similar to this to your LLM system prompt:
 
 The NPC "Mind" system is intentionally open-ended. There is no closed list of needs.
 
-- Discover needs at runtime via `get_npc_needs`, `get_scene`, and `get_npc_context`.
+- Discover needs at runtime via `get_npc_needs`, `get_scene`, `get_npc_context`, and `get_need_descriptors`.
+- Use `define_need_descriptor` to create **global** shared descriptions for custom needs. These are automatically merged into NPC views (per-NPC descriptors override).
 - Freely invent narrative-appropriate needs (`wanderlust`, `duty`, `guilt`, `debt_pressure`, etc.) and provide human-readable `NeedDescriptors`.
 - For initial world building, the `upsert_*` tools exist. In practice, many users find `commit` (with rich `EventOccurred` + `RelationshipChange` + `ActivityChange` + `NeedChange`) to be the more reliable way to evolve the world during play.
 
 Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom needs + descriptors, Schedule + Routines, equipment via Items). The simulation and behavioral synthesis will make much better use of that data than shallow characters.
+
+**Global Need Descriptors**: Use `define_need_descriptor` to create shared, reusable descriptions for custom needs (e.g. "homesickness"). These are stored globally and automatically appear (merged) in `get_npc_needs`, `get_npc_context`, and `get_scene`. Use the companion `get_need_descriptors` tool to list everything that has been defined.
 
 ## Deployment to Fly.io
 

@@ -33,10 +33,10 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
         {
             if (npc.Schedule == null) continue;
 
-            string? effectiveLocation = npc.Schedule.DefaultLocationId;
-            string? effectiveActivity = "Idle / at default location";
+            string? baseLocation = npc.Schedule.DefaultLocationId;
+            string? baseActivity = "Idle / at default location";
 
-            // 1. Find best matching routine for current time
+            // 1. Find best matching routine for current time (base schedule, before modifiers)
             var candidates = npc.Schedule.Routines
                 .Where(r => string.IsNullOrWhiteSpace(r.Condition) ||
                             r.Condition.Equals("Any", StringComparison.OrdinalIgnoreCase) ||
@@ -48,8 +48,8 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
             if (candidates.Count > 0)
             {
                 var chosen = candidates.First();
-                effectiveLocation = chosen.LocationId;
-                effectiveActivity = chosen.Activity;
+                baseLocation = chosen.LocationId;
+                baseActivity = chosen.Activity;
             }
 
             // 2. Apply active StateModifiers (highest priority overrides)
@@ -57,16 +57,31 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
                 .Where(m => m.ExpiryDay == null || m.ExpiryDay > context.Time.TotalDaysElapsed)
                 .ToList();
 
+            string? effectiveLocation = baseLocation;
+            string? effectiveActivity = baseActivity;
+
             foreach (var mod in activeModifiers)
             {
+                bool thisModOverrides = false;
+
                 if (!string.IsNullOrWhiteSpace(mod.OverrideLocationId))
+                {
                     effectiveLocation = mod.OverrideLocationId;
+                    thisModOverrides = true;
+                }
 
                 if (!string.IsNullOrWhiteSpace(mod.OverrideActivity))
+                {
                     effectiveActivity = mod.OverrideActivity;
+                    thisModOverrides = true;
+                }
 
-                // Simple narrative hook for visible interruptions
-                narratives.Add($"{npc.Name} is affected by: {mod.Description}");
+                // Only emit the narrative when the modifier is actually causing a visible override this tick.
+                // Prevents spamming the same "affected by X" message every simulation tick.
+                if (thisModOverrides)
+                {
+                    narratives.Add($"{npc.Name} is affected by: {mod.Description}");
+                }
             }
 
             // 3. If location or activity actually changed, emit ActivityChange delta + narrative.

@@ -23,5 +23,6 @@ public class Character_Search : AbstractIndexCreationTask<Character>
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
         Index(x => x.Name, FieldIndexing.Search);
         Index(x => x.Notes, FieldIndexing.Search);
+        Index("CurrentLocationId", FieldIndexing.Exact);
     }
 }
