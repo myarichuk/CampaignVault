@@ -4,17 +4,55 @@ using Raven.Client.Documents.Linq;
 using Raven.Client.Documents.Queries;
 using Raven.Client.Documents.Session;
 using Raven.Client.Documents.Indexes;
+using Microsoft.Extensions.Logging;
 
 namespace CampaignVault.Data;
 
 public class CampaignRepository
 {
     private readonly IDocumentStore _store;
-    private readonly WorldSimulator _simulator = new();
+    private readonly IWorldSimulationEngine _simulationEngine;
+    private readonly ILogger<CampaignRepository> _logger;
+    private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
 
-    public CampaignRepository(IDocumentStore store)
+    public CampaignRepository(
+        IDocumentStore store, 
+        IWorldSimulationEngine simulationEngine,
+        ILogger<CampaignRepository> logger,
+        INpcBehaviorSynthesizer behaviorSynthesizer)
     {
         _store = store;
+        _simulationEngine = simulationEngine;
+        _logger = logger;
+        _behaviorSynthesizer = behaviorSynthesizer;
+    }
+
+    /// <summary>
+    /// Temporary accessor so CampaignTools can use the synthesizer without major refactoring.
+    /// In a future cleanup we can inject INpcBehaviorSynthesizer directly into CampaignTools.
+    /// </summary>
+    public INpcBehaviorSynthesizer GetBehaviorSynthesizer() => _behaviorSynthesizer;
+
+    /// <summary>
+    /// Convenience constructor primarily for test scenarios.
+    /// In production, always use the two-parameter constructor via DI so the real simulation engine is injected.
+    /// </summary>
+    public CampaignRepository(IDocumentStore store)
+        : this(store, 
+               new NoOpSimulationEngine(), 
+               Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
+               new DefaultBehaviorSynthesizer())
+    {
+    }
+
+    /// <summary>
+    /// Minimal no-op implementation so existing tests that do not care about simulation behavior continue to compile.
+    /// AdvanceWorld tests will still need to construct a real engine (or we will update them in verification phase).
+    /// </summary>
+    private sealed class NoOpSimulationEngine : IWorldSimulationEngine
+    {
+        public Task<SimulationResult> RunAsync(SimulationContext context, CancellationToken ct = default)
+            => Task.FromResult(new SimulationResult([], [], []));
     }
 
     public IAsyncDocumentSession OpenSession()
@@ -26,6 +64,9 @@ public class CampaignRepository
 
     public async Task<CommitResult> CommitChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
     {
+        changes ??= Array.Empty<WorldChange>();
+        _logger.LogDebug("CommitChangesAsync called with {ChangeCount} changes", changes.Length);
+
         var summary = new List<string>();
         
         // 1. Pre-identify and batch-load all required entities to minimize round-trips
@@ -38,6 +79,7 @@ public class CampaignRepository
             if (change is RelationshipChange rc) characterIds.Add(rc.SourceId);
             if (change is NeedChange nc) characterIds.Add(nc.CharacterId);
             if (change is AttributeChange ac) characterIds.Add(ac.CharacterId);
+            if (change is ActivityChange act) characterIds.Add(act.CharacterId);
         }
 
         var characters = await session.LoadAsync<Character>(characterIds);
@@ -117,11 +159,32 @@ public class CampaignRepository
                     }
                     break;
 
+                case MoodChange mood:
+                    if (characters.TryGetValue(mood.CharacterId, out var moodChar) && moodChar?.Mind != null)
+                    {
+                        moodChar.Mind.CurrentMood = mood.NewMood;
+                        summary.Add($"Mood set to '{mood.NewMood}' for {mood.CharacterId}");
+                    }
+                    break;
+
+                case ActivityChange act:
+                    if (characters.TryGetValue(act.CharacterId, out var actChar) && actChar != null)
+                    {
+                        if (act.NewActivity != null)
+                            actChar.CurrentActivity = act.NewActivity;
+                        if (act.NewLocationId != null)
+                            actChar.CurrentLocationId = act.NewLocationId;
+                        summary.Add($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");
+                    }
+                    break;
+
                 default:
                     summary.Add($"WARNING: Unhandled change type: {change?.GetType().Name}");
                     break;
             }
         }
+
+        _logger.LogInformation("Commit applied {Processed} changes", changes.Length);
         return new CommitResult { ChangesProcessed = changes.Length, Summary = summary };
     }
 
@@ -146,21 +209,89 @@ public class CampaignRepository
         var targetIds = new List<string> { locationId };
         targetIds.AddRange(subLocations.Select(l => l.Id));
 
-        var npcs = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+        // Primary discovery via static schedule index (good for cold starts / world building)
+        var npcsFromIndex = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .ContainsAny("Locations", targetIds)
             .Take(20)
             .ToListAsync();
 
+        // Fallback: if the index hasn't caught up (common in fast tests), load recent characters and filter client-side
+        if (npcsFromIndex.Count == 0)
+        {
+            var recentChars = await session.Query<Character>().Take(50).ToListAsync();
+            npcsFromIndex = recentChars
+                .Where(x => x.Schedule != null &&
+                            (targetIds.Contains(x.Schedule.DefaultLocationId) ||
+                             x.Schedule.Routines.Any(r => targetIds.Contains(r.LocationId))))
+                .Take(20)
+                .ToList();
+        }
+
+        // Pull candidates that might have simulated current location and filter client-side (avoids Raven LINQ translation issues with local collections)
+        var potentialSimNpcs = await session.Query<Character>().Take(100).ToListAsync();
+        var npcsFromSimulation = potentialSimNpcs
+            .Where(x => x.CurrentLocationId != null && targetIds.Contains(x.CurrentLocationId))
+            .Take(10)
+            .ToList();
+
+        // Merge, dedupe by Id, prefer simulation-updated versions when both exist
+        var npcMap = npcsFromIndex.ToDictionary(n => n.Id, n => n);
+        foreach (var simNpc in npcsFromSimulation)
+        {
+            npcMap[simNpc.Id] = simNpc; // simulation state wins
+        }
+        var npcs = npcMap.Values.ToList();
+
         var rumors = await QueryRumorsAsync(session, null, regionId, null, 5);
         var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
-        var events = await session.Query<Event>().Where(x => x.Involved.Contains(locationId)).OrderByDescending(x => x.Timestamp).Take(5).ToListAsync();
+        foreach (var it in items) JsonSanitizer.Sanitize(it);
+
+        JsonSanitizer.Sanitize(location);
+
+        var events = (await QueryEventsAsync(session, null, null, 5))
+            .Where(e => e.Involved.Contains(locationId))
+            .OrderByDescending(e => e.Timestamp)
+            .Take(5)
+            .ToList();
 
         var time = await GetTimeAsync(session);
+
+        // Project to lightweight presence summaries + behavioral synthesis.
+        // This fulfills the V4 goal of giving the DM synthesized insight instead of raw data.
+        var presenceSummaries = npcs.Select(npc =>
+        {
+            var mind = npc.Mind ?? new NpcMind();
+
+            // Take the top 3 highest needs for a compact view (sorted descending)
+            var topNeeds = mind.Needs
+                .OrderByDescending(kv => kv.Value)
+                .Take(3)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            // Expose all known needs + descriptors so the LLM can discover and use the open vocabulary
+            var knownNeeds = mind.Needs.ToDictionary(kv => kv.Key, kv => kv.Value);
+            var needDescriptors = mind.NeedDescriptors ?? new Dictionary<string, string>();
+
+            // Generate behavioral summary using the injected synthesizer
+            var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, time, events);
+
+            return new NpcPresenceSummary(
+                Id: npc.Id,
+                Name: npc.Name,
+                CurrentActivity: npc.CurrentActivity ?? npc.Schedule?.DefaultLocationId,
+                CurrentMood: mind.CurrentMood,
+                TopNeeds: topNeeds,
+                KnownNeeds: knownNeeds,
+                NeedDescriptors: needDescriptors,
+                BehavioralSummary: behavioralSummary,
+                Notes: npc.Notes
+            );
+        }).ToList();
 
         return new SceneView
         {
             Location = location,
-            PresentNPCs = npcs, // Return full objects
+            PresentNPCs = presenceSummaries,
             LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
             VisibleItems = items,
             RecentEvents = events
@@ -182,12 +313,22 @@ public class CampaignRepository
 
         var activeRumors = await session.Query<Rumor>().Where(x => x.State != RumorState.Resolved).ToListAsync();
         var npcs = await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync();
-        
-        // Use the time-aware simulator
-        var simEvents = _simulator.Run(time, activeRumors, npcs, days);
 
-        // Persist simulator events to the global event history
-        foreach (var narrative in simEvents)
+        // Build context and run the pluggable simulation engine (rules emit deltas)
+        var simContext = new SimulationContext(time, activeRumors, npcs, session, days);
+
+        _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", days, time);
+
+        var simResult = await _simulationEngine.RunAsync(simContext);
+
+        _logger.LogInformation(
+            "Simulation complete. Narratives: {NarrativeCount}, Deltas: {DeltaCount}, PressureItems: {PressureCount}",
+            simResult.NarrativeEvents.Count,
+            simResult.Deltas.Count,
+            simResult.WorldPressure.Count);
+
+        // Persist simulation narrative events
+        foreach (var narrative in simResult.NarrativeEvents)
         {
             await LogEventAsync(session, new Event 
             { 
@@ -198,26 +339,45 @@ public class CampaignRepository
             });
         }
 
-        // RavenDB change tracking handles the mutations on npcs and rumors automatically
-        // as they were loaded via the session. No explicit StoreAsync loops needed.
+        // Apply any deltas produced by simulation rules through the unified Commit path.
+        // This gives us clamping, optimistic concurrency, summary logging, etc. for free.
+        if (simResult.Deltas.Count > 0)
+        {
+            _logger.LogDebug("Applying {DeltaCount} simulation deltas", simResult.Deltas.Count);
+            await CommitChangesAsync(session, simResult.Deltas.ToArray());
+        }
 
-        return new AdvanceResult { NewTime = time, SimulatorEvents = simEvents };
+        // WorldPressure from the engine can be surfaced by the caller (AdvanceWorld tool) if desired.
+        // For now we keep AdvanceResult focused on time + narratives (matching prior contract).
+
+        return new AdvanceResult 
+        { 
+            NewTime = time, 
+            SimulatorEvents = simResult.NarrativeEvents.ToList() 
+        };
     }
 
     // --- Search & Recall ---
 
     public async Task<IEnumerable<object>> UnifiedSearchAsync(IAsyncDocumentSession session, string query)
     {
-        var charsTask = session.Advanced.AsyncDocumentQuery<Character, Character_Search>().Search(x => x.Name, $"*{query}*").Take(5).ToListAsync();
-        var loreTask = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>().Search(x => x.Title, $"*{query}*").Take(5).ToListAsync();
-        var locsTask = session.Advanced.AsyncDocumentQuery<Location, Location_Search>().Search(x => x.Name, $"*{query}*").Take(5).ToListAsync();
-        
-        await Task.WhenAll(charsTask, loreTask, locsTask);
+        // Await queries individually. The previous Task-capture + WhenAll + re-await pattern
+        // could leave RavenDB session tracking "active async tasks" after the method returned,
+        // causing "Disposing session with active async task is forbidden" on ExecuteAsync disposal.
+        var chars = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .Search(x => x.Name, $"*{query}*").Take(5).ToListAsync();
 
-        // Crucial: Extract results while inside the session scope
-        var chars = await charsTask;
-        var lore = await loreTask;
-        var locs = await locsTask;
+        var lore = await session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>()
+            .Search(x => x.Title, $"*{query}*").Take(5).ToListAsync();
+
+        var locs = await session.Advanced.AsyncDocumentQuery<Location, Location_Search>()
+            .Search(x => x.Name, $"*{query}*").Take(5).ToListAsync();
+
+        // Critical: Locations returned to the LLM via SearchWorld can contain Metadata dictionaries
+        // that hold JsonElement (from STJ inbound or legacy data). Without sanitization here,
+        // STJ serialization of the tool response in the MCP layer blows up with
+        // "Operation is not valid due to the current state of the object" (dead JsonElement).
+        foreach (var l in locs) SanitizeLocation(l);
 
         var results = new List<object>();
         results.AddRange(chars);
@@ -272,46 +432,53 @@ public class CampaignRepository
         await session.StoreAsync(@event);
     }
 
-    private IDictionary<string, object> SanitizeDetails(IDictionary<string, object> details)
-    {
-        var sanitized = new Dictionary<string, object>();
-        foreach (var (key, value) in details) sanitized[key] = SanitizeValue(value);
-        return sanitized;
-    }
+    // All sanitization logic is now centralized in JsonSanitizer.
+    // These methods are thin wrappers for backward compatibility inside the repository
+    // and for explicit calls from tools / tests.
 
-    private object SanitizeValue(object value)
-    {
-        if (value is System.Text.Json.JsonElement je)
-        {
-            switch (je.ValueKind)
-            {
-                case System.Text.Json.JsonValueKind.String: return je.GetString()!;
-                case System.Text.Json.JsonValueKind.Number: if (je.TryGetInt32(out var i)) return i; return je.GetDouble();
-                case System.Text.Json.JsonValueKind.True: return true;
-                case System.Text.Json.JsonValueKind.False: return false;
-                case System.Text.Json.JsonValueKind.Null: return null!;
-                case System.Text.Json.JsonValueKind.Object:
-                    var dict = new Dictionary<string, object>();
-                    foreach (var prop in je.EnumerateObject()) dict[prop.Name] = SanitizeValue(prop.Value);
-                    return dict;
-                case System.Text.Json.JsonValueKind.Array:
-                    var list = new List<object>();
-                    foreach (var item in je.EnumerateArray()) list.Add(SanitizeValue(item));
-                    return list;
-                default: return je.GetRawText();
-            }
-        }
-        return value;
-    }
+    private IDictionary<string, object> SanitizeDetails(IDictionary<string, object> details)
+        => (IDictionary<string, object>?)JsonSanitizer.SanitizeDictionary(details) ?? details;
+
+    private Dictionary<string, object> SanitizeDictionary(IDictionary<string, object> source)
+        => (Dictionary<string, object>)JsonSanitizer.SanitizeDictionary(source)!;
+
+    private object SanitizeValue(object? value)
+        => JsonSanitizer.SanitizeValue(value) ?? value!;
 
     /// <summary>
     /// Applies JSON sanitization to an Event's Details (prevents JsonElement leakage).
-    /// Used by QueryEventsAsync, LogEventAsync, and GetNpcContext.
     /// </summary>
-    internal void SanitizeEvent(Event ev)
+    public void SanitizeEvent(Event ev)
     {
-        if (ev.Details != null) ev.Details = SanitizeDetails(ev.Details);
+        JsonSanitizer.Sanitize(ev);
     }
+
+    /// <summary>
+    /// Sanitizes Location.Metadata. Safe to call multiple times.
+    /// </summary>
+    public void SanitizeLocation(Location? loc)
+    {
+        JsonSanitizer.Sanitize(loc);
+    }
+
+    /// <summary>
+    /// Sanitizes Item.Properties. Safe to call multiple times.
+    /// </summary>
+    public void SanitizeItem(Item? item)
+    {
+        JsonSanitizer.Sanitize(item);
+    }
+
+    /// <summary>
+    /// Universal sanitization entry point. Delegates to the central JsonSanitizer.
+    /// </summary>
+    public void SanitizeEntity(object? entity) => JsonSanitizer.Sanitize(entity);
+
+    /// <summary>
+    /// Best-effort deep sanitization of tool response payloads before STJ serialization
+    /// in the MCP layer. Delegates to the central JsonSanitizer.
+    /// </summary>
+    public void SanitizeForToolResponse(object? value) => JsonSanitizer.SanitizeForToolResponse(value);
 
     public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore) { lore.LastUpdated = DateTime.UtcNow; await session.StoreAsync(lore); }
 
@@ -324,7 +491,12 @@ public class CampaignRepository
         return await q.Take(limit).ToListAsync();
     }
 
-    public async Task UpsertLocationAsync(IAsyncDocumentSession session, Location location) { location.LastUpdated = DateTime.UtcNow; await session.StoreAsync(location); }
+    public async Task UpsertLocationAsync(IAsyncDocumentSession session, Location location)
+    {
+        SanitizeLocation(location);
+        location.LastUpdated = DateTime.UtcNow;
+        await session.StoreAsync(location);
+    }
 
     public async Task<IEnumerable<Location>> QueryLocationsAsync(IAsyncDocumentSession session, string? query, LocationType? type = null, string? parentId = null, int limit = 10)
     {
@@ -332,7 +504,9 @@ public class CampaignRepository
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Name, $"*{query}*").OrElse().Search(x => x.Description, $"*{query}*");
         if (type.HasValue) q = q.AndAlso().WhereEquals(x => x.Type, type.Value);
         if (!string.IsNullOrEmpty(parentId)) q = q.AndAlso().WhereEquals(x => x.ParentLocationId, parentId);
-        return await q.Take(limit).ToListAsync();
+        var locations = await q.Take(limit).ToListAsync();
+        foreach (var l in locations) SanitizeLocation(l);
+        return locations;
     }
 
     public async Task UpsertRumorAsync(IAsyncDocumentSession session, Rumor rumor)
@@ -353,10 +527,17 @@ public class CampaignRepository
 
     public async Task<Location?> GetLocationAsync(IAsyncDocumentSession session, string id)
     {
-        return await session.LoadAsync<Location>(id);
+        var loc = await session.LoadAsync<Location>(id);
+        SanitizeLocation(loc);
+        return loc;
     }
 
     public async Task<Item?> GetItemAsync(IAsyncDocumentSession session, string id) => await session.LoadAsync<Item>(id);
 
-    public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item) { item.LastUpdated = DateTime.UtcNow; await session.StoreAsync(item); }
+    public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item)
+    {
+        SanitizeItem(item);
+        item.LastUpdated = DateTime.UtcNow;
+        await session.StoreAsync(item);
+    }
 }

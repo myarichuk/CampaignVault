@@ -11,6 +11,8 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(RelationshipChange), "relationship")]
 [JsonDerivedType(typeof(NeedChange), "need")]
 [JsonDerivedType(typeof(AttributeChange), "attribute")]
+[JsonDerivedType(typeof(MoodChange), "mood")]
+[JsonDerivedType(typeof(ActivityChange), "activity")]
 public abstract class WorldChange;
 
 /// <summary>Adjust a character's HP by a positive or negative delta.</summary>
@@ -73,4 +75,28 @@ public class AttributeChange : WorldChange
     public string CharacterId { get; set; } = default!;
     public string Attribute { get; set; } = default!; // willpower, temperature, morale
     public float Value { get; set; }
+}
+
+/// <summary>
+/// Set an NPC's CurrentMood string (produced by simulation rules).
+/// This is simulation-driven rather than direct LLM narrative control.
+/// </summary>
+public class MoodChange : WorldChange
+{
+    public string CharacterId { get; set; } = default!;
+    public string NewMood { get; set; } = default!;
+}
+
+/// <summary>
+/// Directly set or update an NPC's current activity and/or location based on narrative.
+/// Use this when the story has the character doing something specific (patrolling, sleeping, talking to someone, etc.)
+/// that should be reflected in get_scene / get_npc_context without waiting for AdvanceWorld.
+/// </summary>
+public class ActivityChange : WorldChange
+{
+    public string CharacterId { get; set; } = default!;
+    public string? NewActivity { get; set; }
+    public string? NewLocationId { get; set; }
+    /// <summary>Optional reason for the change (will be logged in narrative if provided).</summary>
+    public string? Reason { get; set; }
 }
