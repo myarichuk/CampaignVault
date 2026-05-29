@@ -452,11 +452,35 @@ public class CampaignRepository
 
     public async Task UpsertCharacterAsync(IAsyncDocumentSession session, Character character)
     {
+        if (string.IsNullOrWhiteSpace(character.Id))
+            throw new ArgumentException("Character.Id is required for upsert.");
+
         character.LastUpdated = DateTime.UtcNow;
-        await session.StoreAsync(character, null, character.Id);
+
+        var existing = await session.LoadAsync<Character>(character.Id);
+        if (existing != null)
+        {
+            // Mutate the already-tracked entity in place. This is the safest pattern
+            // with OptimisticConcurrencyMode.Writes + Raven change tracking.
+            // We get full overwrite semantics without ever having two objects for the same ID.
+            existing.Name = character.Name;
+            existing.ClassLevel = character.ClassLevel;
+            existing.CurrentHp = character.CurrentHp;
+            existing.MaxHp = character.MaxHp;
+            existing.Status = character.Status ?? [];
+            existing.Notes = character.Notes;
+            existing.Schedule = character.Schedule;
+            existing.CurrentLocationId = character.CurrentLocationId;
+            existing.CurrentActivity = character.CurrentActivity;
+            existing.Mind = character.Mind ?? new NpcMind();
+            existing.LastUpdated = character.LastUpdated;
+        }
+        else
+        {
+            await session.StoreAsync(character, null, character.Id);
+        }
 
         // Help keep the Character/Search index fresh after writes that affect Schedule or CurrentLocation.
-        // This reduces (but does not eliminate) the need for the index-staleness fallbacks in GetSceneAsync.
         session.Advanced.WaitForIndexesAfterSaveChanges(
             timeout: TimeSpan.FromSeconds(3),
             throwOnTimeout: false,
@@ -483,11 +507,20 @@ public class CampaignRepository
     public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session)
     {
         const string docId = "config/need-descriptors";
-        var loaded = await session.LoadAsync<Dictionary<string, string>>(docId);
+        var config = await session.LoadAsync<NeedDescriptorsConfig>(docId);
+        var source = config?.Descriptors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        return new Dictionary<string, string>(source, StringComparer.OrdinalIgnoreCase);
+    }
 
-        // Raven deserializes Dictionary<string,string> using Ordinal comparer by default.
-        // Re-wrap with OrdinalIgnoreCase so lookups are case-insensitive everywhere.
-        return new Dictionary<string, string>(loaded ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Sets or updates a single global need descriptor. Creates the config document if it does not exist.
+    /// </summary>
+    public async Task SetNeedDescriptorAsync(IAsyncDocumentSession session, string needName, string descriptor)
+    {
+        const string docId = "config/need-descriptors";
+        var config = await session.LoadAsync<NeedDescriptorsConfig>(docId) ?? new NeedDescriptorsConfig { Id = docId };
+        config.Descriptors[needName.Trim()] = descriptor.Trim();
+        await session.StoreAsync(config, docId);
     }
 
     public async Task LogEventAsync(IAsyncDocumentSession session, Event @event)
@@ -544,7 +577,28 @@ public class CampaignRepository
     /// </summary>
     public void SanitizeForToolResponse(object? value) => JsonSanitizer.SanitizeForToolResponse(value);
 
-    public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore) { lore.LastUpdated = DateTime.UtcNow; await session.StoreAsync(lore); }
+    public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore)
+    {
+        if (string.IsNullOrWhiteSpace(lore.Id))
+            throw new ArgumentException("Lore.Id is required for upsert.");
+
+        lore.LastUpdated = DateTime.UtcNow;
+
+        var existing = await session.LoadAsync<Lore>(lore.Id);
+        if (existing != null)
+        {
+            existing.Title = lore.Title;
+            existing.Content = lore.Content;
+            existing.Tags = lore.Tags ?? [];
+            existing.Keywords = lore.Keywords ?? [];
+            existing.Category = lore.Category;
+            existing.LastUpdated = lore.LastUpdated;
+        }
+        else
+        {
+            await session.StoreAsync(lore);
+        }
+    }
 
     public async Task<IEnumerable<Lore>> QueryLoreAsync(IAsyncDocumentSession session, string? query, string[]? tags, string? category, int limit = 5)
     {
@@ -557,9 +611,28 @@ public class CampaignRepository
 
     public async Task UpsertLocationAsync(IAsyncDocumentSession session, Location location)
     {
+        if (string.IsNullOrWhiteSpace(location.Id))
+            throw new ArgumentException("Location.Id is required for upsert.");
+
         SanitizeLocation(location);
         location.LastUpdated = DateTime.UtcNow;
-        await session.StoreAsync(location);
+
+        var existing = await session.LoadAsync<Location>(location.Id);
+        if (existing != null)
+        {
+            // Mutate the tracked entity (safest with optimistic concurrency).
+            existing.Name = location.Name;
+            existing.Description = location.Description;
+            existing.Type = location.Type;
+            existing.ParentLocationId = location.ParentLocationId;
+            existing.Exits = location.Exits ?? [];
+            existing.Metadata = location.Metadata ?? [];
+            existing.LastUpdated = location.LastUpdated;
+        }
+        else
+        {
+            await session.StoreAsync(location);
+        }
     }
 
     public async Task<IEnumerable<Location>> QueryLocationsAsync(IAsyncDocumentSession session, string? query, LocationType? type = null, string? parentId = null, int limit = 10)
@@ -575,9 +648,32 @@ public class CampaignRepository
 
     public async Task UpsertRumorAsync(IAsyncDocumentSession session, Rumor rumor)
     {
+        if (string.IsNullOrWhiteSpace(rumor.Id))
+            throw new ArgumentException("Rumor.Id is required for upsert.");
+
         rumor.LastUpdated = DateTime.UtcNow;
-        if (rumor.DayCreated == 0) { var t = await GetTimeAsync(session); rumor.DayCreated = t.TotalDaysElapsed; rumor.LastStateChangeDay = t.TotalDaysElapsed; }
-        await session.StoreAsync(rumor);
+        if (rumor.DayCreated == 0)
+        {
+            var t = await GetTimeAsync(session);
+            rumor.DayCreated = t.TotalDaysElapsed;
+            rumor.LastStateChangeDay = t.TotalDaysElapsed;
+        }
+
+        var existing = await session.LoadAsync<Rumor>(rumor.Id);
+        if (existing != null)
+        {
+            existing.Subject = rumor.Subject;
+            existing.CurrentText = rumor.CurrentText;
+            existing.State = rumor.State;
+            existing.RegionLocationId = rumor.RegionLocationId;
+            existing.DayCreated = rumor.DayCreated;
+            existing.LastStateChangeDay = rumor.LastStateChangeDay;
+            existing.LastUpdated = rumor.LastUpdated;
+        }
+        else
+        {
+            await session.StoreAsync(rumor);
+        }
     }
 
     public async Task<IEnumerable<Rumor>> QueryRumorsAsync(IAsyncDocumentSession session, string? query, string? regionId = null, RumorState? state = null, int limit = 5)
@@ -600,8 +696,24 @@ public class CampaignRepository
 
     public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item)
     {
+        if (string.IsNullOrWhiteSpace(item.Id))
+            throw new ArgumentException("Item.Id is required for upsert.");
+
         SanitizeItem(item);
         item.LastUpdated = DateTime.UtcNow;
-        await session.StoreAsync(item);
+
+        var existing = await session.LoadAsync<Item>(item.Id);
+        if (existing != null)
+        {
+            existing.Name = item.Name;
+            existing.Description = item.Description;
+            existing.Properties = item.Properties ?? [];
+            existing.HolderId = item.HolderId;
+            existing.LastUpdated = item.LastUpdated;
+        }
+        else
+        {
+            await session.StoreAsync(item);
+        }
     }
 }

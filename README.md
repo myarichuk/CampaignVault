@@ -10,36 +10,101 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 - **Situational Awareness**: Every tool response includes `WorldPressure`—proactive alerts about ticking clocks and background events.
 - **Unified Fuzzy Search**: Search across lore, characters, and locations in one shot.
 
-## Core Tool Surface (Recommended Workflow)
+## Core Tool Surface
 
-| Tool              | Purpose                                      | Notes |
-|-------------------|----------------------------------------------|-------|
-| `get_world_state` | Session kickoff (time + pressure + rumors)   | Call at the start of every session |
-| `get_scene`       | Rich scene view (NPCs + items + summaries)   | Primary exploration tool |
-| `get_npc_context` | Deep psychological + history view for an NPC | Use before major roleplay |
-| `commit`          | **Primary reliable write path**              | Atomic batch of typed changes (including `activity`) |
-| `advance_world`   | Time passage + background simulation         | Runs needs, rumor decay, schedule evaluation |
-| `search_world`    | Unified fuzzy search                         | Characters, Locations, Lore |
-| `recall_history`  | Semantic memory over past events             | — |
-| `get_npc_needs`   | Quick view of an NPC's current needs + descriptors | Includes merged global descriptors |
-| `get_need_descriptors` | List all globally defined need descriptors | Use with `define_need_descriptor` for world-building |
+| Tool                   | Purpose                                           | Primary Usage |
+|------------------------|---------------------------------------------------|---------------|
+| `get_world_state`      | Session kickoff (time + pressure + rumors)        | Start of every session |
+| `get_scene`            | Rich scene view (NPCs + behavioral summaries + items + rumors) | When entering a location |
+| `get_npc_context`      | Deep psychological profile + recent history       | Before major NPC roleplay |
+| `commit`               | **Universal atomic write tool**                   | End of every narrative beat (combat, conversation, discovery, etc.) |
+| `advance_world`        | Time passage + full background simulation         | Travel, long rests, downtime |
+| `search_world`         | Unified fuzzy search across everything            | Discovery / avoiding duplicates |
+| `recall_history`       | Semantic search over past events                  | "What happened last time...?" |
+| `get_npc_needs`        | Current needs + merged descriptors for an NPC     | Quick psychological read |
+| `get_need_descriptors` | List globally defined need descriptions           | Before introducing new need types |
 
-**World Builder / Seeding tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These are now strongly typed. They remain less reliable with Grok Web (the client often uses legacy parameter names 'c'/'l' due to caching when the connector was added). Prefer `commit` (with `ActivityChange` where relevant) for most ongoing work and many seeding tasks. Use `define_need_descriptor` + `get_need_descriptors` to build a shared vocabulary of custom need descriptions.
+**World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). See the full **LLM System Instructions** section below for detailed guidance.
 
-## Recommended DM Workflow
+See the dedicated **LLM System Instructions** section for a ready-to-use system prompt block.
 
-Add guidance similar to this to your LLM system prompt:
+## LLM System Instructions (Recommended for System Prompts)
 
-> You are the Dungeon Master running a persistent living world using **CampaignVault**.
->
-> **Core Loop:**
-> 1. Start every session with `get_world_state`.
-> 2. When the party moves to a new area, use `get_scene`.
-> 3. For deep NPC roleplay, call `get_npc_context` (and `get_npc_needs`). Use `get_need_descriptors` to discover globally defined need descriptions.
-> 4. At the end of scenes, use `commit` with a batch of changes. Use the `activity` change type when narrative implies an NPC has moved or changed what they are doing.
-> 5. For travel, long rests, or downtime, call `advance_world` (this runs background simulation).
->
-> Prefer `commit` (especially `ActivityChange`) over the `upsert_*` tools for ongoing play, as `commit` is the most reliable mutation path across different MCP clients.
+When using CampaignVault as an LLM Dungeon Master, paste the following (or a version of it) into your system prompt. This captures the intended usage patterns and mental model for the MCP.
+
+```markdown
+You are running a persistent, reactive living world using the **CampaignVault** MCP server.
+
+### Core Philosophy
+CampaignVault is not a passive database. It is a **living world simulation engine**.
+- NPCs have internal drives (needs, wants, fears, schedules, relationships, moods).
+- Time matters. The world continues to evolve when you call `advance_world`.
+- The engine provides synthesized behavioral context so you don't have to do all the interpretation yourself.
+- Changes should feel atomic and consequential.
+
+### Sacred Session Loop (Follow This Strictly)
+1. **Start every session** with `get_world_state` (pass the party's current location ID).
+2. **When the party enters a new significant location**, call `get_scene`.
+3. **For deep roleplay** with an NPC, call `get_npc_context` (and often `get_npc_needs`).
+4. **At the end of every meaningful narrative beat** (conversation, combat round(s), discovery, social interaction, etc.), call `commit`.
+5. **For travel, long rests, or significant downtime**, call `advance_world`.
+
+### The Golden Rule: Use `commit` as Your Primary Mutation Tool
+- `commit` is the **universal and most reliable write tool**.
+- It accepts a batch of typed changes in a single atomic transaction.
+- Supported change types: `event`, `activity`, `need`, `relationship`, `mood`, `hp`, `item`, `status`, `rumor`, `attribute`.
+- **Use `activity` changes liberally.** Whenever an NPC moves or starts doing something new because of what just happened, record it with an `activity` change. This keeps `get_scene` accurate.
+- Bundle as much as possible into one `commit` call at the end of a scene rather than making many small updates.
+
+Example strong pattern inside `commit`:
+- One `event` describing what just occurred
+- One or more `activity` updates for NPCs whose behavior changed
+- `relationship` deltas, `need` adjustments, `mood` changes, etc.
+
+### Exploration & Awareness Tools
+- `get_scene` → Your main tool for "what does the party see and who is here?"
+- `get_world_state` → Current time, active rumors under pressure, recent history.
+- `recall_history` → Semantic search over past events ("what happened the last time we were in this village?").
+- `search_world` → Unified fuzzy search across characters, locations, and lore.
+
+### NPC Psychology & Needs System
+- The needs system is intentionally **open-ended**. There is no fixed list.
+- Use `get_need_descriptors` to see globally defined need types.
+- Use `define_need_descriptor` when you introduce a new important need type (e.g. "homesickness", "duty", "paranoia").
+- Global descriptors are automatically merged into `get_scene`, `get_npc_context`, and `get_npc_needs` (per-NPC descriptors win).
+- Richly describe key NPCs using Wants, Fears, Knows, custom Needs + NeedDescriptors, Schedules, and Relationships when first creating them.
+
+### World Building vs. Play
+- During **actual play**: Strongly prefer `commit` (with `activity` changes) over the `upsert_*` tools.
+- The `upsert_character`, `upsert_location`, and `upsert_lore` tools are primarily for **initial world seeding** or major structural changes.
+- When using `upsert_lore`, first call `search_world` to check for similar existing lore.
+
+### Important Operational Notes
+- The server uses optimistic concurrency. You may occasionally receive a `StateDriftConflict` error. When this happens, re-fetch the relevant state (`get_scene`, `get_world_state`, or `get_npc_context`) and retry.
+- IDs are strings and follow loose conventions (e.g. `characters/elara-voss`, `locations/rusty-nail`). Both short legacy IDs and prefixed IDs may exist in the same world.
+- Always provide a clear `narrative` when calling `commit` or `advance_world`. This becomes part of the world's event history and pressure system.
+
+### Anti-Patterns to Avoid
+- Do not make many tiny individual updates. Batch them in `commit`.
+- Do not ignore `activity` changes — NPCs will appear to be in the wrong place in future `get_scene` calls.
+- Do not treat this like a simple CRUD database. Think in terms of **scenes**, **time**, and **consequences**.
+- Do not forget to advance time for long journeys or rests — the simulation will not run otherwise.
+
+You are the Dungeon Master. CampaignVault maintains authoritative state and runs the background simulation. Your job is to interpret the world, roleplay NPCs authentically using the psychological data provided, and drive the narrative forward through rich, atomic `commit` calls.
+```
+
+## The Open Psychological Model (Needs, Wants, Fears)
+
+The NPC "Mind" system is intentionally open-ended. There is no closed list of needs.
+
+- Discover needs at runtime via `get_npc_needs`, `get_scene`, `get_npc_context`, and `get_need_descriptors`.
+- Use `define_need_descriptor` to create **global** shared descriptions for custom needs. These are automatically merged into NPC views (per-NPC descriptors override).
+- Freely invent narrative-appropriate needs (`wanderlust`, `duty`, `guilt`, `debt_pressure`, etc.) and provide human-readable `NeedDescriptors`.
+- For initial world building, the `upsert_*` tools exist. In practice, many users find `commit` (with rich `EventOccurred` + `RelationshipChange` + `ActivityChange` + `NeedChange`) to be the more reliable way to evolve the world during play.
+
+Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom needs + descriptors, Schedule + Routines, equipment via Items). The simulation and behavioral synthesis will make much better use of that data than shallow characters.
+
+**Global Need Descriptors**: Use `define_need_descriptor` to create shared, reusable descriptions for custom needs (e.g. "homesickness"). These are stored globally and automatically appear (merged) in `get_npc_needs`, `get_npc_context`, and `get_scene`. Use the companion `get_need_descriptors` tool to list everything that has been defined.
 
 ## The Open Psychological Model (Needs, Wants, Fears)
 
@@ -144,7 +209,7 @@ See the Deployment section for how to set `BEARER_TOKEN` on Fly.io.
 - `commit` now exposes the full discriminated-union `WorldChange[]` shape directly (with rich per-variant and per-field `[Description]` annotations + `$type` discriminators). This is the clean .NET / STJ polymorphic form Gemini and similar models recommend. A non-exposed `Commit(string json)` fallback remains for clients that still struggle with complex input schemas.
 - Use the `activity` change type inside `commit` when narrative implies an NPC should have a new `CurrentActivity` / `CurrentLocationId` (this keeps `get_scene` consistent without requiring `advance_world`).
 
-**Recommended seeding / world-building pattern** (put this in your LLM instructions):
+**Recommended seeding / world-building pattern**:
 
 When introducing a new significant location or NPC, do as much as possible in a single `commit` call rather than multiple tool invocations. Example batch:
 
@@ -152,6 +217,6 @@ When introducing a new significant location or NPC, do as much as possible in a 
 - One or more `activity` changes to place NPCs where the narrative says they are
 - Relationship deltas, need adjustments, mood, etc.
 
-See the description of the `changes` parameter on the `commit` tool for a full copy-paste example.
+See the full **LLM System Instructions** section above (and the `commit` tool description) for detailed guidance and copy-paste examples.
 
 Full history of robustness improvements lives in the git log and the regression tests in `CampaignRepositoryTests.cs`.

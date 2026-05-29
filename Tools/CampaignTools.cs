@@ -439,18 +439,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
         return ExecuteAsync(async session =>
         {
-            const string docId = "config/need-descriptors";
-            var loaded = await session.LoadAsync<Dictionary<string, string>>(docId);
-
-            // Raven deserializes Dictionary<string,string> with Ordinal comparer.
-            // We must re-wrap it with OrdinalIgnoreCase to make key lookups case-insensitive.
-            var descriptors = new Dictionary<string, string>(loaded ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
-
-            descriptors[needName.Trim()] = descriptor.Trim();
-
-            // Store (or re-Store) the doc. The ExecuteAsync wrapper will call SaveChangesAsync on success.
-            await session.StoreAsync(descriptors, docId);
-
+            await repository.SetNeedDescriptorAsync(session, needName, descriptor);
             return new ToolResult<string>(true, $"Descriptor for '{needName}' stored globally.", $"Global descriptor persisted for '{needName}'. It will now appear (merged) in get_need_descriptors, get_npc_needs, get_npc_context, and get_scene.");
         });
     }
