@@ -14,30 +14,17 @@ public class Character
     
     public List<string> Status { get; set; } = [];
     
-    /// <summary>
-    /// LEGACY V3 field. Do not use for new code.
-    /// All relationship tracking now lives in <see cref="Mind.Relationships"/>.
-    /// </summary>
-    [Obsolete("Use Mind.Relationships instead. This is a legacy V3 field and will be removed in a future version.")]
-    public List<Relationship> Relationships { get; set; } = [];
-
-    /// <summary>
-    /// LEGACY V3 field. Do not use for new code.
-    /// Knowledge tracking now lives in <see cref="Mind.Knows"/>.
-    /// </summary>
-    [Obsolete("Use Mind.Knows instead. This is a legacy V3 field and will be removed in a future version.")]
-    public List<KnowledgeEdge> KnowledgeGraph { get; set; } = [];
-
-    /// <summary>
-    /// LEGACY V3 field. Do not use for new code.
-    /// NPC needs/tiredness/etc. now live in <see cref="Mind.Needs"/>.
-    /// </summary>
-    [Obsolete("Use Mind.Needs instead. This is a legacy V3 field and will be removed in a future version.")]
-    public Dictionary<string, int> Needs { get; set; } = [];
-    
     public string? Notes { get; set; }
     
     public Schedule? Schedule { get; set; }
+
+    /// <summary>
+    /// Populated by ScheduleEvaluationRule and agency rules during AdvanceWorld.
+    /// Represents where the NPC actually is and what they are doing right now.
+    /// Used to make GetScene return living, time-aware results instead of static schedule data.
+    /// </summary>
+    public string? CurrentLocationId { get; set; }
+    public string? CurrentActivity { get; set; }
 
     public NpcMind Mind { get; set; } = new();
     
@@ -61,6 +48,13 @@ public class NpcMind
         ["arousal"] = 10f
     };
 
+    /// <summary>
+    /// Optional human/LLM-readable descriptions for the keys in Needs.
+    /// Example: "homesickness" -> "Longing for family and familiar places. High values cause distraction and poor sleep."
+    /// This makes the open needs system discoverable and self-documenting.
+    /// </summary>
+    public Dictionary<string, string> NeedDescriptors { get; set; } = [];
+
     // Attributes
     public float Willpower { get; set; } = 75f;
     public float Temperature { get; set; } = 37f;
@@ -68,10 +62,6 @@ public class NpcMind
 
     public float LastSimulatedDay { get; set; }
 }
-
-public record Relationship(string Target, string Description);
-
-public record KnowledgeEdge(string TargetId, string Description);
 
 public class Schedule
 {
