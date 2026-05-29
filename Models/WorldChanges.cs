@@ -5,11 +5,11 @@ namespace CampaignVault.Models;
 
 /// <summary>
 /// Base for all atomic, composable world mutations that can be sent to <c>commit</c>.
-/// The LLM must include the exact <c>$type</c> discriminator so the server knows which concrete change to apply.
+/// The LLM must include the exact <c>type</c> discriminator so the server knows which concrete change to apply.
 /// Mix as many different change kinds as needed in a single call for atomicity.
 /// </summary>
-[Description("Base for all atomic world mutations sent via the 'commit' tool. Every item must include the exact $type discriminator. Mix freely (hp + activity + relationship + need + event, etc.).")]
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+[Description("Base for all atomic world mutations sent via the 'commit' tool. Every item must include the exact type discriminator. Mix freely (hp + activity + relationship + need + event, etc.).")]
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(HpChange), "hp")]
 [JsonDerivedType(typeof(ItemTransfer), "item")]
 [JsonDerivedType(typeof(StatusChange), "status")]
