@@ -335,7 +335,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
 
         var locId = "locations/test-scene-loc-" + Guid.NewGuid();
-        await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Test Scene Loc", Type = "room" });
+        await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Test Scene Loc", Type = LocationType.Room });
 
         var npcId = "npcs/sim-npc-" + Guid.NewGuid();
         var npc = new Character
@@ -698,6 +698,43 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     // ============================================================
     // REGRESSION TESTS FOR CLIENT COMPATIBILITY & RECENT FIXES
     // ============================================================
+
+    [Fact]
+    public async Task Commit_Handles_OutOfOrder_Polymorphic_JSON()
+    {
+        // This verifies the fix for AllowOutOfOrderMetadataProperties = true.
+        // If the 'type' property is not FIRST, STJ normally fails.
+        var repo = new CampaignRepository(_store);
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertCharacterAsync(session, new Character { Id = "npcs/order-test", Name = "Order Test", CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        // Manually construct JSON where 'type' is at the end
+        var outOfOrderJson = """
+        [
+          {
+            "characterId": "npcs/order-test",
+            "delta": 5,
+            "type": "hp"
+          }
+        ]
+        """;
+
+        var result = await tools.Commit(outOfOrderJson, "Testing property order");
+        
+        Assert.True(result.Success, result.Summary);
+        Assert.Contains("HP adjusted", result.Data!.Summary[0]);
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var npc = await session.LoadAsync<Character>("npcs/order-test");
+            Assert.Equal(15, npc.CurrentHp);
+        }
+    }
 
     [Fact]
     public void Rumor_TruthValue_Is_Proper_Enum_Not_Stringly_Typed()

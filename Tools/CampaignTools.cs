@@ -144,7 +144,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
         // clients that choke on STJ-generated polymorphic oneOf schemas (certain Gemini CLI
         // versions, strict validators, some CLIs) can still successfully call the tool.
         var typedChanges = new List<WorldChange>(changes.Length);
-        var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowOutOfOrderMetadataProperties = true };
         var parseErrors = new List<string>();
 
         foreach (var (elem, idx) in changes.Select((e, i) => (e, i)))
@@ -303,7 +303,11 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
             var behavioralSummary = behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
 
             var knownNeeds = npc.Mind?.Needs ?? new Dictionary<string, float>();
-            var needDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>();
+            // Merge global + per-NPC descriptors (per-NPC wins) for full context
+            var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
+            var npcDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>();
+            var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in npcDescriptors) mergedDescriptors[kv.Key] = kv.Value;
 
             var context = new NpcContextView
             {
@@ -312,7 +316,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
                 RecentInteractions = npcEvents,
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = knownNeeds,
-                NeedDescriptors = needDescriptors
+                NeedDescriptors = mergedDescriptors
             };
 
             return new ToolResult<NpcContextView>(true, context, $"Psychological context for {npc.Name} retrieved.");
@@ -406,12 +410,20 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             var npc = await repository.GetCharacterAsync(session, characterId);
             if (npc == null) return new ToolResult<NpcNeedsView>(false, Error: "NotFound");
 
+            // Merge global descriptors (from DefineNeedDescriptor) with per-NPC ones.
+            // Per-NPC descriptors take precedence on conflicts.
+            var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
+            var npcDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>();
+            var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in npcDescriptors)
+                mergedDescriptors[kv.Key] = kv.Value;
+
             var view = new NpcNeedsView
             {
                 CharacterId = npc.Id,
                 Name = npc.Name,
                 KnownNeeds = npc.Mind?.Needs ?? new Dictionary<string, float>(),
-                NeedDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>()
+                NeedDescriptors = mergedDescriptors
             };
 
             return new ToolResult<NpcNeedsView>(true, view, $"Needs for {npc.Name} retrieved.");
@@ -419,7 +431,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool]
-    [Description("WORLD BUILDER TOOL: Define or update a descriptor for a need type. The descriptor is stored globally and can be referenced by NPCs (via Mind.NeedDescriptors) or surfaced by get_npc_needs / get_npc_context. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
+    [Description("WORLD BUILDER TOOL: Define or update a descriptor for a need type. Stored globally and automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list all globally defined ones. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
     public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor)
     {
         if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))
@@ -428,15 +440,33 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         return ExecuteAsync(async session =>
         {
             const string docId = "config/need-descriptors";
-            var descriptors = await session.LoadAsync<Dictionary<string, string>>(docId) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var loaded = await session.LoadAsync<Dictionary<string, string>>(docId);
+
+            // Raven deserializes Dictionary<string,string> with Ordinal comparer.
+            // We must re-wrap it with OrdinalIgnoreCase to make key lookups case-insensitive.
+            var descriptors = new Dictionary<string, string>(loaded ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
 
             descriptors[needName.Trim()] = descriptor.Trim();
 
             // Store (or re-Store) the doc. The ExecuteAsync wrapper will call SaveChangesAsync on success.
             await session.StoreAsync(descriptors, docId);
 
-            return new ToolResult<string>(true, $"Descriptor for '{needName}' stored globally.", $"Need descriptor persisted for '{needName}'. NPCs can now reference it via Mind.NeedDescriptors or future simulation rules.");
+            return new ToolResult<string>(true, $"Descriptor for '{needName}' stored globally.", $"Global descriptor persisted for '{needName}'. It will now appear (merged) in get_need_descriptors, get_npc_needs, get_npc_context, and get_scene.");
         });
+    }
+
+    [McpServerTool]
+    [Description("DISCOVERABILITY TOOL: Lists all globally defined need descriptors (created via define_need_descriptor). Use this to see what shared descriptors exist before assigning them to specific NPCs.")]
+    public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors()
+    {
+        return ExecuteAsync(async session =>
+        {
+            var descriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
+            return new ToolResult<Dictionary<string, string>>(true, descriptors, 
+                descriptors.Count > 0 
+                    ? $"Retrieved {descriptors.Count} global need descriptors."
+                    : "No global need descriptors have been defined yet. Use define_need_descriptor to create some.");
+        }, saveChanges: false);
     }
 }
 
