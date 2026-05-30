@@ -158,7 +158,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
         
         await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 100 });
-        await repo.UpsertRumorAsync(session, new Rumor { Id = "rumors/1", Subject = "Aging Rumor", LastStateChangeDay = 100, RegionLocationId = "loc" });
+        await repo.UpsertRumorAsync(session, new Rumor { Id = "rumors/1", Subject = "Aging Rumor", LastStateChangeDay = 100, RegionLocationId = "loc", State = RumorState.Peak });
         await session.SaveChangesAsync();
 
         // Wait for indexing (with timeout to prevent CI hangs)
@@ -192,7 +192,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // Time + rumor (existing behavior)
         await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 100 });
-        await repo.UpsertRumorAsync(session, new Rumor { Id = "rumors/sim-1", Subject = "Simulator Persistence Rumor", LastStateChangeDay = 100, RegionLocationId = "loc" });
+        await repo.UpsertRumorAsync(session, new Rumor { Id = "rumors/sim-1", Subject = "Simulator Persistence Rumor", LastStateChangeDay = 100, RegionLocationId = "loc", State = RumorState.Peak });
 
         // NPC with Schedule (required for simulator load) + Mind.Needs (the mutation target)
         var npcId = "npcs/sim-npc-" + Guid.NewGuid();
@@ -833,6 +833,144 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.True(root.TryGetProperty("$type", out var dtProp) && dtProp.GetString() == "hp");
         Assert.True(root.TryGetProperty("characterId", out var cProp) && cProp.GetString() == "test-char");
         Assert.True(root.TryGetProperty("delta", out var dProp) && dProp.GetInt32() == 20);
+    }
+
+    [Fact]
+    public async Task HP_Clamping_Enforces_Bounds()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var id = "npcs/hpclamp-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session, new Character 
+        { 
+            Id = id, 
+            Name = "Clampy", 
+            CurrentHp = 50, 
+            MaxHp = 100 
+        });
+        await session.SaveChangesAsync();
+
+        // 1. Heal above MaxHp
+        var resultHeal = await repo.StageChangesAsync(session, new WorldChange[] 
+        { 
+            new HpChange { CharacterId = id, Delta = 60 } 
+        });
+        Assert.True(resultHeal.Success);
+        
+        var reloaded1 = await session.LoadAsync<Character>(id);
+        Assert.Equal(100, reloaded1.CurrentHp);
+
+        // 2. Damage below 0
+        var resultDamage = await repo.StageChangesAsync(session, new WorldChange[] 
+        { 
+            new HpChange { CharacterId = id, Delta = -120 } 
+        });
+        Assert.True(resultDamage.Success);
+
+        var reloaded2 = await session.LoadAsync<Character>(id);
+        Assert.Equal(0, reloaded2.CurrentHp);
+    }
+
+    [Fact]
+    public async Task AttributeChange_Applies_Delta_When_IsDelta_True()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var id = "npcs/attrdelta-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session, new Character
+        {
+            Id = id,
+            Name = "Attribute Delta NPC",
+            Mind = new NpcMind { Morale = 50f, Willpower = 60f }
+        });
+        await session.SaveChangesAsync();
+
+        // Commit with IsDelta = true
+        var result = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new AttributeChange { CharacterId = id, Attribute = "morale", Value = -20f, IsDelta = true },
+            new AttributeChange { CharacterId = id, Attribute = "willpower", Value = 15f, IsDelta = true },
+            new AttributeChange { CharacterId = id, Attribute = "custom", Value = 10f, IsDelta = true }
+        });
+        Assert.True(result.Success);
+        await session.SaveChangesAsync();
+
+        var npc = await session.LoadAsync<Character>(id);
+        Assert.Equal(30f, npc.Mind.Morale);
+        Assert.Equal(75f, npc.Mind.Willpower);
+        Assert.Equal(10f, npc.Mind.Attributes["custom"]);
+
+        // Commit absolute override (IsDelta = false)
+        var resultAbsolute = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new AttributeChange { CharacterId = id, Attribute = "morale", Value = 90f, IsDelta = false },
+            new AttributeChange { CharacterId = id, Attribute = "custom", Value = 45f, IsDelta = false }
+        });
+        Assert.True(resultAbsolute.Success);
+        await session.SaveChangesAsync();
+
+        var npc2 = await session.LoadAsync<Character>(id);
+        Assert.Equal(90f, npc2.Mind.Morale);
+        Assert.Equal(45f, npc2.Mind.Attributes["custom"]);
+    }
+
+    [Fact]
+    public async Task Commit_Returns_Success_False_On_Missing_Character()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var missingId = "npcs/does-not-exist-" + Guid.NewGuid();
+
+        var result = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new HpChange { CharacterId = missingId, Delta = -5 }
+        });
+
+        Assert.False(result.Success);
+        Assert.Contains("WARNING: Character", result.Summary[0]);
+    }
+
+    [Fact]
+    public async Task RumorDecayRule_Escalates_Nascent_Or_Spreading_Rumors_To_Peak()
+    {
+        var engine = new DefaultSimulationEngine(
+            new ISimulationRule[] { new RumorDecayRule() },
+            null);
+        var repo = new CampaignRepository(_store, engine,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
+            new DefaultBehaviorSynthesizer());
+        using var session = _store.OpenAsyncSession();
+
+        await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 100 });
+        await repo.UpsertRumorAsync(session, new Rumor 
+        { 
+            Id = "rumors/nascent-test", 
+            Subject = "Nascent Rumor", 
+            LastStateChangeDay = 100, 
+            RegionLocationId = "loc",
+            State = RumorState.Nascent 
+        });
+        await session.SaveChangesAsync();
+
+        // Wait for indexing (with timeout)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            await Task.Delay(50);
+        }
+
+        var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon);
+        await session.SaveChangesAsync();
+
+        Assert.Contains(result.SimulatorEvents, e => e.Contains("has reached peak circulation"));
+        
+        var reloaded = await session.LoadAsync<Rumor>("rumors/nascent-test");
+        Assert.Equal(RumorState.Peak, reloaded.State);
     }
 
 }

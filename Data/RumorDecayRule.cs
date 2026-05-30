@@ -25,13 +25,24 @@ public sealed class RumorDecayRule : ISimulationRule
 
             if (daysSinceUpdate > 14)
             {
-                deltas.Add(new RumorEvolves
+                if (rumor.State == RumorState.Nascent || rumor.State == RumorState.Spreading)
                 {
-                    RumorId = rumor.Id,
-                    NewState = RumorState.Fading
-                });
-
-                narratives.Add($"The rumor '{rumor.Subject}' is starting to fade from public memory.");
+                    deltas.Add(new RumorEvolves
+                    {
+                        RumorId = rumor.Id,
+                        NewState = RumorState.Peak
+                    });
+                    narratives.Add($"The rumor '{rumor.Subject}' has reached peak circulation.");
+                }
+                else
+                {
+                    deltas.Add(new RumorEvolves
+                    {
+                        RumorId = rumor.Id,
+                        NewState = RumorState.Fading
+                    });
+                    narratives.Add($"The rumor '{rumor.Subject}' is starting to fade from public memory.");
+                }
             }
         }
 

@@ -72,6 +72,7 @@ public class CampaignRepository
         _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes", changes.Length);
 
         var summary = new List<string>();
+        bool success = true;
         
         // 1. Pre-identify and batch-load all required entities to minimize round-trips
         var characterIds = new HashSet<string>();
@@ -85,6 +86,7 @@ public class CampaignRepository
             if (change is AttributeChange ac) characterIds.Add(ac.CharacterId);
             if (change is ActivityChange act) characterIds.Add(act.CharacterId);
             if (change is MoodChange mc) characterIds.Add(mc.CharacterId);
+            if (change is HpChange hc) characterIds.Add(hc.CharacterId);
         }
 
         var characters = await session.LoadAsync<Character>(characterIds);
@@ -98,8 +100,17 @@ public class CampaignRepository
                 switch (change)
                 {
                     case HpChange hp:
-                        session.Advanced.Increment<Character, int>(hp.CharacterId, x => x.CurrentHp, hp.Delta);
-                        summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta}");
+                        if (characters.TryGetValue(hp.CharacterId, out var hpChar) && hpChar != null)
+                        {
+                            var maxHp = hpChar.MaxHp > 0 ? hpChar.MaxHp : int.MaxValue;
+                            hpChar.CurrentHp = Math.Clamp(hpChar.CurrentHp + hp.Delta, 0, maxHp);
+                            summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {hpChar.CurrentHp}/{hpChar.MaxHp})");
+                        }
+                        else
+                        {
+                            summary.Add($"WARNING: Character {hp.CharacterId} not found during HpChange.");
+                            success = false;
+                        }
                         break;
 
                     case ItemTransfer item:
@@ -154,6 +165,7 @@ public class CampaignRepository
                         else
                         {
                             summary.Add($"WARNING: Character {nc.CharacterId} not found or has no Mind during NeedChange.");
+                            success = false;
                         }
                         break;
 
@@ -164,18 +176,18 @@ public class CampaignRepository
                             switch (key)
                             {
                                 case "willpower":
-                                    attrChar.Mind.Willpower = Math.Clamp(attr.Value, 0f, 100f);
+                                    attrChar.Mind.Willpower = Math.Clamp(attr.IsDelta ? attrChar.Mind.Willpower + attr.Value : attr.Value, 0f, 100f);
                                     break;
                                 case "temperature":
-                                    attrChar.Mind.Temperature = Math.Clamp(attr.Value, -50f, 100f);
+                                    attrChar.Mind.Temperature = Math.Clamp(attr.IsDelta ? attrChar.Mind.Temperature + attr.Value : attr.Value, -50f, 100f);
                                     break;
                                 case "morale":
-                                    attrChar.Mind.Morale = Math.Clamp(attr.Value, 0f, 100f);
+                                    attrChar.Mind.Morale = Math.Clamp(attr.IsDelta ? attrChar.Mind.Morale + attr.Value : attr.Value, 0f, 100f);
                                     break;
                                 default:
                                     // Open custom attribute (matches the documented "arbitrary" design in AttributeChange)
                                     var current = attrChar.Mind.Attributes.GetValueOrDefault(key, 0f);
-                                    attrChar.Mind.Attributes[key] = Math.Clamp(attr.Value, 0f, 100f);
+                                    attrChar.Mind.Attributes[key] = Math.Clamp(attr.IsDelta ? current + attr.Value : attr.Value, 0f, 100f);
                                     break;
                             }
                             summary.Add($"Attribute '{attr.Attribute}' set for {attr.CharacterId}");
@@ -188,6 +200,11 @@ public class CampaignRepository
                             moodChar.Mind.CurrentMood = mood.NewMood;
                             summary.Add($"Mood set to '{mood.NewMood}' for {mood.CharacterId}");
                         }
+                        else
+                        {
+                            summary.Add($"WARNING: Character {mood.CharacterId} not found or has no Mind during MoodChange.");
+                            success = false;
+                        }
                         break;
 
                     case ActivityChange act:
@@ -199,10 +216,16 @@ public class CampaignRepository
                                 actChar.CurrentLocationId = act.NewLocationId;
                             summary.Add($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");
                         }
+                        else
+                        {
+                            summary.Add($"WARNING: Character {act.CharacterId} not found during ActivityChange.");
+                            success = false;
+                        }
                         break;
 
                     default:
                         summary.Add($"WARNING: Unhandled change type: {change?.GetType().Name}");
+                        success = false;
                         break;
                 }
             }
@@ -210,11 +233,12 @@ public class CampaignRepository
             {
                 _logger.LogError(ex, "Error processing change of type {ChangeType}", change?.GetType().Name);
                 summary.Add($"ERROR: Failed to process {change?.GetType().Name}: {ex.Message}");
+                success = false;
             }
         }
 
         _logger.LogInformation("Commit applied {Processed} changes", changes.Length);
-        return new CommitResult { ChangesProcessed = changes.Length, Summary = summary };
+        return new CommitResult { Success = success, ChangesProcessed = changes.Length, Summary = summary };
     }
 
     // --- V4 Core: Scene Synthesis ---
@@ -247,7 +271,7 @@ public class CampaignRepository
         // Fallback: if the index hasn't caught up (common in fast tests), load recent characters and filter client-side
         if (npcsFromIndex.Count == 0)
         {
-            var recentChars = await session.Query<Character>().Take(50).ToListAsync();
+            var recentChars = await session.Query<Character>().Take(200).ToListAsync();
             npcsFromIndex = recentChars
                 .Where(x => x.Schedule != null &&
                             (targetIds.Contains(x.Schedule.DefaultLocationId) ||

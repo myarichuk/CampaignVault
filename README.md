@@ -10,6 +10,11 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 - **Situational Awareness**: Every tool response includes `WorldPressure`—proactive alerts about ticking clocks and background events.
 - **Unified Fuzzy Search**: Search across lore, characters, and locations in one shot.
 
+## Recent Updates
+- **Correctness & Reliability**: `HpChange` now properly clamps to `MaxHp`, `AttributeChange` disambiguates deltas from absolute assignments via `isDelta`, and `RumorDecayRule` escalates nascent rumors instead of blindly fading them.
+- **Fail-Fast Error Handling**: `commit` results now surface a `Success` flag and properly report warnings when attempting to mutate non-existent characters.
+- **Performance**: Upgraded `GetScene` index fallback floors for enhanced accuracy during cold-starts or fast tests.
+
 ## Core Tool Surface
 
 | Tool                   | Purpose                                           | Primary Usage |

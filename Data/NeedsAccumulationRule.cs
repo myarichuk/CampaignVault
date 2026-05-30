@@ -70,7 +70,8 @@ public sealed class NeedsAccumulationRule : ISimulationRule
                 {
                     CharacterId = npc.Id,
                     Attribute = "morale",
-                    Value = Math.Clamp(npc.Mind.Morale + moraleDrift, 0f, 100f)
+                    Value = moraleDrift,
+                    IsDelta = true
                 });
             }
         }

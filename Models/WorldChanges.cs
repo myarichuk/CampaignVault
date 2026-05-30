@@ -142,9 +142,13 @@ public class AttributeChange : WorldChange
     [JsonPropertyName("attribute")]
     public string Attribute { get; set; } = default!;
 
-    [Description("The new absolute value for the attribute (not a delta). The meaning is entirely narrative-driven.")]
+    [Description("The new absolute value for the attribute, unless IsDelta is true.")]
     [JsonPropertyName("value")]
     public float Value { get; set; }
+
+    [Description("If true, Value is treated as a delta to be added to the current attribute value instead of an absolute override.")]
+    [JsonPropertyName("isDelta")]
+    public bool IsDelta { get; set; }
 }
 
 /// <summary>
