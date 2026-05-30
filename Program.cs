@@ -111,6 +111,114 @@ var app = builder.Build();
 
 app.UseCors();
 
+// Middleware to normalize MCP tool call arguments for 'upsert_character', 'upsert_location', and 'upsert_lore'.
+// It automatically handles flattened properties (wrapping them under the expected parameter key)
+// and legacy wrapped parameter names ('c' and 'l' -> 'character' and 'location').
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "POST" &&
+        context.Request.ContentType != null &&
+        context.Request.ContentType.Contains("application/json"))
+    {
+        context.Request.EnableBuffering();
+        try
+        {
+            using (var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true))
+            {
+                var bodyText = await reader.ReadToEndAsync();
+                context.Request.Body.Position = 0;
+
+                if (!string.IsNullOrWhiteSpace(bodyText))
+                {
+                    var rootNode = System.Text.Json.Nodes.JsonNode.Parse(bodyText);
+                    if (rootNode is System.Text.Json.Nodes.JsonObject rootObj)
+                    {
+                        var method = rootObj["method"]?.ToString();
+                        if (method == "tools/call")
+                        {
+                            var paramsObj = rootObj["params"] as System.Text.Json.Nodes.JsonObject;
+                            var toolName = paramsObj?["name"]?.ToString();
+
+                            if (toolName == "upsert_location" || toolName == "upsert_character" || toolName == "upsert_lore")
+                            {
+                                var argumentsObj = paramsObj?["arguments"] as System.Text.Json.Nodes.JsonObject;
+                                if (argumentsObj != null)
+                                {
+                                    string expectedKey = toolName switch
+                                    {
+                                        "upsert_location" => "location",
+                                        "upsert_character" => "character",
+                                        "upsert_lore" => "lore",
+                                        _ => throw new InvalidOperationException()
+                                    };
+
+                                    string? legacyKey = toolName switch
+                                    {
+                                        "upsert_location" => "l",
+                                        "upsert_character" => "c",
+                                        _ => null
+                                    };
+
+                                    bool needsWrapping = false;
+                                    bool needsRename = false;
+                                    string? foundLegacyKey = null;
+
+                                    if (argumentsObj.ContainsKey(expectedKey))
+                                    {
+                                        // Already correctly wrapped
+                                    }
+                                    else if (legacyKey != null && argumentsObj.ContainsKey(legacyKey))
+                                    {
+                                        // Wrapped under legacy key, need to rename
+                                        needsRename = true;
+                                        foundLegacyKey = legacyKey;
+                                    }
+                                    else
+                                    {
+                                        // Flattened, need to wrap
+                                        needsWrapping = true;
+                                    }
+
+                                    if (needsRename && foundLegacyKey != null)
+                                    {
+                                        var value = argumentsObj[foundLegacyKey];
+                                        argumentsObj.Remove(foundLegacyKey);
+
+                                        var clonedValue = System.Text.Json.Nodes.JsonNode.Parse(value!.ToJsonString());
+                                        argumentsObj.Add(expectedKey, clonedValue);
+
+                                        var modifiedBodyText = rootObj.ToJsonString();
+                                        var modifiedBytes = System.Text.Encoding.UTF8.GetBytes(modifiedBodyText);
+                                        context.Request.Body = new System.IO.MemoryStream(modifiedBytes);
+                                    }
+                                    else if (needsWrapping)
+                                    {
+                                        var wrappedArgs = new System.Text.Json.Nodes.JsonObject();
+                                        var clonedArgs = System.Text.Json.Nodes.JsonNode.Parse(argumentsObj.ToJsonString());
+                                        wrappedArgs.Add(expectedKey, clonedArgs);
+
+                                        paramsObj!["arguments"] = wrappedArgs;
+
+                                        var modifiedBodyText = rootObj.ToJsonString();
+                                        var modifiedBytes = System.Text.Encoding.UTF8.GetBytes(modifiedBodyText);
+                                        context.Request.Body = new System.IO.MemoryStream(modifiedBytes);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            context.Request.Body.Position = 0;
+        }
+    }
+
+    await next();
+});
+
 // Timing-safe comparison for bearer tokens (prevents timing side-channel attacks).
 // Tokens are compared exactly (case-sensitive) per security best practice.
 static bool TimingSafeEquals(string? a, string? b)

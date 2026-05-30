@@ -377,7 +377,7 @@ public class CampaignRepository
             { 
                 Id = "events/" + Guid.NewGuid(), 
                 Summary = narrative, 
-                Category = "simulation",
+                Category = EventCategory.Simulation,
                 DayLogged = time.TotalDaysElapsed 
             });
         }
@@ -429,11 +429,11 @@ public class CampaignRepository
         return results;
     }
 
-    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, string? category, int limit = 10)
+    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, EventCategory? category, int limit = 10)
     {
         var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
-        if (!string.IsNullOrEmpty(category)) q = q.AndAlso().WhereEquals(x => x.Category, category);
+        if (category.HasValue) q = q.AndAlso().WhereEquals(x => x.Category, category.Value);
         var events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
         foreach (var ev in events) { if (ev.Details != null) ev.Details = SanitizeDetails(ev.Details); }
         return events;

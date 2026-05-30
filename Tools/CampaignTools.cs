@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using Raven.Client.Exceptions;
 using Raven.Client.Documents.Session;
+// ReSharper disable UnusedMember.Global
 
 namespace CampaignVault.Tools;
 
@@ -59,10 +60,10 @@ public class CampaignTools(CampaignRepository repository, INpcBehaviorSynthesize
         return result;
     }
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("KICKOFF TOOL: Call this at the start of every session to get the current time, active rumors, recent history, and current party location in one view.")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
-        [Description("The current ID of the location where the party is.")] string partyLocationId)
+        [Description("The current ID of the location where the party is (string type)")] string partyLocationId)
     {
         // Pure read: skip SaveChanges to avoid unnecessary write transactions and reduce surface for
         // RavenDB "active async task" / serialization issues during disposal.
@@ -83,20 +84,20 @@ public class CampaignTools(CampaignRepository repository, INpcBehaviorSynthesize
                 pressure.Add($"Rumor '{r.Subject}' has been spreading for {time.TotalDaysElapsed - r.LastStateChangeDay} days without resolution.");
             }
 
-            var agingEvents = await repository.QueryEventsAsync(session, null, "unresolved", 5);
+            var agingEvents = await repository.QueryEventsAsync(session, null, EventCategory.Unresolved, 5);
             foreach (var e in agingEvents)
             {
                 pressure.Add($"Unresolved thread: '{e.Summary}' ({time.TotalDaysElapsed - e.DayLogged} days old).");
             }
 
-            LocationSummary? locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
+            var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
             
             var view = new WorldStateView(time, rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)), events, locSummary, pressure);
             return new ToolResult<WorldStateView>(true, view, "Authoritative world state retrieved for session start.");
         }, saveChanges: false);
     }
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors.")]
     public Task<ToolResult<SceneView>> GetScene(
         [Description("The unique ID of the location.")] string locationId)
@@ -107,109 +108,42 @@ public class CampaignTools(CampaignRepository repository, INpcBehaviorSynthesize
         });
     }
 
-    [McpServerTool]
-    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. This is currently the most reliable mutation path across MCP clients. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, **Activity**). Use ActivityChange liberally to keep get_scene in sync with your narrative.")]
+    [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
+    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity). Use ActivityChange liberally to keep get_scene in sync with your narrative.")]
     public Task<ToolResult<CommitResult>> Commit(
-        [Description(@"Array of world changes. Each item must be a JSON object with a 'type' discriminator.
+        [Description(@"Array of world changes. Each item must be a JSON object with a '$type' discriminator.
 
-Supported types (exact values for type): hp, item, status, event, rumor, relationship, need, attribute, mood, activity.
-
-The server intentionally accepts this as JsonElement[] so that clients with strict or limited schema support (including some Gemini CLI versions) can still send native objects without fighting complex oneOf/polymorphic input schemas.
-
-Each object is then deserialized server-side using the rich definitions on the WorldChange subtypes (see the per-property descriptions on HpChange, ActivityChange, RelationshipChange, NeedChange, etc.).
+Supported types (exact values for $type): hp, item, status, event, rumor, relationship, need, attribute, mood, activity.
 
 === RECOMMENDED PATTERN (copy-paste friendly) ===
 When creating a new area + NPC from scratch, do it in ONE atomic commit:
 
 [
-  { ""type"": ""event"", ""summary"": ""The party arrives in the village of Thornwatch..."", ""category"": ""arrival"" },
-  { ""type"": ""activity"", ""characterId"": ""characters/bram-ironarm"", ""newActivity"": ""tending bar and watching the door"", ""newLocationId"": ""locations/rusty-nail"", ""reason"": ""Sergeant on duty tonight"" },
-  { ""type"": ""relationship"", ""sourceId"": ""characters/elara-voss"", ""targetId"": ""characters/bram-ironarm"", ""delta"": 5, ""reason"": ""Elara buys Bram a drink..."" },
-  { ""type"": ""need"", ""characterId"": ""characters/elara-voss"", ""need"": ""wanderlust"", ""delta"": 12 }
+  { ""$type"": ""event"", ""summary"": ""The party arrives in the village of Thornwatch..."", ""category"": ""Arrival"" },
+  { ""$type"": ""activity"", ""characterId"": ""characters/bram-ironarm"", ""newActivity"": ""tending bar and watching the door"", ""newLocationId"": ""locations/rusty-nail"", ""reason"": ""Sergeant on duty tonight"" },
+  { ""$type"": ""relationship"", ""sourceId"": ""characters/elara-voss"", ""targetId"": ""characters/bram-ironarm"", ""delta"": 5, ""reason"": ""Elara buys Bram a drink..."" },
+  { ""$type"": ""need"", ""characterId"": ""characters/elara-voss"", ""need"": ""wanderlust"", ""delta"": 12 }
 ]
 
-Example single activity change (very useful during play):
-{ ""type"": ""activity"", ""characterId"": ""characters/bram"", ""newActivity"": ""on patrol at the old watchtower"", ""newLocationId"": ""locations/watchtower"", ""reason"": ""Bram decided to check the perimeter"" }
-
-You can (and should) mix many different change kinds in one call.")] JsonElement[] changes,
+You can (and should) mix many different change kinds in one call.")] WorldChange[] changes,
         [Description("Narrative summary of what happened (for the log and world pressure).")] string narrative)
     {
-        if (changes == null || changes.Length == 0)
+        if (changes.Length == 0)
         {
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
         }
 
-        // Convert JsonElement array to strongly-typed WorldChange[]
-        // This approach keeps the tool schema very loose (array of any JSON object) so that
-        // clients that choke on STJ-generated polymorphic oneOf schemas (certain Gemini CLI
-        // versions, strict validators, some CLIs) can still successfully call the tool.
-        var typedChanges = new List<WorldChange>(changes.Length);
-        var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowOutOfOrderMetadataProperties = true };
-        var parseErrors = new List<string>();
-
-        foreach (var (elem, idx) in changes.Select((e, i) => (e, i)))
-        {
-            try
-            {
-                // INTEROPERABILITY WRAPPER:
-                // Handle cases where the client sends "$type" (industry standard) or "type" (standard standard).
-                // If "$type" is present but "type" is not, we normalize it before deserializing.
-                WorldChange? change;
-                if (elem.TryGetProperty("$type", out var legacyType) && !elem.TryGetProperty("type", out _))
-                {
-                    // Create a mutated copy of the JSON object that has the 'type' property
-                    var rawJson = elem.GetRawText();
-                    // Simple string replacement of the key name is safe here because we've already
-                    // validated the properties exist via TryGetProperty.
-                    var normalizedJson = rawJson.Replace("\"$type\"", "\"type\"", StringComparison.Ordinal);
-                    change = JsonSerializer.Deserialize<WorldChange>(normalizedJson, serializerOptions);
-                }
-                else
-                {
-                    change = elem.Deserialize<WorldChange>(serializerOptions);
-                }
-
-                if (change != null)
-                    typedChanges.Add(change);
-            }
-            catch (JsonException ex)
-            {
-                // Collect details so the LLM gets actionable feedback instead of silent loss.
-                var snippet = elem.GetRawText();
-                if (snippet.Length > 120) snippet = snippet[..120] + "...";
-                parseErrors.Add($"Item #{idx}: {ex.Message} (content: {snippet})");
-            }
-        }
-
-        if (typedChanges.Count == 0)
-        {
-            var errSummary = parseErrors.Count > 0
-                ? $"No valid changes could be parsed. Errors: {string.Join(" | ", parseErrors)}"
-                : "No valid changes could be parsed. Each item needs a 'type' discriminator that matches one of the supported WorldChange subtypes.";
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: errSummary));
-        }
-
         return ExecuteAsync(async session => {
-            var result = await repository.StageChangesAsync(session, typedChanges.ToArray());
-
-            if (parseErrors.Count > 0)
-            {
-                result.Summary.Insert(0, $"WARNING: {parseErrors.Count} change item(s) were skipped due to parse errors:");
-                foreach (var err in parseErrors)
-                    result.Summary.Insert(1, "  - " + err);
-            }
-
-            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = "scene-commit" });
-            var msg = parseErrors.Count == 0
-                ? $"World updated with {typedChanges.Count} changes."
-                : $"World updated with {typedChanges.Count} changes ({parseErrors.Count} skipped due to parse errors — see Summary).";
+            var result = await repository.StageChangesAsync(session, changes);
+            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.SceneCommit });
+            var msg = $"World updated with {changes.Length} changes.";
             return new ToolResult<CommitResult>(true, result, msg);
         });
     }
 
     /// <summary>
     /// Fallback for callers (or future clients) that can only easily emit a raw JSON string for the changes batch.
-    /// Parses to JsonElement[] and delegates to the primary MCP Commit implementation (which does the typed deserialization).
+    /// Parses to WorldChange[] and delegates to the primary MCP Commit implementation.
     /// Not exposed as an MCP tool.
     /// </summary>
     public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative)
@@ -217,16 +151,11 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
         if (string.IsNullOrWhiteSpace(changesJson))
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
 
-        JsonElement[] elements;
+        WorldChange[] elements;
         try
         {
-            using var doc = JsonDocument.Parse(changesJson);
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
-                return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "changesJson must be a JSON array."));
-
-            elements = doc.RootElement.EnumerateArray()
-                .Select(e => e.Clone())
-                .ToArray();
+            var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowOutOfOrderMetadataProperties = true };
+            elements = JsonSerializer.Deserialize<WorldChange[]>(changesJson, serializerOptions) ?? [];
         }
         catch (JsonException ex)
         {
@@ -236,23 +165,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
         return Commit(elements, narrative);
     }
 
-    /// <summary>
-    /// Convenience overload for tests, the simulation harness, and direct in-process callers that already have
-    /// strongly-typed WorldChange objects. Converts them to JsonElement[] and calls the primary MCP implementation.
-    /// </summary>
-    public Task<ToolResult<CommitResult>> Commit(WorldChange[] changes, string narrative)
-    {
-        if (changes == null || changes.Length == 0)
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
-
-        var elements = changes
-            .Select(c => JsonSerializer.SerializeToElement(c))
-            .ToArray();
-
-        return Commit(elements, narrative);
-    }
-
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("TIME PASSAGE: Call this for travel, long rests, or downtime. Fast-forwards the world clock and runs background simulations (rumor decay, NPC needs). Returns narrative updates on what changed while the party was away.")]
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
         [Description("Number of days to skip.")] int days, 
@@ -266,7 +179,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
 
         return ExecuteAsync(async session => {
             var result = await repository.AdvanceWorldAsync(session, days, timeOfDay);
-            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = "timeskip" });
+            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.Timeskip });
 
             // Minimal WorldPressure wiring: surface simulation narratives as pressure for the DM
             var pressure = result.SimulatorEvents.Count > 0 
@@ -279,7 +192,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
         });
     }
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychological state. Returns their relationships, goals, fears, knowledge, and current emotional mood.")]
     public Task<ToolResult<NpcContextView>> GetNpcContext(string characterId)
     {
@@ -323,7 +236,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
         });
     }
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("UNIFIED SEARCH: Search across Lore, Characters, Locations, and Items in one shot. Use this when searching for anything by name or keyword.")]
     public Task<ToolResult<IEnumerable<object>>> SearchWorld(string query)
     {
@@ -334,7 +247,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
         }, saveChanges: false);
     }
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("HISTORY RECALL: Semantic search over past events. Use this to remember 'what happened last time we were here' or recall specific plot points.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(string query, int limit = 5)
     {
@@ -352,7 +265,7 @@ You can (and should) mix many different change kinds in one call.")] JsonElement
     // This is almost certainly a caching / non-dynamic tool schema issue on their side.
     // The descriptions below document this quirk so the LLM knows what's happening.
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Directly create or overwrite a character/NPC.
 
 Use this to seed or update full NPC records, including rich psychological data.
@@ -375,7 +288,7 @@ This is the best opportunity to create deep, simulatable NPCs.
             return new ToolResult<Character>(true, character);
         });
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Register a new location on the world map. For first-time setup only.
 
 Define hierarchical locations with exits, parent relationships, and rich metadata.
@@ -389,7 +302,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             return new ToolResult<Location>(true, location);
         });
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("WORLD BUILDER TOOL: Create or update a lore entry. Always use SearchWorld first to check whether similar lore already exists.")]
     public Task<ToolResult<Lore>> UpsertLore(
         [Description("The full Lore object to create or replace. Strongly typed.")] Lore lore)
@@ -401,7 +314,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
     // --- Needs Discoverability Tools ---
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("DISCOVERABILITY TOOL: Returns all known needs for an NPC along with their current values and any descriptors. Use this to understand what psychological or physical drives an NPC has before roleplaying or making changes. The needs system is open — you are encouraged to invent new narrative-appropriate needs.")]
     public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(string characterId)
     {
@@ -444,7 +357,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         });
     }
 
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("DISCOVERABILITY TOOL: Lists all globally defined need descriptors (created via define_need_descriptor). Use this to see what shared descriptors exist before assigning them to specific NPCs.")]
     public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors()
     {

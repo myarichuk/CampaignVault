@@ -22,9 +22,15 @@ docs/
 # Fly.io / Environment
 .env
 appsettings.Development.json
+RavenDBServer/
 
 # Docker
 .docker/
 
 # Agent Planning
 conductor/
+.mcp.json
+/.grok/config.toml
+/.cursor/mcp.json
+/CampaignVault.Tests/packages.lock.json
+/packages.lock.json

@@ -1,4 +1,22 @@
+using System.Text.Json.Serialization;
+
 namespace CampaignVault.Models;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum EventCategory
+{
+    Unresolved,
+    Combat,
+    Conversation,
+    Discovery,
+    Arrival,
+    Betrayal,
+    SceneCommit,
+    Timeskip,
+    Simulation,
+    Interaction,
+    Test
+}
 
 public class Event
 {
@@ -10,7 +28,7 @@ public class Event
     
     public string? SessionId { get; set; }
     
-    public string Category { get; set; } = default!;
+    public EventCategory Category { get; set; } = EventCategory.Unresolved;
     
     public string Summary { get; set; } = default!;
     

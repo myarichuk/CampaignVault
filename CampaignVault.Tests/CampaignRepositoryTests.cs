@@ -371,7 +371,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await repo.SaveTimeAsync(session, new CampaignTime { Day = 10 });
-            await repo.LogEventAsync(session, new Event { Id = "e1", Summary = "History", Category = "test", Involved = new List<string> { "loc1" } });
+            await repo.LogEventAsync(session, new Event { Id = "e1", Summary = "History", Category = EventCategory.Test, Involved = new List<string> { "loc1" } });
             await repo.UpsertLocationAsync(session, new Location { Id = "loc1", Name = "The Shire", Type = LocationType.Region });
             await session.SaveChangesAsync();
         }
@@ -393,7 +393,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var json = System.Text.Json.JsonSerializer.Serialize(new { power = 9001, tags = new[] { "over", "9000" } });
         var details = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
 
-        await repo.LogEventAsync(session, new Event { Id = id, Summary = "Power Up", Category = "test", Details = details });
+        await repo.LogEventAsync(session, new Event { Id = id, Summary = "Power Up", Category = EventCategory.Test, Details = details });
         await session.SaveChangesAsync();
 
         // Wait for indexing (with timeout to prevent CI hangs)
@@ -407,7 +407,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
             throw new TimeoutException("Index 'Event/Search' did not become non-stale within 10s");
 
-        var results = await repo.QueryEventsAsync(session, "Power", "test");
+        var results = await repo.QueryEventsAsync(session, "Power", EventCategory.Test);
         var ev = results.FirstOrDefault(x => x.Id == id);
         Assert.NotNull(ev);
         
@@ -440,7 +440,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         {
             Id = eventId,
             Summary = "NPC involved event",
-            Category = "interaction",
+            Category = EventCategory.Interaction,
             Involved = new List<string> { charId },
             Details = details
         });
@@ -703,7 +703,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task Commit_Handles_OutOfOrder_Polymorphic_JSON()
     {
         // This verifies the fix for AllowOutOfOrderMetadataProperties = true.
-        // If the 'type' property is not FIRST, STJ normally fails.
+        // If the '$type' property is not FIRST, STJ normally fails.
         var repo = new CampaignRepository(_store);
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
 
@@ -713,13 +713,13 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        // Manually construct JSON where 'type' is at the end
+        // Manually construct JSON where '$type' is at the end
         var outOfOrderJson = """
         [
           {
             "characterId": "npcs/order-test",
             "delta": 5,
-            "type": "hp"
+            "$type": "hp"
           }
         ]
         """;
@@ -757,6 +757,82 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Also ensure other values are usable
         rumor.TruthValue = RumorTruth.Misleading;
         Assert.Equal(RumorTruth.Misleading, rumor.TruthValue);
+    }
+
+    [Fact]
+    public void WorldChange_PolymorphicSerialization_Supports_DollarType()
+    {
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // Test 1: Deserialize using "$type"
+        var jsonWithDollarType = """
+        [
+          {
+            "$type": "hp",
+            "characterId": "test-char",
+            "delta": -10
+          },
+          {
+            "$type": "need",
+            "characterId": "test-char",
+            "need": "wanderlust",
+            "delta": 5.5
+          }
+        ]
+        """;
+
+        var changes1 = JsonSerializer.Deserialize<WorldChange[]>(jsonWithDollarType, options);
+        Assert.NotNull(changes1);
+        Assert.Equal(2, changes1.Length);
+        Assert.IsType<HpChange>(changes1[0]);
+        Assert.IsType<NeedChange>(changes1[1]);
+
+        var hp1 = (HpChange)changes1[0];
+        Assert.Equal("test-char", hp1.CharacterId);
+        Assert.Equal(-10, hp1.Delta);
+
+        var need1 = (NeedChange)changes1[1];
+        Assert.Equal("test-char", need1.CharacterId);
+        Assert.Equal("wanderlust", need1.Need);
+        Assert.Equal(5.5f, need1.Delta);
+
+        // Test 2: Deserialize complex Grok payload with both $type and type (e.g. type: scene which is ignored)
+        var grokPayload = """
+        [
+          {
+            "$type": "event",
+            "summary": "The party arrives at The Whispering Hearth.",
+            "type": "scene",
+            "involved": ["test-alara", "test-borin"]
+          },
+          {
+            "$type": "need",
+            "characterId": "test-alara",
+            "need": "curiosity",
+            "delta": 0
+          }
+        ]
+        """;
+
+        var changes3 = JsonSerializer.Deserialize<WorldChange[]>(grokPayload, options);
+        Assert.NotNull(changes3);
+        Assert.Equal(2, changes3.Length);
+        Assert.IsType<EventOccurred>(changes3[0]);
+        Assert.IsType<NeedChange>(changes3[1]);
+
+        var ev3 = (EventOccurred)changes3[0];
+        Assert.Equal("The party arrives at The Whispering Hearth.", ev3.Summary);
+        Assert.Equal(2, ev3.Involved?.Count);
+
+        // Test 3: Serialize WorldChange and verify "$type" is written
+        WorldChange changeToSerialize = new HpChange { CharacterId = "test-char", Delta = 20 };
+        var serialized = JsonSerializer.Serialize<WorldChange>(changeToSerialize, options);
+        
+        using var doc = JsonDocument.Parse(serialized);
+        var root = doc.RootElement;
+        Assert.True(root.TryGetProperty("$type", out var dtProp) && dtProp.GetString() == "hp");
+        Assert.True(root.TryGetProperty("characterId", out var cProp) && cProp.GetString() == "test-char");
+        Assert.True(root.TryGetProperty("delta", out var dProp) && dProp.GetInt32() == 20);
     }
 
 }

@@ -5,11 +5,11 @@ namespace CampaignVault.Models;
 
 /// <summary>
 /// Base for all atomic, composable world mutations that can be sent to <c>commit</c>.
-/// The LLM must include the exact <c>type</c> discriminator so the server knows which concrete change to apply.
+/// The LLM must include the exact <c>$type</c> discriminator so the server knows which concrete change to apply.
 /// Mix as many different change kinds as needed in a single call for atomicity.
 /// </summary>
-[Description("Base for all atomic world mutations sent via the 'commit' tool. Every item must include the exact type discriminator. Mix freely (hp + activity + relationship + need + event, etc.).")]
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+[Description("Base for all atomic world mutations sent via the 'commit' tool. Every item must include the exact $type discriminator. Mix freely (hp + activity + relationship + need + event, etc.).")]
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(HpChange), "hp")]
 [JsonDerivedType(typeof(ItemTransfer), "item")]
 [JsonDerivedType(typeof(StatusChange), "status")]
@@ -59,7 +59,7 @@ public class StatusChange : WorldChange
 }
 
 /// <summary>
-/// Record a noteworthy occurrence in the world. Use Category='unresolved' for open plot threads the party should care about.
+/// Record a noteworthy occurrence in the world. Use Category='Unresolved' for open plot threads the party should care about.
 /// These appear in get_scene, recall_history, and get_world_state.
 /// </summary>
 public class EventOccurred : WorldChange
@@ -68,9 +68,10 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("summary")]
     public string Summary { get; set; } = default!;
 
-    [Description("Classification of the event. Use 'unresolved' for dangling plot hooks the party should follow up on. Other good values: 'combat', 'conversation', 'discovery', 'arrival', 'betrayal'.")]
+    [Description("Classification of the event. Use 'Unresolved' for dangling plot hooks the party should follow up on. Other good values: 'Combat', 'Conversation', 'Discovery', 'Arrival', 'Betrayal'.")]
     [JsonPropertyName("category")]
-    public string Category { get; set; } = default!;
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public EventCategory Category { get; set; } = EventCategory.Unresolved;
 
     [Description("Optional list of entity IDs involved (characters, locations, items, etc.). Helps later queries and NPC context.")]
     [JsonPropertyName("involved")]
