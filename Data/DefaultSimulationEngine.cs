@@ -21,7 +21,7 @@ public sealed class DefaultSimulationEngine : IWorldSimulationEngine
         IEnumerable<ISimulationRule> rules,
         ILogger<DefaultSimulationEngine>? logger = null)
     {
-        _rules = rules.OrderBy(r => r.Name).ToList(); // deterministic order; can be made explicit later
+        _rules = rules.OrderBy(r => r.Order).ToList();
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultSimulationEngine>.Instance;
     }
 

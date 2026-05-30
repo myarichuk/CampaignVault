@@ -10,6 +10,7 @@ namespace CampaignVault.Data;
 public sealed class RumorDecayRule : ISimulationRule
 {
     public string Name => "Rumor Decay";
+    public int Order => 20;
 
     public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {

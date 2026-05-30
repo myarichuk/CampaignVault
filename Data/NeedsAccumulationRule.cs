@@ -14,6 +14,7 @@ namespace CampaignVault.Data;
 public sealed class NeedsAccumulationRule : ISimulationRule
 {
     public string Name => "Needs & Mood Accumulation";
+    public int Order => 10;
 
     public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
@@ -43,7 +44,7 @@ public sealed class NeedsAccumulationRule : ISimulationRule
             AddCappedNeed("hunger", amount);
             AddCappedNeed("thirst", amount * 1.2f);
             AddCappedNeed("tiredness", amount * 0.8f);
-            AddCappedNeed("arousal", amount * 0.15f); // low rate, was previously dead
+            AddCappedNeed("social_drive", amount * 0.15f); // low rate, was previously dead
 
             // Re-evaluate mood after accumulation (the actual mood value will be applied by the MoodChange we emit below)
             // We compute what the mood *should* become based on the post-delta state.
@@ -52,9 +53,9 @@ public sealed class NeedsAccumulationRule : ISimulationRule
             var projectedTiredness = Math.Clamp(npc.Mind.Needs.GetValueOrDefault("tiredness") + (amount * 0.8f), 0f, 100f);
 
             string newMood = npc.Mind.CurrentMood ?? "Content";
-            if (projectedTiredness > 80) newMood = "Exhausted";
-            else if (projectedHunger > 70) newMood = "Ravenous";
-            else if (projectedHunger > 40 || projectedTiredness > 40) newMood = "Grumpy";
+            if (projectedTiredness > NpcMoodThresholds.ExhaustedTiredness) newMood = "Exhausted";
+            else if (projectedHunger > NpcMoodThresholds.RavenousHunger) newMood = "Ravenous";
+            else if (projectedHunger > NpcMoodThresholds.GrumpyHunger || projectedTiredness > NpcMoodThresholds.GrumpyTiredness) newMood = "Grumpy";
             else newMood = "Content";
 
             if (newMood != npc.Mind.CurrentMood)
@@ -63,7 +64,7 @@ public sealed class NeedsAccumulationRule : ISimulationRule
             }
 
             // Small morale drift on sustained bad states (reasonable expansion for "living" feel)
-            if (projectedTiredness > 75 || projectedHunger > 65)
+            if (projectedTiredness > NpcMoodThresholds.MoraleDriftTiredness || projectedHunger > NpcMoodThresholds.MoraleDriftHunger)
             {
                 var moraleDrift = -0.8f * days; // slow negative drift (consistent float)
                 deltas.Add(new AttributeChange

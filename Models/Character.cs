@@ -45,7 +45,7 @@ public class NpcMind
         ["hunger"] = 25f,
         ["thirst"] = 20f,
         ["tiredness"] = 15f,
-        ["arousal"] = 10f
+        ["social_drive"] = 10f
     };
 
     /// <summary>

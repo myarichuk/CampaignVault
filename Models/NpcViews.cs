@@ -1,0 +1,32 @@
+using System.Collections.Generic;
+
+namespace CampaignVault.Models;
+
+public class NpcContextView
+{
+    public Character Character { get; set; } = default!;
+    public NpcMind Mind { get; set; } = default!;
+    public IEnumerable<Event> RecentInteractions { get; set; } = [];
+    public string? BehavioralSummary { get; set; }
+
+    /// <summary>
+    /// All known needs for this NPC with their current values. The needs system is intentionally open-ended.
+    /// </summary>
+    public Dictionary<string, float> KnownNeeds { get; set; } = [];
+
+    /// <summary>
+    /// Human/LLM-readable descriptions for the needs (seeded by world-builder or previous LLM actions).
+    /// </summary>
+    public Dictionary<string, string> NeedDescriptors { get; set; } = [];
+}
+
+/// <summary>
+/// Lightweight view returned by GetNpcNeeds for discoverability.
+/// </summary>
+public class NpcNeedsView
+{
+    public string CharacterId { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public Dictionary<string, float> KnownNeeds { get; set; } = [];
+    public Dictionary<string, string> NeedDescriptors { get; set; } = [];
+}

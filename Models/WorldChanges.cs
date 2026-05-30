@@ -122,7 +122,7 @@ public class NeedChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Name of the need being adjusted. The system is intentionally open: use 'hunger', 'thirst', 'tiredness', 'arousal', or invent narrative-appropriate ones like 'wanderlust', 'homesickness', 'vengeance', 'duty'.")]
+    [Description("Name of the need being adjusted. The system is intentionally open: use 'hunger', 'thirst', 'tiredness', 'social_drive', or invent narrative-appropriate ones like 'wanderlust', 'homesickness', 'vengeance', 'duty'.")]
     [JsonPropertyName("need")]
     public string Need { get; set; } = default!;
 

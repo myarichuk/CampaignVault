@@ -18,5 +18,10 @@ public interface ISimulationRule
     /// </summary>
     string Name { get; }
 
+    /// <summary>
+    /// Execution order of the simulation rule. Lower values run first.
+    /// </summary>
+    int Order { get; }
+
     Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default);
 }

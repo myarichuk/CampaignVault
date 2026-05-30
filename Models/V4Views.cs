@@ -47,3 +47,9 @@ public class AdvanceResult
     public CampaignTime NewTime { get; set; } = default!;
     public List<string> SimulatorEvents { get; set; } = [];
 }
+
+public record RumorSummary(string Subject, string CurrentText, RumorState State);
+
+public record LocationSummary(string Id, string Name, LocationType Type);
+
+public record NpcActivitySummary(string Name, string CurrentActivity);

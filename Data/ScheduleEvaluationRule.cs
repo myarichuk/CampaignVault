@@ -21,6 +21,7 @@ namespace CampaignVault.Data;
 public sealed class ScheduleEvaluationRule : ISimulationRule
 {
     public string Name => "Schedule Evaluation & NPC Activity";
+    public int Order => 30;
 
     public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {

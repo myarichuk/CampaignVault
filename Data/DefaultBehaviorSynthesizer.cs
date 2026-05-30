@@ -38,7 +38,7 @@ public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
 
         // Dominant needs
         var dominantNeeds = mind.Needs
-            .Where(kv => kv.Value > 60)
+            .Where(kv => kv.Value > NpcMoodThresholds.DominantNeedMin)
             .OrderByDescending(kv => kv.Value)
             .Take(2)
             .Select(kv => $"{kv.Key} ({kv.Value:F0})")
@@ -50,11 +50,11 @@ public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
         }
 
         // Morale / willpower signals
-        if (mind.Morale < 40)
+        if (mind.Morale < NpcMoodThresholds.LowMorale)
         {
             parts.Add("morale is low");
         }
-        else if (mind.Morale > 85)
+        else if (mind.Morale > NpcMoodThresholds.HighMorale)
         {
             parts.Add("in good spirits");
         }

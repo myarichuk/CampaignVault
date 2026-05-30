@@ -1,5 +1,6 @@
 using CampaignVault.Data;
 using CampaignVault.Tools;
+using CampaignVault.Middleware;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using ModelContextProtocol.AspNetCore;
@@ -30,26 +31,7 @@ var dbPath = builder.Configuration["CAMPAIGN_DB_PATH"] ?? Path.Combine(AppContex
 var bearerToken = Environment.GetEnvironmentVariable("BEARER_TOKEN");
 
 // RavenDB Embedded Setup
-EmbeddedServer.Instance.StartServer(new ServerOptions
-{
-    DataDirectory = dbPath,
-    ServerUrl = "http://127.0.0.1:0" // Use a random port
-});
-var documentStore = EmbeddedServer.Instance.GetDocumentStore("CampaignVault");
-IndexCreation.CreateIndexes(typeof(Program).Assembly, documentStore);
-
-// Universal sanitizing listener on the Raven persistence boundary.
-// Any entity about to be stored (from tools, simulation, tests, direct session use, etc.)
-// is sanitized here so that Dictionary<string, object> fields (Metadata, Properties, Details)
-// never contain System.Text.Json.JsonElement instances when they hit Raven's (Newtonsoft) serializer.
-// This is the "universal listener" layer. See also JsonSanitizer.cs + final guards in CampaignTools.
-documentStore.OnBeforeStore += (_, args) =>
-{
-    if (args.Entity is not null)
-    {
-        JsonSanitizer.Sanitize(args.Entity);
-    }
-};
+var documentStore = RavenStartup.Initialize(dbPath);
 
 // Services
 builder.Services.AddSingleton<IDocumentStore>(documentStore);
@@ -111,175 +93,12 @@ var app = builder.Build();
 
 app.UseCors();
 
-// Middleware to normalize MCP tool call arguments for 'upsert_character', 'upsert_location', and 'upsert_lore'.
-// It automatically handles flattened properties (wrapping them under the expected parameter key)
-// and legacy wrapped parameter names ('c' and 'l' -> 'character' and 'location').
-app.Use(async (context, next) =>
-{
-    if (context.Request.Method == "POST" &&
-        context.Request.ContentType != null &&
-        context.Request.ContentType.Contains("application/json"))
-    {
-        context.Request.EnableBuffering();
-        try
-        {
-            using (var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true))
-            {
-                var bodyText = await reader.ReadToEndAsync();
-                context.Request.Body.Position = 0;
-
-                if (!string.IsNullOrWhiteSpace(bodyText))
-                {
-                    var rootNode = System.Text.Json.Nodes.JsonNode.Parse(bodyText);
-                    if (rootNode is System.Text.Json.Nodes.JsonObject rootObj)
-                    {
-                        var method = rootObj["method"]?.ToString();
-                        if (method == "tools/call")
-                        {
-                            var paramsObj = rootObj["params"] as System.Text.Json.Nodes.JsonObject;
-                            var toolName = paramsObj?["name"]?.ToString();
-
-                            if (toolName == "upsert_location" || toolName == "upsert_character" || toolName == "upsert_lore")
-                            {
-                                var argumentsObj = paramsObj?["arguments"] as System.Text.Json.Nodes.JsonObject;
-                                if (argumentsObj != null)
-                                {
-                                    string expectedKey = toolName switch
-                                    {
-                                        "upsert_location" => "location",
-                                        "upsert_character" => "character",
-                                        "upsert_lore" => "lore",
-                                        _ => throw new InvalidOperationException()
-                                    };
-
-                                    string? legacyKey = toolName switch
-                                    {
-                                        "upsert_location" => "l",
-                                        "upsert_character" => "c",
-                                        _ => null
-                                    };
-
-                                    bool needsWrapping = false;
-                                    bool needsRename = false;
-                                    string? foundLegacyKey = null;
-
-                                    if (argumentsObj.ContainsKey(expectedKey))
-                                    {
-                                        // Already correctly wrapped
-                                    }
-                                    else if (legacyKey != null && argumentsObj.ContainsKey(legacyKey))
-                                    {
-                                        // Wrapped under legacy key, need to rename
-                                        needsRename = true;
-                                        foundLegacyKey = legacyKey;
-                                    }
-                                    else
-                                    {
-                                        // Flattened, need to wrap
-                                        needsWrapping = true;
-                                    }
-
-                                    if (needsRename && foundLegacyKey != null)
-                                    {
-                                        var value = argumentsObj[foundLegacyKey];
-                                        argumentsObj.Remove(foundLegacyKey);
-
-                                        var clonedValue = System.Text.Json.Nodes.JsonNode.Parse(value!.ToJsonString());
-                                        argumentsObj.Add(expectedKey, clonedValue);
-
-                                        var modifiedBodyText = rootObj.ToJsonString();
-                                        var modifiedBytes = System.Text.Encoding.UTF8.GetBytes(modifiedBodyText);
-                                        context.Request.Body = new System.IO.MemoryStream(modifiedBytes);
-                                    }
-                                    else if (needsWrapping)
-                                    {
-                                        var wrappedArgs = new System.Text.Json.Nodes.JsonObject();
-                                        var clonedArgs = System.Text.Json.Nodes.JsonNode.Parse(argumentsObj.ToJsonString());
-                                        wrappedArgs.Add(expectedKey, clonedArgs);
-
-                                        paramsObj!["arguments"] = wrappedArgs;
-
-                                        var modifiedBodyText = rootObj.ToJsonString();
-                                        var modifiedBytes = System.Text.Encoding.UTF8.GetBytes(modifiedBodyText);
-                                        context.Request.Body = new System.IO.MemoryStream(modifiedBytes);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        catch
-        {
-            context.Request.Body.Position = 0;
-        }
-    }
-
-    await next();
-});
-
-// Timing-safe comparison for bearer tokens (prevents timing side-channel attacks).
-// Tokens are compared exactly (case-sensitive) per security best practice.
-static bool TimingSafeEquals(string? a, string? b)
-{
-    if (a is null || b is null) return false;
-    var aBytes = System.Text.Encoding.UTF8.GetBytes(a);
-    var bBytes = System.Text.Encoding.UTF8.GetBytes(b);
-    return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
-}
+app.UseMiddleware<McpNormalizationMiddleware>();
 
 // Optional Bearer/X-API-Key Auth Middleware
 if (!string.IsNullOrEmpty(bearerToken))
 {
-    app.Use(async (context, next) =>
-    {
-        if (context.Request.Path == "/" || context.Request.Path == "/health")
-        {
-            await next();
-            return;
-        }
-
-        var authorized = false;
-
-        // Preferred: Authorization header (standard and more secure)
-        if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) &&
-            TimingSafeEquals(authHeader.ToString(), $"Bearer {bearerToken}"))
-        {
-            authorized = true;
-        }
-        // Alternative header (exact match)
-        else if (context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyHeader) &&
-                 TimingSafeEquals(apiKeyHeader.ToString(), bearerToken))
-        {
-            authorized = true;
-        }
-        // Query string fallback (for clients like Grok Web custom connectors that cannot set custom headers)
-        // SECURITY NOTE: Query parameters are logged in many places (server logs, proxies, browser history, etc.).
-        // Only use this when header-based auth is not possible. Prefer headers whenever available.
-        // Tokens are case-sensitive (exact match).
-        else
-        {
-            var queryToken = context.Request.Query["token"].ToString();
-            if (string.IsNullOrEmpty(queryToken))
-                queryToken = context.Request.Query["auth"].ToString();
-            if (string.IsNullOrEmpty(queryToken))
-                queryToken = context.Request.Query["bearer"].ToString();
-
-            if (TimingSafeEquals(queryToken, bearerToken))
-            {
-                authorized = true;
-            }
-        }
-
-        if (!authorized)
-        {
-            context.Response.StatusCode = 401;
-            await context.Response.WriteAsync("Unauthorized");
-            return;
-        }
-        await next();
-    });
+    app.UseMiddleware<AuthMiddleware>(bearerToken);
 }
 
 app.MapMcp("/");

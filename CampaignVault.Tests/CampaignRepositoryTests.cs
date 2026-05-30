@@ -664,16 +664,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             return;
         }
 
-        // After the call, the document in Raven should be healed (no more JsonElement).
-        // For extremely dead legacy data we may have fallen back to a string representation;
-        // the important thing is we didn't crash with an unhandled exception.
-        using (var check = _store.OpenAsyncSession())
-        {
-            var healed = await check.LoadAsync<Location>(locId);
-            var legacyVal = healed.Metadata["legacy"];
-            Assert.True(legacyVal is bool || legacyVal is string,
-                $"Expected bool or string fallback, got {legacyVal?.GetType().Name}");
-        }
+        // After the call, the returned scene view should contain the healed Metadata (no more JsonElement).
+        var legacyVal = result.Data!.Location.Metadata["legacy"];
+        Assert.True(legacyVal is bool || legacyVal is string,
+            $"Expected bool or string fallback, got {legacyVal?.GetType().Name}");
     }
 
     [Fact]
