@@ -73,7 +73,7 @@ public class CampaignTools(
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("KICKOFF TOOL: Call this at the start of every session to get the current time, active rumors, recent history, and current party location in one view.")]
+    [Description("KICKOFF TOOL: Call this at the start of every session to get the current time, active rumors, recent history, and current party location in one view. Respects the currently selected campaign (via select_campaign).")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
         [Description("The current ID of the location where the party is (string type)")] string partyLocationId,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
@@ -112,7 +112,7 @@ public class CampaignTools(
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors.")]
+    [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors. Respects the currently selected campaign.")]
     public Task<ToolResult<SceneView>> GetScene(
         [Description("The unique ID of the location.")] string locationId,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
@@ -125,7 +125,7 @@ public class CampaignTools(
     }
 
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
-    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove). Use ActivityChange liberally to keep get_scene in sync with your narrative.")]
+    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action). Use ActivityChange liberally to keep get_scene in sync with your narrative. Respects the currently selected campaign.")]
     public Task<ToolResult<CommitResult>> Commit(
         [Description(@"Array of world changes. Each item must be a JSON object with a '$type' discriminator.
 
@@ -176,7 +176,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("TIME PASSAGE: Call this for travel, long rests, or downtime. Fast-forwards the world clock and runs background simulations (rumor decay, NPC needs). Returns narrative updates on what changed while the party was away.")]
+    [Description("TIME PASSAGE: Call this for travel, long rests, or downtime. Fast-forwards the world clock and runs background simulations (rumor decay, NPC needs). Returns narrative updates on what changed while the party was away. Respects the currently selected campaign.")]
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
         [Description("Number of days to skip.")] int days, 
         [Description("The resulting time of day.")] TimeOfDay timeOfDay,
@@ -205,7 +205,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychological state. Returns their relationships, goals, fears, knowledge, and current emotional mood.")]
+    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychological state. Returns their relationships, goals, fears, knowledge, and current emotional mood. Respects the currently selected campaign for need descriptors etc.")]
     public Task<ToolResult<NpcContextView>> GetNpcContext(
         string characterId,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
@@ -258,7 +258,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("UNIFIED SEARCH: Search across Lore, Characters, Locations, and Items in one shot. Use this when searching for anything by name or keyword.")]
+    [Description("UNIFIED SEARCH: Search across Lore, Characters, Locations, and Items in one shot. Use this when searching for anything by name or keyword. (Campaign context is recorded for future per-campaign scoping.)")]
     public Task<ToolResult<IEnumerable<object>>> SearchWorld(
         string query,
         [Description("Optional campaign name. Falls back to currently selected (for future namespacing).")] string? campaignName = null)
@@ -389,7 +389,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool]
-    [Description("WORLD BUILDER TOOL: Define or update a descriptor for a need type. Stored globally and automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list all globally defined ones. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
+    [Description("WORLD BUILDER TOOL: Define or update a descriptor for a need type for the current/selected campaign. Automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list defined ones for the campaign. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
     public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))
@@ -485,7 +485,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     // --- Combat & Dispatch Tools ---
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Starts a new combat encounter. Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten.")]
+    [Description("COMBAT TOOL: Starts a new combat encounter. Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
         [Description("The location ID where combat is happening.")] string locationId,
         [Description("List of character IDs participating in combat.")] string[] combatantIds,
@@ -530,7 +530,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Advances the turn order to the next combatant. If all combatants have acted, advances to the next round.")]
+    [Description("COMBAT TOOL: Advances the turn order to the next combatant. If all combatants have acted, advances to the next round. Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> NextTurn(
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
@@ -570,7 +570,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Ends the current active combat encounter and wraps up the state.")]
+    [Description("COMBAT TOOL: Ends the current active combat encounter and wraps up the state. Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> EndCombat(
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
@@ -597,7 +597,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     // --- Dedicated Campaign Management Tools ---
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("CAMPAIGN TOOL: Creates a new campaign with a name and initial ruleset. The ruleset is immediately locked for this campaign.")]
+    [Description("CAMPAIGN TOOL: Creates a new campaign with a name and initial ruleset. The ruleset is immediately locked for this campaign. Automatically selects the new campaign.")]
     public Task<ToolResult<Campaign>> CreateCampaign(
         [Description("Unique name/slug for the campaign (e.g. 'dragonheist', 'curse-of-strahd').")] string name,
         [Description("Initial ruleset system. This will be locked.")] RulesetSystem initialSystem,
@@ -646,7 +646,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("CAMPAIGN TOOL: Lists all existing campaigns.")]
+    [Description("CAMPAIGN TOOL: Lists all existing campaigns in the database.")]
     public Task<ToolResult<List<Campaign>>> ListCampaigns()
     {
         return ExecuteAsync(async session =>
@@ -661,7 +661,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("CAMPAIGN TOOL: Selects a campaign as the current one for this session/context. Most tools will use this campaign when no explicit name is provided.")]
+    [Description("CAMPAIGN TOOL: Selects a campaign as the current one for this session/context. Most tools will use this campaign (via fallback) when no explicit name is provided on subsequent calls.")]
     public Task<ToolResult<string>> SelectCampaign(
         [Description("Name of the campaign to select.")] string campaignName)
     {
