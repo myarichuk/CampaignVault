@@ -26,21 +26,38 @@ public class Character
     public string? CurrentLocationId { get; set; }
     public string? CurrentActivity { get; set; }
 
-    public NpcMind Mind { get; set; } = new();
+    public PsychologyProfile Psychology { get; set; } = new();
+    
+    public SocialProfile Social { get; set; } = new();
+    
+    public NeedsProfile Needs { get; set; } = new();
+    
+    public SystemExtension SystemStats { get; set; } = new();
     
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 }
 
-public class NpcMind
+public class PsychologyProfile
 {
-    public Dictionary<string, int> Relationships { get; set; } = []; 
-    public List<string> Knows { get; set; } = [];                    
+    /// <summary>
+    /// Open-ended knowledge graph. Maps entities/topics to what the NPC knows about them.
+    /// Replaces the old 'Knows' list.
+    /// Example: "Rusty Nail Tavern" -> "Owned by Bram. Serves watered-down ale."
+    /// </summary>
+    public Dictionary<string, string> KnowledgeGraph { get; set; } = [];
     public List<string> Wants { get; set; } = [];                    
     public List<string> Fears { get; set; } = [];                    
     public string? CurrentMood { get; set; }                         
-    
-    // Enhanced Needs
-    public Dictionary<string, float> Needs { get; set; } = new()
+}
+
+public class SocialProfile
+{
+    public Dictionary<string, int> Relationships { get; set; } = []; 
+}
+
+public class NeedsProfile
+{
+    public Dictionary<string, float> ActiveNeeds { get; set; } = new()
     {
         ["hunger"] = 25f,
         ["thirst"] = 20f,
@@ -49,12 +66,14 @@ public class NpcMind
     };
 
     /// <summary>
-    /// Optional human/LLM-readable descriptions for the keys in Needs.
+    /// Optional human/LLM-readable descriptions for the keys in ActiveNeeds.
     /// Example: "homesickness" -> "Longing for family and familiar places. High values cause distraction and poor sleep."
-    /// This makes the open needs system discoverable and self-documenting.
     /// </summary>
     public Dictionary<string, string> NeedDescriptors { get; set; } = [];
+}
 
+public class SystemExtension
+{
     // Attributes (core three are promoted for convenience + special ranges; others go in the open dict)
     public float Willpower { get; set; } = 75f;
     public float Temperature { get; set; } = 37f;
@@ -62,8 +81,6 @@ public class NpcMind
 
     /// <summary>
     /// Open-ended custom narrative attributes (e.g. "corruption", "reputation", "fear", "honor", "debt_pressure").
-    /// Any AttributeChange whose name is not one of the three core attributes lands here.
-    /// This matches the open-vocabulary design already used for Needs.
     /// </summary>
     public Dictionary<string, float> Attributes { get; set; } = [];
 }

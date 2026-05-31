@@ -13,9 +13,9 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
     {
         var attr = (AttributeChange)change;
 
-        if (!context.Characters.TryGetValue(attr.CharacterId, out var character) || character?.Mind is null)
+        if (!context.Characters.TryGetValue(attr.CharacterId, out var character) || character?.SystemStats is null)
         {
-            context.RecordMessage($"WARNING: Character {attr.CharacterId} not found or has no Mind during AttributeChange.");
+            context.RecordMessage($"WARNING: Character {attr.CharacterId} not found or has no SystemStats during AttributeChange.");
             context.RecordFailure();
             return Task.FromResult(ChangeHandlerResult.Failure());
         }
@@ -25,23 +25,23 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
         switch (key)
         {
             case "willpower":
-                character.Mind.Willpower = Math.Clamp(
-                    attr.IsDelta ? character.Mind.Willpower + attr.Value : attr.Value, 0f, 100f);
+                character.SystemStats.Willpower = Math.Clamp(
+                    attr.IsDelta ? character.SystemStats.Willpower + attr.Value : attr.Value, 0f, 100f);
                 break;
 
             case "temperature":
-                character.Mind.Temperature = Math.Clamp(
-                    attr.IsDelta ? character.Mind.Temperature + attr.Value : attr.Value, -50f, 100f);
+                character.SystemStats.Temperature = Math.Clamp(
+                    attr.IsDelta ? character.SystemStats.Temperature + attr.Value : attr.Value, -50f, 100f);
                 break;
 
             case "morale":
-                character.Mind.Morale = Math.Clamp(
-                    attr.IsDelta ? character.Mind.Morale + attr.Value : attr.Value, 0f, 100f);
+                character.SystemStats.Morale = Math.Clamp(
+                    attr.IsDelta ? character.SystemStats.Morale + attr.Value : attr.Value, 0f, 100f);
                 break;
 
             default:
-                var current = character.Mind.Attributes.GetValueOrDefault(key, 0f);
-                character.Mind.Attributes[key] = Math.Clamp(
+                var current = character.SystemStats.Attributes.GetValueOrDefault(key, 0f);
+                character.SystemStats.Attributes[key] = Math.Clamp(
                     attr.IsDelta ? current + attr.Value : attr.Value, 0f, 100f);
                 break;
         }

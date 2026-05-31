@@ -5,7 +5,10 @@ namespace CampaignVault.Models;
 public class NpcContextView
 {
     public Character Character { get; set; } = default!;
-    public NpcMind Mind { get; set; } = default!;
+    public PsychologyProfile Psychology { get; set; } = default!;
+    public SocialProfile Social { get; set; } = default!;
+    public NeedsProfile Needs { get; set; } = default!;
+    public SystemExtension SystemStats { get; set; } = default!;
     public IEnumerable<Event> RecentInteractions { get; set; } = [];
     public string? BehavioralSummary { get; set; }
 

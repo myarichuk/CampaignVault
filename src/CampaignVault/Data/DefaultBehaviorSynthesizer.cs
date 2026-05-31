@@ -14,10 +14,12 @@ public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
 {
     public string GenerateSummary(Character npc, CampaignTime? currentTime = null, IEnumerable<Event>? recentEvents = null)
     {
-        if (npc?.Mind == null)
-            return $"{npc?.Name ?? "The NPC"} has no available psychological data.";
+        if (npc == null)
+            return "The NPC has no available psychological data.";
 
-        var mind = npc.Mind;
+        var psych = npc.Psychology ?? new PsychologyProfile();
+        var needs = npc.Needs ?? new NeedsProfile();
+        var stats = npc.SystemStats ?? new SystemExtension();
         var parts = new List<string>();
 
         // Current activity / location
@@ -31,13 +33,13 @@ public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
         }
 
         // Mood
-        if (!string.IsNullOrWhiteSpace(mind.CurrentMood))
+        if (!string.IsNullOrWhiteSpace(psych.CurrentMood))
         {
-            parts.Add($"mood: {mind.CurrentMood.ToLowerInvariant()}");
+            parts.Add($"mood: {psych.CurrentMood.ToLowerInvariant()}");
         }
 
         // Dominant needs
-        var dominantNeeds = mind.Needs
+        var dominantNeeds = needs.ActiveNeeds
             .Where(kv => kv.Value > NpcMoodThresholds.DominantNeedMin)
             .OrderByDescending(kv => kv.Value)
             .Take(2)
@@ -50,11 +52,11 @@ public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
         }
 
         // Morale / willpower signals
-        if (mind.Morale < NpcMoodThresholds.LowMorale)
+        if (stats.Morale < NpcMoodThresholds.LowMorale)
         {
             parts.Add("morale is low");
         }
-        else if (mind.Morale > NpcMoodThresholds.HighMorale)
+        else if (stats.Morale > NpcMoodThresholds.HighMorale)
         {
             parts.Add("in good spirits");
         }
@@ -71,9 +73,9 @@ public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
         }
 
         // Wants / fears teaser (if present)
-        if (mind.Wants.Count > 0)
+        if (psych.Wants.Count > 0)
         {
-            parts.Add($"wants: {mind.Wants.First()}");
+            parts.Add($"wants: {psych.Wants.First()}");
         }
 
         if (parts.Count == 0)

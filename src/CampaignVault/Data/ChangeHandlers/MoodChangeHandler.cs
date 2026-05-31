@@ -13,14 +13,14 @@ public sealed class MoodChangeHandler : IWorldChangeHandler
     {
         var mood = (MoodChange)change;
 
-        if (!context.Characters.TryGetValue(mood.CharacterId, out var character) || character?.Mind is null)
+        if (!context.Characters.TryGetValue(mood.CharacterId, out var character) || character?.Psychology is null)
         {
-            context.RecordMessage($"WARNING: Character {mood.CharacterId} not found or has no Mind during MoodChange.");
+            context.RecordMessage($"WARNING: Character {mood.CharacterId} not found or has no PsychologyProfile during MoodChange.");
             context.RecordFailure();
             return Task.FromResult(ChangeHandlerResult.Failure());
         }
 
-        character.Mind.CurrentMood = mood.NewMood;
+        character.Psychology.CurrentMood = mood.NewMood;
         context.RecordMessage($"Mood set to '{mood.NewMood}' for {mood.CharacterId}");
 
         return Task.FromResult(ChangeHandlerResult.Ok);

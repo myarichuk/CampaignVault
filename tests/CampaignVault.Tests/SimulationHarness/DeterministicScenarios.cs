@@ -43,7 +43,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
             Id = npcId, 
             Name = "Barliman Butterbur",
             Schedule = new Schedule { DefaultLocationId = locId, Routines = [new Routine { Activity = "Serving", Condition = "Evening", LocationId = locId }] },
-            Mind = new NpcMind { Needs = new Dictionary<string, float> { ["tiredness"] = 50f } }
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 50f } }
         });
         await session.SaveChangesAsync();
 
@@ -81,7 +81,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         var context = await simulator.Interact(npcId);
         Assert.True(context.Success);
         Assert.Equal("Barliman Butterbur", context.Data!.Character.Name);
-        Assert.Equal(50f, context.Data!.Mind.Needs["tiredness"]);
+        Assert.Equal(50f, context.Data!.Needs.ActiveNeeds["tiredness"]);
         Assert.Equal(NarrativePhase.Resolution, simulator.CurrentPhase);
 
         // 4. Resolve (Reduce tiredness narratively)
@@ -100,7 +100,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
 
         // Final Assertion: Verify state survived and simulation applied
         var finalContext = await simulator.Interact(npcId);
-        var finalTiredness = finalContext.Data!.Mind.Needs["tiredness"];
+        var finalTiredness = finalContext.Data!.Needs.ActiveNeeds["tiredness"];
         
         // Calculation: 50 (start) - 20 (resolve) + 8 (1 day simulation at 0.8 rate) = 38
         Assert.Equal(38f, finalTiredness);

@@ -120,7 +120,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         {
             Id = id,
             Name = "Test Attr NPC",
-            Mind = new NpcMind { Morale = 60f }
+            SystemStats = new SystemExtension { Morale = 60f }
         });
         await session.SaveChangesAsync();
 
@@ -134,15 +134,15 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var npc = await session.LoadAsync<Character>(id);
-        Assert.NotNull(npc.Mind);
+        Assert.NotNull(npc.SystemStats);
 
         // Core promoted field still works
-        Assert.Equal(42f, npc.Mind.Morale);
+        Assert.Equal(42f, npc.SystemStats.Morale);
 
         // Custom attributes land in the open dict
-        Assert.True(npc.Mind.Attributes.TryGetValue("corruption", out var corr));
+        Assert.True(npc.SystemStats.Attributes.TryGetValue("corruption", out var corr));
         Assert.Equal(77f, corr);
-        Assert.True(npc.Mind.Attributes.TryGetValue("reputation", out var rep)); // lowercased key
+        Assert.True(npc.SystemStats.Attributes.TryGetValue("reputation", out var rep)); // lowercased key
         Assert.Equal(55f, rep);
     }
 
@@ -205,9 +205,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 DefaultLocationId = "loc",
                 Routines = new List<Routine> { new Routine { Condition = "Noon", LocationId = "loc", Activity = "Testing" } }
             },
-            Mind = new NpcMind
+            Needs = new NeedsProfile
             {
-                Needs = new Dictionary<string, float> { ["tiredness"] = 40f }
+                ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 40f }
             }
         };
         await repo.UpsertCharacterAsync(session, npc);
@@ -234,12 +234,12 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Critical functional assertion: simulator mutations on NPC Mind must survive SaveChanges
         var reloaded = await session.LoadAsync<Character>(npcId);
         Assert.NotNull(reloaded);
-        Assert.NotNull(reloaded.Mind);
-        Assert.True(reloaded.Mind.Needs.TryGetValue("tiredness", out var tirednessAfter), "tiredness key should exist after simulator run");
+        Assert.NotNull(reloaded.Needs);
+        Assert.True(reloaded.Needs.ActiveNeeds.TryGetValue("tiredness", out var tirednessAfter), "tiredness key should exist after simulator run");
         Assert.True(tirednessAfter > 40, "Simulator should have accumulated tiredness over 15 days");
         if (tirednessAfter > 80)
         {
-            Assert.Equal("Exhausted", reloaded.Mind.CurrentMood);
+            Assert.Equal("Exhausted", reloaded.Psychology.CurrentMood);
         }
     }
 
@@ -291,9 +291,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Id = id,
             Name = "Capped Needs NPC",
             Schedule = new Schedule { DefaultLocationId = "loc-x", Routines = [] },
-            Mind = new NpcMind
+            Needs = new NeedsProfile
             {
-                Needs = new Dictionary<string, float> { ["hunger"] = 95f, ["thirst"] = 100f }
+                ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 95f, ["thirst"] = 100f }
             }
         };
         await repo.UpsertCharacterAsync(session, npc);
@@ -304,8 +304,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var reloaded = await session.LoadAsync<Character>(id);
-        var hunger = reloaded.Mind.Needs["hunger"];
-        var thirst = reloaded.Mind.Needs["thirst"];
+        var hunger = reloaded.Needs.ActiveNeeds["hunger"];
+        var thirst = reloaded.Needs.ActiveNeeds["thirst"];
 
         Assert.True(hunger <= 100f && hunger >= 99f, $"Hunger should be capped near 100, was {hunger}");
         Assert.Equal(100f, thirst); // should not have gone over or emitted useless delta
@@ -484,11 +484,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         {
             Id = charId,
             Name = "Legacy Hygiene NPC",
-            Mind = new NpcMind
-            {
-                Relationships = new Dictionary<string, int>(),
-                Needs = new Dictionary<string, float> { ["tiredness"] = 5f }
-            }
+            Social = new SocialProfile { Relationships = new Dictionary<string, int>() },
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 5f } }
         };
         await repo.UpsertCharacterAsync(session, character);
         await session.SaveChangesAsync();
@@ -511,10 +508,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(reloaded);
 
         // V4 data lives exclusively in Mind (legacy top-level fields have been fully removed)
-        Assert.NotNull(reloaded.Mind);
-        Assert.True(reloaded.Mind.Relationships.ContainsKey("target-1"));
-        Assert.Equal(10, reloaded.Mind.Relationships["target-1"]);
-        Assert.True(reloaded.Mind.Needs.ContainsKey("tiredness"));
+        Assert.NotNull(reloaded.Social);
+        Assert.True(reloaded.Social.Relationships.ContainsKey("target-1"));
+        Assert.Equal(10, reloaded.Social.Relationships["target-1"]);
+        Assert.True(reloaded.Needs.ActiveNeeds.ContainsKey("tiredness"));
     }
 
     // =====================================================================
@@ -877,7 +874,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         {
             Id = id,
             Name = "Attribute Delta NPC",
-            Mind = new NpcMind { Morale = 50f, Willpower = 60f }
+            SystemStats = new SystemExtension { Morale = 50f, Willpower = 60f }
         });
         await session.SaveChangesAsync();
 
@@ -892,9 +889,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var npc = await session.LoadAsync<Character>(id);
-        Assert.Equal(30f, npc.Mind.Morale);
-        Assert.Equal(75f, npc.Mind.Willpower);
-        Assert.Equal(10f, npc.Mind.Attributes["custom"]);
+        Assert.Equal(30f, npc.SystemStats.Morale);
+        Assert.Equal(75f, npc.SystemStats.Willpower);
+        Assert.Equal(10f, npc.SystemStats.Attributes["custom"]);
 
         // Commit absolute override (IsDelta = false)
         var resultAbsolute = await repo.StageChangesAsync(session, new WorldChange[]
@@ -906,8 +903,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var npc2 = await session.LoadAsync<Character>(id);
-        Assert.Equal(90f, npc2.Mind.Morale);
-        Assert.Equal(45f, npc2.Mind.Attributes["custom"]);
+        Assert.Equal(90f, npc2.SystemStats.Morale);
+        Assert.Equal(45f, npc2.SystemStats.Attributes["custom"]);
     }
 
     [Fact]

@@ -106,9 +106,9 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
 
             // 4. Tiny agency/initiative hook (per user feedback)
             // If an NPC has high Willpower and is in a "negative" mood, they may take independent action.
-            if (npc.Mind != null &&
-                npc.Mind.Willpower > 80 &&
-                (npc.Mind.CurrentMood == "Grumpy" || npc.Mind.CurrentMood == "Ravenous" || npc.Mind.CurrentMood == "Exhausted"))
+            if (npc.SystemStats != null && npc.Psychology != null &&
+                npc.SystemStats.Willpower > 80 &&
+                (npc.Psychology.CurrentMood == "Grumpy" || npc.Psychology.CurrentMood == "Ravenous" || npc.Psychology.CurrentMood == "Exhausted"))
             {
                 // Emit an unresolved event that the DM can choose to resolve later.
                 // This is the beginning of true NPC agency.

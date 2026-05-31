@@ -215,10 +215,10 @@ You can (and should) mix many different change kinds in one call.")] WorldChange
 
             var behavioralSummary = behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
 
-            var knownNeeds = npc.Mind?.Needs ?? new Dictionary<string, float>();
+            var knownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
             // Merge global + per-NPC descriptors (per-NPC wins) for full context
             var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
-            var npcDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>();
+            var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)
             {
@@ -228,7 +228,10 @@ You can (and should) mix many different change kinds in one call.")] WorldChange
             var context = new NpcContextView
             {
                 Character = npc,
-                Mind = npc.Mind ?? new NpcMind(),
+                Psychology = npc.Psychology ?? new PsychologyProfile(),
+                Social = npc.Social ?? new SocialProfile(),
+                Needs = npc.Needs ?? new NeedsProfile(),
+                SystemStats = npc.SystemStats ?? new SystemExtension(),
                 RecentInteractions = npcEvents,
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = knownNeeds,
@@ -329,7 +332,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             // Merge global descriptors (from DefineNeedDescriptor) with per-NPC ones.
             // Per-NPC descriptors take precedence on conflicts.
             var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
-            var npcDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>();
+            var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)
             {
@@ -340,7 +343,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             {
                 CharacterId = npc.Id,
                 Name = npc.Name,
-                KnownNeeds = npc.Mind?.Needs ?? new Dictionary<string, float>(),
+                KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
                 NeedDescriptors = mergedDescriptors
             };
 

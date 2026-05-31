@@ -44,7 +44,8 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
                 Id = id, 
                 Name = $"Fuzz NPC {i}",
                 Schedule = new Schedule { DefaultLocationId = regionId },
-                Mind = new NpcMind()
+                Social = new SocialProfile(),
+                Needs = new NeedsProfile()
             });
             npcs.Add(id);
         }
@@ -91,16 +92,17 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
             foreach (var id in npcs)
             {
                 var charDoc = await session.LoadAsync<Character>(id);
-                Assert.NotNull(charDoc.Mind);
+                Assert.NotNull(charDoc.Social);
+                Assert.NotNull(charDoc.Needs);
                 
                 // Needs must be clamped 0-100
-                foreach (var (need, val) in charDoc.Mind.Needs)
+                foreach (var (need, val) in charDoc.Needs.ActiveNeeds)
                 {
                     Assert.True(val >= 0f && val <= 100f, $"Need {need} was {val} (out of bounds) on iteration {iteration}");
                 }
 
                 // Relationships must be clamped -100 to 100
-                foreach (var (rel, val) in charDoc.Mind.Relationships)
+                foreach (var (rel, val) in charDoc.Social.Relationships)
                 {
                     Assert.True(val >= -100 && val <= 100, $"Relationship to {rel} was {val} (out of bounds) on iteration {iteration}");
                 }

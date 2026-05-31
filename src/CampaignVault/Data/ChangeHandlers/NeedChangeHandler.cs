@@ -13,15 +13,15 @@ public sealed class NeedChangeHandler : IWorldChangeHandler
     {
         var nc = (NeedChange)change;
 
-        if (!context.Characters.TryGetValue(nc.CharacterId, out var character) || character?.Mind is null)
+        if (!context.Characters.TryGetValue(nc.CharacterId, out var character) || character?.Needs is null)
         {
-            context.RecordMessage($"WARNING: Character {nc.CharacterId} not found or has no Mind during NeedChange.");
+            context.RecordMessage($"WARNING: Character {nc.CharacterId} not found or has no NeedsProfile during NeedChange.");
             context.RecordFailure();
             return Task.FromResult(ChangeHandlerResult.Failure());
         }
 
-        var current = character.Mind.Needs.GetValueOrDefault(nc.Need, 0f);
-        character.Mind.Needs[nc.Need] = Math.Clamp(current + nc.Delta, 0f, 100f);
+        var current = character.Needs.ActiveNeeds.GetValueOrDefault(nc.Need, 0f);
+        character.Needs.ActiveNeeds[nc.Need] = Math.Clamp(current + nc.Delta, 0f, 100f);
 
         context.RecordMessage($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
 

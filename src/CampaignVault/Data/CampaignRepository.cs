@@ -182,18 +182,19 @@ public class CampaignRepository
         // This fulfills the V4 goal of giving the DM synthesized insight instead of raw data.
         var presenceSummaries = npcs.Select(npc =>
         {
-            var mind = npc.Mind ?? new NpcMind();
+            var npcNeeds = npc.Needs ?? new NeedsProfile();
+            var npcPsych = npc.Psychology ?? new PsychologyProfile();
 
             // Take the top 3 highest needs for a compact view (sorted descending)
-            var topNeeds = mind.Needs
+            var topNeeds = npcNeeds.ActiveNeeds
                 .OrderByDescending(kv => kv.Value)
                 .Take(3)
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             // Expose all known needs + descriptors (merged global + per-NPC, per-NPC wins)
-            var knownNeeds = mind.Needs.ToDictionary(kv => kv.Key, kv => kv.Value);
+            var knownNeeds = npcNeeds.ActiveNeeds.ToDictionary(kv => kv.Key, kv => kv.Value);
             var needDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in mind.NeedDescriptors ?? new Dictionary<string, string>())
+            foreach (var kv in npcNeeds.NeedDescriptors ?? new Dictionary<string, string>())
             {
                 needDescriptors[kv.Key] = kv.Value;
             }
@@ -205,7 +206,7 @@ public class CampaignRepository
                 Id: npc.Id,
                 Name: npc.Name,
                 CurrentActivity: npc.CurrentActivity ?? npc.Schedule?.DefaultLocationId,
-                CurrentMood: mind.CurrentMood,
+                CurrentMood: npcPsych.CurrentMood,
                 TopNeeds: topNeeds,
                 KnownNeeds: knownNeeds,
                 NeedDescriptors: needDescriptors,
@@ -367,7 +368,10 @@ public class CampaignRepository
             existing.Schedule = character.Schedule;
             existing.CurrentLocationId = character.CurrentLocationId;
             existing.CurrentActivity = character.CurrentActivity;
-            existing.Mind = character.Mind ?? new NpcMind();
+            existing.Psychology = character.Psychology ?? new PsychologyProfile();
+            existing.Social = character.Social ?? new SocialProfile();
+            existing.Needs = character.Needs ?? new NeedsProfile();
+            existing.SystemStats = character.SystemStats ?? new SystemExtension();
             existing.LastUpdated = character.LastUpdated;
         }
         else

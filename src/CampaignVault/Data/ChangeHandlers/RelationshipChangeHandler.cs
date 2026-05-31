@@ -20,11 +20,11 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
             return Task.FromResult(ChangeHandlerResult.Failure());
         }
 
-        source.Mind ??= new NpcMind();
-        source.Mind.Relationships ??= new Dictionary<string, int>();
+        source.Social ??= new SocialProfile();
+        source.Social.Relationships ??= new Dictionary<string, int>();
 
-        var currentVal = source.Mind.Relationships.GetValueOrDefault(rel.TargetId, 0);
-        source.Mind.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
+        var currentVal = source.Social.Relationships.GetValueOrDefault(rel.TargetId, 0);
+        source.Social.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
 
         context.RecordMessage($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
 
