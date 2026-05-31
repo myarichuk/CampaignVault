@@ -75,12 +75,14 @@ public class CampaignTools(
     [McpServerTool(UseStructuredContent = true)]
     [Description("KICKOFF TOOL: Call this at the start of every session to get the current time, active rumors, recent history, and current party location in one view.")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
-        [Description("The current ID of the location where the party is (string type)")] string partyLocationId)
+        [Description("The current ID of the location where the party is (string type)")] string partyLocationId,
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
         // Pure read: skip SaveChanges to avoid unnecessary write transactions and reduce surface for
         // RavenDB "active async task" / serialization issues during disposal.
         return ExecuteAsync(async session => {
-            var time = await repository.GetTimeAsync(session);
+            var time = await repository.GetTimeAsync(session, effective);
             
             // Widen rumor search for kickoff
             var spreading = await repository.QueryRumorsAsync(session, null, null, RumorState.Spreading, 3);
@@ -105,7 +107,7 @@ public class CampaignTools(
             var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
             
             var view = new WorldStateView(time, rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)), events, locSummary, pressure);
-            return new ToolResult<WorldStateView>(true, view, "Authoritative world state retrieved for session start.");
+            return new ToolResult<WorldStateView>(true, view, $"Authoritative world state retrieved for session start (campaign: {effective}).");
         }, saveChanges: false);
     }
 
