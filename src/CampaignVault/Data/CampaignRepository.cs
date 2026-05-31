@@ -346,7 +346,7 @@ public class CampaignRepository
         return results;
     }
 
-    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, EventCategory? category, int limit = 10)
+    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, EventCategory? category, int limit = 10, string? campaignName = null)
     {
         var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
@@ -630,7 +630,7 @@ public class CampaignRepository
         }
     }
 
-    public async Task<IEnumerable<Rumor>> QueryRumorsAsync(IAsyncDocumentSession session, string? query, string? regionId = null, RumorState? state = null, int limit = 5)
+    public async Task<IEnumerable<Rumor>> QueryRumorsAsync(IAsyncDocumentSession session, string? query, string? regionId = null, RumorState? state = null, int limit = 5, string? campaignName = null)
     {
         var q = session.Advanced.AsyncDocumentQuery<Rumor, Rumor_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Subject, $"*{query}*").OrElse().Search(x => x.CurrentText, $"*{query}*");

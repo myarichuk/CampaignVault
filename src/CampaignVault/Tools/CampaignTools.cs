@@ -85,11 +85,11 @@ public class CampaignTools(
             var time = await repository.GetTimeAsync(session, effective);
             
             // Widen rumor search for kickoff
-            var spreading = await repository.QueryRumorsAsync(session, null, null, RumorState.Spreading, 3);
-            var peak = await repository.QueryRumorsAsync(session, null, null, RumorState.Peak, 3);
+            var spreading = await repository.QueryRumorsAsync(session, null, null, RumorState.Spreading, 3, effective);
+            var peak = await repository.QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
             var rumors = peak.Concat(spreading).ToList();
 
-            var events = await repository.QueryEventsAsync(session, null, null, 5);
+            var events = await repository.QueryEventsAsync(session, null, null, 5, effective);
             var location = await repository.GetLocationAsync(session, partyLocationId);
             
             var pressure = new List<string>();
@@ -98,7 +98,7 @@ public class CampaignTools(
                 pressure.Add($"Rumor '{r.Subject}' has been spreading for {time.TotalDaysElapsed - r.LastStateChangeDay} days without resolution.");
             }
 
-            var agingEvents = await repository.QueryEventsAsync(session, null, EventCategory.Unresolved, 5);
+            var agingEvents = await repository.QueryEventsAsync(session, null, EventCategory.Unresolved, 5, effective);
             foreach (var e in agingEvents)
             {
                 pressure.Add($"Unresolved thread: '{e.Summary}' ({time.TotalDaysElapsed - e.DayLogged} days old).");
@@ -280,7 +280,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
     {
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var results = await repository.QueryEventsAsync(session, query, null, limit);
+            var results = await repository.QueryEventsAsync(session, query, null, limit, effective);
             return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events (campaign: {effective}).");
         }, saveChanges: false);
     }
