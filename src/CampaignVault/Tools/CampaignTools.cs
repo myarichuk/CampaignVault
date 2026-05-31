@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using Raven.Client.Exceptions;
 using Raven.Client.Documents.Session;
+using CampaignVault.Rulesets;
 // ReSharper disable UnusedMember.Global
 
 namespace CampaignVault.Tools;
@@ -17,7 +18,7 @@ internal static class ToolErrors
 }
 
 [McpServerToolType]
-public class CampaignTools(CampaignRepository repository, INpcBehaviorSynthesizer behaviorSynthesizer)
+public class CampaignTools(CampaignRepository repository, INpcBehaviorSynthesizer behaviorSynthesizer, IRulesetResolverSelector rulesetSelector)
 {
     private async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
     {
@@ -403,6 +404,121 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             config.SystemOptions = systemOptions ?? [];
             await repository.UpsertCampaignConfigAsync(session, config);
             return new ToolResult<CampaignConfig>(true, config, $"Active ruleset system updated to '{activeSystem}'.");
+        });
+    }
+
+    // --- Combat & Dispatch Tools ---
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("COMBAT TOOL: Starts a new combat encounter. Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten.")]
+    public Task<ToolResult<CombatEncounter>> StartCombat(
+        [Description("The location ID where combat is happening.")] string locationId,
+        [Description("List of character IDs participating in combat.")] string[] combatantIds)
+    {
+        return ExecuteAsync(async session =>
+        {
+            var config = await repository.GetCampaignConfigAsync(session);
+            var resolver = rulesetSelector.GetResolver(config.ActiveSystem);
+
+            var combatants = new List<CombatantState>();
+            foreach (var id in combatantIds)
+            {
+                var initiative = await resolver.RollInitiativeAsync(session, id);
+                combatants.Add(new CombatantState
+                {
+                    CharacterId = id,
+                    Initiative = initiative,
+                    HasActedThisRound = false
+                });
+            }
+
+            // Sort by highest initiative first
+            combatants = combatants.OrderByDescending(c => c.Initiative).ToList();
+
+            var encounter = new CombatEncounter
+            {
+                LocationId = locationId,
+                Round = 1,
+                Combatants = combatants,
+                ActiveTurnId = combatants.FirstOrDefault()?.CharacterId,
+                IsActive = true
+            };
+
+            await session.StoreAsync(encounter, encounter.Id);
+
+            return new ToolResult<CombatEncounter>(true, encounter, $"Combat started at {locationId} with {combatants.Count} combatants.");
+        });
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("COMBAT TOOL: Retrieves the current combat encounter state, including turn order, current round, and active participants.")]
+    public Task<ToolResult<CombatEncounter>> GetCombatState()
+    {
+        return ExecuteAsync(async session =>
+        {
+            var encounter = await session.LoadAsync<CombatEncounter>("combat/current");
+            if (encounter == null || !encounter.IsActive)
+            {
+                return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter.");
+            }
+            return new ToolResult<CombatEncounter>(true, encounter, $"Combat is in round {encounter.Round}. Active turn: {encounter.ActiveTurnId}.");
+        }, saveChanges: false);
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("COMBAT TOOL: Advances the turn order to the next combatant. If all combatants have acted, advances to the next round.")]
+    public Task<ToolResult<CombatEncounter>> NextTurn()
+    {
+        return ExecuteAsync(async session =>
+        {
+            var encounter = await session.LoadAsync<CombatEncounter>("combat/current");
+            if (encounter == null || !encounter.IsActive)
+            {
+                return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter.");
+            }
+
+            // Mark current actor as having acted
+            var current = encounter.Combatants.FirstOrDefault(c => c.CharacterId == encounter.ActiveTurnId);
+            if (current != null)
+            {
+                current.HasActedThisRound = true;
+            }
+
+            // Find next who hasn't acted
+            var next = encounter.Combatants.FirstOrDefault(c => !c.HasActedThisRound);
+            if (next == null)
+            {
+                // New round
+                encounter.Round++;
+                foreach (var c in encounter.Combatants) c.HasActedThisRound = false;
+                next = encounter.Combatants.FirstOrDefault();
+            }
+
+            encounter.ActiveTurnId = next?.CharacterId;
+            await session.StoreAsync(encounter, encounter.Id);
+
+            return new ToolResult<CombatEncounter>(true, encounter, $"Advanced to turn of {encounter.ActiveTurnId} (Round {encounter.Round}).");
+        });
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("COMBAT TOOL: Ends the current active combat encounter and wraps up the state.")]
+    public Task<ToolResult<CombatEncounter>> EndCombat()
+    {
+        return ExecuteAsync(async session =>
+        {
+            var encounter = await session.LoadAsync<CombatEncounter>("combat/current");
+            if (encounter == null || !encounter.IsActive)
+            {
+                return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter to end.");
+            }
+
+            encounter.IsActive = false;
+            encounter.ActiveTurnId = null;
+
+            await session.StoreAsync(encounter, encounter.Id);
+
+            return new ToolResult<CombatEncounter>(true, encounter, "Combat encounter ended.");
         });
     }
 }
