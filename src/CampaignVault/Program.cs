@@ -40,6 +40,7 @@ builder.Services.AddSingleton<IDocumentStore>(documentStore);
 builder.Services.AddSingleton<ISimulationRule, NeedsAccumulationRule>();
 builder.Services.AddSingleton<ISimulationRule, RumorDecayRule>();
 builder.Services.AddSingleton<ISimulationRule, ScheduleEvaluationRule>();
+builder.Services.AddSingleton<ISimulationRule, StatusExpiryRule>();
 builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>();
 
 // WorldChange handlers (new extensible dispatch system - "ShouldHandle" responsibility pattern)

@@ -99,6 +99,7 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         if (target.SystemStats is not Dnd5eExtension targetStats)
             return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
         int ac = targetStats.ArmorClass;
+        ac = targetStats.ApplyModifiers("AC", ac);
         
         // AC override
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
@@ -107,12 +108,14 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         int attackBonus = 0;
         if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
             return $"Error: invalid bonus value '{b}'.";
+        attackBonus = actorStats.ApplyModifiers("AttackRoll", attackBonus);
 
         string damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4"; // Unarmed default
         
         int damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
             return $"Error: invalid damageBonus value '{db}'.";
+        damageBonus = actorStats.ApplyModifiers("DamageRoll", damageBonus);
 
         var mechanic = GetMechanicFromParams(action.Parameters);
 
@@ -156,6 +159,8 @@ public class Dnd5eRulesetResolver : IRulesetResolver
 
         var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
         int bonus = GetSkillOrAbilityBonus(actorStats, skillName);
+        bonus = actorStats.ApplyModifiers("SkillCheck", bonus);
+        bonus = actorStats.ApplyModifiers(skillName, bonus);
         var mechanic = GetMechanicFromParams(action.Parameters);
 
         var outcome = await _rollService.RollAsync(new RollRequest
@@ -185,7 +190,12 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         var targetSkill = action.Parameters.TryGetValue("targetSkill", out var ts_name) ? ts_name : actorSkill;
 
         int actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
+        actorBonus = actorStats.ApplyModifiers("SkillCheck", actorBonus);
+        actorBonus = actorStats.ApplyModifiers(actorSkill, actorBonus);
+
         int targetBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
+        targetBonus = targetStats.ApplyModifiers("SkillCheck", targetBonus);
+        targetBonus = targetStats.ApplyModifiers(targetSkill, targetBonus);
 
         var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = GetMechanicFromParams(action.Parameters) }, ct);
         var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = DiceMechanic.Standard }, ct);
@@ -207,6 +217,7 @@ public class Dnd5eRulesetResolver : IRulesetResolver
 
         var stats = character.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
         int dexMod = stats.GetAbilityModifier(stats.Dexterity);
+        dexMod = stats.ApplyModifiers("Initiative", dexMod);
 
         var request = new RollRequest 
         { 

@@ -63,12 +63,20 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
             return $"Error: invalid difficulty value '{diffStr}'.";
         
+        // Lower difficulty is better for the actor. Positive "SkillCheck" modifiers are good.
+        // Fallout is TN based, so modifiers add to the TN, but if there's a difficulty modifier we could apply it here.
+        // Let's modify the TN instead.
+        
         string attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
         string skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
         
         int attrVal = GetAttributeValue(actorStats, attribute);
         int skillVal = actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
         int targetNumber = attrVal + skillVal;
+        
+        targetNumber = actorStats.ApplyModifiers("SkillCheck", targetNumber);
+        targetNumber = actorStats.ApplyModifiers(skill, targetNumber);
+        targetNumber = actorStats.ApplyModifiers(attribute, targetNumber);
         
         bool isTagged = actorStats.TagSkills.Contains(skill);
         int? critThreshold = isTagged ? skillVal : null;
@@ -104,7 +112,10 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         if (target.SystemStats is not Fallout2d20Extension targetStats)
             return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
         
-        int difficulty = targetStats.Defense;
+        int defense = targetStats.Defense;
+        defense = targetStats.ApplyModifiers("Defense", defense);
+        
+        int difficulty = defense;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
             return $"Error: invalid difficulty value '{diffStr}'.";
         
@@ -114,6 +125,10 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         int attrVal = GetAttributeValue(actorStats, attribute);
         int skillVal = actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
         int targetNumber = attrVal + skillVal;
+        
+        targetNumber = actorStats.ApplyModifiers("AttackRoll", targetNumber);
+        targetNumber = actorStats.ApplyModifiers(skill, targetNumber);
+        targetNumber = actorStats.ApplyModifiers(attribute, targetNumber);
         bool isTagged = actorStats.TagSkills.Contains(skill);
         
         int poolSize = 2;
@@ -139,6 +154,8 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         int combatDiceCount = 3;
         if (action.Parameters.TryGetValue("damageDice", out var cd) && !int.TryParse(cd, out combatDiceCount))
             return $"Error: invalid damageDice value '{cd}'.";
+            
+        combatDiceCount = actorStats.ApplyModifiers("DamageRoll", combatDiceCount);
         string damageType = action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical";
 
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);
@@ -156,6 +173,8 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         var character = await session.LoadAsync<Character>(characterId, ct);
         if (character == null) return 0f;
         var stats = character.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
-        return stats.Perception + stats.Agility;
+        int initiative = stats.Perception + stats.Agility;
+        initiative = stats.ApplyModifiers("Initiative", initiative);
+        return initiative;
     }
 }

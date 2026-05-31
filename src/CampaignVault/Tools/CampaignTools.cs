@@ -592,18 +592,42 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
             // Find next who hasn't acted
             var next = encounter.Combatants.FirstOrDefault(c => !c.HasActedThisRound);
+            var expiredMessages = new List<string>();
             if (next == null)
             {
                 // New round
                 encounter.Round++;
                 foreach (var c in encounter.Combatants) c.HasActedThisRound = false;
                 next = encounter.Combatants.FirstOrDefault();
+
+                // Expire round-based status effects
+                var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
+                var characters = await session.LoadAsync<Character>(characterIds);
+                foreach (var character in characters.Values.Where(c => c != null))
+                {
+                    if (character.SystemStats?.StatusEffects != null)
+                    {
+                        var effects = character.SystemStats.StatusEffects;
+                        var toRemove = effects.Where(e => e.ExpiresAtRound.HasValue && e.ExpiresAtRound.Value <= encounter.Round).ToList();
+                        foreach (var effect in toRemove)
+                        {
+                            effects.Remove(effect);
+                            expiredMessages.Add($"Expired effect '{effect.Name}' on '{character.Name}'.");
+                        }
+                    }
+                }
             }
 
             encounter.ActiveTurnId = next?.CharacterId;
             await session.StoreAsync(encounter, encounter.Id);
 
-            return new ToolResult<CombatEncounter>(true, encounter, $"Advanced to turn of {encounter.ActiveTurnId} (Round {encounter.Round}).");
+            var summary = $"Advanced to turn of {encounter.ActiveTurnId} (Round {encounter.Round}).";
+            if (expiredMessages.Count > 0)
+            {
+                summary += " " + string.Join(" ", expiredMessages);
+            }
+
+            return new ToolResult<CombatEncounter>(true, encounter, summary);
         });
     }
 

@@ -100,18 +100,21 @@ public class Pf2eRulesetResolver : IRulesetResolver
         if (target.SystemStats is not Pf2eExtension targetStats)
             return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
         int ac = targetStats.ArmorClass;
+        ac = targetStats.ApplyModifiers("AC", ac);
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
             ac = overrideAc;
 
         int attackBonus = 0;
         if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
             return $"Error: invalid bonus value '{b}'.";
+        attackBonus = actorStats.ApplyModifiers("AttackRoll", attackBonus);
 
         string damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4";
         
         int damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
             return $"Error: invalid damageBonus value '{db}'.";
+        damageBonus = actorStats.ApplyModifiers("DamageRoll", damageBonus);
 
         var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = DiceMechanic.Standard }, ct);
         
@@ -140,6 +143,8 @@ public class Pf2eRulesetResolver : IRulesetResolver
 
         var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
         int bonus = GetSkillOrAbilityBonus(actorStats, skillName);
+        bonus = actorStats.ApplyModifiers("SkillCheck", bonus);
+        bonus = actorStats.ApplyModifiers(skillName, bonus);
 
         var outcome = await _rollService.RollAsync(new RollRequest { Tag = "skill", Expression = "1d20", Bonus = bonus, Mechanic = DiceMechanic.Standard }, ct);
         
@@ -153,7 +158,9 @@ public class Pf2eRulesetResolver : IRulesetResolver
         var character = await session.LoadAsync<Character>(characterId, ct);
         if (character == null) return 0f;
         var stats = character.SystemStats as Pf2eExtension ?? new Pf2eExtension();
-        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = stats.DexterityMod, Mechanic = DiceMechanic.Standard };
+        int dexMod = stats.DexterityMod;
+        dexMod = stats.ApplyModifiers("Initiative", dexMod);
+        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = dexMod, Mechanic = DiceMechanic.Standard };
         var outcome = await _rollService.RollAsync(request, ct);
         return outcome.Result;
     }
