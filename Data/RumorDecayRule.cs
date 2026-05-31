@@ -4,13 +4,26 @@ namespace CampaignVault.Data;
 
 /// <summary>
 /// Rumor lifecycle rule.
-/// Currently only auto-fades rumors after 14 days of silence (preserves original behavior).
-/// Future expansions (per V4 vision): escalation, spreading based on NPC density, resolution pressure, etc.
+///
+/// Advances rumors one step at a time through the full lifecycle:
+///   Nascent → Spreading (after 7 days of silence)
+///   Spreading → Peak    (after another 7 days, 14 cumulative)
+///   Peak → Fading       (after 14 days of silence at Peak or higher)
+///   Fading → Forgotten  (after 14 days of silence at Fading)
+///
+/// Advancing one step per tick ensures the bell-curve lifecycle is actually traversed
+/// instead of jumping directly from Nascent to Peak (the previous bug).
+///
+/// Future expansions: escalation based on NPC density, party involvement pressure, etc.
 /// </summary>
 public sealed class RumorDecayRule : ISimulationRule
 {
     public string Name => "Rumor Decay";
     public int Order => 20;
+
+    // Thresholds in days of silence before the next state transition.
+    private const int EscalationDays = 7;   // Nascent → Spreading, Spreading → Peak
+    private const int DecayDays = 14;        // Peak → Fading, Fading → Forgotten
 
     public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
@@ -24,27 +37,36 @@ public sealed class RumorDecayRule : ISimulationRule
 
             var daysSinceUpdate = context.Time.TotalDaysElapsed - rumor.LastStateChangeDay;
 
-            if (daysSinceUpdate > 14)
+            RumorState? nextState = rumor.State switch
             {
-                if (rumor.State == RumorState.Nascent || rumor.State == RumorState.Spreading)
-                {
-                    deltas.Add(new RumorEvolves
-                    {
-                        RumorId = rumor.Id,
-                        NewState = RumorState.Peak
-                    });
-                    narratives.Add($"The rumor '{rumor.Subject}' has reached peak circulation.");
-                }
-                else
-                {
-                    deltas.Add(new RumorEvolves
-                    {
-                        RumorId = rumor.Id,
-                        NewState = RumorState.Fading
-                    });
-                    narratives.Add($"The rumor '{rumor.Subject}' is starting to fade from public memory.");
-                }
-            }
+                // Escalation: growing rumors advance one step after EscalationDays
+                RumorState.Nascent when daysSinceUpdate > EscalationDays
+                    => RumorState.Spreading,
+                RumorState.Spreading when daysSinceUpdate > EscalationDays
+                    => RumorState.Peak,
+
+                // Decay: stale rumors fade one step after DecayDays
+                RumorState.Peak when daysSinceUpdate > DecayDays
+                    => RumorState.Fading,
+                RumorState.Fading when daysSinceUpdate > DecayDays
+                    => RumorState.Forgotten,
+
+                _ => null // no transition yet
+            };
+
+            if (nextState is null) continue;
+
+            deltas.Add(new RumorEvolves { RumorId = rumor.Id, NewState = nextState.Value });
+
+            var narrative = nextState.Value switch
+            {
+                RumorState.Spreading => $"The rumor '{rumor.Subject}' is beginning to spread.",
+                RumorState.Peak      => $"The rumor '{rumor.Subject}' has reached peak circulation.",
+                RumorState.Fading    => $"The rumor '{rumor.Subject}' is starting to fade from public memory.",
+                RumorState.Forgotten => $"The rumor '{rumor.Subject}' has been forgotten.",
+                _                    => $"The rumor '{rumor.Subject}' has transitioned to {nextState.Value}."
+            };
+            narratives.Add(narrative);
         }
 
         return Task.FromResult(new RuleResult(narratives, deltas));
