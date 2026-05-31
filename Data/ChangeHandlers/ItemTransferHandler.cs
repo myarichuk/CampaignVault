@@ -13,7 +13,7 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
     {
         var transfer = (ItemTransfer)change;
 
-        if (!context.Items.TryGetValue(transfer.ItemId, out var item) || item is null)
+        if (!context.Items.TryGetValue(transfer.ItemId, out var item))
         {
             // Item not preloaded — rare but possible if not referenced in pre-load scan
             context.RecordMessage($"WARNING: Item {transfer.ItemId} not found during ItemTransfer.");

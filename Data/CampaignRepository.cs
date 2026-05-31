@@ -29,8 +29,27 @@ public class CampaignRepository
         _logger = logger;
         _behaviorSynthesizer = behaviorSynthesizer;
 
-        var handlers = (changeHandlers ?? Array.Empty<IWorldChangeHandler>()).ToList();
-        _changeDispatcher = new WorldChangeDispatcher(handlers, Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance);
+        var handlersList = (changeHandlers ?? Array.Empty<IWorldChangeHandler>()).ToList();
+
+        if (handlersList.Count == 0) //TODO: consider what should be done here - this is brittle as fuk
+        {
+            // Default to full production handler set so simulation tests and legacy 4-arg constructions continue to work
+            handlersList =
+            [
+                new HpChangeHandler(),
+                new ItemTransferHandler(),
+                new StatusChangeHandler(),
+                new EventOccurredHandler(),
+                new RumorEvolvesHandler(),
+                new RelationshipChangeHandler(),
+                new NeedChangeHandler(),
+                new AttributeChangeHandler(),
+                new MoodChangeHandler(),
+                new ActivityChangeHandler()
+            ];
+        }
+
+        _changeDispatcher = new WorldChangeDispatcher(handlersList, Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance);
     }
 
     /// <summary>
@@ -41,20 +60,7 @@ public class CampaignRepository
         : this(store, 
                new NoOpSimulationEngine(), 
                Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-               new DefaultBehaviorSynthesizer(),
-               new IWorldChangeHandler[]
-               {
-                   new ChangeHandlers.HpChangeHandler(),
-                   new ChangeHandlers.ItemTransferHandler(),
-                   new ChangeHandlers.StatusChangeHandler(),
-                   new ChangeHandlers.EventOccurredHandler(),
-                   new ChangeHandlers.RumorEvolvesHandler(),
-                   new ChangeHandlers.RelationshipChangeHandler(),
-                   new ChangeHandlers.NeedChangeHandler(),
-                   new ChangeHandlers.AttributeChangeHandler(),
-                   new ChangeHandlers.MoodChangeHandler(),
-                   new ChangeHandlers.ActivityChangeHandler(),
-               })
+               new DefaultBehaviorSynthesizer())
     {
     }
 
@@ -99,8 +105,6 @@ public class CampaignRepository
             ev => LogEventAsync(session, ev));
     }
 
-    // --- V4 Core: Scene Synthesis ---
-
     public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId)
     {
         var location = await session
@@ -127,6 +131,7 @@ public class CampaignRepository
             .ToListAsync();
 
         // Fallback: if the index hasn't caught up (common in fast tests), load recent characters and filter client-side
+        //TODO: add a warning log - so I can catch it in live instances
         if (npcsFromIndex.Count == 0)
         {
             var recentChars = await session.Query<Character>().Take(200).ToListAsync();
@@ -155,7 +160,10 @@ public class CampaignRepository
 
         var rumors = await QueryRumorsAsync(session, null, regionId, null, 5);
         var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
-        foreach (var it in items) JsonSanitizer.Sanitize(it);
+        foreach (var it in items)
+        {
+            JsonSanitizer.Sanitize(it);
+        }
 
         JsonSanitizer.Sanitize(location);
 
@@ -186,7 +194,9 @@ public class CampaignRepository
             var knownNeeds = mind.Needs.ToDictionary(kv => kv.Key, kv => kv.Value);
             var needDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in mind.NeedDescriptors ?? new Dictionary<string, string>())
+            {
                 needDescriptors[kv.Key] = kv.Value;
+            }
 
             // Generate behavioral summary using the injected synthesizer
             var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, time, events);
@@ -302,7 +312,10 @@ public class CampaignRepository
         // that hold JsonElement (from STJ inbound or legacy data). Without sanitization here,
         // STJ serialization of the tool response in the MCP layer blows up with
         // "Operation is not valid due to the current state of the object" (dead JsonElement).
-        foreach (var l in locs) SanitizeLocation(l);
+        foreach (var l in locs)
+        {
+            SanitizeLocation(l);
+        }
 
         var results = new List<object>();
         results.AddRange(chars);
@@ -486,7 +499,11 @@ public class CampaignRepository
     {
         var q = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.OpenSubclause().WhereEquals(x => x.Title, query).Fuzzy(0.4m).OrElse().WhereEquals(x => x.Content, query).Fuzzy(0.4m).CloseSubclause();
-        if (tags != null && tags.Length > 0) { foreach (var tag in tags) q = q.AndAlso().ContainsAny(x => x.Tags, new[] { tag }); }
+        if (tags != null && tags.Length > 0) { foreach (var tag in tags)
+            {
+                q = q.AndAlso().ContainsAny(x => x.Tags, new[] { tag });
+            }
+        }
         if (!string.IsNullOrEmpty(category)) q = q.AndAlso().WhereEquals(x => x.Category, category);
         return await q.Take(limit).ToListAsync();
     }
@@ -524,7 +541,11 @@ public class CampaignRepository
         if (type.HasValue) q = q.AndAlso().WhereEquals(x => x.Type, type.Value);
         if (!string.IsNullOrEmpty(parentId)) q = q.AndAlso().WhereEquals(x => x.ParentLocationId, parentId);
         var locations = await q.Take(limit).ToListAsync();
-        foreach (var l in locations) SanitizeLocation(l);
+        foreach (var l in locations)
+        {
+            SanitizeLocation(l);
+        }
+
         return locations;
     }
 

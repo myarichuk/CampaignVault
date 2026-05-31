@@ -16,7 +16,7 @@ public sealed class HpChangeHandler : IWorldChangeHandler
     {
         var hp = (HpChange)change;
 
-        if (!context.Characters.TryGetValue(hp.CharacterId, out var character) || character is null)
+        if (!context.Characters.TryGetValue(hp.CharacterId, out var character))
         {
             context.RecordMessage($"WARNING: Character {hp.CharacterId} not found during HpChange.");
             context.RecordFailure();

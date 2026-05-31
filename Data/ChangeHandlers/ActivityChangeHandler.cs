@@ -13,7 +13,7 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
     {
         var act = (ActivityChange)change;
 
-        if (!context.Characters.TryGetValue(act.CharacterId, out var character) || character is null)
+        if (!context.Characters.TryGetValue(act.CharacterId, out var character))
         {
             context.RecordMessage($"WARNING: Character {act.CharacterId} not found during ActivityChange.");
             context.RecordFailure();

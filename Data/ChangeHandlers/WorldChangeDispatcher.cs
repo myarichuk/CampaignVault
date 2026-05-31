@@ -38,8 +38,11 @@ public sealed class WorldChangeDispatcher
     public IWorldChangeHandler? FindHandler(WorldChange change)
     {
         foreach (var h in _handlers)
+        {
             if (h.ShouldHandle(change))
                 return h;
+        }
+
         return null;
     }
 
@@ -64,7 +67,10 @@ public sealed class WorldChangeDispatcher
         {
             // Fast path for tests / early migration: no handlers registered
             foreach (var c in changes)
+            {
                 summary.Add($"WARNING: Unhandled change type: {c?.GetType().Name}");
+            }
+
             return new CommitResult { Success = false, ChangesProcessed = changes.Length, Summary = summary };
         }
 
