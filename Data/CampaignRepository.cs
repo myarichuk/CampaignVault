@@ -102,9 +102,21 @@ public class CampaignRepository
                     case HpChange hp:
                         if (characters.TryGetValue(hp.CharacterId, out var hpChar) && hpChar != null)
                         {
-                            var maxHp = hpChar.MaxHp > 0 ? hpChar.MaxHp : int.MaxValue;
-                            hpChar.CurrentHp = Math.Clamp(hpChar.CurrentHp + hp.Delta, 0, maxHp);
-                            summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {hpChar.CurrentHp}/{hpChar.MaxHp})");
+                            if (hpChar.MaxHp <= 0)
+                            {
+                                // MaxHp of 0 usually means the entity was created with default values
+                                // (e.g. a location placeholder, faction token, or test fixture).
+                                // Clamping to int.MaxValue would silently make the entity immortal.
+                                // Skip and surface a clear warning instead.
+                                _logger.LogWarning("HpChange skipped for {CharacterId}: MaxHp is {MaxHp} (not a combatant?)", hp.CharacterId, hpChar.MaxHp);
+                                summary.Add($"WARNING: HpChange skipped for {hp.CharacterId} — MaxHp is {hpChar.MaxHp}. Set MaxHp > 0 to enable HP tracking.");
+                                success = false;
+                            }
+                            else
+                            {
+                                hpChar.CurrentHp = Math.Clamp(hpChar.CurrentHp + hp.Delta, 0, hpChar.MaxHp);
+                                summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {hpChar.CurrentHp}/{hpChar.MaxHp})");
+                            }
                         }
                         else
                         {
