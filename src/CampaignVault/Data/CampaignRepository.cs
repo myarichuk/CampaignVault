@@ -599,15 +599,16 @@ public class CampaignRepository
         return locations;
     }
 
-    public async Task UpsertRumorAsync(IAsyncDocumentSession session, Rumor rumor)
+    public async Task UpsertRumorAsync(IAsyncDocumentSession session, Rumor rumor, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(rumor.Id))
             throw new ArgumentException("Rumor.Id is required for upsert.");
 
+        var effective = ResolveCampaign(campaignName);
         rumor.LastUpdated = DateTime.UtcNow;
         if (rumor.DayCreated == 0)
         {
-            var t = await GetTimeAsync(session);
+            var t = await GetTimeAsync(session, effective);
             rumor.DayCreated = t.TotalDaysElapsed;
             rumor.LastStateChangeDay = t.TotalDaysElapsed;
         }
