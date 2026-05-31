@@ -13,6 +13,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(HpChange), "hp")]
 [JsonDerivedType(typeof(ItemTransfer), "item")]
 [JsonDerivedType(typeof(StatusChange), "status")]
+[JsonDerivedType(typeof(StatusRemove), "statusremove")]
 [JsonDerivedType(typeof(EventOccurred), "event")]
 [JsonDerivedType(typeof(RumorEvolves), "rumor")]
 [JsonDerivedType(typeof(RelationshipChange), "relationship")]
@@ -54,6 +55,18 @@ public class StatusChange : WorldChange
     public string CharacterId { get; set; } = default!;
 
     [Description("Name of the status condition to add. Use clear narrative names like 'Poisoned', 'Frightened', 'Blessed', 'Grappled', 'OnFire'.")]
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = default!;
+}
+
+/// <summary>Remove a named status/condition from a character (case-insensitive match). Removes all matching entries.</summary>
+public class StatusRemove : WorldChange
+{
+    [Description("ID of the character whose status to remove (e.g. 'characters/grog').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("Name of the status condition to remove. Matching is case-insensitive; all matching entries are removed.")]
     [JsonPropertyName("status")]
     public string Status { get; set; } = default!;
 }

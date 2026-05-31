@@ -109,11 +109,11 @@ public class CampaignTools(CampaignRepository repository, INpcBehaviorSynthesize
     }
 
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
-    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity). Use ActivityChange liberally to keep get_scene in sync with your narrative.")]
+    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove). Use ActivityChange liberally to keep get_scene in sync with your narrative.")]
     public Task<ToolResult<CommitResult>> Commit(
         [Description(@"Array of world changes. Each item must be a JSON object with a '$type' discriminator.
 
-Supported types (exact values for $type): hp, item, status, event, rumor, relationship, need, attribute, mood, activity.
+Supported types (exact values for $type): hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity.
 
 === RECOMMENDED PATTERN (copy-paste friendly) ===
 When creating a new area + NPC from scratch, do it in ONE atomic commit:

@@ -42,6 +42,18 @@ builder.Services.AddSingleton<ISimulationRule, RumorDecayRule>();
 builder.Services.AddSingleton<ISimulationRule, ScheduleEvaluationRule>();
 builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>();
 
+// WorldChange handlers (new extensible dispatch system - "ShouldHandle" responsibility pattern)
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.HpChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ItemTransferHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.StatusChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.EventOccurredHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RumorEvolvesHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RelationshipChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.NeedChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.AttributeChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.MoodChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ActivityChangeHandler>();
+
 // Behavioral synthesis (deterministic first, cheap & predictable)
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
 

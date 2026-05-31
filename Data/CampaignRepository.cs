@@ -5,6 +5,7 @@ using Raven.Client.Documents.Queries;
 using Raven.Client.Documents.Session;
 using Raven.Client.Documents.Indexes;
 using Microsoft.Extensions.Logging;
+using CampaignVault.Data.ChangeHandlers;
 
 namespace CampaignVault.Data;
 
@@ -14,28 +15,46 @@ public class CampaignRepository
     private readonly IWorldSimulationEngine _simulationEngine;
     private readonly ILogger<CampaignRepository> _logger;
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
+    private readonly WorldChangeDispatcher _changeDispatcher;
 
     public CampaignRepository(
         IDocumentStore store, 
         IWorldSimulationEngine simulationEngine,
         ILogger<CampaignRepository> logger,
-        INpcBehaviorSynthesizer behaviorSynthesizer)
+        INpcBehaviorSynthesizer behaviorSynthesizer,
+        IEnumerable<IWorldChangeHandler>? changeHandlers = null)
     {
         _store = store;
         _simulationEngine = simulationEngine;
         _logger = logger;
         _behaviorSynthesizer = behaviorSynthesizer;
+
+        var handlers = (changeHandlers ?? Array.Empty<IWorldChangeHandler>()).ToList();
+        _changeDispatcher = new WorldChangeDispatcher(handlers, Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance);
     }
 
     /// <summary>
     /// Convenience constructor primarily for test scenarios.
-    /// In production, always use the two-parameter constructor via DI so the real simulation engine is injected.
+    /// Supplies the full set of production handlers so the legacy fallback can be removed.
     /// </summary>
     public CampaignRepository(IDocumentStore store)
         : this(store, 
                new NoOpSimulationEngine(), 
                Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-               new DefaultBehaviorSynthesizer())
+               new DefaultBehaviorSynthesizer(),
+               new IWorldChangeHandler[]
+               {
+                   new ChangeHandlers.HpChangeHandler(),
+                   new ChangeHandlers.ItemTransferHandler(),
+                   new ChangeHandlers.StatusChangeHandler(),
+                   new ChangeHandlers.EventOccurredHandler(),
+                   new ChangeHandlers.RumorEvolvesHandler(),
+                   new ChangeHandlers.RelationshipChangeHandler(),
+                   new ChangeHandlers.NeedChangeHandler(),
+                   new ChangeHandlers.AttributeChangeHandler(),
+                   new ChangeHandlers.MoodChangeHandler(),
+                   new ChangeHandlers.ActivityChangeHandler(),
+               })
     {
     }
 
@@ -66,191 +85,18 @@ public class CampaignRepository
     ///
     /// Use this for all atomic world mutations coming from tools or simulation rules.
     /// </summary>
-    public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
+    public Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
     {
         changes ??= Array.Empty<WorldChange>();
+
         _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes", changes.Length);
 
-        var summary = new List<string>();
-        bool success = true;
-        
-        // 1. Pre-identify and batch-load all required entities to minimize round-trips
-        var characterIds = new HashSet<string>();
-        var itemIds = new HashSet<string>();
-
-        foreach (var change in changes)
-        {
-            if (change is ItemTransfer it) itemIds.Add(it.ItemId);
-            if (change is RelationshipChange rc) characterIds.Add(rc.SourceId);
-            if (change is NeedChange nc) characterIds.Add(nc.CharacterId);
-            if (change is AttributeChange ac) characterIds.Add(ac.CharacterId);
-            if (change is ActivityChange act) characterIds.Add(act.CharacterId);
-            if (change is MoodChange mc) characterIds.Add(mc.CharacterId);
-            if (change is HpChange hc) characterIds.Add(hc.CharacterId);
-        }
-
-        var characters = await session.LoadAsync<Character>(characterIds);
-        var items = await session.LoadAsync<Item>(itemIds);
-
-        // 2. Process changes using loaded entities or atomic patches
-        foreach (var change in changes)
-        {
-            try
-            {
-                switch (change)
-                {
-                    case HpChange hp:
-                        if (characters.TryGetValue(hp.CharacterId, out var hpChar) && hpChar != null)
-                        {
-                            if (hpChar.MaxHp <= 0)
-                            {
-                                // MaxHp of 0 usually means the entity was created with default values
-                                // (e.g. a location placeholder, faction token, or test fixture).
-                                // Clamping to int.MaxValue would silently make the entity immortal.
-                                // Skip and surface a clear warning instead.
-                                _logger.LogWarning("HpChange skipped for {CharacterId}: MaxHp is {MaxHp} (not a combatant?)", hp.CharacterId, hpChar.MaxHp);
-                                summary.Add($"WARNING: HpChange skipped for {hp.CharacterId} — MaxHp is {hpChar.MaxHp}. Set MaxHp > 0 to enable HP tracking.");
-                                success = false;
-                            }
-                            else
-                            {
-                                hpChar.CurrentHp = Math.Clamp(hpChar.CurrentHp + hp.Delta, 0, hpChar.MaxHp);
-                                summary.Add($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {hpChar.CurrentHp}/{hpChar.MaxHp})");
-                            }
-                        }
-                        else
-                        {
-                            summary.Add($"WARNING: Character {hp.CharacterId} not found during HpChange.");
-                            success = false;
-                        }
-                        break;
-
-                    case ItemTransfer item:
-                        if (items.TryGetValue(item.ItemId, out var itemDoc) && itemDoc != null)
-                        {
-                            itemDoc.HolderId = item.ToHolderId;
-                            itemDoc.LastUpdated = DateTime.UtcNow;
-                            summary.Add($"Item {item.ItemId} moved to {item.ToHolderId}");
-                        }
-                        break;
-
-                    case StatusChange status:
-                        session.Advanced.Patch<Character, string>(status.CharacterId, x => x.Status, x => x.Add(status.Status));
-                        summary.Add($"Status '{status.Status}' added to {status.CharacterId}");
-                        break;
-
-                    case EventOccurred ev:
-                        var currentTime = await GetTimeAsync(session);
-                        var e = new Event { Id = "events/" + Guid.NewGuid(), Summary = ev.Summary, Category = ev.Category, Involved = ev.Involved ?? [], DayLogged = currentTime.TotalDaysElapsed };
-                        await LogEventAsync(session, e);
-                        summary.Add($"Event logged: {ev.Summary}");
-                        break;
-
-                    case RumorEvolves rumor:
-                        session.Advanced.Patch<Rumor, RumorState>(rumor.RumorId, x => x.State, rumor.NewState);
-                        if (rumor.NewText != null) session.Advanced.Patch<Rumor, string>(rumor.RumorId, x => x.CurrentText, rumor.NewText);
-                        var rtime = await GetTimeAsync(session);
-                        session.Advanced.Patch<Rumor, int>(rumor.RumorId, x => x.LastStateChangeDay, rtime.TotalDaysElapsed);
-                        summary.Add($"Rumor {rumor.RumorId} evolved to {rumor.NewState}");
-                        break;
-
-                    case RelationshipChange rel:
-                        if (characters.TryGetValue(rel.SourceId, out var source) && source != null)
-                        {
-                            source.Mind ??= new NpcMind();
-                            source.Mind.Relationships ??= new Dictionary<string, int>();
-                            
-                            var currentVal = source.Mind.Relationships.GetValueOrDefault(rel.TargetId, 0);
-                            source.Mind.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
-                            
-                            summary.Add($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
-                        }
-                        break;
-
-                    case NeedChange nc:
-                        if (characters.TryGetValue(nc.CharacterId, out var needChar) && needChar?.Mind != null)
-                        {
-                            var current = needChar.Mind.Needs.GetValueOrDefault(nc.Need, 0f);
-                            needChar.Mind.Needs[nc.Need] = Math.Clamp(current + nc.Delta, 0f, 100f);
-                            summary.Add($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
-                        }
-                        else
-                        {
-                            summary.Add($"WARNING: Character {nc.CharacterId} not found or has no Mind during NeedChange.");
-                            success = false;
-                        }
-                        break;
-
-                    case AttributeChange attr:
-                        if (characters.TryGetValue(attr.CharacterId, out var attrChar) && attrChar?.Mind != null)
-                        {
-                            var key = attr.Attribute.ToLowerInvariant();
-                            switch (key)
-                            {
-                                case "willpower":
-                                    attrChar.Mind.Willpower = Math.Clamp(attr.IsDelta ? attrChar.Mind.Willpower + attr.Value : attr.Value, 0f, 100f);
-                                    break;
-                                case "temperature":
-                                    attrChar.Mind.Temperature = Math.Clamp(attr.IsDelta ? attrChar.Mind.Temperature + attr.Value : attr.Value, -50f, 100f);
-                                    break;
-                                case "morale":
-                                    attrChar.Mind.Morale = Math.Clamp(attr.IsDelta ? attrChar.Mind.Morale + attr.Value : attr.Value, 0f, 100f);
-                                    break;
-                                default:
-                                    // Open custom attribute (matches the documented "arbitrary" design in AttributeChange)
-                                    var current = attrChar.Mind.Attributes.GetValueOrDefault(key, 0f);
-                                    attrChar.Mind.Attributes[key] = Math.Clamp(attr.IsDelta ? current + attr.Value : attr.Value, 0f, 100f);
-                                    break;
-                            }
-                            summary.Add($"Attribute '{attr.Attribute}' set for {attr.CharacterId}");
-                        }
-                        break;
-
-                    case MoodChange mood:
-                        if (characters.TryGetValue(mood.CharacterId, out var moodChar) && moodChar?.Mind != null)
-                        {
-                            moodChar.Mind.CurrentMood = mood.NewMood;
-                            summary.Add($"Mood set to '{mood.NewMood}' for {mood.CharacterId}");
-                        }
-                        else
-                        {
-                            summary.Add($"WARNING: Character {mood.CharacterId} not found or has no Mind during MoodChange.");
-                            success = false;
-                        }
-                        break;
-
-                    case ActivityChange act:
-                        if (characters.TryGetValue(act.CharacterId, out var actChar) && actChar != null)
-                        {
-                            if (act.NewActivity != null)
-                                actChar.CurrentActivity = act.NewActivity;
-                            if (act.NewLocationId != null)
-                                actChar.CurrentLocationId = act.NewLocationId;
-                            summary.Add($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");
-                        }
-                        else
-                        {
-                            summary.Add($"WARNING: Character {act.CharacterId} not found during ActivityChange.");
-                            success = false;
-                        }
-                        break;
-
-                    default:
-                        summary.Add($"WARNING: Unhandled change type: {change?.GetType().Name}");
-                        success = false;
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing change of type {ChangeType}", change?.GetType().Name);
-                summary.Add($"ERROR: Failed to process {change?.GetType().Name}: {ex.Message}");
-                success = false;
-            }
-        }
-
-        _logger.LogInformation("Commit applied {Processed} changes", changes.Length);
-        return new CommitResult { Success = success, ChangesProcessed = changes.Length, Summary = summary };
+        // Single dispatch path. All WorldChange types are handled by registered IWorldChangeHandler implementations.
+        return _changeDispatcher.DispatchAsync(
+            session,
+            changes,
+            () => GetTimeAsync(session),
+            ev => LogEventAsync(session, ev));
     }
 
     // --- V4 Core: Scene Synthesis ---

@@ -1,0 +1,30 @@
+using CampaignVault.Models;
+
+namespace CampaignVault.Data.ChangeHandlers;
+
+public sealed class NeedChangeHandler : IWorldChangeHandler
+{
+    public bool ShouldHandle(WorldChange change) => change is NeedChange;
+
+    public Task<ChangeHandlerResult> ApplyAsync(
+        WorldChange change,
+        ChangeContext context,
+        CancellationToken ct = default)
+    {
+        var nc = (NeedChange)change;
+
+        if (!context.Characters.TryGetValue(nc.CharacterId, out var character) || character?.Mind is null)
+        {
+            context.RecordMessage($"WARNING: Character {nc.CharacterId} not found or has no Mind during NeedChange.");
+            context.RecordFailure();
+            return Task.FromResult(ChangeHandlerResult.Failure());
+        }
+
+        var current = character.Mind.Needs.GetValueOrDefault(nc.Need, 0f);
+        character.Mind.Needs[nc.Need] = Math.Clamp(current + nc.Delta, 0f, 100f);
+
+        context.RecordMessage($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
+
+        return Task.FromResult(ChangeHandlerResult.Ok);
+    }
+}
