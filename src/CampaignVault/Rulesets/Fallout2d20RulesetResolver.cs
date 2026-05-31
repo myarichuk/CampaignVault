@@ -21,7 +21,8 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         if (!context.Characters.TryGetValue(action.ActorId, out var actor))
             return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Actor '{action.ActorId}' not found." } };
 
-        var actorStats = actor.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
+        if (actor.SystemStats is not Fallout2d20Extension actorStats)
+            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Character uses incompatible ruleset stats for current ActiveSystem." } };
         var mutations = new List<WorldChange>();
         string narrative;
 
@@ -58,7 +59,9 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
 
     private async Task<string> ResolveSkillCheckAsync(RulesetAction action, Fallout2d20Extension actorStats, CancellationToken ct)
     {
-        int difficulty = action.Parameters.TryGetValue("difficulty", out var diffStr) ? int.Parse(diffStr) : 1;
+        int difficulty = 1;
+        if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
+            return $"Error: invalid difficulty value '{diffStr}'.";
         
         string attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
         string skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
@@ -70,7 +73,9 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         bool isTagged = actorStats.TagSkills.Contains(skill);
         int? critThreshold = isTagged ? skillVal : null;
         
-        int poolSize = action.Parameters.TryGetValue("pool", out var p) ? int.Parse(p) : 2;
+        int poolSize = 2;
+        if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
+            return $"Error: invalid pool value '{p}'.";
 
         var request = new RollRequest
         {
@@ -96,9 +101,12 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
             return "Error: No valid target specified for attack.";
 
-        var targetStats = target.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
+        if (target.SystemStats is not Fallout2d20Extension targetStats)
+            return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
         
-        int difficulty = action.Parameters.TryGetValue("difficulty", out var diffStr) ? int.Parse(diffStr) : targetStats.Defense;
+        int difficulty = targetStats.Defense;
+        if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
+            return $"Error: invalid difficulty value '{diffStr}'.";
         
         string attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
         string skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
@@ -108,7 +116,9 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         int targetNumber = attrVal + skillVal;
         bool isTagged = actorStats.TagSkills.Contains(skill);
         
-        int poolSize = action.Parameters.TryGetValue("pool", out var p) ? int.Parse(p) : 2;
+        int poolSize = 2;
+        if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
+            return $"Error: invalid pool value '{p}'.";
 
         var request = new RollRequest
         {
@@ -126,7 +136,9 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         if (!success)
             return $"{action.ActionName}: Missed.{compMsg} {outcome.Summary}";
 
-        int combatDiceCount = action.Parameters.TryGetValue("damageDice", out var cd) ? int.Parse(cd) : 3;
+        int combatDiceCount = 3;
+        if (action.Parameters.TryGetValue("damageDice", out var cd) && !int.TryParse(cd, out combatDiceCount))
+            return $"Error: invalid damageDice value '{cd}'.";
         string damageType = action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical";
 
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);

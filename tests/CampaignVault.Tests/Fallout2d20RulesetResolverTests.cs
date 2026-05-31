@@ -103,4 +103,48 @@ public class Fallout2d20RulesetResolverTests
         Assert.Equal(-3, hpChange.Delta); // 5 damage - 2 Energy DR = 3 final damage
         Assert.Contains("Hit for 3 damage", output.Result.Narrative);
     }
+
+    [Fact]
+    public async Task ResolveAttack_InvalidDifficulty_ReturnsError()
+    {
+        var rollService = new FakeRollService();
+        var resolver = new Fallout2d20RulesetResolver(rollService);
+        var actor = new Character { Id = "char1", SystemStats = new Fallout2d20Extension() };
+        var target = new Character { Id = "char2", SystemStats = new Fallout2d20Extension() };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            ActorId = "char1",
+            TargetIds = new List<string> { "char2" },
+            ActionType = RulesetActionType.Attack,
+            Parameters = new Dictionary<string, string> { ["difficulty"] = "not_a_number" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("invalid difficulty value", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_MismatchedTargetExtension_ReturnsError()
+    {
+        var rollService = new FakeRollService();
+        var resolver = new Fallout2d20RulesetResolver(rollService);
+        
+        var actor = new Character { Id = "char1", SystemStats = new Fallout2d20Extension() };
+        var target = new Character { Id = "char2", SystemStats = new Pf2eExtension() }; // Mismatched
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            ActorId = "char1",
+            TargetIds = new List<string> { "char2" },
+            ActionType = RulesetActionType.Attack
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("incompatible ruleset stats", output.Result.Narrative);
+    }
 }

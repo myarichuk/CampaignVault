@@ -29,7 +29,8 @@ public class Pf2eRulesetResolver : IRulesetResolver
         if (!context.Characters.TryGetValue(action.ActorId, out var actor))
             return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Actor '{action.ActorId}' not found." } };
 
-        var actorStats = actor.SystemStats as Pf2eExtension ?? new Pf2eExtension();
+        if (actor.SystemStats is not Pf2eExtension actorStats)
+            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Character uses incompatible ruleset stats for current ActiveSystem." } };
         var mutations = new List<WorldChange>();
         string narrative;
 
@@ -96,14 +97,21 @@ public class Pf2eRulesetResolver : IRulesetResolver
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
             return "Error: No valid target specified for attack.";
 
-        var targetStats = target.SystemStats as Pf2eExtension ?? new Pf2eExtension();
+        if (target.SystemStats is not Pf2eExtension targetStats)
+            return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
         int ac = targetStats.ArmorClass;
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
             ac = overrideAc;
 
-        int attackBonus = action.Parameters.TryGetValue("bonus", out var b) ? int.Parse(b) : 0;
+        int attackBonus = 0;
+        if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
+            return $"Error: invalid bonus value '{b}'.";
+
         string damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4";
-        int damageBonus = action.Parameters.TryGetValue("damageBonus", out var db) ? int.Parse(db) : 0;
+        
+        int damageBonus = 0;
+        if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
+            return $"Error: invalid damageBonus value '{db}'.";
 
         var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = DiceMechanic.Standard }, ct);
         

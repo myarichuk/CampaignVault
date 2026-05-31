@@ -110,4 +110,48 @@ public class Pf2eRulesetResolverTests
         Assert.Empty(output.Mutations);
         Assert.Contains("CriticalFailure", output.Result.Narrative);
     }
+
+    [Fact]
+    public async Task ResolveAttack_InvalidBonus_ReturnsError()
+    {
+        var rollService = new FakeRollService();
+        var resolver = new Pf2eRulesetResolver(rollService);
+        var actor = new Character { Id = "char1", SystemStats = new Pf2eExtension() };
+        var target = new Character { Id = "char2", SystemStats = new Pf2eExtension() };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            ActorId = "char1",
+            TargetIds = new List<string> { "char2" },
+            ActionType = RulesetActionType.Attack,
+            Parameters = new Dictionary<string, string> { ["bonus"] = "not_a_number" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("invalid bonus value", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_MismatchedTargetExtension_ReturnsError()
+    {
+        var rollService = new FakeRollService();
+        var resolver = new Pf2eRulesetResolver(rollService);
+        
+        var actor = new Character { Id = "char1", SystemStats = new Pf2eExtension() };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension() }; // Mismatched
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            ActorId = "char1",
+            TargetIds = new List<string> { "char2" },
+            ActionType = RulesetActionType.Attack
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("incompatible ruleset stats", output.Result.Narrative);
+    }
 }

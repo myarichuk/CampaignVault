@@ -26,7 +26,10 @@ public class Dnd5eRulesetResolver : IRulesetResolver
             return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Actor '{action.ActorId}' not found." } };
         }
 
-        var actorStats = actor.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
+        if (actor.SystemStats is not Dnd5eExtension actorStats)
+        {
+            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Character uses incompatible ruleset stats for current ActiveSystem." } };
+        }
         var mutations = new List<WorldChange>();
         string narrative;
 
@@ -93,27 +96,28 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
             return "Error: No valid target specified for attack.";
 
-        var targetStats = target.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
+        if (target.SystemStats is not Dnd5eExtension targetStats)
+            return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
         int ac = targetStats.ArmorClass;
         
         // AC override
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
             ac = overrideAc;
 
-        int attackBonus = action.Parameters.TryGetValue("bonus", out var b) ? int.Parse(b) : 0;
+        int attackBonus = 0;
+        if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
+            return $"Error: invalid bonus value '{b}'.";
+
         string damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4"; // Unarmed default
-        int damageBonus = action.Parameters.TryGetValue("damageBonus", out var db) ? int.Parse(db) : 0;
+        
+        int damageBonus = 0;
+        if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
+            return $"Error: invalid damageBonus value '{db}'.";
+
         var mechanic = GetMechanicFromParams(action.Parameters);
 
-        var requests = new List<RollRequest>
-        {
-            new() { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = mechanic },
-            new() { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }
-        };
-
-        var outcomes = await _rollService.RollBatchAsync(requests, ct);
-        var attackRoll = outcomes[0];
-        var damageRoll = outcomes[1];
+        var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = mechanic }, ct);
+        var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
 
         bool isHit = false;
         bool isCrit = attackRoll.HasCritical; // Nat 20
@@ -174,7 +178,8 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
             return "Error: No valid target specified for contested check.";
 
-        var targetStats = target.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
+        if (target.SystemStats is not Dnd5eExtension targetStats)
+            return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
 
         var actorSkill = action.Parameters.TryGetValue("skill", out var as_name) ? as_name : "Strength";
         var targetSkill = action.Parameters.TryGetValue("targetSkill", out var ts_name) ? ts_name : actorSkill;
@@ -182,15 +187,8 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         int actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
         int targetBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
 
-        var requests = new List<RollRequest>
-        {
-            new() { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = GetMechanicFromParams(action.Parameters) },
-            new() { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = DiceMechanic.Standard }
-        };
-
-        var outcomes = await _rollService.RollBatchAsync(requests, ct);
-        var actorRoll = outcomes[0];
-        var targetRoll = outcomes[1];
+        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = GetMechanicFromParams(action.Parameters) }, ct);
+        var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = DiceMechanic.Standard }, ct);
 
         // Ties usually favor the status quo or defender, but we'll assume higher wins, tie = defender wins.
         bool actorWins = actorRoll.Result > targetRoll.Result; 

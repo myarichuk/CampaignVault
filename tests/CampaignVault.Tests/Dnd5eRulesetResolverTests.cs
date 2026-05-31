@@ -56,11 +56,8 @@ public class Dnd5eRulesetResolverTests
     public async Task ResolveAttack_Hit_GeneratesHpChange()
     {
         var rollService = new FakeRollService();
-        rollService.NextBatches.Enqueue(new List<RollOutcome>
-        {
-            new RollOutcome { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" },
-            new RollOutcome { Result = 8, Summary = "Rolled 8" }
-        });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 8, Summary = "Rolled 8" });
 
         var resolver = new Dnd5eRulesetResolver(rollService);
 
@@ -90,11 +87,8 @@ public class Dnd5eRulesetResolverTests
     public async Task ResolveAttack_Miss_GeneratesNoMutations()
     {
         var rollService = new FakeRollService();
-        rollService.NextBatches.Enqueue(new List<RollOutcome>
-        {
-            new RollOutcome { Result = 12, HasCritical = false, HasComplication = false, Summary = "Rolled 12" },
-            new RollOutcome { Result = 8, Summary = "Rolled 8" }
-        });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 12, HasCritical = false, HasComplication = false, Summary = "Rolled 12" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 8, Summary = "Rolled 8" });
 
         var resolver = new Dnd5eRulesetResolver(rollService);
 
@@ -120,11 +114,8 @@ public class Dnd5eRulesetResolverTests
     public async Task ResolveAttack_CriticalHit_RollsExtraDamage()
     {
         var rollService = new FakeRollService();
-        rollService.NextBatches.Enqueue(new List<RollOutcome>
-        {
-            new RollOutcome { Result = 20, HasCritical = true, HasComplication = false, Summary = "Rolled Nat 20" },
-            new RollOutcome { Result = 8, Summary = "Rolled 8" }
-        });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 20, HasCritical = true, HasComplication = false, Summary = "Rolled Nat 20" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 8, Summary = "Rolled 8" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 5, Summary = "Rolled 5" });
 
         var resolver = new Dnd5eRulesetResolver(rollService);
@@ -176,5 +167,75 @@ public class Dnd5eRulesetResolverTests
 
         Assert.Empty(output.Mutations);
         Assert.Contains("Success", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_InvalidBonus_ReturnsError()
+    {
+        var rollService = new FakeRollService();
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension() };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension() };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            ActorId = "char1",
+            TargetIds = new List<string> { "char2" },
+            ActionType = RulesetActionType.Attack,
+            Parameters = new Dictionary<string, string> { ["bonus"] = "not_a_number" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("invalid bonus value", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_MismatchedTargetExtension_ReturnsError()
+    {
+        var rollService = new FakeRollService();
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        
+        // Actor is correct, but target is using a different system's extension (e.g. Pf2eExtension or base SystemExtension)
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension() };
+        var target = new Character { Id = "char2", SystemStats = new Pf2eExtension() };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            ActorId = "char1",
+            TargetIds = new List<string> { "char2" },
+            ActionType = RulesetActionType.Attack
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("incompatible ruleset stats", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveContestedCheck_Success()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 18 }); // Actor
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 12 }); // Target
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension() };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension() };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            ActorId = "char1",
+            TargetIds = new List<string> { "char2" },
+            ActionType = RulesetActionType.ContestedCheck,
+            ActionName = "Grapple"
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("Actor Wins", output.Result.Narrative);
     }
 }
