@@ -1165,4 +1165,51 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.False(resultRemove.Success);
         Assert.Contains(resultRemove.Summary, s => s.Contains("not found") || s.Contains("WARNING: Character"));
     }
+
+    [Fact]
+    public async Task CampaignConfig_And_Tools_Work_Safely()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        // 1. Check direct repository default behavior
+        var config = await repo.GetCampaignConfigAsync(session);
+        Assert.NotNull(config);
+        Assert.Equal("campaign/config", config.Id);
+        Assert.Equal(RulesetSystem.Dnd5e, config.ActiveSystem);
+        Assert.Empty(config.SystemOptions);
+
+        // 2. Direct repository upsert
+        config.ActiveSystem = RulesetSystem.Pathfinder2e;
+        config.SystemOptions = new Dictionary<string, string> { { "mapEnabled", "true" } };
+        await repo.UpsertCampaignConfigAsync(session, config);
+        await session.SaveChangesAsync();
+
+        var reloaded = await repo.GetCampaignConfigAsync(session);
+        Assert.Equal(RulesetSystem.Pathfinder2e, reloaded.ActiveSystem);
+        Assert.Equal("true", reloaded.SystemOptions["mapEnabled"]);
+
+        // 3. Test through CampaignTools
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        
+        var getResult = await tools.GetConfig();
+        Assert.True(getResult.Success);
+        Assert.NotNull(getResult.Data);
+        Assert.Equal(RulesetSystem.Pathfinder2e, getResult.Data.ActiveSystem);
+        Assert.Equal("true", getResult.Data.SystemOptions["mapEnabled"]);
+
+        // 4. Test SetActiveSystem through CampaignTools
+        var setOptions = new Dictionary<string, string> { { "difficulty", "2" } };
+        var setResult = await tools.SetActiveSystem(RulesetSystem.Fallout2d20, setOptions);
+        Assert.True(setResult.Success);
+        Assert.NotNull(setResult.Data);
+        Assert.Equal(RulesetSystem.Fallout2d20, setResult.Data.ActiveSystem);
+        Assert.Equal("2", setResult.Data.SystemOptions["difficulty"]);
+
+        // Verify it was persisted to DB
+        using var session2 = _store.OpenAsyncSession();
+        var dbConfig = await repo.GetCampaignConfigAsync(session2);
+        Assert.Equal(RulesetSystem.Fallout2d20, dbConfig.ActiveSystem);
+        Assert.Equal("2", dbConfig.SystemOptions["difficulty"]);
+    }
 }

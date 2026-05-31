@@ -399,6 +399,23 @@ public class CampaignRepository
         await session.StoreAsync(time);
     }
 
+    public async Task<CampaignConfig> GetCampaignConfigAsync(IAsyncDocumentSession session)
+    {
+        var config = await session.LoadAsync<CampaignConfig>("campaign/config");
+        if (config == null)
+        {
+            config = new CampaignConfig();
+            await session.StoreAsync(config, "campaign/config");
+        }
+        return config;
+    }
+
+    public async Task UpsertCampaignConfigAsync(IAsyncDocumentSession session, CampaignConfig config)
+    {
+        config.Id = "campaign/config";
+        await session.StoreAsync(config, "campaign/config");
+    }
+
     /// <summary>
     /// Returns globally defined need descriptors (populated via the DefineNeedDescriptor tool).
     /// These act as a shared dictionary that individual NPCs can reference or override via Mind.NeedDescriptors.

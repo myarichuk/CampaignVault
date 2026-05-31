@@ -378,5 +378,32 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
                     : "No global need descriptors have been defined yet. Use define_need_descriptor to create some.");
         }, saveChanges: false);
     }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("RULES CONFIG TOOL: Get the current campaign configuration including the active ruleset system and any active house-rules/system options.")]
+    public Task<ToolResult<CampaignConfig>> GetConfig()
+    {
+        return ExecuteAsync(async session =>
+        {
+            var config = await repository.GetCampaignConfigAsync(session);
+            return new ToolResult<CampaignConfig>(true, config, "Campaign configuration retrieved.");
+        }, saveChanges: false);
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("RULES CONFIG TOOL: Set the active ruleset system (e.g. Dnd5e, Pathfinder2e, Fallout2d20) and optional system-specific configuration options.")]
+    public Task<ToolResult<CampaignConfig>> SetActiveSystem(
+        [Description("The active TTRPG ruleset system.")] RulesetSystem activeSystem,
+        [Description("Optional dictionary of system options and house rules.")] Dictionary<string, string>? systemOptions = null)
+    {
+        return ExecuteAsync(async session =>
+        {
+            var config = await repository.GetCampaignConfigAsync(session);
+            config.ActiveSystem = activeSystem;
+            config.SystemOptions = systemOptions ?? [];
+            await repository.UpsertCampaignConfigAsync(session, config);
+            return new ToolResult<CampaignConfig>(true, config, $"Active ruleset system updated to '{activeSystem}'.");
+        });
+    }
 }
 
