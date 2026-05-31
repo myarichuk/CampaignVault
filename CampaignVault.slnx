@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CampaignVault/CampaignVault.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CampaignVault.Tests/CampaignVault.Tests.csproj" />
+  </Folder>
+</Solution>

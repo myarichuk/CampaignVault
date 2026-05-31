@@ -2,13 +2,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 WORKDIR /source
 
-# Copy csproj and restore
-COPY *.csproj .
+# Copy solution and project files, then restore
+COPY CampaignVault.slnx .
+COPY src/CampaignVault/CampaignVault.csproj ./src/CampaignVault/
+COPY tests/CampaignVault.Tests/CampaignVault.Tests.csproj ./tests/CampaignVault.Tests/
 RUN dotnet restore
 
 # Copy everything else and build
 COPY . .
-RUN dotnet publish CampaignVault.csproj -c Release -o /app
+RUN dotnet publish src/CampaignVault/CampaignVault.csproj -c Release -o /app
 
 # Final stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview

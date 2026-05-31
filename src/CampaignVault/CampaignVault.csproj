@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);CampaignVault.Tests\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.3.0" />
+    <PackageReference Include="RavenDB.Embedded" Version="7.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="CampaignVault.Tests\CampaignVault.Tests.csproj" />
+    <Content Remove="CampaignVault.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="CampaignVault.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="CampaignVault.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="CampaignVault.Tests\**" />
+  </ItemGroup>
+
+</Project>
