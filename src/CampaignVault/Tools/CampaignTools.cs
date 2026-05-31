@@ -365,29 +365,32 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
     [McpServerTool]
     [Description("WORLD BUILDER TOOL: Define or update a descriptor for a need type. Stored globally and automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list all globally defined ones. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
-    public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor)
+    public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))
             return Task.FromResult(new ToolResult<string>(false, Error: "BadRequest", Summary: "needName and descriptor are required."));
 
+        var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            await repository.SetNeedDescriptorAsync(session, needName, descriptor);
-            return new ToolResult<string>(true, $"Descriptor for '{needName}' stored globally.", $"Global descriptor persisted for '{needName}'. It will now appear (merged) in get_need_descriptors, get_npc_needs, get_npc_context, and get_scene.");
+            await repository.SetNeedDescriptorAsync(session, needName, descriptor, effective);
+            return new ToolResult<string>(true, $"Descriptor for '{needName}' stored for campaign '{effective}'.", $"Descriptor persisted for campaign '{effective}'.");
         });
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("DISCOVERABILITY TOOL: Lists all globally defined need descriptors (created via define_need_descriptor). Use this to see what shared descriptors exist before assigning them to specific NPCs.")]
-    public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors()
+    [Description("DISCOVERABILITY TOOL: Lists all defined need descriptors for the current (or specified) campaign.")]
+    public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            var descriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
+            var descriptors = await repository.GetGlobalNeedDescriptorsAsync(session, effective);
             return new ToolResult<Dictionary<string, string>>(true, descriptors, 
                 descriptors.Count > 0 
-                    ? $"Retrieved {descriptors.Count} global need descriptors."
-                    : "No global need descriptors have been defined yet. Use define_need_descriptor to create some.");
+                    ? $"Retrieved {descriptors.Count} need descriptors for campaign '{effective}'."
+                    : $"No need descriptors defined yet for campaign '{effective}'.");
         }, saveChanges: false);
     }
 
