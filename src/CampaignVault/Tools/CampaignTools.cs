@@ -127,21 +127,15 @@ public class CampaignTools(
     public Task<ToolResult<CommitResult>> Commit(
         [Description(@"Array of world changes. Each item must be a JSON object with a '$type' discriminator.
 
-Supported types (exact values for $type): hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity.
+Supported types (exact values for $type): hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action.
 
 === RECOMMENDED PATTERN (copy-paste friendly) ===
-When creating a new area + NPC from scratch, do it in ONE atomic commit:
-
-[
-  { ""$type"": ""event"", ""summary"": ""The party arrives in the village of Thornwatch..."", ""category"": ""Arrival"" },
-  { ""$type"": ""activity"", ""characterId"": ""characters/bram-ironarm"", ""newActivity"": ""tending bar and watching the door"", ""newLocationId"": ""locations/rusty-nail"", ""reason"": ""Sergeant on duty tonight"" },
-  { ""$type"": ""relationship"", ""sourceId"": ""characters/elara-voss"", ""targetId"": ""characters/bram-ironarm"", ""delta"": 5, ""reason"": ""Elara buys Bram a drink..."" },
-  { ""$type"": ""need"", ""characterId"": ""characters/elara-voss"", ""need"": ""wanderlust"", ""delta"": 12 }
-]
-
-You can (and should) mix many different change kinds in one call.")] WorldChange[] changes,
-        [Description("Narrative summary of what happened (for the log and world pressure).")] string narrative)
+When creating a new area + NPC from scratch, do it in ONE atomic commit...")] WorldChange[] changes,
+        [Description("Narrative summary of what happened (for the log and world pressure).")] string narrative,
+        [Description("Optional campaign name. Falls back to currently selected campaign.")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
+
         if (changes.Length == 0)
         {
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
