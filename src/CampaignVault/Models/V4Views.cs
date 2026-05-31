@@ -11,6 +11,12 @@ public class SceneView
     public IEnumerable<RumorSummary> LocalRumors { get; set; } = [];
     public IEnumerable<Item> VisibleItems { get; set; } = [];
     public IEnumerable<Event> RecentEvents { get; set; } = [];
+    
+    /// <summary>
+    /// If there is an active combat encounter in this location, its state is returned here.
+    /// Informs the LLM of turn order and rounds.
+    /// </summary>
+    public CombatEncounter? ActiveCombat { get; set; }
 }
 
 /// <summary>
@@ -32,7 +38,12 @@ public record NpcPresenceSummary(
     /// </summary>
     Dictionary<string, string> NeedDescriptors,
     string? BehavioralSummary = null,
-    string? Notes = null
+    string? Notes = null,
+    /// <summary>
+    /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills). 
+    /// Essential for the LLM to understand mechanical capabilities at a glance.
+    /// </summary>
+    SystemExtension? SystemStats = null
 );
 
 public class CommitResult

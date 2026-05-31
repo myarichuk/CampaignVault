@@ -211,9 +211,16 @@ public class CampaignRepository
                 KnownNeeds: knownNeeds,
                 NeedDescriptors: needDescriptors,
                 BehavioralSummary: behavioralSummary,
-                Notes: npc.Notes
+                Notes: npc.Notes,
+                SystemStats: npc.SystemStats
             );
         }).ToList();
+
+        var activeCombat = await session.LoadAsync<CombatEncounter>("combat/current");
+        if (activeCombat != null && (!activeCombat.IsActive || activeCombat.LocationId != locationId))
+        {
+            activeCombat = null;
+        }
 
         return new SceneView
         {
@@ -221,7 +228,8 @@ public class CampaignRepository
             PresentNPCs = presenceSummaries,
             LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
             VisibleItems = items,
-            RecentEvents = events
+            RecentEvents = events,
+            ActiveCombat = activeCombat
         };
     }
 
