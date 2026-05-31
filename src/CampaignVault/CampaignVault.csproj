@@ -13,6 +13,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>CampaignVault.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="CampaignVault.Tests\CampaignVault.Tests.csproj" />
     <Content Remove="CampaignVault.Tests\**" />
   </ItemGroup>
