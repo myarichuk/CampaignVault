@@ -90,7 +90,7 @@ public class CampaignTools(
             var rumors = peak.Concat(spreading).ToList();
 
             var events = await repository.QueryEventsAsync(session, null, null, 5, effective);
-            var location = await repository.GetLocationAsync(session, partyLocationId);
+            var location = await repository.GetLocationAsync(session, partyLocationId, effective);
             
             var pressure = new List<string>();
             foreach (var r in rumors.Where(r => time.TotalDaysElapsed - r.LastStateChangeDay > 5))
@@ -266,7 +266,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
         var effective = EffectiveCampaign(campaignName);
         // Pure read + the previous parallel query pattern was a major source of "active async tasks on dispose".
         return ExecuteAsync(async session => {
-            var results = await repository.UnifiedSearchAsync(session, query);
+            var results = await repository.UnifiedSearchAsync(session, query, effective);
             return new ToolResult<IEnumerable<object>>(true, results, $"Found {results.Count()} matches (campaign: {effective}).");
         }, saveChanges: false);
     }

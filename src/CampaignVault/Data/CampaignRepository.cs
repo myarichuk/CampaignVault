@@ -130,7 +130,7 @@ public class CampaignRepository
         }
 
         var regionId = location.ParentLocationId ?? locationId;
-        var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20)).ToList();
+        var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20, effective)).ToList();
         
         var targetIds = new List<string> { locationId };
         targetIds.AddRange(subLocations.Select(l => l.Id));
@@ -316,7 +316,7 @@ public class CampaignRepository
 
     // --- Search & Recall ---
 
-    public async Task<IEnumerable<object>> UnifiedSearchAsync(IAsyncDocumentSession session, string query)
+    public async Task<IEnumerable<object>> UnifiedSearchAsync(IAsyncDocumentSession session, string query, string? campaignName = null)
     {
         // Await queries individually. The previous Task-capture + WhenAll + re-await pattern
         // could leave RavenDB session tracking "active async tasks" after the method returned,
@@ -545,7 +545,7 @@ public class CampaignRepository
         }
     }
 
-    public async Task<IEnumerable<Lore>> QueryLoreAsync(IAsyncDocumentSession session, string? query, string[]? tags, string? category, int limit = 5)
+    public async Task<IEnumerable<Lore>> QueryLoreAsync(IAsyncDocumentSession session, string? query, string[]? tags, string? category, int limit = 5, string? campaignName = null)
     {
         var q = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.OpenSubclause().WhereEquals(x => x.Title, query).Fuzzy(0.4m).OrElse().WhereEquals(x => x.Content, query).Fuzzy(0.4m).CloseSubclause();
@@ -584,7 +584,7 @@ public class CampaignRepository
         }
     }
 
-    public async Task<IEnumerable<Location>> QueryLocationsAsync(IAsyncDocumentSession session, string? query, LocationType? type = null, string? parentId = null, int limit = 10)
+    public async Task<IEnumerable<Location>> QueryLocationsAsync(IAsyncDocumentSession session, string? query, LocationType? type = null, string? parentId = null, int limit = 10, string? campaignName = null)
     {
         var q = session.Advanced.AsyncDocumentQuery<Location, Location_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Name, $"*{query}*").OrElse().Search(x => x.Description, $"*{query}*");
@@ -639,7 +639,7 @@ public class CampaignRepository
         return await q.Take(limit).ToListAsync();
     }
 
-    public async Task<Location?> GetLocationAsync(IAsyncDocumentSession session, string id)
+    public async Task<Location?> GetLocationAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
     {
         var loc = await session.LoadAsync<Location>(id);
         SanitizeLocation(loc);
