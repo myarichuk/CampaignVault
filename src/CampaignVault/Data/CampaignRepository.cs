@@ -272,7 +272,7 @@ public class CampaignRepository
         var npcs = await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync();
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
-        var simContext = new SimulationContext(time, activeRumors, npcs, session, days);
+        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective);
 
         _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", days, time);
 

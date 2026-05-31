@@ -16,5 +16,6 @@ public sealed record SimulationContext(
     IReadOnlyList<Rumor> ActiveRumors,
     IReadOnlyList<Character> ScheduledNpcs,
     IAsyncDocumentSession Session,
-    double DaysPassed
+    double DaysPassed,
+    string? CampaignName = null   // Added for multi-campaign support
 );
