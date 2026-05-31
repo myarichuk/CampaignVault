@@ -673,7 +673,29 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var normalized = campaignName.Trim().ToLowerInvariant();
         _currentCampaign.SetCurrent(normalized);
 
-        return Task.FromResult(new ToolResult<string>(true, normalized, $"Campaign '{normalized}' is now selected as current."));
+        return ExecuteAsync(async session =>
+        {
+            var campaignId = _keys.Meta(normalized);
+            var existing = await session.LoadAsync<Campaign>(campaignId);
+
+            if (existing == null)
+            {
+                // Auto-create a minimal campaign entry so lock-in and per-campaign state can work
+                var newCampaign = new Campaign
+                {
+                    Name = normalized,
+                    DisplayName = normalized,
+                    System = RulesetSystem.Dnd5e,   // default; user can change via set_active_system
+                    IsSystemLocked = false
+                };
+                await session.StoreAsync(newCampaign, campaignId);
+
+                return new ToolResult<string>(true, normalized, 
+                    $"Campaign '{normalized}' selected (new minimal campaign created with D&D 5e as default system).");
+            }
+
+            return new ToolResult<string>(true, normalized, $"Campaign '{normalized}' is now selected as current.");
+        });
     }
 }
 
