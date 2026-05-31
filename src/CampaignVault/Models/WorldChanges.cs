@@ -21,6 +21,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(AttributeChange), "attribute")]
 [JsonDerivedType(typeof(MoodChange), "mood")]
 [JsonDerivedType(typeof(ActivityChange), "activity")]
+[JsonDerivedType(typeof(RulesetAction), "ruleset_action")]
 public abstract class WorldChange;
 
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
@@ -47,16 +48,36 @@ public class ItemTransfer : WorldChange
     public string ToHolderId { get; set; } = default!;
 }
 
-/// <summary>Add a named status/condition to a character (e.g. Poisoned, Frightened, Blessed, OnFire). Does not remove existing statuses.</summary>
+/// <summary>
+/// Add a structured status effect to a character.
+/// Prefer supplying <see cref="Effect"/> for full control over modifiers and expiration.
+/// The legacy <see cref="Status"/> string field is accepted for backward compatibility
+/// and creates a minimal effect with no modifiers and no expiration.
+///
+/// The LLM DM is the sole author of the effect's stat modifiers, expiration, and recovery hint.
+/// The MCP stores the effect and auto-expires it when ExpiresAtDay or ExpiresAtRound is reached.
+/// </summary>
 public class StatusChange : WorldChange
 {
     [Description("ID of the character receiving the status (e.g. 'characters/grog').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Name of the status condition to add. Use clear narrative names like 'Poisoned', 'Frightened', 'Blessed', 'Grappled', 'OnFire'.")]
+    [Description(
+        "[Preferred] Fully structured StatusEffect authored by the LLM DM. " +
+        "Provide name, category, optional affectedPart (BodyPart enum), statModifiers (key-value penalties/bonuses), " +
+        "and optionally expiresAtDay (CampaignTime.TotalDaysElapsed + N) or expiresAtRound (CombatEncounter.Round + N). " +
+        "Leave both expiration fields null for permanent effects (broken bones, curses). " +
+        "Set recoveryHint to a free-text note for your own future reference about how this effect can be removed.")]
+    [JsonPropertyName("effect")]
+    public StatusEffect? Effect { get; set; }
+
+    [Description(
+        "[Legacy fallback] Plain condition name string (e.g. 'Poisoned', 'Frightened', 'OnFire'). " +
+        "Use this only when you do not need stat modifiers or expiration tracking. " +
+        "Prefer the 'effect' field for all new usage.")]
     [JsonPropertyName("status")]
-    public string Status { get; set; } = default!;
+    public string Status { get; set; } = string.Empty;
 }
 
 /// <summary>Remove a named status/condition from a character (case-insensitive match). Removes all matching entries.</summary>
@@ -201,4 +222,62 @@ public class ActivityChange : WorldChange
     [Description("Optional narrative justification for the change. Stored for later behavioral synthesis and debugging.")]
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Trigger a ruleset-specific action (attack, skill check, contested roll, recovery, etc.).
+/// The active IRulesetResolver (selected from CampaignConfig.ActiveSystem) handles the math
+/// and returns primitive WorldChange mutations (HpChange, StatusChange, NeedChange, etc.)
+/// back into the StageChangesAsync pipeline.
+///
+/// IMPORTANT: The LLM must NOT invent random numbers. Use this action type and let the
+/// C# resolver roll dice deterministically. The LLM receives back a structured RollResult
+/// and narrates the outcome.
+///
+/// parameters keys (all optional, resolver-specific):
+///   "dc"            – numeric difficulty class (string) for skill/opposed checks
+///   "difficulty"    – success count threshold for Fallout 2d20 (default "1")
+///   "targetPart"    – BodyPart enum string for hit-location targeting (Fallout 2d20)
+///   "advantage"     – "true"/"false" for D&amp;D 5e
+///   "item"          – item document ID for UseItem actions
+///   "initiativeSkill" – skill name overriding default initiative (PF2e)
+///   "targetSkill"   – skill name for the target side of a ContestedCheck
+/// </summary>
+public class RulesetAction : WorldChange
+{
+    /// <summary>ID of the acting character (attacker, skill user, healer, etc.).</summary>
+    [JsonPropertyName("actorId")]
+    public string ActorId { get; set; } = default!;
+
+    /// <summary>
+    /// IDs of target characters. Empty for self-only actions.
+    /// Multiple targets for AoE spells or group checks.
+    /// </summary>
+    [JsonPropertyName("targetIds")]
+    public List<string> TargetIds { get; set; } = [];
+
+    /// <summary>
+    /// Free-text name of the action. Weapon name, spell name, or skill name.
+    /// Examples: "longsword", "Fireball", "Athletics", "SmallGuns", "TreatWounds".
+    /// NOT an enum — the space is intentionally open-ended.
+    /// </summary>
+    [JsonPropertyName("actionName")]
+    public string ActionName { get; set; } = default!;
+
+    /// <summary>What kind of action this is. Must be one of the RulesetActionType enum values.</summary>
+    [JsonPropertyName("actionType")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public RulesetActionType ActionType { get; set; }
+
+    /// <summary>Broad category of the action. Must be one of the ActionCategory enum values.</summary>
+    [JsonPropertyName("actionCategory")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ActionCategory ActionCategory { get; set; }
+
+    /// <summary>
+    /// Resolver-specific overrides as string key-value pairs.
+    /// See class-level summary for the documented parameter keys.
+    /// </summary>
+    [JsonPropertyName("parameters")]
+    public Dictionary<string, string> Parameters { get; set; } = [];
 }

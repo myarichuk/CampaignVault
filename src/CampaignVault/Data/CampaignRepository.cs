@@ -363,7 +363,7 @@ public class CampaignRepository
             existing.ClassLevel = character.ClassLevel;
             existing.CurrentHp = character.CurrentHp;
             existing.MaxHp = character.MaxHp;
-            existing.Status = character.Status ?? [];
+
             existing.Notes = character.Notes;
             existing.Schedule = character.Schedule;
             existing.CurrentLocationId = character.CurrentLocationId;

@@ -12,7 +12,7 @@ public class Character
     
     public int MaxHp { get; set; }
     
-    public List<string> Status { get; set; } = [];
+
     
     public string? Notes { get; set; }
     
@@ -74,15 +74,67 @@ public class NeedsProfile
 
 public class SystemExtension
 {
-    // Attributes (core three are promoted for convenience + special ranges; others go in the open dict)
+    // ── Cross-cutting stats present in virtually every TTRPG ──────────────────
+    // These feed into NeedsAccumulationRule and ScheduleEvaluationRule
+    // regardless of which ruleset plugin is active.
+
+    /// <summary>
+    /// Willpower / iron will — resisting fear, compulsion, mind control.
+    /// D&amp;D Will Save bonus, PF2e Will DC anchor.
+    /// </summary>
     public float Willpower { get; set; } = 75f;
-    public float Temperature { get; set; } = 37f;
+
+    /// <summary>
+    /// Morale — esprit de corps, fighting spirit, bravery under fire.
+    /// Feeds into fear checks, NPC agency, and morale-based saving throws.
+    /// </summary>
     public float Morale { get; set; } = 65f;
 
     /// <summary>
+    /// Environmental temperature exposure (degrees C, 0 = comfortable).
+    /// Used by NeedsAccumulationRule for hypothermia/heat-stroke effects.
+    /// </summary>
+    public float Temperature { get; set; } = 37f;
+
+    /// <summary>
+    /// Psychological stress / trauma accumulation (0–100).
+    /// Direct analogue: CoC SAN loss, Alien RPG Stress, Delta Green Breaking Point.
+    /// NeedsAccumulationRule can emit MoodChanges when this crests thresholds.
+    /// </summary>
+    public float Stress { get; set; } = 0f;
+
+    /// <summary>
+    /// Physical exhaustion level (0–100).
+    /// D&amp;D 5e exhaustion track, PF2e Fatigued condition, survival systems.
+    /// NeedsAccumulationRule writes here when tiredness exceeds critical thresholds.
+    /// </summary>
+    public float Fatigue { get; set; } = 0f;
+
+    /// <summary>
+    /// Spendable luck resource — hero points, bennies, fate points, inspiration.
+    /// D&amp;D 5e Inspiration (0 or 1), PF2e Hero Points (0–3), Savage Worlds Bennies.
+    /// </summary>
+    public int LuckPoints { get; set; } = 0;
+
+    /// <summary>
+    /// Base movement speed in system-native units.
+    /// D&amp;D/PF2e: feet (30). Fallout: null (uses range bands instead).
+    /// Nullable — leave null for systems that do not use numeric movement.
+    /// </summary>
+    public float? Movement { get; set; }
+
+    /// <summary>
     /// Open-ended custom narrative attributes (e.g. "corruption", "reputation", "fear", "honor", "debt_pressure").
+    /// Also used by ruleset extensions for combat stats not covered by the named fields above.
     /// </summary>
     public Dictionary<string, float> Attributes { get; set; } = [];
+
+    /// <summary>
+    /// Structured status effects replacing the old flat <c>Character.Status: List&lt;string&gt;</c>.
+    /// Each effect carries stat modifiers, expiration metadata, and a recovery hint authored by the LLM DM.
+    /// See <see cref="StatusEffect"/> for the full design and tool-schema documentation.
+    /// </summary>
+    public List<StatusEffect> StatusEffects { get; set; } = [];
 }
 
 public class Schedule

@@ -1,0 +1,129 @@
+using System.Text.Json.Serialization;
+
+namespace CampaignVault.Models;
+
+/// <summary>
+/// The active TTRPG ruleset for this campaign. Controls which IRulesetResolver
+/// is selected by the RulesetActionHandler.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum RulesetSystem
+{
+    Dnd5e,
+    Pathfinder2e,
+    Fallout2d20
+}
+
+/// <summary>
+/// The kind of action being requested. Used by IRulesetResolver to dispatch
+/// to the correct resolution path (attack math, skill roll, pool roll, recovery, etc.).
+/// Enums prevent LLM drift — the LLM must pick one of these exact values.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum RulesetActionType
+{
+    /// <summary>Standard attack — melee or ranged.</summary>
+    Attack,
+
+    /// <summary>Spell or ability that deals damage, applies a condition, or creates an area effect.</summary>
+    Spell,
+
+    /// <summary>Single-actor check against a static DC (e.g. Athletics DC 15).</summary>
+    SkillCheck,
+
+    /// <summary>Both actor and target roll; the higher success total wins (D&D both roll d20, Fallout both roll pools).</summary>
+    ContestedCheck,
+
+    /// <summary>Actor rolls against target's static defence value (e.g. PF2e AC, Fallout static difficulty).</summary>
+    OpposedCheck,
+
+    /// <summary>Using a consumable or equipment item (e.g. Stimpak, potion, med-kit).</summary>
+    UseItem,
+
+    /// <summary>Medical or rest-based recovery action (First Aid, Treat Wounds, Bandage).</summary>
+    Recovery,
+
+    /// <summary>Meta-action: rolling initiative, ending a turn, spending Action Points, etc.</summary>
+    Meta
+}
+
+/// <summary>
+/// Broad category of the action being performed. Lets resolvers and context views
+/// understand the nature of an action without parsing ActionName free-text.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ActionCategory
+{
+    Melee,
+    Ranged,
+    Spell,
+    /// <summary>Trip, grapple, shove, disarm, feint, and similar tactical moves.</summary>
+    Maneuver,
+    Social,
+    Survival
+}
+
+/// <summary>
+/// Body part targeted by a localized attack or injury.
+/// Used by hit-location systems (Fallout 2d20) and for structured StatusEffect debuffs.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum BodyPart
+{
+    Head,
+    /// <summary>Throat shots, choking, strangling, called-shot collar hits.</summary>
+    Neck,
+    Torso,
+    LeftArm,
+    RightArm,
+    /// <summary>Weapon hand: grip loss, somatic spell components, disarm scenarios.</summary>
+    LeftHand,
+    /// <summary>Weapon hand: grip loss, somatic spell components, disarm scenarios.</summary>
+    RightHand,
+    LeftLeg,
+    RightLeg,
+    /// <summary>Pinning arrows/bolts/spikes, movement lock — painful to walk.</summary>
+    LeftFoot,
+    /// <summary>Pinning arrows/bolts/spikes, movement lock — painful to walk.</summary>
+    RightFoot
+}
+
+/// <summary>
+/// Dice rolling mechanic to apply when evaluating a RollRequest.
+/// Enum prevents the LLM from free-texting an unrecognized mechanic name.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum DiceMechanic
+{
+    /// <summary>Roll once, take result. e.g. "1d20+5".</summary>
+    Standard,
+
+    /// <summary>Roll twice, keep highest (D&D 5e Advantage).</summary>
+    Advantage,
+
+    /// <summary>Roll twice, keep lowest (D&D 5e Disadvantage).</summary>
+    Disadvantage,
+
+    /// <summary>
+    /// Re-roll and add when the result equals the die's maximum face.
+    /// Continues until a non-max result is rolled. Used by Shadowrun edge dice,
+    /// some OSR systems, and Warhammer FRPG.
+    /// </summary>
+    Explosive,
+
+    /// <summary>Roll NdX dice, keep the K highest. e.g. 4d6 drop lowest for D&D stat generation.</summary>
+    KeepHighest,
+
+    /// <summary>Roll NdX dice, keep the K lowest.</summary>
+    KeepLowest,
+
+    /// <summary>Roll succeeds if result &lt;= TargetNumber. Used by Basic Role-Play and old-school systems.</summary>
+    RollUnder,
+
+    /// <summary>
+    /// Count dice whose result &lt;= TargetNumber as successes (1 each).
+    /// If CriticalThreshold is set, dice &lt;= CriticalThreshold count as 2 successes.
+    /// Used by Fallout 2d20 (tag skills double-success on dice &lt;= skill rank).
+    /// </summary>
+    SuccessCount
+}

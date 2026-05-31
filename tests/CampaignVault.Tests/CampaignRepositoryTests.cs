@@ -950,12 +950,12 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         Assert.True(addResult.Success);
-        Assert.Contains(addResult.Summary, s => s.Contains("Status 'Poisoned' added"));
+        Assert.Contains(addResult.Summary, s => s.Contains("Status 'Poisoned' (category: Legacy) added"));
 
         var npc1 = await session.LoadAsync<Character>(id);
-        Assert.Equal(2, npc1.Status.Count);
-        Assert.Contains("Poisoned", npc1.Status);
-        Assert.Contains("Frightened", npc1.Status);
+        Assert.Equal(2, npc1.SystemStats.StatusEffects.Count);
+        Assert.Contains(npc1.SystemStats.StatusEffects, e => e.Name == "Poisoned");
+        Assert.Contains(npc1.SystemStats.StatusEffects, e => e.Name == "Frightened");
 
         // Remove one (case-insensitive, removes all matches)
         var removeResult = await repo.StageChangesAsync(session, new WorldChange[]
@@ -967,9 +967,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.True(removeResult.Success);
 
         var npc2 = await session.LoadAsync<Character>(id);
-        Assert.Single(npc2.Status);
-        Assert.Contains("Frightened", npc2.Status);
-        Assert.DoesNotContain("Poisoned", npc2.Status);
+        Assert.Single(npc2.SystemStats.StatusEffects);
+        Assert.Contains(npc2.SystemStats.StatusEffects, e => e.Name == "Frightened");
+        Assert.DoesNotContain(npc2.SystemStats.StatusEffects, e => e.Name == "Poisoned");
     }
 
     [Fact]

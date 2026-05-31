@@ -3,13 +3,19 @@ using CampaignVault.Models;
 namespace CampaignVault.Data.ChangeHandlers;
 
 /// <summary>
-/// Handles both adding and removing character statuses.
-/// 
-/// Design decisions (as of June 2026):
-/// - Status is intentionally a List (multiple different conditions can be active simultaneously, e.g. "Poisoned" + "Frightened").
-/// - Add: appends the value as-is (duplicates of the exact same string are allowed to preserve previous loose behavior).
-/// - Remove: removes *all* entries that match case-insensitively.
-/// - Uses the pre-loaded Character from ChangeContext (eliminates the previous dangerous raw Patch pattern).
+/// Handles both adding and removing character status effects.
+///
+/// Design decisions (Phase 1, June 2026):
+/// - StatusEffect is an LLM-authored structured object (name, category, affectedPart,
+///   statModifiers, expiration, recoveryHint). Replaces the old flat List&lt;string&gt;.
+/// - Add (StatusChange.StatusEffect): appends a new StatusEffect to SystemStats.StatusEffects.
+///   Duplicates (same Name) are allowed — the LLM may stack identical condition names (e.g. two
+///   separate Frightened sources). De-duplication is the LLM DM's responsibility.
+/// - Remove (StatusRemove.Status): removes ALL StatusEffects whose Name matches case-insensitively.
+/// - Legacy path: StatusChange.Status (plain string) is still accepted for backward compatibility
+///   and creates a minimal StatusEffect with just a Name and Category="Legacy".
+/// - Auto-expiry (ExpiresAtDay / ExpiresAtRound) is enforced by AdvanceWorldAsync / CombatEncounter
+///   advancement, not here.
 /// </summary>
 public sealed class StatusChangeHandler : IWorldChangeHandler
 {
@@ -21,18 +27,15 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         ChangeContext context,
         CancellationToken ct = default)
     {
-        switch (change)
+        return change switch
         {
-            case StatusChange add:
-                return Task.FromResult(HandleAdd(add, context));
-
-            case StatusRemove remove:
-                return Task.FromResult(HandleRemove(remove, context));
-
-            default:
-                return Task.FromResult(ChangeHandlerResult.Failure("StatusChangeHandler received unexpected change type"));
-        }
+            StatusChange add    => Task.FromResult(HandleAdd(add, context)),
+            StatusRemove remove => Task.FromResult(HandleRemove(remove, context)),
+            _                  => Task.FromResult(ChangeHandlerResult.Failure("StatusChangeHandler received unexpected change type"))
+        };
     }
+
+    // ── Add ───────────────────────────────────────────────────────────────────
 
     private ChangeHandlerResult HandleAdd(StatusChange add, ChangeContext context)
     {
@@ -43,12 +46,33 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure();
         }
 
-        character.Status ??= new List<string>();
-        character.Status.Add(add.Status);
+        character.SystemStats ??= new SystemExtension();
+        character.SystemStats.StatusEffects ??= [];
 
-        context.RecordMessage($"Status '{add.Status}' added to {add.CharacterId}");
+        StatusEffect effect;
+
+        if (add.Effect is not null)
+        {
+            // Preferred path: fully structured StatusEffect from LLM DM
+            effect = add.Effect;
+        }
+        else
+        {
+            // Legacy fallback: plain string Status → minimal StatusEffect
+            effect = new StatusEffect
+            {
+                Name     = add.Status,
+                Category = "Legacy",
+                AppliedBy = "legacy-status-change"
+            };
+        }
+
+        character.SystemStats.StatusEffects.Add(effect);
+        context.RecordMessage($"Status '{effect.Name}' (category: {effect.Category}) added to {add.CharacterId}");
         return ChangeHandlerResult.Ok;
     }
+
+    // ── Remove ────────────────────────────────────────────────────────────────
 
     private ChangeHandlerResult HandleRemove(StatusRemove remove, ChangeContext context)
     {
@@ -59,26 +83,24 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure();
         }
 
-        character.Status ??= new List<string>();
+        character.SystemStats ??= new SystemExtension();
+        character.SystemStats.StatusEffects ??= [];
 
-        var originalCount = character.Status.Count;
         var toRemove = remove.Status;
+        var originalCount = character.SystemStats.StatusEffects.Count;
 
-        // Case-insensitive removal of all matches
-        character.Status.RemoveAll(s => string.Equals(s, toRemove, StringComparison.OrdinalIgnoreCase));
+        // Case-insensitive removal of all matching status effects
+        character.SystemStats.StatusEffects.RemoveAll(e =>
+            string.Equals(e.Name, toRemove, StringComparison.OrdinalIgnoreCase));
 
-        var removedCount = originalCount - character.Status.Count;
+        var removedCount = originalCount - character.SystemStats.StatusEffects.Count;
 
         if (removedCount > 0)
-        {
-            context.RecordMessage($"Status '{remove.Status}' removed from {remove.CharacterId} ({removedCount} occurrence(s))");
-        }
+            context.RecordMessage($"Status '{remove.Status}' removed from {remove.CharacterId} ({removedCount} effect(s))");
         else
-        {
-            context.RecordMessage($"StatusRemove: '{remove.Status}' was not present on {remove.CharacterId}");
-            // Not a failure - removing a non-existent status is harmless (idempotent)
-        }
+            context.RecordMessage($"StatusRemove: '{remove.Status}' was not present on {remove.CharacterId} (no-op)");
 
+        // Removing a non-existent status is harmless (idempotent)
         return ChangeHandlerResult.Ok;
     }
 }
