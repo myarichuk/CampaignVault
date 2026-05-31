@@ -53,7 +53,12 @@ builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHand
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.AttributeChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.MoodChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ActivityChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RulesetActionHandler>();
 
+// Combat / Rulesets
+builder.Services.AddSingleton<CampaignVault.Data.IRollService, CampaignVault.Data.DefaultRollService>();
+builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Dnd5eRulesetResolver>();
+builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolverSelector, CampaignVault.Rulesets.RulesetResolverSelector>();
 // Behavioral synthesis (deterministic first, cheap & predictable)
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
 
