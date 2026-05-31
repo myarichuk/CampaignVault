@@ -169,11 +169,11 @@ The original overhaul review identified 7 bugs + 5 suggestions + 3 nits. Campaig
   - Switch to second campaign (different system), confirm isolation on config/combat/time/needs, ruleset_action uses correct resolver, no cross-contamination.
   - Lock enforcement: attempt `set_active_system` on locked campaign → rejected.
   - Bad parameter to ruleset_action → graceful error narrative, no crash.
-- [ ] Coverage: new tests exercise the fixed paths.
-- [ ] No new hard-coded singleton IDs or "default" bypasses in production code paths.
-- [ ] Descriptions and XML docs updated where relevant.
+- [x] Coverage: new tests exercise the fixed paths.
+- [x] No new hard-coded singleton IDs or "default" bypasses in production code paths.
+- [x] Descriptions and XML docs updated where relevant.
 
-After full completion: mark all Issues 1-15 "fixed", archive or update this plan, consider a final "post-fix review" pass.
+After full completion: **COMPLETED**. All Issues 1-15 fixed. Test coverage dramatically improved across all resolvers, combat flows, and concurrency protections.
 
 ---
 
