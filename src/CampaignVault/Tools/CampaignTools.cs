@@ -206,8 +206,11 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychological state. Returns their relationships, goals, fears, knowledge, and current emotional mood.")]
-    public Task<ToolResult<NpcContextView>> GetNpcContext(string characterId)
+    public Task<ToolResult<NpcContextView>> GetNpcContext(
+        string characterId,
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
             var npc = await repository.GetCharacterAsync(session, characterId);
             if (npc == null) return new ToolResult<NpcContextView>(false, Error: "NotFound");
@@ -229,7 +232,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
 
             var knownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
             // Merge global + per-NPC descriptors (per-NPC wins) for full context
-            var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
+            var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session, effective);
             var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)
@@ -250,28 +253,35 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
                 NeedDescriptors = mergedDescriptors
             };
 
-            return new ToolResult<NpcContextView>(true, context, $"Psychological context for {npc.Name} retrieved.");
+            return new ToolResult<NpcContextView>(true, context, $"Psychological context for {npc.Name} retrieved (campaign: {effective}).");
         });
     }
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("UNIFIED SEARCH: Search across Lore, Characters, Locations, and Items in one shot. Use this when searching for anything by name or keyword.")]
-    public Task<ToolResult<IEnumerable<object>>> SearchWorld(string query)
+    public Task<ToolResult<IEnumerable<object>>> SearchWorld(
+        string query,
+        [Description("Optional campaign name. Falls back to currently selected (for future namespacing).")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
         // Pure read + the previous parallel query pattern was a major source of "active async tasks on dispose".
         return ExecuteAsync(async session => {
             var results = await repository.UnifiedSearchAsync(session, query);
-            return new ToolResult<IEnumerable<object>>(true, results, $"Found {results.Count()} matches.");
+            return new ToolResult<IEnumerable<object>>(true, results, $"Found {results.Count()} matches (campaign: {effective}).");
         }, saveChanges: false);
     }
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("HISTORY RECALL: Semantic search over past events. Use this to remember 'what happened last time we were here' or recall specific plot points.")]
-    public Task<ToolResult<IEnumerable<Event>>> RecallHistory(string query, int limit = 5)
+    public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
+        string query, 
+        int limit = 5,
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
             var results = await repository.QueryEventsAsync(session, query, null, limit);
-            return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events.");
+            return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events (campaign: {effective}).");
         }, saveChanges: false);
     }
 
@@ -334,8 +344,11 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("DISCOVERABILITY TOOL: Returns all known needs for an NPC along with their current values and any descriptors. Use this to understand what psychological or physical drives an NPC has before roleplaying or making changes. The needs system is open — you are encouraged to invent new narrative-appropriate needs.")]
-    public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(string characterId)
+    public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(
+        string characterId,
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
             var npc = await repository.GetCharacterAsync(session, characterId);
@@ -343,7 +356,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
             // Merge global descriptors (from DefineNeedDescriptor) with per-NPC ones.
             // Per-NPC descriptors take precedence on conflicts.
-            var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
+            var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session, effective);
             var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)
@@ -359,7 +372,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
                 NeedDescriptors = mergedDescriptors
             };
 
-            return new ToolResult<NpcNeedsView>(true, view, $"Needs for {npc.Name} retrieved.");
+            return new ToolResult<NpcNeedsView>(true, view, $"Needs for {npc.Name} retrieved (campaign: {effective}).");
         }, saveChanges: false);
     }
 
