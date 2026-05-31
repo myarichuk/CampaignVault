@@ -450,20 +450,6 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         });
     }
 
-    [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Retrieves the current combat encounter state, including turn order, current round, and active participants.")]
-    public Task<ToolResult<CombatEncounter>> GetCombatState()
-    {
-        return ExecuteAsync(async session =>
-        {
-            var encounter = await session.LoadAsync<CombatEncounter>("combat/current");
-            if (encounter == null || !encounter.IsActive)
-            {
-                return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter.");
-            }
-            return new ToolResult<CombatEncounter>(true, encounter, $"Combat is in round {encounter.Round}. Active turn: {encounter.ActiveTurnId}.");
-        }, saveChanges: false);
-    }
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("COMBAT TOOL: Advances the turn order to the next combatant. If all combatants have acted, advances to the next round.")]
