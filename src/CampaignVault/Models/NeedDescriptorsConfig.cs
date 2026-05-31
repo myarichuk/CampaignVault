@@ -1,14 +1,13 @@
 namespace CampaignVault.Models;
 
 /// <summary>
-/// Strongly-typed document for globally defined need descriptors.
-/// Stored at the well-known ID "config/need-descriptors".
-/// Using a real POCO (instead of raw Dictionary) ensures RavenDB can
-/// serialize/deserialize it cleanly with its metadata envelope.
+/// Strongly-typed document for campaign-specific need descriptors.
+/// Document ID is now provided by CampaignDocumentKeys.NeedDescriptors(campaignName)
+/// (e.g. "campaigns/{name}/config/need-descriptors").
 /// </summary>
 public class NeedDescriptorsConfig
 {
-    public string Id { get; set; } = "config/need-descriptors";
+    public string Id { get; set; } = default!;
 
     /// <summary>
     /// Case-insensitive mapping from need name (e.g. "wanderlust") to human-readable description.
