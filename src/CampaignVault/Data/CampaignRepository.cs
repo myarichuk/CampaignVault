@@ -187,7 +187,7 @@ public class CampaignRepository
         var time = await GetTimeAsync(session, effective);
 
         // Load global descriptors once (cheap) so we can merge them into every NPC's view
-        var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session);
+        var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session, effective);
 
         // Project to lightweight presence summaries + behavioral synthesis.
         // This fulfills the V4 goal of giving the DM synthesized insight instead of raw data.
