@@ -309,12 +309,16 @@ This is the best opportunity to create deep, simulatable NPCs.
 
 **Note for Grok Web users (as of May 2026):** Grok Web's client may still send this tool using the legacy parameter name 'c' instead of 'character'. If you get a 'missing required parameter' error, try sending the Character object under the key 'c'.")]
     public Task<ToolResult<Character>> UpsertCharacter(
-        [Description("The full Character object to create or replace. Strongly typed.")] Character character)
-        => ExecuteAsync(async s =>
+        [Description("The full Character object to create or replace. Strongly typed.")] Character character,
+        [Description("Optional campaign name (for future per-campaign scoping of entities).")] string? campaignName = null)
+    {
+        var effective = EffectiveCampaign(campaignName);
+        return ExecuteAsync(async s =>
         {
             await repository.UpsertCharacterAsync(s, character);
-            return new ToolResult<Character>(true, character);
+            return new ToolResult<Character>(true, character, $"Character upserted (campaign context: {effective}).");
         });
+    }
 
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Register a new location on the world map. For first-time setup only.
@@ -323,22 +327,30 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
 **Note for Grok Web users (as of May 2026):** Grok Web's client may still send this tool using the legacy parameter name 'l' instead of 'location'. If you get a 'missing required parameter' error, try sending the Location object under the key 'l'.")]
     public Task<ToolResult<Location>> UpsertLocation(
-        [Description("The full Location object to create or replace. Strongly typed.")] Location location)
-        => ExecuteAsync(async s =>
+        [Description("The full Location object to create or replace. Strongly typed.")] Location location,
+        [Description("Optional campaign name (for future per-campaign scoping of entities).")] string? campaignName = null)
+    {
+        var effective = EffectiveCampaign(campaignName);
+        return ExecuteAsync(async s =>
         {
             await repository.UpsertLocationAsync(s, location);
-            return new ToolResult<Location>(true, location);
+            return new ToolResult<Location>(true, location, $"Location upserted (campaign context: {effective}).");
         });
+    }
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("WORLD BUILDER TOOL: Create or update a lore entry. Always use SearchWorld first to check whether similar lore already exists.")]
     public Task<ToolResult<Lore>> UpsertLore(
-        [Description("The full Lore object to create or replace. Strongly typed.")] Lore lore)
-        => ExecuteAsync(async s =>
+        [Description("The full Lore object to create or replace. Strongly typed.")] Lore lore,
+        [Description("Optional campaign name (for future per-campaign scoping of entities).")] string? campaignName = null)
+    {
+        var effective = EffectiveCampaign(campaignName);
+        return ExecuteAsync(async s =>
         {
             await repository.UpsertLoreAsync(s, lore);
-            return new ToolResult<Lore>(true, lore);
+            return new ToolResult<Lore>(true, lore, $"Lore upserted (campaign context: {effective}).");
         });
+    }
 
     // --- Needs Discoverability Tools ---
 
