@@ -366,7 +366,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetWorldState_Aggregates_Context()
     {
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -425,7 +425,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetNpcContext_Sanitizes_Event_Details_And_Uses_Safe_Query()
     {
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
 
         using var session = _store.OpenAsyncSession();
 
@@ -526,7 +526,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // The root cause was Task-capture + WhenAll + re-await inside UnifiedSearchAsync
         // combined with ExecuteAsync always doing SaveChanges + dispose.
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -553,7 +553,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Dictionary<string, object> bags that were unprotected and caused the exact
         // Newtonsoft "ValueIsEscaped" crash during SaveChanges in GetScene.
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
 
         var locId = "locations/meta-regression-" + Guid.NewGuid();
         var itemId = "items/prop-regression-" + Guid.NewGuid();
@@ -624,7 +624,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // (e.g. direct session.Store or old code paths). GetScene + ExecuteAsync SaveChanges
         // must not explode and should leave clean data behind.
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
 
         var locId = "locations/legacy-polluted-" + Guid.NewGuid();
 
@@ -696,7 +696,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // This verifies the fix for AllowOutOfOrderMetadataProperties = true.
         // If the '$type' property is not FIRST, STJ normally fails.
         var repo = new CampaignRepository(_store);
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -1190,7 +1190,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Equal("true", reloaded.SystemOptions["mapEnabled"]);
 
         // 3. Test through CampaignTools
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
         
         var getResult = await tools.GetConfig();
         Assert.True(getResult.Success);

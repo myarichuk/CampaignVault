@@ -30,7 +30,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
             new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer());
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
         var simulator = new LlmSimulator(tools, session);
 
         // Setup: Location and NPC
