@@ -30,7 +30,8 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
             new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(new CampaignVault.Data.DefaultRollService()) }));
+        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
         var simulator = new LlmSimulator(tools, session);
 
         // Setup: A small region with 3 NPCs

@@ -5,68 +5,17 @@ using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
 
-public class Dnd5eRulesetResolver : IRulesetResolver
+public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 {
     private readonly IRollService _rollService;
 
     public Dnd5eRulesetResolver(IRollService rollService)
     {
-        _rollService = rollService;
+        _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
     }
 
-    public RulesetSystem System => RulesetSystem.Dnd5e;
+    public override RulesetSystem System => RulesetSystem.Dnd5e;
 
-    public async Task<ResolverOutput> ResolveAsync(
-        ChangeContext context, 
-        RulesetAction action, 
-        CancellationToken ct = default)
-    {
-        if (!context.Characters.TryGetValue(action.ActorId, out var actor))
-        {
-            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Actor '{action.ActorId}' not found." } };
-        }
-
-        if (actor.SystemStats is not Dnd5eExtension actorStats)
-        {
-            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Character uses incompatible ruleset stats for current ActiveSystem." } };
-        }
-        var mutations = new List<WorldChange>();
-        string narrative;
-
-        switch (action.ActionType)
-        {
-            case RulesetActionType.Attack:
-                narrative = await ResolveAttackAsync(action, context, actorStats, mutations, ct);
-                break;
-
-            case RulesetActionType.SkillCheck:
-                narrative = await ResolveSkillCheckAsync(action, actorStats, ct);
-                break;
-
-            case RulesetActionType.ContestedCheck:
-                narrative = await ResolveContestedCheckAsync(action, context, actorStats, ct);
-                break;
-
-            default:
-                narrative = $"D&D 5e: Action type {action.ActionType} not yet fully implemented.";
-                break;
-        }
-
-        return new ResolverOutput
-        {
-            Mutations = mutations,
-            Result = new ResolverResult { Narrative = narrative }
-        };
-    }
-
-    private DiceMechanic GetMechanicFromParams(Dictionary<string, string> parameters)
-    {
-        if (parameters.TryGetValue("advantage", out var adv) && bool.TryParse(adv, out var isAdv) && isAdv)
-            return DiceMechanic.Advantage;
-        if (parameters.TryGetValue("disadvantage", out var dis) && bool.TryParse(dis, out var isDis) && isDis)
-            return DiceMechanic.Disadvantage;
-        return DiceMechanic.Standard;
-    }
 
     private int GetSkillOrAbilityBonus(Dnd5eExtension stats, string name)
     {
@@ -85,7 +34,7 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         };
     }
 
-    private async Task<string> ResolveAttackAsync(
+    protected override async Task<string> ResolveAttackAsync(
         RulesetAction action, 
         ChangeContext context, 
         Dnd5eExtension actorStats, 
@@ -152,7 +101,12 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         return $"{action.ActionName}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}";
     }
 
-    private async Task<string> ResolveSkillCheckAsync(RulesetAction action, Dnd5eExtension actorStats, CancellationToken ct)
+    protected override async Task<string> ResolveSkillCheckAsync(
+        RulesetAction action, 
+        ChangeContext context,
+        Dnd5eExtension actorStats, 
+        List<WorldChange> mutations,
+        CancellationToken ct)
     {
         if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
             return "Error: Skill check requires a 'dc' parameter.";
@@ -177,7 +131,12 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         return $"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}";
     }
 
-    private async Task<string> ResolveContestedCheckAsync(RulesetAction action, ChangeContext context, Dnd5eExtension actorStats, CancellationToken ct)
+    protected override async Task<string> ResolveContestedCheckAsync(
+        RulesetAction action, 
+        ChangeContext context, 
+        Dnd5eExtension actorStats, 
+        List<WorldChange> mutations, 
+        CancellationToken ct)
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
@@ -207,28 +166,17 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         return $"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).";
     }
 
-    public async Task<float> RollInitiativeAsync(IAsyncDocumentSession session, string characterId, CancellationToken ct = default)
-    {
-        var character = await session.LoadAsync<Character>(characterId, ct);
-        if (character == null) return 0f;
-        return await RollInitiativeAsync(character, ct);
-    }
-
-    public async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
+    public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
         int dexMod = stats.GetAbilityModifier(stats.Dexterity);
         dexMod = stats.ApplyModifiers("Initiative", dexMod);
-
-        var request = new RollRequest 
-        { 
-            Tag = "initiative", 
-            Expression = "1d20", 
-            Bonus = dexMod,
-            Mechanic = DiceMechanic.Standard 
-        };
         
+        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = dexMod, Mechanic = DiceMechanic.Standard };
         var outcome = await _rollService.RollAsync(request, ct);
-        return outcome.Result;
+        
+        // Use result + bonus as secondary tie-breaker (e.g. 15 roll + 2 mod = 15.02)
+        // Helps D&D's "dexterity breaks ties" rule slightly without complex structures.
+        return outcome.Result + (dexMod * 0.01f);
     }
 }

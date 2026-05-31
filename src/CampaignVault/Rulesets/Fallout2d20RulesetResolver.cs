@@ -5,7 +5,7 @@ using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
 
-public class Fallout2d20RulesetResolver : IRulesetResolver
+public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extension>
 {
     private readonly IRollService _rollService;
 
@@ -14,33 +14,8 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         _rollService = rollService;
     }
 
-    public RulesetSystem System => RulesetSystem.Fallout2d20;
+    public override RulesetSystem System => RulesetSystem.Fallout2d20;
 
-    public async Task<ResolverOutput> ResolveAsync(ChangeContext context, RulesetAction action, CancellationToken ct = default)
-    {
-        if (!context.Characters.TryGetValue(action.ActorId, out var actor))
-            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Actor '{action.ActorId}' not found." } };
-
-        if (actor.SystemStats is not Fallout2d20Extension actorStats)
-            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Character uses incompatible ruleset stats for current ActiveSystem." } };
-        var mutations = new List<WorldChange>();
-        string narrative;
-
-        switch (action.ActionType)
-        {
-            case RulesetActionType.Attack:
-                narrative = await ResolveAttackAsync(action, context, actorStats, mutations, ct);
-                break;
-            case RulesetActionType.SkillCheck:
-                narrative = await ResolveSkillCheckAsync(action, actorStats, ct);
-                break;
-            default:
-                narrative = $"Fallout 2d20: Action type {action.ActionType} not yet fully implemented.";
-                break;
-        }
-
-        return new ResolverOutput { Mutations = mutations, Result = new ResolverResult { Narrative = narrative } };
-    }
 
     private int GetAttributeValue(Fallout2d20Extension stats, string name)
     {
@@ -57,7 +32,7 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         };
     }
 
-    private async Task<string> ResolveSkillCheckAsync(RulesetAction action, Fallout2d20Extension actorStats, CancellationToken ct)
+    protected override async Task<string> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         int difficulty = 1;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
@@ -103,7 +78,7 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         return $"{action.ActionName} ({attribute}+{skill} TN {targetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}";
     }
 
-    private async Task<string> ResolveAttackAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<string> ResolveAttackAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
@@ -168,14 +143,12 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
         return $"{action.ActionName}: Hit for {finalDamage} damage ({combatResult.Effects} Effects).{compMsg}";
     }
 
-    public async Task<float> RollInitiativeAsync(IAsyncDocumentSession session, string characterId, CancellationToken ct = default)
+    protected override Task<string> ResolveContestedCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        var character = await session.LoadAsync<Character>(characterId, ct);
-        if (character == null) return 0f;
-        return await RollInitiativeAsync(character, ct);
+        return Task.FromResult("Fallout 2d20: Contested checks are resolved as opposed skill tests. Needs implementation.");
     }
 
-    public async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
+    public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
         int initiative = stats.Perception + stats.Agility;
