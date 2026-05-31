@@ -72,6 +72,10 @@ public class NeedsProfile
     public Dictionary<string, string> NeedDescriptors { get; set; } = [];
 }
 
+[System.Text.Json.Serialization.JsonPolymorphic(TypeDiscriminatorPropertyName = "$system", UnknownDerivedTypeHandling = System.Text.Json.Serialization.JsonUnknownDerivedTypeHandling.FallBackToBaseType)]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(Dnd5eExtension), "dnd5e")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(Pf2eExtension), "pf2e")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(Fallout2d20Extension), "fallout2d20")]
 public class SystemExtension
 {
     // ── Cross-cutting stats present in virtually every TTRPG ──────────────────
