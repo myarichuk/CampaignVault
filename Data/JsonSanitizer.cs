@@ -90,7 +90,10 @@ public static class JsonSanitizer
         {
             var result = new List<object?>(list.Count);
             foreach (var item in list)
+            {
                 result.Add(SanitizeValue(item));
+            }
+
             return result;
         }
 
@@ -152,14 +155,25 @@ public static class JsonSanitizer
                 break;
             case Models.SceneView scene:
                 Sanitize(scene.Location);
-                if (scene.VisibleItems != null)
-                    foreach (var it in scene.VisibleItems) Sanitize(it);
+                foreach (var it in scene.VisibleItems)
+                {
+                    Sanitize(it);
+                }
+
                 break;
             case IEnumerable<object> seq:
-                foreach (var item in seq) SanitizeForToolResponse(item);
+                foreach (var item in seq)
+                {
+                    SanitizeForToolResponse(item);
+                }
+
                 break;
             case IEnumerable seq2:
-                foreach (var item in seq2) SanitizeForToolResponse(item);
+                foreach (var item in seq2)
+                {
+                    SanitizeForToolResponse(item);
+                }
+
                 break;
             default:
                 break;

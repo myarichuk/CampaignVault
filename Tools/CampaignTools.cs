@@ -220,7 +220,10 @@ You can (and should) mix many different change kinds in one call.")] WorldChange
             var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session);
             var npcDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in npcDescriptors) mergedDescriptors[kv.Key] = kv.Value;
+            foreach (var kv in npcDescriptors)
+            {
+                mergedDescriptors[kv.Key] = kv.Value;
+            }
 
             var context = new NpcContextView
             {
@@ -329,7 +332,9 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             var npcDescriptors = npc.Mind?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)
+            {
                 mergedDescriptors[kv.Key] = kv.Value;
+            }
 
             var view = new NpcNeedsView
             {
