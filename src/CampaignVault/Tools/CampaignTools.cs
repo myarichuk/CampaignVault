@@ -62,8 +62,12 @@ public class CampaignTools
     private INpcBehaviorSynthesizer behaviorSynthesizer => _behaviorSynthesizer;
     private IRulesetResolverSelector rulesetSelector => _rulesetSelector;
 
-    private string EffectiveCampaign(string? explicitName) =>
-        explicitName ?? _currentCampaign.CurrentCampaignName ?? "default";
+    private string EffectiveCampaign(string? explicitName)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitName)) return explicitName;
+        if (!string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName)) return _currentCampaign.CurrentCampaignName;
+        return "default";
+    }
 
     private async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
     {

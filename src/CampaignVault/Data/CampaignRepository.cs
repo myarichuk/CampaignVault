@@ -19,8 +19,12 @@ public class CampaignRepository
     private readonly CampaignDocumentKeys _keys;
     private readonly ICurrentCampaignContext? _currentCampaign;
 
-    private string ResolveCampaign(string? campaignName) =>
-        campaignName ?? _currentCampaign?.CurrentCampaignName ?? "default";
+    private string ResolveCampaign(string? campaignName)
+    {
+        if (!string.IsNullOrWhiteSpace(campaignName)) return campaignName;
+        if (!string.IsNullOrWhiteSpace(_currentCampaign?.CurrentCampaignName)) return _currentCampaign.CurrentCampaignName;
+        return "default";
+    }
 
     public CampaignRepository(
         IDocumentStore store, 
@@ -151,6 +155,8 @@ public class CampaignRepository
         targetIds.AddRange(subLocations.Select(l => l.Id));
 
         // Primary discovery via static schedule index (good for cold starts / world building)
+        // NOTE: Raw queries for entities are location/schedule scoped, not campaign-filtered.
+        // Entities remain ID-controlled for now; singletons and context provide the isolation boundary.
         var npcsFromIndex = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .ContainsAny("Locations", targetIds)
             .Take(20)
@@ -185,6 +191,8 @@ public class CampaignRepository
         var npcs = npcMap.Values.ToList();
 
         var rumors = await QueryRumorsAsync(session, null, regionId, null, 5, effective);
+        
+        // Items and characters are currently scoped by location, not campaign.
         var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
         foreach (var it in items)
         {
@@ -438,6 +446,8 @@ public class CampaignRepository
 
     public async Task SaveTimeAsync(IAsyncDocumentSession session, CampaignTime time, string? campaignName = null)
     {
+        var effective = ResolveCampaign(campaignName);
+        time.Id = _keys.StateTime(effective);
         time.LastUpdated = DateTime.UtcNow;
         await session.StoreAsync(time);
     }
