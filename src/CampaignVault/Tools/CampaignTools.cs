@@ -381,28 +381,30 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("RULES CONFIG TOOL: Get the current campaign configuration including the active ruleset system and any active house-rules/system options.")]
-    public Task<ToolResult<CampaignConfig>> GetConfig()
+    [Description("RULES CONFIG TOOL: Get the current campaign configuration (per-campaign in the new namespaced model).")]
+    public Task<ToolResult<CampaignConfig>> GetConfig(
+        [Description("Optional campaign name (defaults to 'default' during transition).")] string campaignName = "default")
     {
         return ExecuteAsync(async session =>
         {
-            var config = await repository.GetCampaignConfigAsync(session);
+            var config = await repository.GetCampaignConfigAsync(session, campaignName);
             return new ToolResult<CampaignConfig>(true, config, "Campaign configuration retrieved.");
         }, saveChanges: false);
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("RULES CONFIG TOOL: Set the active ruleset system (e.g. Dnd5e, Pathfinder2e, Fallout2d20) and optional system-specific configuration options.")]
+    [Description("RULES CONFIG TOOL: Set the active ruleset system for a campaign. Will eventually respect lock-in.")]
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(
         [Description("The active TTRPG ruleset system.")] RulesetSystem activeSystem,
-        [Description("Optional dictionary of system options and house rules.")] Dictionary<string, string>? systemOptions = null)
+        [Description("Optional dictionary of system options and house rules.")] Dictionary<string, string>? systemOptions = null,
+        [Description("Optional campaign name.")] string campaignName = "default")
     {
         return ExecuteAsync(async session =>
         {
-            var config = await repository.GetCampaignConfigAsync(session);
+            var config = await repository.GetCampaignConfigAsync(session, campaignName);
             config.ActiveSystem = activeSystem;
             config.SystemOptions = systemOptions ?? [];
-            await repository.UpsertCampaignConfigAsync(session, config);
+            await repository.UpsertCampaignConfigAsync(session, config, campaignName);
             return new ToolResult<CampaignConfig>(true, config, $"Active ruleset system updated to '{activeSystem}'.");
         });
     }
@@ -417,7 +419,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     {
         return ExecuteAsync(async session =>
         {
-            var config = await repository.GetCampaignConfigAsync(session);
+            var config = await repository.GetCampaignConfigAsync(session, "default");
             var resolver = rulesetSelector.GetResolver(config.ActiveSystem);
 
             var combatants = new List<CombatantState>();
