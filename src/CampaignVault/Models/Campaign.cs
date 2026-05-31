@@ -11,6 +11,12 @@ namespace CampaignVault.Models;
 public class Campaign
 {
     /// <summary>
+    /// RavenDB document ID (e.g. "campaigns/dragonheist/meta").
+    /// Populated by the store on load / after explicit Store with ID.
+    /// </summary>
+    public string Id { get; set; } = default!;
+
+    /// <summary>
     /// Campaign identifier / slug (URL-safe, lowercase recommended).
     /// Used as the key segment in document IDs (e.g. "campaigns/dragonheist/config").
     /// </summary>

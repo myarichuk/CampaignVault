@@ -4,6 +4,8 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Text.Json;
 using Raven.Client.Exceptions;
+using Raven.Client.Documents;
+using Raven.Client.Documents.Linq;
 using Raven.Client.Documents.Session;
 using CampaignVault.Rulesets;
 // ReSharper disable UnusedMember.Global
@@ -18,18 +20,50 @@ internal static class ToolErrors
 }
 
 [McpServerToolType]
-public class CampaignTools(
-    CampaignRepository repository,
-    INpcBehaviorSynthesizer behaviorSynthesizer,
-    IRulesetResolverSelector rulesetSelector,
-    CampaignDocumentKeys keys,
-    ICurrentCampaignContext currentCampaign)
+public class CampaignTools
 {
-    private readonly CampaignDocumentKeys _keys = keys;
-    private readonly ICurrentCampaignContext _currentCampaign = currentCampaign;
+    private readonly CampaignRepository _repository;
+    private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
+    private readonly IRulesetResolverSelector _rulesetSelector;
+    private readonly CampaignDocumentKeys _keys;
+    private readonly ICurrentCampaignContext _currentCampaign;
+
+    // Modern / DI constructor (all services provided)
+    public CampaignTools(
+        CampaignRepository repository,
+        INpcBehaviorSynthesizer behaviorSynthesizer,
+        IRulesetResolverSelector rulesetSelector,
+        CampaignDocumentKeys keys,
+        ICurrentCampaignContext currentCampaign)
+    {
+        _repository = repository;
+        _behaviorSynthesizer = behaviorSynthesizer;
+        _rulesetSelector = rulesetSelector;
+        _keys = keys ?? new CampaignDocumentKeys();
+        _currentCampaign = currentCampaign ?? new CurrentCampaignContext();
+    }
+
+    /// <summary>
+    /// Legacy 3-argument constructor used by the majority of existing tests.
+    /// Provides safe defaults for the post-campaign keys + context services so tests do not require
+    /// mass changes after the deep multi-campaign propagation work.
+    /// </summary>
+    public CampaignTools(
+        CampaignRepository repository,
+        INpcBehaviorSynthesizer behaviorSynthesizer,
+        IRulesetResolverSelector rulesetSelector)
+        : this(repository, behaviorSynthesizer, rulesetSelector, new CampaignDocumentKeys(), new CurrentCampaignContext())
+    {
+    }
+
+    // Expose the injected services via the original names for the rest of the class body (ExecuteAsync etc. use "repository")
+    // We keep the original field names via these getters for minimal diff in the rest of the file.
+    private CampaignRepository repository => _repository;
+    private INpcBehaviorSynthesizer behaviorSynthesizer => _behaviorSynthesizer;
+    private IRulesetResolverSelector rulesetSelector => _rulesetSelector;
 
     private string EffectiveCampaign(string? explicitName) =>
-        explicitName ?? _currentCampaign.CurrentCampaignName;
+        explicitName ?? _currentCampaign.CurrentCampaignName ?? "default";
 
     private async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
     {
@@ -212,7 +246,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
     {
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var npc = await repository.GetCharacterAsync(session, characterId);
+            var npc = await repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null) return new ToolResult<NpcContextView>(false, Error: "NotFound");
 
             // Query events involving the NPC, then explicitly sanitize Details using the central helper
@@ -363,7 +397,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            var npc = await repository.GetCharacterAsync(session, characterId);
+            var npc = await repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null) return new ToolResult<NpcNeedsView>(false, Error: "NotFound");
 
             // Merge global descriptors (from DefineNeedDescriptor) with per-NPC ones.
@@ -617,6 +651,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
             var campaign = new Campaign
             {
+                Id = campaignId,
                 Name = normalized,
                 DisplayName = string.IsNullOrWhiteSpace(displayName) ? name : displayName,
                 System = initialSystem,
@@ -683,6 +718,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
                 // Auto-create a minimal campaign entry so lock-in and per-campaign state can work
                 var newCampaign = new Campaign
                 {
+                    Id = campaignId,
                     Name = normalized,
                     DisplayName = normalized,
                     System = RulesetSystem.Dnd5e,   // default; user can change via set_active_system

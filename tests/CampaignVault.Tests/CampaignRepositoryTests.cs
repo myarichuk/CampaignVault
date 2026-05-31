@@ -78,7 +78,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             throw new TimeoutException("Index 'Character/Search' did not become non-stale within 10s");
 
         // Fuzzy match
-        var result = await repo.GetCharacterAsync(session, "Gndlf");
+        var result = await repo.GetCharacterAsync(session, "Gndlf", null);
         Assert.NotNull(result);
         Assert.Equal("Gandalf the Grey", result!.Name);
     }
@@ -1175,7 +1175,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // 1. Check direct repository default behavior
         var config = await repo.GetCampaignConfigAsync(session);
         Assert.NotNull(config);
-        Assert.Equal("campaign/config", config.Id);
+        Assert.Equal("campaigns/default/config", config.Id);
         Assert.Equal(RulesetSystem.Dnd5e, config.ActiveSystem);
         Assert.Empty(config.SystemOptions);
 

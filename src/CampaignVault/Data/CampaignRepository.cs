@@ -76,6 +76,20 @@ public class CampaignRepository
     }
 
     /// <summary>
+    /// Legacy 4-argument constructor used extensively by existing tests.
+    /// Supplies modern defaults for CampaignDocumentKeys and ICurrentCampaignContext so tests continue to compile
+    /// after the multi-campaign / deep-propagation changes without requiring mass updates to test setup code.
+    /// </summary>
+    public CampaignRepository(
+        IDocumentStore store,
+        IWorldSimulationEngine simulationEngine,
+        ILogger<CampaignRepository> logger,
+        INpcBehaviorSynthesizer behaviorSynthesizer)
+        : this(store, simulationEngine, logger, behaviorSynthesizer, new CampaignDocumentKeys(), currentCampaign: null)
+    {
+    }
+
+    /// <summary>
     /// Minimal no-op implementation so existing tests that do not care about simulation behavior continue to compile.
     /// AdvanceWorld tests will still need to construct a real engine (or we will update them in verification phase).
     /// </summary>
@@ -129,6 +143,7 @@ public class CampaignRepository
             throw new KeyNotFoundException($"Location '{locationId}' not found.");
         }
 
+        var effective = ResolveCampaign(campaignName);
         var regionId = location.ParentLocationId ?? locationId;
         var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20, effective)).ToList();
         
@@ -169,7 +184,7 @@ public class CampaignRepository
         }
         var npcs = npcMap.Values.ToList();
 
-        var rumors = await QueryRumorsAsync(session, null, regionId, null, 5);
+        var rumors = await QueryRumorsAsync(session, null, regionId, null, 5, effective);
         var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
         foreach (var it in items)
         {
@@ -178,7 +193,7 @@ public class CampaignRepository
 
         JsonSanitizer.Sanitize(location);
 
-        var events = (await QueryEventsAsync(session, null, null, 5))
+        var events = (await QueryEventsAsync(session, null, null, 5, effective))
             .Where(e => e.Involved.Contains(locationId))
             .OrderByDescending(e => e.Timestamp)
             .Take(5)
@@ -227,7 +242,6 @@ public class CampaignRepository
             );
         }).ToList();
 
-        var effective = ResolveCampaign(campaignName);
         var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effective));
         if (activeCombat != null && (!activeCombat.IsActive || activeCombat.LocationId != locationId))
         {
@@ -266,6 +280,9 @@ public class CampaignRepository
 
         await session.StoreAsync(time);
 
+        // NOTE (multi-campaign): These simulation queries are currently global (entity IDs are caller-controlled, not namespaced).
+        // Campaign isolation for world entities is provided via the CampaignName in simContext (rules may filter in future)
+        // and per-campaign singletons (time/config/combat). See code-review-fix-plan.md for scoping policy notes.
         var activeRumors = await session.Query<Rumor>()
             .Where(x => x.State != RumorState.Resolved && x.State != RumorState.Forgotten)
             .ToListAsync();
@@ -293,7 +310,7 @@ public class CampaignRepository
                 Summary = narrative, 
                 Category = EventCategory.Simulation,
                 DayLogged = time.TotalDaysElapsed 
-            });
+            }, effective);
         }
 
         // Apply any deltas produced by simulation rules through the unified Commit path.
@@ -301,7 +318,7 @@ public class CampaignRepository
         if (simResult.Deltas.Count > 0)
         {
             _logger.LogDebug("Applying {DeltaCount} simulation deltas", simResult.Deltas.Count);
-            await StageChangesAsync(session, simResult.Deltas.ToArray());
+            await StageChangesAsync(session, simResult.Deltas.ToArray(), effective);
         }
 
         // WorldPressure from the engine can be surfaced by the caller (AdvanceWorld tool) if desired.
@@ -358,8 +375,11 @@ public class CampaignRepository
 
     // --- Base Helpers ---
 
-    public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier)
+    public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier, string? campaignName = null)
     {
+        // campaignName accepted for API consistency / future entity namespacing or filtering.
+        // Current implementation uses direct ID or name lookup (entities are caller-ID-controlled).
+        _ = ResolveCampaign(campaignName);
         var character = await session.LoadAsync<Character>(identifier);
         if (character != null) return character;
         character = await session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
@@ -646,7 +666,12 @@ public class CampaignRepository
         return loc;
     }
 
-    public async Task<Item?> GetItemAsync(IAsyncDocumentSession session, string id) => await session.LoadAsync<Item>(id);
+    public async Task<Item?> GetItemAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
+    {
+        // campaignName accepted for API consistency / future entity namespacing.
+        _ = ResolveCampaign(campaignName);
+        return await session.LoadAsync<Item>(id);
+    }
 
     public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item)
     {
