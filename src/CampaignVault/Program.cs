@@ -69,6 +69,7 @@ builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesize
 
 // Campaign scoping & multi-campaign keying (first-class Campaign model)
 builder.Services.AddSingleton<CampaignVault.Data.CampaignDocumentKeys>();
+builder.Services.AddSingleton<CampaignVault.Data.ICurrentCampaignContext, CampaignVault.Data.CurrentCampaignContext>();
 
 builder.Services.AddSingleton<CampaignRepository>();
 
