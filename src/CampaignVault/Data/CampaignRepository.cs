@@ -16,18 +16,21 @@ public class CampaignRepository
     private readonly ILogger<CampaignRepository> _logger;
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
     private readonly WorldChangeDispatcher _changeDispatcher;
+    private readonly CampaignDocumentKeys _keys;
 
     public CampaignRepository(
         IDocumentStore store, 
         IWorldSimulationEngine simulationEngine,
         ILogger<CampaignRepository> logger,
         INpcBehaviorSynthesizer behaviorSynthesizer,
+        CampaignDocumentKeys keys,
         IEnumerable<IWorldChangeHandler>? changeHandlers = null)
     {
         _store = store;
         _simulationEngine = simulationEngine;
         _logger = logger;
         _behaviorSynthesizer = behaviorSynthesizer;
+        _keys = keys ?? new CampaignDocumentKeys();
 
         var handlersList = (changeHandlers ?? Array.Empty<IWorldChangeHandler>()).ToList();
 
@@ -60,7 +63,8 @@ public class CampaignRepository
         : this(store, 
                new NoOpSimulationEngine(), 
                Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-               new DefaultBehaviorSynthesizer())
+               new DefaultBehaviorSynthesizer(),
+               new CampaignDocumentKeys())
     {
     }
 
@@ -216,7 +220,7 @@ public class CampaignRepository
             );
         }).ToList();
 
-        var activeCombat = await session.LoadAsync<CombatEncounter>("combat/current");
+        var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent("default"));
         if (activeCombat != null && (!activeCombat.IsActive || activeCombat.LocationId != locationId))
         {
             activeCombat = null;
@@ -394,10 +398,11 @@ public class CampaignRepository
             indexes: new[] { "Character/Search" });
     }
 
-    public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session)
+    public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session, string campaignName = "default")
     {
-        var time = await session.LoadAsync<CampaignTime>("state/time");
-        if (time == null) { time = new CampaignTime(); await session.StoreAsync(time); }
+        var id = _keys.StateTime(campaignName);
+        var time = await session.LoadAsync<CampaignTime>(id);
+        if (time == null) { time = new CampaignTime { Id = id }; await session.StoreAsync(time, id); }
         return time;
     }
 
@@ -407,21 +412,23 @@ public class CampaignRepository
         await session.StoreAsync(time);
     }
 
-    public async Task<CampaignConfig> GetCampaignConfigAsync(IAsyncDocumentSession session)
+    public async Task<CampaignConfig> GetCampaignConfigAsync(IAsyncDocumentSession session, string campaignName = "default")
     {
-        var config = await session.LoadAsync<CampaignConfig>("campaign/config");
+        var id = _keys.Config(campaignName);
+        var config = await session.LoadAsync<CampaignConfig>(id);
         if (config == null)
         {
-            config = new CampaignConfig();
-            await session.StoreAsync(config, "campaign/config");
+            config = new CampaignConfig { Id = id };
+            await session.StoreAsync(config, id);
         }
         return config;
     }
 
-    public async Task UpsertCampaignConfigAsync(IAsyncDocumentSession session, CampaignConfig config)
+    public async Task UpsertCampaignConfigAsync(IAsyncDocumentSession session, CampaignConfig config, string campaignName = "default")
     {
-        config.Id = "campaign/config";
-        await session.StoreAsync(config, "campaign/config");
+        var id = _keys.Config(campaignName);
+        config.Id = id;
+        await session.StoreAsync(config, id);
     }
 
     /// <summary>
