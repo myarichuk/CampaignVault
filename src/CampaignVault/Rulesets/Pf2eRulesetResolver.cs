@@ -102,7 +102,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         if (degree == Pf2eDegreeOfSuccess.CriticalSuccess)
         {
-            finalDamage *= 2; // PF2e crits typically double the final calculated damage
+            // Per Pathfinder 2e CRB: "When you critically succeed at a Strike, you double the damage you deal. ... roll the damage normally, including any modifiers, bonuses, and penalties, and then you double the entire amount."
+            finalDamage *= 2;
         }
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });

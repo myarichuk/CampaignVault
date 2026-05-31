@@ -86,7 +86,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         string critMsg = "";
         if (isCrit)
         {
-            // Roll damage dice again for crit
+            // Per D&D 5e PHB: "Roll all of the attack's damage dice twice and add them together. Then add any relevant modifiers as normal."
+            // Since we already rolled `damageRoll` once (which included the modifier), we roll the pure dice again and add it.
             var critDmg = await _rollService.RollAsync(new RollRequest { Tag = "critDamage", Expression = damageDice, Mechanic = DiceMechanic.Standard }, ct);
             finalDamage += critDmg.Result;
             critMsg = $" CRITICAL HIT! Added {critDmg.Result} extra damage.";

@@ -170,7 +170,11 @@ public class CampaignTools
 Supported types (exact values for $type): hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action.
 
 === RECOMMENDED PATTERN (copy-paste friendly) ===
-When creating a new area + NPC from scratch, do it in ONE atomic commit...")] WorldChange[] changes,
+When creating a new area + NPC from scratch, do it in ONE atomic commit...
+
+=== COMBAT & MECHANICS ===
+Use ruleset_action to trigger attacks or skill checks. The correct math and properties (like AC or DC) depend on the ActiveSystem. See get_config for the active TTRPG ruleset (e.g., Dnd5e, Pathfinder2e, Fallout2d20).
+Example: { ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""targetIds"": [""goblin1""], ""actionType"": ""Attack"", ""parameters"": { ""bonus"": ""5"", ""damageDice"": ""1d8"" } }")] WorldChange[] changes,
         [Description("Narrative summary of what happened (for the log and world pressure).")] string narrative,
         [Description("Optional campaign name. Falls back to currently selected campaign.")] string? campaignName = null)
     {
