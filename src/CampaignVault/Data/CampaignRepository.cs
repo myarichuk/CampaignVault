@@ -435,20 +435,20 @@ public class CampaignRepository
     /// Returns globally defined need descriptors (populated via the DefineNeedDescriptor tool).
     /// These act as a shared dictionary that individual NPCs can reference or override via Mind.NeedDescriptors.
     /// </summary>
-    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session)
+    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session, string campaignName = "default")
     {
-        const string docId = "config/need-descriptors";
+        var docId = _keys.NeedDescriptors(campaignName);
         var config = await session.LoadAsync<NeedDescriptorsConfig>(docId);
         var source = config?.Descriptors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         return new Dictionary<string, string>(source, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// Sets or updates a single global need descriptor. Creates the config document if it does not exist.
+    /// Sets or updates a single need descriptor for a campaign.
     /// </summary>
-    public async Task SetNeedDescriptorAsync(IAsyncDocumentSession session, string needName, string descriptor)
+    public async Task SetNeedDescriptorAsync(IAsyncDocumentSession session, string needName, string descriptor, string campaignName = "default")
     {
-        const string docId = "config/need-descriptors";
+        var docId = _keys.NeedDescriptors(campaignName);
         var config = await session.LoadAsync<NeedDescriptorsConfig>(docId) ?? new NeedDescriptorsConfig { Id = docId };
         config.Descriptors[needName.Trim()] = descriptor.Trim();
         await session.StoreAsync(config, docId);
