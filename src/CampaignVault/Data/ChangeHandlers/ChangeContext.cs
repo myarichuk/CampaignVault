@@ -29,6 +29,11 @@ public sealed class ChangeContext
     /// </summary>
     public Func<Event, Task> LogEventAsync { get; }
 
+    /// <summary>
+    /// The dispatcher, allowing handlers to recursively dispatch child mutations.
+    /// </summary>
+    public WorldChangeDispatcher Dispatcher { get; }
+
     private readonly List<string> _summary;
     private bool _hasFailure;
 
@@ -39,7 +44,8 @@ public sealed class ChangeContext
         ILogger logger,
         Func<Task<CampaignTime>> getCurrentTimeAsync,
         Func<Event, Task> logEventAsync,
-        List<string> summary)
+        List<string> summary,
+        WorldChangeDispatcher dispatcher)
     {
         Session = session ?? throw new ArgumentNullException(nameof(session));
         Characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -48,6 +54,7 @@ public sealed class ChangeContext
         GetCurrentTimeAsync = getCurrentTimeAsync ?? throw new ArgumentNullException(nameof(getCurrentTimeAsync));
         LogEventAsync = logEventAsync ?? throw new ArgumentNullException(nameof(logEventAsync));
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
+        Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
     /// <summary>
@@ -59,7 +66,8 @@ public sealed class ChangeContext
         IReadOnlyDictionary<string, Character> characters,
         IReadOnlyDictionary<string, Item> items,
         ILogger logger,
-        List<string> summary)
+        List<string> summary,
+        WorldChangeDispatcher dispatcher)
     {
         Session = sessionForTests!; // may be null; only for tests with fake handlers
         Characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -68,6 +76,7 @@ public sealed class ChangeContext
         GetCurrentTimeAsync = () => Task.FromResult(new CampaignTime());
         LogEventAsync = _ => Task.CompletedTask;
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
+        Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
     /// <summary>

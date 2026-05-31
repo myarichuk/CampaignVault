@@ -106,6 +106,10 @@ public sealed class WorldChangeDispatcher
                 case StatusChange sc:
                     characterIds.Add(sc.CharacterId);
                     break;
+                case RulesetAction ra:
+                    characterIds.Add(ra.ActorId);
+                    foreach(var targetId in ra.TargetIds ?? Enumerable.Empty<string>()) characterIds.Add(targetId);
+                    break;
                 case StatusRemove sr:
                     characterIds.Add(sr.CharacterId);
                     break;
@@ -132,11 +136,11 @@ public sealed class WorldChangeDispatcher
         {
             // Support pure unit tests of handler selection / duplicate detection / result aggregation
             // that use fake TestHandlers which never access Session / time / logging hooks.
-            context = new ChangeContext(null, characters, items, _logger, summary);
+            context = new ChangeContext(null, characters, items, _logger, summary, this);
         }
         else
         {
-            context = new ChangeContext(session, characters, items, _logger, getCurrentTimeAsync, logEventAsync, summary);
+            context = new ChangeContext(session, characters, items, _logger, getCurrentTimeAsync, logEventAsync, summary, this);
         }
 
         // 2. Process each change in caller-supplied order
@@ -203,5 +207,39 @@ public sealed class WorldChangeDispatcher
             ChangesProcessed = changes.Length,
             Summary = summary
         };
+    }
+
+    /// <summary>
+    /// Dispatches a single child mutation directly within an ongoing change context.
+    /// Used by handlers like RulesetActionHandler that compute secondary mutations.
+    /// </summary>
+    public async Task DispatchMutationAsync(ChangeContext parentContext, WorldChange mutation, CancellationToken ct = default)
+    {
+        IWorldChangeHandler? chosen = FindHandler(mutation);
+        
+        if (chosen == null)
+        {
+            _logger.LogWarning("No handler found for child mutation of type {ChangeType}", mutation?.GetType().Name);
+            parentContext.RecordFailure();
+            return;
+        }
+
+        try
+        {
+            var result = await chosen.ApplyAsync(mutation, parentContext, ct);
+            if (result.Message is not null)
+            {
+                parentContext.RecordMessage(result.Message);
+            }
+            if (!result.Success)
+            {
+                parentContext.RecordFailure();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing child mutation of type {ChangeType}", mutation?.GetType().Name);
+            parentContext.RecordFailure();
+        }
     }
 }
