@@ -1023,4 +1023,146 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         }
     }
 
+    [Fact]
+    public async Task StatusChangeHandler_LegacyFallback_CreatesMinimalEffect()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var id = "npcs/legacy-test-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session, new Character 
+        { 
+            Id = id, 
+            Name = "Legacy NPC",
+            MaxHp = 10,
+            CurrentHp = 10
+        });
+        await session.SaveChangesAsync();
+
+        var result = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new StatusChange { CharacterId = id, Status = "Fatigued" }
+        });
+        await session.SaveChangesAsync();
+
+        Assert.True(result.Success);
+
+        var npc = await session.LoadAsync<Character>(id);
+        Assert.Single(npc.SystemStats.StatusEffects);
+        var effect = npc.SystemStats.StatusEffects[0];
+        Assert.Equal("Fatigued", effect.Name);
+        Assert.Equal("Legacy", effect.Category);
+        Assert.Equal("legacy-status-change", effect.AppliedBy);
+        Assert.Null(effect.AffectedPart);
+        Assert.Empty(effect.StatModifiers);
+    }
+
+    [Fact]
+    public async Task StatusChangeHandler_DuplicateStructuredEffects_AreAllowed()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var id = "npcs/duplicate-test-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session, new Character 
+        { 
+            Id = id, 
+            Name = "Duplicate NPC",
+            MaxHp = 10,
+            CurrentHp = 10
+        });
+        await session.SaveChangesAsync();
+
+        var effect1 = new StatusEffect
+        {
+            Name = "Bleeding",
+            Category = "Injury",
+            StatModifiers = new Dictionary<string, float> { { "Speed", -2f } }
+        };
+
+        var effect2 = new StatusEffect
+        {
+            Name = "Bleeding",
+            Category = "Injury",
+            StatModifiers = new Dictionary<string, float> { { "Speed", -3f } }
+        };
+
+        var result = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new StatusChange { CharacterId = id, Effect = effect1 },
+            new StatusChange { CharacterId = id, Effect = effect2 }
+        });
+        await session.SaveChangesAsync();
+
+        Assert.True(result.Success);
+
+        var npc = await session.LoadAsync<Character>(id);
+        Assert.Equal(2, npc.SystemStats.StatusEffects.Count);
+        Assert.All(npc.SystemStats.StatusEffects, e => Assert.Equal("Bleeding", e.Name));
+    }
+
+    [Fact]
+    public async Task StatusChangeHandler_CaseInsensitiveRemoval_RemovesAllMatches()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var id = "npcs/removal-test-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session, new Character 
+        { 
+            Id = id, 
+            Name = "Removal NPC",
+            MaxHp = 10,
+            CurrentHp = 10
+        });
+        await session.SaveChangesAsync();
+
+        var effect1 = new StatusEffect { Name = "Poisoned", Category = "Condition" };
+        var effect2 = new StatusEffect { Name = "poisoned", Category = "Condition" };
+        var effect3 = new StatusEffect { Name = "Blessed", Category = "Buff" };
+
+        var resultAdd = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new StatusChange { CharacterId = id, Effect = effect1 },
+            new StatusChange { CharacterId = id, Effect = effect2 },
+            new StatusChange { CharacterId = id, Effect = effect3 }
+        });
+        await session.SaveChangesAsync();
+        Assert.True(resultAdd.Success);
+
+        // Remove case-insensitively
+        var resultRemove = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new StatusRemove { CharacterId = id, Status = "POISONED" }
+        });
+        await session.SaveChangesAsync();
+        Assert.True(resultRemove.Success);
+
+        var npc = await session.LoadAsync<Character>(id);
+        Assert.Single(npc.SystemStats.StatusEffects);
+        Assert.Equal("Blessed", npc.SystemStats.StatusEffects[0].Name);
+    }
+
+    [Fact]
+    public async Task StatusChangeHandler_CharacterNotFound_FailsGracefully()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var missingId = "npcs/does-not-exist-" + Guid.NewGuid();
+
+        var resultAdd = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new StatusChange { CharacterId = missingId, Status = "Frightened" }
+        });
+        Assert.False(resultAdd.Success);
+        Assert.Contains(resultAdd.Summary, s => s.Contains("not found") || s.Contains("WARNING: Character"));
+
+        var resultRemove = await repo.StageChangesAsync(session, new WorldChange[]
+        {
+            new StatusRemove { CharacterId = missingId, Status = "Frightened" }
+        });
+        Assert.False(resultRemove.Success);
+        Assert.Contains(resultRemove.Summary, s => s.Contains("not found") || s.Contains("WARNING: Character"));
+    }
 }
