@@ -58,6 +58,8 @@ builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHand
 // Combat / Rulesets
 builder.Services.AddSingleton<CampaignVault.Data.IRollService, CampaignVault.Data.DefaultRollService>();
 builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Dnd5eRulesetResolver>();
+builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Pf2eRulesetResolver>();
+builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Fallout2d20RulesetResolver>();
 builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolverSelector, CampaignVault.Rulesets.RulesetResolverSelector>();
 // Behavioral synthesis (deterministic first, cheap & predictable)
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
