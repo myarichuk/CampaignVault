@@ -172,7 +172,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: $"Invalid changes JSON: {ex.Message}"));
         }
 
-        return Commit(elements, narrative);
+        return Commit(elements, narrative, null); // uses current selected campaign via context
     }
 
     [McpServerTool(UseStructuredContent = true)]
