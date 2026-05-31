@@ -64,6 +64,9 @@ builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolverSelector, C
 // Behavioral synthesis (deterministic first, cheap & predictable)
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
 
+// Campaign scoping & multi-campaign keying (first-class Campaign model)
+builder.Services.AddSingleton<CampaignVault.Data.CampaignDocumentKeys>();
+
 builder.Services.AddSingleton<CampaignRepository>();
 
 // CORS configuration (Issue #16 from code review)
