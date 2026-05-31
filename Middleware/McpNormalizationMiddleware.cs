@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -10,14 +11,19 @@ namespace CampaignVault.Middleware;
 /// Middleware to normalize MCP tool call arguments for 'upsert_character', 'upsert_location', and 'upsert_lore'.
 /// It automatically handles flattened properties (wrapping them under the expected parameter key)
 /// and legacy wrapped parameter names ('c' and 'l' -> 'character' and 'location').
+///
+/// This is a workaround for Grok Web's stale client-side schema cache, which still sends the original
+/// legacy parameter names from an early version of this server. Track at: [link to issue].
 /// </summary>
 public class McpNormalizationMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly ILogger<McpNormalizationMiddleware> _logger;
 
-    public McpNormalizationMiddleware(RequestDelegate next)
+    public McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormalizationMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -73,7 +79,7 @@ public class McpNormalizationMiddleware
 
                                         if (argumentsObj.ContainsKey(expectedKey))
                                         {
-                                            // Already correctly wrapped
+                                            // Already correctly wrapped — nothing to do
                                         }
                                         else if (legacyKey != null && argumentsObj.ContainsKey(legacyKey))
                                         {
@@ -89,6 +95,10 @@ public class McpNormalizationMiddleware
 
                                         if (needsRename && foundLegacyKey != null)
                                         {
+                                            _logger.LogDebug(
+                                                "McpNormalization: renaming legacy key '{LegacyKey}' → '{ExpectedKey}' for tool '{ToolName}'",
+                                                foundLegacyKey, expectedKey, toolName);
+
                                             var value = argumentsObj[foundLegacyKey];
                                             argumentsObj.Remove(foundLegacyKey);
 
@@ -101,6 +111,10 @@ public class McpNormalizationMiddleware
                                         }
                                         else if (needsWrapping)
                                         {
+                                            _logger.LogDebug(
+                                                "McpNormalization: wrapping flattened arguments under '{ExpectedKey}' for tool '{ToolName}'",
+                                                expectedKey, toolName);
+
                                             var wrappedArgs = new JsonObject();
                                             var clonedArgs = JsonNode.Parse(argumentsObj.ToJsonString());
                                             wrappedArgs.Add(expectedKey, clonedArgs);
@@ -118,8 +132,11 @@ public class McpNormalizationMiddleware
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                // Parsing failed — reset the body so downstream can still attempt to handle the request.
+                // This is a best-effort normalization layer; a bad body here is not a fatal error.
+                _logger.LogDebug(ex, "McpNormalization: failed to parse or rewrite request body; passing through unchanged");
                 context.Request.Body.Position = 0;
             }
         }
