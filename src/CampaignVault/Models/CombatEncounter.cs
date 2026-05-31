@@ -16,8 +16,13 @@ public class CombatantState
 
 public class CombatEncounter
 {
+    /// <summary>
+    /// Document ID. Should be provided by CampaignDocumentKeys.CombatCurrent(campaignName)
+    /// (e.g. "campaigns/{name}/combat/current").
+    /// The old hardcoded "combat/current" singleton is deprecated in favor of per-campaign namespacing.
+    /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; } = "combat/current";
+    public string Id { get; set; } = default!;
 
     [JsonPropertyName("locationId")]
     public string LocationId { get; set; } = default!;
