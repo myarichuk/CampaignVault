@@ -109,7 +109,7 @@ public class CampaignRepository
             ev => LogEventAsync(session, ev));
     }
 
-    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId)
+    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId, string campaignName = "default")
     {
         var location = await session
             .Include<Location>(x => x.ParentLocationId)
@@ -220,7 +220,7 @@ public class CampaignRepository
             );
         }).ToList();
 
-        var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent("default"));
+        var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(campaignName));
         if (activeCombat != null && (!activeCombat.IsActive || activeCombat.LocationId != locationId))
         {
             activeCombat = null;

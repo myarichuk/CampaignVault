@@ -112,11 +112,13 @@ public class CampaignTools(
     [McpServerTool(UseStructuredContent = true)]
     [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors.")]
     public Task<ToolResult<SceneView>> GetScene(
-        [Description("The unique ID of the location.")] string locationId)
+        [Description("The unique ID of the location.")] string locationId,
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var scene = await repository.GetSceneAsync(session, locationId);
-            return new ToolResult<SceneView>(true, scene, $"Scene details for {locationId} retrieved.");
+            var scene = await repository.GetSceneAsync(session, locationId, effective);
+            return new ToolResult<SceneView>(true, scene, $"Scene details for {locationId} (campaign: {effective}) retrieved.");
         }, saveChanges: false);
     }
 
