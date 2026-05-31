@@ -6,10 +6,12 @@ namespace CampaignVault.Data.ChangeHandlers;
 public sealed class RulesetActionHandler : IWorldChangeHandler
 {
     private readonly IRulesetResolverSelector _selector;
+    private readonly CampaignDocumentKeys _keys;
 
-    public RulesetActionHandler(IRulesetResolverSelector selector)
+    public RulesetActionHandler(IRulesetResolverSelector selector, CampaignDocumentKeys keys)
     {
         _selector = selector ?? throw new ArgumentNullException(nameof(selector));
+        _keys = keys ?? new CampaignDocumentKeys();
     }
 
     public bool ShouldHandle(WorldChange change) => change is RulesetAction;
@@ -22,8 +24,10 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("Change is not a RulesetAction.");
         }
         
-        var config = await context.Session.LoadAsync<CampaignConfig>("campaign/config", ct)
-                     ?? new CampaignConfig();
+        // TODO: derive campaignName from execution context once select_campaign / session scoping is implemented
+        var configId = _keys.Config("default");
+        var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct)
+                     ?? new CampaignConfig { Id = configId };
 
         var resolver = _selector.GetResolver(config.ActiveSystem);
         var output = await resolver.ResolveAsync(context, action, ct);

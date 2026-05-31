@@ -53,7 +53,10 @@ builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHand
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.AttributeChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.MoodChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ActivityChangeHandler>();
-builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RulesetActionHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RulesetActionHandler>(sp =>
+    new CampaignVault.Data.ChangeHandlers.RulesetActionHandler(
+        sp.GetRequiredService<CampaignVault.Rulesets.IRulesetResolverSelector>(),
+        sp.GetRequiredService<CampaignVault.Data.CampaignDocumentKeys>()));
 
 // Combat / Rulesets
 builder.Services.AddSingleton<CampaignVault.Data.IRollService, CampaignVault.Data.DefaultRollService>();
