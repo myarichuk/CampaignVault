@@ -416,7 +416,7 @@ public class CampaignRepository
         return time;
     }
 
-    public async Task SaveTimeAsync(IAsyncDocumentSession session, CampaignTime time)
+    public async Task SaveTimeAsync(IAsyncDocumentSession session, CampaignTime time, string? campaignName = null)
     {
         time.LastUpdated = DateTime.UtcNow;
         await session.StoreAsync(time);
@@ -468,7 +468,7 @@ public class CampaignRepository
         await session.StoreAsync(config, docId);
     }
 
-    public async Task LogEventAsync(IAsyncDocumentSession session, Event @event)
+    public async Task LogEventAsync(IAsyncDocumentSession session, Event @event, string? campaignName = null)
     {
         if (@event.Details != null) @event.Details = SanitizeDetails(@event.Details);
         await session.StoreAsync(@event);
