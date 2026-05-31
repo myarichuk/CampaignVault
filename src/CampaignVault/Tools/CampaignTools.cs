@@ -142,7 +142,7 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
         }
 
         return ExecuteAsync(async session => {
-            var result = await repository.StageChangesAsync(session, changes);
+            var result = await repository.StageChangesAsync(session, changes, effective);
             await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.SceneCommit });
             var msg = $"World updated with {changes.Length} changes.";
             return new ToolResult<CommitResult>(true, result, msg);
@@ -178,15 +178,17 @@ When creating a new area + NPC from scratch, do it in ONE atomic commit...")] Wo
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
         [Description("Number of days to skip.")] int days, 
         [Description("The resulting time of day.")] TimeOfDay timeOfDay,
-        [Description("Summary of the rest or travel activity.")] string narrative)
+        [Description("Summary of the rest or travel activity.")] string narrative,
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
         if (days < 0)
         {
             return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "BadRequest", Summary: "Cannot advance a negative number of days."));
         }
 
+        var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var result = await repository.AdvanceWorldAsync(session, days, timeOfDay);
+            var result = await repository.AdvanceWorldAsync(session, days, timeOfDay, effective);
             await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.Timeskip });
 
             // Minimal WorldPressure wiring: surface simulation narratives as pressure for the DM

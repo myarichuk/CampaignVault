@@ -17,6 +17,10 @@ public class CampaignRepository
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
     private readonly WorldChangeDispatcher _changeDispatcher;
     private readonly CampaignDocumentKeys _keys;
+    private readonly ICurrentCampaignContext? _currentCampaign;
+
+    private string ResolveCampaign(string? campaignName) =>
+        campaignName ?? _currentCampaign?.CurrentCampaignName ?? "default";
 
     public CampaignRepository(
         IDocumentStore store, 
@@ -24,6 +28,7 @@ public class CampaignRepository
         ILogger<CampaignRepository> logger,
         INpcBehaviorSynthesizer behaviorSynthesizer,
         CampaignDocumentKeys keys,
+        ICurrentCampaignContext? currentCampaign = null,
         IEnumerable<IWorldChangeHandler>? changeHandlers = null)
     {
         _store = store;
@@ -31,6 +36,7 @@ public class CampaignRepository
         _logger = logger;
         _behaviorSynthesizer = behaviorSynthesizer;
         _keys = keys ?? new CampaignDocumentKeys();
+        _currentCampaign = currentCampaign;
 
         var handlersList = (changeHandlers ?? Array.Empty<IWorldChangeHandler>()).ToList();
 
@@ -64,7 +70,8 @@ public class CampaignRepository
                new NoOpSimulationEngine(), 
                Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
                new DefaultBehaviorSynthesizer(),
-               new CampaignDocumentKeys())
+               new CampaignDocumentKeys(),
+               currentCampaign: null)
     {
     }
 
@@ -95,21 +102,21 @@ public class CampaignRepository
     ///
     /// Use this for all atomic world mutations coming from tools or simulation rules.
     /// </summary>
-    public Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes)
+    public Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes, string? campaignName = null)
     {
         changes ??= Array.Empty<WorldChange>();
+        var effective = ResolveCampaign(campaignName);
 
-        _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes", changes.Length);
+        _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes for campaign {Campaign}", changes.Length, effective);
 
-        // Single dispatch path. All WorldChange types are handled by registered IWorldChangeHandler implementations.
         return _changeDispatcher.DispatchAsync(
             session,
             changes,
-            () => GetTimeAsync(session),
+            () => GetTimeAsync(session, effective),
             ev => LogEventAsync(session, ev));
     }
 
-    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId, string campaignName = "default")
+    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId, string? campaignName = null)
     {
         var location = await session
             .Include<Location>(x => x.ParentLocationId)
@@ -177,7 +184,7 @@ public class CampaignRepository
             .Take(5)
             .ToList();
 
-        var time = await GetTimeAsync(session);
+        var time = await GetTimeAsync(session, effective);
 
         // Load global descriptors once (cheap) so we can merge them into every NPC's view
         var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session);
@@ -220,7 +227,8 @@ public class CampaignRepository
             );
         }).ToList();
 
-        var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(campaignName));
+        var effective = ResolveCampaign(campaignName);
+        var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effective));
         if (activeCombat != null && (!activeCombat.IsActive || activeCombat.LocationId != locationId))
         {
             activeCombat = null;
@@ -239,9 +247,10 @@ public class CampaignRepository
 
     // --- Time & Simulator ---
 
-    public async Task<AdvanceResult> AdvanceWorldAsync(IAsyncDocumentSession session, int days, TimeOfDay timeOfDay)
+    public async Task<AdvanceResult> AdvanceWorldAsync(IAsyncDocumentSession session, int days, TimeOfDay timeOfDay, string? campaignName = null)
     {
-        var time = await GetTimeAsync(session);
+        var effective = ResolveCampaign(campaignName);
+        var time = await GetTimeAsync(session, effective);
 
         time.TotalDaysElapsed += days;
 
@@ -398,9 +407,10 @@ public class CampaignRepository
             indexes: new[] { "Character/Search" });
     }
 
-    public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session, string campaignName = "default")
+    public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session, string? campaignName = null)
     {
-        var id = _keys.StateTime(campaignName);
+        var effective = ResolveCampaign(campaignName);
+        var id = _keys.StateTime(effective);
         var time = await session.LoadAsync<CampaignTime>(id);
         if (time == null) { time = new CampaignTime { Id = id }; await session.StoreAsync(time, id); }
         return time;
@@ -412,9 +422,10 @@ public class CampaignRepository
         await session.StoreAsync(time);
     }
 
-    public async Task<CampaignConfig> GetCampaignConfigAsync(IAsyncDocumentSession session, string campaignName = "default")
+    public async Task<CampaignConfig> GetCampaignConfigAsync(IAsyncDocumentSession session, string? campaignName = null)
     {
-        var id = _keys.Config(campaignName);
+        var effective = ResolveCampaign(campaignName);
+        var id = _keys.Config(effective);
         var config = await session.LoadAsync<CampaignConfig>(id);
         if (config == null)
         {
@@ -424,9 +435,10 @@ public class CampaignRepository
         return config;
     }
 
-    public async Task UpsertCampaignConfigAsync(IAsyncDocumentSession session, CampaignConfig config, string campaignName = "default")
+    public async Task UpsertCampaignConfigAsync(IAsyncDocumentSession session, CampaignConfig config, string? campaignName = null)
     {
-        var id = _keys.Config(campaignName);
+        var effective = ResolveCampaign(campaignName);
+        var id = _keys.Config(effective);
         config.Id = id;
         await session.StoreAsync(config, id);
     }
@@ -435,9 +447,10 @@ public class CampaignRepository
     /// Returns globally defined need descriptors (populated via the DefineNeedDescriptor tool).
     /// These act as a shared dictionary that individual NPCs can reference or override via Mind.NeedDescriptors.
     /// </summary>
-    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session, string campaignName = "default")
+    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session, string? campaignName = null)
     {
-        var docId = _keys.NeedDescriptors(campaignName);
+        var effective = ResolveCampaign(campaignName);
+        var docId = _keys.NeedDescriptors(effective);
         var config = await session.LoadAsync<NeedDescriptorsConfig>(docId);
         var source = config?.Descriptors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         return new Dictionary<string, string>(source, StringComparer.OrdinalIgnoreCase);
@@ -446,9 +459,10 @@ public class CampaignRepository
     /// <summary>
     /// Sets or updates a single need descriptor for a campaign.
     /// </summary>
-    public async Task SetNeedDescriptorAsync(IAsyncDocumentSession session, string needName, string descriptor, string campaignName = "default")
+    public async Task SetNeedDescriptorAsync(IAsyncDocumentSession session, string needName, string descriptor, string? campaignName = null)
     {
-        var docId = _keys.NeedDescriptors(campaignName);
+        var effective = ResolveCampaign(campaignName);
+        var docId = _keys.NeedDescriptors(effective);
         var config = await session.LoadAsync<NeedDescriptorsConfig>(docId) ?? new NeedDescriptorsConfig { Id = docId };
         config.Descriptors[needName.Trim()] = descriptor.Trim();
         await session.StoreAsync(config, docId);
