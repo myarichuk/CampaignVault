@@ -532,16 +532,30 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
+            if (combatantIds == null || combatantIds.Length == 0)
+            {
+                return new ToolResult<CombatEncounter>(false, Error: "InvalidInput", Summary: "Cannot start combat with zero combatants.");
+            }
+
+            var uniqueIds = combatantIds.Distinct().ToList();
+            var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
+            var validCharacters = loadedCharacters.Values.Where(c => c != null && c.CurrentHp > 0).ToList();
+
+            if (validCharacters.Count == 0)
+            {
+                return new ToolResult<CombatEncounter>(false, Error: "InvalidInput", Summary: "None of the specified combatants are valid and alive.");
+            }
+
             var config = await repository.GetCampaignConfigAsync(session, effective);
             var resolver = rulesetSelector.GetResolver(config.ActiveSystem);
 
             var combatants = new List<CombatantState>();
-            foreach (var id in combatantIds)
+            foreach (var character in validCharacters)
             {
-                var initiative = await resolver.RollInitiativeAsync(session, id);
+                var initiative = await resolver.RollInitiativeAsync(character);
                 combatants.Add(new CombatantState
                 {
-                    CharacterId = id,
+                    CharacterId = character.Id,
                     Initiative = initiative,
                     HasActedThisRound = false
                 });
@@ -583,6 +597,9 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
                 return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter.");
             }
 
+            var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
+            var characters = await session.LoadAsync<Character>(characterIds);
+
             // Mark current actor as having acted
             var current = encounter.Combatants.FirstOrDefault(c => c.CharacterId == encounter.ActiveTurnId);
             if (current != null)
@@ -590,19 +607,29 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
                 current.HasActedThisRound = true;
             }
 
-            // Find next who hasn't acted
-            var next = encounter.Combatants.FirstOrDefault(c => !c.HasActedThisRound);
             var expiredMessages = new List<string>();
+
+            // Find next who hasn't acted and is alive
+            CombatantState? GetNextAliveUnacted() => encounter.Combatants.FirstOrDefault(c => 
+                !c.HasActedThisRound && 
+                characters.TryGetValue(c.CharacterId, out var character) && character != null && character.CurrentHp > 0);
+
+            var next = GetNextAliveUnacted();
+            
             if (next == null)
             {
+                // Verify if anyone is actually alive
+                if (!encounter.Combatants.Any(c => characters.TryGetValue(c.CharacterId, out var character) && character != null && character.CurrentHp > 0))
+                {
+                     return new ToolResult<CombatEncounter>(false, Error: "CombatEnded", Summary: "No valid and alive combatants remain. Combat has ended or cannot proceed.");
+                }
+
                 // New round
                 encounter.Round++;
                 foreach (var c in encounter.Combatants) c.HasActedThisRound = false;
-                next = encounter.Combatants.FirstOrDefault();
+                next = GetNextAliveUnacted(); // Retrieve the first alive person again
 
                 // Expire round-based status effects
-                var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
-                var characters = await session.LoadAsync<Character>(characterIds);
                 foreach (var character in characters.Values.Where(c => c != null))
                 {
                     if (character.SystemStats?.StatusEffects != null)

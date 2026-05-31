@@ -130,6 +130,7 @@ public class CampaignRepository
         return _changeDispatcher.DispatchAsync(
             session,
             changes,
+            effective,
             () => GetTimeAsync(session, effective),
             ev => LogEventAsync(session, ev));
     }

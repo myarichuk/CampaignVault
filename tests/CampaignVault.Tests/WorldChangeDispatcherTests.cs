@@ -50,6 +50,7 @@ public class WorldChangeDispatcherTests
         var result = await dispatcher.DispatchAsync(
             null!, // session not used when no handlers
             new WorldChange[] { new HpChange { CharacterId = "c1", Delta = -5 } },
+            "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             _ => Task.CompletedTask);
 
@@ -82,6 +83,7 @@ public class WorldChangeDispatcherTests
                 new HpChange { CharacterId = "c1", Delta = 3 },
                 new StatusChange { CharacterId = "c1", Status = "Blessed" }
             },
+            "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             _ => Task.CompletedTask);
 
@@ -110,6 +112,7 @@ public class WorldChangeDispatcherTests
         var result = await dispatcher.DispatchAsync(
             null!,
             new WorldChange[] { new HpChange { CharacterId = "c1", Delta = 1 } },
+            "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             _ => Task.CompletedTask);
 
@@ -133,6 +136,7 @@ public class WorldChangeDispatcherTests
         var result = await dispatcher.DispatchAsync(
             null!,
             new WorldChange[] { new HpChange { CharacterId = "c1", Delta = 1 } },
+            "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             _ => Task.CompletedTask);
 
@@ -160,6 +164,7 @@ public class WorldChangeDispatcherTests
                 new HpChange { CharacterId = "c1", Delta = 5 },
                 new MoodChange { CharacterId = "c1", NewMood = "happy" } // no handler
             },
+            "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             _ => Task.CompletedTask);
 

@@ -49,6 +49,7 @@ public sealed class WorldChangeDispatcher
     public async Task<CommitResult> DispatchAsync(
         IAsyncDocumentSession session,
         WorldChange[] changes,
+        string effectiveCampaign,
         Func<Task<CampaignTime>> getCurrentTimeAsync,
         Func<Event, Task> logEventAsync)
     {
@@ -77,6 +78,7 @@ public sealed class WorldChangeDispatcher
         // 1. Pre-identify and batch-load required entities (same logic as before, now centralized)
         var characterIds = new HashSet<string>();
         var itemIds = new HashSet<string>();
+        bool needsCombat = false;
 
         foreach (var change in changes)
         {
@@ -109,6 +111,7 @@ public sealed class WorldChangeDispatcher
                 case RulesetAction ra:
                     characterIds.Add(ra.ActorId);
                     foreach(var targetId in ra.TargetIds ?? Enumerable.Empty<string>()) characterIds.Add(targetId);
+                    needsCombat = true; // Ruleset actions often interact with combat
                     break;
                 case StatusRemove sr:
                     characterIds.Add(sr.CharacterId);
@@ -123,6 +126,14 @@ public sealed class WorldChangeDispatcher
         {
             characters = (await session.LoadAsync<Character>(characterIds)).ToDictionary(kv => kv.Key, kv => kv.Value);
             items = (await session.LoadAsync<Item>(itemIds)).ToDictionary(kv => kv.Key, kv => kv.Value);
+            
+            // Preload combat encounter to ensure optimistic concurrency protection against racing StartCombat/NextTurn calls.
+            // Assumption: Single combat encounter per campaign at a time.
+            if (needsCombat && !string.IsNullOrEmpty(effectiveCampaign))
+            {
+                var keys = new CampaignDocumentKeys();
+                await session.LoadAsync<CombatEncounter>(keys.CombatCurrent(effectiveCampaign));
+            }
         }
         else
         {

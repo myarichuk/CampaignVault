@@ -172,9 +172,18 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
     {
         var character = await session.LoadAsync<Character>(characterId, ct);
         if (character == null) return 0f;
+        return await RollInitiativeAsync(character, ct);
+    }
+
+    public async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
+    {
         var stats = character.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
         int initiative = stats.Perception + stats.Agility;
         initiative = stats.ApplyModifiers("Initiative", initiative);
-        return initiative;
+        
+        // Add a lightweight roll to add variance instead of pure static stat
+        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = initiative, Mechanic = DiceMechanic.Standard };
+        var outcome = await _rollService.RollAsync(request, ct);
+        return outcome.Result;
     }
 }

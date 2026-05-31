@@ -207,14 +207,15 @@ public class Dnd5eRulesetResolver : IRulesetResolver
         return $"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).";
     }
 
-    public async Task<float> RollInitiativeAsync(
-        IAsyncDocumentSession session, 
-        string characterId, 
-        CancellationToken ct = default)
+    public async Task<float> RollInitiativeAsync(IAsyncDocumentSession session, string characterId, CancellationToken ct = default)
     {
         var character = await session.LoadAsync<Character>(characterId, ct);
         if (character == null) return 0f;
+        return await RollInitiativeAsync(character, ct);
+    }
 
+    public async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
+    {
         var stats = character.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
         int dexMod = stats.GetAbilityModifier(stats.Dexterity);
         dexMod = stats.ApplyModifiers("Initiative", dexMod);

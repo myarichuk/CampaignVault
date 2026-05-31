@@ -157,6 +157,11 @@ public class Pf2eRulesetResolver : IRulesetResolver
     {
         var character = await session.LoadAsync<Character>(characterId, ct);
         if (character == null) return 0f;
+        return await RollInitiativeAsync(character, ct);
+    }
+
+    public async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
+    {
         var stats = character.SystemStats as Pf2eExtension ?? new Pf2eExtension();
         int dexMod = stats.DexterityMod;
         dexMod = stats.ApplyModifiers("Initiative", dexMod);

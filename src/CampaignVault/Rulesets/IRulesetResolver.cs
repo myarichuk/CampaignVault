@@ -28,4 +28,8 @@ public interface IRulesetResolver
         IAsyncDocumentSession session, 
         string characterId, 
         CancellationToken ct = default);
+
+    Task<float> RollInitiativeAsync(
+        Character character, 
+        CancellationToken ct = default);
 }
