@@ -4,16 +4,17 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 ## Features
 - **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC tiredness, and escalate unresolved plot threads via the `WorldSimulator`.
-- **Scene-Centric Workflow**: Load entire locations, NPCs, rumors, and visible items in a single call (`get_scene`).
+- **Multi-System Ruleset Engine**: Full polymorphic support for **D&D 5e**, **Pathfinder 2e**, and **Fallout 2d20**. The C# MCP handles math, advantage, 4-degrees of success, and dice pools deterministically.
+- **Structured Combat Encounters**: Start, advance, and resolve tactical combat with turn-order tracking, dynamic initiative, and real-time HP/status mutations.
+- **Scene-Centric Workflow**: Load entire locations, NPCs, rumors, and visible items in a single call (`get_scene`). The LLM instantly receives the `ActiveCombat` state and `SystemStats` (AC, SPECIAL, etc.) for everyone present.
 - **Psychological NPC Minds**: NPCs have Wants, Fears, Moods, and Relationships. The engine synthesizes behavioral summaries to help the LLM roleplay them authentically.
 - **Atomic Scene Resolution**: Commit an entire combat's worth of HP deltas, item transfers, and status changes in one transaction (`commit`).
 - **Situational Awareness**: Every tool response includes `WorldPressure`—proactive alerts about ticking clocks and background events.
 - **Unified Fuzzy Search**: Search across lore, characters, and locations in one shot.
 
 ## Recent Updates
+- **Ruleset Integration (Phase 1-4 Complete)**: Introduced `RulesetAction` mutations, a polymorphic `SystemExtension` for character stats, deterministic resolvers for D&D 5e, PF2e, and Fallout 2d20, and combat turn tracking natively wired into `get_scene`.
 - **Correctness & Reliability**: `HpChange` now properly clamps to `MaxHp`, `AttributeChange` disambiguates deltas from absolute assignments via `isDelta`, and `RumorDecayRule` escalates nascent rumors instead of blindly fading them.
-- **Fail-Fast Error Handling**: `commit` results now surface a `Success` flag and properly report warnings when attempting to mutate non-existent characters.
-- **Performance**: Upgraded `GetScene` index fallback floors for enhanced accuracy during cold-starts or fast tests.
 
 ## Core Tool Surface
 
