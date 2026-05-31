@@ -127,9 +127,11 @@ public class Fallout2d20RulesetResolver : IRulesetResolver
             return $"{action.ActionName}: Missed.{compMsg} {outcome.Summary}";
 
         int combatDiceCount = action.Parameters.TryGetValue("damageDice", out var cd) ? int.Parse(cd) : 3;
+        string damageType = action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical";
+
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);
 
-        int dr = 0; // In a full implementation, read damageResistance from targetStats
+        int dr = targetStats.DamageResistance.TryGetValue(damageType, out var res) ? res : 0;
         int finalDamage = Math.Max(0, combatResult.Damage - dr);
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
