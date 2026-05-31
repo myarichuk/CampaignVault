@@ -488,11 +488,12 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     [Description("COMBAT TOOL: Starts a new combat encounter. Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten.")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
         [Description("The location ID where combat is happening.")] string locationId,
-        [Description("List of character IDs participating in combat.")] string[] combatantIds)
+        [Description("List of character IDs participating in combat.")] string[] combatantIds,
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            var effective = EffectiveCampaign(null);
             var config = await repository.GetCampaignConfigAsync(session, effective);
             var resolver = rulesetSelector.GetResolver(config.ActiveSystem);
 
@@ -530,9 +531,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("COMBAT TOOL: Advances the turn order to the next combatant. If all combatants have acted, advances to the next round.")]
-    public Task<ToolResult<CombatEncounter>> NextTurn()
+    public Task<ToolResult<CombatEncounter>> NextTurn(
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(null);
+        var effective = EffectiveCampaign(campaignName);
         var combatId = _keys.CombatCurrent(effective);
 
         return ExecuteAsync(async session =>
@@ -569,9 +571,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("COMBAT TOOL: Ends the current active combat encounter and wraps up the state.")]
-    public Task<ToolResult<CombatEncounter>> EndCombat()
+    public Task<ToolResult<CombatEncounter>> EndCombat(
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(null);
+        var effective = EffectiveCampaign(campaignName);
         var combatId = _keys.CombatCurrent(effective);
 
         return ExecuteAsync(async session =>
