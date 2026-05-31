@@ -2,7 +2,11 @@ namespace CampaignVault.Models;
 
 public class CampaignTime
 {
-    public string Id { get; set; } = "state/time";
+    /// <summary>
+    /// Document ID. Should come from CampaignDocumentKeys.StateTime(campaignName).
+    /// Old singleton "state/time" is being replaced by per-campaign namespacing.
+    /// </summary>
+    public string Id { get; set; } = default!;
     
     public string Epoch { get; set; } = "Current Era";
     
