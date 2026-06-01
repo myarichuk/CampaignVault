@@ -13,8 +13,9 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 - **Unified Fuzzy Search**: Search across lore, characters, and locations in one shot.
 
 ## Recent Updates
-- **Ruleset Integration (Phase 1-4 Complete)**: Introduced `RulesetAction` mutations, a polymorphic `SystemExtension` for character stats, deterministic resolvers for D&D 5e, PF2e, and Fallout 2d20, and combat turn tracking natively wired into `get_scene`.
-- **Correctness & Reliability**: `HpChange` now properly clamps to `MaxHp`, `AttributeChange` disambiguates deltas from absolute assignments via `isDelta`, and `RumorDecayRule` escalates nascent rumors instead of blindly fading them.
+- **Multi-Campaign Support**: Fully isolated campaign contexts with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in).
+- **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
+- **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
 
 ## Core Tool Surface
 
@@ -30,74 +31,32 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 | `get_npc_needs`        | Current needs + merged descriptors for an NPC     | Quick psychological read |
 | `get_need_descriptors` | List globally defined need descriptions           | Before introducing new need types |
 
-**World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). See the full **LLM System Instructions** section below for detailed guidance.
+**World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). See the full **Current Recommended Usage** section below for detailed guidance.
 
-See the dedicated **LLM System Instructions** section for a ready-to-use system prompt block.
+## Current Recommended Usage
 
-## LLM System Instructions (Recommended for System Prompts)
+When using CampaignVault as an LLM Dungeon Master, follow this mental model:
 
-When using CampaignVault as an LLM Dungeon Master, paste the following (or a version of it) into your system prompt. This captures the intended usage patterns and mental model for the MCP.
+### 1. The Multi-Campaign Foundation
+CampaignVault supports multiple isolated campaigns.
+- Start by calling `list_campaigns` or `create_campaign`.
+- Use `select_campaign` to lock into a specific campaign context.
+- Use `get_config` to see the active ruleset (e.g., D&D 5e, PF2e).
+- Use `set_active_system` to change the ruleset (if the campaign isn't locked yet).
 
-```markdown
-You are running a persistent, reactive living world using the **CampaignVault** MCP server.
+### 2. The Sacred Session Loop
+- **Start every session** with `get_world_state` (pass the party's current location ID).
+- **When entering a new significant location**, call `get_scene`.
+- **For deep roleplay**, call `get_npc_context` (and `get_npc_needs`).
+- **At the end of every meaningful narrative beat**, call `commit`.
+- **For travel or downtime**, call `advance_world`.
 
-### Core Philosophy
-CampaignVault is not a passive database. It is a **living world simulation engine**.
-- NPCs have internal drives (needs, wants, fears, schedules, relationships, moods).
-- Time matters. The world continues to evolve when you call `advance_world`.
-- The engine provides synthesized behavioral context so you don't have to do all the interpretation yourself.
-- Changes should feel atomic and consequential.
-
-### Sacred Session Loop (Follow This Strictly)
-1. **Start every session** with `get_world_state` (pass the party's current location ID).
-2. **When the party enters a new significant location**, call `get_scene`.
-3. **For deep roleplay** with an NPC, call `get_npc_context` (and often `get_npc_needs`).
-4. **At the end of every meaningful narrative beat** (conversation, combat round(s), discovery, social interaction, etc.), call `commit`.
-5. **For travel, long rests, or significant downtime**, call `advance_world`.
-
-### The Golden Rule: Use `commit` as Your Primary Mutation Tool
-- `commit` is the **universal and most reliable write tool**.
-- It accepts a batch of typed changes in a single atomic transaction.
-- Supported change types: `event`, `activity`, `need`, `relationship`, `mood`, `hp`, `item`, `status`, `rumor`, `attribute`.
-- **Use `activity` changes liberally.** Whenever an NPC moves or starts doing something new because of what just happened, record it with an `activity` change. This keeps `get_scene` accurate.
-- Bundle as much as possible into one `commit` call at the end of a scene rather than making many small updates.
-
-Example strong pattern inside `commit`:
-- One `event` describing what just occurred
-- One or more `activity` updates for NPCs whose behavior changed
-- `relationship` deltas, `need` adjustments, `mood` changes, etc.
-
-### Exploration & Awareness Tools
-- `get_scene` → Your main tool for "what does the party see and who is here?"
-- `get_world_state` → Current time, active rumors under pressure, recent history.
-- `recall_history` → Semantic search over past events ("what happened the last time we were in this village?").
-- `search_world` → Unified fuzzy search across characters, locations, and lore.
-
-### NPC Psychology & Needs System
-- The needs system is intentionally **open-ended**. There is no fixed list.
-- Use `get_need_descriptors` to see globally defined need types.
-- Use `define_need_descriptor` when you introduce a new important need type (e.g. "homesickness", "duty", "paranoia").
-- Global descriptors are automatically merged into `get_scene`, `get_npc_context`, and `get_npc_needs` (per-NPC descriptors win).
-- Richly describe key NPCs using Wants, Fears, Knows, custom Needs + NeedDescriptors, Schedules, and Relationships when first creating them.
-
-### World Building vs. Play
-- During **actual play**: Strongly prefer `commit` (with `activity` changes) over the `upsert_*` tools.
-- The `upsert_character`, `upsert_location`, and `upsert_lore` tools are primarily for **initial world seeding** or major structural changes.
-- When using `upsert_lore`, first call `search_world` to check for similar existing lore.
-
-### Important Operational Notes
-- The server uses optimistic concurrency. You may occasionally receive a `StateDriftConflict` error. When this happens, re-fetch the relevant state (`get_scene`, `get_world_state`, or `get_npc_context`) and retry.
-- IDs are strings and follow loose conventions (e.g. `characters/elara-voss`, `locations/rusty-nail`). Both short legacy IDs and prefixed IDs may exist in the same world.
-- Always provide a clear `narrative` when calling `commit` or `advance_world`. This becomes part of the world's event history and pressure system.
-
-### Anti-Patterns to Avoid
-- Do not make many tiny individual updates. Batch them in `commit`.
-- Do not ignore `activity` changes — NPCs will appear to be in the wrong place in future `get_scene` calls.
-- Do not treat this like a simple CRUD database. Think in terms of **scenes**, **time**, and **consequences**.
-- Do not forget to advance time for long journeys or rests — the simulation will not run otherwise.
-
-You are the Dungeon Master. CampaignVault maintains authoritative state and runs the background simulation. Your job is to interpret the world, roleplay NPCs authentically using the psychological data provided, and drive the narrative forward through rich, atomic `commit` calls.
-```
+### 3. Combat and Mechanics
+The engine natively supports ruleset-specific math and combat tracking.
+- Call `start_combat` with the location and participant IDs to roll initiative.
+- Call `get_scene` to see the `ActiveCombat` state, turns, and HP.
+- Inside `commit`, use the `ruleset_action` change type (e.g., `{"$type": "ruleset_action", "actorId": "bob", "actionType": "Attack"}`) to resolve attacks and skill checks deterministically.
+- Call `next_turn` to advance combat, and `end_combat` when finished.
 
 ## The Open Psychological Model (Needs, Wants, Fears)
 
@@ -112,18 +71,7 @@ Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom need
 
 **Global Need Descriptors**: Use `define_need_descriptor` to create shared, reusable descriptions for custom needs (e.g. "homesickness"). These are stored globally and automatically appear (merged) in `get_npc_needs`, `get_npc_context`, and `get_scene`. Use the companion `get_need_descriptors` tool to list everything that has been defined.
 
-## The Open Psychological Model (Needs, Wants, Fears)
 
-The NPC "Mind" system is intentionally open-ended. There is no closed list of needs.
-
-- Discover needs at runtime via `get_npc_needs`, `get_scene`, `get_npc_context`, and `get_need_descriptors`.
-- Use `define_need_descriptor` to create **global** shared descriptions for custom needs. These are automatically merged into NPC views (per-NPC descriptors override).
-- Freely invent narrative-appropriate needs (`wanderlust`, `duty`, `guilt`, `debt_pressure`, etc.) and provide human-readable `NeedDescriptors`.
-- For initial world building, the `upsert_*` tools exist. In practice, many users find `commit` (with rich `EventOccurred` + `RelationshipChange` + `ActivityChange` + `NeedChange`) to be the more reliable way to evolve the world during play.
-
-Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom needs + descriptors, Schedule + Routines, equipment via Items). The simulation and behavioral synthesis will make much better use of that data than shallow characters.
-
-**Global Need Descriptors**: Use `define_need_descriptor` to create shared, reusable descriptions for custom needs (e.g. "homesickness"). These are stored globally and automatically appear (merged) in `get_npc_needs`, `get_npc_context`, and `get_scene`. Use the companion `get_need_descriptors` tool to list everything that has been defined.
 
 ## Deployment to Fly.io
 

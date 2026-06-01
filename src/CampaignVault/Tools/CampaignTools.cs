@@ -475,7 +475,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("RULES CONFIG TOOL: Set the active ruleset system for a campaign. Will eventually respect lock-in.")]
+    [Description("RULES CONFIG TOOL: Set the active ruleset system for a campaign. Respects lock-in (cannot change system once locked).")]
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(
         [Description("The active TTRPG ruleset system.")] RulesetSystem activeSystem,
         [Description("Optional dictionary of system options and house rules.")] Dictionary<string, string>? systemOptions = null,
