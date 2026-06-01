@@ -197,7 +197,7 @@ public sealed class DefaultRollService : IRollService
         foreach (var d in dice)
         {
             if (d <= tn)
-                successes += (critThreshold > 0 && d <= critThreshold) ? 2 : 1;
+                successes += (d == 1 || (critThreshold > 0 && d <= critThreshold)) ? 2 : 1;
             if (d == dieSides) // natural max = complication on Fallout d20
                 hasComplication = true;
         }
