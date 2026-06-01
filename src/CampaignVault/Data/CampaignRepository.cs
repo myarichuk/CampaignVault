@@ -227,7 +227,7 @@ public class CampaignRepository
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             // Expose all known needs + descriptors (merged global + per-NPC, per-NPC wins)
-            var knownNeeds = npcNeeds.ActiveNeeds.ToDictionary(kv => kv.Key, kv => kv.Value);
+            var knownNeeds = npcNeeds.ActiveNeeds.ToDictionary(kv => kv.Value);
             var needDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcNeeds.NeedDescriptors ?? new Dictionary<string, string>())
             {
@@ -261,7 +261,7 @@ public class CampaignRepository
         {
             Location = location,
             PresentNPCs = presenceSummaries,
-            LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
+            LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State));
             VisibleItems = items,
             RecentEvents = events,
             ActiveCombat = activeCombat
@@ -298,7 +298,15 @@ public class CampaignRepository
         var npcs = await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync();
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
-        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective);
+        var simContext = new SimulationContext(
+            Time: time,
+            ActiveRumors: activeRumors,
+            ScheduledNpcs: npcs,
+            Session: session,
+            DaysPassed: days,
+            CampaignName: effective,
+            CurrentRound: 1   // Day-based advance. Combat flows can pass real round when unified.
+        );
 
         _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", days, time);
 
@@ -387,7 +395,6 @@ public class CampaignRepository
     public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier, string? campaignName = null)
     {
         // campaignName accepted for API consistency / future entity namespacing or filtering.
-        // Current implementation uses direct ID or name lookup (entities are caller-ID-controlled).
         _ = ResolveCampaign(campaignName);
         var character = await session.LoadAsync<Character>(identifier);
         if (character != null) return character;
@@ -434,7 +441,7 @@ public class CampaignRepository
             timeout: TimeSpan.FromSeconds(3),
             throwOnTimeout: false,
             indexes: new[] { "Character/Search" });
-    }
+        }
 
     public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session, string? campaignName = null)
     {
@@ -483,7 +490,8 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         var docId = _keys.NeedDescriptors(effective);
         var config = await session.LoadAsync<NeedDescriptorsConfig>(docId);
-        var source = config?.Descriptors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var source = config?.Descriptors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase
+        );
         return new Dictionary<string, string>(source, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -517,30 +525,6 @@ public class CampaignRepository
 
     private object SanitizeValue(object? value)
         => JsonSanitizer.SanitizeValue(value) ?? value!;
-
-    /// <summary>
-    /// Applies JSON sanitization to an Event's Details (prevents JsonElement leakage).
-    /// </summary>
-    public void SanitizeEvent(Event ev)
-    {
-        JsonSanitizer.Sanitize(ev);
-    }
-
-    /// <summary>
-    /// Sanitizes Location.Metadata. Safe to call multiple times.
-    /// </summary>
-    public void SanitizeLocation(Location? loc)
-    {
-        JsonSanitizer.Sanitize(loc);
-    }
-
-    /// <summary>
-    /// Sanitizes Item.Properties. Safe to call multiple times.
-    /// </summary>
-    public void SanitizeItem(Item? item)
-    {
-        JsonSanitizer.Sanitize(item);
-    }
 
     /// <summary>
     /// Universal sanitization entry point. Delegates to the central JsonSanitizer.
@@ -603,7 +587,6 @@ public class CampaignRepository
             // Mutate the tracked entity (safest with optimistic concurrency).
             existing.Name = location.Name;
             existing.Description = location.Description;
-            existing.Type = location.Type;
             existing.ParentLocationId = location.ParentLocationId;
             existing.Exits = location.Exits ?? [];
             existing.Metadata = location.Metadata ?? [];
@@ -620,7 +603,7 @@ public class CampaignRepository
         var q = session.Advanced.AsyncDocumentQuery<Location, Location_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Name, $"*{query}*").OrElse().Search(x => x.Description, $"*{query}*");
         if (type.HasValue) q = q.AndAlso().WhereEquals(x => x.Type, type.Value);
-        if (!string.IsNullOrEmpty(parentId)) q = q.AndAlso().WhereEquals(x => x.ParentLocationId, parentId);
+        if (!string.IsNullOrEmpty(parentId)) q = q.AndAlso().WhereEquals(x => x.ParentId, parentId);
         var locations = await q.Take(limit).ToListAsync();
         foreach (var l in locations)
         {
