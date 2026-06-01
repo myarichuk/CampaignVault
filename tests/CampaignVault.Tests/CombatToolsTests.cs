@@ -243,4 +243,47 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
             Assert.Equal("Poisoned", alice.SystemStats.StatusEffects[0].Name);
         }
     }
+    [Fact]
+    public async Task EndCombat_ClearsRoundBasedStatuses()
+    {
+        var store = _store;
+        var tools = CreateTools(store);
+        var c1 = "char1_" + Guid.NewGuid();
+        var loc = "loc1_" + Guid.NewGuid();
+        var campaign = "camp_" + Guid.NewGuid();
+
+        using (var session = store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character 
+            { 
+                Id = c1, 
+                Name = "Alice", 
+                CurrentHp = 10,
+                SystemStats = new Dnd5eExtension
+                {
+                    StatusEffects = new System.Collections.Generic.List<StatusEffect>
+                    {
+                        new StatusEffect { Name = "Stunned", ExpiresAtRound = 5 }, // Should be removed
+                        new StatusEffect { Name = "Cursed", ExpiresAtDay = 10 }, // Should NOT be removed
+                        new StatusEffect { Name = "Poisoned", ExpiresAtRound = 10 } // Should be removed
+                    }
+                }
+            });
+            await session.SaveChangesAsync();
+        }
+
+        await tools.StartCombat(loc, new[] { c1 }, campaignName: campaign);
+
+        var endResult = await tools.EndCombat(campaignName: campaign);
+        Assert.True(endResult.Success, $"EndCombat failed. Error: {endResult.Error}, Summary: {endResult.Summary}");
+        Assert.Contains("Cleared effect 'Stunned'", endResult.Summary);
+        Assert.Contains("Cleared effect 'Poisoned'", endResult.Summary);
+
+        using (var session = store.OpenAsyncSession())
+        {
+            var alice = await session.LoadAsync<Character>(c1);
+            Assert.Single(alice.SystemStats.StatusEffects);
+            Assert.Equal("Cursed", alice.SystemStats.StatusEffects[0].Name);
+        }
+    }
 }

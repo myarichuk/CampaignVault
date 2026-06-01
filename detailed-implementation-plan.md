@@ -90,7 +90,7 @@
 
 ## Phase 1 — Correctness Bugs (High Priority)
 
-### Task 1.1 — Fix StatusExpiryRule Logic
+### Task 1.1 — Fix StatusExpiryRule Logic (Completed in 5db33e0)
 - **File**: `src/CampaignVault/Data/StatusExpiryRule.cs`
 - **Specific Issues**:
   - Remove the nonsensical `context.Time.TotalDaysElapsed > 0` condition for round expiry (line 28).
@@ -105,7 +105,7 @@
   - Existing tests still pass or are updated.
 - **Commit Message**: `fix: correct broken round-based expiry logic in StatusExpiryRule + document ownership decision`
 
-### Task 1.2 — Add Status Expiry Cleanup on Combat End
+### Task 1.2 — Add Status Expiry Cleanup on Combat End (Completed in 5db33e0)
 - **File**: `src/CampaignVault/Tools/CampaignTools.cs` (in `EndCombat` method)
 - **Actions**:
   1. When ending combat, optionally clear round-based statuses (or at least document that they may linger).
@@ -113,7 +113,7 @@
 - **Acceptance Criteria**: `EndCombat` either cleans round-based effects or clearly documents that they persist.
 - **Commit Message**: `fix: ensure status cleanup on EndCombat (round-based effects)`
 
-### Task 1.3 — Extract Campaign Meta Helper (Reduce Duplication)
+### Task 1.3 — Extract Campaign Meta Helper (Reduce Duplication) (Completed in 5db33e0)
 - **Files**: `src/CampaignVault/Tools/CampaignTools.cs` (CreateCampaign + SetActiveSystem)
 - **Actions**:
   - Create a small private helper `GetOrCreateCampaignMetaAsync(session, normalizedName, defaultSystem?)`
@@ -123,7 +123,7 @@
   - Lock-in behavior preserved exactly.
 - **Commit Message**: `refactor: extract helper for Campaign meta creation to eliminate duplication`
 
-### Task 1.4 — Audit EffectiveCampaign / Context Handling Consistency
+### Task 1.4 — Audit EffectiveCampaign / Context Handling Consistency (Completed in 5db33e0)
 - **Files**:
   - `src/CampaignVault/Tools/CampaignTools.cs`
   - `src/CampaignVault/Data/ChangeHandlers/RulesetActionHandler.cs`
@@ -133,7 +133,7 @@
   - Ensure the fallback Commit path respects current context.
 - **Commit Message**: `refactor: standardize EffectiveCampaign handling and fallback paths`
 
-### Task 1.5 — Document (or Mitigate) Global Query Behavior in Simulation Rules
+### Task 1.5 — Document (or Mitigate) Global Query Behavior in Simulation Rules (Completed in 5db33e0)
 - **Files**: `src/CampaignVault/Data/StatusExpiryRule.cs`, `NeedsAccumulationRule.cs`, `RumorDecayRule.cs`, `ScheduleEvaluationRule.cs`, `SimulationContext.cs`
 - **Actions**:
   - Add clear comment in each rule + in `CampaignDocumentKeys.cs` or a new `ARCHITECTURE.md` explaining the scoping decision.
@@ -141,7 +141,7 @@
 - **Acceptance Criteria**: Scoping policy is documented in one obvious place.
 - **Commit Message**: `docs: document entity vs singleton scoping policy for simulation rules`
 
-**Phase 1 Exit Criteria**
+**Phase 1 Exit Criteria (COMPLETED)**
 - All high-severity bugs from the review have clear fixes or documented workarounds.
 - Build + relevant tests green.
 - 4–6 semantic commits.
