@@ -72,6 +72,10 @@ public abstract class RulesetResolverBase<TStats> : IRulesetResolver where TStat
         List<WorldChange> mutations, 
         CancellationToken ct);
 
+    /// <summary>
+    /// Session-based initiative roll for direct tool use. 
+    /// For combat flows, the preferred path is the Character overload (pre-loaded context).
+    /// </summary>
     public async Task<float> RollInitiativeAsync(
         Raven.Client.Documents.Session.IAsyncDocumentSession session, 
         string characterId, 
@@ -93,5 +97,40 @@ public abstract class RulesetResolverBase<TStats> : IRulesetResolver where TStat
         if (parameters.TryGetValue("disadvantage", out var dis) && bool.TryParse(dis, out var isDis) && isDis)
             return DiceMechanic.Disadvantage;
         return DiceMechanic.Standard;
+    }
+
+    /// <summary>
+    /// Folds all active status modifiers matching the given tag into a base value.
+    /// Also considers systemic values like Fatigue if applicable.
+    /// </summary>
+    protected int ApplyAllModifiers(TStats stats, string modifierTag, int baseValue)
+    {
+        float bonus = 0f;
+
+        // Apply structured status effects
+        if (stats.StatusEffects != null)
+        {
+            foreach (var effect in stats.StatusEffects)
+            {
+                if (effect.StatModifiers != null && effect.StatModifiers.TryGetValue(modifierTag, out var mod))
+                {
+                    bonus += mod;
+                }
+                // Also check generic 'AllRolls' or 'AllChecks' tags if appropriate
+                if (modifierTag != "AC" && modifierTag != "Defense") 
+                {
+                    if (effect.StatModifiers != null && effect.StatModifiers.TryGetValue("AllRolls", out var allRollsMod))
+                        bonus += allRollsMod;
+                        
+                    if (modifierTag.Contains("Skill") || modifierTag.Contains("Check"))
+                    {
+                        if (effect.StatModifiers != null && effect.StatModifiers.TryGetValue("AllChecks", out var allChecksMod))
+                            bonus += allChecksMod;
+                    }
+                }
+            }
+        }
+
+        return baseValue + (int)Math.Floor(bonus);
     }
 }
