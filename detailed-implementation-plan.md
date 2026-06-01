@@ -86,6 +86,10 @@
 - Build still green.
 - At least one semantic commit for the phase.
 
+**Completed in:**
+- Primary work: `f574934` — docs: complete Phase 0 README and description updates
+- Light polish (examples + comments): subsequent commit
+
 ---
 
 ## Phase 1 — Correctness Bugs (High Priority)
@@ -145,6 +149,10 @@
 - All high-severity bugs from the review have clear fixes or documented workarounds.
 - Build + relevant tests green.
 - 4–6 semantic commits.
+
+**Completed in:**
+- Primary work: `5db33e0` — fix: complete Phase 1 correctness bugs and metadata refactoring
+- Regression tests: `eccf895` — test: add regression tests for StatusExpiryRule and EndCombat
 
 ---
 

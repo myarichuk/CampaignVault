@@ -68,6 +68,11 @@ public class CampaignTools
         return string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName) ? "default" : _currentCampaign.CurrentCampaignName;
     }
 
+    /// <summary>
+    /// Central helper for campaign lifecycle. Ensures both the Campaign meta document
+    /// and its corresponding CampaignConfig exist. Used by CreateCampaign, SelectCampaign,
+    /// and SetActiveSystem to keep meta creation logic in one place and enforce lock-in semantics.
+    /// </summary>
     private async Task<Campaign> GetOrCreateCampaignMetaAsync(IAsyncDocumentSession session, string normalizedName, RulesetSystem defaultSystem, string? displayName = null, bool forceLock = false)
     {
         var campaignId = _keys.Meta(normalizedName);
@@ -698,6 +703,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             var characters = await session.LoadAsync<Character>(characterIds);
             var expiredMessages = new List<string>();
 
+            // Clear all round-based status effects when combat ends.
+            // This implements "until end of combat" semantics for effects created with ExpiresAtRound.
+            // Day-based effects (ExpiresAtDay) are handled separately by StatusExpiryRule during advance_world.
+            // Note: This is intentionally aggressive — all round-tied effects are removed on combat end.
             foreach (var character in characters.Values.Where(c => c != null))
             {
                 if (character.SystemStats?.StatusEffects != null)

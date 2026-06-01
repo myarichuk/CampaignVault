@@ -58,6 +58,29 @@ The engine natively supports ruleset-specific math and combat tracking.
 - Inside `commit`, use the `ruleset_action` change type (e.g., `{"$type": "ruleset_action", "actorId": "bob", "actionType": "Attack"}`) to resolve attacks and skill checks deterministically.
 - Call `next_turn` to advance combat, and `end_combat` when finished.
 
+**Quick Example Flow (Multi-Campaign + Combat):**
+```text
+# Switch to (or create) a campaign
+select_campaign "dragonheist"
+
+# Start of session
+get_world_state "locations/tavern"
+
+# Enter a location with a fight
+get_scene "locations/tavern-main-room"
+
+# Begin combat
+start_combat "locations/tavern-main-room" ["chars/pc1", "chars/pc2", "monsters/goblin-1"]
+
+# Resolve an attack via ruleset_action inside commit
+commit [
+  { "$type": "ruleset_action", "actorId": "chars/pc1", "targetIds": ["monsters/goblin-1"], "actionType": "Attack", "parameters": { "bonus": "5", "damageDice": "1d8+3" } }
+] "PC1 swings at the goblin"
+
+next_turn
+end_combat
+```
+
 ## The Open Psychological Model (Needs, Wants, Fears)
 
 The NPC "Mind" system is intentionally open-ended. There is no closed list of needs.
