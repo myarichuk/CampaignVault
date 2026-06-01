@@ -17,5 +17,6 @@ public sealed record SimulationContext(
     IReadOnlyList<Character> ScheduledNpcs,
     IAsyncDocumentSession Session,
     double DaysPassed,
-    string? CampaignName = null   // Added for multi-campaign support
+    string? CampaignName = null,   // Added for multi-campaign support
+    int CurrentRound = 1           // Used by StatusExpiryRule for proper round-based expiry
 );
