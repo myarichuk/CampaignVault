@@ -199,4 +199,48 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(endResult.Success, $"EndCombat failed. Error: {endResult.Error}, Summary: {endResult.Summary}");
         Assert.False(endResult.Data!.IsActive);
     }
+    [Fact]
+    public async Task NextTurn_ExpiresRoundBasedStatusEffects()
+    {
+        var store = _store;
+        var tools = CreateTools(store);
+        var c1 = "char1_" + Guid.NewGuid();
+        var c2 = "char2_" + Guid.NewGuid();
+        var loc = "loc1_" + Guid.NewGuid();
+        var campaign = "camp_" + Guid.NewGuid();
+
+        using (var session = store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character 
+            { 
+                Id = c1, 
+                Name = "Alice", 
+                CurrentHp = 10,
+                SystemStats = new Dnd5eExtension
+                {
+                    StatusEffects = new System.Collections.Generic.List<StatusEffect>
+                    {
+                        new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 },
+                        new StatusEffect { Name = "Poisoned", ExpiresAtRound = 3 }
+                    }
+                }
+            });
+            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        // Start combat (Round 1)
+        await tools.StartCombat(loc, new[] { c1, c2 }, campaignName: campaign);
+
+        // Advance turns until round 2
+        await tools.NextTurn(campaignName: campaign);
+        await tools.NextTurn(campaignName: campaign); // This will transition to Round 2
+
+        using (var session = store.OpenAsyncSession())
+        {
+            var alice = await session.LoadAsync<Character>(c1);
+            Assert.Single(alice.SystemStats.StatusEffects);
+            Assert.Equal("Poisoned", alice.SystemStats.StatusEffects[0].Name);
+        }
+    }
 }

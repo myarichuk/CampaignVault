@@ -24,7 +24,8 @@ public sealed class StatusExpiryRule : ISimulationRule
                 continue;
 
             var expiredEffects = character.SystemStats.StatusEffects
-                .Where(e => e.ExpiresAtDay.HasValue && e.ExpiresAtDay.Value <= context.Time.TotalDaysElapsed)
+                .Where(e => (e.ExpiresAtDay.HasValue && e.ExpiresAtDay.Value <= context.Time.TotalDaysElapsed) ||
+                            (e.ExpiresAtRound.HasValue && context.Time.TotalDaysElapsed > 0)) // If days elapsed, definitely remove round-based effects.
                 .ToList();
 
             foreach (var effect in expiredEffects)

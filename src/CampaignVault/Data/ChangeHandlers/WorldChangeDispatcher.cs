@@ -121,6 +121,7 @@ public sealed class WorldChangeDispatcher
 
         Dictionary<string, Character> characters;
         Dictionary<string, Item> items;
+        CombatEncounter? activeCombat = null;
 
         if (session != null)
         {
@@ -132,7 +133,7 @@ public sealed class WorldChangeDispatcher
             if (needsCombat && !string.IsNullOrEmpty(effectiveCampaign))
             {
                 var keys = new CampaignDocumentKeys();
-                await session.LoadAsync<CombatEncounter>(keys.CombatCurrent(effectiveCampaign));
+                activeCombat = await session.LoadAsync<CombatEncounter>(keys.CombatCurrent(effectiveCampaign));
             }
         }
         else
@@ -147,11 +148,11 @@ public sealed class WorldChangeDispatcher
         {
             // Support pure unit tests of handler selection / duplicate detection / result aggregation
             // that use fake TestHandlers which never access Session / time / logging hooks.
-            context = new ChangeContext(null, characters, items, _logger, summary, this);
+            context = new ChangeContext(null, characters, items, _logger, summary, this, activeCombat);
         }
         else
         {
-            context = new ChangeContext(session, characters, items, _logger, getCurrentTimeAsync, logEventAsync, summary, this);
+            context = new ChangeContext(session, characters, items, _logger, getCurrentTimeAsync, logEventAsync, summary, this, activeCombat);
         }
 
         // 2. Process each change in caller-supplied order

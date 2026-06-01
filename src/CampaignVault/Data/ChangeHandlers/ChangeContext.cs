@@ -17,6 +17,7 @@ public sealed class ChangeContext
     public IReadOnlyDictionary<string, Character> Characters { get; }
     public IReadOnlyDictionary<string, Item> Items { get; }
     public ILogger Logger { get; }
+    public CombatEncounter? ActiveCombat { get; }
 
     /// <summary>
     /// Provides the current campaign time (used by EventOccurred and RumorEvolves handlers).
@@ -45,7 +46,8 @@ public sealed class ChangeContext
         Func<Task<CampaignTime>> getCurrentTimeAsync,
         Func<Event, Task> logEventAsync,
         List<string> summary,
-        WorldChangeDispatcher dispatcher)
+        WorldChangeDispatcher dispatcher,
+        CombatEncounter? activeCombat = null)
     {
         Session = session ?? throw new ArgumentNullException(nameof(session));
         Characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -55,6 +57,7 @@ public sealed class ChangeContext
         LogEventAsync = logEventAsync ?? throw new ArgumentNullException(nameof(logEventAsync));
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        ActiveCombat = activeCombat;
     }
 
     /// <summary>
@@ -67,7 +70,8 @@ public sealed class ChangeContext
         IReadOnlyDictionary<string, Item> items,
         ILogger logger,
         List<string> summary,
-        WorldChangeDispatcher dispatcher)
+        WorldChangeDispatcher dispatcher,
+        CombatEncounter? activeCombat = null)
     {
         Session = sessionForTests!; // may be null; only for tests with fake handlers
         Characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -77,6 +81,7 @@ public sealed class ChangeContext
         LogEventAsync = _ => Task.CompletedTask;
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        ActiveCombat = activeCombat;
     }
 
     /// <summary>
