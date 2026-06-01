@@ -15,7 +15,9 @@ public sealed class StatusExpiryRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
-        // We check all characters since PCs and monsters might have status effects that expire over time.
+        // POLICY NOTE: Entities (like Character) are not currently namespaced per-campaign.
+        // Therefore, this rule queries globally across all campaigns. Singletons (like CampaignConfig)
+        // provide the isolation boundary.
         var allCharacters = await context.Session.Query<Character>().ToListAsync(ct);
 
         foreach (var character in allCharacters)
@@ -23,9 +25,10 @@ public sealed class StatusExpiryRule : ISimulationRule
             if (character.SystemStats?.StatusEffects == null || character.SystemStats.StatusEffects.Count == 0)
                 continue;
 
+            // This rule is responsible exclusively for day-based expiry.
+            // Round-based expiry is handled natively inside combat tools (e.g. NextTurn, EndCombat).
             var expiredEffects = character.SystemStats.StatusEffects
-                .Where(e => (e.ExpiresAtDay.HasValue && e.ExpiresAtDay.Value <= context.Time.TotalDaysElapsed) ||
-                            (e.ExpiresAtRound.HasValue && context.Time.TotalDaysElapsed > 0)) // If days elapsed, definitely remove round-based effects.
+                .Where(e => e.ExpiresAtDay.HasValue && e.ExpiresAtDay.Value <= context.Time.TotalDaysElapsed)
                 .ToList();
 
             foreach (var effect in expiredEffects)

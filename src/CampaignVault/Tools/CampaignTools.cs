@@ -65,8 +65,38 @@ public class CampaignTools
     private string EffectiveCampaign(string? explicitName)
     {
         if (!string.IsNullOrWhiteSpace(explicitName)) return explicitName;
-        if (!string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName)) return _currentCampaign.CurrentCampaignName;
-        return "default";
+        return string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName) ? "default" : _currentCampaign.CurrentCampaignName;
+    }
+
+    private async Task<Campaign> GetOrCreateCampaignMetaAsync(IAsyncDocumentSession session, string normalizedName, RulesetSystem defaultSystem, string? displayName = null, bool forceLock = false)
+    {
+        var campaignId = _keys.Meta(normalizedName);
+        var campaign = await session.LoadAsync<Campaign>(campaignId);
+        if (campaign == null)
+        {
+            campaign = new Campaign
+            {
+                Id = campaignId,
+                Name = normalizedName,
+                DisplayName = string.IsNullOrWhiteSpace(displayName) ? normalizedName : displayName,
+                System = defaultSystem,
+                IsSystemLocked = forceLock
+            };
+            await session.StoreAsync(campaign, campaignId);
+
+            var configId = _keys.Config(normalizedName);
+            var config = await session.LoadAsync<CampaignConfig>(configId);
+            if (config == null)
+            {
+                config = new CampaignConfig
+                {
+                    Id = configId,
+                    ActiveSystem = defaultSystem
+                };
+                await session.StoreAsync(config, configId);
+            }
+        }
+        return campaign;
     }
 
     private async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
@@ -198,7 +228,7 @@ Example: { ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""targetIds"": [
     /// Parses to WorldChange[] and delegates to the primary MCP Commit implementation.
     /// Not exposed as an MCP tool.
     /// </summary>
-    public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative)
+    public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(changesJson))
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
@@ -214,7 +244,7 @@ Example: { ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""targetIds"": [
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: $"Invalid changes JSON: {ex.Message}"));
         }
 
-        return Commit(elements, narrative, null); // uses current selected campaign via context
+        return Commit(elements, narrative, campaignName); // respects context + explicit override
     }
 
     [McpServerTool(UseStructuredContent = true)]
@@ -485,11 +515,9 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
         return ExecuteAsync(async session =>
         {
-            // Load the Campaign meta to enforce lock-in
-            var campaignId = _keys.Meta(effective);
-            var campaign = await session.LoadAsync<Campaign>(campaignId);
+            var campaign = await GetOrCreateCampaignMetaAsync(session, effective, activeSystem, forceLock: false);
 
-            if (campaign != null && campaign.IsSystemLocked && campaign.System != activeSystem)
+            if (campaign.IsSystemLocked && campaign.System != activeSystem)
             {
                 return new ToolResult<CampaignConfig>(
                     false,
@@ -502,19 +530,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             config.SystemOptions = systemOptions ?? [];
             await repository.UpsertCampaignConfigAsync(session, config, effective);
 
-            // If this is the first time setting the system on this campaign, lock it
-            if (campaign == null)
-            {
-                campaign = new Campaign
-                {
-                    Name = effective,
-                    DisplayName = effective,
-                    System = activeSystem,
-                    IsSystemLocked = true
-                };
-                await session.StoreAsync(campaign, campaignId);
-            }
-            else if (!campaign.IsSystemLocked)
+            if (!campaign.IsSystemLocked)
             {
                 campaign.System = activeSystem;
                 campaign.IsSystemLocked = true;
@@ -663,7 +679,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Ends the current active combat encounter and wraps up the state. Respects the currently selected campaign.")]
+    [Description("COMBAT TOOL: Ends the current active combat encounter and wraps up the state. Clears round-based status effects from combatants. Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> EndCombat(
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
@@ -678,12 +694,36 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
                 return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter to end.");
             }
 
+            var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
+            var characters = await session.LoadAsync<Character>(characterIds);
+            var expiredMessages = new List<string>();
+
+            foreach (var character in characters.Values.Where(c => c != null))
+            {
+                if (character.SystemStats?.StatusEffects != null)
+                {
+                    var effects = character.SystemStats.StatusEffects;
+                    var toRemove = effects.Where(e => e.ExpiresAtRound.HasValue).ToList();
+                    foreach (var effect in toRemove)
+                    {
+                        effects.Remove(effect);
+                        expiredMessages.Add($"Cleared effect '{effect.Name}' on '{character.Name}'.");
+                    }
+                }
+            }
+
             encounter.IsActive = false;
             encounter.ActiveTurnId = null;
 
             await session.StoreAsync(encounter, encounter.Id);
 
-            return new ToolResult<CombatEncounter>(true, encounter, "Combat encounter ended.");
+            var summary = "Combat encounter ended.";
+            if (expiredMessages.Count > 0)
+            {
+                summary += " " + string.Join(" ", expiredMessages);
+            }
+
+            return new ToolResult<CombatEncounter>(true, encounter, summary);
         });
     }
 
@@ -701,36 +741,13 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         return ExecuteAsync(async session =>
         {
             var campaignId = _keys.Meta(normalized);
-
             var existing = await session.LoadAsync<Campaign>(campaignId);
             if (existing != null)
             {
                 return new ToolResult<Campaign>(false, Error: "AlreadyExists", Summary: $"Campaign '{normalized}' already exists.");
             }
 
-            var campaign = new Campaign
-            {
-                Id = campaignId,
-                Name = normalized,
-                DisplayName = string.IsNullOrWhiteSpace(displayName) ? name : displayName,
-                System = initialSystem,
-                IsSystemLocked = true
-            };
-
-            await session.StoreAsync(campaign, campaignId);
-
-            // Also ensure the initial config document exists for this campaign
-            var configId = _keys.Config(normalized);
-            var config = await session.LoadAsync<CampaignConfig>(configId);
-            if (config == null)
-            {
-                config = new CampaignConfig
-                {
-                    Id = configId,
-                    ActiveSystem = initialSystem
-                };
-                await session.StoreAsync(config, configId);
-            }
+            var campaign = await GetOrCreateCampaignMetaAsync(session, normalized, initialSystem, displayName, forceLock: true);
 
             // Select it immediately for convenience
             _currentCampaign.SetCurrent(normalized);
@@ -775,15 +792,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
             if (existing == null)
             {
                 // Auto-create a minimal campaign entry so lock-in and per-campaign state can work
-                var newCampaign = new Campaign
-                {
-                    Id = campaignId,
-                    Name = normalized,
-                    DisplayName = normalized,
-                    System = RulesetSystem.Dnd5e,   // default; user can change via set_active_system
-                    IsSystemLocked = false
-                };
-                await session.StoreAsync(newCampaign, campaignId);
+                await GetOrCreateCampaignMetaAsync(session, normalized, RulesetSystem.Dnd5e, forceLock: false);
 
                 return new ToolResult<string>(true, normalized, 
                     $"Campaign '{normalized}' selected (new minimal campaign created with D&D 5e as default system).");

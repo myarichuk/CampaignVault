@@ -21,6 +21,9 @@ public sealed class NeedsAccumulationRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
+        // POLICY NOTE: Entities (like Character) are not currently namespaced per-campaign.
+        // Therefore, this simulation rule operates globally across all campaigns.
+
         // Use consistent float math (addresses review point about casts)
         float days = (float)context.DaysPassed;
         var amount = 10f * days;

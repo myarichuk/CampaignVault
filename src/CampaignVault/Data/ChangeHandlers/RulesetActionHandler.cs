@@ -29,7 +29,7 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("Change is not a RulesetAction.");
         }
         
-        var effectiveCampaign = string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName) ? "default" : _currentCampaign.CurrentCampaignName;
+        var effectiveCampaign = _currentCampaign.CurrentCampaignName ?? "default";
         var configId = _keys.Config(effectiveCampaign);
         var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct)
                      ?? new CampaignConfig { Id = configId };

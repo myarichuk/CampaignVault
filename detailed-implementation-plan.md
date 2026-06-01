@@ -47,7 +47,7 @@
 
 **Goal**: Stop actively misleading users and LLMs. Make the documented mental model match reality.
 
-### Task 0.1 — Remove or Mark Obsolete "LLM System Instructions" Block
+### Task 0.1 — Remove or Mark Obsolete "LLM System Instructions" Block (Completed in f574934)
 - **File**: `README.md` (the big markdown code block starting around line 41)
 - **Actions**:
   1. Delete the entire outdated "LLM System Instructions (Recommended for System Prompts)" section (or comment it heavily as "Historical — April 2026 — Do not use").
@@ -58,7 +58,7 @@
 - **Commit Message**: `docs: remove or deprecate severely outdated LLM System Instructions block in README`
 - **Verification**: Open the README and confirm the section is gone or clearly marked dead.
 
-### Task 0.2 — Add Accurate "Current Recommended Usage" Section
+### Task 0.2 — Add Accurate "Current Recommended Usage" Section (Completed in f574934)
 - **File**: `README.md`
 - **Content to add** (new section after Features or in place of the old one):
   - Multi-campaign basics (`create_campaign`, `select_campaign`, `get_config`, `set_active_system` with locking behavior).
@@ -68,20 +68,20 @@
 - **Acceptance Criteria**: A new, short, accurate 15-25 line "How to use this server today" section exists.
 - **Commit Message**: `docs: add accurate Current Recommended Usage section reflecting multi-campaign + combat reality`
 
-### Task 0.3 — Fix All Stale Claims in README
+### Task 0.3 — Fix All Stale Claims in README (Completed in f574934)
 - Update "Recent Updates" section.
 - Fix any remaining references to old singleton document IDs.
 - Update the table of core tools if needed.
 - **Files**: `README.md`
 - **Commit Message**: `docs: clean up stale claims and recent updates section in README`
 
-### Task 0.4 — Fix `SetActiveSystem` Tool Description (Critical Stale Text)
+### Task 0.4 — Fix `SetActiveSystem` Tool Description (Critical Stale Text) (Completed in f574934)
 - **File**: `src/CampaignVault/Tools/CampaignTools.cs` (around line 478)
 - **Change**: Update description from "Will eventually respect lock-in" to accurate statement of current behavior.
 - **Acceptance Criteria**: Description no longer lies about lock-in status.
 - **Commit Message**: `docs: fix stale description on SetActiveSystem tool`
 
-**Phase 0 Exit Criteria**
+**Phase 0 Exit Criteria (COMPLETED)**
 - `README.md` no longer actively misleads.
 - Build still green.
 - At least one semantic commit for the phase.

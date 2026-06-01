@@ -28,6 +28,9 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
+        // POLICY NOTE: Entities (like Character) are not currently namespaced per-campaign.
+        // Therefore, this simulation rule operates globally across all campaigns.
+
         var timeOfDay = context.Time.TimeOfDay.ToString();
 
         foreach (var npc in context.ScheduledNpcs)
