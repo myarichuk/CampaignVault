@@ -367,7 +367,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_store);
         var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -427,7 +427,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_store);
         var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using var session = _store.OpenAsyncSession();
 
@@ -529,7 +529,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // combined with ExecuteAsync always doing SaveChanges + dispose.
         var repo = new CampaignRepository(_store);
         var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -557,7 +557,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Newtonsoft "ValueIsEscaped" crash during SaveChanges in GetScene.
         var repo = new CampaignRepository(_store);
         var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         var locId = "locations/meta-regression-" + Guid.NewGuid();
         var itemId = "items/prop-regression-" + Guid.NewGuid();
@@ -629,7 +629,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // must not explode and should leave clean data behind.
         var repo = new CampaignRepository(_store);
         var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         var locId = "locations/legacy-polluted-" + Guid.NewGuid();
 
@@ -702,7 +702,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // If the '$type' property is not FIRST, STJ normally fails.
         var repo = new CampaignRepository(_store);
         var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -1197,7 +1197,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // 3. Test through CampaignTools
         var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
         
         var getResult = await tools.GetConfig();
         Assert.True(getResult.Success);

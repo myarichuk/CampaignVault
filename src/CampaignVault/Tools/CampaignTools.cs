@@ -43,25 +43,6 @@ public class CampaignTools
         _currentCampaign = currentCampaign ?? new CurrentCampaignContext();
     }
 
-    /// <summary>
-    /// Legacy 3-argument constructor used by the majority of existing tests.
-    /// Provides safe defaults for the post-campaign keys + context services so tests do not require
-    /// mass changes after the deep multi-campaign propagation work.
-    /// </summary>
-    public CampaignTools(
-        CampaignRepository repository,
-        INpcBehaviorSynthesizer behaviorSynthesizer,
-        IRulesetResolverSelector rulesetSelector)
-        : this(repository, behaviorSynthesizer, rulesetSelector, new CampaignDocumentKeys(), new CurrentCampaignContext())
-    {
-    }
-
-    // Expose the injected services via the original names for the rest of the class body (ExecuteAsync etc. use "repository")
-    // We keep the original field names via these getters for minimal diff in the rest of the file.
-    private CampaignRepository repository => _repository;
-    private INpcBehaviorSynthesizer behaviorSynthesizer => _behaviorSynthesizer;
-    private IRulesetResolverSelector rulesetSelector => _rulesetSelector;
-
     private string EffectiveCampaign(string? explicitName)
     {
         if (!string.IsNullOrWhiteSpace(explicitName)) return explicitName;
@@ -106,7 +87,7 @@ public class CampaignTools
 
     private async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
     {
-        using var session = repository.OpenSession();
+        using var session = _repository.OpenSession();
         ToolResult<T> result;
 
         try
@@ -140,7 +121,7 @@ public class CampaignTools
         // This guarantees that even if a polluted entity reached this point (legacy data,
         // unsanitized query path, etc.), nothing containing a live or dead JsonElement
         // will be serialized by the MCP layer's System.Text.Json when sending the response.
-        repository.SanitizeForToolResponse(result.Data);
+        _repository.SanitizeForToolResponse(result.Data);
 
         return result;
     }
@@ -155,15 +136,15 @@ public class CampaignTools
         // Pure read: skip SaveChanges to avoid unnecessary write transactions and reduce surface for
         // RavenDB "active async task" / serialization issues during disposal.
         return ExecuteAsync(async session => {
-            var time = await repository.GetTimeAsync(session, effective);
+            var time = await _repository.GetTimeAsync(session, effective);
             
             // Widen rumor search for kickoff
-            var spreading = await repository.QueryRumorsAsync(session, null, null, RumorState.Spreading, 3, effective);
-            var peak = await repository.QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
+            var spreading = await _repository.QueryRumorsAsync(session, null, null, RumorState.Spreading, 3, effective);
+            var peak = await _repository.QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
             var rumors = peak.Concat(spreading).ToList();
 
-            var events = await repository.QueryEventsAsync(session, null, null, 5, effective);
-            var location = await repository.GetLocationAsync(session, partyLocationId, effective);
+            var events = await _repository.QueryEventsAsync(session, null, null, 5, effective);
+            var location = await _repository.GetLocationAsync(session, partyLocationId, effective);
             
             var pressure = new List<string>();
             foreach (var r in rumors.Where(r => time.TotalDaysElapsed - r.LastStateChangeDay > 5))
@@ -171,7 +152,7 @@ public class CampaignTools
                 pressure.Add($"Rumor '{r.Subject}' has been spreading for {time.TotalDaysElapsed - r.LastStateChangeDay} days without resolution.");
             }
 
-            var agingEvents = await repository.QueryEventsAsync(session, null, EventCategory.Unresolved, 5, effective);
+            var agingEvents = await _repository.QueryEventsAsync(session, null, EventCategory.Unresolved, 5, effective);
             foreach (var e in agingEvents)
             {
                 pressure.Add($"Unresolved thread: '{e.Summary}' ({time.TotalDaysElapsed - e.DayLogged} days old).");
@@ -192,7 +173,7 @@ public class CampaignTools
     {
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var scene = await repository.GetSceneAsync(session, locationId, effective);
+            var scene = await _repository.GetSceneAsync(session, locationId, effective);
             return new ToolResult<SceneView>(true, scene, $"Scene details for {locationId} (campaign: {effective}) retrieved.");
         }, saveChanges: false);
     }
@@ -235,8 +216,8 @@ Fallout 2d20 Example (Skill Test):
         }
 
         return ExecuteAsync(async session => {
-            var result = await repository.StageChangesAsync(session, changes, effective);
-            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.SceneCommit });
+            var result = await _repository.StageChangesAsync(session, changes, effective);
+            await _repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.SceneCommit });
             var msg = $"World updated with {changes.Length} changes.";
             return new ToolResult<CommitResult>(true, result, msg);
         });
@@ -281,8 +262,8 @@ Fallout 2d20 Example (Skill Test):
 
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var result = await repository.AdvanceWorldAsync(session, days, timeOfDay, effective);
-            await repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.Timeskip });
+            var result = await _repository.AdvanceWorldAsync(session, days, timeOfDay, effective);
+            await _repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.Timeskip });
 
             // Minimal WorldPressure wiring: surface simulation narratives as pressure for the DM
             var pressure = result.SimulatorEvents.Count > 0 
@@ -303,7 +284,7 @@ Fallout 2d20 Example (Skill Test):
     {
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var npc = await repository.GetCharacterAsync(session, characterId, effective);
+            var npc = await _repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null) return new ToolResult<NpcContextView>(false, Error: "NotFound");
 
             // Query events involving the NPC, then explicitly sanitize Details using the central helper
@@ -316,14 +297,14 @@ Fallout 2d20 Example (Skill Test):
 
             foreach (var ev in npcEvents)
             {
-                repository.SanitizeEvent(ev);   // reuses the central sanitization logic
+                _repository.SanitizeEvent(ev);   // reuses the central sanitization logic
             }
 
-            var behavioralSummary = behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
+            var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
 
             var knownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
             // Merge global + per-NPC descriptors (per-NPC wins) for full context
-            var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session, effective);
+            var globalDescriptors = await _repository.GetGlobalNeedDescriptorsAsync(session, effective);
             var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)
@@ -357,7 +338,7 @@ Fallout 2d20 Example (Skill Test):
         var effective = EffectiveCampaign(campaignName);
         // Pure read + the previous parallel query pattern was a major source of "active async tasks on dispose".
         return ExecuteAsync(async session => {
-            var results = await repository.UnifiedSearchAsync(session, query, effective);
+            var results = await _repository.UnifiedSearchAsync(session, query, effective);
             return new ToolResult<IEnumerable<object>>(true, results, $"Found {results.Count()} matches (campaign: {effective}).");
         }, saveChanges: false);
     }
@@ -371,18 +352,12 @@ Fallout 2d20 Example (Skill Test):
     {
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var results = await repository.QueryEventsAsync(session, query, null, limit, effective);
+            var results = await _repository.QueryEventsAsync(session, query, null, limit, effective);
             return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events (campaign: {effective}).");
         }, saveChanges: false);
     }
 
     // --- Configuration Tools (Genuine state setup) ---
-
-    // Strongly-typed versions are preferred for schema quality and LLM understanding.
-    // However, as of late May 2026, Grok Web's client still calls these tools using the
-    // original legacy parameter names from the first version of this server ("c" and "l").
-    // This is almost certainly a caching / non-dynamic tool schema issue on their side.
-    // The descriptions below document this quirk so the LLM knows what's happening.
 
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Directly create or overwrite a character/NPC.
@@ -404,7 +379,7 @@ This is the best opportunity to create deep, simulatable NPCs.")]
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async s =>
         {
-            await repository.UpsertCharacterAsync(s, character);
+            await _repository.UpsertCharacterAsync(s, character);
             return new ToolResult<Character>(true, character, $"Character upserted (campaign context: {effective}).");
         });
     }
@@ -420,7 +395,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async s =>
         {
-            await repository.UpsertLocationAsync(s, location);
+            await _repository.UpsertLocationAsync(s, location);
             return new ToolResult<Location>(true, location, $"Location upserted (campaign context: {effective}).");
         });
     }
@@ -434,7 +409,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async s =>
         {
-            await repository.UpsertLoreAsync(s, lore);
+            await _repository.UpsertLoreAsync(s, lore);
             return new ToolResult<Lore>(true, lore, $"Lore upserted (campaign context: {effective}).");
         });
     }
@@ -450,12 +425,12 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            var npc = await repository.GetCharacterAsync(session, characterId, effective);
+            var npc = await _repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null) return new ToolResult<NpcNeedsView>(false, Error: "NotFound");
 
             // Merge global descriptors (from DefineNeedDescriptor) with per-NPC ones.
             // Per-NPC descriptors take precedence on conflicts.
-            var globalDescriptors = await repository.GetGlobalNeedDescriptorsAsync(session, effective);
+            var globalDescriptors = await _repository.GetGlobalNeedDescriptorsAsync(session, effective);
             var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)
@@ -485,7 +460,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            await repository.SetNeedDescriptorAsync(session, needName, descriptor, effective);
+            await _repository.SetNeedDescriptorAsync(session, needName, descriptor, effective);
             return new ToolResult<string>(true, $"Descriptor for '{needName}' stored for campaign '{effective}'.", $"Descriptor persisted for campaign '{effective}'.");
         });
     }
@@ -498,7 +473,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            var descriptors = await repository.GetGlobalNeedDescriptorsAsync(session, effective);
+            var descriptors = await _repository.GetGlobalNeedDescriptorsAsync(session, effective);
             return new ToolResult<Dictionary<string, string>>(true, descriptors, 
                 descriptors.Count > 0 
                     ? $"Retrieved {descriptors.Count} need descriptors for campaign '{effective}'."
@@ -515,7 +490,7 @@ Returns the ruleset and system-specific options (e.g., house rules). Respects th
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            var config = await repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
             return new ToolResult<CampaignConfig>(true, config, $"Campaign configuration retrieved for '{effective}'.");
         }, saveChanges: false);
     }
@@ -544,10 +519,10 @@ Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
                     Summary: $"The ruleset for campaign '{effective}' is locked to {campaign.System}. Cannot change to {activeSystem}.");
             }
 
-            var config = await repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
             config.ActiveSystem = activeSystem;
             config.SystemOptions = systemOptions ?? [];
-            await repository.UpsertCampaignConfigAsync(session, config, effective);
+            await _repository.UpsertCampaignConfigAsync(session, config, effective);
 
             if (!campaign.IsSystemLocked)
             {
@@ -588,8 +563,8 @@ Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""mon
                 return new ToolResult<CombatEncounter>(false, Error: "InvalidInput", Summary: "None of the specified combatants are valid and alive.");
             }
 
-            var config = await repository.GetCampaignConfigAsync(session, effective);
-            var resolver = rulesetSelector.GetResolver(config.ActiveSystem);
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var resolver = _rulesetSelector.GetResolver(config.ActiveSystem);
 
             var combatants = new List<CombatantState>();
             foreach (var character in validCharacters)

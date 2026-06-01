@@ -31,7 +31,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
             new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
         var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
         var simulator = new LlmSimulator(tools, session);
 
         // Setup: A small region with 3 NPCs

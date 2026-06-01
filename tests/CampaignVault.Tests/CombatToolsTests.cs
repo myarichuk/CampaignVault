@@ -32,7 +32,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
             new Fallout2d20RulesetResolver(rollSvc)
         });
         
-        return new CampaignTools(repo, new DefaultBehaviorSynthesizer(), selector);
+        return new CampaignTools(repo, new DefaultBehaviorSynthesizer(), selector, new CampaignDocumentKeys(), new CurrentCampaignContext());
     }
 
     [Fact]
