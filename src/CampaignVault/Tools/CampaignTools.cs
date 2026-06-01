@@ -604,6 +604,7 @@ If all combatants have acted, advances to the next round. Skips dead combatants 
 Round-based status effects naturally expire during this transition when their round duration ends.
 Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> NextTurn(
+        [Description("Optional. If provided, the command will fail if the current active turn does not match this ID. Helps prevent accidental double-advancing.")] string? expectedActiveTurnId = null,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
         var effective = EffectiveCampaign(campaignName);
@@ -615,6 +616,11 @@ Respects the currently selected campaign.")]
             if (encounter == null || !encounter.IsActive)
             {
                 return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(expectedActiveTurnId) && encounter.ActiveTurnId != expectedActiveTurnId)
+            {
+                return new ToolResult<CombatEncounter>(false, Error: "StateDrift", Summary: $"Expected active turn to be '{expectedActiveTurnId}' but it was '{encounter.ActiveTurnId}'. The combat state has drifted.");
             }
 
             var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
