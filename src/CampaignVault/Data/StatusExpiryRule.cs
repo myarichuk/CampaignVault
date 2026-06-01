@@ -15,8 +15,10 @@ public sealed class StatusExpiryRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
-        // We check all characters since PCs and monsters might have status effects that expire over time.
-        var allCharacters = await context.Session.Query<Character>().ToListAsync(ct);
+        // Campaign-aware query preparation (entities are still primarily ID-controlled).
+        // CampaignName is available in context for future entity-level namespacing.
+        var query = context.Session.Query<Character>();
+        var allCharacters = await query.ToListAsync(ct);
 
         foreach (var character in allCharacters)
         {
@@ -24,8 +26,9 @@ public sealed class StatusExpiryRule : ISimulationRule
                 continue;
 
             var expiredEffects = character.SystemStats.StatusEffects
-                .Where(e => (e.ExpiresAtDay.HasValue && e.ExpiresAtDay.Value <= context.Time.TotalDaysElapsed) ||
-                            (e.ExpiresAtRound.HasValue && context.Time.TotalDaysElapsed > 0)) // If days elapsed, definitely remove round-based effects.
+                .Where(e =>
+                    (e.ExpiresAtDay.HasValue && e.ExpiresAtDay.Value <= context.Time.TotalDaysElapsed) ||
+                    (e.ExpiresAtRound.HasValue && context.CurrentRound >= e.ExpiresAtRound.Value))
                 .ToList();
 
             foreach (var effect in expiredEffects)
@@ -35,7 +38,7 @@ public sealed class StatusExpiryRule : ISimulationRule
                     CharacterId = character.Id,
                     Status = effect.Name
                 });
-                narratives.Add($"Expired effect '{effect.Name}' on '{character.Name}' due to time passing.");
+                narratives.Add($"Expired effect '{effect.Name}' on '{character.Name}' (round/day based).");
             }
         }
 
