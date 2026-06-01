@@ -198,18 +198,32 @@ public class CampaignTools
     }
 
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
-    [Description("UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action). Use ActivityChange liberally to keep get_scene in sync with your narrative. Respects the currently selected campaign.")]
+    [Description(@"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. 
+Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action). 
+Use ActivityChange liberally to keep get_scene in sync with your narrative. Respects the currently selected campaign.
+
+Supported types for $type: hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action.
+
+=== RECOMMENDED PATTERNS (copy-paste friendly) ===
+
+1) Basic Narrative Update:
+[
+  { ""$type"": ""event"", ""category"": ""Narrative"", ""summary"": ""The party discovered the hidden door."" },
+  { ""$type"": ""activity"", ""characterId"": ""chars/guard1"", ""newLocationId"": ""locations/cellar"", ""newActivity"": ""Searching the cellar"" }
+]
+
+2) Combat & Mechanics (ruleset_action):
+Use ruleset_action to trigger attacks or skill checks. The correct math and properties depend on the ActiveSystem.
+D&D 5e Example:
+{ ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""targetIds"": [""goblin1""], ""actionType"": ""Attack"", ""parameters"": { ""bonus"": ""5"", ""damageDice"": ""1d8+3"" } }
+
+Pathfinder 2e Example (Strike):
+{ ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""targetIds"": [""goblin1""], ""actionType"": ""Strike"", ""parameters"": { ""bonus"": ""7"", ""damageDice"": ""1d8+4"", ""mapPenalty"": ""0"" } }
+
+Fallout 2d20 Example (Skill Test):
+{ ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""actionType"": ""SkillTest"", ""parameters"": { ""target"": ""12"", ""complicationRange"": ""19"" } }")]
     public Task<ToolResult<CommitResult>> Commit(
-        [Description(@"Array of world changes. Each item must be a JSON object with a '$type' discriminator.
-
-Supported types (exact values for $type): hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action.
-
-=== RECOMMENDED PATTERN (copy-paste friendly) ===
-When creating a new area + NPC from scratch, do it in ONE atomic commit...
-
-=== COMBAT & MECHANICS ===
-Use ruleset_action to trigger attacks or skill checks. The correct math and properties (like AC or DC) depend on the ActiveSystem. See get_config for the active TTRPG ruleset (e.g., Dnd5e, Pathfinder2e, Fallout2d20).
-Example: { ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""targetIds"": [""goblin1""], ""actionType"": ""Attack"", ""parameters"": { ""bonus"": ""5"", ""damageDice"": ""1d8"" } }")] WorldChange[] changes,
+        [Description("Array of world changes. Each item must be a JSON object with a '$type' discriminator.")] WorldChange[] changes,
         [Description("Narrative summary of what happened (for the log and world pressure).")] string narrative,
         [Description("Optional campaign name. Falls back to currently selected campaign.")] string? campaignName = null)
     {
@@ -382,9 +396,7 @@ STRONGLY encouraged to populate:
 - Mind.NeedDescriptors (human-readable explanations for any custom needs)
 - Equipment via Items (set HolderId to the character)
 
-This is the best opportunity to create deep, simulatable NPCs.
-
-**Note for Grok Web users (as of May 2026):** Grok Web's client may still send this tool using the legacy parameter name 'c' instead of 'character'. If you get a 'missing required parameter' error, try sending the Character object under the key 'c'.")]
+This is the best opportunity to create deep, simulatable NPCs.")]
     public Task<ToolResult<Character>> UpsertCharacter(
         [Description("The full Character object to create or replace. Strongly typed.")] Character character,
         [Description("Optional campaign name (for future per-campaign scoping of entities).")] string? campaignName = null)
@@ -400,9 +412,7 @@ This is the best opportunity to create deep, simulatable NPCs.
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Register a new location on the world map. For first-time setup only.
 
-Define hierarchical locations with exits, parent relationships, and rich metadata.
-
-**Note for Grok Web users (as of May 2026):** Grok Web's client may still send this tool using the legacy parameter name 'l' instead of 'location'. If you get a 'missing required parameter' error, try sending the Location object under the key 'l'.")]
+Define hierarchical locations with exits, parent relationships, and rich metadata.")]
     public Task<ToolResult<Location>> UpsertLocation(
         [Description("The full Location object to create or replace. Strongly typed.")] Location location,
         [Description("Optional campaign name (for future per-campaign scoping of entities).")] string? campaignName = null)
@@ -497,7 +507,8 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("RULES CONFIG TOOL: Get the current campaign configuration (per-campaign in the new namespaced model).")]
+    [Description(@"RULES CONFIG TOOL: Get the current campaign configuration.
+Returns the ruleset and system-specific options (e.g., house rules). Respects the currently selected campaign.")]
     public Task<ToolResult<CampaignConfig>> GetConfig(
         [Description("Optional campaign name. Falls back to the currently selected campaign (via select_campaign).")] string? campaignName = null)
     {
@@ -510,7 +521,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("RULES CONFIG TOOL: Set the active ruleset system for a campaign. Respects lock-in (cannot change system once locked).")]
+    [Description(@"RULES CONFIG TOOL: Set the active ruleset system for a campaign.
+Respects lock-in (cannot change system once locked). Use this to define house rules or system options.
+
+Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(
         [Description("The active TTRPG ruleset system.")] RulesetSystem activeSystem,
         [Description("Optional dictionary of system options and house rules.")] Dictionary<string, string>? systemOptions = null,
@@ -548,7 +562,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     // --- Combat & Dispatch Tools ---
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Starts a new combat encounter. Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Respects the currently selected campaign.")]
+    [Description(@"COMBAT TOOL: Starts a new combat encounter at the specified location.
+Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Respects the currently selected campaign.
+
+Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""monsters/goblin1""])")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
         [Description("The location ID where combat is happening.")] string locationId,
         [Description("List of character IDs participating in combat.")] string[] combatantIds,
@@ -607,7 +624,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Advances the turn order to the next combatant. If all combatants have acted, advances to the next round. Respects the currently selected campaign.")]
+    [Description(@"COMBAT TOOL: Advances the turn order to the next combatant.
+If all combatants have acted, advances to the next round. Skips dead combatants (HP <= 0).
+Round-based status effects naturally expire during this transition when their round duration ends.
+Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> NextTurn(
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
@@ -684,7 +704,9 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Ends the current active combat encounter and wraps up the state. Clears round-based status effects from combatants. Respects the currently selected campaign.")]
+    [Description(@"COMBAT TOOL: Ends the current active combat encounter and wraps up the state.
+Aggressively clears all round-based status effects (e.g., 'until end of combat' effects) from all combatants.
+Day-based effects remain active. Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> EndCombat(
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
@@ -739,7 +761,11 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     // --- Dedicated Campaign Management Tools ---
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("CAMPAIGN TOOL: Creates a new campaign with a name and initial ruleset. The ruleset is immediately locked for this campaign. Automatically selects the new campaign.")]
+    [Description(@"CAMPAIGN TOOL: Creates a new campaign with a name and initial ruleset.
+The ruleset is immediately locked for this campaign, preventing accidental system changes later.
+Automatically selects the newly created campaign as the current one.
+
+Example: create_campaign(""dragonheist"", RulesetSystem.Dnd5e, ""Waterdeep: Dragon Heist"")")]
     public Task<ToolResult<Campaign>> CreateCampaign(
         [Description("Unique name/slug for the campaign (e.g. 'dragonheist', 'curse-of-strahd').")] string name,
         [Description("Initial ruleset system. This will be locked.")] RulesetSystem initialSystem,
@@ -766,7 +792,8 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("CAMPAIGN TOOL: Lists all existing campaigns in the database.")]
+    [Description(@"CAMPAIGN TOOL: Lists all existing campaigns in the database.
+Useful for discovering existing worlds to join before calling select_campaign.")]
     public Task<ToolResult<List<Campaign>>> ListCampaigns()
     {
         return ExecuteAsync(async session =>
@@ -781,7 +808,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("CAMPAIGN TOOL: Selects a campaign as the current one for this session/context. Most tools will use this campaign (via fallback) when no explicit name is provided on subsequent calls.")]
+    [Description(@"CAMPAIGN TOOL: Selects a campaign as the current one for this session.
+Most tools will use this campaign context automatically, meaning you don't need to specify 'campaignName' on subsequent tool calls.
+
+Example: select_campaign(""dragonheist"")")]
     public Task<ToolResult<string>> SelectCampaign(
         [Description("Name of the campaign to select.")] string campaignName)
     {
@@ -809,6 +839,22 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
             return new ToolResult<string>(true, normalized, $"Campaign '{normalized}' is now selected as current.");
         });
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(@"CAMPAIGN DISCOVERABILITY: Returns the currently active campaign context (name, lock-in status, and active ruleset).
+Use this if you are unsure which campaign you are currently in or if you need to know the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.")]
+    public Task<ToolResult<Campaign>> GetCurrentCampaign()
+    {
+        var effective = EffectiveCampaign(null);
+        return ExecuteAsync(async session =>
+        {
+            var campaignId = _keys.Meta(effective);
+            var campaign = await session.LoadAsync<Campaign>(campaignId);
+            if (campaign == null)
+                return new ToolResult<Campaign>(false, Error: "NotFound", Summary: $"Campaign '{effective}' meta document not found. The campaign might not be initialized yet.");
+            return new ToolResult<Campaign>(true, campaign, $"Currently selected campaign: {effective}");
+        }, saveChanges: false);
     }
 }
 

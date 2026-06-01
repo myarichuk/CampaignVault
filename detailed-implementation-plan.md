@@ -214,6 +214,9 @@ Break into separate commits:
 
 **Phase 2 Exit Criteria**
 - An LLM given only the tool schemas + the new recommended prompt would have a reasonably accurate mental model.
+
+**Completed in:**
+- Primary work: `3d8bee5` — feat: complete Phase 2 LLM metadata and tool description overhaul
 - All stale or low-quality descriptions have been improved.
 
 ---
