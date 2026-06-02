@@ -861,5 +861,66 @@ Use this if you are unsure which campaign you are currently in or if you need to
             return new ToolResult<Campaign>(true, campaign, $"Currently selected campaign: {effective}");
         }, saveChanges: false);
     }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(@"SYSTEM DISCOVERABILITY: Returns a comprehensive DM manual. Call this if you forget how to use the tools, how to write ruleset_actions, how StatusEffects work, or the core gameplay loop.")]
+    public Task<ToolResult<string>> GetHelp()
+    {
+        string manual = @"# CampaignVault DM Manual
+
+Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narrative while letting the MCP engine handle the persistence, math, and simulation.
+
+## Core Gameplay Loop
+1. **Start of Session**: Call `get_world_state` to sync with the campaign clock, rumors, events, and immediate **WorldPressure**.
+2. **Exploration**: Call `get_scene` when the party enters a new location to see NPCs, items, and local descriptions.
+3. **Action & Consequence**: Describe the narrative to the player. When something permanent happens (combat, taking an item, changing a relationship), call `commit`.
+4. **Time Skips**: Use `advance_world` when the party rests or travels. This triggers background simulations (NPC routines, needs accumulation, rumor decay).
+
+## The Commit Tool
+`commit` is your universal write tool. It takes an array of JSON mutations (`$type`). It is atomic. NEVER forget to `commit` the outcome of a narrative beat.
+
+Supported `$type`s: `hp`, `item`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`.
+
+## Ruleset Actions (Combat & Skill Checks)
+Instead of rolling dice yourself, use `$type: ruleset_action` inside `commit`. The engine will calculate hits, crits, and modifiers automatically based on the `ActiveSystem`.
+
+**D&D 5e / PF2e Example:**
+```json
+{
+  ""$type"": ""ruleset_action"",
+  ""actorId"": ""chars/gimli"",
+  ""targetIds"": [""chars/goblin""],
+  ""actionType"": ""Attack"",
+  ""parameters"": { ""bonus"": ""5"", ""damageDice"": ""1d8+3"" }
+}
+```
+
+## Status Effects & Stat Modifiers
+Do not just narrate ""he is crippled"". Apply a status effect via `commit` so the system knows! You can embed mechanical modifiers that the engine will mathematically enforce on all future `ruleset_action` calls.
+
+**Status Example:**
+```json
+{
+  ""$type"": ""status"",
+  ""characterId"": ""chars/gimli"",
+  ""effect"": {
+    ""name"": ""Crippled Arm"",
+    ""category"": ""Injury"",
+    ""affectedPart"": ""LeftArm"",
+    ""statModifiers"": {
+      ""AttackRoll"": -2,
+      ""SkillCheck"": -1
+    },
+    ""recoveryHint"": ""Requires a DC 15 Medicine check or a long rest.""
+  }
+}
+```
+**Canonical Modifiers:** `AttackRoll`, `DamageRoll`, `AC`, `Defense`, `Initiative`, `SkillCheck`, `AllRolls`, `AllChecks`.
+
+## World Pressure
+When you call `get_world_state` or `advance_world`, the engine returns a `pressure` array. This contains characters who are dying, statuses that are festering, or rumors that have gone unresolved for days. **It is your job to inject these pressures into the narrative.**
+";
+        return Task.FromResult(new ToolResult<string>(true, manual, "Help manual retrieved."));
+    }
 }
 

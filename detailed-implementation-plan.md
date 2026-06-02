@@ -263,11 +263,11 @@ Break into separate commits:
 
 ## Phase 5 — Optional / Deeper Improvements
 
-- [ ] Mechanical application of `StatModifiers` from statuses inside resolvers.
+- [x] Mechanical application of `StatModifiers` from statuses inside resolvers. *(Completed)*
 - [x] Better structured error types instead of string narratives for some resolver failures. *(Completed)*
 - [x] Rate limiting / batch size guards on `commit`. *(Completed)*
 - [x] Richer `WorldPressure` from simulation. *(Completed)*
-- Consider a small `get_help` meta tool.
+- [x] Consider a small `get_help` meta tool. *(Completed)*
 
 ---
 
