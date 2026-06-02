@@ -32,11 +32,11 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         };
     }
 
-    protected override async Task<string> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         int difficulty = 1;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
-            return $"Error: invalid difficulty value '{diffStr}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
         
         // Lower difficulty is better for the actor. Positive "SkillCheck" modifiers are good.
         // Fallout is TN based, so modifiers add to the TN, but if there's a difficulty modifier we could apply it here.
@@ -58,7 +58,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         
         int poolSize = 2;
         if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
-            return $"Error: invalid pool value '{p}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid pool value '{p}'.");
 
         var request = new RollRequest
         {
@@ -75,24 +75,24 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         int apGenerated = Math.Max(0, outcome.Successes - difficulty);
         string compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
         
-        return $"{action.ActionName} ({attribute}+{skill} TN {targetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}";
+        return ResolverResult.Ok($"{action.ActionName} ({attribute}+{skill} TN {targetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
     }
 
-    protected override async Task<string> ResolveAttackAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveAttackAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
-            return "Error: No valid target specified for attack.";
+            return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
 
         if (target.SystemStats is not Fallout2d20Extension targetStats)
-            return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
+            return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         
         int defense = targetStats.Defense;
         defense = ApplyAllModifiers(targetStats, "Defense", defense);
         
         int difficulty = defense;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
-            return $"Error: invalid difficulty value '{diffStr}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
         
         string attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
         string skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
@@ -108,7 +108,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         
         int poolSize = 2;
         if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
-            return $"Error: invalid pool value '{p}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid pool value '{p}'.");
 
         var request = new RollRequest
         {
@@ -124,11 +124,11 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         string compMsg = outcome.HasComplication ? " COMPLICATION!" : "";
 
         if (!success)
-            return $"{action.ActionName}: Missed.{compMsg} {outcome.Summary}";
+            return ResolverResult.Ok($"{action.ActionName}: Missed.{compMsg} {outcome.Summary}");
 
         int combatDiceCount = 3;
         if (action.Parameters.TryGetValue("damageDice", out var cd) && !int.TryParse(cd, out combatDiceCount))
-            return $"Error: invalid damageDice value '{cd}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageDice value '{cd}'.");
             
         combatDiceCount = ApplyAllModifiers(actorStats, "DamageRoll", combatDiceCount);
         string damageType = action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical";
@@ -140,12 +140,12 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
-        return $"{action.ActionName}: Hit for {finalDamage} damage ({combatResult.Effects} Effects).{compMsg}";
+        return ResolverResult.Ok($"{action.ActionName}: Hit for {finalDamage} damage ({combatResult.Effects} Effects).{compMsg}");
     }
 
-    protected override Task<string> ResolveContestedCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override Task<ResolverResult> ResolveContestedCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        return Task.FromResult("Fallout 2d20: Contested checks are resolved as opposed skill tests. Needs implementation.");
+        return Task.FromResult(ResolverResult.Fail("NotImplemented", "Fallout 2d20: Contested checks are resolved as opposed skill tests. Needs implementation."));
     }
 
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)

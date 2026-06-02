@@ -152,4 +152,26 @@ public class RulesetSerializationTests
         Assert.Null(statusChange.Effect);
         Assert.Equal("Frightened", statusChange.Status);
     }
+
+    [Theory]
+    [InlineData("[]", 0)] // Empty array
+    [InlineData("[{ \"$type\": \"hp\", \"characterId\": \"hero\", \"delta\": 5 }]", 1)] // Valid
+    public void WorldChange_Deserialization_HandlesEmptyAndValid(string json, int expectedCount)
+    {
+        var changes = JsonSerializer.Deserialize<WorldChange[]>(json, _options);
+        
+        Assert.NotNull(changes);
+        Assert.Equal(expectedCount, changes.Length);
+    }
+
+    [Theory]
+    [InlineData("Not JSON")]
+    [InlineData("[{ \"$type\": \"hp_change\", \"characterId\": \"hero\", \"delta\": 5 }]")] // Wrong discriminator (should be "hp")
+    [InlineData("[{ \"$type\": \"unknown_change_type\", \"someField\": \"value\" }]")] // Unknown discriminator
+    [InlineData("[{ \"$type\": \"hp\", \"delta\": \"NOT_A_NUMBER\" }]")] // Type mismatch for integer
+    [InlineData("{ \"$type\": \"hp\" }")] // Object instead of Array
+    public void WorldChange_Deserialization_MalformedJson_ThrowsJsonException(string json)
+    {
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<WorldChange[]>(json, _options));
+    }
 }

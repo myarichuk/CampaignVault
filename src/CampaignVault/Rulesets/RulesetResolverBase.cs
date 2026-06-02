@@ -14,58 +14,58 @@ public abstract class RulesetResolverBase<TStats> : IRulesetResolver where TStat
     {
         if (!context.Characters.TryGetValue(action.ActorId, out var actor))
         {
-            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Actor '{action.ActorId}' not found." } };
+            return new ResolverOutput { Result = ResolverResult.Fail("ActorNotFound", $"Error: Actor '{action.ActorId}' not found.") };
         }
 
         if (actor.SystemStats is not TStats actorStats)
         {
-            return new ResolverOutput { Result = new ResolverResult { Narrative = $"Error: Character uses incompatible ruleset stats for current ActiveSystem." } };
+            return new ResolverOutput { Result = ResolverResult.Fail("IncompatibleRuleset", $"Error: Character uses incompatible ruleset stats for current ActiveSystem.") };
         }
 
         var mutations = new List<WorldChange>();
-        string narrative;
+        ResolverResult result;
 
         switch (action.ActionType)
         {
             case RulesetActionType.Attack:
-                narrative = await ResolveAttackAsync(action, context, actorStats, mutations, ct);
+                result = await ResolveAttackAsync(action, context, actorStats, mutations, ct);
                 break;
 
             case RulesetActionType.SkillCheck:
-                narrative = await ResolveSkillCheckAsync(action, context, actorStats, mutations, ct);
+                result = await ResolveSkillCheckAsync(action, context, actorStats, mutations, ct);
                 break;
 
             case RulesetActionType.ContestedCheck:
-                narrative = await ResolveContestedCheckAsync(action, context, actorStats, mutations, ct);
+                result = await ResolveContestedCheckAsync(action, context, actorStats, mutations, ct);
                 break;
 
             default:
-                narrative = $"{System}: Action type {action.ActionType} not yet fully implemented.";
+                result = ResolverResult.Fail("NotImplemented", $"{System}: Action type {action.ActionType} not yet fully implemented.");
                 break;
         }
 
         return new ResolverOutput
         {
-            Mutations = mutations,
-            Result = new ResolverResult { Narrative = narrative }
+            Mutations = result.Success ? mutations : Array.Empty<WorldChange>(), // Discard mutations on failure
+            Result = result
         };
     }
 
-    protected abstract Task<string> ResolveAttackAsync(
+    protected abstract Task<ResolverResult> ResolveAttackAsync(
         RulesetAction action, 
         ChangeContext context, 
         TStats actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct);
 
-    protected abstract Task<string> ResolveSkillCheckAsync(
+    protected abstract Task<ResolverResult> ResolveSkillCheckAsync(
         RulesetAction action, 
         ChangeContext context, 
         TStats actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct);
 
-    protected abstract Task<string> ResolveContestedCheckAsync(
+    protected abstract Task<ResolverResult> ResolveContestedCheckAsync(
         RulesetAction action, 
         ChangeContext context, 
         TStats actorStats, 

@@ -8,6 +8,7 @@ using Raven.Client.Documents;
 using Raven.Client.Documents.Linq;
 using Raven.Client.Documents.Session;
 using CampaignVault.Rulesets;
+using System.Threading.RateLimiting;
 // ReSharper disable UnusedMember.Global
 
 namespace CampaignVault.Tools;
@@ -17,6 +18,8 @@ internal static class ToolErrors
     public const string NotFound = "NotFound";
     public const string StateDrift = "StateDriftConflict";
     public const string InternalError = "InternalError";
+    public const string RateLimitExceeded = "RateLimitExceeded";
+    public const string BadRequest = "BadRequest";
 }
 
 [McpServerToolType]
@@ -27,6 +30,14 @@ public class CampaignTools
     private readonly IRulesetResolverSelector _rulesetSelector;
     private readonly CampaignDocumentKeys _keys;
     private readonly ICurrentCampaignContext _currentCampaign;
+
+    private static readonly RateLimiter _commitRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+    {
+        TokenLimit = 20, // Allow bursts up to 20 mutations
+        TokensPerPeriod = 2, // Replenish 2 tokens
+        ReplenishmentPeriod = TimeSpan.FromSeconds(10), // Every 10 seconds
+        AutoReplenishment = true
+    });
 
     // Modern / DI constructor (all services provided)
     public CampaignTools(
@@ -212,7 +223,17 @@ Fallout 2d20 Example (Skill Test):
 
         if (changes.Length == 0)
         {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.BadRequest, Summary: "Commit requires at least one change."));
+        }
+
+        if (changes.Length > 50)
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.RateLimitExceeded, Summary: $"Commit rejected: Too many changes in a single batch ({changes.Length}). Maximum allowed is 50."));
+        }
+
+        if (!_commitRateLimiter.AttemptAcquire().IsAcquired)
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.RateLimitExceeded, Summary: "Commit rate limit exceeded. Please wait a few seconds before making more world changes."));
         }
 
         return ExecuteAsync(async session => {

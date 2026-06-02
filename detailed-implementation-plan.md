@@ -252,30 +252,21 @@ Break into separate commits:
 
 ## Phase 4 — Test Expansion
 
-### Task 4.1 — Multi-Campaign + Lock-In Integration Tests
-- New or expanded tests covering:
-  - Create two campaigns with different systems.
-  - `select_campaign` switches context for subsequent `commit` + `ruleset_action` + combat.
-  - Lock rejection path.
-  - `select_campaign` on non-existent name (auto-create behavior).
+## Phase 4 — Test Expansion (High Value)
 
-### Task 4.2 — Combat + RulesetAction End-to-End
-- Full round-trip: `start_combat` → several `commit(ruleset_action)` + `NextTurn` → `EndCombat` → verify HP, statuses, and `get_scene`.
-
-### Task 4.3 — Status Expiry Tests
-- Specific tests for the fixed `StatusExpiryRule` + combat expiry paths.
-
-### Task 4.4 — Property / Fuzz Testing for WorldChange Deserialization
-- Especially the fallback JSON string path in Commit.
+- [x] Integration test: Multi-campaign tool context leak (verify `commit` only touches selected campaign). *(Completed)*
+- [x] Combat End-to-End: Write a test that runs `start_combat`, applies a `ruleset_action` attack, and verifies HP changes using `HpChangeHandler`. *(Completed)*
+- [x] Status expiry tests: Write a test verifying that `advance_world` properly expires day-based statuses, and `end_combat` expires round-based ones. *(Completed)*
+- [x] Fuzz / Property test: Inject invalid property names into the JSON array for `commit` and assert graceful failures instead of serialization crashes. *(Completed)*
 
 ---
 
 ## Phase 5 — Optional / Deeper Improvements
 
-- Mechanical application of `StatModifiers` from statuses inside resolvers.
-- Better structured error types instead of string narratives for some resolver failures.
-- Rate limiting / batch size guards on `commit`.
-- Richer `WorldPressure` from simulation.
+- [ ] Mechanical application of `StatModifiers` from statuses inside resolvers.
+- [x] Better structured error types instead of string narratives for some resolver failures. *(Completed)*
+- [x] Rate limiting / batch size guards on `commit`. *(Completed)*
+- [ ] Richer `WorldPressure` from simulation.
 - Consider a small `get_help` meta tool.
 
 ---

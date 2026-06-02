@@ -65,14 +65,14 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return degree;
     }
 
-    protected override async Task<string> ResolveAttackAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveAttackAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
-            return "Error: No valid target specified for attack.";
+            return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
 
         if (target.SystemStats is not Pf2eExtension targetStats)
-            return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
+            return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         int ac = targetStats.ArmorClass;
         ac = ApplyAllModifiers(targetStats, "AC", ac);
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
@@ -80,14 +80,14 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         int attackBonus = 0;
         if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
-            return $"Error: invalid bonus value '{b}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{b}'.");
         attackBonus = ApplyAllModifiers(actorStats, "AttackRoll", attackBonus);
 
         string damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4";
         
         int damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
-            return $"Error: invalid damageBonus value '{db}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageBonus value '{db}'.");
         damageBonus = ApplyAllModifiers(actorStats, "DamageRoll", damageBonus);
 
         var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = DiceMechanic.Standard }, ct);
@@ -95,7 +95,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var degree = CalculateDegreeOfSuccess(attackRoll, ac);
 
         if (degree == Pf2eDegreeOfSuccess.Failure || degree == Pf2eDegreeOfSuccess.CriticalFailure)
-            return $"{action.ActionName}: Missed. ({degree}) Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}";
+            return ResolverResult.Ok($"{action.ActionName}: Missed. ({degree}) Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
 
         var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
         int finalDamage = damageRoll.Result;
@@ -108,13 +108,13 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
-        return $"{action.ActionName}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.";
+        return ResolverResult.Ok($"{action.ActionName}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.");
     }
 
-    protected override async Task<string> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
-            return "Error: Skill check requires a 'dc' parameter.";
+            return ResolverResult.Fail("InvalidParameter", "Error: Skill check requires a 'dc' parameter.");
 
         var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
         int bonus = GetSkillOrAbilityBonus(actorStats, skillName);
@@ -125,12 +125,12 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         
         var degree = CalculateDegreeOfSuccess(outcome, dc);
         
-        return $"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}";
+        return ResolverResult.Ok($"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
     }
 
-    protected override Task<string> ResolveContestedCheckAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override Task<ResolverResult> ResolveContestedCheckAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        return Task.FromResult("PF2e: Contested checks are typically resolved against DCs instead of opposed rolls.");
+        return Task.FromResult(ResolverResult.Fail("NotImplemented", "PF2e: Contested checks are typically resolved against DCs instead of opposed rolls."));
     }
 
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)

@@ -37,6 +37,12 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
         var resolver = _selector.GetResolver(config.ActiveSystem);
         var output = await resolver.ResolveAsync(context, action, ct);
 
+        if (!output.Result.Success)
+        {
+            var msg = string.IsNullOrEmpty(output.Result.ErrorCode) ? output.Result.Narrative : $"[{output.Result.ErrorCode}] {output.Result.Narrative}";
+            return ChangeHandlerResult.Failure(msg);
+        }
+
         foreach (var mutation in output.Mutations)
         {
             await context.Dispatcher.DispatchMutationAsync(context, mutation, ct);

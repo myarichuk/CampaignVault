@@ -34,7 +34,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         };
     }
 
-    protected override async Task<string> ResolveAttackAsync(
+    protected override async Task<ResolverResult> ResolveAttackAsync(
         RulesetAction action, 
         ChangeContext context, 
         Dnd5eExtension actorStats, 
@@ -43,10 +43,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
-            return "Error: No valid target specified for attack.";
+            return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
 
         if (target.SystemStats is not Dnd5eExtension targetStats)
-            return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
+            return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         int ac = targetStats.ArmorClass;
         ac = ApplyAllModifiers(targetStats, "AC", ac);
         
@@ -56,14 +56,14 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         int attackBonus = 0;
         if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
-            return $"Error: invalid bonus value '{b}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{b}'.");
         attackBonus = ApplyAllModifiers(actorStats, "AttackRoll", attackBonus);
 
         string damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4"; // Unarmed default
         
         int damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
-            return $"Error: invalid damageBonus value '{db}'.";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageBonus value '{db}'.");
         damageBonus = ApplyAllModifiers(actorStats, "DamageRoll", damageBonus);
 
         var mechanic = GetMechanicFromParams(action.Parameters);
@@ -79,7 +79,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         else if (attackRoll.Result >= ac) isHit = true;
 
         if (!isHit)
-            return $"{action.ActionName}: Missed. Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}";
+            return ResolverResult.Ok($"{action.ActionName}: Missed. Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
 
         // Handle critical damage (double dice)
         int finalDamage = damageRoll.Result;
@@ -99,10 +99,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Delta = -finalDamage
         });
 
-        return $"{action.ActionName}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}";
+        return ResolverResult.Ok($"{action.ActionName}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}");
     }
 
-    protected override async Task<string> ResolveSkillCheckAsync(
+    protected override async Task<ResolverResult> ResolveSkillCheckAsync(
         RulesetAction action, 
         ChangeContext context,
         Dnd5eExtension actorStats, 
@@ -110,7 +110,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         CancellationToken ct)
     {
         if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
-            return "Error: Skill check requires a 'dc' parameter.";
+            return ResolverResult.Fail("InvalidParameter", "Error: Skill check requires a 'dc' parameter.");
 
         var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
         int bonus = GetSkillOrAbilityBonus(actorStats, skillName);
@@ -129,10 +129,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         bool isSuccess = outcome.Result >= dc;
         string resultStr = isSuccess ? "Success" : "Failure";
         
-        return $"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}";
+        return ResolverResult.Ok($"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
     }
 
-    protected override async Task<string> ResolveContestedCheckAsync(
+    protected override async Task<ResolverResult> ResolveContestedCheckAsync(
         RulesetAction action, 
         ChangeContext context, 
         Dnd5eExtension actorStats, 
@@ -141,10 +141,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
-            return "Error: No valid target specified for contested check.";
+            return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for contested check.");
 
         if (target.SystemStats is not Dnd5eExtension targetStats)
-            return "Error: Target uses incompatible ruleset stats for current ActiveSystem.";
+            return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
 
         var actorSkill = action.Parameters.TryGetValue("skill", out var as_name) ? as_name : "Strength";
         var targetSkill = action.Parameters.TryGetValue("targetSkill", out var ts_name) ? ts_name : actorSkill;
@@ -164,7 +164,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         bool actorWins = actorRoll.Result > targetRoll.Result; 
         string resultStr = actorWins ? "Actor Wins" : "Target Wins";
 
-        return $"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).";
+        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).");
     }
 
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
