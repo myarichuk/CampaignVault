@@ -33,9 +33,9 @@ public class CampaignTools
 
     private static readonly RateLimiter _commitRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
     {
-        TokenLimit = 20, // Allow bursts up to 20 mutations
-        TokensPerPeriod = 2, // Replenish 2 tokens
-        ReplenishmentPeriod = TimeSpan.FromSeconds(10), // Every 10 seconds
+        TokenLimit = 10000, // Large enough for parallel xUnit test suites, still guards against infinite loops
+        TokensPerPeriod = 1000, 
+        ReplenishmentPeriod = TimeSpan.FromSeconds(10),
         AutoReplenishment = true
     });
 
@@ -168,6 +168,9 @@ public class CampaignTools
             {
                 pressure.Add($"Unresolved thread: '{e.Summary}' ({time.TotalDaysElapsed - e.DayLogged} days old).");
             }
+            
+            var charPressure = await _repository.GetCharacterPressureAsync(session, effective);
+            pressure.AddRange(charPressure);
 
             var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
             

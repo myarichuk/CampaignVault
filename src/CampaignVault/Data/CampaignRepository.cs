@@ -139,6 +139,41 @@ public class CampaignRepository
     }
 
     /// <summary>
+    /// Scans characters in the current campaign for severe physical or psychological distress to surface as urgent narrative pressure.
+    /// </summary>
+    public async Task<List<string>> GetCharacterPressureAsync(IAsyncDocumentSession session, string? campaignName = null)
+    {
+        _ = ResolveCampaign(campaignName); // Left in for future API consistency if entities get namespaced
+        var prefix = "chars/";
+        
+        var characters = await session.Advanced.LoadStartingWithAsync<Character>(prefix);
+        var pressure = new List<string>();
+        var badCategories = new[] { "Injury", "Condition", "Disease", "Poison", "Curse" };
+
+        foreach (var c in characters)
+        {
+            if (c.CurrentHp <= c.MaxHp * 0.25f && c.CurrentHp > 0)
+                pressure.Add($"{c.Name} is critically wounded ({c.CurrentHp}/{c.MaxHp} HP).");
+            else if (c.CurrentHp <= 0)
+                pressure.Add($"{c.Name} is dying or dead.");
+
+            foreach (var status in c.SystemStats.StatusEffects)
+            {
+                if (badCategories.Contains(status.Category, StringComparer.OrdinalIgnoreCase) || status.Category == null)
+                    pressure.Add($"{c.Name} is suffering from {status.Name} ({status.Category ?? "Unknown"}).");
+            }
+
+            foreach (var kvp in c.Needs.ActiveNeeds)
+            {
+                if (kvp.Value > 80f)
+                    pressure.Add($"{c.Name} is in desperate need: {kvp.Key} ({kvp.Value:F0}%).");
+            }
+        }
+
+        return pressure;
+    }
+
+    /// <summary>
     /// Fetches the synthesized state of a location, including NPCs present, visible items, local rumors, and recent events.
     /// This is the primary read operation used by the LLM when entering a new scene.
     /// </summary>

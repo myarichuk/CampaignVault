@@ -266,7 +266,7 @@ Break into separate commits:
 - [ ] Mechanical application of `StatModifiers` from statuses inside resolvers.
 - [x] Better structured error types instead of string narratives for some resolver failures. *(Completed)*
 - [x] Rate limiting / batch size guards on `commit`. *(Completed)*
-- [ ] Richer `WorldPressure` from simulation.
+- [x] Richer `WorldPressure` from simulation. *(Completed)*
 - Consider a small `get_help` meta tool.
 
 ---
