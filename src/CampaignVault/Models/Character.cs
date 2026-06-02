@@ -16,6 +16,12 @@ public class Character
     
     public string? Notes { get; set; }
     
+    /// <summary>
+    /// If true, this character is protected from TransientEvictionRule even if Schedule == null.
+    /// Use for player characters (PCs) and major named NPCs without fixed routines.
+    /// </summary>
+    public bool KeepAlive { get; set; } = false;
+    
     public Schedule? Schedule { get; set; }
 
     /// <summary>

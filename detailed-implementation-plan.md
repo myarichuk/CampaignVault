@@ -272,7 +272,7 @@ Break into separate commits:
 
 **Goal:** Establish a "Schrödinger's World" model to safely track scalable locations and transient NPCs without bloat. Support multi-campaign context seamlessly.
 
-- [ ] **Location Model Upgrades:** Add `AdjacentLocationIds` and `PointsOfInterest` (strings) arrays to the `Location` model to support scalable hex-crawl nodes and unanchored flavor elements.
+- [x] **Location Model Upgrades:** Add `PointsOfInterest`, `AmbientCrowd`, and `LastVisitedDay` to the `Location` model, and `KeepAlive` to the `Character` model to support Schrödinger's World flavor nodes and Engine-driven Garbage Collection. *(Completed)*
 - [ ] **Location Mutation Handlers:** Add `$type: location_create` and `$type: location_update` to the `commit` tool. Ensure the `WorldChangeDispatcher` natively handles these and namespaces them to the current campaign via `CampaignDocumentKeys`.
 - [ ] **Transient Auto-Garbage Collection:** Update the world advancement and/or travel rules to automatically despawn "transient" NPCs (e.g., NPCs without a `Schedule` or marked as transient) when the party leaves a region or significant time passes.
 - [ ] **NPC Promotion (Opt-In Persistence):** Add a mutation type (e.g. `$type: anchor_npc` or `$type: schedule_change`) so the LLM can selectively save a transient NPC by giving them a permanent schedule, protecting them from the GC sweeps.

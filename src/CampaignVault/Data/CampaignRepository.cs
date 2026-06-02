@@ -690,6 +690,9 @@ public class CampaignRepository
             existing.Type = location.Type;
             existing.ParentLocationId = location.ParentLocationId;
             existing.Exits = location.Exits ?? [];
+            existing.PointsOfInterest = location.PointsOfInterest ?? [];
+            existing.AmbientCrowd = location.AmbientCrowd;
+            existing.LastVisitedDay = location.LastVisitedDay;
             existing.Metadata = location.Metadata ?? [];
             existing.LastUpdated = location.LastUpdated;
         }
