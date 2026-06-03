@@ -13,7 +13,8 @@ public class Lore_Search : AbstractIndexCreationTask<Lore>
                            lore.Title,
                            lore.Content,
                            lore.Tags,
-                           lore.Category
+                           lore.Category,
+                           CampaignName = lore.CampaignName
                        };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

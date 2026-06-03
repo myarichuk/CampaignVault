@@ -17,7 +17,8 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                                 // Live simulation state (CurrentLocationId / CurrentActivity) — enables efficient GetScene queries
                                 // without client-side scans over large character collections (addresses review issues #3 and #8).
                                 CurrentLocationId = c.CurrentLocationId,
-                                CurrentActivity = c.CurrentActivity
+                                CurrentActivity = c.CurrentActivity,
+                                CampaignName = c.CampaignName
                             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

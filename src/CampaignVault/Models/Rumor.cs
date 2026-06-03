@@ -23,6 +23,13 @@ public class Rumor
     public int LastStateChangeDay { get; set; }
     
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Associates the entity with a specific campaign for multi-campaign isolation.
+    /// Set automatically from current campaign context on create/upsert (via repo + handlers).
+    /// (No legacy BC requirement per review feedback; always set for new data. Rumors are campaign-specific and should not be global.)
+    /// </summary>
+    public string? CampaignName { get; set; }
 }
 
 public enum RumorState

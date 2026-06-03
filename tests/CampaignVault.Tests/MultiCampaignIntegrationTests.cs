@@ -80,11 +80,11 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var tools = CreateTools(context);
         var repo = new CampaignRepository(_store);
 
-        // Upsert characters
+        // Upsert characters with explicit campaign for scoping (no BC for legacy needed)
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10 });
-            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10 });
+            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10 }, "campaign-a");
+            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10 }, "campaign-b");
             await session.SaveChangesAsync();
         }
 
@@ -114,5 +114,70 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var combatA = await tools.NextTurn(null, "campaign-a");
         Assert.NotNull(combatA.Data);
         Assert.Equal("characters/char-1", combatA.Data.Combatants[0].CharacterId);
+
+        // === Scoping hardening verification (per plan + code_review.md) ===
+        // Set high need on both for pressure test (loose filter for shareables, but here per-camp)
+        using (var session = _store.OpenAsyncSession())
+        {
+            var c1 = await session.LoadAsync<Character>("characters/char-1");
+            c1.Needs.ActiveNeeds["hunger"] = 95f;  // triggers pressure for A
+            var c2 = await session.LoadAsync<Character>("characters/char-2");
+            c2.Needs.ActiveNeeds["hunger"] = 95f;  // triggers for B
+            await session.SaveChangesAsync();
+
+            // Verify scoping set during upsert
+            Assert.Equal("campaign-a", c1.CampaignName);
+            Assert.Equal("campaign-b", c2.CampaignName);
+        }
+
+        // Pressures for camp A should include char-1, not char-2
+        await tools.SelectCampaign("campaign-a");
+        var wsA = await tools.GetWorldState("loc-1", "campaign-a");
+        var pressureTextA = string.Join(" | ", wsA.Data?.WorldPressure ?? Enumerable.Empty<string>());
+        Assert.Contains("Char 1", pressureTextA);
+        Assert.DoesNotContain("Char 2", pressureTextA);
+
+        // Direct pressure for B (to debug ws)
+        await tools.SelectCampaign("campaign-b");
+        using (var ps = _store.OpenAsyncSession())
+        {
+            // debug: total chars without camp filter? (temp for scoping debug)
+            var dps = await repo.GetCharacterPressureAsync(ps, "campaign-b");
+            var dpText = string.Join(" | ", dps);
+            Assert.Contains("Char 2", dpText);  // direct should have
+            Assert.DoesNotContain("Char 1", dpText);
+        }
+
+        // Pressures for camp B should include char-2 (if high), not char-1
+        var wsB = await tools.GetWorldState("loc-2", "campaign-b");
+        var pressureTextB = string.Join(" | ", wsB.Data?.WorldPressure ?? Enumerable.Empty<string>());
+        Assert.Contains("Char 2", pressureTextB);
+        Assert.DoesNotContain("Char 1", pressureTextB);
+
+        // Sim scoping: add schedules to both, set needs, advance only A, verify only A affected
+        using (var session = _store.OpenAsyncSession())
+        {
+            var c1 = await session.LoadAsync<Character>("characters/char-1");
+            c1.Schedule = new Schedule { DefaultLocationId = "loc-1", Routines = [] };
+            c1.Needs.ActiveNeeds["tiredness"] = 50f;
+            var c2 = await session.LoadAsync<Character>("characters/char-2");
+            c2.Schedule = new Schedule { DefaultLocationId = "loc-2", Routines = [] };
+            c2.Needs.ActiveNeeds["tiredness"] = 50f;
+            await session.SaveChangesAsync();
+        }
+
+        await tools.SelectCampaign("campaign-a");
+        await tools.AdvanceWorld(1, TimeOfDay.Morning, "Advance A only", "campaign-a");
+
+        using (var verify = _store.OpenAsyncSession())
+        {
+            var c1After = await verify.LoadAsync<Character>("characters/char-1");
+            var c2After = await verify.LoadAsync<Character>("characters/char-2");
+            // A should have changed (needs accumulation or schedule), B should not (or at least test no cross)
+            // Since needs rule runs, tiredness may increase for scheduled; check A was processed
+            // A may or may not have changed depending on rules/time (not strict for this test); main is B untouched by A advance
+            // B should remain untouched by A's advance
+            Assert.Equal(50f, c2After.Needs.ActiveNeeds["tiredness"]);
+        }
     }
 }

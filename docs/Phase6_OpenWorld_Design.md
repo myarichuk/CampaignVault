@@ -544,4 +544,6 @@ Add a `SimulationHarness/LazyLlmScenarios.cs` (or extend existing) whose job is 
 
 **This revised design is intentionally over-specified.** The goal is that an implementer (or future LLM coding agent) can follow the sections in order and produce a working, well-tested, LLM-laziness-resistant open world without having to re-invent the edge-case handling.
 
+Phase 7 (`phase7.md` at repo root) builds directly on this foundation, adding the three missing deep open-world pillars (travel/spatial, factions, quests) plus further sustained laziness mitigations, all with the same pressure/ready-JSON/nag philosophy.
+
 End of Phase 6 design.

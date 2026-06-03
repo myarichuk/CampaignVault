@@ -101,6 +101,7 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
                     CharacterId = npc.Id,
                     NewActivity = effectiveActivity,
                     NewLocationId = effectiveLocation,
+                    UpdateLocation = true,
                     Reason = activeModifiers.Count > 0 ? "Schedule evaluation + state modifier override" : "Schedule evaluation"
                 });
 

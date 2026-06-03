@@ -14,10 +14,17 @@ namespace CampaignVault.Data.ChangeHandlers;
 public sealed class ChangeContext
 {
     public IAsyncDocumentSession Session { get; }
-    public IReadOnlyDictionary<string, Character> Characters { get; }
-    public IReadOnlyDictionary<string, Item> Items { get; }
+    public IReadOnlyDictionary<string, Character> Characters => _characters;
+    public IReadOnlyDictionary<string, Item> Items => _items;
+    public IReadOnlyDictionary<string, Location> Locations => _locations;
     public ILogger Logger { get; }
     public CombatEncounter? ActiveCombat { get; }
+
+    /// <summary>
+    /// The effective campaign name for this change context (for scoping entities like Characters/Locations on create).
+    /// Propagated from dispatcher for create handlers to set CampaignName on new entities.
+    /// </summary>
+    public string? CampaignName { get; }
 
     /// <summary>
     /// Provides the current campaign time (used by EventOccurred and RumorEvolves handlers).
@@ -37,27 +44,34 @@ public sealed class ChangeContext
 
     private readonly List<string> _summary;
     private bool _hasFailure;
+    private readonly Dictionary<string, Character> _characters;
+    private readonly Dictionary<string, Item> _items;
+    private readonly Dictionary<string, Location> _locations;
 
     internal ChangeContext(
         IAsyncDocumentSession session,
-        IReadOnlyDictionary<string, Character> characters,
-        IReadOnlyDictionary<string, Item> items,
+        Dictionary<string, Character> characters,
+        Dictionary<string, Item> items,
+        Dictionary<string, Location> locations,
         ILogger logger,
         Func<Task<CampaignTime>> getCurrentTimeAsync,
         Func<Event, Task> logEventAsync,
         List<string> summary,
         WorldChangeDispatcher dispatcher,
-        CombatEncounter? activeCombat = null)
+        CombatEncounter? activeCombat = null,
+        string? campaignName = null)
     {
         Session = session ?? throw new ArgumentNullException(nameof(session));
-        Characters = characters ?? throw new ArgumentNullException(nameof(characters));
-        Items = items ?? throw new ArgumentNullException(nameof(items));
+        _characters = characters ?? throw new ArgumentNullException(nameof(characters));
+        _items = items ?? throw new ArgumentNullException(nameof(items));
+        _locations = locations ?? throw new ArgumentNullException(nameof(locations));
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         GetCurrentTimeAsync = getCurrentTimeAsync ?? throw new ArgumentNullException(nameof(getCurrentTimeAsync));
         LogEventAsync = logEventAsync ?? throw new ArgumentNullException(nameof(logEventAsync));
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
+        CampaignName = campaignName;
     }
 
     /// <summary>
@@ -66,23 +80,31 @@ public sealed class ChangeContext
     /// </summary>
     internal ChangeContext(
         IAsyncDocumentSession? sessionForTests,
-        IReadOnlyDictionary<string, Character> characters,
-        IReadOnlyDictionary<string, Item> items,
+        Dictionary<string, Character> characters,
+        Dictionary<string, Item> items,
+        Dictionary<string, Location> locations,
         ILogger logger,
         List<string> summary,
         WorldChangeDispatcher dispatcher,
-        CombatEncounter? activeCombat = null)
+        CombatEncounter? activeCombat = null,
+        string? campaignName = null)
     {
         Session = sessionForTests!; // may be null; only for tests with fake handlers
-        Characters = characters ?? throw new ArgumentNullException(nameof(characters));
-        Items = items ?? throw new ArgumentNullException(nameof(items));
+        _characters = characters ?? throw new ArgumentNullException(nameof(characters));
+        _items = items ?? throw new ArgumentNullException(nameof(items));
+        _locations = locations ?? throw new ArgumentNullException(nameof(locations));
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         GetCurrentTimeAsync = () => Task.FromResult(new CampaignTime());
         LogEventAsync = _ => Task.CompletedTask;
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
+        CampaignName = campaignName;
     }
+
+    public void RegisterNewLocation(Location loc) => _locations[loc.Id] = loc;
+    public void RegisterNewCharacter(Character c) => _characters[c.Id] = c;
+    public void RegisterNewItem(Item i) => _items[i.Id] = i;
 
     /// <summary>
     /// Records a message that will appear in CommitResult.Summary.

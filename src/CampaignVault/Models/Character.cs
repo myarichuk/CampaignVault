@@ -41,6 +41,13 @@ public class Character
     public SystemExtension SystemStats { get; set; } = new();
     
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Associates the entity with a specific campaign for multi-campaign isolation.
+    /// Set automatically from current campaign context on create/upsert (via repo + handlers).
+    /// (No legacy BC requirement per review feedback; always set for new data.)
+    /// </summary>
+    public string? CampaignName { get; set; }
 }
 
 public class PsychologyProfile

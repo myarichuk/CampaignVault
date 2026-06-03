@@ -12,7 +12,8 @@ public class Event_Search : AbstractIndexCreationTask<Event>
                         {
                             e.Summary,
                             Category = e.Category,
-                            e.Timestamp
+                            e.Timestamp,
+                            CampaignName = e.CampaignName
                         };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

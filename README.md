@@ -33,6 +33,16 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 **World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). See the full **Current Recommended Usage** section below for detailed guidance.
 
+**Open-World Flavor, Transients & Laziness Mitigation (Phase 6+)**: The system is deliberately designed so an LLM DM can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted via small `commit` payloads using `location_create` / `character_create` / `item_create` etc. 
+
+- `get_scene` returns `PointsOfInterest` (light list) and uses `AmbientCrowd` hints for flavor without creating documents.
+- The engine auto-links maps on `location_create` (supply `connectedFromLocationId`).
+- Transients (created without `schedule` + `keepAlive:false`) are auto-evicted by `TransientEvictionRule` during `advance_world` when areas go "cold".
+- **Critical**: `get_scene`, `get_world_state`, and `advance_world` return `WorldPressure` containing `ENGINE WARNING:` and `NARRATIVE PROMPT:` items. These include **exact copy-paste JSON** for the `commit` needed to fix hallucinations, dead-ends, empty-but-expected-crowds, broken links, etc. Treat them as mandatory directives. Call `get_help` for the full "Lazy Tavern" walkthrough and patterns.
+- This directly addresses the "silly factor" of forcing perfect polymorphic JSON arrays for every flavor element the LLM narrates.
+
+See `get_help`, the recommended system prompt, and `docs/Phase6_OpenWorld_Design.md` for details. The `detailed-implementation-plan.md` and upcoming `phase7.md` track further work on travel/spatial, factions, and quests.
+
 ## Current Recommended Usage
 
 When using CampaignVault as an LLM Dungeon Master, follow this mental model:

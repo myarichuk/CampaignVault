@@ -13,7 +13,8 @@ public class Item_Search : AbstractIndexCreationTask<Item>
                             i.Name,
                             i.Description,
                             i.HolderId,
-                            i.Tags
+                            i.Tags,
+                            CampaignName = i.CampaignName
                         };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

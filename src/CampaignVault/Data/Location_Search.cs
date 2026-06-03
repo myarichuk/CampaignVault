@@ -13,7 +13,8 @@ public class Location_Search : AbstractIndexCreationTask<Location>
                                 l.Name,
                                 l.Description,
                                 l.Type,
-                                l.ParentLocationId
+                                l.ParentLocationId,
+                                CampaignName = l.CampaignName
                             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

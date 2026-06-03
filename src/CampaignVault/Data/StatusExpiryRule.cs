@@ -15,10 +15,10 @@ public sealed class StatusExpiryRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
-        // POLICY NOTE: Entities (like Character) are not currently namespaced per-campaign.
-        // Therefore, this rule queries globally across all campaigns. Singletons (like CampaignConfig)
-        // provide the isolation boundary.
-        var allCharacters = await context.Session.Query<Character>().ToListAsync(ct);
+        // Scoping hardened: filter by camp (loose for chars)
+        var effective = context.CampaignName;
+        var all = await context.Session.Query<Character>().ToListAsync(ct);
+        var allCharacters = string.IsNullOrEmpty(effective) ? all : all.Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective).ToList();
 
         foreach (var character in allCharacters)
         {

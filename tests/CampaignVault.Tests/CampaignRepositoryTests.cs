@@ -312,19 +312,25 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task GetSceneAsync_WithMissingLocation_ThrowsExpectedException()
+    public async Task GetSceneAsync_WithMissingLocation_ReturnsUnanchoredStub()
     {
         var repo = new CampaignRepository(_store);
         using var session = _store.OpenAsyncSession();
 
         var missingId = "locations/does-not-exist-" + Guid.NewGuid();
 
-        // Must not throw raw NullReferenceException from the former location! assertion.
-        // A clean, expected exception allows the tool layer to surface a proper error to the LLM.
-        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            repo.GetSceneAsync(session, missingId));
+        // Per Phase 6: GetSceneAsync must never throw for hallucinated IDs.
+        // It returns a stub Location + IsLocationAnchored=false so tool can emit
+        // copy-paste-ready location_create pressure without the LLM ever seeing an exception.
+        var scene = await repo.GetSceneAsync(session, missingId);
 
-        Assert.Contains(missingId, ex.Message);
+        Assert.NotNull(scene);
+        Assert.False(scene.IsLocationAnchored);
+        Assert.Equal(missingId, scene.Location.Id);
+        Assert.Equal("[Unanchored]", scene.Location.Name);
+        Assert.Empty(scene.Location.Exits);
+        Assert.Empty(scene.PresentNPCs);
+        Assert.Empty(scene.VisibleItems);
     }
 
     [Fact]
@@ -1218,5 +1224,260 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var dbConfig = await repo.GetCampaignConfigAsync(session2);
         Assert.Equal(RulesetSystem.Fallout2d20, dbConfig.ActiveSystem);
         Assert.Equal("2", dbConfig.SystemOptions["difficulty"]);
+    }
+
+    [Fact]
+    public async Task GetScene_ViaTools_OnMissingLocation_ReturnsStub_And_Pressure_WithReadyCommitJson()
+    {
+        // Verifies the full tool + pressure path for the key anti-laziness feature:
+        // hallucinated location -> immediate copy-pasteable location_create example in WorldPressure.
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var tools = new CampaignTools(
+            repo,
+            new DefaultBehaviorSynthesizer(),
+            new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] {
+                new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc),
+                new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc),
+                new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc)
+            }),
+            new CampaignDocumentKeys(),
+            new CurrentCampaignContext());
+
+        var missingId = "locations/hallucinated-tavern-" + Guid.NewGuid();
+
+        var result = await tools.GetScene(missingId);
+
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.False(result.Data.IsLocationAnchored);
+        Assert.Equal(missingId, result.Data.Location.Id);
+        Assert.Equal("[Unanchored]", result.Data.Location.Name);
+
+        // The critical laziness countermeasure:
+        Assert.NotNull(result.WorldPressure);
+        var pressureText = string.Join(" ", result.WorldPressure);
+        Assert.Contains("ENGINE WARNING", pressureText);
+        Assert.Contains("You are hallucinating", pressureText);
+        Assert.Contains("$type\": \"location_create\"", pressureText);
+        Assert.Contains(missingId, pressureText);
+    }
+
+    [Fact]
+    public async Task GetScene_ViaTools_AnchoredLocation_Emits_Additional_AntiLaziness_Pressures_For_BrokenLinks_And_FlavorVacuum()
+    {
+        // Verifies new Phase 6/7 laziness mitigations: engine detects one-way links (missing reverse from parent)
+        // even for non-create paths, and detects "flavor vacuum" (no PoIs/Ambient + empty) and provides ready update JSON.
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var tools = new CampaignTools(
+            repo,
+            new DefaultBehaviorSynthesizer(),
+            new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] {
+                new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc),
+                new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc),
+                new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc)
+            }),
+            new CampaignDocumentKeys(),
+            new CurrentCampaignContext());
+
+        var parentId = "locations/broken-parent-" + Guid.NewGuid();
+        var childId = "locations/broken-child-" + Guid.NewGuid();
+
+        // Setup broken state directly (parent has no exit back to child; child declares parent).
+        // Simulates old data, manual edit, or partial LLM location_update.
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location
+            {
+                Id = parentId,
+                Name = "Broken Parent",
+                Description = "Parent without back link",
+                Type = LocationType.Building,
+                Exits = new List<LocationExit>() // deliberately no child
+            });
+            await repo.UpsertLocationAsync(session, new Location
+            {
+                Id = childId,
+                Name = "Broken Child",
+                Description = "Child pointing to parent but no reciprocal exit",
+                Type = LocationType.Room,
+                ParentLocationId = parentId,
+                Exits = new List<LocationExit> { new LocationExit(parentId, "Leads back (but parent doesn't know)") }
+            });
+            await session.SaveChangesAsync();
+        }
+
+        // Act on the child
+        var childResult = await tools.GetScene(childId);
+        Assert.True(childResult.Success);
+        Assert.NotNull(childResult.Data);
+        Assert.True(childResult.Data.IsLocationAnchored);
+
+        var pressureText = string.Join("\n", childResult.WorldPressure ?? Array.Empty<string>());
+        Assert.Contains("one-way link", pressureText);
+        Assert.Contains("location_update", pressureText);
+        Assert.Contains(parentId, pressureText); // targets the parent for the fix
+        Assert.Contains("addExit", pressureText);
+
+        // Also test flavor vacuum pressure on a clean empty room (no PoI, no Ambient, no NPCs)
+        var vacuumId = "locations/vacuum-room-" + Guid.NewGuid();
+        using (var session2 = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session2, new Location
+            {
+                Id = vacuumId,
+                Name = "Empty Stone Room",
+                Description = "Nothing here but echoes.",
+                Type = LocationType.Room
+                // deliberately no PoIs, no AmbientCrowd
+            });
+            await session2.SaveChangesAsync();
+        }
+
+        var vacuumResult = await tools.GetScene(vacuumId);
+        Assert.True(vacuumResult.Success);
+        var vacuumPressure = string.Join(" ", vacuumResult.WorldPressure ?? Array.Empty<string>());
+        Assert.Contains("NARRATIVE PROMPT", vacuumPressure);
+        Assert.Contains("lacks flavor details", vacuumPressure);
+        Assert.Contains("location_update", vacuumPressure);
+        Assert.Contains("addPointOfInterest", vacuumPressure);
+        Assert.Contains("ambientCrowd", vacuumPressure);
+    }
+    [Fact]
+    public async Task UpsertCharacter_Preserves_KeepAlive()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+        var id = "npcs/keepalive-" + Guid.NewGuid();
+        
+        await repo.UpsertCharacterAsync(session, new Character { Id = id, Name = "Important NPC", KeepAlive = true });
+        await session.SaveChangesAsync();
+
+        // Second upsert to simulate an update
+        await repo.UpsertCharacterAsync(session, new Character { Id = id, Name = "Important NPC", KeepAlive = true });
+        await session.SaveChangesAsync();
+
+        var npc = await session.LoadAsync<Character>(id);
+        Assert.True(npc.KeepAlive);
+    }
+
+    [Fact]
+    public async Task GetScene_DoesNotStamp_LastVisitedDay_When_MarkVisitedFalse()
+    {
+        var repo = new CampaignRepository(_store);
+        var id = "locations/test-visit-" + Guid.NewGuid();
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = id, Name = "Test Room", Type = LocationType.Room, LastVisitedDay = 1 });
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, id, null, markVisited: false);
+            Assert.Equal(1, scene.Location.LastVisitedDay);
+            await session.SaveChangesAsync(); // even if save is called, no mutation should occur
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var loc = await repo.GetLocationAsync(session, id);
+            Assert.Equal(1, loc!.LastVisitedDay);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_Stamps_LastVisitedDay_When_MarkVisitedTrue()
+    {
+        var repo = new CampaignRepository(_store);
+        var id = "locations/test-visit-true-" + Guid.NewGuid();
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = id, Name = "Test Room", Type = LocationType.Room, LastVisitedDay = 1 });
+            
+            // Fast forward time to day 5
+            var time = await repo.GetTimeAsync(session, null);
+            time.TotalDaysElapsed = 5;
+            await repo.SaveTimeAsync(session, time, null);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, id, null, markVisited: true);
+            Assert.Equal(5, scene.Location.LastVisitedDay);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var loc = await repo.GetLocationAsync(session, id);
+            Assert.Equal(5, loc!.LastVisitedDay);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_CurrentActivity_FallsBack_To_Idle_Not_LocationId()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/activity-test-" + Guid.NewGuid();
+        var charId = "chars/activity-test-" + Guid.NewGuid();
+        
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Activity Room" });
+            
+            var npc = new Character 
+            { 
+                Id = charId, 
+                Name = "Bob", 
+                CurrentActivity = null, 
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = new List<Routine>() } 
+            };
+            await repo.UpsertCharacterAsync(session, npc);
+            await session.SaveChangesAsync();
+        }
+
+        // Wait for indexing
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false)) break;
+            await Task.Delay(100);
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId);
+            var npcSummary = scene.PresentNPCs.FirstOrDefault(n => n.Id == charId);
+            Assert.NotNull(npcSummary);
+            Assert.Equal("Idle at default location", npcSummary.CurrentActivity);
+        }
+    }
+
+    [Fact]
+    public void RuleOrdering_NeedsAccumulation_RunsAfter_ScheduleEvaluation()
+    {
+        var needsRule = new NeedsAccumulationRule();
+        var scheduleRule = new ScheduleEvaluationRule();
+
+        Assert.True(needsRule.Order > scheduleRule.Order, "NeedsAccumulationRule should run after ScheduleEvaluationRule so it uses the updated location.");
+    }
+
+    [Fact]
+    public async Task FallbackHandlers_IncludesPhase6()
+    {
+        var repo = new CampaignRepository(_store); // empty handlers fallback
+        using var session = _store.OpenAsyncSession();
+        
+        // This would fail if CharacterCreateHandler was missing
+        var result = await repo.StageChangesAsync(session, new WorldChange[] 
+        { 
+            new CharacterCreate { CharacterId = "chars/dummy-" + Guid.NewGuid(), Name = "Dummy" } 
+        });
+        
+        Assert.True(result.Success);
     }
 }

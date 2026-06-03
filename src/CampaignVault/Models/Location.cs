@@ -23,6 +23,13 @@ public class Location
     public Dictionary<string, object> Metadata { get; set; } = [];
     
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Associates the entity with a specific campaign for multi-campaign isolation.
+    /// Set automatically from current campaign context on create/upsert (via repo + handlers).
+    /// (No legacy BC requirement per review feedback; always set for new data. Locations may be shareable across camps in some designs.)
+    /// </summary>
+    public string? CampaignName { get; set; }
 }
 
 public enum LocationType

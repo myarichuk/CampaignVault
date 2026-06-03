@@ -41,6 +41,7 @@ builder.Services.AddSingleton<ISimulationRule, NeedsAccumulationRule>();
 builder.Services.AddSingleton<ISimulationRule, RumorDecayRule>();
 builder.Services.AddSingleton<ISimulationRule, ScheduleEvaluationRule>();
 builder.Services.AddSingleton<ISimulationRule, StatusExpiryRule>();
+builder.Services.AddSingleton<ISimulationRule, CampaignVault.Data.TransientEvictionRule>();
 builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>();
 
 // WorldChange handlers (new extensible dispatch system - "ShouldHandle" responsibility pattern)
@@ -54,6 +55,11 @@ builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHand
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.AttributeChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.MoodChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ActivityChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.LocationCreateHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.LocationUpdateHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.CharacterCreateHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ScheduleChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ItemCreateHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RulesetActionHandler>(sp =>
     new CampaignVault.Data.ChangeHandlers.RulesetActionHandler(
         sp.GetRequiredService<CampaignVault.Rulesets.IRulesetResolverSelector>(),

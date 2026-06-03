@@ -22,6 +22,11 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(MoodChange), "mood")]
 [JsonDerivedType(typeof(ActivityChange), "activity")]
 [JsonDerivedType(typeof(RulesetAction), "ruleset_action")]
+[JsonDerivedType(typeof(LocationCreate), "location_create")]
+[JsonDerivedType(typeof(LocationUpdate), "location_update")]
+[JsonDerivedType(typeof(CharacterCreate), "character_create")]
+[JsonDerivedType(typeof(ScheduleChange), "schedule_change")]
+[JsonDerivedType(typeof(ItemCreate), "item_create")]
 public abstract class WorldChange;
 
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
@@ -215,9 +220,13 @@ public class ActivityChange : WorldChange
     [JsonPropertyName("newActivity")]
     public string? NewActivity { get; set; }
 
-    [Description("New location ID for the character (e.g. 'locations/rusty-nail'). This must be a valid location. Omit to leave location unchanged.")]
+    [Description("New location ID for the character (e.g. 'locations/rusty-nail'). This must be a valid location. Omit the key (or leave null without updateLocation:true) to leave location unchanged. Pass null + updateLocation:true to clear the character's position (e.g. transient eviction).")]
     [JsonPropertyName("newLocationId")]
     public string? NewLocationId { get; set; }
+
+    [Description("Set to true when supplying newLocationId (including null to clear). This distinguishes an explicit location update/clear from an omitted newLocationId key in the JSON (which means 'leave location unchanged'). Internal simulation rules set this when emitting moves or clears.")]
+    [JsonPropertyName("updateLocation")]
+    public bool UpdateLocation { get; set; }
 
     [Description("Optional narrative justification for the change. Stored for later behavioral synthesis and debugging.")]
     [JsonPropertyName("reason")]
@@ -280,4 +289,173 @@ public class RulesetAction : WorldChange
     /// </summary>
     [JsonPropertyName("parameters")]
     public Dictionary<string, string> Parameters { get; set; } = [];
+}
+
+/// <summary>
+/// Create a new location and automatically link it to an existing location.
+/// This prevents orphaned locations and counters LLM laziness.
+/// </summary>
+public class LocationCreate : WorldChange
+{
+    [Description("The unique ID of the new location (e.g., 'locations/tavern_cellar').")]
+    [JsonPropertyName("locationId")]
+    public string LocationId { get; set; } = default!;
+
+    [Description("The human-readable name of the location (e.g., 'Dank Cellar').")]
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = default!;
+
+    [Description("A narrative description of the location.")]
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = default!;
+
+    [Description("The type of location (e.g., 'Room', 'Building', 'Settlement').")]
+    [JsonPropertyName("type")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public LocationType Type { get; set; }
+
+    [Description("Optional. The ID of the parent location that physically contains this one.")]
+    [JsonPropertyName("parentLocationId")]
+    public string? ParentLocationId { get; set; }
+
+    [Description("Optional but highly recommended. The ID of the location you are coming from. If provided, the engine automatically creates two-way exits linking them.")]
+    [JsonPropertyName("connectedFromLocationId")]
+    public string? ConnectedFromLocationId { get; set; }
+
+    [Description("Required if connectedFromLocationId is used. Describes the exit from the connected location into this one (e.g., 'A wooden trapdoor leading down').")]
+    [JsonPropertyName("connectionDescription")]
+    public string? ConnectionDescription { get; set; }
+
+    [Description("Flavor items to return in get_scene (e.g., ['A suspicious crate', 'Rat gnawing on a bone']).")]
+    [JsonPropertyName("pointsOfInterest")]
+    public List<string> PointsOfInterest { get; set; } = [];
+
+    [Description("Hint for the expected crowd when empty (e.g., '2-3 rats and the occasional drunk').")]
+    [JsonPropertyName("ambientCrowd")]
+    public string? AmbientCrowd { get; set; }
+    
+    [Description("Explicit exits. Usually you can leave this empty and rely on connectedFromLocationId instead.")]
+    [JsonPropertyName("exits")]
+    public List<LocationExit> Exits { get; set; } = [];
+}
+
+/// <summary>
+/// Apply granular updates to an existing location.
+/// Useful for opening new paths without full upserts.
+/// </summary>
+public class LocationUpdate : WorldChange
+{
+    [Description("The ID of the location to update.")]
+    [JsonPropertyName("locationId")]
+    public string LocationId { get; set; } = default!;
+
+    [Description("Append a single exit if the target is not already present.")]
+    [JsonPropertyName("addExit")]
+    public LocationExit? AddExit { get; set; }
+
+    [Description("Remove an existing exit pointing to this target location ID.")]
+    [JsonPropertyName("removeExitTarget")]
+    public string? RemoveExitTarget { get; set; }
+
+    [Description("Append a new Point of Interest string.")]
+    [JsonPropertyName("addPointOfInterest")]
+    public string? AddPointOfInterest { get; set; }
+
+    [Description("Set or clear the ambient crowd. Use empty string to clear.")]
+    [JsonPropertyName("ambientCrowd")]
+    public string? AmbientCrowd { get; set; }
+
+    [Description("Rename the location.")]
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [Description("Update the description.")]
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [Description("Change the parent location.")]
+    [JsonPropertyName("parentLocationId")]
+    public string? ParentLocationId { get; set; }
+}
+
+/// <summary>
+/// Create a new transient (or persistent) character at runtime.
+/// </summary>
+public class CharacterCreate : WorldChange
+{
+    [Description("The unique ID of the new character (e.g., 'chars/cloaked_figure_42').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("The name of the character.")]
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = default!;
+
+    [Description("DM notes about this character.")]
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
+
+    [Description("The location where the character is right now.")]
+    [JsonPropertyName("currentLocationId")]
+    public string? CurrentLocationId { get; set; }
+
+    [Description("What they are visibly doing right now.")]
+    [JsonPropertyName("currentActivity")]
+    public string? CurrentActivity { get; set; }
+
+    [Description("If true, the character will never be auto-deleted even if they have no schedule.")]
+    [JsonPropertyName("keepAlive")]
+    public bool KeepAlive { get; set; }
+
+    [Description("Assigning a schedule makes the character persistent and able to simulate.")]
+    [JsonPropertyName("schedule")]
+    public Schedule? Schedule { get; set; }
+
+    [Description("Psychological snapshot of the character's desires and fears.")]
+    [JsonPropertyName("psychology")]
+    public PsychologyProfile? Psychology { get; set; }
+}
+
+/// <summary>
+/// Change or set a character's schedule, effectively promoting or demoting them.
+/// </summary>
+public class ScheduleChange : WorldChange
+{
+    [Description("The ID of the character to update.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("The new schedule. Supplying a schedule promotes a transient NPC to a persistent one. Sending null removes their schedule.")]
+    [JsonPropertyName("schedule")]
+    public Schedule? Schedule { get; set; }
+}
+
+/// <summary>
+/// Create a new item (spontaneous loot, generated artifacts) in the world.
+/// </summary>
+public class ItemCreate : WorldChange
+{
+    [Description("The unique ID of the new item (e.g., 'items/rusty_locket_19').")]
+    [JsonPropertyName("itemId")]
+    public string ItemId { get; set; } = default!;
+
+    [Description("The name of the item.")]
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = default!;
+
+    [Description("The description of the item.")]
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = default!;
+
+    [Description("Where the item currently is (a location ID, character ID, or another item container).")]
+    [JsonPropertyName("holderId")]
+    public string HolderId { get; set; } = default!;
+
+    [Description("List of structural tags (e.g., ['quest', 'clue']).")]
+    [JsonPropertyName("tags")]
+    public List<string> Tags { get; set; } = [];
+
+    [Description("Key-value attributes for mechanics (e.g., {'value': '5', 'material': 'silver'}).")]
+    [JsonPropertyName("properties")]
+    public Dictionary<string, string> Properties { get; set; } = [];
 }

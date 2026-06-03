@@ -14,7 +14,7 @@ namespace CampaignVault.Data;
 public sealed class NeedsAccumulationRule : ISimulationRule
 {
     public string Name => "Needs & Mood Accumulation";
-    public int Order => 10;
+    public int Order => 35;
 
     public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {

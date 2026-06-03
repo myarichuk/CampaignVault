@@ -23,8 +23,12 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
         if (act.NewActivity != null)
             character.CurrentActivity = act.NewActivity;
 
-        if (act.NewLocationId != null)
+        if (act.NewLocationId != null || act.UpdateLocation)
+        {
+            // Supports explicit clears (NewLocationId=null + UpdateLocation=true) from TransientEvictionRule etc.
+            // For LLM-authored partial updates that only change activity, omit newLocationId (or set UpdateLocation false).
             character.CurrentLocationId = act.NewLocationId;
+        }
 
         context.RecordMessage($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");
 

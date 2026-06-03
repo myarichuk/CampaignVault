@@ -27,5 +27,7 @@ For example, a character created as `characters/bram-ironarm` in Campaign A is t
 
 If strict entity isolation is required later, we can introduce a `CampaignId` property on these documents and filter them at the repository query level, rather than changing their document IDs.
 
+**Update (scoping hardening):** As of focused hardening (per code_review.md), entities now have `CampaignName` set on create/upsert via context. Key paths (GetCharacterPressureAsync, Advance sim queries, Query* methods, GetScene, handlers) post-filter (loose for shareable entities like chars/locs per design, strict for campaign-specific like events/rumors). Legacy nulls still visible for test compat, but no play data requires BC. See plan.md for details.
+
 ### 3. Simulation Scope
 The `AdvanceWorldAsync` simulation currently operates on a global scope for entities (it evaluates all characters with a schedule). However, it passes the `effective` campaign context down into the simulation loop so rules can (in the future) filter their evaluation scope based on the active campaign. Because time is strictly isolated per campaign, the time-decay mechanics correctly apply only to the running campaign.

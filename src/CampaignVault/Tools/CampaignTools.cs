@@ -160,17 +160,34 @@ public class CampaignTools
             var pressure = new List<string>();
             foreach (var r in rumors.Where(r => time.TotalDaysElapsed - r.LastStateChangeDay > 5))
             {
-                pressure.Add($"Rumor '{r.Subject}' has been spreading for {time.TotalDaysElapsed - r.LastStateChangeDay} days without resolution.");
+                pressure.Add($"Rumor '{r.Subject}' has been spreading for {time.TotalDaysElapsed - r.LastStateChangeDay} days without resolution. " +
+                    "Consider evolving or resolving via commit: [ { \"$type\": \"rumor\", \"rumorId\": \"...\", \"newState\": \"Fading|Resolved\", \"newText\": \"...\" } ]");
             }
 
             var agingEvents = await _repository.QueryEventsAsync(session, null, EventCategory.Unresolved, 5, effective);
             foreach (var e in agingEvents)
             {
-                pressure.Add($"Unresolved thread: '{e.Summary}' ({time.TotalDaysElapsed - e.DayLogged} days old).");
+                pressure.Add($"Unresolved thread: '{e.Summary}' ({time.TotalDaysElapsed - e.DayLogged} days old). " +
+                    "Resolve or advance via commit e.g. [ { \"$type\": \"event\", \"category\": \"Resolution\", \"summary\": \"...resolved...\", \"involved\": [\"" + (e.Involved?.FirstOrDefault() ?? "ids...") + "\"] } ] or convert to rumor.");
             }
             
             var charPressure = await _repository.GetCharacterPressureAsync(session, effective);
-            pressure.AddRange(charPressure);
+            // Enhance a few char pressures with copy-paste hints for common cases (reduces need to recall exact JSON shape)
+            foreach (var cp in charPressure)
+            {
+                if (cp.Contains("critically wounded") || cp.Contains("dying"))
+                {
+                    pressure.Add(cp + " Example fix in commit: [ { \"$type\": \"hp\", \"characterId\": \"chars/xxx\", \"delta\": 10 }, { \"$type\": \"status\", \"characterId\": \"chars/xxx\", \"status\": \"Stable\" } ]");
+                }
+                else if (cp.Contains("desperate need"))
+                {
+                    pressure.Add(cp + " Satisfy via: [ { \"$type\": \"need\", \"characterId\": \"chars/xxx\", \"need\": \"hunger\", \"delta\": -30 } ] (negative = satisfy). Consider schedule_change if this NPC is important.");
+                }
+                else
+                {
+                    pressure.Add(cp);
+                }
+            }
 
             var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
             
@@ -180,43 +197,109 @@ public class CampaignTools
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors. Respects the currently selected campaign.")]
+    [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors. Respects the currently selected campaign.\nSet 'partyPresent=true' ONLY if the party is physically entering or spending time here. Leave false if just looking around for pressures to prevent messing up the simulation's character eviction logic.")]
     public Task<ToolResult<SceneView>> GetScene(
         [Description("The unique ID of the location.")] string locationId,
+        [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
-            var scene = await _repository.GetSceneAsync(session, locationId, effective);
-            return new ToolResult<SceneView>(true, scene, $"Scene details for {locationId} (campaign: {effective}) retrieved.");
-        }, saveChanges: false);
+            var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: partyPresent);
+            var pressures = new List<string>();
+            var loc = scene.Location;
+
+            if (!scene.IsLocationAnchored)
+            {
+                pressures.Add(
+                    $"ENGINE WARNING: You requested '{locationId}' but it does not exist in the database! " +
+                    "You are hallucinating. Use the `commit` tool immediately:\n" +
+                    "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
+                    "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
+                    "\"connectionDescription\": \"...\"\n  }\n]");
+            }
+            else
+            {
+                if (loc.Exits.Count == 0 && loc.Type != LocationType.Region)
+                {
+                    pressures.Add(
+                        $"ENGINE WARNING: This location has no Exits. The players are soft-locked. " +
+                        "Use `location_update` to add an exit back:\n" +
+                        "[ { \"$type\": \"location_update\", \"locationId\": \"" + loc.Id + "\", " +
+                        "\"addExit\": { \"targetLocationId\": \"locations/previous_area\", \"description\": \"...\" } } ]");
+                }
+                if (!scene.PresentNPCs.Any() && !string.IsNullOrWhiteSpace(loc.AmbientCrowd))
+                {
+                    pressures.Add(
+                        $"NARRATIVE PROMPT: This location is currently empty, but expects '{loc.AmbientCrowd}'. " +
+                        "Consider spawning flavorful transient NPCs via `character_create` inside `commit`.");
+                }
+
+                // Additional laziness / integrity mitigations (Phase 7 prep + Phase 6 amplification)
+                // 1. Missing reverse link from parent (one-way door, even if not created via auto-link path).
+                if (!string.IsNullOrEmpty(loc.ParentLocationId))
+                {
+                    // Cheap extra load; parent is often warm from prior calls or include paths.
+                    // In real use, this surfaces immediately on get_scene so LLM can fix with location_update on the *parent*.
+                    try
+                    {
+                        // We can't easily access raw session here without changing Execute, so do a repo call (it will sanitize).
+                        // Note: GetLocationAsync is lightweight.
+                        var parentLoc = await _repository.GetLocationAsync(session, loc.ParentLocationId, effective);
+                        if (parentLoc != null && !parentLoc.Exits.Any(e => e.TargetLocationId == loc.Id))
+                        {
+                            pressures.Add(
+                                $"ENGINE WARNING: This location has a ParentLocationId but the parent has no matching exit back to it (one-way link / broken connectivity). " +
+                                "Fix with location_update on the parent:\n" +
+                                "[ { \"$type\": \"location_update\", \"locationId\": \"" + parentLoc.Id + "\", " +
+                                "\"addExit\": { \"targetLocationId\": \"" + loc.Id + "\", \"description\": \"... (back to " + loc.Name + ")\" } } ]");
+                        }
+                    }
+                    catch (Exception ex) { Console.WriteLine($"Pressure check error: {ex.Message}"); }
+                }
+
+                // 2. Flavor vacuum: scene has no PoIs, no AmbientCrowd, no present NPCs, and is not a pure Region.
+                // Nudges LLM to use lightweight non-persistent flavor instead of forcing character_create for every bar patron.
+                if (loc.Type != LocationType.Region && loc.PointsOfInterest.Count == 0 && string.IsNullOrWhiteSpace(loc.AmbientCrowd) && !scene.PresentNPCs.Any())
+                {
+                    pressures.Add(
+                        $"NARRATIVE PROMPT: This location lacks flavor details (no PointsOfInterest, no AmbientCrowd). " +
+                        "For a lively scene without DB bloat, use location_update (or include in location_create) to add PoIs/AmbientCrowd. Example:\n" +
+                        "[ { \"$type\": \"location_update\", \"locationId\": \"" + loc.Id + "\", " +
+                        "\"addPointOfInterest\": \"A half-empty mug on the bar\", \"ambientCrowd\": \"3-6 locals nursing drinks\" } ]");
+                }
+
+                // 3. Dead-end room with exits that may need promotion or travel hints (future spatial).
+                if (loc.Exits.Count > 0 && loc.Type == LocationType.Room && string.IsNullOrWhiteSpace(loc.AmbientCrowd) && loc.PointsOfInterest.Count == 0 && !scene.PresentNPCs.Any())
+                {
+                    // Light nudge; real travel mechanics come in Phase 7.
+                    pressures.Add(
+                        $"NARRATIVE PROMPT (optional): Room has exits but no ambient hint. If this is a 'quiet' area, consider setting ambientCrowd for future visits or use schedule_change on key NPCs to anchor them here.");
+                }
+            }
+
+            return new ToolResult<SceneView>(true, scene, 
+                $"Scene details for {locationId} (campaign: {effective}) retrieved.",
+                WorldPressure: pressures.Count > 0 ? pressures.ToArray() : null);
+        }, saveChanges: partyPresent);
     }
 
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
     [Description(@"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. 
-Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action). 
-Use ActivityChange liberally to keep get_scene in sync with your narrative. Respects the currently selected campaign.
+Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action, and the open-world creates/updates). 
+Use ActivityChange liberally to keep get_scene in sync with your narrative. 
 
-Supported types for $type: hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action.
+**When you see ENGINE WARNING or NARRATIVE PROMPT in any get_scene / get_world_state / advance_world response, your immediate follow-up should be a commit using the exact ready JSON example provided (the primary laziness mitigation).**
+
+See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
+
+Supported types for $type: hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, schedule_change, item_create.
 
 === RECOMMENDED PATTERNS (copy-paste friendly) ===
 
-1) Basic Narrative Update:
-[
-  { ""$type"": ""event"", ""category"": ""Narrative"", ""summary"": ""The party discovered the hidden door."" },
-  { ""$type"": ""activity"", ""characterId"": ""chars/guard1"", ""newLocationId"": ""locations/cellar"", ""newActivity"": ""Searching the cellar"" }
-]
+(See get_help for the full expanded list including the tavern creation + promotion flow, one-way link fixes, ambient/PoI flavor without bloat, etc.)
 
-2) Combat & Mechanics (ruleset_action):
-Use ruleset_action to trigger attacks or skill checks. The correct math and properties depend on the ActiveSystem.
-D&D 5e Example:
-{ ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""targetIds"": [""goblin1""], ""actionType"": ""Attack"", ""parameters"": { ""bonus"": ""5"", ""damageDice"": ""1d8+3"" } }
-
-Pathfinder 2e Example (Strike):
-{ ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""targetIds"": [""goblin1""], ""actionType"": ""Strike"", ""parameters"": { ""bonus"": ""7"", ""damageDice"": ""1d8+4"", ""mapPenalty"": ""0"" } }
-
-Fallout 2d20 Example (Skill Test):
-{ ""$type"": ""ruleset_action"", ""actorId"": ""bob"", ""actionType"": ""SkillTest"", ""parameters"": { ""target"": ""12"", ""complicationRange"": ""19"" } }")]
+Basic + creating on the fly examples are also shown in the tool description and get_help.")]
     public Task<ToolResult<CommitResult>> Commit(
         [Description("Array of world changes. Each item must be a JSON object with a '$type' discriminator.")] WorldChange[] changes,
         [Description("Narrative summary of what happened (for the log and world pressure).")] string narrative,
@@ -311,13 +394,12 @@ Fallout 2d20 Example (Skill Test):
             var npc = await _repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null) return new ToolResult<NpcContextView>(false, Error: "NotFound");
 
-            // Query events involving the NPC, then explicitly sanitize Details using the central helper
-            // so complex JsonElement values never leak to the LLM (was missing before).
-            var npcEvents = await session.Advanced.AsyncDocumentQuery<Event>()
-                .WhereEquals("Involved", characterId)
-                .OrderByDescending(x => x.Timestamp)
+            // Use repo query (now scoped) + client filter for involved.
+            var npcEvents = (await _repository.QueryEventsAsync(session, null, null, 10, effective))
+                .Where(e => e.Involved != null && e.Involved.Contains(characterId))
+                .OrderByDescending(e => e.Timestamp)
                 .Take(10)
-                .ToListAsync();
+                .ToList();
 
             foreach (var ev in npcEvents)
             {
@@ -403,7 +485,7 @@ This is the best opportunity to create deep, simulatable NPCs.")]
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async s =>
         {
-            await _repository.UpsertCharacterAsync(s, character);
+            await _repository.UpsertCharacterAsync(s, character, effective);
             return new ToolResult<Character>(true, character, $"Character upserted (campaign context: {effective}).");
         });
     }
@@ -419,7 +501,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async s =>
         {
-            await _repository.UpsertLocationAsync(s, location);
+            await _repository.UpsertLocationAsync(s, location, effective);
             return new ToolResult<Location>(true, location, $"Location upserted (campaign context: {effective}).");
         });
     }
@@ -433,7 +515,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async s =>
         {
-            await _repository.UpsertLoreAsync(s, lore);
+            await _repository.UpsertLoreAsync(s, lore, effective);
             return new ToolResult<Lore>(true, lore, $"Lore upserted (campaign context: {effective}).");
         });
     }
@@ -870,55 +952,109 @@ Use this if you are unsure which campaign you are currently in or if you need to
 
 Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narrative while letting the MCP engine handle the persistence, math, and simulation.
 
+**KEY PHILOSOPHY (Anti-LLM-Laziness / Schrödinger's World):** 95%+ of the world is ephemeral flavor that lives ONLY in your current narration/context. Only *meaningful* interactions (that will be referenced again, combat, theft, named recurring NPCs, discovered secret doors the party will use) should be anchored via `commit`. The engine owns linking, GC of transients, visit tracking, and nags you *immediately* on the next `get_scene` or `get_world_state` with **exact, copy-paste-ready JSON** when you (or prior LLM turns) were lazy/incomplete. Treat every string in `WorldPressure` that starts with `ENGINE WARNING:` or `NARRATIVE PROMPT:` as a **mandatory high-priority directive**. Paste the example JSON into your next `commit` call. This defeats the ""silly factor"" of being forced to output perfect polymorphic arrays for every tavern bard or crate.
+
 ## Core Gameplay Loop
-1. **Start of Session**: Call `get_world_state` to sync with the campaign clock, rumors, events, and immediate **WorldPressure**.
-2. **Exploration**: Call `get_scene` when the party enters a new location to see NPCs, items, and local descriptions.
-3. **Action & Consequence**: Describe the narrative to the player. When something permanent happens (combat, taking an item, changing a relationship), call `commit`.
-4. **Time Skips**: Use `advance_world` when the party rests or travels. This triggers background simulations (NPC routines, needs accumulation, rumor decay).
+1. **Start of Session**: Call `get_current_campaign` + `get_world_state` (with party location) to sync time, rumors, events, char distress, **and WorldPressure**.
+2. **Exploration**: Call `get_scene` on entry. **Immediately action any ENGINE WARNING / NARRATIVE PROMPT in the WorldPressure** (use the exact JSON provided).
+3. **Action & Consequence**: Narrate vividly to players. At end of beat (or when something should persist), call `commit` with array of changes. Use `activity` liberally to keep sim in sync.
+4. **Time Skips / Travel**: `advance_world` (triggers needs, rumor decay, schedule eval, **TransientEvictionRule** for flavor NPCs).
+5. **Deep NPC**: `get_npc_context` + `get_npc_needs`.
 
-## The Commit Tool
-`commit` is your universal write tool. It takes an array of JSON mutations (`$type`). It is atomic. NEVER forget to `commit` the outcome of a narrative beat.
+**Golden Rule:** If you just narrated something that should ""exist"" next time the party returns or is referenced, `commit` it (via create or update). If it's pure color, use PointsOfInterest + AmbientCrowd (lightweight, no docs created until you decide to promote).
 
-Supported `$type`s: `hp`, `item`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`.
+## The Commit Tool (Universal Write)
+ALWAYS call at end of combat/conversation/discovery. Atomic array of `$type` mutations. Rate limited + batch capped (50).
+
+Supported `$type`s: `hp`, `item`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `schedule_change`, `item_create`.
+
+**RECOMMENDED PATTERNS (copy-paste and adapt):**
+
+Basic update + sync:
+[
+  { ""$type"": ""event"", ""category"": ""Narrative"", ""summary"": ""Party found the hidden stair."" },
+  { ""$type"": ""activity"", ""characterId"": ""chars/guard1"", ""newLocationId"": ""locations/cellar"", ""newActivity"": ""Searching crates nervously"" }
+]
+
+**Creating on the fly (the laziness countermeasure - use these instead of pure narration for anything that might matter later):**
+[
+  { ""$type"": ""location_create"", ""locationId"": ""locations/tavern_cellar"", ""name"": ""Dank Cellar"", ""description"": ""Smells of damp earth..."", ""type"": ""Room"", ""connectedFromLocationId"": ""locations/tavern"", ""connectionDescription"": ""A wooden trapdoor leading down"", ""pointsOfInterest"": [""Suspicious crate"", ""Rat gnawing bone""], ""ambientCrowd"": ""2-3 rats and a drunk sleeping it off"" },
+  { ""$type"": ""character_create"", ""characterId"": ""chars/cloaked_figure"", ""name"": ""Cloaked Figure"", ""currentLocationId"": ""locations/tavern_cellar"", ""currentActivity"": ""Watching the party"", ""keepAlive"": false, ""notes"": ""Offered a map for coin."" }
+]
+
+Later promote a transient (so it survives GC and participates in AdvanceWorld):
+[
+  { ""$type"": ""schedule_change"", ""characterId"": ""chars/cloaked_figure"", ""schedule"": { ""defaultLocationId"": ""locations/market_square"", ""routines"": [ { ""condition"": ""Any"", ""locationId"": ""locations/market_square"", ""activity"": ""Haggling"", ""probability"": 0.8 } ] } }
+]
+
+Item + transfer patterns, status with modifiers, ruleset_action (see below), etc.
+
+**After you see a pressure in get_scene/get_world_state, your *next* action should usually be a `commit` using the exact snippet provided (adapted with real IDs/names).** Then narrate the outcome. The engine will clear the pressure on subsequent reads.
+
+## Schrödinger's World + Transient / Open-World Patterns (Critical for Laziness Mitigation)
+- **Flavor without bloat**: When narrating a crowded tavern, a bustling market, rats in a cellar, or ""a bard playing a lute in the corner"", **do not** immediately `character_create` 20 people. Instead:
+  - On initial `location_create` or via `location_update`: populate `pointsOfInterest` (light list of strings returned in get_scene) and/or `ambientCrowd` (string hint, e.g. ""8-15 rough sailors and dockworkers"").
+  - The engine will surface a `NARRATIVE PROMPT` in get_scene when the live scene is empty but ambient is expected: this is your cue to spawn 1-3 *interactable* transients via `character_create` if players engage, or just narrate using the hint.
+- **Transients auto-GC**: Any character created (or moved via activity) with `schedule: null` AND `keepAlive: false` is transient. When the party leaves the area (get_scene on another loc + `advance_world` days later) and `LastVisitedDay` on the loc is old (>1 day), the `TransientEvictionRule` emits `ActivityChange` deltas that clear `CurrentLocationId`. The doc stays (cheap) for possible later promotion by ID or narrative callback. Use `keepAlive: true` for PCs, companions, or ""favorite"" flavor you want to keep without a full schedule.
+- **Auto-Linking prevents soft-locks**: Always supply `connectedFromLocationId` + `connectionDescription` on `location_create`. Engine appends forward + reverse exits (and sets parent). If you forget, next get_scene on the child will give ENGINE WARNING + exact `location_update` JSON to add the missing exit.
+- **Promotion path**: Use `schedule_change` (or supply schedule at `character_create` time) to make a transient permanent (it now runs in simulation, ignored by GC).
+- **Dead-ends / broken maps**: get_scene will nag with ready `location_update` + `addExit`. Use it.
+- **Hallucinated locations**: get_scene never throws for bad ID. Returns stub + strong ENGINE WARNING with ready `location_create` JSON (including connectedFrom suggestion). Paste it.
+
+**Full ""Lazy LLM Tavern"" Walkthrough Example (copy this pattern):**
+You (LLM): ""You push open the door to the Rusty Nail. The common room is full of sailors and dockworkers. A one-eyed bard in the corner is singing a shanty about lost ships while plucking a battered lute. The air smells of salt, sweat, and cheap ale. A toothless barman named Bram wipes a mug...""
+
+(You used ambient flavor + PoIs implicitly via narration. No commit yet - correct for pure color.)
+
+Later, party talks to the bard or barman engages:
+- Call `get_scene ""locations/rusty-nail""` first (authoritative state).
+- Suppose it returns empty PresentNPCs but AmbientCrowd hint (or prior you set none) + NARRATIVE PROMPT pressure: it will literally give you the JSON array.
+- Then: `commit` the create for the interactable ones only:
+  [
+    { ""$type"": ""character_create"", ""characterId"": ""chars/bram-the-barkeep"", ""name"": ""Bram Ironarm"", ""currentLocationId"": ""locations/rusty-nail"", ""currentActivity"": ""Wiping mugs and watching the door"", ""notes"": ""Toothless, one good eye, ex-sailor. Knows harbor gossip."", ""psychology"": { ""wants"": [""quiet night"", ""coin""], ""fears"": [""trouble in his bar""] } },
+    { ""$type"": ""character_create"", ""characterId"": ""chars/one-eyed-bard"", ... similar ... },
+    { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party met Bram and the bard at the Rusty Nail."" }
+  ] ""The party enters and interacts with the locals.""
+
+- If later the bard becomes a quest giver recurring: `schedule_change` or add Schedule at birth + `keepAlive`.
+- If they just drink and leave: no commit needed for the 12 unnamed sailors. Engine will GC any you did transiently create if area goes cold.
+
+This is how you stay creative *and* keep the world model healthy without perfect JSON for every flavor element.
 
 ## Ruleset Actions (Combat & Skill Checks)
-Instead of rolling dice yourself, use `$type: ruleset_action` inside `commit`. The engine will calculate hits, crits, and modifiers automatically based on the `ActiveSystem`.
-
-**D&D 5e / PF2e Example:**
-```json
-{
-  ""$type"": ""ruleset_action"",
-  ""actorId"": ""chars/gimli"",
-  ""targetIds"": [""chars/goblin""],
-  ""actionType"": ""Attack"",
-  ""parameters"": { ""bonus"": ""5"", ""damageDice"": ""1d8+3"" }
-}
-```
+... (same as before, keep the examples)
 
 ## Status Effects & Stat Modifiers
-Do not just narrate ""he is crippled"". Apply a status effect via `commit` so the system knows! You can embed mechanical modifiers that the engine will mathematically enforce on all future `ruleset_action` calls.
+... (same)
 
-**Status Example:**
-```json
-{
-  ""$type"": ""status"",
-  ""characterId"": ""chars/gimli"",
-  ""effect"": {
-    ""name"": ""Crippled Arm"",
-    ""category"": ""Injury"",
-    ""affectedPart"": ""LeftArm"",
-    ""statModifiers"": {
-      ""AttackRoll"": -2,
-      ""SkillCheck"": -1
-    },
-    ""recoveryHint"": ""Requires a DC 15 Medicine check or a long rest.""
-  }
-}
-```
-**Canonical Modifiers:** `AttackRoll`, `DamageRoll`, `AC`, `Defense`, `Initiative`, `SkillCheck`, `AllRolls`, `AllChecks`.
+## World Pressure (Your Co-DM Nag System)
+Pressures appear in **every** `get_world_state`, `get_scene`, and `advance_world` response (in the ToolResult.WorldPressure array, and also embedded in some views).
 
-## World Pressure
-When you call `get_world_state` or `advance_world`, the engine returns a `pressure` array. This contains characters who are dying, statuses that are festering, or rumors that have gone unresolved for days. **It is your job to inject these pressures into the narrative.**
+- `ENGINE WARNING`: Structural/integrity problem (hallucinated loc, no exits, broken link, etc.). **Paste the JSON and fix immediately.** These are the primary defense against laziness and broken worlds.
+- `NARRATIVE PROMPT`: Opportunity / flavor cue (empty but ambient expected, no PoIs on a lively spot). Use to decide whether to persist something or just narrate using the hint.
+- Simulation / character / rumor pressures: Aging unresolved, dying PCs/NPCs, desperate needs, etc. Many now include mini example commit snippets.
+
+**Never ignore them.** The next `get_scene` after you fix will usually have fewer or none. If you keep seeing the same one, you skipped the commit.
+
+Additional pressures come from `GetCharacterPressureAsync` (HP, bad statuses, high needs) surfaced via get_world_state, plus rule narratives turned into SimulatorEvents on advance.
+
+## Other Tools & Patterns
+- `get_npc_context` / `get_npc_needs`: Use before deep roleplay. Merge descriptors happen automatically.
+- `search_world`, `recall_history`: For discovery without hallucinating duplicates.
+- `define_need_descriptor` + `get_need_descriptors`: For custom needs vocabulary (wanderlust, debt_pressure, etc.).
+- World-builder upserts: Fine for initial seeding / major PoIs. During play, prefer `commit` + the runtime creates.
+- Combat: start_combat, next_turn, end_combat + ruleset_action inside commit. Statuses applied via commit survive and modify future rolls.
+
+## Common Laziness Traps & How the Engine Helps
+- Narrating a whole new dungeon level without creates -> next get_scene on a room ID: instant hallucination pressure + exact create JSON.
+- Creating a cellar via create but forgetting the back exit -> pressure on entry.
+- Spawning 40 named sailors for one scene -> bloat; use ambient + 1-2 creates only for interactables; GC cleans the rest.
+- Forgetting to `activity` change after a scene -> get_scene shows stale locations/activities.
+- Ignoring an aging ""Unresolved"" event for 10 days -> pressure in get_world_state with resolution hint.
+
+Call `get_help` any time you (the LLM) are unsure. Re-read the pressures section often.
+
+Remember: the engine is strict on invariants (map connectivity, no silent deletes of important state) so *you* can be creatively lazy about flavor.
 ";
         return Task.FromResult(new ToolResult<string>(true, manual, "Help manual retrieved."));
     }

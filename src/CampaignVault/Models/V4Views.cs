@@ -3,6 +3,14 @@ namespace CampaignVault.Models;
 public class SceneView
 {
     public Location Location { get; set; } = default!;
+
+    /// <summary>
+    /// True if the location exists in the persistent database (was loaded successfully).
+    /// False for hallucinated / un-created location IDs: the returned Location is a minimal stub.
+    /// When false, the caller (tool) should surface strong ENGINE WARNING pressure with a ready-to-paste location_create example.
+    /// </summary>
+    public bool IsLocationAnchored { get; set; } = true;
+
     /// <summary>
     /// Lightweight summaries of NPCs currently present (driven by simulated Schedule + Current* state).
     /// Much smaller than full Character objects, focused on what an LLM DM actually needs for roleplay.

@@ -58,7 +58,12 @@ public class CampaignRepository
                 new NeedChangeHandler(),
                 new AttributeChangeHandler(),
                 new MoodChangeHandler(),
-                new ActivityChangeHandler()
+                new ActivityChangeHandler(),
+                new LocationCreateHandler(),
+                new LocationUpdateHandler(),
+                new CharacterCreateHandler(),
+                new ItemCreateHandler(),
+                new ScheduleChangeHandler()
             ];
         }
 
@@ -143,10 +148,11 @@ public class CampaignRepository
     /// </summary>
     public async Task<List<string>> GetCharacterPressureAsync(IAsyncDocumentSession session, string? campaignName = null)
     {
-        _ = ResolveCampaign(campaignName); // Left in for future API consistency if entities get namespaced
-        var prefix = "chars/";
-        
-        var characters = await session.Advanced.LoadStartingWithAsync<Character>(prefix);
+        var effective = ResolveCampaign(campaignName);
+        // Hardened: filter by CampaignName (loose for shareable chars per design/feedback; strict would exclude legacy)
+        var characters = await session.Query<Character>()
+            .Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
+            .ToListAsync();
         var pressure = new List<string>();
         var badCategories = new[] { "Injury", "Condition", "Disease", "Poison", "Curse" };
 
@@ -177,7 +183,7 @@ public class CampaignRepository
     /// Fetches the synthesized state of a location, including NPCs present, visible items, local rumors, and recent events.
     /// This is the primary read operation used by the LLM when entering a new scene.
     /// </summary>
-    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId, string? campaignName = null)
+    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId, string? campaignName = null, bool markVisited = false)
     {
         var location = await session
             .Include<Location>(x => x.ParentLocationId)
@@ -185,31 +191,59 @@ public class CampaignRepository
 
         if (location == null)
         {
-            // Explicit guard instead of relying on location! below.
-            // Prevents NullReferenceException when an LLM passes a bad or deleted locationId.
-            throw new KeyNotFoundException($"Location '{locationId}' not found.");
+            // Per Phase 6 design: never throw on hallucinated location IDs.
+            // Return a minimal stub so the tool layer can emit clear "use location_create" WorldPressure.
+            // The stub is safe to return; callers should check IsLocationAnchored.
+            var stub = new Location
+            {
+                Id = locationId,
+                Name = "[Unanchored]",
+                Description = "This location does not exist in the persistent world model yet.",
+                Type = LocationType.Room,
+                Exits = [],
+                PointsOfInterest = [],
+                AmbientCrowd = null,
+                LastVisitedDay = null
+            };
+            return new SceneView
+            {
+                Location = stub,
+                PresentNPCs = [],
+                LocalRumors = [],
+                VisibleItems = [],
+                RecentEvents = [],
+                ActiveCombat = null,
+                IsLocationAnchored = false
+            };
         }
 
         var effective = ResolveCampaign(campaignName);
         var regionId = location.ParentLocationId ?? locationId;
         var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20, effective)).ToList();
-        
+
         var targetIds = new List<string> { locationId };
         targetIds.AddRange(subLocations.Select(l => l.Id));
 
         // Primary discovery via static schedule index (good for cold starts / world building)
-        // NOTE: Raw queries for entities are location/schedule scoped, not campaign-filtered.
-        // Entities remain ID-controlled for now; singletons and context provide the isolation boundary.
+        // Scoping hardened: filter by CampaignName (loose to allow shared NPCs/locations per design/feedback; strict for events/rumors).
         var npcsFromIndex = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .ContainsAny("Locations", targetIds)
             .Take(20)
             .ToListAsync();
+        if (!string.IsNullOrEmpty(effective))
+        {
+            npcsFromIndex = npcsFromIndex.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
+        }
 
         // Fallback: if the index hasn't caught up (common in fast tests), load recent characters and filter client-side
         //TODO: add a warning log - so I can catch it in live instances
         if (npcsFromIndex.Count == 0)
         {
             var recentChars = await session.Query<Character>().Take(200).ToListAsync();
+            if (!string.IsNullOrEmpty(effective))
+            {
+                recentChars = recentChars.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
+            }
             npcsFromIndex = recentChars
                 .Where(x => x.Schedule != null &&
                             (targetIds.Contains(x.Schedule.DefaultLocationId) ||
@@ -224,6 +258,10 @@ public class CampaignRepository
             .WhereIn("CurrentLocationId", targetIds)
             .Take(20)
             .ToListAsync();
+        if (!string.IsNullOrEmpty(effective))
+        {
+            npcsFromSimulation = npcsFromSimulation.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
+        }
 
         // Merge, dedupe by Id, prefer simulation-updated versions when both exist
         var npcMap = npcsFromIndex.ToDictionary(n => n.Id, n => n);
@@ -233,10 +271,20 @@ public class CampaignRepository
         }
         var npcs = npcMap.Values.ToList();
 
+        // Apply campaign scoping filter (loose for shareable NPCs per design)
+        if (!string.IsNullOrEmpty(effective))
+        {
+            npcs = npcs.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
+        }
+
         var rumors = await QueryRumorsAsync(session, null, regionId, null, 5, effective);
         
-        // Items and characters are currently scoped by location, not campaign.
+        // Items filtered for campaign scoping (loose for shareables).
         var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
+        if (!string.IsNullOrEmpty(effective))
+        {
+            items = items.Where(i => string.IsNullOrEmpty(i.CampaignName) || i.CampaignName == effective).ToList();
+        }
         foreach (var it in items)
         {
             JsonSanitizer.Sanitize(it);
@@ -282,7 +330,7 @@ public class CampaignRepository
             return new NpcPresenceSummary(
                 Id: npc.Id,
                 Name: npc.Name,
-                CurrentActivity: npc.CurrentActivity ?? npc.Schedule?.DefaultLocationId,
+                CurrentActivity: npc.CurrentActivity ?? "Idle at default location",
                 CurrentMood: npcPsych.CurrentMood,
                 TopNeeds: topNeeds,
                 KnownNeeds: knownNeeds,
@@ -299,15 +347,22 @@ public class CampaignRepository
             activeCombat = null;
         }
 
-        return new SceneView
+        if (markVisited)
+        {
+            location.LastVisitedDay = time.TotalDaysElapsed;
+        }
+
+        var sceneView = new SceneView
         {
             Location = location,
             PresentNPCs = presenceSummaries,
             LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
             VisibleItems = items,
             RecentEvents = events,
-            ActiveCombat = activeCombat
+            ActiveCombat = activeCombat,
+            IsLocationAnchored = true
         };
+        return sceneView;
     }
 
     // --- Time & Simulator ---
@@ -335,13 +390,17 @@ public class CampaignRepository
 
         await session.StoreAsync(time);
 
-        // NOTE (multi-campaign): These simulation queries are currently global (entity IDs are caller-controlled, not namespaced).
-        // Campaign isolation for world entities is provided via the CampaignName in simContext (rules may filter in future)
-        // and per-campaign singletons (time/config/combat). See code-review-fix-plan.md for scoping policy notes.
-        var activeRumors = await session.Query<Rumor>()
+        // Scoping hardened: entity queries now filter by CampaignName (see code_review.md and plan).
+        // For shareables (NPCs/locs) loose filter allows cross-camp if desired; events/rumors strict.
+        // Per user feedback: no BC for play data (none exists), don't support global where doesn't make sense (e.g. no global events).
+        var activeRumors = (await session.Query<Rumor>()
             .Where(x => x.State != RumorState.Resolved && x.State != RumorState.Forgotten)
-            .ToListAsync();
-        var npcs = await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync();
+            .ToListAsync())
+            .Where(r => string.IsNullOrEmpty(r.CampaignName) || r.CampaignName == effective)
+            .ToList();
+        var npcs = (await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync())
+            .Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
+            .ToList();
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
         var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective);
@@ -415,6 +474,14 @@ public class CampaignRepository
             SanitizeLocation(l);
         }
 
+        var effective = ResolveCampaign(campaignName);
+        if (!string.IsNullOrEmpty(effective))
+        {
+            chars = chars.Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective).ToList();  // loose for chars (may share)
+            lore = lore.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective).ToList();
+            locs = locs.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective).ToList();
+        }
+
         var results = new List<object>();
         results.AddRange(chars);
         results.AddRange(lore);
@@ -427,11 +494,17 @@ public class CampaignRepository
     /// </summary>
     public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, EventCategory? category, int limit = 10, string? campaignName = null)
     {
+        var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
         if (category.HasValue) q = q.AndAlso().WhereEquals(x => x.Category, category.Value);
         var events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
         foreach (var ev in events) { if (ev.Details != null) ev.Details = SanitizeDetails(ev.Details); }
+        if (!string.IsNullOrEmpty(effective))
+        {
+            // strict for events (no legacy global cross-camp)
+            events = events.Where(e => e.CampaignName == effective).ToList();
+        }
         return events;
     }
 
@@ -456,10 +529,14 @@ public class CampaignRepository
     /// Inserts or updates a character in the database, safely mutating tracked entities to preserve concurrency.
     /// Also waits for the Character/Search index to catch up to prevent stale queries.
     /// </summary>
-    public async Task UpsertCharacterAsync(IAsyncDocumentSession session, Character character)
+    public async Task UpsertCharacterAsync(IAsyncDocumentSession session, Character character, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(character.Id))
             throw new ArgumentException("Character.Id is required for upsert.");
+
+        var effective = ResolveCampaign(campaignName);
+        if (string.IsNullOrEmpty(character.CampaignName))
+            character.CampaignName = effective;
 
         character.LastUpdated = DateTime.UtcNow;
 
@@ -482,7 +559,9 @@ public class CampaignRepository
             existing.Social = character.Social ?? new SocialProfile();
             existing.Needs = character.Needs ?? new NeedsProfile();
             existing.SystemStats = character.SystemStats ?? new SystemExtension();
+            existing.KeepAlive = character.KeepAlive;
             existing.LastUpdated = character.LastUpdated;
+            existing.CampaignName = character.CampaignName;  // ensure set/copied for scoping
         }
         else
         {
@@ -576,6 +655,10 @@ public class CampaignRepository
     /// </summary>
     public async Task LogEventAsync(IAsyncDocumentSession session, Event @event, string? campaignName = null)
     {
+        var effective = ResolveCampaign(campaignName);
+        if (string.IsNullOrEmpty(@event.CampaignName))
+            @event.CampaignName = effective;  // strict for events (campaign-specific per feedback)
+
         if (@event.Details != null) @event.Details = SanitizeDetails(@event.Details);
         await session.StoreAsync(@event);
     }
@@ -631,10 +714,14 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a piece of Lore, handling creation/update timestamps.
     /// </summary>
-    public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore)
+    public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(lore.Id))
             throw new ArgumentException("Lore.Id is required for upsert.");
+
+        var effective = ResolveCampaign(campaignName);
+        if (string.IsNullOrEmpty(lore.CampaignName))
+            lore.CampaignName = effective;
 
         lore.LastUpdated = DateTime.UtcNow;
 
@@ -647,6 +734,7 @@ public class CampaignRepository
             existing.Keywords = lore.Keywords ?? [];
             existing.Category = lore.Category;
             existing.LastUpdated = lore.LastUpdated;
+            existing.CampaignName = lore.CampaignName;  // ensure set/copied for scoping
         }
         else
         {
@@ -659,6 +747,7 @@ public class CampaignRepository
     /// </summary>
     public async Task<IEnumerable<Lore>> QueryLoreAsync(IAsyncDocumentSession session, string? query, string[]? tags, string? category, int limit = 5, string? campaignName = null)
     {
+        var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.OpenSubclause().WhereEquals(x => x.Title, query).Fuzzy(0.4m).OrElse().WhereEquals(x => x.Content, query).Fuzzy(0.4m).CloseSubclause();
         if (tags != null && tags.Length > 0) { foreach (var tag in tags)
@@ -667,16 +756,25 @@ public class CampaignRepository
             }
         }
         if (!string.IsNullOrEmpty(category)) q = q.AndAlso().WhereEquals(x => x.Category, category);
-        return await q.Take(limit).ToListAsync();
+        var list = await q.Take(limit).ToListAsync();
+        if (!string.IsNullOrEmpty(effective))
+        {
+            list = list.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective).ToList();  // loose for lore (may share)
+        }
+        return list;
     }
 
     /// <summary>
     /// Creates or updates a Location, handling sanitization of arbitrary metadata.
     /// </summary>
-    public async Task UpsertLocationAsync(IAsyncDocumentSession session, Location location)
+    public async Task UpsertLocationAsync(IAsyncDocumentSession session, Location location, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(location.Id))
             throw new ArgumentException("Location.Id is required for upsert.");
+
+        var effective = ResolveCampaign(campaignName);
+        if (string.IsNullOrEmpty(location.CampaignName))
+            location.CampaignName = effective;
 
         SanitizeLocation(location);
         location.LastUpdated = DateTime.UtcNow;
@@ -695,6 +793,7 @@ public class CampaignRepository
             existing.LastVisitedDay = location.LastVisitedDay;
             existing.Metadata = location.Metadata ?? [];
             existing.LastUpdated = location.LastUpdated;
+            existing.CampaignName = location.CampaignName;  // ensure set/copied for scoping
         }
         else
         {
@@ -707,6 +806,7 @@ public class CampaignRepository
     /// </summary>
     public async Task<IEnumerable<Location>> QueryLocationsAsync(IAsyncDocumentSession session, string? query, LocationType? type = null, string? parentId = null, int limit = 10, string? campaignName = null)
     {
+        var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Location, Location_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Name, $"*{query}*").OrElse().Search(x => x.Description, $"*{query}*");
         if (type.HasValue) q = q.AndAlso().WhereEquals(x => x.Type, type.Value);
@@ -715,6 +815,10 @@ public class CampaignRepository
         foreach (var l in locations)
         {
             SanitizeLocation(l);
+        }
+        if (!string.IsNullOrEmpty(effective))
+        {
+            locations = locations.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective).ToList();  // loose for locations (may share)
         }
 
         return locations;
@@ -729,6 +833,9 @@ public class CampaignRepository
             throw new ArgumentException("Rumor.Id is required for upsert.");
 
         var effective = ResolveCampaign(campaignName);
+        if (string.IsNullOrEmpty(rumor.CampaignName))
+            rumor.CampaignName = effective;  // strict for rumors (campaign-specific per feedback)
+
         rumor.LastUpdated = DateTime.UtcNow;
         if (rumor.DayCreated == 0)
         {
@@ -747,6 +854,7 @@ public class CampaignRepository
             existing.DayCreated = rumor.DayCreated;
             existing.LastStateChangeDay = rumor.LastStateChangeDay;
             existing.LastUpdated = rumor.LastUpdated;
+            existing.CampaignName = rumor.CampaignName;  // ensure for scoping (strict for rumors)
         }
         else
         {
@@ -759,11 +867,18 @@ public class CampaignRepository
     /// </summary>
     public async Task<IEnumerable<Rumor>> QueryRumorsAsync(IAsyncDocumentSession session, string? query, string? regionId = null, RumorState? state = null, int limit = 5, string? campaignName = null)
     {
+        var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Rumor, Rumor_Search>();
         if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Subject, $"*{query}*").OrElse().Search(x => x.CurrentText, $"*{query}*");
         if (!string.IsNullOrEmpty(regionId)) q = q.AndAlso().WhereEquals(x => x.RegionLocationId, regionId);
         if (state.HasValue) q = q.AndAlso().WhereEquals(x => x.State, state.Value);
-        return await q.Take(limit).ToListAsync();
+        var list = await q.Take(limit).ToListAsync();
+        if (!string.IsNullOrEmpty(effective))
+        {
+            // strict for rumors (no legacy global cross-camp)
+            list = list.Where(r => r.CampaignName == effective).ToList();
+        }
+        return list;
     }
 
     /// <summary>
@@ -789,10 +904,14 @@ public class CampaignRepository
     /// <summary>
     /// Inserts or updates an Item, sanitizing arbitrary properties and preserving optimistic concurrency on edits.
     /// </summary>
-    public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item)
+    public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(item.Id))
             throw new ArgumentException("Item.Id is required for upsert.");
+
+        var effective = ResolveCampaign(campaignName);
+        if (string.IsNullOrEmpty(item.CampaignName))
+            item.CampaignName = effective;
 
         SanitizeItem(item);
         item.LastUpdated = DateTime.UtcNow;
@@ -805,6 +924,9 @@ public class CampaignRepository
             existing.Properties = item.Properties ?? [];
             existing.HolderId = item.HolderId;
             existing.LastUpdated = item.LastUpdated;
+            existing.CampaignName = item.CampaignName;  // ensure set/copied for scoping
+            // Note: original missed copying Tags; added for completeness in hardening pass
+            existing.Tags = item.Tags ?? existing.Tags ?? [];
         }
         else
         {

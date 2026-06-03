@@ -13,7 +13,8 @@ public class Rumor_Search : AbstractIndexCreationTask<Rumor>
                             r.Subject,
                             r.CurrentText,
                             r.RegionLocationId,
-                            r.State
+                            r.State,
+                            CampaignName = r.CampaignName
                         };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

@@ -30,8 +30,8 @@ public sealed class RumorDecayRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
-        // POLICY NOTE: Entities (like Rumor) are not currently namespaced per-campaign.
-        // Therefore, this simulation rule operates globally across all campaigns.
+        // Scoping hardened: ActiveRumors from AdvanceWorld are now pre-filtered by CampaignName (strict for rumors).
+        // Rules no longer need to be global.
 
         foreach (var rumor in context.ActiveRumors)
         {

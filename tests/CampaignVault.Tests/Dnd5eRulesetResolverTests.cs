@@ -44,11 +44,13 @@ public class Dnd5eRulesetResolverTests
             sessionForTests: null,
             characters: charDict,
             items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
             logger: NullLogger.Instance,
             summary: new List<string>(),
             dispatcher: new WorldChangeDispatcher(
                 new IWorldChangeHandler[0], 
-                NullLogger<WorldChangeDispatcher>.Instance)
+                NullLogger<WorldChangeDispatcher>.Instance),
+            campaignName: null
         );
     }
 

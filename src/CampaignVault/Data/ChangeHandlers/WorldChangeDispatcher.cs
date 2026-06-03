@@ -78,6 +78,7 @@ public sealed class WorldChangeDispatcher
         // 1. Pre-identify and batch-load required entities (same logic as before, now centralized)
         var characterIds = new HashSet<string>();
         var itemIds = new HashSet<string>();
+        var locationIds = new HashSet<string>();
         bool needsCombat = false;
 
         foreach (var change in changes)
@@ -116,17 +117,49 @@ public sealed class WorldChangeDispatcher
                 case StatusRemove sr:
                     characterIds.Add(sr.CharacterId);
                     break;
+                case LocationCreate lc:
+                    if (!string.IsNullOrEmpty(lc.ConnectedFromLocationId))
+                        locationIds.Add(lc.ConnectedFromLocationId);
+                    if (!string.IsNullOrEmpty(lc.ParentLocationId))
+                        locationIds.Add(lc.ParentLocationId);
+                    break;
+                case LocationUpdate lu:
+                    locationIds.Add(lu.LocationId);
+                    break;
+                case CharacterCreate cc:
+                    if (!string.IsNullOrEmpty(cc.CurrentLocationId))
+                        locationIds.Add(cc.CurrentLocationId);
+                    break;
+                case ScheduleChange sc:
+                    characterIds.Add(sc.CharacterId);
+                    if (sc.Schedule != null)
+                    {
+                        locationIds.Add(sc.Schedule.DefaultLocationId);
+                        foreach(var r in sc.Schedule.Routines) locationIds.Add(r.LocationId);
+                    }
+                    break;
+                case ItemCreate ic:
+                    // Might be a location id or character id (support common ID prefixes used in examples/docs)
+                    if (ic.HolderId != null &&
+                        (ic.HolderId.StartsWith("locations/") || ic.HolderId.StartsWith("locs/")))
+                        locationIds.Add(ic.HolderId);
+                    else if (ic.HolderId != null &&
+                        (ic.HolderId.StartsWith("chars/") || ic.HolderId.StartsWith("characters/")))
+                        characterIds.Add(ic.HolderId);
+                    break;
             }
         }
 
         Dictionary<string, Character> characters;
         Dictionary<string, Item> items;
+        Dictionary<string, Location> locations;
         CombatEncounter? activeCombat = null;
 
         if (session != null)
         {
             characters = (await session.LoadAsync<Character>(characterIds)).ToDictionary(kv => kv.Key, kv => kv.Value);
             items = (await session.LoadAsync<Item>(itemIds)).ToDictionary(kv => kv.Key, kv => kv.Value);
+            locations = (await session.LoadAsync<Location>(locationIds)).ToDictionary(kv => kv.Key, kv => kv.Value);
             
             // Preload combat encounter to ensure optimistic concurrency protection against racing StartCombat/NextTurn calls.
             // Assumption: Single combat encounter per campaign at a time.
@@ -141,6 +174,7 @@ public sealed class WorldChangeDispatcher
             // Support pure unit tests of dispatcher + handler selection without a real session
             characters = new Dictionary<string, Character>();
             items = new Dictionary<string, Item>();
+            locations = new Dictionary<string, Location>();
         }
 
         ChangeContext context;
@@ -148,11 +182,11 @@ public sealed class WorldChangeDispatcher
         {
             // Support pure unit tests of handler selection / duplicate detection / result aggregation
             // that use fake TestHandlers which never access Session / time / logging hooks.
-            context = new ChangeContext(null, characters, items, _logger, summary, this, activeCombat);
+            context = new ChangeContext(null, characters, items, locations, _logger, summary, this, activeCombat, effectiveCampaign);
         }
         else
         {
-            context = new ChangeContext(session, characters, items, _logger, getCurrentTimeAsync, logEventAsync, summary, this, activeCombat);
+            context = new ChangeContext(session, characters, items, locations, _logger, getCurrentTimeAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign);
         }
 
         // 2. Process each change in caller-supplied order

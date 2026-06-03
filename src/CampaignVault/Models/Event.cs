@@ -35,4 +35,11 @@ public class Event
     public IDictionary<string, object>? Details { get; set; }
     
     public List<string> Involved { get; set; } = [];
+
+    /// <summary>
+    /// Associates the entity with a specific campaign for multi-campaign isolation.
+    /// Set automatically from current campaign context on create/log (via repo + handlers).
+    /// (No legacy BC requirement per review feedback; always set for new data. Events are campaign-specific and should not be global.)
+    /// </summary>
+    public string? CampaignName { get; set; }
 }
