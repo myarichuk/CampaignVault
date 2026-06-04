@@ -6,7 +6,7 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is ActivityChange;
 
-    public Task<ChangeHandlerResult> ApplyAsync(
+    public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
         ChangeContext context,
         CancellationToken ct = default)
@@ -15,9 +15,12 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(act.CharacterId, out var character))
         {
-            context.RecordMessage($"WARNING: Character {act.CharacterId} not found during ActivityChange.");
+            var hints = await context.SuggestCharacterMatchAsync(act.CharacterId);
+            var msg = $"Character {act.CharacterId} not found during ActivityChange.";
+            if (hints != null) msg += $" Did you mean: {hints}?";
+            context.RecordMessage("WARNING: " + msg);
             context.RecordFailure();
-            return Task.FromResult(ChangeHandlerResult.Failure());
+            return ChangeHandlerResult.Failure();
         }
 
         if (act.NewActivity != null)
@@ -32,6 +35,6 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
 
         context.RecordMessage($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");
 
-        return Task.FromResult(ChangeHandlerResult.Ok);
+        return ChangeHandlerResult.Ok;
     }
 }

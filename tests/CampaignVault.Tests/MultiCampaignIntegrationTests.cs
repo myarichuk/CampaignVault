@@ -119,6 +119,11 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Set high need on both for pressure test (loose filter for shareables, but here per-camp)
         using (var session = _store.OpenAsyncSession())
         {
+            var cfgA = await session.LoadAsync<CampaignConfig>(new CampaignDocumentKeys().Config("campaign-a"));
+            if (cfgA != null) { cfgA.MaxPressuresPerResponse = 50; }
+            var cfgB = await session.LoadAsync<CampaignConfig>(new CampaignDocumentKeys().Config("campaign-b"));
+            if (cfgB != null) { cfgB.MaxPressuresPerResponse = 50; }
+
             var c1 = await session.LoadAsync<Character>("characters/char-1");
             c1.Needs.ActiveNeeds["hunger"] = 95f;  // triggers pressure for A
             var c2 = await session.LoadAsync<Character>("characters/char-2");

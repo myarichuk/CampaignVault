@@ -6,18 +6,33 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is AttributeChange;
 
-    public Task<ChangeHandlerResult> ApplyAsync(
+    public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
         ChangeContext context,
         CancellationToken ct = default)
     {
         var attr = (AttributeChange)change;
 
-        if (!context.Characters.TryGetValue(attr.CharacterId, out var character) || character?.SystemStats is null)
+        if (!context.Characters.TryGetValue(attr.CharacterId, out var character))
         {
-            context.RecordMessage($"WARNING: Character {attr.CharacterId} not found or has no SystemStats during AttributeChange.");
+            character = context.Session != null ? await context.Session.LoadAsync<Character>(attr.CharacterId, ct) : null;
+            if (character == null)
+            {
+                var hints = await context.SuggestCharacterMatchAsync(attr.CharacterId);
+                var msg = $"Character {attr.CharacterId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                context.RecordMessage($"WARNING: {msg}");
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+            context.RegisterNewCharacter(character);
+        }
+
+        if (character.SystemStats == null)
+        {
+            context.RecordMessage($"WARNING: Character {attr.CharacterId} has no SystemStats during AttributeChange.");
             context.RecordFailure();
-            return Task.FromResult(ChangeHandlerResult.Failure());
+            return ChangeHandlerResult.Failure();
         }
 
         var key = attr.Attribute.ToLowerInvariant();
@@ -48,6 +63,6 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
 
         context.RecordMessage($"Attribute '{attr.Attribute}' set for {attr.CharacterId}");
 
-        return Task.FromResult(ChangeHandlerResult.Ok);
+        return ChangeHandlerResult.Ok;
     }
 }

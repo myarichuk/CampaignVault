@@ -1,5 +1,6 @@
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging;
+using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -17,6 +18,8 @@ public sealed class ChangeContext
     public IReadOnlyDictionary<string, Character> Characters => _characters;
     public IReadOnlyDictionary<string, Item> Items => _items;
     public IReadOnlyDictionary<string, Location> Locations => _locations;
+    public IReadOnlyDictionary<string, Faction> Factions => _factions;
+    public IReadOnlyDictionary<string, Quest> Quests => _quests;
     public ILogger Logger { get; }
     public CombatEncounter? ActiveCombat { get; }
 
@@ -47,12 +50,16 @@ public sealed class ChangeContext
     private readonly Dictionary<string, Character> _characters;
     private readonly Dictionary<string, Item> _items;
     private readonly Dictionary<string, Location> _locations;
+    private readonly Dictionary<string, Faction> _factions;
+    private readonly Dictionary<string, Quest> _quests;
 
     internal ChangeContext(
         IAsyncDocumentSession session,
         Dictionary<string, Character> characters,
         Dictionary<string, Item> items,
         Dictionary<string, Location> locations,
+        Dictionary<string, Faction>? factions,
+        Dictionary<string, Quest>? quests,
         ILogger logger,
         Func<Task<CampaignTime>> getCurrentTimeAsync,
         Func<Event, Task> logEventAsync,
@@ -65,6 +72,8 @@ public sealed class ChangeContext
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
         _items = items ?? throw new ArgumentNullException(nameof(items));
         _locations = locations ?? throw new ArgumentNullException(nameof(locations));
+        _factions = factions ?? new Dictionary<string, Faction>();
+        _quests = quests ?? new Dictionary<string, Quest>();
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         GetCurrentTimeAsync = getCurrentTimeAsync ?? throw new ArgumentNullException(nameof(getCurrentTimeAsync));
         LogEventAsync = logEventAsync ?? throw new ArgumentNullException(nameof(logEventAsync));
@@ -83,6 +92,8 @@ public sealed class ChangeContext
         Dictionary<string, Character> characters,
         Dictionary<string, Item> items,
         Dictionary<string, Location> locations,
+        Dictionary<string, Faction>? factions,
+        Dictionary<string, Quest>? quests,
         ILogger logger,
         List<string> summary,
         WorldChangeDispatcher dispatcher,
@@ -93,6 +104,8 @@ public sealed class ChangeContext
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
         _items = items ?? throw new ArgumentNullException(nameof(items));
         _locations = locations ?? throw new ArgumentNullException(nameof(locations));
+        _factions = factions ?? new Dictionary<string, Faction>();
+        _quests = quests ?? new Dictionary<string, Quest>();
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         GetCurrentTimeAsync = () => Task.FromResult(new CampaignTime());
         LogEventAsync = _ => Task.CompletedTask;
@@ -105,6 +118,8 @@ public sealed class ChangeContext
     public void RegisterNewLocation(Location loc) => _locations[loc.Id] = loc;
     public void RegisterNewCharacter(Character c) => _characters[c.Id] = c;
     public void RegisterNewItem(Item i) => _items[i.Id] = i;
+    public void RegisterNewFaction(Faction f) => _factions[f.Id] = f;
+    public void RegisterNewQuest(Quest q) => _quests[q.Id] = q;
 
     /// <summary>
     /// Records a message that will appear in CommitResult.Summary.
@@ -125,4 +140,185 @@ public sealed class ChangeContext
     }
 
     internal bool HasFailure => _hasFailure;
+
+    public async Task<string?> SuggestLocationMatchAsync(string nameQuery)
+    {
+        if (Session == null) return null;
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("locations/".Length);
+        else if (cleanQuery.StartsWith("locs/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("locs/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+
+        var suggestions = await Session.Query<Location, Location_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await Session.Query<Location, Location_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+                .Search(x => x.Name, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var item in byName)
+            {
+                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                {
+                    suggestions.Add(item);
+                }
+            }
+        }
+
+        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        return null;
+    }
+
+    public async Task<string?> SuggestCharacterMatchAsync(string nameQuery)
+    {
+        if (Session == null) return null;
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("chars/".Length);
+        else if (cleanQuery.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("characters/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+
+        var suggestions = await Session.Query<Character, Character_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await Session.Query<Character, Character_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+                .Search(x => x.Name, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var item in byName)
+            {
+                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                {
+                    suggestions.Add(item);
+                }
+            }
+        }
+
+        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        return null;
+    }
+
+    public async Task<string?> SuggestItemMatchAsync(string nameQuery)
+    {
+        if (Session == null) return null;
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("items/".Length);
+        else if (cleanQuery.StartsWith("item/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("item/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+
+        var suggestions = await Session.Query<Item, Item_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await Session.Query<Item, Item_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+                .Search(x => x.Name, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var item in byName)
+            {
+                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                {
+                    suggestions.Add(item);
+                }
+            }
+        }
+
+        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        return null;
+    }
+    public async Task<string?> SuggestFactionMatchAsync(string nameQuery)
+    {
+        if (Session == null) return null;
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("factions/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+
+        var suggestions = await Session.Query<Faction, Faction_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await Session.Query<Faction, Faction_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+                .Search(x => x.Name, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var f in byName)
+            {
+                if (suggestions.All(s => s.Id != f.Id) && suggestions.Count < 3)
+                    suggestions.Add(f);
+            }
+        }
+
+        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        return null;
+    }
+
+    public async Task<string?> SuggestQuestMatchAsync(string nameQuery)
+    {
+        if (Session == null) return null;
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("quests/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+
+        var suggestions = await Session.Query<Quest, Quest_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await Session.Query<Quest, Quest_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
+                .Search(x => x.Title, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var q in byName)
+            {
+                if (suggestions.All(s => s.Id != q.Id) && suggestions.Count < 3)
+                    suggestions.Add(q);
+            }
+        }
+
+        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Title})"));
+        return null;
+    }
 }

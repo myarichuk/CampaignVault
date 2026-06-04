@@ -32,3 +32,43 @@ public sealed class RumorEvolvesHandler : IWorldChangeHandler
         return ChangeHandlerResult.Ok;
     }
 }
+
+public sealed class RumorCreateHandler : IWorldChangeHandler
+{
+    public bool ShouldHandle(WorldChange change) => change is RumorCreate;
+
+    public async Task<ChangeHandlerResult> ApplyAsync(
+        WorldChange change,
+        ChangeContext context,
+        CancellationToken ct = default)
+    {
+        var rc = (RumorCreate)change;
+        if (context.Session is null)
+            throw new InvalidOperationException("RumorCreateHandler requires a non-null session.");
+
+        var time = await context.GetCurrentTimeAsync();
+        var rumor = new Rumor
+        {
+            Id = rc.RumorId,
+            Subject = rc.Subject,
+            CurrentText = rc.Text,
+            State = RumorState.Nascent,
+            DayCreated = time.TotalDaysElapsed,
+            LastStateChangeDay = time.TotalDaysElapsed,
+            CampaignName = context.CampaignName
+        };
+
+        if (rc.RelatedLocationIds != null && rc.RelatedLocationIds.Any())
+        {
+            rumor.RegionLocationId = rc.RelatedLocationIds.First();
+        }
+        else
+        {
+            rumor.RegionLocationId = "global";
+        }
+
+        await context.Session.StoreAsync(rumor, ct);
+        context.RecordMessage($"Created rumor '{rc.Subject}'.");
+        return ChangeHandlerResult.Ok;
+    }
+}

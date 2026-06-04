@@ -26,14 +26,22 @@ public class WorldStateView
     public IEnumerable<Event> RecentEvents { get; set; } = [];
     public LocationSummary? PartyLocation { get; set; }
     public IEnumerable<string> WorldPressure { get; set; } = [];
+    public IEnumerable<ActiveQuestSummary>? ActiveQuests { get; set; }
+    public IEnumerable<FactionPresenceSummary>? RelevantFactions { get; set; }
+    public string? LastKnownTravel { get; set; }
+    public IEnumerable<string>? SuggestedCommitExamples { get; set; }
 
     public WorldStateView() { }
-    public WorldStateView(CampaignTime time, IEnumerable<RumorSummary> rumors, IEnumerable<Event> events, LocationSummary? location = null, IEnumerable<string>? pressure = null)
+    public WorldStateView(CampaignTime time, IEnumerable<RumorSummary> rumors, IEnumerable<Event> events, LocationSummary? location = null, IEnumerable<string>? pressure = null, IEnumerable<ActiveQuestSummary>? activeQuests = null, IEnumerable<FactionPresenceSummary>? relevantFactions = null, string? lastKnownTravel = null, IEnumerable<string>? suggestedCommitExamples = null)
     {
         Time = time;
         ActiveRumors = rumors;
         RecentEvents = events;
         PartyLocation = location;
         WorldPressure = pressure ?? [];
+        ActiveQuests = activeQuests ?? [];
+        RelevantFactions = relevantFactions ?? [];
+        LastKnownTravel = lastKnownTravel;
+        SuggestedCommitExamples = suggestedCommitExamples ?? [];
     }
 }

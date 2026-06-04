@@ -38,7 +38,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         };
 
         var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location> { { parent.Id, parent } }, NullLogger.Instance, new List<string>(), dispatcher, null, "test-camp");
+        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location> { { parent.Id, parent } }, new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), NullLogger.Instance, new List<string>(), dispatcher, null, "test-camp");
 
         var result = await handler.ApplyAsync(change, ctx);
         Assert.True(result.Success);

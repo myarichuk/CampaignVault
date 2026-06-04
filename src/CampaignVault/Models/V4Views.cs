@@ -25,7 +25,39 @@ public class SceneView
     /// Informs the LLM of turn order and rounds.
     /// </summary>
     public CombatEncounter? ActiveCombat { get; set; }
+
+    public IEnumerable<ActiveQuestSummary>? ActiveQuests { get; set; }
+    public IEnumerable<FactionPresenceSummary>? RelevantFactions { get; set; }
+    public string? LastKnownTravel { get; set; }
+    public IEnumerable<string>? SuggestedCommitExamples { get; set; }
 }
+
+/// <summary>
+/// Lightweight summary of an active quest relevant to the current scene/location.
+/// Returned in SceneView so the DM sees stakes without full document bloat.
+/// </summary>
+public record ActiveQuestSummary(
+    string QuestId,
+    string Title,
+    int OpenObjectiveCount,
+    int TotalObjectiveCount,
+    QuestUrgency Urgency,
+    int? DeadlineDay = null,
+    string? GiverId = null
+);
+
+/// <summary>
+/// Lightweight summary of a faction with presence/territory overlap at the current location.
+/// LocalStance is best-effort. PlayerReputation pulled from a relevant character's Social.FactionReputations if available in context.
+/// </summary>
+public record FactionPresenceSummary(
+    string FactionId,
+    string Name,
+    int InfluenceLevel,
+    FactionStance LocalStance = FactionStance.Neutral,
+    int? PlayerReputation = null,
+    int TerritoryLocationCount = 0
+);
 
 /// <summary>
 /// Lightweight view of an NPC for scene exploration.

@@ -384,6 +384,12 @@ More detection cases in `GetScene`/`GetWorldState` (beyond Phase 6):
 - Small forgiveness: idempotent creates with warning (upsert path).
 - **Verification:** new tests pass, manual review of sample pressure text + get_help output, full suite green.
 
+### 7.0.5 Lenient Full-Text Search Indexes (Hallucination Resilience)
+- Implement `Location_Search`, `Character_Search`, and `Item_Search` RavenDB indexes using `AbstractIndexCreationTask` with StandardAnalyzer (Full-Text Search).
+- Add helper methods to `CampaignRepository` for finding entities leniently by name (e.g., `SuggestLocationsAsync`).
+- Update `WorldChangeDispatcher` or `CampaignTools` to use these suggestion mechanisms when the LLM passes an invalid name or ID, outputting an Engine Warning with the exact ID of the closest match instead of just failing.
+- **Verification:** write unit tests for fuzzy search resolution, ensure that "Prancing Pony" resolves to "The Prancing Pony" and generates a helpful warning rather than creating duplicates.
+
 ### 7.1 Data Model & Core Types
 - Add/extend `LocationExit` (new optional constructor params).
 - Add `Faction.cs`, `Quest.cs`, `QuestObjective` record; add enums (`QuestState`, `QuestUrgency`, `FactionType`, `FactionStance`).

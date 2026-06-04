@@ -63,7 +63,14 @@ public class CampaignRepository
                 new LocationUpdateHandler(),
                 new CharacterCreateHandler(),
                 new ItemCreateHandler(),
-                new ScheduleChangeHandler()
+                new ScheduleChangeHandler(),
+                new TravelChangeHandler(),
+                new FactionReputationChangeHandler(),
+                new FactionStateChangeHandler(),
+                new QuestCreateHandler(),
+                new QuestProgressHandler(),
+                new FactionCreateHandler(),
+                new RumorCreateHandler()
             ];
         }
 
@@ -128,54 +135,92 @@ public class CampaignRepository
     ///
     /// Use this for all atomic world mutations coming from tools or simulation rules.
     /// </summary>
-    public Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes, string? campaignName = null)
+    public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes, string? campaignName = null)
     {
         changes ??= Array.Empty<WorldChange>();
         var effective = ResolveCampaign(campaignName);
 
         _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes for campaign {Campaign}", changes.Length, effective);
 
-        return _changeDispatcher.DispatchAsync(
+        var result = await _changeDispatcher.DispatchAsync(
             session,
             changes,
             effective,
             () => GetTimeAsync(session, effective),
             ev => LogEventAsync(session, ev));
+
+        if (result.Success && changes.Length > 0)
+        {
+            var metaId = _keys.Meta(effective);
+            var campaign = await session.LoadAsync<Campaign>(metaId);
+            if (campaign != null)
+            {
+                var involvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var c in changes)
+                {
+                    if (c is HpChange hp) involvedEntities.Add(hp.CharacterId);
+                    else if (c is StatusChange sc) involvedEntities.Add(sc.CharacterId);
+                    else if (c is StatusRemove src) involvedEntities.Add(src.CharacterId);
+                    else if (c is NeedChange nc) involvedEntities.Add(nc.CharacterId);
+                    else if (c is LocationUpdate lu) involvedEntities.Add(lu.LocationId);
+                    else if (c is RumorEvolves rc) involvedEntities.Add(rc.RumorId);
+                    else if (c is EventOccurred ev && ev.Involved != null)
+                    {
+                        foreach (var inv in ev.Involved) involvedEntities.Add(inv);
+                    }
+                    else if (c is ActivityChange ac) involvedEntities.Add(ac.CharacterId);
+                    else if (c is ScheduleChange shc) involvedEntities.Add(shc.CharacterId);
+                }
+
+                if (involvedEntities.Count > 0)
+                {
+                    var keysToRemove = campaign.PressureCooldowns.Keys
+                        .Where(k => involvedEntities.Any(e => k.EndsWith($":{e}", StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    foreach (var k in keysToRemove)
+                    {
+                        campaign.PressureCooldowns.Remove(k);
+                    }
+                }
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
     /// Scans characters in the current campaign for severe physical or psychological distress to surface as urgent narrative pressure.
     /// </summary>
-    public async Task<List<string>> GetCharacterPressureAsync(IAsyncDocumentSession session, string? campaignName = null)
+    public async Task<List<WorldPressureItem>> GetCharacterPressureAsync(IAsyncDocumentSession session, string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         // Hardened: filter by CampaignName (loose for shareable chars per design/feedback; strict would exclude legacy)
         var characters = await session.Query<Character>()
             .Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
             .ToListAsync();
-        var pressure = new List<string>();
+        var pressure = new List<WorldPressureItem>();
         var badCategories = new[] { "Injury", "Condition", "Disease", "Poison", "Curse" };
 
         foreach (var c in characters)
         {
             if (c.CurrentHp <= c.MaxHp * 0.25f && c.CurrentHp > 0)
-                pressure.Add($"{c.Name} is critically wounded ({c.CurrentHp}/{c.MaxHp} HP).");
+                pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id, $"{c.Name} is critically wounded ({c.CurrentHp}/{c.MaxHp} HP).", "Character:CriticallyWounded"));
             else if (c.CurrentHp <= 0)
-                pressure.Add($"{c.Name} is dying or dead.");
+                pressure.Add(new WorldPressureItem(PressureSeverity.EngineWarning, c.Id, $"{c.Name} is dying or dead.", "Character:Dying"));
 
             foreach (var status in c.SystemStats.StatusEffects)
             {
                 if (badCategories.Contains(status.Category, StringComparer.OrdinalIgnoreCase) || status.Category == null)
-                    pressure.Add($"{c.Name} is suffering from {status.Name} ({status.Category ?? "Unknown"}).");
+                    pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id, $"{c.Name} is suffering from {status.Name} ({status.Category ?? "Unknown"}).", $"Character:Status:{status.Name}"));
             }
 
             foreach (var kvp in c.Needs.ActiveNeeds)
             {
                 if (kvp.Value > 80f)
-                    pressure.Add($"{c.Name} is in desperate need: {kvp.Key} ({kvp.Value:F0}%).");
+                    pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id, $"{c.Name} is in desperate need: {kvp.Key} ({kvp.Value:F0}%).", $"Character:Need:{kvp.Key}"));
             }
         }
-
         return pressure;
     }
 
@@ -213,7 +258,11 @@ public class CampaignRepository
                 VisibleItems = [],
                 RecentEvents = [],
                 ActiveCombat = null,
-                IsLocationAnchored = false
+                IsLocationAnchored = false,
+                ActiveQuests = [],
+                RelevantFactions = [],
+                LastKnownTravel = null,
+                SuggestedCommitExamples = []
             };
         }
 
@@ -352,6 +401,42 @@ public class CampaignRepository
             location.LastVisitedDay = time.TotalDaysElapsed;
         }
 
+        // Phase 7.4: Populate quest + faction context for the location.
+        var activeQuests = await GetActiveQuestsForLocationAsync(session, locationId, effective);
+        var questSummaries = activeQuests.Select(q => new ActiveQuestSummary(
+            q.Id,
+            q.Title,
+            q.Objectives.Count(o => o.State == QuestState.Open || o.State == QuestState.InProgress),
+            q.Objectives.Count,
+            q.Urgency,
+            q.DeadlineDay,
+            q.GiverId
+        )).ToList();
+
+        var relevantFactions = await GetFactionsForLocationAsync(session, locationId, effective);
+        var factionSummaries = relevantFactions.Select(f =>
+        {
+            int? rep = null;
+            var playerRepChar = npcs.FirstOrDefault(c => c.Social?.FactionReputations?.ContainsKey(f.Id) == true);
+            if (playerRepChar != null && playerRepChar.Social != null && playerRepChar.Social.FactionReputations != null)
+                rep = playerRepChar.Social.FactionReputations[f.Id];
+
+            return new FactionPresenceSummary(
+                f.Id,
+                f.Name,
+                f.InfluenceLevel,
+                FactionStance.Neutral,
+                rep,
+                f.TerritoryLocationIds.Count
+            );
+        }).ToList();
+
+        var travelEvent = events
+            .FirstOrDefault(e => e.Summary.Contains("travel", StringComparison.OrdinalIgnoreCase) ||
+                                 e.Summary.Contains("en route", StringComparison.OrdinalIgnoreCase) ||
+                                 e.Summary.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
+        string? lastKnownTravel = travelEvent?.Summary;
+
         var sceneView = new SceneView
         {
             Location = location,
@@ -360,7 +445,11 @@ public class CampaignRepository
             VisibleItems = items,
             RecentEvents = events,
             ActiveCombat = activeCombat,
-            IsLocationAnchored = true
+            IsLocationAnchored = true,
+            ActiveQuests = questSummaries,
+            RelevantFactions = factionSummaries,
+            LastKnownTravel = lastKnownTravel,
+            SuggestedCommitExamples = new List<string>()
         };
         return sceneView;
     }
@@ -402,8 +491,18 @@ public class CampaignRepository
             .Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
             .ToList();
 
+        // Phase 7.1: Load active factions and quests so simulation rules can reason about them.
+        var activeFactions = (await session.Query<Faction>().Take(200).ToListAsync())
+            .Where(f => string.IsNullOrEmpty(f.CampaignName) || f.CampaignName == effective)
+            .ToList();
+        var activeQuests = (await session.Query<Quest>()
+            .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+            .Take(200).ToListAsync())
+            .Where(q => string.IsNullOrEmpty(q.CampaignName) || q.CampaignName == effective)
+            .ToList();
+
         // Build context and run the pluggable simulation engine (rules emit deltas)
-        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective);
+        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective, activeFactions, activeQuests);
 
         _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", days, time);
 
@@ -794,6 +893,7 @@ public class CampaignRepository
             existing.Metadata = location.Metadata ?? [];
             existing.LastUpdated = location.LastUpdated;
             existing.CampaignName = location.CampaignName;  // ensure set/copied for scoping
+            existing.ControllingFactionId = location.ControllingFactionId;  // Phase 7.1
         }
         else
         {
@@ -933,4 +1033,317 @@ public class CampaignRepository
             await session.StoreAsync(item);
         }
     }
+
+    public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    {
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("locations/".Length);
+        else if (cleanQuery.StartsWith("locs/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("locs/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+
+        var suggestions = await session.Query<Location, Location_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await session.Query<Location, Location_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Search(x => x.Name, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var item in byName)
+            {
+                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                {
+                    suggestions.Add(item);
+                }
+            }
+        }
+        return suggestions;
+    }
+
+    public async Task<List<Character>> SuggestCharactersAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    {
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("chars/".Length);
+        else if (cleanQuery.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("characters/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+
+        var suggestions = await session.Query<Character, Character_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await session.Query<Character, Character_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Search(x => x.Name, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var item in byName)
+            {
+                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                {
+                    suggestions.Add(item);
+                }
+            }
+        }
+        return suggestions;
+    }
+
+    public async Task<List<Item>> SuggestItemsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    {
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("items/".Length);
+        else if (cleanQuery.StartsWith("item/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("item/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+
+        var suggestions = await session.Query<Item, Item_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await session.Query<Item, Item_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Search(x => x.Name, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var item in byName)
+            {
+                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                {
+                    suggestions.Add(item);
+                }
+            }
+        }
+        return suggestions;
+    }
+
+    /// <summary>
+    /// Suggests Factions by fuzzy name match or ID prefix. Used in error messages and views.
+    /// </summary>
+    public async Task<List<Faction>> SuggestFactionsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    {
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("factions/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+
+        var suggestions = await session.Query<Faction, Faction_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await session.Query<Faction, Faction_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Search(x => x.Name, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var f in byName)
+            {
+                if (suggestions.All(s => s.Id != f.Id) && suggestions.Count < 3)
+                    suggestions.Add(f);
+            }
+        }
+        return suggestions;
+    }
+
+    /// <summary>
+    /// Suggests Quests by fuzzy name match or ID prefix. Used in error messages for get_quest_details and views.
+    /// </summary>
+    public async Task<List<Quest>> SuggestQuestsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    {
+        var cleanQuery = nameQuery;
+        if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
+            cleanQuery = cleanQuery.Substring("quests/".Length);
+
+        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+
+        var suggestions = await session.Query<Quest, Quest_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(nameQuery))
+            .Take(3).ToListAsync();
+
+        if (suggestions.Count < 3)
+        {
+            var byName = await session.Query<Quest, Quest_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Search(x => x.Title, cleanQuery + "*")
+                .Take(3).ToListAsync();
+
+            foreach (var q in byName)
+            {
+                if (suggestions.All(s => s.Id != q.Id) && suggestions.Count < 3)
+                    suggestions.Add(q);
+            }
+        }
+        return suggestions;
+    }
+
+    public async Task<List<Quest>> GetActiveQuestsAsync(IAsyncDocumentSession session, string? campaignName = null, int limit = 20)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var quests = await session.Query<Quest, Quest_Search>()
+            .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+            .Take(limit).ToListAsync();
+        return quests.Where(q => string.IsNullOrEmpty(q.CampaignName) || q.CampaignName == effective).ToList();
+    }
+
+    public async Task<List<Faction>> GetActiveFactionsAsync(IAsyncDocumentSession session, string? campaignName = null, int limit = 20)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var factions = await session.Query<Faction, Faction_Search>().Take(limit).ToListAsync();
+        return factions.Where(f => string.IsNullOrEmpty(f.CampaignName) || f.CampaignName == effective).ToList();
+    }
+
+    /// <summary>
+    /// Retrieves a specific Faction by ID.
+    /// </summary>
+    public async Task<Faction?> GetFactionAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
+    {
+        _ = ResolveCampaign(campaignName);
+        return await session.LoadAsync<Faction>(id);
+    }
+
+    /// <summary>
+    /// Creates or updates a Faction document.
+    /// </summary>
+    public async Task UpsertFactionAsync(IAsyncDocumentSession session, Faction faction, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(faction.Id))
+            throw new ArgumentException("Faction.Id is required for upsert.");
+
+        var effective = ResolveCampaign(campaignName);
+        if (string.IsNullOrEmpty(faction.CampaignName))
+            faction.CampaignName = effective;
+
+        faction.LastUpdated = DateTime.UtcNow;
+
+        var existing = await session.LoadAsync<Faction>(faction.Id);
+        if (existing != null)
+        {
+            existing.Name = faction.Name;
+            existing.Description = faction.Description;
+            existing.FactionType = faction.FactionType;
+            existing.ControllingTerritory = faction.ControllingTerritory;
+            existing.TerritoryLocationIds = faction.TerritoryLocationIds ?? [];
+            existing.KnownLeaderIds = faction.KnownLeaderIds ?? [];
+            existing.InfluenceLevel = faction.InfluenceLevel;
+            existing.StanceToward = faction.StanceToward ?? [];
+            existing.Metadata = faction.Metadata ?? [];
+            existing.LastUpdated = faction.LastUpdated;
+            existing.CampaignName = faction.CampaignName;
+        }
+        else
+        {
+            await session.StoreAsync(faction);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves a specific Quest by ID.
+    /// </summary>
+    public async Task<Quest?> GetQuestAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
+    {
+        _ = ResolveCampaign(campaignName);
+        return await session.LoadAsync<Quest>(id);
+    }
+
+    /// <summary>
+    /// Creates or updates a Quest document.
+    /// </summary>
+    public async Task UpsertQuestAsync(IAsyncDocumentSession session, Quest quest, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(quest.Id))
+            throw new ArgumentException("Quest.Id is required for upsert.");
+
+        var effective = ResolveCampaign(campaignName);
+        if (string.IsNullOrEmpty(quest.CampaignName))
+            quest.CampaignName = effective;
+
+        quest.LastUpdated = DateTime.UtcNow;
+
+        var existing = await session.LoadAsync<Quest>(quest.Id);
+        if (existing != null)
+        {
+            existing.Title = quest.Title;
+            existing.GiverId = quest.GiverId;
+            existing.Objectives = quest.Objectives ?? [];
+            existing.OverallState = quest.OverallState;
+            existing.Category = quest.Category;
+            existing.Urgency = quest.Urgency;
+            existing.RelatedLocationIds = quest.RelatedLocationIds ?? [];
+            existing.RelatedFactionIds = quest.RelatedFactionIds ?? [];
+            existing.DmNotes = quest.DmNotes;
+            existing.VisibleToCharacterIds = quest.VisibleToCharacterIds;
+            existing.LastUpdatedDay = quest.LastUpdatedDay;
+            existing.LastUpdated = quest.LastUpdated;
+            existing.CampaignName = quest.CampaignName;
+        }
+        else
+        {
+            await session.StoreAsync(quest);
+        }
+    }
+
+    /// <summary>
+    /// Queries active quests relevant to a specific location (RelatedLocationIds overlap).
+    /// Used by GetScene to surface quest summaries.
+    /// </summary>
+    public async Task<List<Quest>> GetActiveQuestsForLocationAsync(IAsyncDocumentSession session, string locationId, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var quests = await session.Query<Quest, Quest_Search>()
+            .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+            .Take(20).ToListAsync();
+
+        return quests
+            .Where(q => (string.IsNullOrEmpty(q.CampaignName) || q.CampaignName == effective)
+                        && q.RelatedLocationIds.Contains(locationId))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Queries active factions that have territory overlapping with a given location ID.
+    /// Used by GetScene to surface relevant faction context.
+    /// </summary>
+    public async Task<List<Faction>> GetFactionsForLocationAsync(IAsyncDocumentSession session, string locationId, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var factions = await session.Query<Faction, Faction_Search>()
+            .Take(50).ToListAsync();
+
+        return factions
+            .Where(f => (string.IsNullOrEmpty(f.CampaignName) || f.CampaignName == effective)
+                        && (f.ControllingTerritory == locationId || f.TerritoryLocationIds.Contains(locationId)))
+            .ToList();
+    }
 }
+

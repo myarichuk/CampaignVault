@@ -1,4 +1,5 @@
 using CampaignVault.Data;
+using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Tools;
 using Raven.Client.Documents;
@@ -34,8 +35,8 @@ public class RavenDBFixture : IDisposable
         catch (InvalidOperationException ex) when (ex.Message.Contains("already started")) { }
 
         Store = EmbeddedServer.Instance.GetDocumentStore("TestDB");
-        Raven.Client.Documents.Indexes.IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, Store);
         Store.Initialize();
+        Raven.Client.Documents.Indexes.IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, Store);
     }
 
     public void Dispose()
@@ -299,6 +300,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.UpsertCharacterAsync(session, npc);
         await session.SaveChangesAsync();
 
+        // Wait for RavenDB indexes to catch up so the SimulationContext can find the scheduled NPC
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+
         // Advance 2 days — hunger should go to 100 (capped delta), thirst should stay at 100 (no delta emitted for it)
         var result = await repo.AdvanceWorldAsync(session, 2, TimeOfDay.Dawn);
         await session.SaveChangesAsync();
@@ -545,6 +549,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 Name = "Regression Search Target",
                 Description = "Used to verify SearchWorld no longer leaves async tasks on the Raven session"
             });
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
             await session.SaveChangesAsync();
         }
 
@@ -1458,6 +1463,102 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task GetScene_PopulatesActiveQuestsAndFactions_Correctly()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/quest-faction-loc-" + Guid.NewGuid();
+        var questId = "quests/test-quest-" + Guid.NewGuid();
+        var factionId = "factions/test-faction-" + Guid.NewGuid();
+        var charId = "chars/hero-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Quest Hub" });
+            
+            var quest = new Quest
+            {
+                Id = questId,
+                Title = "Save the Hub",
+                OverallState = QuestState.Open,
+                DeadlineDay = 15,
+                RelatedLocationIds = new List<string> { locId },
+                Objectives = new List<QuestObjective>
+                {
+                    new QuestObjective("Obj 1", QuestState.Open),
+                    new QuestObjective("Obj 2", QuestState.Complete)
+                }
+            };
+            await repo.UpsertQuestAsync(session, quest);
+
+            var faction = new Faction
+            {
+                Id = factionId,
+                Name = "Hub Defenders",
+                InfluenceLevel = 50,
+                TerritoryLocationIds = new List<string> { locId }
+            };
+            await repo.UpsertFactionAsync(session, faction);
+
+            var npc = new Character
+            {
+                Id = charId,
+                Name = "Hero",
+                Social = new SocialProfile
+                {
+                    FactionReputations = new Dictionary<string, int> { { factionId, 10 } }
+                },
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = new List<Routine>() }
+            };
+            await repo.UpsertCharacterAsync(session, npc);
+
+            await repo.LogEventAsync(session, new Event
+            {
+                Id = "events/test-" + Guid.NewGuid(),
+                Summary = "Travel interrupted en route to the hub.",
+                Involved = new List<string> { locId }
+            });
+
+            await session.SaveChangesAsync();
+        }
+
+        // Wait for indexes
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Quest/Search" && x.IsStale == false) &&
+                stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false) &&
+                stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
+                break;
+            await Task.Delay(100);
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId);
+
+            Assert.NotNull(scene.ActiveQuests);
+            Assert.NotEmpty(scene.ActiveQuests);
+            var q = scene.ActiveQuests!.First();
+            Assert.Equal("Save the Hub", q.Title);
+            Assert.Equal(1, q.OpenObjectiveCount); // Only one is Open
+            Assert.Equal(2, q.TotalObjectiveCount);
+            Assert.Equal(15, q.DeadlineDay);
+
+            Assert.NotNull(scene.RelevantFactions);
+            Assert.NotEmpty(scene.RelevantFactions);
+            var f = scene.RelevantFactions!.First();
+            Assert.Equal("Hub Defenders", f.Name);
+            Assert.Equal(50, f.InfluenceLevel);
+            Assert.Equal(10, f.PlayerReputation); // Inherited from hero present in loc
+
+            Assert.Equal("Travel interrupted en route to the hub.", scene.LastKnownTravel);
+            Assert.NotNull(scene.SuggestedCommitExamples);
+            Assert.Empty(scene.SuggestedCommitExamples);
+        }
+    }
+
+    [Fact]
     public void RuleOrdering_NeedsAccumulation_RunsAfter_ScheduleEvaluation()
     {
         var needsRule = new NeedsAccumulationRule();
@@ -1479,5 +1580,168 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         });
         
         Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task TravelChange_FullCommit_UsesPrePopulatedExitMetadata_OnOrigin_ForTirednessDelta_AndInterruptBehavior()
+    {
+        // Use a repo ctor that supplies the required handlers (the default 1-arg ctor uses a fallback list
+        // that does not include TravelChangeHandler, which would result in "Unhandled change type").
+        // We wire a controlled TravelEncounterRule (always "safe" random) so the -100 risk path is deterministic.
+        var safeRule = new TravelEncounterRule(() => 0.99); // > any clamped modified chance from negative modifier
+        var changeHandlers = new IWorldChangeHandler[]
+        {
+            new TravelChangeHandler(safeRule),
+            new NeedChangeHandler(),
+            new ActivityChangeHandler(),
+            new EventOccurredHandler()
+        };
+
+        var engine = new DefaultSimulationEngine(new ISimulationRule[0], null);
+        var repo = new CampaignRepository(
+            _store,
+            engine,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
+            new DefaultBehaviorSynthesizer(),
+            new CampaignDocumentKeys(),
+            currentCampaign: null,
+            changeHandlers: changeHandlers);
+
+        using var session = _store.OpenAsyncSession();
+
+        // Setup: character with Needs profile, origin location *with* populated Exit (TravelCostHours + Terrain),
+        // and a destination.
+        var charId = "characters/travel-pc-" + Guid.NewGuid().ToString("N");
+        var originId = "locations/travel-origin-" + Guid.NewGuid().ToString("N");
+        var destId = "locations/travel-dest-" + Guid.NewGuid().ToString("N");
+
+        var traveler = new Character
+        {
+            Id = charId,
+            Name = "Traveling PC",
+            CurrentLocationId = originId,
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 5f } }
+        };
+
+        var origin = new Location
+        {
+            Id = originId,
+            Name = "Forest Trailhead",
+            Description = "Start of the path",
+            Exits = new List<LocationExit>
+            {
+                // This will be resolved by TravelChangeHandler because dispatcher now preloads origin loc for TravelChange,
+                // and the handler looks it up to get cost/terrain when no override is supplied.
+                new LocationExit(destId, "Winding path through the woods", TravelCostHours: 16, Terrain: "forest")
+            }
+        };
+
+        var dest = new Location
+        {
+            Id = destId,
+            Name = "Forest Clearing",
+            Description = "A quiet clearing"
+        };
+
+        await session.StoreAsync(traveler);
+        await session.StoreAsync(origin);
+        await session.StoreAsync(dest);
+        await session.SaveChangesAsync();
+
+        // === Success path: no override, low risk modifier (never interrupts), exit provides 16h ===
+        var successTravel = new TravelChange
+        {
+            CharacterId = charId,
+            DestinationLocationId = destId,
+            Narrative = "Hiked the forest path",
+            TravelCostHoursOverride = null, // rely on exit metadata
+            TerrainOverride = null,
+            EncounterRiskModifier = -100 // ensure no interrupt regardless of terrain base chance
+        };
+
+        var successResult = await repo.StageChangesAsync(session, new WorldChange[] { successTravel });
+        Assert.True(successResult.Success, "Full commit via StageChangesAsync should succeed for travel using exit metadata");
+
+        await session.SaveChangesAsync(); // persist mutations from handlers (Need, Activity, Event, LastVisited on dest)
+
+        var reloadedTraveler = await session.LoadAsync<Character>(charId);
+        var reloadedDest = await session.LoadAsync<Location>(destId);
+
+        Assert.NotNull(reloadedTraveler.Needs);
+        var finalTiredness = reloadedTraveler.Needs.ActiveNeeds["tiredness"];
+        // 16 hours from exit -> (16 / 4.0f) * 10f = 40f delta. Started at 5f -> 45f (clamped logic in handler is additive before cap in Need handler)
+        Assert.True(finalTiredness >= 44f && finalTiredness <= 46f,
+            $"Expected ~45 tiredness from 16h exit lookup (5 base + 40), was {finalTiredness}");
+
+        // Location should have been updated
+        Assert.Equal(destId, reloadedTraveler.CurrentLocationId);
+        // LastVisitedDay should have been stamped on dest (via direct mutation on tracked entity + save)
+        Assert.NotNull(reloadedDest.LastVisitedDay);
+
+        // === Interrupt behavior path (separate entities + dedicated repo/handler to keep test isolated and deterministic):
+        // Use a TravelChangeHandler wired with a rule whose random *always* returns 0.0 so high risk *guarantees* interrupt.
+        var triggerRule = new TravelEncounterRule(() => 0.0);
+        var intChangeHandlers = new IWorldChangeHandler[]
+        {
+            new TravelChangeHandler(triggerRule),
+            new NeedChangeHandler(),
+            new ActivityChangeHandler(),
+            new EventOccurredHandler()
+        };
+        var intEngine = new DefaultSimulationEngine(new ISimulationRule[0], null);
+        var intRepo = new CampaignRepository(
+            _store,
+            intEngine,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
+            new DefaultBehaviorSynthesizer(),
+            new CampaignDocumentKeys(),
+            currentCampaign: null,
+            changeHandlers: intChangeHandlers);
+
+        var intCharId = "characters/travel-pc-int-" + Guid.NewGuid().ToString("N");
+        var intOriginId = "locations/travel-int-origin-" + Guid.NewGuid().ToString("N");
+        var intDestId = "locations/travel-int-dest-" + Guid.NewGuid().ToString("N");
+
+        var intTraveler = new Character
+        {
+            Id = intCharId,
+            Name = "Interrupt PC",
+            CurrentLocationId = intOriginId,
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 0f } }
+        };
+        var intOrigin = new Location
+        {
+            Id = intOriginId,
+            Name = "Road Start",
+            Exits = new List<LocationExit> { new LocationExit(intDestId, "Open road", TravelCostHours: 6, Terrain: "road") }
+        };
+        var intDest = new Location { Id = intDestId, Name = "Road End" };
+
+        await session.StoreAsync(intTraveler);
+        await session.StoreAsync(intOrigin);
+        await session.StoreAsync(intDest);
+        await session.SaveChangesAsync();
+
+        var interruptTravel = new TravelChange
+        {
+            CharacterId = intCharId,
+            DestinationLocationId = intDestId,
+            Narrative = "Tried to travel the road",
+            TravelCostHoursOverride = null,
+            EncounterRiskModifier = 100 // high risk; combined with always-0 random in the rule, guarantees first-bucket interrupt
+        };
+
+        var intResult = await intRepo.StageChangesAsync(session, new WorldChange[] { interruptTravel });
+        Assert.True(intResult.Success);
+
+        await session.SaveChangesAsync();
+
+        var reloadedIntTraveler = await session.LoadAsync<Character>(intCharId);
+
+        // On interrupt: partial tiredness still applied (6h -> +15), but NO location move + activity marker set
+        Assert.Equal(intOriginId, reloadedIntTraveler.CurrentLocationId); // did not teleport
+        Assert.Contains("interrupted en route", reloadedIntTraveler.CurrentActivity ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        var intTiredness = reloadedIntTraveler.Needs.ActiveNeeds["tiredness"];
+        Assert.True(intTiredness >= 14f, $"Partial tiredness should have been applied even on interrupt; was {intTiredness}");
     }
 }

@@ -79,6 +79,8 @@ public sealed class WorldChangeDispatcher
         var characterIds = new HashSet<string>();
         var itemIds = new HashSet<string>();
         var locationIds = new HashSet<string>();
+        var factionIds = new HashSet<string>();
+        var questIds = new HashSet<string>();
         bool needsCombat = false;
 
         foreach (var change in changes)
@@ -147,20 +149,66 @@ public sealed class WorldChangeDispatcher
                         (ic.HolderId.StartsWith("chars/") || ic.HolderId.StartsWith("characters/")))
                         characterIds.Add(ic.HolderId);
                     break;
+                // Phase 7.1/7.3: pre-load destination explicitly. The traveler's CurrentLocationId (origin) is
+                // supplemented *after* characters are loaded (see below) so TravelChangeHandler can resolve exit metadata.
+                case TravelChange tc:
+                    characterIds.Add(tc.CharacterId);
+                    if (!string.IsNullOrEmpty(tc.DestinationLocationId))
+                        locationIds.Add(tc.DestinationLocationId);
+                    break;
+                case FactionReputationChange frc:
+                    characterIds.Add(frc.CharacterId);
+                    factionIds.Add(frc.FactionId);
+                    break;
+                case FactionStateChange fsc:
+                    factionIds.Add(fsc.FactionId);
+                    if (!string.IsNullOrEmpty(fsc.TargetFactionId))
+                        factionIds.Add(fsc.TargetFactionId!);
+                    break;
+                case QuestProgress qp:
+                    questIds.Add(qp.QuestId);
+                    break;
+                case FactionCreate fc2:
+                    // No pre-load needed — create path loads to check existence
+                    break;
+                case QuestCreate qc:
+                    // No pre-load needed — create path loads to check existence
+                    break;
             }
         }
 
         Dictionary<string, Character> characters;
         Dictionary<string, Item> items;
         Dictionary<string, Location> locations;
+        Dictionary<string, Faction> factions;
+        Dictionary<string, Quest> quests;
         CombatEncounter? activeCombat = null;
 
         if (session != null)
         {
-            characters = (await session.LoadAsync<Character>(characterIds)).ToDictionary(kv => kv.Key, kv => kv.Value);
-            items = (await session.LoadAsync<Item>(itemIds)).ToDictionary(kv => kv.Key, kv => kv.Value);
-            locations = (await session.LoadAsync<Location>(locationIds)).ToDictionary(kv => kv.Key, kv => kv.Value);
-            
+            characters = (await session.LoadAsync<Character>(characterIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!);
+            items = (await session.LoadAsync<Item>(itemIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!);
+
+            // Phase 7.3 / Travel: preload the traveler's *origin* CurrentLocationId (in addition to the explicit Destination).
+            // This allows TravelChangeHandler to resolve LocationExit metadata (TravelCostHours, Terrain) via the
+            // preloaded context.Locations dictionary in the normal case, avoiding a mid-handler Session.LoadAsync fallback.
+            foreach (var change in changes.OfType<TravelChange>())
+            {
+                if (characters.TryGetValue(change.CharacterId, out var traveler) &&
+                    !string.IsNullOrEmpty(traveler.CurrentLocationId))
+                {
+                    locationIds.Add(traveler.CurrentLocationId);
+                }
+            }
+
+            locations = (await session.LoadAsync<Location>(locationIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!);
+            factions = factionIds.Count > 0
+                ? (await session.LoadAsync<Faction>(factionIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!)
+                : new Dictionary<string, Faction>();
+            quests = questIds.Count > 0
+                ? (await session.LoadAsync<Quest>(questIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!)
+                : new Dictionary<string, Quest>();
+
             // Preload combat encounter to ensure optimistic concurrency protection against racing StartCombat/NextTurn calls.
             // Assumption: Single combat encounter per campaign at a time.
             if (needsCombat && !string.IsNullOrEmpty(effectiveCampaign))
@@ -175,6 +223,8 @@ public sealed class WorldChangeDispatcher
             characters = new Dictionary<string, Character>();
             items = new Dictionary<string, Item>();
             locations = new Dictionary<string, Location>();
+            factions = new Dictionary<string, Faction>();
+            quests = new Dictionary<string, Quest>();
         }
 
         ChangeContext context;
@@ -182,11 +232,11 @@ public sealed class WorldChangeDispatcher
         {
             // Support pure unit tests of handler selection / duplicate detection / result aggregation
             // that use fake TestHandlers which never access Session / time / logging hooks.
-            context = new ChangeContext(null, characters, items, locations, _logger, summary, this, activeCombat, effectiveCampaign);
+            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, effectiveCampaign);
         }
         else
         {
-            context = new ChangeContext(session, characters, items, locations, _logger, getCurrentTimeAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign);
+            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign);
         }
 
         // 2. Process each change in caller-supplied order

@@ -22,28 +22,36 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
     public bool ShouldHandle(WorldChange change)
         => change is StatusChange or StatusRemove;
 
-    public Task<ChangeHandlerResult> ApplyAsync(
+    public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
         ChangeContext context,
         CancellationToken ct = default)
     {
         return change switch
         {
-            StatusChange add    => Task.FromResult(HandleAdd(add, context)),
-            StatusRemove remove => Task.FromResult(HandleRemove(remove, context)),
-            _                  => Task.FromResult(ChangeHandlerResult.Failure("StatusChangeHandler received unexpected change type"))
+            StatusChange add    => await HandleAdd(add, context, ct),
+            StatusRemove remove => await HandleRemove(remove, context, ct),
+            _                  => ChangeHandlerResult.Failure("StatusChangeHandler received unexpected change type")
         };
     }
 
     // ── Add ───────────────────────────────────────────────────────────────────
 
-    private ChangeHandlerResult HandleAdd(StatusChange add, ChangeContext context)
+    private async Task<ChangeHandlerResult> HandleAdd(StatusChange add, ChangeContext context, CancellationToken ct)
     {
-        if (!context.Characters.TryGetValue(add.CharacterId, out var character) || character is null)
+        if (!context.Characters.TryGetValue(add.CharacterId, out var character))
         {
-            context.RecordMessage($"WARNING: Character {add.CharacterId} not found during StatusChange.");
-            context.RecordFailure();
-            return ChangeHandlerResult.Failure();
+            character = context.Session != null ? await context.Session.LoadAsync<Character>(add.CharacterId, ct) : null;
+            if (character == null)
+            {
+                var hints = await context.SuggestCharacterMatchAsync(add.CharacterId);
+                var msg = $"Character {add.CharacterId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                context.RecordMessage($"WARNING: {msg}");
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+            context.RegisterNewCharacter(character);
         }
 
         character.SystemStats ??= new SystemExtension();
@@ -74,13 +82,21 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
 
     // ── Remove ────────────────────────────────────────────────────────────────
 
-    private ChangeHandlerResult HandleRemove(StatusRemove remove, ChangeContext context)
+    private async Task<ChangeHandlerResult> HandleRemove(StatusRemove remove, ChangeContext context, CancellationToken ct)
     {
-        if (!context.Characters.TryGetValue(remove.CharacterId, out var character) || character is null)
+        if (!context.Characters.TryGetValue(remove.CharacterId, out var character))
         {
-            context.RecordMessage($"WARNING: Character {remove.CharacterId} not found during StatusRemove.");
-            context.RecordFailure();
-            return ChangeHandlerResult.Failure();
+            character = context.Session != null ? await context.Session.LoadAsync<Character>(remove.CharacterId, ct) : null;
+            if (character == null)
+            {
+                var hints = await context.SuggestCharacterMatchAsync(remove.CharacterId);
+                var msg = $"Character {remove.CharacterId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                context.RecordMessage($"WARNING: {msg}");
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+            context.RegisterNewCharacter(character);
         }
 
         character.SystemStats ??= new SystemExtension();

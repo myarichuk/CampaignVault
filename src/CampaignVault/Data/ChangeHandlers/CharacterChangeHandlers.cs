@@ -12,9 +12,20 @@ public class CharacterCreateHandler : IWorldChangeHandler
         if (string.IsNullOrWhiteSpace(cc.CharacterId))
             return ChangeHandlerResult.Failure("characterId is required.");
 
-        var existing = await context.Session.LoadAsync<Character>(cc.CharacterId, ct);
+        var existing = context.Session != null ? await context.Session.LoadAsync<Character>(cc.CharacterId, ct) : null;
         if (existing != null)
-            return ChangeHandlerResult.Failure($"Character {cc.CharacterId} already exists.");
+        {
+            existing.Name = cc.Name ?? existing.Name;
+            if (cc.Notes != null) existing.Notes = cc.Notes;
+            if (cc.CurrentLocationId != null) existing.CurrentLocationId = cc.CurrentLocationId;
+            if (cc.CurrentActivity != null) existing.CurrentActivity = cc.CurrentActivity;
+            if (cc.KeepAlive) existing.KeepAlive = cc.KeepAlive;
+            if (cc.Schedule != null) existing.Schedule = cc.Schedule;
+            if (cc.Psychology != null) existing.Psychology = cc.Psychology;
+            
+            context.RecordMessage($"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.");
+            return ChangeHandlerResult.Ok;
+        }
 
         var newChar = new Character
         {
@@ -47,8 +58,14 @@ public class ScheduleChangeHandler : IWorldChangeHandler
         var sc = (ScheduleChange)change;
         if (!context.Characters.TryGetValue(sc.CharacterId, out var c))
         {
-            c = await context.Session.LoadAsync<Character>(sc.CharacterId, ct);
-            if (c == null) return ChangeHandlerResult.Failure($"Character {sc.CharacterId} not found.");
+            c = context.Session != null ? await context.Session.LoadAsync<Character>(sc.CharacterId, ct) : null;
+            if (c == null)
+            {
+                var hints = await context.SuggestCharacterMatchAsync(sc.CharacterId);
+                var msg = $"Character {sc.CharacterId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                return ChangeHandlerResult.Failure(msg);
+            }
             context.RegisterNewCharacter(c);
         }
 

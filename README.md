@@ -31,7 +31,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 | `get_npc_needs`        | Current needs + merged descriptors for an NPC     | Quick psychological read |
 | `get_need_descriptors` | List globally defined need descriptions           | Before introducing new need types |
 
-**World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). See the full **Current Recommended Usage** section below for detailed guidance.
+**World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). See the recommended system prompt in `docs/recommended-system-prompt.md` for detailed guidance.
 
 **Open-World Flavor, Transients & Laziness Mitigation (Phase 6+)**: The system is deliberately designed so an LLM DM can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted via small `commit` payloads using `location_create` / `character_create` / `item_create` etc. 
 
@@ -43,53 +43,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 See `get_help`, the recommended system prompt, and `docs/Phase6_OpenWorld_Design.md` for details. The `detailed-implementation-plan.md` and upcoming `phase7.md` track further work on travel/spatial, factions, and quests.
 
-## Current Recommended Usage
 
-When using CampaignVault as an LLM Dungeon Master, follow this mental model:
-
-### 1. The Multi-Campaign Foundation
-CampaignVault supports multiple isolated campaigns.
-- Start by calling `list_campaigns` or `create_campaign`.
-- Use `select_campaign` to lock into a specific campaign context.
-- Use `get_config` to see the active ruleset (e.g., D&D 5e, PF2e).
-- Use `set_active_system` to change the ruleset (if the campaign isn't locked yet).
-
-### 2. The Sacred Session Loop
-- **Start every session** with `get_world_state` (pass the party's current location ID).
-- **When entering a new significant location**, call `get_scene`.
-- **For deep roleplay**, call `get_npc_context` (and `get_npc_needs`).
-- **At the end of every meaningful narrative beat**, call `commit`.
-- **For travel or downtime**, call `advance_world`.
-
-### 3. Combat and Mechanics
-The engine natively supports ruleset-specific math and combat tracking.
-- Call `start_combat` with the location and participant IDs to roll initiative.
-- Call `get_scene` to see the `ActiveCombat` state, turns, and HP.
-- Inside `commit`, use the `ruleset_action` change type (e.g., `{"$type": "ruleset_action", "actorId": "bob", "actionType": "Attack"}`) to resolve attacks and skill checks deterministically.
-- Call `next_turn` to advance combat, and `end_combat` when finished.
-
-**Quick Example Flow (Multi-Campaign + Combat):**
-```text
-# Switch to (or create) a campaign
-select_campaign "dragonheist"
-
-# Start of session
-get_world_state "locations/tavern"
-
-# Enter a location with a fight
-get_scene "locations/tavern-main-room"
-
-# Begin combat
-start_combat "locations/tavern-main-room" ["chars/pc1", "chars/pc2", "monsters/goblin-1"]
-
-# Resolve an attack via ruleset_action inside commit
-commit [
-  { "$type": "ruleset_action", "actorId": "chars/pc1", "targetIds": ["monsters/goblin-1"], "actionType": "Attack", "parameters": { "bonus": "5", "damageDice": "1d8+3" } }
-] "PC1 swings at the goblin"
-
-next_turn
-end_combat
-```
 
 ## The Open Psychological Model (Needs, Wants, Fears)
 
@@ -204,6 +158,6 @@ When introducing a new significant location or NPC, do as much as possible in a 
 - One or more `activity` changes to place NPCs where the narrative says they are
 - Relationship deltas, need adjustments, mood, etc.
 
-See the full **LLM System Instructions** section above (and the `commit` tool description) for detailed guidance and copy-paste examples.
+See the `commit` tool description and `docs/recommended-system-prompt.md` for detailed guidance and copy-paste examples.
 
 Full history of robustness improvements lives in the git log and the regression tests in `CampaignRepositoryTests.cs`.

@@ -42,6 +42,9 @@ builder.Services.AddSingleton<ISimulationRule, RumorDecayRule>();
 builder.Services.AddSingleton<ISimulationRule, ScheduleEvaluationRule>();
 builder.Services.AddSingleton<ISimulationRule, StatusExpiryRule>();
 builder.Services.AddSingleton<ISimulationRule, CampaignVault.Data.TransientEvictionRule>();
+builder.Services.AddSingleton<ISimulationRule, TravelEncounterRule>();
+builder.Services.AddSingleton<ISimulationRule, FactionEcosystemRule>();
+builder.Services.AddSingleton<ISimulationRule, QuestStalenessRule>();
 builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>();
 
 // WorldChange handlers (new extensible dispatch system - "ShouldHandle" responsibility pattern)
@@ -60,6 +63,12 @@ builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHand
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.CharacterCreateHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ScheduleChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ItemCreateHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.TravelChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.FactionCreateHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.FactionReputationChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.FactionStateChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.QuestCreateHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.QuestProgressHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RulesetActionHandler>(sp =>
     new CampaignVault.Data.ChangeHandlers.RulesetActionHandler(
         sp.GetRequiredService<CampaignVault.Rulesets.IRulesetResolverSelector>(),
@@ -80,6 +89,7 @@ builder.Services.AddSingleton<CampaignVault.Data.CampaignDocumentKeys>();
 builder.Services.AddSingleton<CampaignVault.Data.ICurrentCampaignContext, CampaignVault.Data.CurrentCampaignContext>();
 
 builder.Services.AddSingleton<CampaignRepository>();
+builder.Services.AddSingleton<IPressureManager, PressureManager>();
 
 // CORS configuration (Issue #16 from code review)
 // - Default (or "*"): AllowAnyOrigin (current behavior, convenient for local MCP + LLM clients)

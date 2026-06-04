@@ -6,18 +6,26 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is RelationshipChange;
 
-    public Task<ChangeHandlerResult> ApplyAsync(
+    public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
         ChangeContext context,
         CancellationToken ct = default)
     {
         var rel = (RelationshipChange)change;
 
-        if (!context.Characters.TryGetValue(rel.SourceId, out var source) || source is null)
+        if (!context.Characters.TryGetValue(rel.SourceId, out var source))
         {
-            context.RecordMessage($"WARNING: Character {rel.SourceId} not found during RelationshipChange.");
-            context.RecordFailure();
-            return Task.FromResult(ChangeHandlerResult.Failure());
+            source = context.Session != null ? await context.Session.LoadAsync<Character>(rel.SourceId, ct) : null;
+            if (source == null)
+            {
+                var hints = await context.SuggestCharacterMatchAsync(rel.SourceId);
+                var msg = $"Character {rel.SourceId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                context.RecordMessage($"WARNING: {msg}");
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+            context.RegisterNewCharacter(source);
         }
 
         source.Social ??= new SocialProfile();
@@ -28,6 +36,6 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
 
         context.RecordMessage($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
 
-        return Task.FromResult(ChangeHandlerResult.Ok);
+        return ChangeHandlerResult.Ok;
     }
 }

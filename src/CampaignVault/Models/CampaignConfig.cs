@@ -36,4 +36,10 @@ public class CampaignConfig
     /// "mapEnabled" → "true" (PF2e multi-attack penalty tracking)
     /// </summary>
     public Dictionary<string, string> SystemOptions { get; set; } = [];
+
+    /// <summary>
+    /// Maximum number of pressure nags to surface in a single tool response.
+    /// Defaults to 5.
+    /// </summary>
+    public int MaxPressuresPerResponse { get; set; } = 5;
 }

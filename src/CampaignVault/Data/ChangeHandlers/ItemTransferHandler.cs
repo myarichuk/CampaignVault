@@ -6,7 +6,7 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is ItemTransfer;
 
-    public Task<ChangeHandlerResult> ApplyAsync(
+    public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
         ChangeContext context,
         CancellationToken ct = default)
@@ -15,16 +15,23 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
 
         if (!context.Items.TryGetValue(transfer.ItemId, out var item))
         {
-            // Item not preloaded — rare but possible if not referenced in pre-load scan
-            context.RecordMessage($"WARNING: Item {transfer.ItemId} not found during ItemTransfer.");
-            context.RecordFailure();
-            return Task.FromResult(ChangeHandlerResult.Failure());
+            item = context.Session != null ? await context.Session.LoadAsync<Item>(transfer.ItemId, ct) : null;
+            if (item == null)
+            {
+                var hints = await context.SuggestItemMatchAsync(transfer.ItemId);
+                var msg = $"Item {transfer.ItemId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                context.RecordMessage($"WARNING: {msg}");
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+            context.RegisterNewItem(item);
         }
 
         item.HolderId = transfer.ToHolderId;
         item.LastUpdated = DateTime.UtcNow;
         context.RecordMessage($"Item {transfer.ItemId} moved to {transfer.ToHolderId}");
 
-        return Task.FromResult(ChangeHandlerResult.Ok);
+        return ChangeHandlerResult.Ok;
     }
 }

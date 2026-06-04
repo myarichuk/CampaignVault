@@ -66,6 +66,7 @@ public class PsychologyProfile
 public class SocialProfile
 {
     public Dictionary<string, int> Relationships { get; set; } = []; 
+    public Dictionary<string, int> FactionReputations { get; set; } = [];
 }
 
 public class NeedsProfile

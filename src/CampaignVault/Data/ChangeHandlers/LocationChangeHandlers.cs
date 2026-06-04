@@ -12,28 +12,39 @@ public class LocationCreateHandler : IWorldChangeHandler
         if (string.IsNullOrWhiteSpace(lc.LocationId))
             return ChangeHandlerResult.Failure("locationId is required.");
 
-        var existing = await context.Session.LoadAsync<Location>(lc.LocationId, ct);
+        var existing = context.Session != null ? await context.Session.LoadAsync<Location>(lc.LocationId, ct) : null;
+        Location newLoc;
         if (existing != null)
         {
-            return ChangeHandlerResult.Failure($"Location {lc.LocationId} already exists.");
+            context.RecordMessage($"Warning: Location '{lc.LocationId}' already exists. Updating existing location instead of failing.");
+            newLoc = existing;
+            if (lc.Name != null) newLoc.Name = lc.Name;
+            if (lc.Description != null) newLoc.Description = lc.Description;
+            if (lc.Type != LocationType.Room) newLoc.Type = lc.Type;
+            if (lc.ParentLocationId != null) newLoc.ParentLocationId = lc.ParentLocationId;
+            if (lc.PointsOfInterest != null) newLoc.PointsOfInterest = lc.PointsOfInterest;
+            if (lc.AmbientCrowd != null) newLoc.AmbientCrowd = lc.AmbientCrowd;
+            if (lc.Exits != null) newLoc.Exits = lc.Exits;
         }
-
-        var parentId = lc.ParentLocationId ?? lc.ConnectedFromLocationId;
-
-        var newLoc = new Location
+        else
         {
-            Id = lc.LocationId,
-            Name = lc.Name ?? "Unnamed Location",
-            Description = lc.Description ?? "",
-            Type = lc.Type,
-            ParentLocationId = parentId,
-            PointsOfInterest = lc.PointsOfInterest ?? [],
-            AmbientCrowd = lc.AmbientCrowd,
-            Exits = lc.Exits ?? []
-        };
+            var parentId = lc.ParentLocationId ?? lc.ConnectedFromLocationId;
 
-        if (string.IsNullOrEmpty(newLoc.CampaignName))
-            newLoc.CampaignName = context.CampaignName;
+            newLoc = new Location
+            {
+                Id = lc.LocationId,
+                Name = lc.Name ?? "Unnamed Location",
+                Description = lc.Description ?? "",
+                Type = lc.Type,
+                ParentLocationId = parentId,
+                PointsOfInterest = lc.PointsOfInterest ?? [],
+                AmbientCrowd = lc.AmbientCrowd,
+                Exits = lc.Exits ?? []
+            };
+
+            if (string.IsNullOrEmpty(newLoc.CampaignName))
+                newLoc.CampaignName = context.CampaignName;
+        }
 
         if (!string.IsNullOrEmpty(lc.ConnectedFromLocationId))
         {
@@ -79,8 +90,14 @@ public class LocationUpdateHandler : IWorldChangeHandler
         
         if (!context.Locations.TryGetValue(lu.LocationId, out var loc))
         {
-            loc = await context.Session.LoadAsync<Location>(lu.LocationId, ct);
-            if (loc == null) return ChangeHandlerResult.Failure($"Location {lu.LocationId} not found.");
+            loc = context.Session != null ? await context.Session.LoadAsync<Location>(lu.LocationId, ct) : null;
+            if (loc == null)
+            {
+                var hints = await context.SuggestLocationMatchAsync(lu.LocationId);
+                var msg = $"Location {lu.LocationId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                return ChangeHandlerResult.Failure(msg);
+            }
             context.RegisterNewLocation(loc);
         }
 

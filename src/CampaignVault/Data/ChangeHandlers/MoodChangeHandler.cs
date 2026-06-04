@@ -6,23 +6,38 @@ public sealed class MoodChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is MoodChange;
 
-    public Task<ChangeHandlerResult> ApplyAsync(
+    public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
         ChangeContext context,
         CancellationToken ct = default)
     {
         var mood = (MoodChange)change;
 
-        if (!context.Characters.TryGetValue(mood.CharacterId, out var character) || character?.Psychology is null)
+        if (!context.Characters.TryGetValue(mood.CharacterId, out var character))
         {
-            context.RecordMessage($"WARNING: Character {mood.CharacterId} not found or has no PsychologyProfile during MoodChange.");
+            character = context.Session != null ? await context.Session.LoadAsync<Character>(mood.CharacterId, ct) : null;
+            if (character == null)
+            {
+                var hints = await context.SuggestCharacterMatchAsync(mood.CharacterId);
+                var msg = $"Character {mood.CharacterId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                context.RecordMessage($"WARNING: {msg}");
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+            context.RegisterNewCharacter(character);
+        }
+
+        if (character.Psychology == null)
+        {
+            context.RecordMessage($"WARNING: Character {mood.CharacterId} has no PsychologyProfile during MoodChange.");
             context.RecordFailure();
-            return Task.FromResult(ChangeHandlerResult.Failure());
+            return ChangeHandlerResult.Failure();
         }
 
         character.Psychology.CurrentMood = mood.NewMood;
         context.RecordMessage($"Mood set to '{mood.NewMood}' for {mood.CharacterId}");
 
-        return Task.FromResult(ChangeHandlerResult.Ok);
+        return ChangeHandlerResult.Ok;
     }
 }

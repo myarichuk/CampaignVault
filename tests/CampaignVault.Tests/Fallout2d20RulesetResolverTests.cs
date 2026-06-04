@@ -21,6 +21,8 @@ public class Fallout2d20RulesetResolverTests
             characters: charDict,
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
+            factions: new Dictionary<string, Faction>(),
+            quests: new Dictionary<string, Quest>(),
             logger: NullLogger.Instance,
             summary: new List<string>(),
             dispatcher: new WorldChangeDispatcher(

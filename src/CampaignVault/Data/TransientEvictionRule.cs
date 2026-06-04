@@ -49,6 +49,13 @@ public sealed class TransientEvictionRule : ISimulationRule
         {
             if (c.CurrentLocationId == null) continue; // Safety check
 
+            // Phase 7.3: Quest Giver Eviction Safety
+            if (context.ActiveQuests != null && context.ActiveQuests.Any(q => q.GiverId == c.Id && (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)))
+            {
+                narratives.Add($"Quest giver '{c.Name}' is a transient NPC but has an active quest. Set `keepAlive: true` or assign a schedule to prevent accidental eviction.");
+                continue; // Skip eviction
+            }
+
             if (locations.TryGetValue(c.CurrentLocationId, out var loc) && loc != null)
             {
                 // Evict if location was never visited or hasn't been visited in > 1 day

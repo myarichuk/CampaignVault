@@ -25,6 +25,14 @@ public class Location
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// Optional faction ID that controls or "owns" this location.
+    /// Set via faction_create or faction_state changes. Null = unclaimed/independent.
+    /// Used by GetScene to surface faction presence and by TravelEncounterRule for encounter bias.
+    /// </summary>
+    public string? ControllingFactionId { get; set; }
+
+    /// <summary>
+
     /// Associates the entity with a specific campaign for multi-campaign isolation.
     /// Set automatically from current campaign context on create/upsert (via repo + handlers).
     /// (No legacy BC requirement per review feedback; always set for new data. Locations may be shareable across camps in some designs.)
@@ -42,4 +50,11 @@ public enum LocationType
     Wilderness
 }
 
-public record LocationExit(string TargetLocationId, string Description, string? LockCondition = null);
+public record LocationExit(
+    string TargetLocationId,
+    string Description,
+    string? LockCondition = null,
+    int? TravelCostHours = 0,
+    string? Terrain = null,
+    string? EncounterHint = null
+);

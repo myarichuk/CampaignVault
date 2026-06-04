@@ -56,5 +56,11 @@ public class Campaign
     /// </summary>
     public Dictionary<string, string> Metadata { get; set; } = [];
 
+    /// <summary>
+    /// Tracks pressures that have been recently surfaced to deduplicate and escalate.
+    /// Key is formatted as "{Category}:{EntityId}" (e.g., "NarrativePrompt:locations/rusty-nail").
+    /// </summary>
+    public Dictionary<string, PressureState> PressureCooldowns { get; set; } = [];
+
     // Future: per-campaign defaults, player list, etc. can be added here without breaking storage.
 }

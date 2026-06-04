@@ -1,0 +1,117 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CampaignVault.Models;
+
+namespace CampaignVault.Data;
+
+public sealed class TravelEncounterRule : ISimulationRule
+{
+    public string Name => "Travel Encounters";
+    public int Order => 25;
+    
+    private readonly Func<double> _nextDouble;
+
+    public TravelEncounterRule() : this(() => Random.Shared.NextDouble()) { }
+
+    public TravelEncounterRule(Func<double> nextDouble)
+    {
+        _nextDouble = nextDouble;
+    }
+
+    public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    {
+        // For travel that occurs passively over time during advance_world (e.g. caravans, or party traveling slowly).
+        // If the party is currently in "Traveling" activity but hasn't arrived, this rule could roll for them.
+        // For Phase 7.3, the primary trigger is explicit TravelChange commits, which will call EvaluateTravelAsync directly.
+        var narratives = new List<string>();
+        var deltas = new List<WorldChange>();
+        
+        return Task.FromResult(new RuleResult(narratives, deltas));
+    }
+
+    /// <summary>
+    /// Evaluates a travel journey by breaking it into time buckets and rolling for encounters.
+    /// Called by TravelChangeHandler.
+    /// </summary>
+    public (bool Interrupted, int HoursTraveled, List<WorldChange> Deltas, List<string> Narratives) EvaluateTravel(
+        Character character, 
+        Location destination, 
+        int totalHours, 
+        string? terrain, 
+        int encounterRiskModifier)
+    {
+        var deltas = new List<WorldChange>();
+        var narratives = new List<string>();
+
+        // Bucket size: roll once per 6 hours of travel (or fraction thereof)
+        int bucketSizeHours = 6;
+        int buckets = (int)Math.Ceiling((double)totalHours / bucketSizeHours);
+
+        // Base chance per bucket depending on terrain
+        double baseChance = 0.10; // 10% default
+        if (terrain != null)
+        {
+            var t = terrain.ToLowerInvariant();
+            if (t.Contains("road") || t.Contains("plains") || t.Contains("safe"))
+            {
+                baseChance = 0.05; // 5%
+            }
+            else if (t.Contains("wilderness") || t.Contains("forest") || t.Contains("hills"))
+            {
+                baseChance = 0.15; // 15%
+            }
+            else if (t.Contains("mountain") || t.Contains("swamp") || t.Contains("underdark") || t.Contains("dangerous"))
+            {
+                baseChance = 0.25; // 25%
+            }
+        }
+
+        // Apply generalized LLM modifier (-50 to +50). Each point is +/- 0.5% chance.
+        // e.g. +20 (loud) = +10% chance. -20 (stealthy) = -10% chance.
+        double modifiedChance = baseChance + (encounterRiskModifier * 0.005);
+        
+        // Clamp chance between 1% and 90%
+        modifiedChance = Math.Clamp(modifiedChance, 0.01, 0.90);
+
+        int hoursTraveled = 0;
+        bool interrupted = false;
+
+        for (int i = 0; i < buckets; i++)
+        {
+            int hoursInBucket = Math.Min(bucketSizeHours, totalHours - hoursTraveled);
+            hoursTraveled += hoursInBucket;
+
+            if (_nextDouble() < modifiedChance)
+            {
+                // Encounter triggered!
+                interrupted = true;
+                
+                string encounterMsg = $"Travel interrupted after {hoursTraveled} hours! An encounter or event has occurred in the {terrain ?? "area"}.";
+                narratives.Add(encounterMsg);
+
+                deltas.Add(new EventOccurred
+                {
+                    Category = EventCategory.Simulation, // Use Simulation or Travel
+                    Summary = encounterMsg,
+                    Involved = new List<string> { character.Id, destination.Id }
+                });
+
+                // Emit a narrative marker for the LLM DM
+                deltas.Add(new ActivityChange
+                {
+                    CharacterId = character.Id,
+                    UpdateLocation = false, // They haven't reached the destination yet!
+                    NewActivity = $"Travel interrupted en route to {destination.Name}. Resolve the encounter before continuing.",
+                    Reason = "TravelEncounterRule interrupt"
+                });
+
+                break; // Stop evaluating remaining buckets
+            }
+        }
+
+        return (interrupted, hoursTraveled, deltas, narratives);
+    }
+}

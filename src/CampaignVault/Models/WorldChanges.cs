@@ -27,6 +27,12 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(CharacterCreate), "character_create")]
 [JsonDerivedType(typeof(ScheduleChange), "schedule_change")]
 [JsonDerivedType(typeof(ItemCreate), "item_create")]
+[JsonDerivedType(typeof(TravelChange), "travel")]
+[JsonDerivedType(typeof(FactionReputationChange), "faction_reputation")]
+[JsonDerivedType(typeof(FactionStateChange), "faction_state")]
+[JsonDerivedType(typeof(QuestCreate), "quest_create")]
+[JsonDerivedType(typeof(QuestProgress), "quest_progress")]
+[JsonDerivedType(typeof(FactionCreate), "faction_create")]
 public abstract class WorldChange;
 
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
@@ -132,6 +138,21 @@ public class RumorEvolves : WorldChange
     [Description("Optional new narrative text for the rumor. If omitted the previous text is kept.")]
     [JsonPropertyName("newText")]
     public string? NewText { get; set; }
+}
+
+public class RumorCreate : WorldChange
+{
+    [JsonPropertyName("rumorId")]
+    public string RumorId { get; set; } = default!;
+
+    [JsonPropertyName("subject")]
+    public string Subject { get; set; } = default!;
+
+    [JsonPropertyName("text")]
+    public string Text { get; set; } = default!;
+
+    [JsonPropertyName("relatedLocationIds")]
+    public List<string>? RelatedLocationIds { get; set; }
 }
 
 /// <summary>Apply a numeric delta to the relationship score between two characters. Range is typically -100 to +100.</summary>
@@ -458,4 +479,208 @@ public class ItemCreate : WorldChange
     [Description("Key-value attributes for mechanics (e.g., {'value': '5', 'material': 'silver'}).")]
     [JsonPropertyName("properties")]
     public Dictionary<string, string> Properties { get; set; } = [];
+}
+
+/// <summary>
+/// Record a party or character travel between two connected locations.
+/// </summary>
+public class TravelChange : WorldChange
+{
+    [Description("ID of the character traveling (e.g. 'characters/grog').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+    
+    [Description("ID of the destination location (e.g. 'locations/highpass').")]
+    [JsonPropertyName("destinationLocationId")]
+    public string DestinationLocationId { get; set; } = default!;
+    
+    [Description("Narrative summary of the journey.")]
+    [JsonPropertyName("narrative")]
+    public string? Narrative { get; set; }
+    
+    [Description("Optional travel cost in hours override. If omitted, engine reads from the LocationExit metadata.")]
+    [JsonPropertyName("travelCostHoursOverride")]
+    public int? TravelCostHoursOverride { get; set; }
+    
+    [Description("Optional terrain override.")]
+    [JsonPropertyName("terrainOverride")]
+    public string? TerrainOverride { get; set; }
+
+    [Description("Abstract modifier from -50 to +50 representing the risk of an encounter during this travel. Negative numbers mean safer/stealthy travel (e.g. Pass Without Trace cast, cautious pace). Positive numbers mean reckless/noisy travel (clanking armor, large group).")]
+    [JsonPropertyName("encounterRiskModifier")]
+    public int? EncounterRiskModifier { get; set; }
+}
+
+/// <summary>
+/// Adjust a character's reputation with a specific faction.
+/// </summary>
+public class FactionReputationChange : WorldChange
+{
+    [Description("The ID of the character.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("The ID of the faction.")]
+    [JsonPropertyName("factionId")]
+    public string FactionId { get; set; } = default!;
+
+    [Description("Delta to apply to reputation (-100 to +100 range).")]
+    [JsonPropertyName("delta")]
+    public int Delta { get; set; }
+
+    [Description("Reason/narrative for the reputation change.")]
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Update global stance or influence of a faction.
+/// </summary>
+public class FactionStateChange : WorldChange
+{
+    [Description("The ID of the faction.")]
+    [JsonPropertyName("factionId")]
+    public string FactionId { get; set; } = default!;
+
+    [Description("New stance toward target faction.")]
+    [JsonPropertyName("newStance")]
+    public FactionStance? NewStance { get; set; }
+
+    [Description("Target faction ID for the stance change.")]
+    [JsonPropertyName("targetFactionId")]
+    public string? TargetFactionId { get; set; }
+
+    [Description("Delta to apply to faction's influence level (0 to 100).")]
+    [JsonPropertyName("influenceDelta")]
+    public int? InfluenceDelta { get; set; }
+
+    [Description("Narrative summary of this state change.")]
+    [JsonPropertyName("narrative")]
+    public string? Narrative { get; set; }
+}
+
+/// <summary>
+/// Create a new structured quest.
+/// </summary>
+public class QuestCreate : WorldChange
+{
+    [Description("The unique ID of the quest (e.g. 'quests/rats_01').")]
+    [JsonPropertyName("questId")]
+    public string QuestId { get; set; } = default!;
+
+    [Description("The title of the quest.")]
+    [JsonPropertyName("title")]
+    public string Title { get; set; } = default!;
+
+    [Description("The ID of the quest giver (character or faction ID).")]
+    [JsonPropertyName("giverId")]
+    public string? GiverId { get; set; }
+
+    [Description("Initial list of objectives.")]
+    [JsonPropertyName("objectives")]
+    public List<QuestObjectiveDto> Objectives { get; set; } = [];
+
+    [Description("Optional quest category.")]
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
+
+    [Description("Quest urgency level (Low, Normal, Urgent, Critical).")]
+    [JsonPropertyName("urgency")]
+    public QuestUrgency Urgency { get; set; } = QuestUrgency.Normal;
+
+    [Description("IDs of related locations.")]
+    [JsonPropertyName("relatedLocationIds")]
+    public List<string> RelatedLocationIds { get; set; } = [];
+
+    [Description("IDs of related factions.")]
+    [JsonPropertyName("relatedFactionIds")]
+    public List<string> RelatedFactionIds { get; set; } = [];
+
+    [Description("DM-only notes for tracking.")]
+    [JsonPropertyName("dmNotes")]
+    public string? DmNotes { get; set; }
+
+    [Description("Optional campaign day by which this quest must be completed to avoid failure consequences.")]
+    [JsonPropertyName("deadlineDay")]
+    public int? DeadlineDay { get; set; }
+}
+
+public class QuestObjectiveDto
+{
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = default!;
+
+    [JsonPropertyName("rewardHint")]
+    public string? RewardHint { get; set; }
+
+    [JsonPropertyName("deadlineDay")]
+    public int? DeadlineDay { get; set; }
+}
+
+/// <summary>
+/// Advance or fail an objective in a quest.
+/// </summary>
+public class QuestProgress : WorldChange
+{
+    [Description("The ID of the quest to progress.")]
+    [JsonPropertyName("questId")]
+    public string QuestId { get; set; } = default!;
+
+    [Description("The index of the objective to update (0-based).")]
+    [JsonPropertyName("objectiveIndex")]
+    public int? ObjectiveIndex { get; set; }
+
+    [Description("The name prefix to match if index is omitted.")]
+    [JsonPropertyName("objectiveName")]
+    public string? ObjectiveName { get; set; }
+
+    [Description("The new state of the objective.")]
+    [JsonPropertyName("newState")]
+    public QuestState NewState { get; set; }
+
+    [Description("Narrative summary of progress.")]
+    [JsonPropertyName("narrativeNote")]
+    public string? NarrativeNote { get; set; }
+
+    [Description("IDs involved in this progress.")]
+    [JsonPropertyName("involvedIds")]
+    public List<string>? InvolvedIds { get; set; }
+}
+
+/// <summary>
+/// Create a new faction.
+/// </summary>
+public class FactionCreate : WorldChange
+{
+    [Description("The unique ID of the faction (e.g. 'factions/thieves-guild').")]
+    [JsonPropertyName("factionId")]
+    public string FactionId { get; set; } = default!;
+
+    [Description("Name of the faction.")]
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = default!;
+
+    [Description("Description of the faction.")]
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [Description("Type of the faction.")]
+    [JsonPropertyName("factionType")]
+    public FactionType FactionType { get; set; } = FactionType.Guild;
+
+    [Description("Optional location ID of the controlling territory.")]
+    [JsonPropertyName("controllingTerritory")]
+    public string? ControllingTerritory { get; set; }
+
+    [Description("Initial list of territory location IDs controlled.")]
+    [JsonPropertyName("territoryLocationIds")]
+    public List<string> TerritoryLocationIds { get; set; } = [];
+
+    [Description("Initial list of known leader character IDs.")]
+    [JsonPropertyName("knownLeaderIds")]
+    public List<string> KnownLeaderIds { get; set; } = [];
+
+    [Description("Optional initial influence level (0-100). Defaults to 50.")]
+    [JsonPropertyName("initialInfluenceLevel")]
+    public int? InitialInfluenceLevel { get; set; }
 }

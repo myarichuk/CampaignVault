@@ -13,7 +13,7 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                                 c.Name,
                                 c.Notes,
                                 c.ClassLevel,
-                                Locations = c.Schedule == null ? new string[0] : new[] { c.Schedule.DefaultLocationId }.Concat(c.Schedule.Routines.Select(r => r.LocationId)),
+                                Locations = c.Schedule == null ? new string[0] : new[] { c.Schedule.DefaultLocationId }.Concat(c.Schedule.Routines != null ? c.Schedule.Routines.Select(r => r.LocationId) : new string[0]),
                                 // Live simulation state (CurrentLocationId / CurrentActivity) — enables efficient GetScene queries
                                 // without client-side scans over large character collections (addresses review issues #3 and #8).
                                 CurrentLocationId = c.CurrentLocationId,

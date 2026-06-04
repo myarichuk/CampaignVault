@@ -6,18 +6,33 @@ public sealed class NeedChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is NeedChange;
 
-    public Task<ChangeHandlerResult> ApplyAsync(
+    public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
         ChangeContext context,
         CancellationToken ct = default)
     {
         var nc = (NeedChange)change;
 
-        if (!context.Characters.TryGetValue(nc.CharacterId, out var character) || character?.Needs is null)
+        if (!context.Characters.TryGetValue(nc.CharacterId, out var character))
         {
-            context.RecordMessage($"WARNING: Character {nc.CharacterId} not found or has no NeedsProfile during NeedChange.");
+            character = context.Session != null ? await context.Session.LoadAsync<Character>(nc.CharacterId, ct) : null;
+            if (character == null)
+            {
+                var hints = await context.SuggestCharacterMatchAsync(nc.CharacterId);
+                var msg = $"Character {nc.CharacterId} not found.";
+                if (hints != null) msg += $" Did you mean: {hints}?";
+                context.RecordMessage($"WARNING: {msg}");
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+            context.RegisterNewCharacter(character);
+        }
+
+        if (character.Needs == null)
+        {
+            context.RecordMessage($"WARNING: Character {nc.CharacterId} has no NeedsProfile during NeedChange.");
             context.RecordFailure();
-            return Task.FromResult(ChangeHandlerResult.Failure());
+            return ChangeHandlerResult.Failure();
         }
 
         var current = character.Needs.ActiveNeeds.GetValueOrDefault(nc.Need, 0f);
@@ -25,6 +40,6 @@ public sealed class NeedChangeHandler : IWorldChangeHandler
 
         context.RecordMessage($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
 
-        return Task.FromResult(ChangeHandlerResult.Ok);
+        return ChangeHandlerResult.Ok;
     }
 }

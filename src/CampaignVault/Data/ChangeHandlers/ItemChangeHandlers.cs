@@ -12,9 +12,19 @@ public class ItemCreateHandler : IWorldChangeHandler
         if (string.IsNullOrWhiteSpace(ic.ItemId))
             return ChangeHandlerResult.Failure("itemId is required.");
 
-        var existing = await context.Session.LoadAsync<Item>(ic.ItemId, ct);
+        var existing = context.Session != null ? await context.Session.LoadAsync<Item>(ic.ItemId, ct) : null;
         if (existing != null)
-            return ChangeHandlerResult.Failure($"Item {ic.ItemId} already exists.");
+        {
+            existing.Name = ic.Name ?? existing.Name;
+            if (ic.Description != null) existing.Description = ic.Description;
+            if (ic.HolderId != null) existing.HolderId = ic.HolderId;
+            if (ic.Tags != null && ic.Tags.Count > 0) existing.Tags = ic.Tags;
+            if (ic.Properties != null && ic.Properties.Count > 0)
+                existing.Properties = ic.Properties.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
+                
+            context.RecordMessage($"Warning: Item {ic.ItemId} already exists. Updated existing fields.");
+            return ChangeHandlerResult.Ok;
+        }
 
         var newItem = new Item
         {
