@@ -91,6 +91,7 @@ public class CommitResult
     public bool Success { get; set; } = true;
     public int ChangesProcessed { get; set; }
     public List<string> Summary { get; set; } = [];
+    public List<string> InvolvedEntities { get; set; } = [];
 }
 
 public class AdvanceResult

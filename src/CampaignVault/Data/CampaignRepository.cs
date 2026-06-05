@@ -162,6 +162,7 @@ public class CampaignRepository
                     else if (c is StatusChange sc) involvedEntities.Add(sc.CharacterId);
                     else if (c is StatusRemove src) involvedEntities.Add(src.CharacterId);
                     else if (c is NeedChange nc) involvedEntities.Add(nc.CharacterId);
+                    else if (c is FactionReputationChange frc) { involvedEntities.Add(frc.CharacterId); involvedEntities.Add(frc.FactionId); }
                     else if (c is LocationUpdate lu) involvedEntities.Add(lu.LocationId);
                     else if (c is RumorEvolves rc) involvedEntities.Add(rc.RumorId);
                     else if (c is EventOccurred ev && ev.Involved != null)
@@ -183,6 +184,8 @@ public class CampaignRepository
                         campaign.PressureCooldowns.Remove(k);
                     }
                 }
+                
+                result.InvolvedEntities = involvedEntities.ToList();
             }
         }
 
@@ -485,20 +488,20 @@ public class CampaignRepository
         var activeRumors = (await session.Query<Rumor>()
             .Where(x => x.State != RumorState.Resolved && x.State != RumorState.Forgotten)
             .ToListAsync())
-            .Where(r => string.IsNullOrEmpty(r.CampaignName) || r.CampaignName == effective)
+            .Where(r => string.IsNullOrEmpty(r.CampaignName) || string.Equals(r.CampaignName, effective, StringComparison.OrdinalIgnoreCase))
             .ToList();
         var npcs = (await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync())
-            .Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
+            .Where(c => string.IsNullOrEmpty(c.CampaignName) || string.Equals(c.CampaignName, effective, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         // Phase 7.1: Load active factions and quests so simulation rules can reason about them.
         var activeFactions = (await session.Query<Faction>().Take(200).ToListAsync())
-            .Where(f => string.IsNullOrEmpty(f.CampaignName) || f.CampaignName == effective)
+            .Where(f => string.IsNullOrEmpty(f.CampaignName) || string.Equals(f.CampaignName, effective, StringComparison.OrdinalIgnoreCase))
             .ToList();
         var activeQuests = (await session.Query<Quest>()
             .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
             .Take(200).ToListAsync())
-            .Where(q => string.IsNullOrEmpty(q.CampaignName) || q.CampaignName == effective)
+            .Where(q => string.IsNullOrEmpty(q.CampaignName) || string.Equals(q.CampaignName, effective, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         // Build context and run the pluggable simulation engine (rules emit deltas)

@@ -98,10 +98,45 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         var result = await rule.ApplyAsync(ctx);
 
         // Verify eviction didn't happen
-        Assert.DoesNotContain(result.Deltas, d => d is ActivityChange);
+        Assert.Empty(result.Deltas);
+        Assert.Single(result.NarrativeEvents);
+        Assert.Contains("Quest giver 'Quest Guy' is a transient NPC but has an active quest", result.NarrativeEvents[0]);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_DeletesOrphanItems()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
         
-        // Verify warning was emitted
-        Assert.Contains(result.NarrativeEvents, n => n.Contains("Quest giver 'Quest Guy' is a transient NPC but has an active quest"));
+        var loc = new Location { Id = "locations/item_tavern", Name = "Tavern", LastVisitedDay = 1, CampaignName = "item-evict-test" };
+        var c = new Character { Id = "chars/item_guy", Name = "Guy", CurrentLocationId = loc.Id, KeepAlive = false, Schedule = null, CampaignName = "item-evict-test" };
+        var i = new Item { Id = "items/cool_sword", Name = "Cool Sword", HolderId = c.Id, CampaignName = "item-evict-test" };
+        
+        await session.StoreAsync(loc);
+        await session.StoreAsync(c);
+        await session.StoreAsync(i);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+        await session.SaveChangesAsync();
+
+        var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
+        var time = new CampaignTime { TotalDaysElapsed = 3 }; // Should evict
+        
+        var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "item-evict-test");
+        
+        var result = await rule.ApplyAsync(ctx);
+        await session.SaveChangesAsync(); // Actually apply the deletes to DB
+
+        // The character was evicted
+        Assert.Single(result.Deltas);
+        var delta = Assert.IsType<ActivityChange>(result.Deltas[0]);
+        Assert.Equal(c.Id, delta.CharacterId);
+        Assert.Null(delta.NewLocationId);
+        
+        Assert.Contains(result.NarrativeEvents, n => n.Contains("orphaned items held by transient characters"));
+
+        using var verifySession = _fixture.Store.OpenAsyncSession();
+        var deletedItem = await verifySession.LoadAsync<Item>(i.Id);
+        Assert.Null(deletedItem); // The item should be gone!
     }
 
     [Fact]

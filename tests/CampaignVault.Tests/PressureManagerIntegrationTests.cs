@@ -291,4 +291,69 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             Assert.Contains("ESCALATED", p4[0]);
         }
     }
+
+    [Fact]
+    public async Task PressureManager_Enforces_Hard_Cap_And_Severity_Ordering()
+    {
+        string campName = "pressure-cap-scenario-" + Guid.NewGuid();
+        
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = new CampaignDocumentKeys().Meta(campName), Name = campName });
+            await session.StoreAsync(new CampaignConfig { Id = new CampaignDocumentKeys().Config(campName), MaxPressuresPerResponse = 5 });
+            await session.SaveChangesAsync();
+        }
+
+        var manager = new PressureManager(new CampaignDocumentKeys());
+
+        // 7 distinct pressures
+        var rawPressures = new[]
+        {
+            new WorldPressureItem(PressureSeverity.NarrativePrompt, "factions/1", "Reputation changed", "Faction:Reputation"),
+            new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Orphaned item", "Character:OrphanedItem"),
+            new WorldPressureItem(PressureSeverity.NarrativePrompt, "factions/2", "Presence expanded", "Faction:PresenceChange"),
+            new WorldPressureItem(PressureSeverity.NarrativePrompt, "quests/1", "Quest stale", "Quest:Stale"),
+            new WorldPressureItem(PressureSeverity.EngineWarning, "chars/2", "Travel interrupted", "Travel:Interrupted"),
+            new WorldPressureItem(PressureSeverity.EngineWarning, "locs/1", "Location data missing", "Location:MissingData"),
+            new WorldPressureItem(PressureSeverity.NarrativePrompt, "quests/2", "Quest ending soon", "Quest:ApproachingDeadline")
+        };
+
+        string[] formatted;
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            formatted = await manager.FilterAndCapAsync(session, campName, 10, rawPressures);
+            await session.SaveChangesAsync();
+        }
+
+        // Assert 5 items returned
+        Assert.Equal(5, formatted.Length);
+
+        // Assert Engine Warnings are top 2
+        Assert.Contains("Travel interrupted", formatted[0]);
+        Assert.Contains("Location data missing", formatted[1]);
+
+        // Assert the next 3 are Narrative Prompts from the input
+        for(int i = 2; i < 5; i++)
+        {
+            Assert.Contains("NARRATIVE PROMPT", formatted[i]);
+            // Ensure no engine warnings slipped down
+            Assert.DoesNotContain("ENGINE WARNING", formatted[i]);
+        }
+
+        // Verify the discarded ones did NOT trigger cooldowns
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var camp = await session.LoadAsync<Campaign>(new CampaignDocumentKeys().Meta(campName));
+            
+            // Only 5 cooldowns should be registered
+            Assert.Equal(5, camp.PressureCooldowns.Count);
+
+            // Travel and Location MUST be registered
+            Assert.True(camp.PressureCooldowns.ContainsKey($"{PressureSeverity.EngineWarning}:chars/2")); // Travel
+            Assert.True(camp.PressureCooldowns.ContainsKey($"{PressureSeverity.EngineWarning}:locs/1"));  // Location
+
+            // The exact missing two could be any of the Narrative ones (since they sort stably but might be arbitrary).
+            // But we can assert 2 are missing.
+        }
+    }
 }

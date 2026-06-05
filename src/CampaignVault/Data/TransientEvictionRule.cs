@@ -2,6 +2,7 @@ using CampaignVault.Models;
 using Microsoft.Extensions.Logging;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
+using Raven.Client.Documents.Linq;
 
 namespace CampaignVault.Data;
 
@@ -26,13 +27,19 @@ public sealed class TransientEvictionRule : ISimulationRule
         // 1. Query candidates: Schedule == null && CurrentLocationId != null && !KeepAlive
         // Scoping hardened: filter by camp (loose for shareable chars)
         var effective = context.CampaignName;
+        // RavenDB dynamic index bug workaround: do not filter by KeepAlive or Schedule in DB
         var candidates = await context.Session.Query<Character>()
-            .Where(c => c.Schedule == null && c.CurrentLocationId != null && !c.KeepAlive)
+            .Where(c => c.CurrentLocationId != null)
             .ToListAsync(ct);
+
         if (!string.IsNullOrEmpty(effective))
         {
-            candidates = candidates.Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective).ToList();
+            candidates = candidates.Where(c => string.IsNullOrEmpty(c.CampaignName) || string.Equals(c.CampaignName, effective, StringComparison.OrdinalIgnoreCase)).ToList();
         }
+
+        // Filter out characters that have a schedule or are KeepAlive (only transients should be evicted)
+        candidates = candidates.Where(c => c.Schedule == null && c.KeepAlive == false).ToList();
+
         var candidatesQuery = candidates.Take(200).ToList();
 
         if (!candidatesQuery.Any())
@@ -43,6 +50,8 @@ public sealed class TransientEvictionRule : ISimulationRule
         // 2. Collect unique CurrentLocationIds and Load Locations
         var locationIds = candidatesQuery.Select(c => c.CurrentLocationId!).Distinct().ToList();
         var locations = await context.Session.LoadAsync<Location>(locationIds, ct);
+
+        var evictedIds = new List<string>();
 
         // 3. Evaluate each candidate
         foreach (var c in candidatesQuery)
@@ -58,7 +67,6 @@ public sealed class TransientEvictionRule : ISimulationRule
 
             if (locations.TryGetValue(c.CurrentLocationId, out var loc) && loc != null)
             {
-                // Evict if location was never visited or hasn't been visited in > 1 day
                 bool shouldEvict = loc.LastVisitedDay == null || (context.Time.TotalDaysElapsed - loc.LastVisitedDay.Value > 1);
                 
                 if (shouldEvict)
@@ -72,6 +80,7 @@ public sealed class TransientEvictionRule : ISimulationRule
                         Reason = "Engine transient eviction — location unvisited for >1 campaign day"
                     });
                     narratives.Add($"{c.Name} is no longer present in {loc.Name} (the area has gone cold).");
+                    evictedIds.Add(c.Id);
                 }
             }
             else
@@ -82,16 +91,32 @@ public sealed class TransientEvictionRule : ISimulationRule
                     CharacterId = c.Id,
                     NewLocationId = null,
                     UpdateLocation = true,
-                    NewActivity = "drifted away",
-                    Reason = "Engine transient eviction — location missing"
+                    NewActivity = "wandered off after their surroundings changed",
+                    Reason = "Engine transient eviction — orphaned transient"
                 });
-                narratives.Add($"{c.Name} drifted away.");
+                evictedIds.Add(c.Id);
+            }
+        }
+
+        if (evictedIds.Any())
+        {
+            var orphanedItems = await context.Session.Query<Item>()
+                .Where(i => i.HolderId.In(evictedIds))
+                .ToListAsync(ct);
+
+            foreach (var item in orphanedItems)
+            {
+                context.Session.Delete(item);
+            }
+            if (orphanedItems.Any())
+            {
+                narratives.Add($"Evicted {orphanedItems.Count} orphaned items held by transient characters.");
             }
         }
 
         if (narratives.Any())
         {
-            _logger.LogInformation("TransientEvictionRule evicted {Count} transient characters.", narratives.Count);
+            _logger.LogInformation("TransientEvictionRule evicted {Count} transient characters.", evictedIds.Count);
         }
 
         return new RuleResult(narratives, deltas);

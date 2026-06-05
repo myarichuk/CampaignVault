@@ -41,7 +41,14 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 - **Critical**: `get_scene`, `get_world_state`, and `advance_world` return `WorldPressure` containing `ENGINE WARNING:` and `NARRATIVE PROMPT:` items. These include **exact copy-paste JSON** for the `commit` needed to fix hallucinations, dead-ends, empty-but-expected-crowds, broken links, etc. Treat them as mandatory directives. Call `get_help` for the full "Lazy Tavern" walkthrough and patterns.
 - This directly addresses the "silly factor" of forcing perfect polymorphic JSON arrays for every flavor element the LLM narrates.
 
-See `get_help`, the recommended system prompt, and `docs/Phase6_OpenWorld_Design.md` for details. The `detailed-implementation-plan.md` and upcoming `phase7.md` track further work on travel/spatial, factions, and quests.
+See `get_help`, the recommended system prompt, and `docs/Phase6_OpenWorld_Design.md` for details. The `phase7.md` tracks work on travel/spatial, factions, and quests.
+
+## Deep Mechanics (Phase 7: Factions, Quests, Travel)
+
+The engine provides deep structural tracking for macro-mechanics:
+- **Factions**: Track influence, wealth, and stance matrices. Use `FactionCreate`, `FactionReputationChange`, and `FactionPresenceChange` to mutate them. Background rules shift their influence over time, and the engine pressures the LLM to reflect these shifts in local scenes. Use `get_faction_context` to do a deep dive on a specific faction.
+- **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the DM doesn't forget them. Use `get_quest_details` to pull the full objective list and history.
+- **Travel**: When a character starts traveling, they use an `ActivityChange` but do NOT update their `LocationId`. If they don't arrive within the expected timeframe, the engine raises an `ENGINE WARNING: Travel Interrupted` pressure to prevent characters from getting permanently stuck in limbo, forcing the LLM to conclude the encounter and `LocationChange` them to their destination.
 
 
 

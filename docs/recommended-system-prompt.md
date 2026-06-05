@@ -54,4 +54,44 @@ commit [
 next_turn
 end_combat
 ```
+
+**Macro-Mechanics (Factions, Quests, Travel):**
+If the engine prompts you via `WorldPressure`, or if you are deliberately manipulating factions and quests, use the following JSON change types in your `commit`:
+
+Faction Update Example:
+```json
+[
+  {
+    "$type": "faction_state",
+    "factionId": "factions/thieves-guild",
+    "influenceDelta": 5,
+    "narrative": "The guild expanded their territory after the guards retreated."
+  }
+]
+```
+
+Quest Progress Example:
+```json
+[
+  {
+    "$type": "quest_progress",
+    "questId": "quests/find-amulet",
+    "objectiveIndex": 0,
+    "newState": "Complete",
+    "narrativeNote": "They found the amulet in the rubble."
+  }
+]
+```
+
+Travel Resolution Example (resolves `Travel:Interrupted` pressure):
+```json
+[
+  {
+    "$type": "travel",
+    "characterId": "chars/pc1",
+    "destinationLocationId": "locations/destination_town",
+    "narrative": "Arrived safely after the ambush."
+  }
+]
+```
 ```

@@ -432,6 +432,46 @@ public class CampaignTools
                 }
             }
 
+            if (scene.RelevantFactions != null && scene.RelevantFactions.Any())
+            {
+                var fIds = scene.RelevantFactions.Select(f => f.FactionId).ToList();
+                int minDay = (int)time.TotalDaysElapsed - 2;
+                var recentEvents = await session.Query<Event>()
+                    .Where(e => e.CampaignName == effective && (e.Category == EventCategory.Simulation || e.Category == EventCategory.SceneCommit) && e.DayLogged >= minDay)
+                    .Take(50)
+                    .ToListAsync();
+                    
+                var simEvents = recentEvents.Where(e => e.Category == EventCategory.Simulation).ToList();
+                var commitEvents = recentEvents.Where(e => e.Category == EventCategory.SceneCommit).ToList();
+
+                foreach (var ev in simEvents)
+                {
+                    if (ev.Involved != null && ev.Involved.Any(id => fIds.Contains(id)))
+                    {
+                        var invFaction = ev.Involved.First(id => fIds.Contains(id));
+                        
+                        // If the LLM already interacted with this faction ON or AFTER the simulation event, don't nag.
+                        if (commitEvents.Any(c => c.Timestamp >= ev.Timestamp && c.Involved != null && c.Involved.Contains(invFaction)))
+                        {
+                            continue;
+                        }
+                        
+                        if (ev.Summary.Contains("influence", StringComparison.OrdinalIgnoreCase))
+                        {
+                            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, invFaction, 
+                                $"Faction '{invFaction}' recently expanded influence here. Update a local NPC's dialogue or create a rumor. Example:\n[ {{ \"$type\": \"event\", \"summary\": \"Reflected faction influence\", \"involved\": [\"{invFaction}\"] }} ]", 
+                                "Faction:PresenceChange"));
+                        }
+                        else if (ev.Summary.Contains("Hostile") || ev.Summary.Contains("AtWar") || ev.Summary.Contains("war", StringComparison.OrdinalIgnoreCase))
+                        {
+                            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, invFaction, 
+                                $"Faction '{invFaction}' is involved in recent hostilities. Consider updating a local NPC's reputation to reflect their stance. Example:\n[ {{ \"$type\": \"faction_reputation\", \"characterId\": \"chars/local\", \"factionId\": \"{invFaction}\", \"delta\": -20 }} ]", 
+                                "Faction:Reputation"));
+                        }
+                    }
+                }
+            }
+
             var finalPressures = await _pressureManager.FilterAndCapAsync(session, effective, (int)time.TotalDaysElapsed, pressures);
 
             var suggestedExamples = new List<string>();
@@ -500,7 +540,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 var errorMsg = string.Join("\n", result.Summary);
                 return new ToolResult<CommitResult>(false, result, Summary: "Commit failed due to validation errors.", Error: errorMsg);
             }
-            await _repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.SceneCommit });
+            await _repository.LogEventAsync(session, new Event { Id = "events/" + Guid.NewGuid(), CampaignName = effective, Summary = narrative, Category = EventCategory.SceneCommit, Involved = result.InvolvedEntities }, effective);
             var msg = $"World updated with {changes.Length} changes.";
             return new ToolResult<CommitResult>(true, result, msg);
         });

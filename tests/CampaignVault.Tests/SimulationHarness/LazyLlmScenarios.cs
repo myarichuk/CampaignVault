@@ -126,4 +126,357 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         Assert.False(result.Success);
         Assert.Contains("Did you mean: chars/drizzzt (Drizzt Do'Urden)?", result.Error);
     }
+
+    [Fact]
+    public async Task LLM_Forgets_To_Arrive_Produces_TravelInterruptedPressure_And_Resolves_On_Commit()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        
+        await tools.SelectCampaign("TravelLazinessTest");
+
+        string charId = "chars/traveler-1";
+        string destLocId = "locations/destination-1";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("TravelLazinessTest"), Name = "TravelLazinessTest" });
+            
+            var startLoc = new Location { Id = "locations/start", Name = "The Start", CampaignName = "TravelLazinessTest", Type = LocationType.Settlement };
+            await session.StoreAsync(startLoc);
+
+            var c = new Character { Id = charId, Name = "Lazy Bob", CampaignName = "TravelLazinessTest", CurrentLocationId = "locations/start" };
+            await session.StoreAsync(c);
+
+            var loc = new Location { Id = destLocId, Name = "The Goal", CampaignName = "TravelLazinessTest", Type = LocationType.Settlement };
+            await session.StoreAsync(loc);
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        // 1. LLM issues ActivityChange indicating travel, but FORGETS TravelChange
+        var changes = new WorldChange[] 
+        {
+            new ActivityChange { CharacterId = charId, NewActivity = $"Travel interrupted en route to {destLocId} by an ambush!" }
+        };
+        var commitResult = await tools.Commit(changes, "Started traveling and got ambushed");
+        Assert.True(commitResult.Success, commitResult.Summary);
+
+        // 2. Advance time (simulating a full day passing without arriving)
+        await tools.AdvanceWorld(1, TimeOfDay.Morning, "TravelLazinessTest");
+
+        // 3. Next scene load should nag the LLM
+        var sceneResult = await tools.GetScene("locations/start", true, "TravelLazinessTest");
+        Assert.True(sceneResult.Success);
+        var view = sceneResult.Data;
+        
+        // Assert the pressure exists
+        var pressures = sceneResult.WorldPressure;
+        Assert.NotNull(pressures);
+        Assert.Contains(pressures, p => p.Contains("interrupted en route"));
+
+        // Assert the suggested example is perfectly formed JSON
+        Assert.NotNull(view.SuggestedCommitExamples);
+        var suggestedJson = view.SuggestedCommitExamples.FirstOrDefault(j => j.Contains("\"travel\"") && j.Contains(charId));
+        Assert.NotNull(suggestedJson);
+        
+        // 4. LLM applies the suggested JSON verbatim (but replaces the placeholder with the real destination)
+        suggestedJson = suggestedJson.Replace("locations/actual-dest", destLocId);
+        var correctedChanges = System.Text.Json.JsonSerializer.Deserialize<WorldChange[]>(suggestedJson);
+        Assert.NotNull(correctedChanges);
+        Assert.Equal(2, correctedChanges.Length);
+        Assert.IsType<ActivityChange>(correctedChanges[0]);
+        Assert.IsType<TravelChange>(correctedChanges[1]);
+        
+        var fixCommitResult = await tools.Commit(correctedChanges, "Arriving after the ambush");
+        Assert.True(fixCommitResult.Success, fixCommitResult.Error);
+
+        // 5. Verify the pressure clears
+        var finalSceneResult = await tools.GetScene("locations/start", true, "TravelLazinessTest");
+        if (finalSceneResult.WorldPressure != null)
+        {
+            Assert.DoesNotContain(finalSceneResult.WorldPressure, p => p.Contains("interrupted en route"));
+        }
+    }
+
+    [Fact]
+    public async Task LLM_Ignores_Faction_Influence_Shift_Produces_PresencePressure()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        
+        await tools.SelectCampaign("FactionInfluenceTest");
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("FactionInfluenceTest"), Name = "FactionInfluenceTest" });
+            
+            var loc = new Location { Id = "locations/town_01", Name = "Town", CampaignName = "FactionInfluenceTest", Type = LocationType.Settlement };
+            await session.StoreAsync(loc);
+
+            var fac = new Faction { Id = "factions/guild", Name = "The Guild", CampaignName = "FactionInfluenceTest", TerritoryLocationIds = new System.Collections.Generic.List<string> { "locations/town_01" } };
+            await session.StoreAsync(fac);
+
+            var ev = new Event { Id = "events/guild_expand", CampaignName = "FactionInfluenceTest", Category = EventCategory.Simulation, Summary = "The Guild grew in influence (+10).", Involved = new System.Collections.Generic.List<string> { "factions/guild" }, DayLogged = 0 };
+            await session.StoreAsync(ev);
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        // Simulating get_scene right after the event
+        var sceneResult = await tools.GetScene("locations/town_01", true, "FactionInfluenceTest");
+        Assert.True(sceneResult.Success, string.Join(", ", sceneResult.Summary));
+        
+        var pressures = sceneResult.WorldPressure;
+        Assert.NotNull(pressures);
+        Assert.Contains(pressures, p => p.Contains("expanded influence here"));
+
+        // Simulate LLM using suggested commit
+        var changes = new WorldChange[] 
+        {
+            new EventOccurred { Category = EventCategory.SceneCommit, Summary = "Reflected faction influence", Involved = new System.Collections.Generic.List<string> { "factions/guild" } }
+        };
+        var commitResult = await tools.Commit(changes, "Adding rumor for faction influence", "FactionInfluenceTest");
+        Assert.True(commitResult.Success, commitResult.Error);
+
+        using (var s = _store.OpenAsyncSession())
+        {
+            await s.StoreAsync(new Event { Id = "events/dummy1", CampaignName = "FactionInfluenceTest" });
+            s.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5));
+            await s.SaveChangesAsync();
+        }
+
+        // Next scene load should clear pressure
+        var finalSceneResult = await tools.GetScene("locations/town_01", true, "FactionInfluenceTest");
+        if (finalSceneResult.WorldPressure != null)
+        {
+            Assert.DoesNotContain(finalSceneResult.WorldPressure, p => p.Contains("expanded influence here"));
+        }
+    }
+
+    [Fact]
+    public async Task LLM_Ignores_Faction_War_Produces_ReputationPressure()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        
+        await tools.SelectCampaign("FactionWarTest");
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("FactionWarTest"), Name = "FactionWarTest" });
+            
+            var loc = new Location { Id = "locations/town_02", Name = "Town 2", CampaignName = "FactionWarTest", Type = LocationType.Settlement };
+            await session.StoreAsync(loc);
+
+            var fac = new Faction { Id = "factions/kingdom", Name = "The Kingdom", CampaignName = "FactionWarTest", TerritoryLocationIds = new System.Collections.Generic.List<string> { "locations/town_02" } };
+            await session.StoreAsync(fac);
+
+            var c = new Character { Id = "chars/local_01", Name = "Local Peasant", CampaignName = "FactionWarTest", CurrentLocationId = "locations/town_02" };
+            await session.StoreAsync(c);
+
+            var ev = new Event { Id = "events/kingdom_war", CampaignName = "FactionWarTest", Category = EventCategory.Simulation, Summary = "The Kingdom became Hostile toward Rebels.", Involved = new System.Collections.Generic.List<string> { "factions/kingdom" }, DayLogged = 0 };
+            await session.StoreAsync(ev);
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        var sceneResult = await tools.GetScene("locations/town_02", true, "FactionWarTest");
+        Assert.True(sceneResult.Success, string.Join(", ", sceneResult.Summary));
+        
+        var pressures = sceneResult.WorldPressure;
+        Assert.NotNull(pressures);
+        Assert.Contains(pressures, p => p.Contains("recent hostilities"));
+
+        var changes = new WorldChange[] 
+        {
+            new FactionReputationChange { CharacterId = "chars/local_01", FactionId = "factions/kingdom", Delta = -20 }
+        };
+        var commitResult = await tools.Commit(changes, "Updating peasant stance on war", "FactionWarTest");
+        Assert.True(commitResult.Success, commitResult.Error);
+
+        using (var s = _store.OpenAsyncSession())
+        {
+            await s.StoreAsync(new Event { Id = "events/dummy2", CampaignName = "FactionWarTest" });
+            s.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5));
+            await s.SaveChangesAsync();
+        }
+
+        var finalSceneResult = await tools.GetScene("locations/town_02", true, "FactionWarTest");
+        if (finalSceneResult.WorldPressure != null && finalSceneResult.WorldPressure.Any(p => p.Contains("recent hostilities")))
+        {
+            using (var s = _store.OpenAsyncSession())
+            {
+                var evs = await s.Query<Event>().Where(e => e.CampaignName == "FactionWarTest").ToListAsync();
+                var msg = "Events found: " + string.Join("; ", evs.Select(e => $"{e.Category} {e.DayLogged} {e.Timestamp:O} Inv:[{string.Join(",", e.Involved ?? new System.Collections.Generic.List<string>())}]"));
+                throw new Exception("Pressure still present. " + msg);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task LLM_Leaves_Quest_Stale_Produces_DeadlinePressure_And_Resolves()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        
+        await tools.SelectCampaign("QuestStaleTest");
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("QuestStaleTest"), Name = "QuestStaleTest" });
+            
+            var loc = new Location { Id = "locations/town_03", Name = "Town 3", CampaignName = "QuestStaleTest", Type = LocationType.Settlement };
+            await session.StoreAsync(loc);
+
+            var q = new Quest 
+            { 
+                Id = "quests/q1", 
+                Title = "The Stale Quest", 
+                CampaignName = "QuestStaleTest", 
+                OverallState = QuestState.InProgress,
+                DeadlineDay = 15,
+                RelatedLocationIds = new System.Collections.Generic.List<string> { "locations/town_03" },
+                Objectives = new System.Collections.Generic.List<QuestObjective> { new QuestObjective("Do something", QuestState.InProgress) }
+            };
+            await session.StoreAsync(q);
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5));
+            await session.SaveChangesAsync();
+        }
+
+        var advanceResult = await tools.AdvanceWorld(14, TimeOfDay.Dawn, "QuestStaleTest");
+        Assert.True(advanceResult.Success, advanceResult.Error);
+
+        var sceneResult = await tools.GetScene("locations/town_03", true, "QuestStaleTest");
+        Assert.True(sceneResult.Success, sceneResult.Error);
+        
+        Assert.NotNull(sceneResult.WorldPressure);
+        Assert.Contains(sceneResult.WorldPressure, p => p.Contains("Quest 'The Stale Quest' deadline"));
+        Assert.NotNull(sceneResult.Data!.SuggestedCommitExamples);
+        Assert.Contains(sceneResult.Data!.SuggestedCommitExamples, p => p.Contains("quest_progress"));
+
+        var changes = new WorldChange[] 
+        {
+            new QuestProgress { QuestId = "quests/q1", ObjectiveIndex = 0, NewState = QuestState.Failed, NarrativeNote = "Failed to complete the objective in time." }
+        };
+        var commitResult = await tools.Commit(changes, "Failing quest due to time limit", "QuestStaleTest");
+        Assert.True(commitResult.Success, commitResult.Error);
+
+        var finalSceneResult = await tools.GetScene("locations/town_03", true, "QuestStaleTest");
+        if (finalSceneResult.WorldPressure != null)
+        {
+            Assert.DoesNotContain(finalSceneResult.WorldPressure, p => p.Contains("Quest 'The Stale Quest' deadline"));
+        }
+    }
+
+    [Fact]
+    public async Task Active_Quest_Giver_Is_Protected_From_Eviction()
+    {
+        var evictionRule = new TransientEvictionRule(Microsoft.Extensions.Logging.Abstractions.NullLogger<TransientEvictionRule>.Instance);
+        var simEngine = new DefaultSimulationEngine(new ISimulationRule[] { evictionRule }, Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultSimulationEngine>.Instance);
+        var repo = new CampaignRepository(_store, simEngine, Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance, new DefaultBehaviorSynthesizer());
+        
+        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        
+        await tools.SelectCampaign("QuestGiverEvictionTest");
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("QuestGiverEvictionTest"), Name = "QuestGiverEvictionTest" });
+            
+            var loc = new Location { Id = "locations/town_04", Name = "Town 4", CampaignName = "QuestGiverEvictionTest", Type = LocationType.Settlement };
+            // Simulate that it was visited a long time ago, so transient rule kicks in if not protected
+            loc.LastVisitedDay = 0;
+            await session.StoreAsync(loc);
+
+            var c = new Character { Id = "chars/transient_giver", Name = "Transient Guy", CampaignName = "QuestGiverEvictionTest", CurrentLocationId = "locations/town_04", KeepAlive = false };
+            await session.StoreAsync(c);
+
+            var q = new Quest 
+            { 
+                Id = "quests/q2", 
+                Title = "Giver Protection Quest", 
+                CampaignName = "QuestGiverEvictionTest", 
+                OverallState = QuestState.InProgress,
+                GiverId = "chars/transient_giver",
+                RelatedLocationIds = new System.Collections.Generic.List<string> { "locations/town_04" },
+                Objectives = new System.Collections.Generic.List<QuestObjective> { new QuestObjective("Do something", QuestState.InProgress) }
+            };
+            await session.StoreAsync(q);
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5));
+            await session.SaveChangesAsync();
+
+            // Force index creation so AdvanceWorld doesn't get 0 results on first run
+            await session.Query<Quest>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+                .ToListAsync();
+
+            await session.Query<Character>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(c => c.CurrentLocationId != null)
+                .ToListAsync();
+        }
+
+        // Advance 3 days, eviction should skip the quest giver
+        var advanceResult1 = await tools.AdvanceWorld(3, TimeOfDay.Dawn, "QuestGiverEvictionTest");
+        Assert.True(advanceResult1.Success, advanceResult1.Error);
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var c = await session.LoadAsync<Character>("chars/transient_giver");
+            Assert.NotNull(c.CurrentLocationId); // He is NOT evicted!
+        }
+
+        // Now complete the quest
+        var changes = new WorldChange[] 
+        {
+            new QuestProgress { QuestId = "quests/q2", ObjectiveIndex = 0, NewState = QuestState.Complete, NarrativeNote = "Done." }
+        };
+        var commitResult = await tools.Commit(changes, "Finishing quest", "QuestGiverEvictionTest");
+        Assert.True(commitResult.Success, commitResult.Error);
+
+        using (var s = _store.OpenAsyncSession())
+        {
+            // Wait for index to reflect the completed quest
+            await s.Query<Quest>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+                .ToListAsync();
+
+            var quest = await s.LoadAsync<Quest>("quests/q2");
+            Assert.Equal(QuestState.Complete, quest.OverallState);
+
+            // Also ensure the character index used by TransientEvictionRule is not stale
+            await s.Query<Character>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(c => c.CurrentLocationId != null)
+                .ToListAsync();
+        }
+
+        // Advance another 3 days, now he should be evicted
+        var advanceResult2 = await tools.AdvanceWorld(3, TimeOfDay.Dawn, "QuestGiverEvictionTest");
+        Assert.True(advanceResult2.Success, advanceResult2.Error);
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var c = await session.LoadAsync<Character>("chars/transient_giver");
+            Assert.Null(c.CurrentLocationId); // He IS evicted!
+        }
+    }
 }
