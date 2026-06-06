@@ -24,6 +24,8 @@ public class QuestCreateHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Quest {qc.QuestId} already exists.");
         }
 
+        var time = await context.GetCurrentTimeAsync();
+
         var quest = new Quest
         {
             Id = qc.QuestId,
@@ -31,11 +33,12 @@ public class QuestCreateHandler : IWorldChangeHandler
             GiverId = qc.GiverId,
             Category = qc.Category,
             Urgency = qc.Urgency,
-            RelatedLocationIds = qc.RelatedLocationIds,
-            RelatedFactionIds = qc.RelatedFactionIds,
+            RelatedLocationIds = qc.RelatedLocationIds ?? [],
+            RelatedFactionIds = qc.RelatedFactionIds ?? [],
             DmNotes = qc.DmNotes,
             DeadlineDay = qc.DeadlineDay,
             CampaignName = context.CampaignName,
+            LastUpdatedDay = time.TotalDaysElapsed,
             LastUpdated = DateTime.UtcNow,
             Objectives = qc.Objectives?.Select(o => new QuestObjective(o.Description, QuestState.Open, o.RewardHint, DeadlineDay: o.DeadlineDay)).ToList() ?? new List<QuestObjective>()
         };
@@ -95,8 +98,8 @@ public class QuestProgressHandler : IWorldChangeHandler
             _ => objective.DayCompleted
         };
         
-        var dayStarted = 
-            qp.NewState == QuestState.InProgress && objective.State == QuestState.Open
+        // Anchor staleness tracking on first progress from Open (including direct Open → Complete).
+        var dayStarted = objective.State == QuestState.Open && qp.NewState is QuestState.InProgress or QuestState.Complete
             ? time.TotalDaysElapsed
             : objective.DayStarted;
 

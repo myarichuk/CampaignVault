@@ -171,6 +171,33 @@ public class CampaignRepository
                     }
                     else if (c is ActivityChange ac) involvedEntities.Add(ac.CharacterId);
                     else if (c is ScheduleChange shc) involvedEntities.Add(shc.CharacterId);
+                    else if (c is ItemTransfer it) { involvedEntities.Add(it.ItemId); involvedEntities.Add(it.ToHolderId); }
+                    else if (c is AttributeChange atc) involvedEntities.Add(atc.CharacterId);
+                    else if (c is MoodChange mc) involvedEntities.Add(mc.CharacterId);
+                    else if (c is RulesetAction ra) 
+                    { 
+                        involvedEntities.Add(ra.ActorId); 
+                        if (ra.TargetIds != null) foreach (var tid in ra.TargetIds) involvedEntities.Add(tid);
+                    }
+                    else if (c is LocationCreate lc) involvedEntities.Add(lc.LocationId);
+                    else if (c is CharacterCreate cc) { involvedEntities.Add(cc.CharacterId); if (cc.CurrentLocationId != null) involvedEntities.Add(cc.CurrentLocationId); }
+                    else if (c is ItemCreate ic) { involvedEntities.Add(ic.ItemId); if (ic.HolderId != null) involvedEntities.Add(ic.HolderId); }
+                    else if (c is TravelChange tc) { involvedEntities.Add(tc.CharacterId); involvedEntities.Add(tc.DestinationLocationId); }
+                    else if (c is FactionStateChange fsc) involvedEntities.Add(fsc.FactionId);
+                    else if (c is QuestCreate qc) 
+                    { 
+                        involvedEntities.Add(qc.QuestId); 
+                        if (qc.GiverId != null) involvedEntities.Add(qc.GiverId);
+                        if (qc.RelatedLocationIds != null) foreach (var l in qc.RelatedLocationIds) involvedEntities.Add(l);
+                        if (qc.RelatedFactionIds != null) foreach (var f in qc.RelatedFactionIds) involvedEntities.Add(f);
+                    }
+                    else if (c is QuestProgress qp) 
+                    { 
+                        involvedEntities.Add(qp.QuestId); 
+                        if (qp.InvolvedIds != null) foreach (var inv in qp.InvolvedIds) involvedEntities.Add(inv);
+                    }
+                    else if (c is FactionCreate fc) involvedEntities.Add(fc.FactionId);
+                    else if (c is RelationshipChange relc) { involvedEntities.Add(relc.SourceId); involvedEntities.Add(relc.TargetId); }
                 }
 
                 if (involvedEntities.Count > 0)

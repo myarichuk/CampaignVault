@@ -299,6 +299,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(newlyCreated);
         Assert.Equal("quests/rats_01", newlyCreated!.Id);
         Assert.Equal("test-camp", newlyCreated.CampaignName);
+        Assert.Equal(10, newlyCreated.LastUpdatedDay);
         Assert.Single(newlyCreated.Objectives);
         Assert.Equal("Kill rats", newlyCreated.Objectives[0].Description);
 
@@ -342,13 +343,60 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         Assert.True(result.Success);
 
         Assert.Equal(QuestState.Complete, quest.Objectives[0].State);
-        Assert.Equal(10, quest.Objectives[0].DayCompleted); // Uses current time day
-        
+        Assert.Equal(10, quest.Objectives[0].DayCompleted);
+        Assert.Equal(10, quest.Objectives[0].DayStarted); // Open → Complete anchors both timestamps
+        Assert.Equal(10, quest.LastUpdatedDay);
+
         // Since all objectives are complete, OverallState should be Complete
         Assert.Equal(QuestState.Complete, quest.OverallState);
 
         // Ensure EventOccurred child mutation was emitted and category is Discovery (Issue 3)
         Assert.Contains(capture.Captured, m => m is EventOccurred e && e.Summary.Contains("Clear the Rats") && e.Category == EventCategory.Discovery);
+    }
+
+    [Fact]
+    public async Task QuestProgress_UsesTotalDaysElapsed_NotCalendarDay()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var quest = new Quest
+        {
+            Id = "quests/elapsed_01",
+            Title = "Long Campaign Quest",
+            OverallState = QuestState.Open,
+            Objectives = new List<QuestObjective> { new QuestObjective("Do the thing", QuestState.Open) }
+        };
+
+        var handler = new QuestProgressHandler();
+        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = new ChangeContext(
+            session,
+            new Dictionary<string, Character>(),
+            new Dictionary<string, Item>(),
+            new Dictionary<string, Location>(),
+            new Dictionary<string, Faction>(),
+            new Dictionary<string, Quest> { [quest.Id] = quest },
+            NullLogger.Instance,
+            () => Task.FromResult(new CampaignTime { Day = 11, TotalDaysElapsed = 400 }),
+            _ => Task.CompletedTask,
+            new List<string>(),
+            dispatcher,
+            null,
+            "test-camp"
+        );
+
+        var result = await handler.ApplyAsync(new QuestProgress
+        {
+            QuestId = quest.Id,
+            ObjectiveIndex = 0,
+            NewState = QuestState.Complete
+        }, ctx);
+
+        Assert.True(result.Success);
+        Assert.Equal(400, quest.Objectives[0].DayCompleted);
+        Assert.Equal(400, quest.Objectives[0].DayStarted);
+        Assert.Equal(400, quest.LastUpdatedDay);
+        Assert.NotEqual(11, quest.Objectives[0].DayCompleted); // calendar Day must not leak into timestamps
     }
 
     [Fact]

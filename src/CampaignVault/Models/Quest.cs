@@ -16,7 +16,9 @@ public class Quest
     public List<string> RelatedFactionIds { get; set; } = [];
     public string? DmNotes { get; set; }
     public List<string>? VisibleToCharacterIds { get; set; }
+    /// <summary>Campaign day (absolute <see cref="CampaignTime.TotalDaysElapsed"/>) by which the quest must be completed.</summary>
     public int? DeadlineDay { get; set; }
+    /// <summary>Last progress touch, in absolute <see cref="CampaignTime.TotalDaysElapsed"/> days (not calendar Day 1–30).</summary>
     public int LastUpdatedDay { get; set; }
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
@@ -31,8 +33,11 @@ public record QuestObjective(
     QuestState State = QuestState.Open,
     string? RewardHint = null,
     List<string>? InvolvedIds = null,
+    /// <summary>Absolute <see cref="CampaignTime.TotalDaysElapsed"/> when this objective was first progressed from Open.</summary>
     int? DayStarted = null,
+    /// <summary>Absolute <see cref="CampaignTime.TotalDaysElapsed"/> when this objective was completed.</summary>
     int? DayCompleted = null,
+    /// <summary>Absolute <see cref="CampaignTime.TotalDaysElapsed"/> deadline for this objective.</summary>
     int? DeadlineDay = null
 );
 
