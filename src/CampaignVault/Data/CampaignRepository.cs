@@ -228,6 +228,8 @@ public class CampaignRepository
         // Hardened: filter by CampaignName (loose for shareable chars per design/feedback; strict would exclude legacy)
         var characters = await session.Query<Character>()
             .Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
+            .Where(c => c.KeepAlive)
+            .Take(100)
             .ToListAsync();
         var pressure = new List<WorldPressureItem>();
         var badCategories = new[] { "Injury", "Condition", "Disease", "Poison", "Curse" };
