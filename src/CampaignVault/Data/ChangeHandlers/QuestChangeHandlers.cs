@@ -31,8 +31,8 @@ public class QuestCreateHandler : IWorldChangeHandler
             GiverId = qc.GiverId,
             Category = qc.Category,
             Urgency = qc.Urgency,
-            RelatedLocationIds = qc.RelatedLocationIds ?? new List<string>(),
-            RelatedFactionIds = qc.RelatedFactionIds ?? new List<string>(),
+            RelatedLocationIds = qc.RelatedLocationIds,
+            RelatedFactionIds = qc.RelatedFactionIds,
             DmNotes = qc.DmNotes,
             DeadlineDay = qc.DeadlineDay,
             CampaignName = context.CampaignName,
@@ -88,8 +88,17 @@ public class QuestProgressHandler : IWorldChangeHandler
         
         // Update objective state
         var time = await context.GetCurrentTimeAsync();
-        int? dayCompleted = qp.NewState == QuestState.Complete ? time.Day : (qp.NewState is QuestState.Open or QuestState.InProgress ? null : objective.DayCompleted);
-        int? dayStarted = (qp.NewState == QuestState.InProgress && objective.State == QuestState.Open) ? time.Day : objective.DayStarted;
+        var dayCompleted = qp.NewState switch
+        {
+            QuestState.Complete => time.TotalDaysElapsed,
+            QuestState.Open or QuestState.InProgress => null,
+            _ => objective.DayCompleted
+        };
+        
+        var dayStarted = 
+            qp.NewState == QuestState.InProgress && objective.State == QuestState.Open
+            ? time.TotalDaysElapsed
+            : objective.DayStarted;
 
         quest.Objectives[indexToUpdate] = objective with 
         { 
@@ -116,7 +125,7 @@ public class QuestProgressHandler : IWorldChangeHandler
             quest.OverallState = QuestState.Open;
         }
 
-        quest.LastUpdatedDay = time.Day;
+        quest.LastUpdatedDay = time.TotalDaysElapsed;
         quest.LastUpdated = DateTime.UtcNow;
 
         if (oldOverallState != quest.OverallState && (quest.OverallState == QuestState.Complete || quest.OverallState == QuestState.Failed))
