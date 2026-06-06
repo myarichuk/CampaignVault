@@ -451,11 +451,26 @@ public class CampaignRepository
             if (playerRepChar != null && playerRepChar.Social != null && playerRepChar.Social.FactionReputations != null)
                 rep = playerRepChar.Social.FactionReputations[f.Id];
 
+            var localStance = FactionStance.Neutral;
+            if (f.StanceToward != null)
+            {
+                foreach (var other in relevantFactions)
+                {
+                    if (other.Id == f.Id) continue;
+                    if (f.StanceToward.TryGetValue(other.Id, out var stance))
+                    {
+                        if (stance == FactionStance.AtWar) { localStance = FactionStance.AtWar; break; }
+                        if (stance == FactionStance.Hostile && localStance != FactionStance.AtWar) localStance = FactionStance.Hostile;
+                        if (stance == FactionStance.Allied && localStance == FactionStance.Neutral) localStance = FactionStance.Allied;
+                    }
+                }
+            }
+
             return new FactionPresenceSummary(
                 f.Id,
                 f.Name,
                 f.InfluenceLevel,
-                FactionStance.Neutral,
+                localStance,
                 rep,
                 f.TerritoryLocationIds.Count
             );

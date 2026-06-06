@@ -301,7 +301,17 @@ public class CampaignTools
                 locSummary, 
                 finalPressures,
                 worldActiveQuests.Select(q => new ActiveQuestSummary(q.Id, q.Title, q.Objectives.Count(o => o.State == QuestState.Open || o.State == QuestState.InProgress), q.Objectives.Count, q.Urgency, q.DeadlineDay, q.GiverId)),
-                worldActiveFactions.Select(f => new FactionPresenceSummary(f.Id, f.Name, f.InfluenceLevel, FactionStance.Neutral, null, f.TerritoryLocationIds.Count)),
+                worldActiveFactions.Select(f => 
+                {
+                    var overallStance = FactionStance.Neutral;
+                    if (f.StanceToward != null && f.StanceToward.Count > 0)
+                    {
+                        if (f.StanceToward.Values.Contains(FactionStance.AtWar)) overallStance = FactionStance.AtWar;
+                        else if (f.StanceToward.Values.Contains(FactionStance.Hostile)) overallStance = FactionStance.Hostile;
+                        else if (f.StanceToward.Values.Contains(FactionStance.Allied)) overallStance = FactionStance.Allied;
+                    }
+                    return new FactionPresenceSummary(f.Id, f.Name, f.InfluenceLevel, overallStance, null, f.TerritoryLocationIds.Count);
+                }),
                 travelEvent?.Summary,
                 suggestedExamples
             );
