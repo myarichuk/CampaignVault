@@ -272,7 +272,16 @@ public sealed class WorldChangeDispatcher
                     continue;
                 }
 
-                var result = await chosen.ApplyAsync(change, context);
+                ChangeHandlerResult result;
+                try
+                {
+                    result = await chosen.ApplyAsync(change, context);
+                }
+                catch (ArgumentNullException ex) when (ex.ParamName == "key")
+                {
+                    // If an LLM completely omits an ID field, TryGetValue(null) will throw.
+                    result = ChangeHandlerResult.Failure($"A required ID property is missing on {change.GetType().Name}.");
+                }
 
                 if (result.Message is not null)
                 {

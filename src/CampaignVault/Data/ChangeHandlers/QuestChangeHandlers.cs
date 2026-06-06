@@ -116,7 +116,7 @@ public class QuestProgressHandler : IWorldChangeHandler
         {
             quest.OverallState = QuestState.Failed;
         }
-        else if (quest.Objectives.Any(o => o.State == QuestState.InProgress || o.State == QuestState.Complete))
+        else if (quest.Objectives.Any(o => o.State is QuestState.InProgress or QuestState.Complete))
         {
             quest.OverallState = QuestState.InProgress;
         }
@@ -128,7 +128,7 @@ public class QuestProgressHandler : IWorldChangeHandler
         quest.LastUpdatedDay = time.TotalDaysElapsed;
         quest.LastUpdated = DateTime.UtcNow;
 
-        if (oldOverallState != quest.OverallState && (quest.OverallState == QuestState.Complete || quest.OverallState == QuestState.Failed))
+        if (oldOverallState != quest.OverallState && quest.OverallState is QuestState.Complete or QuestState.Failed)
         {
             await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
             {

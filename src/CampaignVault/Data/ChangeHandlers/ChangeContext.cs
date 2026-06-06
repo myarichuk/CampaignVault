@@ -141,9 +141,9 @@ public sealed class ChangeContext
 
     internal bool HasFailure => _hasFailure;
 
-    public async Task<string?> SuggestLocationMatchAsync(string nameQuery)
+    public async Task<string?> SuggestLocationMatchAsync(string? nameQuery)
     {
-        if (Session == null) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
             cleanQuery = cleanQuery.Substring("locations/".Length);
@@ -179,9 +179,9 @@ public sealed class ChangeContext
         return null;
     }
 
-    public async Task<string?> SuggestCharacterMatchAsync(string nameQuery)
+    public async Task<string?> SuggestCharacterMatchAsync(string? nameQuery)
     {
-        if (Session == null) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
             cleanQuery = cleanQuery.Substring("chars/".Length);
@@ -217,9 +217,9 @@ public sealed class ChangeContext
         return null;
     }
 
-    public async Task<string?> SuggestItemMatchAsync(string nameQuery)
+    public async Task<string?> SuggestItemMatchAsync(string? nameQuery)
     {
-        if (Session == null) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
             cleanQuery = cleanQuery.Substring("items/".Length);
@@ -254,9 +254,9 @@ public sealed class ChangeContext
         if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
         return null;
     }
-    public async Task<string?> SuggestFactionMatchAsync(string nameQuery)
+    public async Task<string?> SuggestFactionMatchAsync(string? nameQuery)
     {
-        if (Session == null) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
             cleanQuery = cleanQuery.Substring("factions/".Length);
@@ -288,9 +288,9 @@ public sealed class ChangeContext
         return null;
     }
 
-    public async Task<string?> SuggestQuestMatchAsync(string nameQuery)
+    public async Task<string?> SuggestQuestMatchAsync(string? nameQuery)
     {
-        if (Session == null) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
             cleanQuery = cleanQuery.Substring("quests/".Length);
