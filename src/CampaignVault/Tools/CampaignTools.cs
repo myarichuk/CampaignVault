@@ -359,6 +359,19 @@ public class CampaignTools
             }
             else
             {
+                if (partyPresent)
+                {
+                    bool anyPartyMemberPresent = scene.Characters.Any(c => c.KeepAlive);
+                    if (!anyPartyMemberPresent)
+                    {
+                        pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, loc.Id,
+                            $"You narrated the party exploring '{loc.Id}', but the engine shows NO main characters (KeepAlive) present here! " +
+                            "Did you forget to commit their travel? Use the `commit` tool with a `travel` or `location_update` change immediately:\n" +
+                            "[ { \"$type\": \"travel\", \"characterId\": \"...\", \"destinationLocationId\": \"" + loc.Id + "\", \"narrative\": \"They arrive at the location.\" } ]",
+                            "Location:MissingTravelCommit"));
+                    }
+                }
+
                 if (loc.Exits.Count == 0 && loc.Type != LocationType.Region)
                 {
                     pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, loc.Id,

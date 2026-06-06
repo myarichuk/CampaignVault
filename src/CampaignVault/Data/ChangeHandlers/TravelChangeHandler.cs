@@ -69,6 +69,9 @@ public class TravelChangeHandler : IWorldChangeHandler
         // Apply partial time costs
         if (hoursTraveled > 0)
         {
+            time.TotalDaysElapsed += (time.HourOfDay + hoursTraveled) / 24;
+            time.HourOfDay = (time.HourOfDay + hoursTraveled) % 24;
+
             float tirednessDelta = (hoursTraveled / 4.0f) * 10f;
             if (tirednessDelta > 0)
             {
