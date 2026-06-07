@@ -105,40 +105,48 @@ public class CampaignTools
 
     private async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
     {
-        using var session = _repository.OpenSession();
-        ToolResult<T> result;
+        int maxRetries = 2;
+        int attempt = 0;
 
-        try
+        while (true)
         {
-            result = await action(session);
-        }
-        catch (ConcurrencyException)
-        {
-            return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "State changed mid-operation. Re-fetch and retry.");
-        }
-        catch (Exception ex)
-        {
-            return new ToolResult<T>(false, Error: ToolErrors.InternalError, Summary: ex.Message);
-        }
+            using var session = _repository.OpenSession();
+            session.Advanced.UseOptimisticConcurrency = true;
 
-        if (!result.Success)
-        {
-            return result;
-        }
-
-        if (saveChanges)
-        {
+            ToolResult<T> result;
             try
             {
-                await session.SaveChangesAsync();
+                result = await action(session);
             }
             catch (ConcurrencyException)
             {
-                return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "Commit failed due to concurrent modification. Re-fetch and retry.");
+                if (++attempt <= maxRetries) continue;
+                return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "State changed mid-operation. Re-fetch and retry.");
             }
-        }
+            catch (Exception ex)
+            {
+                return new ToolResult<T>(false, Error: ToolErrors.InternalError, Summary: ex.Message);
+            }
 
-        // Final sanitizing step on every tool response.
+            if (!result.Success)
+            {
+                return result;
+            }
+
+            if (saveChanges)
+            {
+                try
+                {
+                    await session.SaveChangesAsync();
+                }
+                catch (ConcurrencyException)
+                {
+                    if (++attempt <= maxRetries) continue;
+                    return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "Commit failed due to concurrent modification. Re-fetch and retry.");
+                }
+            }
+
+            // Final sanitizing step on every tool response.
         // This guarantees that even if a polluted entity reached this point (legacy data,
         // unsanitized query path, etc.), nothing containing a live or dead JsonElement
         // will be serialized by the MCP layer's System.Text.Json when sending the response.

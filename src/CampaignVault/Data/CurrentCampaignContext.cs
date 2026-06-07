@@ -25,16 +25,15 @@ public interface ICurrentCampaignContext
 
 /// <summary>
 /// Simple in-memory implementation of <see cref="ICurrentCampaignContext"/>.
-/// Uses AsyncLocal so different async contexts (e.g. different MCP sessions if the
-/// transport supports it) can have independent current campaigns.
+/// Uses a normal backing field so it persists across MCP requests (which are separate HTTP requests).
 /// </summary>
 public sealed class CurrentCampaignContext : ICurrentCampaignContext
 {
-    private static readonly AsyncLocal<string?> _current = new();
+    private string _current = DefaultCampaign;
 
     private const string DefaultCampaign = "default";
 
-    public string CurrentCampaignName => _current.Value ?? DefaultCampaign;
+    public string CurrentCampaignName => _current;
 
     public void SetCurrent(string campaignName)
     {
@@ -43,6 +42,6 @@ public sealed class CurrentCampaignContext : ICurrentCampaignContext
             campaignName = DefaultCampaign;
         }
 
-        _current.Value = campaignName;
+        _current = campaignName.Trim().ToLowerInvariant();
     }
 }
