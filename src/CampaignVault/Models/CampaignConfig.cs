@@ -54,4 +54,16 @@ public class CampaignConfig
     /// Defaults to 3.
     /// </summary>
     public int PressureEscalationCount { get; set; } = 3;
+
+    /// <summary>
+    /// The number of in-game days before a Trivial memory drifts or decays.
+    /// Defaults to 20.
+    /// </summary>
+    public int MemoryTrivialDecayDays { get; set; } = 20;
+
+    /// <summary>
+    /// The number of in-game days before an Important memory drifts or decays.
+    /// Defaults to 40.
+    /// </summary>
+    public int MemoryImportantDecayDays { get; set; } = 40;
 }

@@ -84,6 +84,7 @@ public record NpcPresenceSummary(
     string? CurrentAppearance = null,
     List<string>? VisualTags = null,
     List<string>? DistinctiveFeatures = null,
+    Dictionary<string, MemoryNode>? Memories = null,
     /// <summary>
     /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills). 
     /// Essential for the LLM to understand mechanical capabilities at a glance.

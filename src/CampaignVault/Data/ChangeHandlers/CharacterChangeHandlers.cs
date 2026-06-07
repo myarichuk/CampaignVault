@@ -142,3 +142,36 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         return ChangeHandlerResult.Ok;
     }
 }
+
+public class KnowledgeUpdateHandler : IWorldChangeHandler
+{
+    public bool ShouldHandle(WorldChange change) => change is KnowledgeUpdate;
+
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    {
+        var ku = (KnowledgeUpdate)change;
+        if (string.IsNullOrWhiteSpace(ku.CharacterId)) return ChangeHandlerResult.Failure("characterId is required.");
+        if (string.IsNullOrWhiteSpace(ku.Topic)) return ChangeHandlerResult.Failure("topic is required.");
+
+        var character = context.Session != null ? await context.Session.LoadAsync<Character>(ku.CharacterId, ct) : null;
+        if (character == null) return ChangeHandlerResult.Failure($"Character '{ku.CharacterId}' not found. Cannot update knowledge.");
+
+        if (!character.Psychology.Memories.TryGetValue(ku.Topic, out var memory))
+        {
+            memory = new MemoryNode { Topic = ku.Topic };
+            character.Psychology.Memories[ku.Topic] = memory;
+        }
+
+        memory.Details = ku.Details;
+        var time = await context.GetCurrentTimeAsync();
+        memory.DayAcquired = (int)time.TotalDaysElapsed;
+        
+        if (ku.Importance.HasValue)
+        {
+            memory.Importance = ku.Importance.Value;
+        }
+
+        context.RecordMessage($"Updated memory for character '{ku.CharacterId}' regarding '{ku.Topic}'.");
+        return ChangeHandlerResult.Ok;
+    }
+}

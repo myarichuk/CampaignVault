@@ -458,4 +458,90 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         Assert.True(blockCount > 0, "No JSON blocks were found in the recommended-system-prompt.md. We should have at least one testable example.");
     }
+
+    [Fact]
+    public async Task GetScene_EmitsMemoryDecayPressure()
+    {
+        var repo = new CampaignRepository(_fixture.Store);
+        var tools = CreateTools();
+        var locId = "locations/test-memory";
+        var npcId = "chars/decay-bob";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var config = await repo.GetCampaignConfigAsync(session);
+            config.MemoryImportantDecayDays = 40;
+            await repo.UpsertCampaignConfigAsync(session, config);
+
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Room" });
+            
+            var c = new Character { Id = npcId, Name = "Bob", CurrentLocationId = locId };
+            c.Psychology.Memories["Secret"] = new MemoryNode { Topic = "Secret", Details = "A secret", DayAcquired = 10, Importance = MemoryImportance.Important };
+            await repo.UpsertCharacterAsync(session, c);
+            
+            var t = await repo.GetTimeAsync(session);
+            t.TotalDaysElapsed = 51; // 51 - 10 = 41 > 40
+            // t is automatically tracked by session.SaveChangesAsync()
+            
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.GetScene(locId, true);
+        Assert.True(result.Success);
+        
+        Assert.Contains(result.WorldPressure, p => p.Contains("fading") && p.Contains("Secret"));
+    }
+
+    [Fact]
+    public async Task GetScene_IgnoresCoreMemoryDecay()
+    {
+        var repo = new CampaignRepository(_fixture.Store);
+        var tools = CreateTools();
+        var locId = "locations/test-core";
+        var npcId = "chars/core-bob";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Room" });
+            
+            var c = new Character { Id = npcId, Name = "Bob", CurrentLocationId = locId };
+            c.Psychology.Memories["Secret"] = new MemoryNode { Topic = "Secret", Details = "A secret", DayAcquired = 10, Importance = MemoryImportance.Core };
+            await repo.UpsertCharacterAsync(session, c);
+            
+            var t = await repo.GetTimeAsync(session);
+            t.TotalDaysElapsed = 100; // Even at 90 days diff, core shouldn't decay
+            // t is automatically tracked by session.SaveChangesAsync()
+            
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.GetScene(locId, true);
+        Assert.True(result.Success);
+
+        Assert.True(result.WorldPressure == null || !result.WorldPressure.Any(p => p.Contains("fading") && p.Contains("Secret")));
+    }
+
+    [Fact]
+    public async Task GetScene_EmitsOpportunisticPressure()
+    {
+        var repo = new CampaignRepository(_fixture.Store);
+        var tools = CreateTools();
+        var locId = "locations/test-opportunistic";
+        var factionId = "factions/thieves";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Alley" });
+            
+            var f = new Faction { Id = factionId, Name = "Thieves", TerritoryLocationIds = [locId], StanceToward = new System.Collections.Generic.Dictionary<string, FactionStance> { ["party"] = FactionStance.Opportunistic } };
+            await repo.UpsertFactionAsync(session, f);
+            
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.GetScene(locId, true);
+        Assert.True(result.Success);
+        
+        Assert.Contains(result.WorldPressure, p => p.Contains("Opportunistic faction") && p.Contains("Thieves"));
+    }
 }

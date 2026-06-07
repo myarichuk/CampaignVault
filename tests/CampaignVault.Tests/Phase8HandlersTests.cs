@@ -109,4 +109,73 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Contains("tattoo", loaded.DistinctiveFeatures);
         Assert.DoesNotContain("scar", loaded.DistinctiveFeatures);
     }
+
+    [Fact]
+    public async Task KnowledgeUpdate_AddsNewMemoryNode()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var c = new Character { Id = "chars/bob", Name = "Bob" };
+        await session.StoreAsync(c);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+
+        var handler = new KnowledgeUpdateHandler();
+        var update = new KnowledgeUpdate
+        {
+            CharacterId = "chars/bob",
+            Topic = "The Rusty Tavern",
+            Details = "Owned by Bram.",
+            Importance = MemoryImportance.Core
+        };
+
+        var result = await handler.ApplyAsync(update, ctx);
+
+        Assert.True(result.Success);
+        
+        var loaded = await session.LoadAsync<Character>("chars/bob");
+        Assert.True(loaded.Psychology.Memories.ContainsKey("The Rusty Tavern"));
+        var mem = loaded.Psychology.Memories["The Rusty Tavern"];
+        Assert.Equal("Owned by Bram.", mem.Details);
+        Assert.Equal(MemoryImportance.Core, mem.Importance);
+        Assert.Equal(10, mem.DayAcquired); // Context mock returns TotalDaysElapsed = 10
+    }
+
+    [Fact]
+    public async Task KnowledgeUpdate_UpdatesExistingMemory()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var c = new Character { Id = "chars/alice", Name = "Alice" };
+        c.Psychology.Memories["Mayor Bob"] = new MemoryNode
+        {
+            Topic = "Mayor Bob",
+            Details = "Good guy.",
+            DayAcquired = 2,
+            Importance = MemoryImportance.Important
+        };
+        await session.StoreAsync(c);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+
+        var handler = new KnowledgeUpdateHandler();
+        var update = new KnowledgeUpdate
+        {
+            CharacterId = "chars/alice",
+            Topic = "Mayor Bob",
+            Details = "Actually a thief!"
+        };
+
+        var result = await handler.ApplyAsync(update, ctx);
+
+        Assert.True(result.Success);
+        
+        var loaded = await session.LoadAsync<Character>("chars/alice");
+        var mem = loaded.Psychology.Memories["Mayor Bob"];
+        Assert.Equal("Actually a thief!", mem.Details);
+        // Importance unchanged because it was null in update
+        Assert.Equal(MemoryImportance.Important, mem.Importance);
+        // DayAcquired resets to 10
+        Assert.Equal(10, mem.DayAcquired);
+    }
 }

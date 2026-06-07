@@ -81,6 +81,7 @@ public class CampaignRepository
                 new FactionCreateHandler(),
                 new ItemUpdateHandler(),
                 new CharacterUpdateHandler(),
+                new KnowledgeUpdateHandler(),
                 new RulesetActionHandler(
                     new RulesetResolverSelector([
                         new Dnd5eRulesetResolver(new DefaultRollService()),
@@ -579,6 +580,7 @@ public class CampaignRepository
                 CurrentAppearance: npc.CurrentAppearance,
                 VisualTags: npc.VisualTags,
                 DistinctiveFeatures: npc.DistinctiveFeatures,
+                Memories: npcPsych.Memories,
                 SystemStats: npc.SystemStats
             );
         }).ToList();
@@ -640,6 +642,11 @@ public class CampaignRepository
                             localStance = FactionStance.Allied;
                         }
                     }
+                }
+
+                if (f.StanceToward.TryGetValue("party", out var partyStance) && partyStance == FactionStance.Opportunistic)
+                {
+                    localStance = FactionStance.Opportunistic;
                 }
             }
 

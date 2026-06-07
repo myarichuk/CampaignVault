@@ -36,6 +36,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(RestChange), "rest")]
 [JsonDerivedType(typeof(ItemUpdate), "item_update")]
 [JsonDerivedType(typeof(CharacterUpdate), "character_update")]
+[JsonDerivedType(typeof(KnowledgeUpdate), "knowledge_update")]
 public abstract class WorldChange;
 
 /// <summary>
@@ -784,4 +785,23 @@ public class CharacterUpdate : WorldChange
     [Description("Permanent physical features to remove.")]
     [JsonPropertyName("featuresToRemove")]
     public List<string>? FeaturesToRemove { get; set; }
+}
+
+public class KnowledgeUpdate : WorldChange
+{
+    [Description("ID of the character whose memory is updating.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("The topic/entity the memory is about (e.g. 'The Rusty Tavern', 'Mayor Bob').")]
+    [JsonPropertyName("topic")]
+    public string Topic { get; set; } = default!;
+
+    [Description("The details of the memory. Write how the character understands it now.")]
+    [JsonPropertyName("details")]
+    public string Details { get; set; } = default!;
+
+    [Description("Optional. If provided, overrides the memory's importance level (Trivial, Important, Core).")]
+    [JsonPropertyName("importance")]
+    public MemoryImportance? Importance { get; set; }
 }

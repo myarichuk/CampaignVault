@@ -41,5 +41,6 @@ public enum FactionStance
     TradePartner, 
     Hostile, 
     AtWar, 
-    Subjugated 
+    Subjugated,
+    Opportunistic
 }

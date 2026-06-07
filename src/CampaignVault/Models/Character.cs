@@ -59,15 +59,29 @@ public class PsychologyProfile
 {
     /// <summary>
     /// Open-ended knowledge graph. Maps entities/topics to what the NPC knows about them.
-    /// Replaces the old 'Knows' list.
-    /// Example: "Rusty Nail Tavern" -> "Owned by Bram. Serves watered-down ale."
+    /// Replaces the old 'Knows' list and old string-based KnowledgeGraph.
+    /// Example: "Rusty Nail Tavern" -> MemoryNode
     /// </summary>
-    public Dictionary<string, string> KnowledgeGraph { get; set; } = [];
+    public Dictionary<string, MemoryNode> Memories { get; set; } = [];
     public List<string> Wants { get; set; } = [];                    
     public List<string> Fears { get; set; } = [];                    
     public string? CurrentMood { get; set; }                         
 }
 
+public enum MemoryImportance
+{
+    Trivial,
+    Important,
+    Core
+}
+
+public class MemoryNode
+{
+    public string Topic { get; set; } = default!;
+    public string Details { get; set; } = default!;
+    public int DayAcquired { get; set; } = 0;
+    public MemoryImportance Importance { get; set; } = MemoryImportance.Important;
+}
 public class SocialProfile
 {
     public Dictionary<string, int> Relationships { get; set; } = []; 

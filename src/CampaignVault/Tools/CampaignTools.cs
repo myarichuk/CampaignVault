@@ -451,6 +451,7 @@ public class CampaignTools
                 }
             }
             var time = await _repository.GetTimeAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
 
             // Phase 7.4 local pressures (quests + interrupted travel)
             if (scene.ActiveQuests != null)
@@ -486,6 +487,27 @@ public class CampaignTools
                             $"Character '{npc.Name}' is a Quest Giver but is marked as transient (KeepAlive = false). The engine will delete them when the party leaves! Anchor them immediately:\n[ {{ \"$type\": \"character_create\", \"characterId\": \"{npc.Id}\", \"keepAlive\": true }} ]",
                             "Character:TransientQuestGiver"));
                     }
+
+                    // Phase 8.3: Memory Decay / Epistemic Drift
+                    if (npc.Memories != null)
+                    {
+                        foreach (var kv in npc.Memories)
+                        {
+                            var mem = kv.Value;
+                            if (mem.Importance == MemoryImportance.Core) continue;
+
+                            var age = time.TotalDaysElapsed - mem.DayAcquired;
+                            var threshold = mem.Importance == MemoryImportance.Important ? config.MemoryImportantDecayDays : config.MemoryTrivialDecayDays;
+
+                            if (age > threshold)
+                            {
+                                pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, npc.Id,
+                                    $"Character '{npc.Name}' has a memory about '{mem.Topic}' that is {age:F0} days old and may be fading. " +
+                                    $"Consider misremembering, distorting, or forgetting details. Update it using `knowledge_update`.",
+                                    $"MemoryDecay:{npc.Id}:{mem.Topic}"));
+                            }
+                        }
+                    }
                 }
             }
 
@@ -509,6 +531,14 @@ public class CampaignTools
                                 "They should be welcomed, offered better prices, or given assistance.",
                                 $"Faction:AlliedTerritory:{f.FactionId}"));
                         }
+                    }
+
+                    if (f.LocalStance == FactionStance.Opportunistic)
+                    {
+                        pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, f.FactionId,
+                            $"An Opportunistic faction ('{f.Name}') is present. Evaluate the visual tags, current appearance, and item states of the characters. " +
+                            "If they appear wealthy, exhausted, or otherwise vulnerable, narrate an attempt to exploit, rob, or ambush them.",
+                            $"Faction:Opportunistic:{f.FactionId}"));
                     }
                 }
 
