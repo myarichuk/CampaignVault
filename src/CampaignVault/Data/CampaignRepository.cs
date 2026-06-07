@@ -342,7 +342,7 @@ public class CampaignRepository
             {
                 foreach (var status in c.SystemStats.StatusEffects)
                 {
-                    if (badCategories.Contains(status.Category, StringComparer.OrdinalIgnoreCase))
+                    if (status.Category == null || badCategories.Contains(status.Category, StringComparer.OrdinalIgnoreCase))
                     {
                         pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is suffering from {status.Name} ({status.Category ?? "Unknown"}).", $"Character:Status:{status.Name}"));
                     }

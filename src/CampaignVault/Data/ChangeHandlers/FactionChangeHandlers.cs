@@ -65,6 +65,9 @@ public class FactionReputationChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Faction {frc.FactionId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
+        character.Social ??= new();
+        character.Social.FactionReputations ??= new();
+
         if (character.Social.FactionReputations.ContainsKey(frc.FactionId))
         {
             character.Social.FactionReputations[frc.FactionId] = Math.Clamp(character.Social.FactionReputations[frc.FactionId] + frc.Delta, -100, 100);
@@ -114,6 +117,7 @@ public class FactionStateChangeHandler : IWorldChangeHandler
 
         if (fsc.NewStance != null && !string.IsNullOrWhiteSpace(fsc.TargetFactionId))
         {
+            faction.StanceToward ??= new();
             faction.StanceToward[fsc.TargetFactionId] = fsc.NewStance.Value;
         }
 
