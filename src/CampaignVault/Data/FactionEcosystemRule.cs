@@ -34,7 +34,9 @@ public sealed class FactionEcosystemRule : ISimulationRule
         }
 
         var decayInterval = context.Config?.EconomicDemandDecayDays ?? 7;
-        var decayCycles = (int)Math.Max(1, context.DaysPassed / decayInterval);
+        var currentDays = (int)context.Time.TotalDaysElapsed;
+        var previousDays = currentDays - (int)context.DaysPassed;
+        var decayCycles = (currentDays / decayInterval) - (previousDays / decayInterval);
 
         // Apply economic decay toward 1.0 for all factions before actions
         foreach (var faction in context.ActiveFactions)

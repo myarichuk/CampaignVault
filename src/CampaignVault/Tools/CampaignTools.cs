@@ -556,7 +556,7 @@ public class CampaignTools
                         var highDemands = f.EconomicDemand.Where(kvp => kvp.Value >= 1.5f).Select(kvp => kvp.Key).ToList();
                         if (highDemands.Any())
                         {
-                            var partyItems = scene.VisibleItems?.Where(i => i.HolderId == "party").ToList() ?? new List<Item>();
+                            var partyItems = await session.Query<Item>().Where(i => i.HolderId == "party" && i.CampaignName == effective).ToListAsync();
                             foreach (var demand in highDemands)
                             {
                                 if (partyItems.Any(i => i.CoreCategory.ToString().Equals(demand, StringComparison.OrdinalIgnoreCase) || i.Tags.Contains(demand)))
