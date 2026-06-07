@@ -183,6 +183,37 @@ public class LocationUpdateHandler : IWorldChangeHandler
             }
         }
         
+        if (lu.NewState != null)
+        {
+            loc.CurrentState = lu.NewState;
+        }
+
+        if (lu.TagsToAdd != null)
+        {
+            foreach (var t in lu.TagsToAdd)
+            {
+                if (!loc.VisualTags.Contains(t)) loc.VisualTags.Add(t);
+            }
+        }
+
+        if (lu.TagsToRemove != null)
+        {
+            loc.VisualTags.RemoveAll(t => lu.TagsToRemove.Contains(t));
+        }
+
+        if (lu.FeaturesToAdd != null)
+        {
+            foreach (var f in lu.FeaturesToAdd)
+            {
+                if (!loc.DistinctiveFeatures.Contains(f)) loc.DistinctiveFeatures.Add(f);
+            }
+        }
+
+        if (lu.FeaturesToRemove != null)
+        {
+            loc.DistinctiveFeatures.RemoveAll(f => lu.FeaturesToRemove.Contains(f));
+        }
+        
         return ChangeHandlerResult.Ok;
     }
 }

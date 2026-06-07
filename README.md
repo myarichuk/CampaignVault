@@ -43,10 +43,12 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 See `get_help`, the recommended system prompt, and `docs/Phase6_OpenWorld_Design.md` for details. The `phase7.md` tracks work on travel/spatial, factions, and quests.
 
-## Deep Mechanics (Phase 7: Factions, Quests, Travel)
+## Deep Mechanics (Phase 7 & 8: Open-World & Sandbox Physics)
 
 The engine provides deep structural tracking for macro-mechanics:
-- **Factions**: Track influence, wealth, and stance matrices. Use `FactionCreate`, `FactionReputationChange`, and `FactionPresenceChange` to mutate them. Background rules shift their influence over time, and the engine pressures the LLM to reflect these shifts in local scenes. Use `get_faction_context` to do a deep dive on a specific faction.
+- **Location Physics & Tags**: Add temporary tags (e.g., `["wet", "smoky"]`), narrative states, or distinctive features directly to Locations, Characters, and Items via `commit`. The engine will pressure you when tags impact a scene. You are the physics engine: interpret the tags and narrate accordingly!
+- **Epistemic Drift & Memories**: Use `knowledge_update` to record key facts in an NPC's `Memories`. Over time, trivial and important memories will "decay", and the engine will pressure you to reflect memory loss, epistemic drift, or confusion.
+- **Factions & Economy**: Track influence, wealth, and stance matrices. Background rules shift their influence over time, and factions dynamically demand resources (`EconomicDemand`). If a faction is desperate for "spell scrolls" and the party has them, `get_scene` will surface the pressure. Use `get_faction_context` to do a deep dive.
 - **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the DM doesn't forget them. Use `get_quest_details` to pull the full objective list and history.
 - **Travel**: When a character starts traveling, they use an `ActivityChange` but do NOT update their `LocationId`. If they don't arrive within the expected timeframe, the engine raises an `ENGINE WARNING: Travel Interrupted` pressure to prevent characters from getting permanently stuck in limbo, forcing the LLM to conclude the encounter and `LocationChange` them to their destination.
 

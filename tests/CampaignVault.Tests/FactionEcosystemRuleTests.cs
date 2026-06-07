@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
@@ -127,5 +128,47 @@ public class FactionEcosystemRuleTests
         // Assert
         // They should skip interaction because domains don't overlap and Random (0.8) >= 0.7
         Assert.Empty(result.Deltas);
+    }
+    [Fact]
+    public async Task ApplyAsync_HostileStance_IncreasesEconomicDemand()
+    {
+        // Arrange
+        var rule = new FactionEcosystemRule(() => 0.0, _ => 0); // Force Conflict
+        
+        var faction1 = new Faction 
+        { 
+            Id = "factions/1", 
+            Name = "Faction 1", 
+            InfluenceLevel = 100,
+            EconomicDemand = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase) { ["Weapon"] = 1.0f, ["Armor"] = 1.0f }
+        };
+        var faction2 = new Faction 
+        { 
+            Id = "factions/2", 
+            Name = "Faction 2", 
+            InfluenceLevel = 50,
+            EconomicDemand = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase) { ["Weapon"] = 1.0f, ["Armor"] = 1.0f }
+        };
+        
+        var context = new SimulationContext(
+            new CampaignTime { TotalDaysElapsed = 30 },
+            new List<Rumor>(),
+            new List<Character>(),
+            null!,
+            30,
+            "test-camp",
+            new List<Faction> { faction1, faction2 },
+            null,
+            new CampaignConfig { EconomicDemandDecayDays = 7 }
+        );
+
+        // Act
+        var result = await rule.ApplyAsync(context);
+
+        // Assert
+        Assert.Equal(2.0f, faction1.EconomicDemand["Weapon"]);
+        Assert.Equal(2.0f, faction1.EconomicDemand["Armor"]);
+        Assert.Equal(2.0f, faction2.EconomicDemand["Weapon"]);
+        Assert.Equal(2.0f, faction2.EconomicDemand["Armor"]);
     }
 }

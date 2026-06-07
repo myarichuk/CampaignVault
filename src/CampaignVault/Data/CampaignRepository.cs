@@ -656,7 +656,8 @@ public class CampaignRepository
                 f.InfluenceLevel,
                 localStance,
                 rep,
-                f.TerritoryLocationIds.Count
+                f.TerritoryLocationIds.Count,
+                f.EconomicDemand
             );
         }).ToList();
 
@@ -731,7 +732,8 @@ public class CampaignRepository
             .ToList();
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
-        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective, activeFactions, activeQuests);
+        var config = await GetCampaignConfigAsync(session, effective);
+        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective, activeFactions, activeQuests, config);
 
         _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", days, time);
 

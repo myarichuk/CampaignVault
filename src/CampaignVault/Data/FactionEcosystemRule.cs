@@ -33,6 +33,26 @@ public sealed class FactionEcosystemRule : ISimulationRule
             return Task.FromResult(new RuleResult(narratives, deltas));
         }
 
+        var decayInterval = context.Config?.EconomicDemandDecayDays ?? 7;
+        var decayCycles = (int)Math.Max(1, context.DaysPassed / decayInterval);
+
+        // Apply economic decay toward 1.0 for all factions before actions
+        foreach (var faction in context.ActiveFactions)
+        {
+            foreach (var key in faction.EconomicDemand.Keys.ToList())
+            {
+                var diff = faction.EconomicDemand[key] - 1.0f;
+                if (Math.Abs(diff) > 0.01f)
+                {
+                    faction.EconomicDemand[key] -= Math.Sign(diff) * 0.1f * decayCycles;
+                    if (Math.Abs(faction.EconomicDemand[key] - 1.0f) < 0.05f)
+                    {
+                        faction.EconomicDemand[key] = 1.0f;
+                    }
+                }
+            }
+        }
+
         foreach (var faction in context.ActiveFactions)
         {
             // Base chance to act: 1% per point of Influence, max 80%, rolled over 30 days
@@ -110,6 +130,12 @@ public sealed class FactionEcosystemRule : ISimulationRule
                         Subject = $"{faction.Name} Conflict",
                         Text = $"Rumor is spreading that {eventSummary}"
                     });
+
+                    // Economic impact of war
+                    faction.EconomicDemand["Weapon"] = faction.EconomicDemand.GetValueOrDefault("Weapon", 1.0f) + 0.5f;
+                    faction.EconomicDemand["Armor"] = faction.EconomicDemand.GetValueOrDefault("Armor", 1.0f) + 0.5f;
+                    target.EconomicDemand["Weapon"] = target.EconomicDemand.GetValueOrDefault("Weapon", 1.0f) + 0.5f;
+                    target.EconomicDemand["Armor"] = target.EconomicDemand.GetValueOrDefault("Armor", 1.0f) + 0.5f;
 
                     narratives.Add($"Faction simulation: {eventSummary}");
                 }

@@ -178,4 +178,36 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         // DayAcquired resets to 10
         Assert.Equal(10, mem.DayAcquired);
     }
+    [Fact]
+    public async Task LocationState_PatchesFieldsCorrectly()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var l = new Location { Id = "locations/1", Name = "Tavern", VisualTags = ["clean"], DistinctiveFeatures = ["sign"] };
+        await session.StoreAsync(l);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+
+        var handler = new LocationUpdateHandler();
+        var update = new LocationUpdate
+        {
+            LocationId = "locations/1",
+            NewState = "On fire!",
+            TagsToAdd = ["smoky"],
+            TagsToRemove = ["clean"],
+            FeaturesToAdd = ["crater"],
+            FeaturesToRemove = ["sign"]
+        };
+
+        var result = await handler.ApplyAsync(update, ctx);
+
+        Assert.True(result.Success);
+        
+        var loaded = await session.LoadAsync<Location>("locations/1");
+        Assert.Equal("On fire!", loaded.CurrentState);
+        Assert.Contains("smoky", loaded.VisualTags);
+        Assert.DoesNotContain("clean", loaded.VisualTags);
+        Assert.Contains("crater", loaded.DistinctiveFeatures);
+        Assert.DoesNotContain("sign", loaded.DistinctiveFeatures);
+    }
 }

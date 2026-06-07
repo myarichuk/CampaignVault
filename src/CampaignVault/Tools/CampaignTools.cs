@@ -429,6 +429,15 @@ public class CampaignTools
                     catch (Exception ex) { Console.WriteLine($"Pressure check error: {ex.Message}"); }
                 }
 
+                // Phase 8.4: Location Tags Pressure
+                if (loc.VisualTags != null && loc.VisualTags.Any())
+                {
+                    pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, loc.Id,
+                        $"This location has prominent environmental tags: {string.Join(", ", loc.VisualTags)}. " +
+                        $"Consider how these affect visibility, travel, or danger, and narrate accordingly.",
+                        "Location:EnvironmentalTags"));
+                }
+
                 // 2. Flavor vacuum: scene has no PoIs, no AmbientCrowd, no present NPCs, and is not a pure Region.
                 // Nudges LLM to use lightweight non-persistent flavor instead of forcing character_create for every bar patron.
                 if (loc.Type != LocationType.Region && loc.PointsOfInterest.Count == 0 && string.IsNullOrWhiteSpace(loc.AmbientCrowd) && !scene.PresentNPCs.Any())
@@ -539,6 +548,25 @@ public class CampaignTools
                             $"An Opportunistic faction ('{f.Name}') is present. Evaluate the visual tags, current appearance, and item states of the characters. " +
                             "If they appear wealthy, exhausted, or otherwise vulnerable, narrate an attempt to exploit, rob, or ambush them.",
                             $"Faction:Opportunistic:{f.FactionId}"));
+                    }
+
+                    // Phase 8.5: Faction Economy
+                    if (f.EconomicDemand != null && f.EconomicDemand.Any())
+                    {
+                        var highDemands = f.EconomicDemand.Where(kvp => kvp.Value >= 1.5f).Select(kvp => kvp.Key).ToList();
+                        if (highDemands.Any())
+                        {
+                            var partyItems = scene.VisibleItems?.Where(i => i.HolderId == "party").ToList() ?? new List<Item>();
+                            foreach (var demand in highDemands)
+                            {
+                                if (partyItems.Any(i => i.CoreCategory.ToString().Equals(demand, StringComparison.OrdinalIgnoreCase) || i.Tags.Contains(demand)))
+                                {
+                                    pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
+                                        $"The local faction '{f.Name}' is desperate for '{demand}' due to recent events. Merchants will pay a premium, and thieves may attempt to steal them. Highlight this in your narration.",
+                                        $"Faction:EconomicDemand:{f.FactionId}:{demand}"));
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -1348,7 +1376,7 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 ## The Commit Tool (Universal Write)
 ALWAYS call at end of combat/conversation/discovery. Atomic array of `$type` mutations. Rate limited + batch capped (50).
 
-Supported `$type`s: `hp`, `item`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `schedule_change`, `item_create`, `travel`, `rest`, `faction_create`, `faction_reputation`, `faction_state`, `quest_create`, `quest_progress`.
+Supported `$type`s: `hp`, `item`, `item_update`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `character_update`, `knowledge_update`, `schedule_change`, `item_create`, `travel`, `rest`, `faction_create`, `faction_reputation`, `faction_state`, `quest_create`, `quest_progress`.
 
 **Travel and Resting:** Use `travel` (with `destinationLocationId`) to safely move the party; it applies time and tiredness, and evaluates encounters based on distance. Use `rest` (with `intendedHours` and `securityModifier`) for camping or sleeping. The engine rolls for interruptions. If `rest` is interrupted, resolve the encounter before committing `hp` recovery!
 
@@ -1414,11 +1442,14 @@ This safely moves the party (applying time/tiredness), updates the quest, and ma
 
 This is how you stay creative *and* keep the world model healthy without perfect JSON for every flavor element.
 
-**The Visual / Physics Sandbox (Tags & Appearance):**
+**The Visual / Physics Sandbox (Tags & Appearance) & Knowledge:**
 The engine intentionally avoids hardcoding vulnerability scores or mechanical checks for narrative states like ""wet"" or ""disheveled"". You (the LLM) are the physics engine.
 - Use `$type: ""item_update""` to add temporary `TagsToAdd` (e.g., `[""wet"", ""muddy""]`) and a narrative `NewState` (e.g., ""Covered in mud"") to items. You can also add permanent `FeaturesToAdd` (e.g., ""Leather wrapped handle"").
 - Use `$type: ""character_update""` to do the same for characters. Give them temporary `TagsToAdd` (`[""soot_covered""]`), narrative `AppearanceOverride`, or permanent `FeaturesToAdd` (`[""Scar over left eye""]`).
+- Use `$type: ""location_update""` with `newState`, `tagsToAdd`, and `featuresToAdd` to persistently change the environment (e.g., ""On fire"", `[""smoky""]`, `[""collapsed roof""]`).
+- Use `$type: ""knowledge_update""` to record an important memory for a character (e.g., `""topic"": ""The Dragon"", ""details"": ""Lives in the mountain.""`). Memories naturally decay and generate prompt pressure over time to simulate epistemic drift!
 - Read these fields from `SceneView` and interpret them naturally. If a goblin has the ""wet"" tag, you inherently know lightning magic should be more effective. If the PC is ""disheveled"", the noble faction should react poorly.
+- Factions have dynamic `EconomicDemand`. If a faction is desperate for an item the party is carrying (e.g. ""spell scrolls""), `get_scene` will pressure you to narrate merchants offering a premium or thieves attempting to steal them. Fulfill this naturally during roleplay!
 
 ## Ruleset Actions (Combat & Skill Checks)
 ... (same as before, keep the examples)

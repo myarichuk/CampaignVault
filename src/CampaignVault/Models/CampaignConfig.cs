@@ -66,4 +66,10 @@ public class CampaignConfig
     /// Defaults to 40.
     /// </summary>
     public int MemoryImportantDecayDays { get; set; } = 40;
+
+    /// <summary>
+    /// The number of in-game days before economic demand drifts or decays.
+    /// Defaults to 7.
+    /// </summary>
+    public int EconomicDemandDecayDays { get; set; } = 7;
 }

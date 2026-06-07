@@ -22,6 +22,10 @@ public class Location
     
     public Dictionary<string, object> Metadata { get; set; } = [];
     
+    public string? CurrentState { get; set; }
+    public List<string> VisualTags { get; set; } = [];
+    public List<string> DistinctiveFeatures { get; set; } = [];
+    
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     /// <summary>

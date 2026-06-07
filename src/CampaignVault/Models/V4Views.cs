@@ -57,7 +57,8 @@ public record FactionPresenceSummary(
     int InfluenceLevel,
     FactionStance LocalStance = FactionStance.Neutral,
     int? PlayerReputation = null,
-    int TerritoryLocationCount = 0
+    int TerritoryLocationCount = 0,
+    Dictionary<string, float>? EconomicDemand = null
 );
 
 /// <summary>

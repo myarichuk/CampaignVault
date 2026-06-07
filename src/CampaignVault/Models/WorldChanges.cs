@@ -436,6 +436,26 @@ public class LocationUpdate : WorldChange
     [Description("Set the narrative danger modifier (-50 to +50) when the area becomes safer or more dangerous.")]
     [JsonPropertyName("dangerModifier")]
     public int? DangerModifier { get; set; }
+
+    [Description("The new physical state of the location (e.g. 'Roof collapsed, blocking north exit'). Overwrites previous state.")]
+    [JsonPropertyName("newState")]
+    public string? NewState { get; set; }
+
+    [Description("Temporary visual or atmospheric tags to add (e.g., 'smoky', 'flooded').")]
+    [JsonPropertyName("tagsToAdd")]
+    public List<string>? TagsToAdd { get; set; }
+
+    [Description("Temporary visual tags to remove.")]
+    [JsonPropertyName("tagsToRemove")]
+    public List<string>? TagsToRemove { get; set; }
+
+    [Description("Distinctive/permanent features to add (e.g., 'crater in center', 'barricaded windows').")]
+    [JsonPropertyName("featuresToAdd")]
+    public List<string>? FeaturesToAdd { get; set; }
+
+    [Description("Distinctive features to remove.")]
+    [JsonPropertyName("featuresToRemove")]
+    public List<string>? FeaturesToRemove { get; set; }
 }
 
 /// <summary>
