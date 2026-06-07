@@ -44,7 +44,9 @@ public record ActiveQuestSummary(
     QuestUrgency Urgency,
     int? DeadlineDay = null,
     string? GiverId = null,
-    int LastUpdatedDay = 0
+    int LastUpdatedDay = 0,
+    /// <summary>Oldest open/in-progress objective anchor day (TotalDaysElapsed). Used for staleness pressures.</summary>
+    int OldestOpenObjectiveDay = 0
 );
 
 /// <summary>

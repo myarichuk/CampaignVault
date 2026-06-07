@@ -287,6 +287,9 @@ public class CampaignRepository
                         case RelationshipChange relc:
                             involvedEntities.Add(relc.SourceId); involvedEntities.Add(relc.TargetId);
                             break;
+                        case CharacterUpdate cu:
+                            involvedEntities.Add(cu.CharacterId);
+                            break;
                     }
                 }
 
@@ -598,16 +601,7 @@ public class CampaignRepository
 
         // Phase 7.4: Populate quest + faction context for the location.
         var activeQuests = await GetActiveQuestsForLocationAsync(session, locationId, effective);
-        var questSummaries = activeQuests.Select(q => new ActiveQuestSummary(
-            q.Id,
-            q.Title,
-            q.Objectives.Count(o => o.State == QuestState.Open || o.State == QuestState.InProgress),
-            q.Objectives.Count,
-            q.Urgency,
-            q.DeadlineDay,
-            q.GiverId,
-            q.LastUpdatedDay
-        )).ToList();
+        var questSummaries = activeQuests.Select(ToActiveQuestSummary).ToList();
 
         var relevantFactions = await GetFactionsForLocationAsync(session, locationId, effective);
         var factionSummaries = relevantFactions.Select(f =>
@@ -1696,6 +1690,26 @@ public class CampaignRepository
             .Where(f => (string.IsNullOrEmpty(f.CampaignName) || f.CampaignName == effective)
                         && (f.ControllingTerritory == locationId || f.TerritoryLocationIds.Contains(locationId)))
             .ToList();
+    }
+
+    public static ActiveQuestSummary ToActiveQuestSummary(Quest q)
+    {
+        var oldestOpen = q.Objectives
+            .Where(o => o.State is QuestState.Open or QuestState.InProgress)
+            .Select(o => o.DayStarted ?? q.LastUpdatedDay)
+            .DefaultIfEmpty(q.LastUpdatedDay)
+            .Min();
+
+        return new ActiveQuestSummary(
+            q.Id,
+            q.Title,
+            q.Objectives.Count(o => o.State is QuestState.Open or QuestState.InProgress),
+            q.Objectives.Count,
+            q.Urgency,
+            q.DeadlineDay,
+            q.GiverId,
+            q.LastUpdatedDay,
+            oldestOpen);
     }
 }
 

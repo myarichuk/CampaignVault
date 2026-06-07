@@ -38,6 +38,11 @@ public class ItemCreateHandler : IWorldChangeHandler
                 existing.Properties = ic.Properties.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
             }
 
+            if (ic.CoreCategory.HasValue)
+            {
+                existing.CoreCategory = ic.CoreCategory.Value;
+            }
+
             context.RecordMessage($"Warning: Item {ic.ItemId} already exists. Updated existing fields.");
             return ChangeHandlerResult.Ok;
         }
@@ -48,6 +53,7 @@ public class ItemCreateHandler : IWorldChangeHandler
             Name = ic.Name ?? "Unnamed Item",
             Description = ic.Description ?? "",
             HolderId = ic.HolderId,
+            CoreCategory = ic.CoreCategory ?? ItemCategory.Other,
             Tags = ic.Tags ?? [],
             Properties = ic.Properties?.ToDictionary(kv => kv.Key, kv => (object)kv.Value) ?? new Dictionary<string, object>()
         };
@@ -77,6 +83,7 @@ public class ItemUpdateHandler : IWorldChangeHandler
         if (item == null) return ChangeHandlerResult.Failure($"Item '{iu.ItemId}' not found. Cannot update.");
 
         if (iu.NewState != null) item.CurrentState = iu.NewState;
+        if (iu.CoreCategory.HasValue) item.CoreCategory = iu.CoreCategory.Value;
 
         if (iu.TagsToAdd != null)
         {

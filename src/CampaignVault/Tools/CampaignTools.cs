@@ -307,7 +307,7 @@ public class CampaignTools
                 events, 
                 locSummary, 
                 finalPressures,
-                worldActiveQuests.Select(q => new ActiveQuestSummary(q.Id, q.Title, q.Objectives.Count(o => o.State == QuestState.Open || o.State == QuestState.InProgress), q.Objectives.Count, q.Urgency, q.DeadlineDay, q.GiverId)),
+                worldActiveQuests.Select(CampaignRepository.ToActiveQuestSummary),
                 worldActiveFactions.Select(f => 
                 {
                     var overallStance = FactionStance.Neutral;
@@ -469,7 +469,8 @@ public class CampaignTools
 
                 foreach (var q in scene.ActiveQuests)
                 {
-                    if (time.TotalDaysElapsed - q.LastUpdatedDay > 10 && !q.DeadlineDay.HasValue)
+                    var staleAnchor = q.OldestOpenObjectiveDay > 0 ? q.OldestOpenObjectiveDay : q.LastUpdatedDay;
+                    if (time.TotalDaysElapsed - staleAnchor > 10 && !q.DeadlineDay.HasValue)
                     {
                         pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, q.QuestId,
                             $"Quest '{q.Title}' has seen no progress in over 10 days. Consider advancing or failing it: [ {{ \"$type\": \"quest_progress\", \"questId\": \"{q.QuestId}\", \"objectiveIndex\": 0, \"newState\": \"InProgress\", \"narrativeNote\": \"Party investigated...\" }} ]",
@@ -493,7 +494,7 @@ public class CampaignTools
                     if (!npc.KeepAlive && scene.ActiveQuests != null && scene.ActiveQuests.Any(q => q.GiverId == npc.Id))
                     {
                         pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, npc.Id,
-                            $"Character '{npc.Name}' is a Quest Giver but is marked as transient (KeepAlive = false). The engine will delete them when the party leaves! Anchor them immediately:\n[ {{ \"$type\": \"character_create\", \"characterId\": \"{npc.Id}\", \"keepAlive\": true }} ]",
+                            $"Character '{npc.Name}' is a Quest Giver but is marked as transient (KeepAlive = false). The engine will delete them when the party leaves! Anchor them immediately:\n[ {{ \"$type\": \"character_update\", \"characterId\": \"{npc.Id}\", \"keepAlive\": true }} ]",
                             "Character:TransientQuestGiver"));
                     }
 
@@ -522,6 +523,7 @@ public class CampaignTools
 
             if (scene.RelevantFactions != null && scene.RelevantFactions.Any())
             {
+                List<Item>? partyItemsCache = null;
                 foreach (var f in scene.RelevantFactions)
                 {
                     if (f.PlayerReputation.HasValue)
@@ -556,10 +558,10 @@ public class CampaignTools
                         var highDemands = f.EconomicDemand.Where(kvp => kvp.Value >= 1.5f).Select(kvp => kvp.Key).ToList();
                         if (highDemands.Any())
                         {
-                            var partyItems = await session.Query<Item>().Where(i => i.HolderId == "party" && i.CampaignName == effective).ToListAsync();
+                            partyItemsCache ??= await LoadPartyInventoryAsync(session, scene, effective);
                             foreach (var demand in highDemands)
                             {
-                                if (partyItems.Any(i => i.CoreCategory.ToString().Equals(demand, StringComparison.OrdinalIgnoreCase) || i.Tags.Contains(demand)))
+                                if (partyItemsCache.Any(i => ItemMatchesEconomicDemand(i, demand)))
                                 {
                                     pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
                                         $"The local faction '{f.Name}' is desperate for '{demand}' due to recent events. Merchants will pay a premium, and thieves may attempt to steal them. Highlight this in your narration.",
@@ -640,7 +642,7 @@ Use ActivityChange liberally to keep get_scene in sync with your narrative.
 
 See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
 
-Supported types for $type: hp, item, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, schedule_change, item_create.
+Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, knowledge_update, schedule_change, item_create, travel, rest, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
 
 === RECOMMENDED PATTERNS (copy-paste friendly) ===
 
@@ -1444,7 +1446,8 @@ This is how you stay creative *and* keep the world model healthy without perfect
 
 **The Visual / Physics Sandbox (Tags & Appearance) & Knowledge:**
 The engine intentionally avoids hardcoding vulnerability scores or mechanical checks for narrative states like ""wet"" or ""disheveled"". You (the LLM) are the physics engine.
-- Use `$type: ""item_update""` to add temporary `TagsToAdd` (e.g., `[""wet"", ""muddy""]`) and a narrative `NewState` (e.g., ""Covered in mud"") to items. You can also add permanent `FeaturesToAdd` (e.g., ""Leather wrapped handle"").
+- Use `$type: ""item_create""` with `coreCategory` (e.g., ""Weapon"", ""Armor"", ""Document"") when looting or discovering items. Set `holderId` to a PC character ID (or ""party"") for inventory.
+- Use `$type: ""item_update""` to add temporary `TagsToAdd` (e.g., `[""wet"", ""muddy""]`) and a narrative `NewState` (e.g., ""Covered in mud"") to items. You can also add permanent `FeaturesToAdd` (e.g., ""Leather wrapped handle"") or change `coreCategory`.
 - Use `$type: ""character_update""` to do the same for characters. Give them temporary `TagsToAdd` (`[""soot_covered""]`), narrative `AppearanceOverride`, or permanent `FeaturesToAdd` (`[""Scar over left eye""]`).
 - Use `$type: ""location_update""` with `newState`, `tagsToAdd`, and `featuresToAdd` to persistently change the environment (e.g., ""On fire"", `[""smoky""]`, `[""collapsed roof""]`).
 - Use `$type: ""knowledge_update""` to record an important memory for a character (e.g., `""topic"": ""The Dragon"", ""details"": ""Lives in the mountain.""`). Memories naturally decay and generate prompt pressure over time to simulate epistemic drift!
@@ -1493,6 +1496,37 @@ Call `get_help` any time you (the LLM) are unsure. Re-read the pressures section
 Remember: the engine is strict on invariants (map connectivity, no silent deletes of important state) so *you* can be creatively lazy about flavor.
 ";
         return Task.FromResult(new ToolResult<string>(true, manual, "Help manual retrieved."));
+    }
+
+    private static bool ItemMatchesEconomicDemand(Item item, string demand) =>
+        item.CoreCategory.ToString().Equals(demand, StringComparison.OrdinalIgnoreCase)
+        || item.Tags.Any(t => t.Equals(demand, StringComparison.OrdinalIgnoreCase));
+
+    private static async Task<List<Item>> LoadPartyInventoryAsync(IAsyncDocumentSession session, SceneView scene, string campaignName)
+    {
+        var pcHolderIds = scene.PresentNPCs?
+            .Where(n => n.KeepAlive)
+            .Select(n => n.Id)
+            .Distinct()
+            .ToList() ?? [];
+
+        List<Item> items;
+        if (pcHolderIds.Count > 0)
+        {
+            items = await session.Query<Item>()
+                .Where(i => i.HolderId == "party" || i.HolderId.In(pcHolderIds))
+                .ToListAsync();
+        }
+        else
+        {
+            items = await session.Query<Item>()
+                .Where(i => i.HolderId == "party")
+                .ToListAsync();
+        }
+
+        return items
+            .Where(i => string.IsNullOrEmpty(i.CampaignName) || i.CampaignName == campaignName)
+            .ToList();
     }
 }
 

@@ -138,7 +138,12 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             character.DistinctiveFeatures.RemoveAll(f => cu.FeaturesToRemove.Contains(f));
         }
 
-        context.RecordMessage($"Updated appearance/tags for character '{cu.CharacterId}'.");
+        if (cu.KeepAlive.HasValue)
+        {
+            character.KeepAlive = cu.KeepAlive.Value;
+        }
+
+        context.RecordMessage($"Updated character '{cu.CharacterId}'.");
         return ChangeHandlerResult.Ok;
     }
 }

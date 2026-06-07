@@ -544,4 +544,123 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         
         Assert.Contains(result.WorldPressure, p => p.Contains("Opportunistic faction") && p.Contains("Thieves"));
     }
+
+    [Fact]
+    public async Task GetScene_EmitsEconomicDemandPressure()
+    {
+        var repo = new CampaignRepository(_fixture.Store);
+        var tools = CreateTools();
+        var locId = "locations/test-economy-" + Guid.NewGuid();
+        var charId = "chars/pc-economy-" + Guid.NewGuid();
+        var factionId = "factions/merchants-" + Guid.NewGuid();
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await repo.UpsertFactionAsync(session, new Faction
+            {
+                Id = factionId,
+                Name = "War Merchants",
+                TerritoryLocationIds = [locId],
+                EconomicDemand = new System.Collections.Generic.Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Weapon"] = 2.0f
+                }
+            });
+
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Market" });
+
+            await repo.UpsertCharacterAsync(session, new Character
+            {
+                Id = charId,
+                Name = "PC",
+                CurrentLocationId = locId,
+                KeepAlive = true
+            });
+
+            await session.StoreAsync(new Item
+            {
+                Id = "items/test-sword-" + Guid.NewGuid(),
+                Name = "Longsword",
+                Description = "A sword",
+                HolderId = charId,
+                CoreCategory = ItemCategory.Weapon
+            });
+
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForCharacterAndFactionIndexesAsync();
+
+        var result = await tools.GetScene(locId, partyPresent: true);
+        Assert.True(result.Success);
+        Assert.Contains(result.WorldPressure, p => p.Contains("desperate for 'Weapon'") && p.Contains("War Merchants"));
+    }
+
+    [Fact]
+    public async Task GetScene_EmitsEconomicDemandPressure_MatchesTagsCaseInsensitively()
+    {
+        var repo = new CampaignRepository(_fixture.Store);
+        var tools = CreateTools();
+        var locId = "locations/test-economy-tags-" + Guid.NewGuid();
+        var charId = "chars/pc-scroll-" + Guid.NewGuid();
+        var factionId = "factions/scribes-" + Guid.NewGuid();
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await repo.UpsertFactionAsync(session, new Faction
+            {
+                Id = factionId,
+                Name = "Arcane Scribes",
+                TerritoryLocationIds = [locId],
+                EconomicDemand = new System.Collections.Generic.Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["spell scrolls"] = 2.0f
+                }
+            });
+
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Scriptorium" });
+
+            await repo.UpsertCharacterAsync(session, new Character
+            {
+                Id = charId,
+                Name = "PC",
+                CurrentLocationId = locId,
+                KeepAlive = true
+            });
+
+            await session.StoreAsync(new Item
+            {
+                Id = "items/test-scroll-" + Guid.NewGuid(),
+                Name = "Scroll",
+                Description = "A scroll",
+                HolderId = charId,
+                CoreCategory = ItemCategory.Document,
+                Tags = ["Spell Scrolls"]
+            });
+
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForCharacterAndFactionIndexesAsync();
+
+        var result = await tools.GetScene(locId, partyPresent: true);
+        Assert.True(result.Success);
+        Assert.Contains(result.WorldPressure, p => p.Contains("desperate for 'spell scrolls'") && p.Contains("Arcane Scribes"));
+    }
+
+    private async Task WaitForCharacterAndFactionIndexesAsync()
+    {
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false) &&
+                stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
+            await Task.Delay(100);
+        }
+    }
 }

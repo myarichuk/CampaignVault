@@ -535,6 +535,10 @@ public class ItemCreate : WorldChange
     [JsonPropertyName("tags")]
     public List<string> Tags { get; set; } = [];
 
+    [Description("Structural item category (Weapon, Armor, Clothing, etc.). Defaults to Other.")]
+    [JsonPropertyName("coreCategory")]
+    public ItemCategory? CoreCategory { get; set; }
+
     [Description("Key-value attributes for mechanics (e.g., {'value': '5', 'material': 'silver'}).")]
     [JsonPropertyName("properties")]
     public Dictionary<string, string> Properties { get; set; } = [];
@@ -755,6 +759,10 @@ public class ItemUpdate : WorldChange
     [JsonPropertyName("newState")]
     public string? NewState { get; set; }
 
+    [Description("Optional new structural category (Weapon, Armor, Clothing, etc.).")]
+    [JsonPropertyName("coreCategory")]
+    public ItemCategory? CoreCategory { get; set; }
+
     [Description("Temporary tags to add to the item (e.g. 'muddy', 'wet').")]
     [JsonPropertyName("tagsToAdd")]
     public List<string>? TagsToAdd { get; set; }
@@ -805,6 +813,10 @@ public class CharacterUpdate : WorldChange
     [Description("Permanent physical features to remove.")]
     [JsonPropertyName("featuresToRemove")]
     public List<string>? FeaturesToRemove { get; set; }
+
+    [Description("Set to true to protect this character from transient eviction (use on quest givers and important NPCs).")]
+    [JsonPropertyName("keepAlive")]
+    public bool? KeepAlive { get; set; }
 }
 
 public class KnowledgeUpdate : WorldChange

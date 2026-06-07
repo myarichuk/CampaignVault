@@ -502,6 +502,195 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task GetScene_PartyPresentWithoutTravel_ProducesMissingTravelCommit_And_Resolves_On_Commit()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
+
+        await tools.SelectCampaign("MissingTravelTest");
+
+        var pcId = "chars/pc1";
+        var destId = "locations/dest-missing-travel";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("MissingTravelTest"), Name = "MissingTravelTest" });
+            await session.StoreAsync(new Location { Id = "locations/start-mt", Name = "Start", CampaignName = "MissingTravelTest", Type = LocationType.Settlement });
+            await session.StoreAsync(new Location { Id = destId, Name = "Far Town", CampaignName = "MissingTravelTest", Type = LocationType.Settlement });
+            await session.StoreAsync(new Character
+            {
+                Id = pcId,
+                Name = "Hero",
+                CampaignName = "MissingTravelTest",
+                KeepAlive = true,
+                CurrentLocationId = "locations/start-mt"
+            });
+            session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        // LLM narrates arrival but forgets travel commit — party still at start
+        var sceneResult = await tools.GetScene(destId, partyPresent: true, "MissingTravelTest");
+        Assert.True(sceneResult.Success);
+        Assert.NotNull(sceneResult.WorldPressure);
+        Assert.Contains(sceneResult.WorldPressure, p => p.Contains("NO main characters") || p.Contains("forget to commit their travel"));
+
+        var fix = await tools.Commit([
+            new TravelChange { CharacterId = pcId, DestinationLocationId = destId, Narrative = "Arrived at Far Town", EncounterRiskModifier = -100 }
+        ], "Party travels to Far Town", "MissingTravelTest");
+        Assert.True(fix.Success, fix.Error);
+
+        var finalScene = await tools.GetScene(destId, partyPresent: true, "MissingTravelTest");
+        if (finalScene.WorldPressure != null)
+        {
+            Assert.DoesNotContain(finalScene.WorldPressure, p => p.Contains("forget to commit their travel"));
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_TransientQuestGiver_ProducesKeepAlivePressure_And_Resolves_On_CharacterUpdate()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
+
+        await tools.SelectCampaign("TransientGiverPressureTest");
+
+        var giverId = "chars/quest_giver_pressure";
+        var locId = "locations/giver-town";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("TransientGiverPressureTest"), Name = "TransientGiverPressureTest" });
+            await session.StoreAsync(new Location { Id = locId, Name = "Giver Town", CampaignName = "TransientGiverPressureTest", Type = LocationType.Settlement, LastVisitedDay = 1 });
+            await session.StoreAsync(new Character { Id = giverId, Name = "Bram", CampaignName = "TransientGiverPressureTest", KeepAlive = false, CurrentLocationId = locId, CurrentActivity = "Waiting for the party" });
+            await session.StoreAsync(new Quest
+            {
+                Id = "quests/giver_q",
+                Title = "Bram's Errand",
+                CampaignName = "TransientGiverPressureTest",
+                GiverId = giverId,
+                OverallState = QuestState.InProgress,
+                RelatedLocationIds = [locId],
+                Objectives = [new QuestObjective("Deliver the package", QuestState.InProgress)]
+            });
+            session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        var sceneResult = await tools.GetScene(locId, true, "TransientGiverPressureTest");
+        Assert.True(sceneResult.Success);
+        Assert.NotNull(sceneResult.WorldPressure);
+        Assert.Contains(sceneResult.WorldPressure, p => p.Contains("Quest Giver") && p.Contains("character_update"));
+
+        var fix = await tools.Commit([new CharacterUpdate { CharacterId = giverId, KeepAlive = true }], "Anchor quest giver", "TransientGiverPressureTest");
+        Assert.True(fix.Success, fix.Error);
+
+        var finalScene = await tools.GetScene(locId, true, "TransientGiverPressureTest");
+        if (finalScene.WorldPressure != null)
+        {
+            Assert.DoesNotContain(finalScene.WorldPressure, p => p.Contains("Quest Giver"));
+        }
+    }
+
+    [Fact]
+    public async Task QuestProgress_ClearsStaleQuestPressureCooldown()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
+
+        await tools.SelectCampaign("QuestCooldownTest");
+        var questId = "quests/cooldown_q";
+        var locId = "locations/cooldown-town";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("QuestCooldownTest"), Name = "QuestCooldownTest" });
+            await session.StoreAsync(new CampaignTime { Id = keys.StateTime("QuestCooldownTest"), TotalDaysElapsed = 20 });
+            await session.StoreAsync(new Location { Id = locId, Name = "Town", CampaignName = "QuestCooldownTest", Type = LocationType.Settlement });
+            await session.StoreAsync(new Quest
+            {
+                Id = questId,
+                Title = "Cooldown Quest",
+                CampaignName = "QuestCooldownTest",
+                OverallState = QuestState.Open,
+                LastUpdatedDay = 5,
+                RelatedLocationIds = [locId],
+                Objectives = [new QuestObjective("Step one", QuestState.Open)]
+            });
+            session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        var first = await tools.GetScene(locId, true, "QuestCooldownTest");
+        Assert.NotNull(first.WorldPressure);
+        Assert.Contains(first.WorldPressure, p => p.Contains("Cooldown Quest"));
+
+        // Same day — suppressed by cooldown
+        var second = await tools.GetScene(locId, true, "QuestCooldownTest");
+        Assert.Null(second.WorldPressure);
+
+        // Fix via quest_progress — should clear cooldown even though quest still open
+        var fix = await tools.Commit([new QuestProgress { QuestId = questId, ObjectiveIndex = 0, NewState = QuestState.InProgress }], "Made progress", "QuestCooldownTest");
+        Assert.True(fix.Success, fix.Error);
+
+        var third = await tools.GetScene(locId, true, "QuestCooldownTest");
+        // Progress updated LastUpdatedDay — stale pressure should not re-fire immediately
+        if (third.WorldPressure != null)
+        {
+            Assert.DoesNotContain(third.WorldPressure, p => p.Contains("seen no progress in over 10 days"));
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_QuestStaleness_UsesOldestOpenObjective_NotLastQuestTouch()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
+
+        await tools.SelectCampaign("ObjectiveStaleTest");
+        var locId = "locations/obj-stale-town";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("ObjectiveStaleTest"), Name = "ObjectiveStaleTest" });
+            await session.StoreAsync(new CampaignTime { Id = keys.StateTime("ObjectiveStaleTest"), TotalDaysElapsed = 20 });
+            await session.StoreAsync(new Location { Id = locId, Name = "Town", CampaignName = "ObjectiveStaleTest", Type = LocationType.Settlement });
+            await session.StoreAsync(new Quest
+            {
+                Id = "quests/multi_obj",
+                Title = "Two Steps",
+                CampaignName = "ObjectiveStaleTest",
+                OverallState = QuestState.InProgress,
+                LastUpdatedDay = 18, // recent quest touch
+                RelatedLocationIds = [locId],
+                Objectives =
+                [
+                    new QuestObjective("First step", QuestState.Complete, DayStarted: 5, DayCompleted: 6),
+                    new QuestObjective("Second step", QuestState.Open, DayStarted: 5) // stale 15 days
+                ]
+            });
+            session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        var sceneResult = await tools.GetScene(locId, true, "ObjectiveStaleTest");
+        Assert.NotNull(sceneResult.WorldPressure);
+        Assert.Contains(sceneResult.WorldPressure, p => p.Contains("Two Steps") && p.Contains("no progress in over 10 days"));
+    }
+
+    [Fact]
     public async Task GetScene_QuestStaleness_ProducesNarrativePrompt_And_Resolves_On_Commit()
     {
         var repo = new CampaignRepository(_store);

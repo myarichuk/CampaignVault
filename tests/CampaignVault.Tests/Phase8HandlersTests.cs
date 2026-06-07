@@ -1,3 +1,4 @@
+using System;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
@@ -38,6 +39,40 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             null,
             "test-campaign"
         );
+    }
+
+    [Fact]
+    public async Task ItemUpdate_FailsIfItemDoesNotExist()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var ctx = CreateContext(session);
+        var handler = new ItemUpdateHandler();
+
+        var result = await handler.ApplyAsync(new ItemUpdate { ItemId = "items/missing", NewState = "Broken" }, ctx);
+
+        Assert.False(result.Success);
+        Assert.Contains("not found", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ItemCreate_SetsCoreCategory()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var ctx = CreateContext(session);
+        var handler = new ItemCreateHandler();
+
+        var result = await handler.ApplyAsync(new ItemCreate
+        {
+            ItemId = "items/shield",
+            Name = "Shield",
+            Description = "A sturdy shield",
+            HolderId = "chars/pc1",
+            CoreCategory = ItemCategory.Armor
+        }, ctx);
+
+        Assert.True(result.Success);
+        var loaded = await session.LoadAsync<Item>("items/shield");
+        Assert.Equal(ItemCategory.Armor, loaded.CoreCategory);
     }
 
     [Fact]
@@ -108,6 +143,27 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         Assert.DoesNotContain("clean", loaded.VisualTags);
         Assert.Contains("tattoo", loaded.DistinctiveFeatures);
         Assert.DoesNotContain("scar", loaded.DistinctiveFeatures);
+    }
+
+    [Fact]
+    public async Task CharacterUpdate_SetsKeepAlive()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var c = new Character { Id = "chars/giver", Name = "Quest Giver", KeepAlive = false };
+        await session.StoreAsync(c);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+        var handler = new CharacterUpdateHandler();
+        var result = await handler.ApplyAsync(new CharacterUpdate
+        {
+            CharacterId = "chars/giver",
+            KeepAlive = true
+        }, ctx);
+
+        Assert.True(result.Success);
+        var loaded = await session.LoadAsync<Character>("chars/giver");
+        Assert.True(loaded.KeepAlive);
     }
 
     [Fact]
