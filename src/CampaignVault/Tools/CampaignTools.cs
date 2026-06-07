@@ -111,7 +111,6 @@ public class CampaignTools
         while (true)
         {
             using var session = _repository.OpenSession();
-            session.Advanced.UseOptimisticConcurrency = true;
 
             ToolResult<T> result;
             try
@@ -147,12 +146,13 @@ public class CampaignTools
             }
 
             // Final sanitizing step on every tool response.
-        // This guarantees that even if a polluted entity reached this point (legacy data,
-        // unsanitized query path, etc.), nothing containing a live or dead JsonElement
-        // will be serialized by the MCP layer's System.Text.Json when sending the response.
-        _repository.SanitizeForToolResponse(result.Data);
+            // This guarantees that even if a polluted entity reached this point (legacy data,
+            // unsanitized query path, etc.), nothing containing a live or dead JsonElement
+            // will be serialized by the MCP layer's System.Text.Json when sending the response.
+            _repository.SanitizeForToolResponse(result.Data);
 
-        return result;
+            return result;
+        }
     }
 
     private void AddQuestDeadlinePressures(
