@@ -543,6 +543,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         ], "Party travels to Far Town", "MissingTravelTest");
         Assert.True(fix.Success, fix.Error);
 
+        using (var s = _store.OpenAsyncSession())
+        {
+            await s.Query<Character>().Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5))).AnyAsync();
+        }
+
         var finalScene = await tools.GetScene(destId, partyPresent: true, "MissingTravelTest");
         if (finalScene.WorldPressure != null)
         {
