@@ -34,31 +34,35 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        int difficulty = 1;
+        var difficulty = 1;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
+        {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
-        
+        }
+
         // Lower difficulty is better for the actor. Positive "SkillCheck" modifiers are good.
         // Fallout is TN based, so modifiers add to the TN, but if there's a difficulty modifier we could apply it here.
         // Let's modify the TN instead.
         
-        string attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
-        string skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
+        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
+        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
         
-        int attrVal = GetAttributeValue(actorStats, attribute);
-        int skillVal = actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
-        int targetNumber = attrVal + skillVal;
+        var attrVal = GetAttributeValue(actorStats, attribute);
+        var skillVal = actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
+        var targetNumber = attrVal + skillVal;
         
         targetNumber = ApplyAllModifiers(actorStats, "SkillCheck", targetNumber);
         targetNumber = ApplyAllModifiers(actorStats, skill, targetNumber);
         targetNumber = ApplyAllModifiers(actorStats, attribute, targetNumber);
         
-        bool isTagged = actorStats.TagSkills.Contains(skill);
+        var isTagged = actorStats.TagSkills.Contains(skill);
         int? critThreshold = isTagged ? skillVal : null;
         
-        int poolSize = 2;
+        var poolSize = 2;
         if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
+        {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid pool value '{p}'.");
+        }
 
         var request = new RollRequest
         {
@@ -71,9 +75,9 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         var outcome = await _rollService.RollAsync(request, ct);
         
-        bool success = outcome.Successes >= difficulty;
-        int apGenerated = Math.Max(0, outcome.Successes - difficulty);
-        string compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
+        var success = outcome.Successes >= difficulty;
+        var apGenerated = Math.Max(0, outcome.Successes - difficulty);
+        var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
         
         return ResolverResult.Ok($"{action.ActionName} ({attribute}+{skill} TN {targetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
     }
@@ -82,33 +86,41 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
+        {
             return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
+        }
 
         if (target.SystemStats is not Fallout2d20Extension targetStats)
+        {
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
-        
-        int defense = targetStats.Defense;
+        }
+
+        var defense = targetStats.Defense;
         defense = ApplyAllModifiers(targetStats, "Defense", defense);
         
-        int difficulty = defense;
+        var difficulty = defense;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
+        {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
+        }
+
+        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
+        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
         
-        string attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
-        string skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
-        
-        int attrVal = GetAttributeValue(actorStats, attribute);
-        int skillVal = actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
-        int targetNumber = attrVal + skillVal;
+        var attrVal = GetAttributeValue(actorStats, attribute);
+        var skillVal = actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
+        var targetNumber = attrVal + skillVal;
         
         targetNumber = ApplyAllModifiers(actorStats, "AttackRoll", targetNumber);
         targetNumber = ApplyAllModifiers(actorStats, skill, targetNumber);
         targetNumber = ApplyAllModifiers(actorStats, attribute, targetNumber);
-        bool isTagged = actorStats.TagSkills.Contains(skill);
+        var isTagged = actorStats.TagSkills.Contains(skill);
         
-        int poolSize = 2;
+        var poolSize = 2;
         if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
+        {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid pool value '{p}'.");
+        }
 
         var request = new RollRequest
         {
@@ -120,23 +132,27 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         };
 
         var outcome = await _rollService.RollAsync(request, ct);
-        bool success = outcome.Successes >= difficulty;
-        string compMsg = outcome.HasComplication ? " COMPLICATION!" : "";
+        var success = outcome.Successes >= difficulty;
+        var compMsg = outcome.HasComplication ? " COMPLICATION!" : "";
 
         if (!success)
+        {
             return ResolverResult.Ok($"{action.ActionName}: Missed.{compMsg} {outcome.Summary}");
+        }
 
-        int combatDiceCount = 3;
+        var combatDiceCount = 3;
         if (action.Parameters.TryGetValue("damageDice", out var cd) && !int.TryParse(cd, out combatDiceCount))
+        {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageDice value '{cd}'.");
-            
+        }
+
         combatDiceCount = ApplyAllModifiers(actorStats, "DamageRoll", combatDiceCount);
-        string damageType = action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical";
+        var damageType = action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical";
 
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);
 
-        int dr = targetStats.DamageResistance.TryGetValue(damageType, out var res) ? res : 0;
-        int finalDamage = Math.Max(0, combatResult.Damage - dr);
+        var dr = targetStats.DamageResistance.TryGetValue(damageType, out var res) ? res : 0;
+        var finalDamage = Math.Max(0, combatResult.Damage - dr);
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
@@ -151,7 +167,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
-        int initiative = stats.Perception + stats.Agility;
+        var initiative = stats.Perception + stats.Agility;
         initiative = ApplyAllModifiers(stats, "Initiative", initiative);
         
         // Add a lightweight roll to add variance instead of pure static stat

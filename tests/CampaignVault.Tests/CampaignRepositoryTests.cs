@@ -72,11 +72,17 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false)) break;
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+        {
             throw new TimeoutException("Index 'Character/Search' did not become non-stale within 10s");
+        }
 
         // Fuzzy match
         var result = await repo.GetCharacterAsync(session, "Gndlf", null);
@@ -98,7 +104,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             var id = (await session.Query<Character>().FirstAsync(x => x.Name == "Gimli")).Id;
-            await repo.StageChangesAsync(session, new WorldChange[] { new HpChange { CharacterId = id, Delta = -5 } });
+            await repo.StageChangesAsync(session, [new HpChange { CharacterId = id, Delta = -5 }]);
             await session.SaveChangesAsync();
         }
 
@@ -126,12 +132,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         // Commit a core attribute + a custom one
-        await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        await repo.StageChangesAsync(session, [
             new AttributeChange { CharacterId = id, Attribute = "morale", Value = 42f },
             new AttributeChange { CharacterId = id, Attribute = "corruption", Value = 77f },
             new AttributeChange { CharacterId = id, Attribute = "Reputation", Value = 55f } // case insensitivity in handler
-        });
+        ]);
         await session.SaveChangesAsync();
 
         var npc = await session.LoadAsync<Character>(id);
@@ -148,10 +153,69 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task GetCharacterPressureAsync_Surfaces_Extreme_Attributes_And_Relationships()
+    {
+        var repo = new CampaignRepository(_store);
+        using var session = _store.OpenAsyncSession();
+
+        var id = "npcs/pressuretest-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session, new Character
+        {
+            Id = id,
+            Name = "Pressure Test NPC",
+            KeepAlive = true,
+            SystemStats = new SystemExtension 
+            { 
+                Morale = 5f, // <= 10
+                Willpower = 50f, // OK
+                Temperature = 60f, // >= 50
+                Attributes = new Dictionary<string, float>
+                {
+                    { "corruption", 95f }, // >= 90
+                    { "fear", 20f } // OK
+                }
+            },
+            Social = new SocialProfile
+            {
+                Relationships = new Dictionary<string, int>
+                {
+                    { "Rival", -85 }, // <= -80
+                    { "Friend", 85 }, // >= 80
+                    { "Neutral", 0 } // OK
+                }
+            }
+        });
+        await session.SaveChangesAsync();
+
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            await Task.Delay(50);
+        }
+
+        var allPressures = await repo.GetCharacterPressureAsync(session);
+        var pressures = allPressures.Where(p => p.EntityId == id).ToList();
+        
+        Assert.NotNull(pressures);
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == "Character:Attribute:Morale");
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == "Character:Attribute:TemperatureHigh");
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == "Character:Attribute:corruption");
+        
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.NarrativePrompt && p.GroupingKey == "Character:Relationship:Rival");
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.NarrativePrompt && p.GroupingKey == "Character:Relationship:Friend");
+        
+        Assert.DoesNotContain(pressures, p => p.GroupingKey == "Character:Attribute:Willpower");
+        Assert.DoesNotContain(pressures, p => p.GroupingKey == "Character:Attribute:fear");
+        Assert.DoesNotContain(pressures, p => p.GroupingKey == "Character:Relationship:Neutral");
+    }
+
+    [Fact]
     public async Task AdvanceWorld_Is_Atomic_And_Runs_Simulation()
     {
         var engine = new DefaultSimulationEngine(
-            new ISimulationRule[] { new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule() },
+            [new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule()],
             null);
         var repo = new CampaignRepository(_store, engine, 
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
@@ -167,11 +231,17 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            if (stats.Indexes.All(x => x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(50);
         }
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+        {
             throw new TimeoutException("Indexes did not become non-stale within 10s");
+        }
 
         var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon);
         await session.SaveChangesAsync();
@@ -184,7 +254,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task AdvanceWorld_Persists_Simulator_Mutations_On_NPCs_And_Rumors()
     {
         var engine = new DefaultSimulationEngine(
-            new ISimulationRule[] { new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule() },
+            [new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule()],
             null);
         var repo = new CampaignRepository(_store, engine, 
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
@@ -204,7 +274,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Schedule = new Schedule
             {
                 DefaultLocationId = "loc",
-                Routines = new List<Routine> { new Routine { Condition = "Noon", LocationId = "loc", Activity = "Testing" } }
+                Routines = [new Routine { Condition = "Noon", LocationId = "loc", Activity = "Testing" }]
             },
             Needs = new NeedsProfile
             {
@@ -219,11 +289,17 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            if (stats.Indexes.All(x => x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(50);
         }
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+        {
             throw new TimeoutException("Indexes did not become non-stale within 10s (for AdvanceWorld test)");
+        }
 
         // Act: advance (simulator mutates in-memory on tracked entities)
         var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon);
@@ -277,7 +353,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         // Verifies review issue #14 fixes: capped deltas + consistent float math
         var engine = new DefaultSimulationEngine(
-            new ISimulationRule[] { new NeedsAccumulationRule() },
+            [new NeedsAccumulationRule()],
             null);
 
         var repo = new CampaignRepository(_store, engine,
@@ -363,7 +439,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Character/Search" && !x.IsStale)) break;
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && !x.IsStale))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
 
@@ -376,13 +456,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetWorldState_Aggregates_Context()
     {
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
         {
             await repo.SaveTimeAsync(session, new CampaignTime { Day = 10 });
-            await repo.LogEventAsync(session, new Event { Id = "e1", Summary = "History", Category = EventCategory.Test, Involved = new List<string> { "loc1" } });
+            await repo.LogEventAsync(session, new Event { Id = "e1", Summary = "History", Category = EventCategory.Test, Involved =
+                ["loc1"]
+            });
             await repo.UpsertLocationAsync(session, new Location { Id = "loc1", Name = "The Shire", Type = LocationType.Region });
             await session.SaveChangesAsync();
         }
@@ -401,8 +484,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
         
         var id = "events/json-test-" + Guid.NewGuid();
-        var json = System.Text.Json.JsonSerializer.Serialize(new { power = 9001, tags = new[] { "over", "9000" } });
-        var details = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
+        var json = JsonSerializer.Serialize(new { power = 9001, tags = new[] { "over", "9000" } });
+        var details = JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
 
         await repo.LogEventAsync(session, new Event { Id = id, Summary = "Power Up", Category = EventCategory.Test, Details = details });
         await session.SaveChangesAsync();
@@ -412,11 +495,17 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Event/Search" && x.IsStale == false)) break;
+            if (stats.Indexes.Any(x => x.Name == "Event/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+        {
             throw new TimeoutException("Index 'Event/Search' did not become non-stale within 10s");
+        }
 
         var results = await repo.QueryEventsAsync(session, "Power", EventCategory.Test);
         var ev = results.FirstOrDefault(x => x.Id == id);
@@ -428,7 +517,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.True(power is int || power is long, $"Expected int or long, got {power?.GetType().Name}");
         
         // Final proof: Serialization should work perfectly
-        var finalJson = System.Text.Json.JsonSerializer.Serialize(ev);
+        var finalJson = JsonSerializer.Serialize(ev);
         Assert.Contains("\"power\":9001", finalJson);
     }
 
@@ -436,8 +525,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetNpcContext_Sanitizes_Event_Details_And_Uses_Safe_Query()
     {
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using var session = _store.OpenAsyncSession();
 
@@ -445,15 +535,15 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.UpsertCharacterAsync(session, new Character { Id = charId, Name = "Sanitize NPC" });
 
         var eventId = "events/npc-involved-" + Guid.NewGuid();
-        var json = System.Text.Json.JsonSerializer.Serialize(new { secret = 42, tags = new[] { "test" } });
-        var details = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
+        var json = JsonSerializer.Serialize(new { secret = 42, tags = new[] { "test" } });
+        var details = JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
 
         await repo.LogEventAsync(session, new Event
         {
             Id = eventId,
             Summary = "NPC involved event",
             Category = EventCategory.Interaction,
-            Involved = new List<string> { charId },
+            Involved = [charId],
             Details = details
         });
         await session.SaveChangesAsync();
@@ -463,11 +553,17 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            if (stats.Indexes.All(x => x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(50);
         }
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+        {
             throw new TimeoutException("Indexes did not become non-stale within 10s");
+        }
 
         var result = await tools.GetNpcContext(charId);
 
@@ -503,8 +599,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         // Perform V4 operation that touches Mind (RelationshipChange via Commit)
-        await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        await repo.StageChangesAsync(session, [
             new RelationshipChange
             {
                 SourceId = charId,
@@ -512,7 +607,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 Delta = +10,
                 Reason = "Test V4 only path"
             }
-        });
+        ]);
         await session.SaveChangesAsync();
 
         // Reload and verify
@@ -538,8 +633,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // The root cause was Task-capture + WhenAll + re-await inside UnifiedSearchAsync
         // combined with ExecuteAsync always doing SaveChanges + dispose.
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -567,8 +663,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Dictionary<string, object> bags that were unprotected and caused the exact
         // Newtonsoft "ValueIsEscaped" crash during SaveChanges in GetScene.
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         var locId = "locations/meta-regression-" + Guid.NewGuid();
         var itemId = "items/prop-regression-" + Guid.NewGuid();
@@ -576,10 +673,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Simulate exactly what happens when an LLM calls Upsert* with complex JSON:
         // Microsoft.Extensions.AI + System.Text.Json populates Dictionary<string,object>
         // with JsonElement values for objects, arrays, numbers, etc.
-        var pollutedMeta = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
+        var pollutedMeta = JsonSerializer.Deserialize<Dictionary<string, object>>(
             """{"difficulty": 7, "tags": ["dungeon","trap"], "boss": {"name": "Ancient One", "hp": 900}}""")!;
 
-        var pollutedProps = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
+        var pollutedProps = JsonSerializer.Deserialize<Dictionary<string, object>>(
             """{"weightKg": 4.2, "enchantments": ["fire", "light"], "charges": 3}""")!;
 
         using (var session = _store.OpenAsyncSession())
@@ -639,15 +736,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // (e.g. direct session.Store or old code paths). GetScene + ExecuteAsync SaveChanges
         // must not explode and should leave clean data behind.
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         var locId = "locations/legacy-polluted-" + Guid.NewGuid();
 
         using (var session = _store.OpenAsyncSession())
         {
             // Manually construct a polluted dictionary the same way STJ does
-            var legacyMeta = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
+            var legacyMeta = JsonSerializer.Deserialize<Dictionary<string, object>>(
                 """{"legacy": true, "value": {"deep": [1, "two", false]}}""")!;
 
             var loc = new Location { Id = locId, Name = "Legacy Ruin", Metadata = legacyMeta };
@@ -712,8 +810,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // This verifies the fix for AllowOutOfOrderMetadataProperties = true.
         // If the '$type' property is not FIRST, STJ normally fails.
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -860,20 +959,18 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         // 1. Heal above MaxHp
-        var resultHeal = await repo.StageChangesAsync(session, new WorldChange[] 
-        { 
-            new HpChange { CharacterId = id, Delta = 60 } 
-        });
+        var resultHeal = await repo.StageChangesAsync(session, [
+            new HpChange { CharacterId = id, Delta = 60 }
+        ]);
         Assert.True(resultHeal.Success);
         
         var reloaded1 = await session.LoadAsync<Character>(id);
         Assert.Equal(100, reloaded1.CurrentHp);
 
         // 2. Damage below 0
-        var resultDamage = await repo.StageChangesAsync(session, new WorldChange[] 
-        { 
-            new HpChange { CharacterId = id, Delta = -120 } 
-        });
+        var resultDamage = await repo.StageChangesAsync(session, [
+            new HpChange { CharacterId = id, Delta = -120 }
+        ]);
         Assert.True(resultDamage.Success);
 
         var reloaded2 = await session.LoadAsync<Character>(id);
@@ -896,12 +993,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         // Commit with IsDelta = true
-        var result = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var result = await repo.StageChangesAsync(session, [
             new AttributeChange { CharacterId = id, Attribute = "morale", Value = -20f, IsDelta = true },
             new AttributeChange { CharacterId = id, Attribute = "willpower", Value = 15f, IsDelta = true },
             new AttributeChange { CharacterId = id, Attribute = "custom", Value = 10f, IsDelta = true }
-        });
+        ]);
         Assert.True(result.Success);
         await session.SaveChangesAsync();
 
@@ -911,11 +1007,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Equal(10f, npc.SystemStats.Attributes["custom"]);
 
         // Commit absolute override (IsDelta = false)
-        var resultAbsolute = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var resultAbsolute = await repo.StageChangesAsync(session, [
             new AttributeChange { CharacterId = id, Attribute = "morale", Value = 90f, IsDelta = false },
             new AttributeChange { CharacterId = id, Attribute = "custom", Value = 45f, IsDelta = false }
-        });
+        ]);
         Assert.True(resultAbsolute.Success);
         await session.SaveChangesAsync();
 
@@ -932,10 +1027,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         var missingId = "npcs/does-not-exist-" + Guid.NewGuid();
 
-        var result = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var result = await repo.StageChangesAsync(session, [
             new HpChange { CharacterId = missingId, Delta = -5 }
-        });
+        ]);
 
         Assert.False(result.Success);
         Assert.Contains(result.Summary, s => s.Contains("not found") || s.Contains("WARNING: Character") || s.Contains("ERROR: Failed to process"));
@@ -959,11 +1053,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         // Add two different statuses (multiples allowed)
-        var addResult = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var addResult = await repo.StageChangesAsync(session, [
             new StatusChange { CharacterId = id, Status = "Poisoned" },
             new StatusChange { CharacterId = id, Status = "Frightened" }
-        });
+        ]);
         await session.SaveChangesAsync();
 
         Assert.True(addResult.Success);
@@ -975,10 +1068,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Contains(npc1.SystemStats.StatusEffects, e => e.Name == "Frightened");
 
         // Remove one (case-insensitive, removes all matches)
-        var removeResult = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var removeResult = await repo.StageChangesAsync(session, [
             new StatusRemove { CharacterId = id, Status = "poisoned" }
-        });
+        ]);
         await session.SaveChangesAsync();
 
         Assert.True(removeResult.Success);
@@ -993,7 +1085,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task RumorDecayRule_Escalates_Nascent_Or_Spreading_Rumors_To_Peak()
     {
         var engine = new DefaultSimulationEngine(
-            new ISimulationRule[] { new RumorDecayRule() },
+            [new RumorDecayRule()],
             null);
         var repo = new CampaignRepository(_store, engine,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
@@ -1016,7 +1108,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            if (stats.Indexes.All(x => x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(50);
         }
 
@@ -1056,10 +1152,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         });
         await session.SaveChangesAsync();
 
-        var result = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var result = await repo.StageChangesAsync(session, [
             new StatusChange { CharacterId = id, Status = "Fatigued" }
-        });
+        ]);
         await session.SaveChangesAsync();
 
         Assert.True(result.Success);
@@ -1104,11 +1199,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             StatModifiers = new Dictionary<string, float> { { "Speed", -3f } }
         };
 
-        var result = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var result = await repo.StageChangesAsync(session, [
             new StatusChange { CharacterId = id, Effect = effect1 },
             new StatusChange { CharacterId = id, Effect = effect2 }
-        });
+        ]);
         await session.SaveChangesAsync();
 
         Assert.True(result.Success);
@@ -1138,20 +1232,18 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var effect2 = new StatusEffect { Name = "poisoned", Category = "Condition" };
         var effect3 = new StatusEffect { Name = "Blessed", Category = "Buff" };
 
-        var resultAdd = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var resultAdd = await repo.StageChangesAsync(session, [
             new StatusChange { CharacterId = id, Effect = effect1 },
             new StatusChange { CharacterId = id, Effect = effect2 },
             new StatusChange { CharacterId = id, Effect = effect3 }
-        });
+        ]);
         await session.SaveChangesAsync();
         Assert.True(resultAdd.Success);
 
         // Remove case-insensitively
-        var resultRemove = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var resultRemove = await repo.StageChangesAsync(session, [
             new StatusRemove { CharacterId = id, Status = "POISONED" }
-        });
+        ]);
         await session.SaveChangesAsync();
         Assert.True(resultRemove.Success);
 
@@ -1168,17 +1260,15 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         var missingId = "npcs/does-not-exist-" + Guid.NewGuid();
 
-        var resultAdd = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var resultAdd = await repo.StageChangesAsync(session, [
             new StatusChange { CharacterId = missingId, Status = "Frightened" }
-        });
+        ]);
         Assert.False(resultAdd.Success);
         Assert.Contains(resultAdd.Summary, s => s.Contains("not found") || s.Contains("WARNING: Character"));
 
-        var resultRemove = await repo.StageChangesAsync(session, new WorldChange[]
-        {
+        var resultRemove = await repo.StageChangesAsync(session, [
             new StatusRemove { CharacterId = missingId, Status = "Frightened" }
-        });
+        ]);
         Assert.False(resultRemove.Success);
         Assert.Contains(resultRemove.Summary, s => s.Contains("not found") || s.Contains("WARNING: Character"));
     }
@@ -1207,8 +1297,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Equal("true", reloaded.SystemOptions["mapEnabled"]);
 
         // 3. Test through CampaignTools
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
         
         var getResult = await tools.GetConfig();
         Assert.True(getResult.Success);
@@ -1237,15 +1328,15 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Verifies the full tool + pressure path for the key anti-laziness feature:
         // hallucinated location -> immediate copy-pasteable location_create example in WorldPressure.
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(
             repo,
             new DefaultBehaviorSynthesizer(),
-            new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] {
-                new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc),
-                new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc),
-                new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc)
-            }),
+            new Rulesets.RulesetResolverSelector([
+                new Rulesets.Dnd5eRulesetResolver(rollSvc),
+                new Rulesets.Pf2eRulesetResolver(rollSvc),
+                new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+            ]),
             new CampaignDocumentKeys(),
             new CurrentCampaignContext());
 
@@ -1274,15 +1365,15 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Verifies new Phase 6/7 laziness mitigations: engine detects one-way links (missing reverse from parent)
         // even for non-create paths, and detects "flavor vacuum" (no PoIs/Ambient + empty) and provides ready update JSON.
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(
             repo,
             new DefaultBehaviorSynthesizer(),
-            new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] {
-                new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc),
-                new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc),
-                new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc)
-            }),
+            new Rulesets.RulesetResolverSelector([
+                new Rulesets.Dnd5eRulesetResolver(rollSvc),
+                new Rulesets.Pf2eRulesetResolver(rollSvc),
+                new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+            ]),
             new CampaignDocumentKeys(),
             new CurrentCampaignContext());
 
@@ -1299,7 +1390,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 Name = "Broken Parent",
                 Description = "Parent without back link",
                 Type = LocationType.Building,
-                Exits = new List<LocationExit>() // deliberately no child
+                Exits = [] // deliberately no child
             });
             await repo.UpsertLocationAsync(session, new Location
             {
@@ -1308,7 +1399,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 Description = "Child pointing to parent but no reciprocal exit",
                 Type = LocationType.Room,
                 ParentLocationId = parentId,
-                Exits = new List<LocationExit> { new LocationExit(parentId, "Leads back (but parent doesn't know)") }
+                Exits = [new LocationExit(parentId, "Leads back (but parent doesn't know)")]
             });
             await session.SaveChangesAsync();
         }
@@ -1319,7 +1410,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(childResult.Data);
         Assert.True(childResult.Data.IsLocationAnchored);
 
-        var pressureText = string.Join("\n", childResult.WorldPressure ?? Array.Empty<string>());
+        var pressureText = string.Join("\n", childResult.WorldPressure ?? []);
         Assert.Contains("one-way link", pressureText);
         Assert.Contains("location_update", pressureText);
         Assert.Contains(parentId, pressureText); // targets the parent for the fix
@@ -1342,7 +1433,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         var vacuumResult = await tools.GetScene(vacuumId);
         Assert.True(vacuumResult.Success);
-        var vacuumPressure = string.Join(" ", vacuumResult.WorldPressure ?? Array.Empty<string>());
+        var vacuumPressure = string.Join(" ", vacuumResult.WorldPressure ?? []);
         Assert.Contains("NARRATIVE PROMPT", vacuumPressure);
         Assert.Contains("lacks flavor details", vacuumPressure);
         Assert.Contains("location_update", vacuumPressure);
@@ -1438,7 +1529,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 Id = charId, 
                 Name = "Bob", 
                 CurrentActivity = null, 
-                Schedule = new Schedule { DefaultLocationId = locId, Routines = new List<Routine>() } 
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = [] } 
             };
             await repo.UpsertCharacterAsync(session, npc);
             await session.SaveChangesAsync();
@@ -1449,7 +1540,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false)) break;
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
 
@@ -1481,12 +1576,12 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 Title = "Save the Hub",
                 OverallState = QuestState.Open,
                 DeadlineDay = 15,
-                RelatedLocationIds = new List<string> { locId },
-                Objectives = new List<QuestObjective>
-                {
+                RelatedLocationIds = [locId],
+                Objectives =
+                [
                     new QuestObjective("Obj 1", QuestState.Open),
                     new QuestObjective("Obj 2", QuestState.Complete)
-                }
+                ]
             };
             await repo.UpsertQuestAsync(session, quest);
 
@@ -1495,7 +1590,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 Id = factionId,
                 Name = "Hub Defenders",
                 InfluenceLevel = 50,
-                TerritoryLocationIds = new List<string> { locId }
+                TerritoryLocationIds = [locId]
             };
             await repo.UpsertFactionAsync(session, faction);
 
@@ -1507,7 +1602,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 {
                     FactionReputations = new Dictionary<string, int> { { factionId, 10 } }
                 },
-                Schedule = new Schedule { DefaultLocationId = locId, Routines = new List<Routine>() }
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
             };
             await repo.UpsertCharacterAsync(session, npc);
 
@@ -1515,7 +1610,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             {
                 Id = "events/test-" + Guid.NewGuid(),
                 Summary = "Travel interrupted en route to the hub.",
-                Involved = new List<string> { locId }
+                Involved = [locId]
             });
 
             await session.SaveChangesAsync();
@@ -1529,7 +1624,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             if (stats.Indexes.Any(x => x.Name == "Quest/Search" && x.IsStale == false) &&
                 stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false) &&
                 stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
+            {
                 break;
+            }
+
             await Task.Delay(100);
         }
 
@@ -1574,10 +1672,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
         
         // This would fail if CharacterCreateHandler was missing
-        var result = await repo.StageChangesAsync(session, new WorldChange[] 
-        { 
-            new CharacterCreate { CharacterId = "chars/dummy-" + Guid.NewGuid(), Name = "Dummy" } 
-        });
+        var result = await repo.StageChangesAsync(session, [
+            new CharacterCreate { CharacterId = "chars/dummy-" + Guid.NewGuid(), Name = "Dummy" }
+        ]);
         
         Assert.True(result.Success);
     }
@@ -1587,8 +1684,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         // Use a repo ctor that supplies the required handlers (the default 1-arg ctor uses a fallback list
         // that does not include TravelChangeHandler, which would result in "Unhandled change type").
-        // We wire a controlled TravelEncounterRule (always "safe" random) so the -100 risk path is deterministic.
-        var safeRule = new TravelEncounterRule(() => 0.99); // > any clamped modified chance from negative modifier
+        // We wire a controlled EncounterResolver (always "safe" random) so the -100 risk path is deterministic.
+        var safeRule = new EncounterResolver(() => 0.99); // > any clamped modified chance from negative modifier
         var changeHandlers = new IWorldChangeHandler[]
         {
             new TravelChangeHandler(safeRule),
@@ -1628,12 +1725,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Id = originId,
             Name = "Forest Trailhead",
             Description = "Start of the path",
-            Exits = new List<LocationExit>
-            {
-                // This will be resolved by TravelChangeHandler because dispatcher now preloads origin loc for TravelChange,
-                // and the handler looks it up to get cost/terrain when no override is supplied.
-                new LocationExit(destId, "Winding path through the woods", TravelCostHours: 16, Terrain: "forest")
-            }
+            Exits = [new LocationExit(destId, "Winding path through the woods", TravelCostHours: 16, Terrain: "forest")]
         };
 
         var dest = new Location
@@ -1659,7 +1751,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = -100 // ensure no interrupt regardless of terrain base chance
         };
 
-        var successResult = await repo.StageChangesAsync(session, new WorldChange[] { successTravel });
+        var successResult = await repo.StageChangesAsync(session, [successTravel]);
         Assert.True(successResult.Success, "Full commit via StageChangesAsync should succeed for travel using exit metadata");
 
         await session.SaveChangesAsync(); // persist mutations from handlers (Need, Activity, Event, LastVisited on dest)
@@ -1680,7 +1772,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // === Interrupt behavior path (separate entities + dedicated repo/handler to keep test isolated and deterministic):
         // Use a TravelChangeHandler wired with a rule whose random *always* returns 0.0 so high risk *guarantees* interrupt.
-        var triggerRule = new TravelEncounterRule(() => 0.0);
+        var triggerRule = new EncounterResolver(() => 0.0);
         var intChangeHandlers = new IWorldChangeHandler[]
         {
             new TravelChangeHandler(triggerRule),
@@ -1713,7 +1805,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         {
             Id = intOriginId,
             Name = "Road Start",
-            Exits = new List<LocationExit> { new LocationExit(intDestId, "Open road", TravelCostHours: 6, Terrain: "road") }
+            Exits = [new LocationExit(intDestId, "Open road", TravelCostHours: 6, Terrain: "road")]
         };
         var intDest = new Location { Id = intDestId, Name = "Road End" };
 
@@ -1731,7 +1823,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = 100 // high risk; combined with always-0 random in the rule, guarantees first-bucket interrupt
         };
 
-        var intResult = await intRepo.StageChangesAsync(session, new WorldChange[] { interruptTravel });
+        var intResult = await intRepo.StageChangesAsync(session, [interruptTravel]);
         Assert.True(intResult.Success);
 
         await session.SaveChangesAsync();
@@ -1740,7 +1832,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // On interrupt: partial tiredness still applied (6h -> +15), but NO location move + activity marker set
         Assert.Equal(intOriginId, reloadedIntTraveler.CurrentLocationId); // did not teleport
-        Assert.Contains("interrupted en route", reloadedIntTraveler.CurrentActivity ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("unexpected encounter", reloadedIntTraveler.CurrentActivity ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         var intTiredness = reloadedIntTraveler.Needs.ActiveNeeds["tiredness"];
         Assert.True(intTiredness >= 14f, $"Partial tiredness should have been applied even on interrupt; was {intTiredness}");
     }

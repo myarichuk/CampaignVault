@@ -48,12 +48,15 @@ public class DefaultRollServiceTests
     {
         // Test Critical (rolling 20 on d20) and Complication (rolling 1 on d20)
         // Find a seed that produces a critical (20) on 1d20
-        int critSeed = 0;
+        var critSeed = 0;
         while (true)
         {
             var testRng = new Random(critSeed);
             if (testRng.Next(1, 21) == 20)
+            {
                 break;
+            }
+
             critSeed++;
         }
 
@@ -66,12 +69,15 @@ public class DefaultRollServiceTests
         Assert.False(outcomeCrit.HasComplication);
 
         // Find a seed that produces a complication (1) on 1d20
-        int compSeed = 0;
+        var compSeed = 0;
         while (true)
         {
             var testRng = new Random(compSeed);
             if (testRng.Next(1, 21) == 1)
+            {
                 break;
+            }
+
             compSeed++;
         }
 
@@ -155,12 +161,15 @@ public class DefaultRollServiceTests
     {
         // Arrange
         // Let's find a seed that produces an explosive roll (rolling a max face first)
-        int explosiveSeed = 0;
+        var explosiveSeed = 0;
         while (true)
         {
             var testRng = new Random(explosiveSeed);
             if (testRng.Next(1, 5) == 4)
+            {
                 break;
+            }
+
             explosiveSeed++;
         }
 
@@ -179,7 +188,7 @@ public class DefaultRollServiceTests
 
         // Assert
         var expectedDice = new List<int>();
-        int expectedTotal = 0;
+        var expectedTotal = 0;
         int roll;
         do
         {
@@ -311,8 +320,8 @@ public class DefaultRollServiceTests
 
         // Assert
         var rolled = Enumerable.Range(0, 3).Select(_ => testRng.Next(1, 21)).ToList();
-        int expectedSuccesses = 0;
-        bool expectedComplication = false;
+        var expectedSuccesses = 0;
+        var expectedComplication = false;
         foreach (var d in rolled)
         {
             if (d <= 12)
@@ -357,13 +366,13 @@ public class DefaultRollServiceTests
         var result = await service.RollFalloutCombatDiceAsync(5);
 
         // Assert
-        int expectedDamage = 0;
-        int expectedEffects = 0;
-        bool expectedCrit = false;
+        var expectedDamage = 0;
+        var expectedEffects = 0;
+        var expectedCrit = false;
 
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
-            int face = testRng.Next(1, 7);
+            var face = testRng.Next(1, 7);
             switch (face)
             {
                 case 3:

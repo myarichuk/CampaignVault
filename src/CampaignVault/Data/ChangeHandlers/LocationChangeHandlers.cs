@@ -10,7 +10,9 @@ public class LocationCreateHandler : IWorldChangeHandler
     {
         var lc = (LocationCreate)change;
         if (string.IsNullOrWhiteSpace(lc.LocationId))
+        {
             return ChangeHandlerResult.Failure("locationId is required.");
+        }
 
         var existing = context.Session != null ? await context.Session.LoadAsync<Location>(lc.LocationId, ct) : null;
         Location newLoc;
@@ -18,13 +20,40 @@ public class LocationCreateHandler : IWorldChangeHandler
         {
             context.RecordMessage($"Warning: Location '{lc.LocationId}' already exists. Updating existing location instead of failing.");
             newLoc = existing;
-            if (lc.Name != null) newLoc.Name = lc.Name;
-            if (lc.Description != null) newLoc.Description = lc.Description;
-            if (lc.Type != LocationType.Room) newLoc.Type = lc.Type;
-            if (lc.ParentLocationId != null) newLoc.ParentLocationId = lc.ParentLocationId;
-            if (lc.PointsOfInterest != null) newLoc.PointsOfInterest = lc.PointsOfInterest;
-            if (lc.AmbientCrowd != null) newLoc.AmbientCrowd = lc.AmbientCrowd;
-            if (lc.Exits != null) newLoc.Exits = lc.Exits;
+            if (lc.Name != null)
+            {
+                newLoc.Name = lc.Name;
+            }
+
+            if (lc.Description != null)
+            {
+                newLoc.Description = lc.Description;
+            }
+
+            if (lc.Type != LocationType.Room)
+            {
+                newLoc.Type = lc.Type;
+            }
+
+            if (lc.ParentLocationId != null)
+            {
+                newLoc.ParentLocationId = lc.ParentLocationId;
+            }
+
+            if (lc.PointsOfInterest != null)
+            {
+                newLoc.PointsOfInterest = lc.PointsOfInterest;
+            }
+
+            if (lc.AmbientCrowd != null)
+            {
+                newLoc.AmbientCrowd = lc.AmbientCrowd;
+            }
+
+            if (lc.Exits != null)
+            {
+                newLoc.Exits = lc.Exits;
+            }
         }
         else
         {
@@ -39,11 +68,14 @@ public class LocationCreateHandler : IWorldChangeHandler
                 ParentLocationId = parentId,
                 PointsOfInterest = lc.PointsOfInterest ?? [],
                 AmbientCrowd = lc.AmbientCrowd,
-                Exits = lc.Exits ?? []
+                Exits = lc.Exits ?? [],
+                DangerModifier = Math.Clamp(lc.DangerModifier, -50, 50)
             };
 
             if (string.IsNullOrEmpty(newLoc.CampaignName))
+            {
                 newLoc.CampaignName = context.CampaignName;
+            }
         }
 
         if (!string.IsNullOrEmpty(lc.ConnectedFromLocationId))
@@ -73,7 +105,7 @@ public class LocationCreateHandler : IWorldChangeHandler
             }
         }
 
-        await context.Session.StoreAsync(newLoc, ct);
+        await context.Session!.StoreAsync(newLoc, ct);
         context.RegisterNewLocation(newLoc);
 
         return ChangeHandlerResult.Ok;
@@ -95,16 +127,40 @@ public class LocationUpdateHandler : IWorldChangeHandler
             {
                 var hints = await context.SuggestLocationMatchAsync(lu.LocationId);
                 var msg = $"Location {lu.LocationId} not found.";
-                if (hints != null) msg += $" Did you mean: {hints}?";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
                 return ChangeHandlerResult.Failure(msg);
             }
             context.RegisterNewLocation(loc);
         }
 
-        if (lu.Name != null) loc.Name = lu.Name;
-        if (lu.Description != null) loc.Description = lu.Description;
-        if (lu.ParentLocationId != null) loc.ParentLocationId = lu.ParentLocationId;
-        if (lu.AmbientCrowd != null) loc.AmbientCrowd = lu.AmbientCrowd == "" ? null : lu.AmbientCrowd;
+        if (lu.Name != null)
+        {
+            loc.Name = lu.Name;
+        }
+
+        if (lu.Description != null)
+        {
+            loc.Description = lu.Description;
+        }
+
+        if (lu.ParentLocationId != null)
+        {
+            loc.ParentLocationId = lu.ParentLocationId;
+        }
+
+        if (lu.AmbientCrowd != null)
+        {
+            loc.AmbientCrowd = lu.AmbientCrowd == "" ? null : lu.AmbientCrowd;
+        }
+
+        if (lu.DangerModifier.HasValue)
+        {
+            loc.DangerModifier = Math.Clamp(lu.DangerModifier.Value, -50, 50);
+        }
 
         if (lu.AddExit != null)
         {

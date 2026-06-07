@@ -41,8 +41,7 @@ builder.Services.AddSingleton<ISimulationRule, NeedsAccumulationRule>();
 builder.Services.AddSingleton<ISimulationRule, RumorDecayRule>();
 builder.Services.AddSingleton<ISimulationRule, ScheduleEvaluationRule>();
 builder.Services.AddSingleton<ISimulationRule, StatusExpiryRule>();
-builder.Services.AddSingleton<ISimulationRule, CampaignVault.Data.TransientEvictionRule>();
-builder.Services.AddSingleton<ISimulationRule, TravelEncounterRule>();
+builder.Services.AddSingleton<ISimulationRule, TransientEvictionRule>();
 builder.Services.AddSingleton<ISimulationRule, FactionEcosystemRule>();
 builder.Services.AddSingleton<ISimulationRule, QuestStalenessRule>();
 builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>();
@@ -69,14 +68,17 @@ builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHand
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.FactionStateChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.QuestCreateHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.QuestProgressHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RestChangeHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ItemUpdateHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.CharacterUpdateHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RulesetActionHandler>(sp =>
     new CampaignVault.Data.ChangeHandlers.RulesetActionHandler(
         sp.GetRequiredService<CampaignVault.Rulesets.IRulesetResolverSelector>(),
-        sp.GetRequiredService<CampaignVault.Data.CampaignDocumentKeys>(),
-        sp.GetRequiredService<CampaignVault.Data.ICurrentCampaignContext>()));
+        sp.GetRequiredService<CampaignDocumentKeys>(),
+        sp.GetRequiredService<ICurrentCampaignContext>()));
 
 // Combat / Rulesets
-builder.Services.AddSingleton<CampaignVault.Data.IRollService, CampaignVault.Data.DefaultRollService>();
+builder.Services.AddSingleton<IRollService, DefaultRollService>();
 builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Dnd5eRulesetResolver>();
 builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Pf2eRulesetResolver>();
 builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Fallout2d20RulesetResolver>();
@@ -85,8 +87,8 @@ builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolverSelector, C
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
 
 // Campaign scoping & multi-campaign keying (first-class Campaign model)
-builder.Services.AddSingleton<CampaignVault.Data.CampaignDocumentKeys>();
-builder.Services.AddSingleton<CampaignVault.Data.ICurrentCampaignContext, CampaignVault.Data.CurrentCampaignContext>();
+builder.Services.AddSingleton<CampaignDocumentKeys>();
+builder.Services.AddSingleton<ICurrentCampaignContext, CurrentCampaignContext>();
 
 builder.Services.AddSingleton<CampaignRepository>();
 builder.Services.AddSingleton<IPressureManager, PressureManager>();

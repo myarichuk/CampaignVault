@@ -20,8 +20,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     private int GetSkillOrAbilityBonus(Dnd5eExtension stats, string name)
     {
         if (stats.SkillModifiers.TryGetValue(name, out var skillMod))
+        {
             return skillMod;
-        
+        }
+
         return name.ToLower() switch
         {
             "strength" => stats.GetAbilityModifier(stats.Strength),
@@ -43,27 +45,40 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
+        {
             return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
+        }
 
         if (target.SystemStats is not Dnd5eExtension targetStats)
+        {
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
-        int ac = targetStats.ArmorClass;
+        }
+
+        var ac = targetStats.ArmorClass;
         ac = ApplyAllModifiers(targetStats, "AC", ac);
         
         // AC override
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
+        {
             ac = overrideAc;
+        }
 
-        int attackBonus = 0;
+        var attackBonus = 0;
         if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
+        {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{b}'.");
+        }
+
         attackBonus = ApplyAllModifiers(actorStats, "AttackRoll", attackBonus);
 
-        string damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4"; // Unarmed default
+        var damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4"; // Unarmed default
         
-        int damageBonus = 0;
+        var damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
+        {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageBonus value '{db}'.");
+        }
+
         damageBonus = ApplyAllModifiers(actorStats, "DamageRoll", damageBonus);
 
         var mechanic = GetMechanicFromParams(action.Parameters);
@@ -71,19 +86,30 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = mechanic }, ct);
         var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
 
-        bool isHit = false;
-        bool isCrit = attackRoll.HasCritical; // Nat 20
+        var isHit = false;
+        var isCrit = attackRoll.HasCritical; // Nat 20
 
-        if (isCrit) isHit = true;
-        else if (attackRoll.HasComplication) isHit = false; // Nat 1
-        else if (attackRoll.Result >= ac) isHit = true;
+        if (isCrit)
+        {
+            isHit = true;
+        }
+        else if (attackRoll.HasComplication)
+        {
+            isHit = false; // Nat 1
+        }
+        else if (attackRoll.Result >= ac)
+        {
+            isHit = true;
+        }
 
         if (!isHit)
+        {
             return ResolverResult.Ok($"{action.ActionName}: Missed. Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
+        }
 
         // Handle critical damage (double dice)
-        int finalDamage = damageRoll.Result;
-        string critMsg = "";
+        var finalDamage = damageRoll.Result;
+        var critMsg = "";
         if (isCrit)
         {
             // Per D&D 5e PHB: "Roll all of the attack's damage dice twice and add them together. Then add any relevant modifiers as normal."
@@ -110,10 +136,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         CancellationToken ct)
     {
         if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
+        {
             return ResolverResult.Fail("InvalidParameter", "Error: Skill check requires a 'dc' parameter.");
+        }
 
         var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
-        int bonus = GetSkillOrAbilityBonus(actorStats, skillName);
+        var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, "SkillCheck", bonus);
         bonus = ApplyAllModifiers(actorStats, skillName, bonus);
         var mechanic = GetMechanicFromParams(action.Parameters);
@@ -126,8 +154,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Mechanic = mechanic
         }, ct);
 
-        bool isSuccess = outcome.Result >= dc;
-        string resultStr = isSuccess ? "Success" : "Failure";
+        var isSuccess = outcome.Result >= dc;
+        var resultStr = isSuccess ? "Success" : "Failure";
         
         return ResolverResult.Ok($"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
     }
@@ -141,19 +169,23 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         var targetId = action.TargetIds.FirstOrDefault();
         if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
+        {
             return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for contested check.");
+        }
 
         if (target.SystemStats is not Dnd5eExtension targetStats)
+        {
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
+        }
 
         var actorSkill = action.Parameters.TryGetValue("skill", out var as_name) ? as_name : "Strength";
         var targetSkill = action.Parameters.TryGetValue("targetSkill", out var ts_name) ? ts_name : actorSkill;
 
-        int actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
+        var actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
         actorBonus = ApplyAllModifiers(actorStats, "SkillCheck", actorBonus);
         actorBonus = ApplyAllModifiers(actorStats, actorSkill, actorBonus);
 
-        int targetBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
+        var targetBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
         targetBonus = ApplyAllModifiers(targetStats, "SkillCheck", targetBonus);
         targetBonus = ApplyAllModifiers(targetStats, targetSkill, targetBonus);
 
@@ -161,8 +193,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = DiceMechanic.Standard }, ct);
 
         // Ties usually favor the status quo or defender, but we'll assume higher wins, tie = defender wins.
-        bool actorWins = actorRoll.Result > targetRoll.Result; 
-        string resultStr = actorWins ? "Actor Wins" : "Target Wins";
+        var actorWins = actorRoll.Result > targetRoll.Result; 
+        var resultStr = actorWins ? "Actor Wins" : "Target Wins";
 
         return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).");
     }
@@ -170,7 +202,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
-        int dexMod = stats.GetAbilityModifier(stats.Dexterity);
+        var dexMod = stats.GetAbilityModifier(stats.Dexterity);
         dexMod = ApplyAllModifiers(stats, "Initiative", dexMod);
         
         var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = dexMod, Mechanic = DiceMechanic.Standard };

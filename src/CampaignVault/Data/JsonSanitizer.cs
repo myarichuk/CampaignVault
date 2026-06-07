@@ -84,7 +84,9 @@ public static class JsonSanitizer
         }
 
         if (value is IDictionary<string, object> dict)
+        {
             return SanitizeDictionary(dict);
+        }
 
         if (value is IList list && value is not string)
         {
@@ -107,7 +109,9 @@ public static class JsonSanitizer
     public static IDictionary<string, object>? SanitizeDictionary(IDictionary<string, object>? source)
     {
         if (source == null || source.Count == 0)
+        {
             return source;
+        }
 
         // Collect keys that need fixing first to avoid modification-during-enumeration issues
         var toFix = new List<(string key, object? badValue)>();
@@ -140,7 +144,10 @@ public static class JsonSanitizer
     /// </summary>
     public static void SanitizeForToolResponse(object? response)
     {
-        if (response == null) return;
+        if (response == null)
+        {
+            return;
+        }
 
         switch (response)
         {

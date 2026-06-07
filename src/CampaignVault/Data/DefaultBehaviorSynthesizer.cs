@@ -15,7 +15,9 @@ public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
     public string GenerateSummary(Character npc, CampaignTime? currentTime = null, IEnumerable<Event>? recentEvents = null)
     {
         if (npc == null)
+        {
             return "The NPC has no available psychological data.";
+        }
 
         var psych = npc.Psychology ?? new PsychologyProfile();
         var needs = npc.Needs ?? new NeedsProfile();

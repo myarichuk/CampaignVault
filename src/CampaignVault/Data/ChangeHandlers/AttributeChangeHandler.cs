@@ -20,7 +20,11 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
             {
                 var hints = await context.SuggestCharacterMatchAsync(attr.CharacterId);
                 var msg = $"Character {attr.CharacterId} not found.";
-                if (hints != null) msg += $" Did you mean: {hints}?";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
                 context.RecordMessage($"WARNING: {msg}");
                 context.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);

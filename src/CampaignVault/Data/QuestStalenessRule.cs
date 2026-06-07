@@ -27,12 +27,14 @@ public sealed class QuestStalenessRule : ISimulationRule
         foreach (var quest in context.ActiveQuests)
         {
             if (quest.OverallState != QuestState.Open && quest.OverallState != QuestState.InProgress)
+            {
                 continue;
+            }
 
-            int currentDay = context.Time.TotalDaysElapsed;
+            var currentDay = context.Time.TotalDaysElapsed;
 
             // 1. Check Deadlines
-            bool missedDeadline = false;
+            var missedDeadline = false;
             var objectiveIndex = -1;
             int? missedDay = null;
 

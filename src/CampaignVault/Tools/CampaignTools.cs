@@ -59,7 +59,11 @@ public class CampaignTools
 
     private string EffectiveCampaign(string? explicitName)
     {
-        if (!string.IsNullOrWhiteSpace(explicitName)) return explicitName;
+        if (!string.IsNullOrWhiteSpace(explicitName))
+        {
+            return explicitName;
+        }
+
         return string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName) ? "default" : _currentCampaign.CurrentCampaignName;
     }
 
@@ -117,7 +121,10 @@ public class CampaignTools
             return new ToolResult<T>(false, Error: ToolErrors.InternalError, Summary: ex.Message);
         }
 
-        if (!result.Success) return result;
+        if (!result.Success)
+        {
+            return result;
+        }
 
         if (saveChanges)
         {
@@ -306,9 +313,18 @@ public class CampaignTools
                     var overallStance = FactionStance.Neutral;
                     if (f.StanceToward != null && f.StanceToward.Count > 0)
                     {
-                        if (f.StanceToward.Values.Contains(FactionStance.AtWar)) overallStance = FactionStance.AtWar;
-                        else if (f.StanceToward.Values.Contains(FactionStance.Hostile)) overallStance = FactionStance.Hostile;
-                        else if (f.StanceToward.Values.Contains(FactionStance.Allied)) overallStance = FactionStance.Allied;
+                        if (f.StanceToward.Values.Contains(FactionStance.AtWar))
+                        {
+                            overallStance = FactionStance.AtWar;
+                        }
+                        else if (f.StanceToward.Values.Contains(FactionStance.Hostile))
+                        {
+                            overallStance = FactionStance.Hostile;
+                        }
+                        else if (f.StanceToward.Values.Contains(FactionStance.Allied))
+                        {
+                            overallStance = FactionStance.Allied;
+                        }
                     }
                     return new FactionPresenceSummary(f.Id, f.Name, f.InfluenceLevel, overallStance, null, f.TerritoryLocationIds.Count);
                 }),
@@ -361,7 +377,7 @@ public class CampaignTools
             {
                 if (partyPresent)
                 {
-                    bool anyPartyMemberPresent = scene.Characters.Any(c => c.KeepAlive);
+                    var anyPartyMemberPresent = scene.PresentNPCs.Any(c => c.KeepAlive);
                     if (!anyPartyMemberPresent)
                     {
                         pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, loc.Id,
@@ -440,6 +456,16 @@ public class CampaignTools
             if (scene.ActiveQuests != null)
             {
                 AddQuestDeadlinePressures(pressures, scene.ActiveQuests.Select(q => (q.QuestId, q.Title, q.DeadlineDay)), (int)time.TotalDaysElapsed);
+
+                foreach (var q in scene.ActiveQuests)
+                {
+                    if (time.TotalDaysElapsed - q.LastUpdatedDay > 10 && !q.DeadlineDay.HasValue)
+                    {
+                        pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, q.QuestId,
+                            $"Quest '{q.Title}' has seen no progress in over 10 days. Consider advancing or failing it: [ {{ \"$type\": \"quest_progress\", \"questId\": \"{q.QuestId}\", \"objectiveIndex\": 0, \"newState\": \"InProgress\", \"narrativeNote\": \"Party investigated...\" }} ]",
+                            "Quest:Stale"));
+                    }
+                }
             }
 
             if (scene.PresentNPCs != null)
@@ -452,13 +478,42 @@ public class CampaignTools
                             $"Character '{npc.Name}' is stuck: '{npc.CurrentActivity}'. Narrate the encounter resolution then commit e.g. [ {{\"$type\": \"activity\", \"characterId\": \"{npc.Id}\", \"newActivity\": \"...resolved...\", \"updateLocation\": false }}, {{\"$type\": \"travel\", \"characterId\": \"{npc.Id}\", \"destinationLocationId\": \"...\", \"encounterRiskModifier\": -20 }} ] to continue.",
                             "Travel:Interrupted"));
                     }
+
+                    // Transient Eviction guard
+                    if (!npc.KeepAlive && scene.ActiveQuests != null && scene.ActiveQuests.Any(q => q.GiverId == npc.Id))
+                    {
+                        pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, npc.Id,
+                            $"Character '{npc.Name}' is a Quest Giver but is marked as transient (KeepAlive = false). The engine will delete them when the party leaves! Anchor them immediately:\n[ {{ \"$type\": \"character_create\", \"characterId\": \"{npc.Id}\", \"keepAlive\": true }} ]",
+                            "Character:TransientQuestGiver"));
+                    }
                 }
             }
 
             if (scene.RelevantFactions != null && scene.RelevantFactions.Any())
             {
+                foreach (var f in scene.RelevantFactions)
+                {
+                    if (f.PlayerReputation.HasValue)
+                    {
+                        if (f.PlayerReputation.Value <= -50)
+                        {
+                            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
+                                $"The party is in territory influenced by '{f.Name}', a faction they have very low reputation with ({f.PlayerReputation.Value}). " +
+                                "They should face immediate suspicion, hostility, or be denied services. Consider an ambush or confrontation.",
+                                $"Faction:HostileTerritory:{f.FactionId}"));
+                        }
+                        else if (f.PlayerReputation.Value >= 50)
+                        {
+                            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
+                                $"The party is in territory influenced by '{f.Name}', a faction they are highly regarded by ({f.PlayerReputation.Value}). " +
+                                "They should be welcomed, offered better prices, or given assistance.",
+                                $"Faction:AlliedTerritory:{f.FactionId}"));
+                        }
+                    }
+                }
+
                 var fIds = scene.RelevantFactions.Select(f => f.FactionId).ToList();
-                int minDay = (int)time.TotalDaysElapsed - 2;
+                var minDay = (int)time.TotalDaysElapsed - 2;
                 var recentEvents = await session.Query<Event>()
                     .Where(e => e.CampaignName == effective && (e.Category == EventCategory.Simulation || e.Category == EventCategory.SceneCommit) && e.DayLogged >= minDay)
                     .Take(50)
@@ -577,7 +632,9 @@ Basic + creating on the fly examples are also shown in the tool description and 
     public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(changesJson))
+        {
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
+        }
 
         WorldChange[] elements;
         try
@@ -636,7 +693,10 @@ Basic + creating on the fly examples are also shown in the tool description and 
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
             var npc = await _repository.GetCharacterAsync(session, characterId, effective);
-            if (npc == null) return new ToolResult<NpcContextView>(false, Error: "NotFound");
+            if (npc == null)
+            {
+                return new ToolResult<NpcContextView>(false, Error: "NotFound");
+            }
 
             // Use repo query (now scoped) + client filter for involved.
             var npcEvents = (await _repository.QueryEventsAsync(session, null, null, 10, effective))
@@ -816,7 +876,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         return ExecuteAsync(async session =>
         {
             var npc = await _repository.GetCharacterAsync(session, characterId, effective);
-            if (npc == null) return new ToolResult<NpcNeedsView>(false, Error: "NotFound");
+            if (npc == null)
+            {
+                return new ToolResult<NpcNeedsView>(false, Error: "NotFound");
+            }
 
             // Merge global descriptors (from DefineNeedDescriptor) with per-NPC ones.
             // Per-NPC descriptors take precedence on conflicts.
@@ -845,7 +908,9 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))
+        {
             return Task.FromResult(new ToolResult<string>(false, Error: "BadRequest", Summary: "needName and descriptor are required."));
+        }
 
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
@@ -1223,7 +1288,10 @@ Use this if you are unsure which campaign you are currently in or if you need to
             var campaignId = _keys.Meta(effective);
             var campaign = await session.LoadAsync<Campaign>(campaignId);
             if (campaign == null)
+            {
                 return new ToolResult<Campaign>(false, Error: "NotFound", Summary: $"Campaign '{effective}' meta document not found. The campaign might not be initialized yet.");
+            }
+
             return new ToolResult<Campaign>(true, campaign, $"Currently selected campaign: {effective}");
         }, saveChanges: false);
     }
@@ -1232,7 +1300,7 @@ Use this if you are unsure which campaign you are currently in or if you need to
     [Description(@"SYSTEM DISCOVERABILITY: Returns a comprehensive DM manual. Call this if you forget how to use the tools, how to write ruleset_actions, how StatusEffects work, or the core gameplay loop.")]
     public Task<ToolResult<string>> GetHelp()
     {
-        string manual = @"# CampaignVault DM Manual
+        var manual = @"# CampaignVault DM Manual
 
 Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narrative while letting the MCP engine handle the persistence, math, and simulation.
 
@@ -1250,7 +1318,9 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 ## The Commit Tool (Universal Write)
 ALWAYS call at end of combat/conversation/discovery. Atomic array of `$type` mutations. Rate limited + batch capped (50).
 
-Supported `$type`s: `hp`, `item`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `schedule_change`, `item_create`.
+Supported `$type`s: `hp`, `item`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `schedule_change`, `item_create`, `travel`, `rest`, `faction_create`, `faction_reputation`, `faction_state`, `quest_create`, `quest_progress`.
+
+**Travel and Resting:** Use `travel` (with `destinationLocationId`) to safely move the party; it applies time and tiredness, and evaluates encounters based on distance. Use `rest` (with `intendedHours` and `securityModifier`) for camping or sleeping. The engine rolls for interruptions. If `rest` is interrupted, resolve the encounter before committing `hp` recovery!
 
 **RECOMMENDED PATTERNS (copy-paste and adapt):**
 
@@ -1303,7 +1373,22 @@ Later, party talks to the bard or barman engages:
 - If later the bard becomes a quest giver recurring: `schedule_change` or add Schedule at birth + `keepAlive`.
 - If they just drink and leave: no commit needed for the 12 unnamed sailors. Engine will GC any you did transiently create if area goes cold.
 
+**Full ""Travel, Faction & Quest"" Batch Example (Phase 7 Masterclass):**
+When the party travels, finishes a quest objective, and affects faction standing all at once, batch it!
+[
+  { ""$type"": ""travel"", ""characterId"": ""chars/pc1"", ""destinationLocationId"": ""locations/rebel-camp"", ""encounterRiskModifier"": -20 },
+  { ""$type"": ""quest_progress"", ""questId"": ""quests/find-rebel-camp"", ""objectiveIndex"": 0, ""newState"": ""Complete"", ""narrativeNote"": ""Found the hidden camp."" },
+  { ""$type"": ""faction_reputation"", ""factionId"": ""factions/rebels"", ""characterId"": ""chars/pc1"", ""delta"": 15 }
+]
+This safely moves the party (applying time/tiredness), updates the quest, and makes the faction like them more, instantly resolving multiple pressures at once.
+
 This is how you stay creative *and* keep the world model healthy without perfect JSON for every flavor element.
+
+**The Visual / Physics Sandbox (Tags & Appearance):**
+The engine intentionally avoids hardcoding vulnerability scores or mechanical checks for narrative states like ""wet"" or ""disheveled"". You (the LLM) are the physics engine.
+- Use `$type: ""item_update""` to add temporary `TagsToAdd` (e.g., `[""wet"", ""muddy""]`) and a narrative `NewState` (e.g., ""Covered in mud"") to items. You can also add permanent `FeaturesToAdd` (e.g., ""Leather wrapped handle"").
+- Use `$type: ""character_update""` to do the same for characters. Give them temporary `TagsToAdd` (`[""soot_covered""]`), narrative `AppearanceOverride`, or permanent `FeaturesToAdd` (`[""Scar over left eye""]`).
+- Read these fields from `SceneView` and interpret them naturally. If a goblin has the ""wet"" tag, you inherently know lightning magic should be more effective. If the PC is ""disheveled"", the noble faction should react poorly.
 
 ## Ruleset Actions (Combat & Skill Checks)
 ... (same as before, keep the examples)

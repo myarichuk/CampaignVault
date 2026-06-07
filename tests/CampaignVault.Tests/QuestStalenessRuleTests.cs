@@ -35,10 +35,7 @@ public class QuestStalenessRuleTests
                     Title = "Test Quest",
                     DeadlineDay = 10,
                     OverallState = QuestState.InProgress,
-                    Objectives = new System.Collections.Generic.List<QuestObjective>
-                    {
-                        new QuestObjective("Obj 1", QuestState.InProgress)
-                    }
+                    Objectives = [new QuestObjective("Obj 1", QuestState.InProgress)]
                 }
             }
         );
@@ -84,10 +81,7 @@ public class QuestStalenessRuleTests
                     Title = "Test Quest 2",
                     DeadlineDay = 10,
                     OverallState = QuestState.Open,
-                    Objectives = new System.Collections.Generic.List<QuestObjective>
-                    {
-                        new QuestObjective("Obj 1", QuestState.Open, DayStarted: 1)
-                    }
+                    Objectives = [new QuestObjective("Obj 1", QuestState.Open, DayStarted: 1)]
                 }
             }
         );
@@ -119,10 +113,7 @@ public class QuestStalenessRuleTests
                     Id = "quests/test_3",
                     Title = "Test Quest 3",
                     OverallState = QuestState.InProgress,
-                    Objectives = new System.Collections.Generic.List<QuestObjective>
-                    {
-                        new QuestObjective("Obj 1", QuestState.InProgress, DayStarted: 2)
-                    }
+                    Objectives = [new QuestObjective("Obj 1", QuestState.InProgress, DayStarted: 2)]
                 }
             }
         );

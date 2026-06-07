@@ -27,7 +27,7 @@ public sealed class WorldChangeDispatcher
         IEnumerable<IWorldChangeHandler> handlers,
         ILogger<WorldChangeDispatcher>? logger = null)
     {
-        _handlers = handlers?.ToList() ?? new List<IWorldChangeHandler>();
+        _handlers = handlers?.ToList() ?? [];
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance;
     }
 
@@ -40,7 +40,9 @@ public sealed class WorldChangeDispatcher
         foreach (var h in _handlers)
         {
             if (h.ShouldHandle(change))
+            {
                 return h;
+            }
         }
 
         return null;
@@ -49,15 +51,16 @@ public sealed class WorldChangeDispatcher
     public async Task<CommitResult> DispatchAsync(
         IAsyncDocumentSession session,
         WorldChange[] changes,
-        string effectiveCampaign,
+        string? effectiveCampaign,
         Func<Task<CampaignTime>> getCurrentTimeAsync,
+        Func<Task<Dictionary<string, string>>> getSystemOptionsAsync,
         Func<Event, Task> logEventAsync)
     {
-        changes ??= Array.Empty<WorldChange>();
+        changes ??= [];
         _logger.LogDebug("Dispatching {ChangeCount} world changes via {HandlerCount} handlers", changes.Length, _handlers.Count);
 
         var summary = new List<string>();
-        bool overallSuccess = true;
+        var overallSuccess = true;
 
         if (changes.Length == 0)
         {
@@ -81,7 +84,7 @@ public sealed class WorldChangeDispatcher
         var locationIds = new HashSet<string>();
         var factionIds = new HashSet<string>();
         var questIds = new HashSet<string>();
-        bool needsCombat = false;
+        var needsCombat = false;
 
         foreach (var change in changes)
         {
@@ -89,6 +92,12 @@ public sealed class WorldChangeDispatcher
             {
                 case ItemTransfer it:
                     itemIds.Add(it.ItemId);
+                    break;
+                case ItemUpdate iu:
+                    itemIds.Add(iu.ItemId);
+                    break;
+                case CharacterUpdate cu:
+                    characterIds.Add(cu.CharacterId);
                     break;
                 case RelationshipChange rc:
                     characterIds.Add(rc.SourceId);
@@ -121,16 +130,25 @@ public sealed class WorldChangeDispatcher
                     break;
                 case LocationCreate lc:
                     if (!string.IsNullOrEmpty(lc.ConnectedFromLocationId))
+                    {
                         locationIds.Add(lc.ConnectedFromLocationId);
+                    }
+
                     if (!string.IsNullOrEmpty(lc.ParentLocationId))
+                    {
                         locationIds.Add(lc.ParentLocationId);
+                    }
+
                     break;
                 case LocationUpdate lu:
                     locationIds.Add(lu.LocationId);
                     break;
                 case CharacterCreate cc:
                     if (!string.IsNullOrEmpty(cc.CurrentLocationId))
+                    {
                         locationIds.Add(cc.CurrentLocationId);
+                    }
+
                     break;
                 case ScheduleChange sc:
                     characterIds.Add(sc.CharacterId);
@@ -144,17 +162,25 @@ public sealed class WorldChangeDispatcher
                     // Might be a location id or character id (support common ID prefixes used in examples/docs)
                     if (ic.HolderId != null &&
                         (ic.HolderId.StartsWith("locations/") || ic.HolderId.StartsWith("locs/")))
+                    {
                         locationIds.Add(ic.HolderId);
+                    }
                     else if (ic.HolderId != null &&
-                        (ic.HolderId.StartsWith("chars/") || ic.HolderId.StartsWith("characters/")))
+                             (ic.HolderId.StartsWith("chars/") || ic.HolderId.StartsWith("characters/")))
+                    {
                         characterIds.Add(ic.HolderId);
+                    }
+
                     break;
                 // Phase 7.1/7.3: pre-load destination explicitly. The traveler's CurrentLocationId (origin) is
                 // supplemented *after* characters are loaded (see below) so TravelChangeHandler can resolve exit metadata.
                 case TravelChange tc:
                     characterIds.Add(tc.CharacterId);
                     if (!string.IsNullOrEmpty(tc.DestinationLocationId))
+                    {
                         locationIds.Add(tc.DestinationLocationId);
+                    }
+
                     break;
                 case FactionReputationChange frc:
                     characterIds.Add(frc.CharacterId);
@@ -163,7 +189,10 @@ public sealed class WorldChangeDispatcher
                 case FactionStateChange fsc:
                     factionIds.Add(fsc.FactionId);
                     if (!string.IsNullOrEmpty(fsc.TargetFactionId))
+                    {
                         factionIds.Add(fsc.TargetFactionId!);
+                    }
+
                     break;
                 case QuestProgress qp:
                     questIds.Add(qp.QuestId);
@@ -173,6 +202,14 @@ public sealed class WorldChangeDispatcher
                     break;
                 case QuestCreate qc:
                     // No pre-load needed — create path loads to check existence
+                    break;
+                case RestChange rc:
+                    characterIds.Add(rc.CharacterId);
+                    if (!string.IsNullOrEmpty(rc.LocationId))
+                    {
+                        locationIds.Add(rc.LocationId);
+                    }
+
                     break;
             }
         }
@@ -236,7 +273,7 @@ public sealed class WorldChangeDispatcher
         }
         else
         {
-            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign);
+            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign);
         }
 
         // 2. Process each change in caller-supplied order
@@ -245,7 +282,7 @@ public sealed class WorldChangeDispatcher
             try
             {
                 IWorldChangeHandler? chosen = null;
-                int claimCount = 0;
+                var claimCount = 0;
 
                 foreach (var handler in _handlers)
                 {
@@ -253,7 +290,9 @@ public sealed class WorldChangeDispatcher
                     {
                         claimCount++;
                         if (chosen is null)
+                        {
                             chosen = handler;
+                        }
                     }
                 }
 
@@ -320,7 +359,7 @@ public sealed class WorldChangeDispatcher
     /// </summary>
     public async Task DispatchMutationAsync(ChangeContext parentContext, WorldChange mutation, CancellationToken ct = default)
     {
-        IWorldChangeHandler? chosen = FindHandler(mutation);
+        var chosen = FindHandler(mutation);
         
         if (chosen == null)
         {

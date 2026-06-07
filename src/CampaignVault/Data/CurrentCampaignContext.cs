@@ -39,7 +39,9 @@ public sealed class CurrentCampaignContext : ICurrentCampaignContext
     public void SetCurrent(string campaignName)
     {
         if (string.IsNullOrWhiteSpace(campaignName))
+        {
             campaignName = DefaultCampaign;
+        }
 
         _current.Value = campaignName;
     }

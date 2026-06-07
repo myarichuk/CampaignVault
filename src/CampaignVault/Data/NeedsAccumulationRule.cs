@@ -25,12 +25,15 @@ public sealed class NeedsAccumulationRule : ISimulationRule
         // Therefore, this simulation rule operates globally across all campaigns.
 
         // Use consistent float math (addresses review point about casts)
-        float days = (float)context.DaysPassed;
+        var days = (float)context.DaysPassed;
         var amount = 10f * days;
 
         foreach (var npc in context.ScheduledNpcs)
         {
-            if (npc.Needs is null || npc.Psychology is null) continue;
+            if (npc.Needs is null || npc.Psychology is null)
+            {
+                continue;
+            }
 
             // Accumulate core needs, but cap the delta so we don't emit meaningless " +120 when already at 100"
             // (CommitChangesAsync will still clamp, but this keeps summaries and rule output cleaner)
@@ -55,11 +58,23 @@ public sealed class NeedsAccumulationRule : ISimulationRule
             var projectedHunger = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("hunger") + amount, 0f, 100f);
             var projectedTiredness = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("tiredness") + (amount * 0.8f), 0f, 100f);
 
-            string newMood = npc.Psychology.CurrentMood ?? "Content";
-            if (projectedTiredness > NpcMoodThresholds.ExhaustedTiredness) newMood = "Exhausted";
-            else if (projectedHunger > NpcMoodThresholds.RavenousHunger) newMood = "Ravenous";
-            else if (projectedHunger > NpcMoodThresholds.GrumpyHunger || projectedTiredness > NpcMoodThresholds.GrumpyTiredness) newMood = "Grumpy";
-            else newMood = "Content";
+            var newMood = npc.Psychology.CurrentMood ?? "Content";
+            if (projectedTiredness > NpcMoodThresholds.ExhaustedTiredness)
+            {
+                newMood = "Exhausted";
+            }
+            else if (projectedHunger > NpcMoodThresholds.RavenousHunger)
+            {
+                newMood = "Ravenous";
+            }
+            else if (projectedHunger > NpcMoodThresholds.GrumpyHunger || projectedTiredness > NpcMoodThresholds.GrumpyTiredness)
+            {
+                newMood = "Grumpy";
+            }
+            else
+            {
+                newMood = "Content";
+            }
 
             if (newMood != npc.Psychology.CurrentMood)
             {

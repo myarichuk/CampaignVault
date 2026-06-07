@@ -82,7 +82,11 @@ public abstract class RulesetResolverBase<TStats> : IRulesetResolver where TStat
         CancellationToken ct = default)
     {
         var character = await session.LoadAsync<Character>(characterId, ct);
-        if (character == null) return 0f;
+        if (character == null)
+        {
+            return 0f;
+        }
+
         return await RollInitiativeAsync(character, ct);
     }
 
@@ -93,9 +97,15 @@ public abstract class RulesetResolverBase<TStats> : IRulesetResolver where TStat
     protected DiceMechanic GetMechanicFromParams(Dictionary<string, string> parameters)
     {
         if (parameters.TryGetValue("advantage", out var adv) && bool.TryParse(adv, out var isAdv) && isAdv)
+        {
             return DiceMechanic.Advantage;
+        }
+
         if (parameters.TryGetValue("disadvantage", out var dis) && bool.TryParse(dis, out var isDis) && isDis)
+        {
             return DiceMechanic.Disadvantage;
+        }
+
         return DiceMechanic.Standard;
     }
 
@@ -105,7 +115,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetResolver where TStat
     /// </summary>
     protected int ApplyAllModifiers(TStats stats, string modifierTag, int baseValue)
     {
-        float bonus = 0f;
+        var bonus = 0f;
 
         // Apply structured status effects
         if (stats.StatusEffects != null)
@@ -120,12 +130,16 @@ public abstract class RulesetResolverBase<TStats> : IRulesetResolver where TStat
                 if (modifierTag != "AC" && modifierTag != "Defense") 
                 {
                     if (effect.StatModifiers != null && effect.StatModifiers.TryGetValue("AllRolls", out var allRollsMod))
+                    {
                         bonus += allRollsMod;
-                        
+                    }
+
                     if (modifierTag.Contains("Skill") || modifierTag.Contains("Check"))
                     {
                         if (effect.StatModifiers != null && effect.StatModifiers.TryGetValue("AllChecks", out var allChecksMod))
+                        {
                             bonus += allChecksMod;
+                        }
                     }
                 }
             }

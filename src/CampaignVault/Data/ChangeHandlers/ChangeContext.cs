@@ -30,9 +30,14 @@ public sealed class ChangeContext
     public string? CampaignName { get; }
 
     /// <summary>
-    /// Provides the current campaign time (used by EventOccurred and RumorEvolves handlers).
+    /// Resolves the current CampaignTime safely without binding directly to the session implementation.
     /// </summary>
-    public Func<Task<CampaignTime>> GetCurrentTimeAsync { get; }
+    public Func<Task<CampaignTime>> GetCurrentTimeAsync { get; set; }
+
+    /// <summary>
+    /// Resolves the current Campaign SystemOptions.
+    /// </summary>
+    public Func<Task<Dictionary<string, string>>> GetSystemOptionsAsync { get; set; }
 
     /// <summary>
     /// Optional hook for handlers that need to persist events (used by EventOccurredHandler).
@@ -62,6 +67,7 @@ public sealed class ChangeContext
         Dictionary<string, Quest>? quests,
         ILogger logger,
         Func<Task<CampaignTime>> getCurrentTimeAsync,
+        Func<Task<Dictionary<string, string>>> getSystemOptionsAsync,
         Func<Event, Task> logEventAsync,
         List<string> summary,
         WorldChangeDispatcher dispatcher,
@@ -76,6 +82,7 @@ public sealed class ChangeContext
         _quests = quests ?? new Dictionary<string, Quest>();
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         GetCurrentTimeAsync = getCurrentTimeAsync ?? throw new ArgumentNullException(nameof(getCurrentTimeAsync));
+        GetSystemOptionsAsync = getSystemOptionsAsync ?? throw new ArgumentNullException(nameof(getSystemOptionsAsync));
         LogEventAsync = logEventAsync ?? throw new ArgumentNullException(nameof(logEventAsync));
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
@@ -108,6 +115,7 @@ public sealed class ChangeContext
         _quests = quests ?? new Dictionary<string, Quest>();
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         GetCurrentTimeAsync = () => Task.FromResult(new CampaignTime());
+        GetSystemOptionsAsync = () => Task.FromResult(new Dictionary<string, string>());
         LogEventAsync = _ => Task.CompletedTask;
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
@@ -127,7 +135,9 @@ public sealed class ChangeContext
     public void RecordMessage(string message)
     {
         if (!string.IsNullOrWhiteSpace(message))
+        {
             _summary.Add(message);
+        }
     }
 
     /// <summary>
@@ -143,14 +153,25 @@ public sealed class ChangeContext
 
     public async Task<string?> SuggestLocationMatchAsync(string? nameQuery)
     {
-        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery))
+        {
+            return null;
+        }
+
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("locations/".Length);
+        }
         else if (cleanQuery.StartsWith("locs/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("locs/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return null;
+        }
 
         var suggestions = await Session.Query<Location, Location_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -175,20 +196,35 @@ public sealed class ChangeContext
             }
         }
 
-        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        if (suggestions.Any())
+        {
+            return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        }
+
         return null;
     }
 
     public async Task<string?> SuggestCharacterMatchAsync(string? nameQuery)
     {
-        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery))
+        {
+            return null;
+        }
+
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("chars/".Length);
+        }
         else if (cleanQuery.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("characters/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return null;
+        }
 
         var suggestions = await Session.Query<Character, Character_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -213,20 +249,35 @@ public sealed class ChangeContext
             }
         }
 
-        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        if (suggestions.Any())
+        {
+            return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        }
+
         return null;
     }
 
     public async Task<string?> SuggestItemMatchAsync(string? nameQuery)
     {
-        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery))
+        {
+            return null;
+        }
+
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("items/".Length);
+        }
         else if (cleanQuery.StartsWith("item/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("item/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return null;
+        }
 
         var suggestions = await Session.Query<Item, Item_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -251,17 +302,30 @@ public sealed class ChangeContext
             }
         }
 
-        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        if (suggestions.Any())
+        {
+            return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        }
+
         return null;
     }
     public async Task<string?> SuggestFactionMatchAsync(string? nameQuery)
     {
-        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery))
+        {
+            return null;
+        }
+
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("factions/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return null;
+        }
 
         var suggestions = await Session.Query<Faction, Faction_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -280,22 +344,37 @@ public sealed class ChangeContext
             foreach (var f in byName)
             {
                 if (suggestions.All(s => s.Id != f.Id) && suggestions.Count < 3)
+                {
                     suggestions.Add(f);
+                }
             }
         }
 
-        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        if (suggestions.Any())
+        {
+            return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"));
+        }
+
         return null;
     }
 
     public async Task<string?> SuggestQuestMatchAsync(string? nameQuery)
     {
-        if (Session == null || string.IsNullOrWhiteSpace(nameQuery)) return null;
+        if (Session == null || string.IsNullOrWhiteSpace(nameQuery))
+        {
+            return null;
+        }
+
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("quests/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return null;
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return null;
+        }
 
         var suggestions = await Session.Query<Quest, Quest_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -314,11 +393,17 @@ public sealed class ChangeContext
             foreach (var q in byName)
             {
                 if (suggestions.All(s => s.Id != q.Id) && suggestions.Count < 3)
+                {
                     suggestions.Add(q);
+                }
             }
         }
 
-        if (suggestions.Any()) return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Title})"));
+        if (suggestions.Any())
+        {
+            return string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Title})"));
+        }
+
         return null;
     }
 }

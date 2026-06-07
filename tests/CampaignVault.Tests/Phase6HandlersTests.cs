@@ -24,7 +24,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         
-        var parent = new Location { Id = "locations/parent", Name = "Parent", Exits = new List<LocationExit>() };
+        var parent = new Location { Id = "locations/parent", Name = "Parent", Exits = [] };
         await session.StoreAsync(parent);
         await session.SaveChangesAsync();
 
@@ -37,8 +37,9 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             ConnectionDescription = "A sturdy oak door"
         };
 
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location> { { parent.Id, parent } }, new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), NullLogger.Instance, new List<string>(), dispatcher, null, "test-camp");
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location> { { parent.Id, parent } }, new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), NullLogger.Instance,
+            [], dispatcher, null, "test-camp");
 
         var result = await handler.ApplyAsync(change, ctx);
         Assert.True(result.Success);

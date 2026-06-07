@@ -10,7 +10,7 @@ public class QuestCreateHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is QuestCreate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, System.Threading.CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
     {
         var qc = (QuestCreate)change;
 
@@ -40,7 +40,8 @@ public class QuestCreateHandler : IWorldChangeHandler
             CampaignName = context.CampaignName,
             LastUpdatedDay = time.TotalDaysElapsed,
             LastUpdated = DateTime.UtcNow,
-            Objectives = qc.Objectives?.Select(o => new QuestObjective(o.Description, QuestState.Open, o.RewardHint, DeadlineDay: o.DeadlineDay)).ToList() ?? new List<QuestObjective>()
+            Objectives = qc.Objectives?.Select(o => new QuestObjective(o.Description, QuestState.Open, o.RewardHint, DeadlineDay: o.DeadlineDay)).ToList() ??
+                         []
         };
 
         context.RegisterNewQuest(quest);
@@ -55,7 +56,7 @@ public class QuestProgressHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is QuestProgress;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, System.Threading.CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
     {
         var qp = (QuestProgress)change;
 
@@ -65,7 +66,7 @@ public class QuestProgressHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Quest {qp.QuestId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
-        int indexToUpdate = -1;
+        var indexToUpdate = -1;
 
         if (!qp.ObjectiveIndex.HasValue && string.IsNullOrWhiteSpace(qp.ObjectiveName))
         {
@@ -137,7 +138,7 @@ public class QuestProgressHandler : IWorldChangeHandler
             {
                 Category = EventCategory.Discovery,
                 Summary = $"Quest '{quest.Title}' is now {quest.OverallState}.",
-                Involved = qp.InvolvedIds ?? new List<string>()
+                Involved = qp.InvolvedIds ?? []
             }, ct);
         }
 

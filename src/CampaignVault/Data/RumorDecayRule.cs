@@ -36,7 +36,9 @@ public sealed class RumorDecayRule : ISimulationRule
         foreach (var rumor in context.ActiveRumors)
         {
             if (rumor.State == RumorState.Resolved || rumor.State == RumorState.Forgotten)
+            {
                 continue;
+            }
 
             var daysSinceUpdate = context.Time.TotalDaysElapsed - rumor.LastStateChangeDay;
 
@@ -57,7 +59,10 @@ public sealed class RumorDecayRule : ISimulationRule
                 _ => null // no transition yet
             };
 
-            if (nextState is null) continue;
+            if (nextState is null)
+            {
+                continue;
+            }
 
             deltas.Add(new RumorEvolves { RumorId = rumor.Id, NewState = nextState.Value });
 

@@ -21,16 +21,15 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         _store = fixture.Store;
     }
 
-    private CampaignTools CreateTools(Raven.Client.Documents.IDocumentStore store)
+    private CampaignTools CreateTools(IDocumentStore store)
     {
         var repo = new CampaignRepository(store);
         var rollSvc = new DefaultRollService();
-        var selector = new RulesetResolverSelector(new IRulesetResolver[] 
-        { 
+        var selector = new RulesetResolverSelector([
             new Dnd5eRulesetResolver(rollSvc),
             new Pf2eRulesetResolver(rollSvc),
             new Fallout2d20RulesetResolver(rollSvc)
-        });
+        ]);
         
         return new CampaignTools(repo, new DefaultBehaviorSynthesizer(), selector, new CampaignDocumentKeys(), new CurrentCampaignContext());
     }
@@ -53,7 +52,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        var result = await tools.StartCombat(loc, new[] { c1, c2 }, campaignName: campaign);
+        var result = await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
 
         Assert.True(result.Success, $"StartCombat failed. Error: {result.Error}, Summary: {result.Summary}");
         Assert.NotNull(result.Data);
@@ -71,7 +70,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         var tools = CreateTools(store);
         var campaign = "camp_" + Guid.NewGuid();
 
-        var result = await tools.StartCombat("loc1", Array.Empty<string>(), campaignName: campaign);
+        var result = await tools.StartCombat("loc1", [], campaignName: campaign);
 
         Assert.False(result.Success);
         Assert.Contains("Cannot start combat with zero", result.Summary, StringComparison.OrdinalIgnoreCase);
@@ -93,7 +92,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        var result = await tools.StartCombat("loc1", new[] { c1, c2 }, campaignName: campaign);
+        var result = await tools.StartCombat("loc1", [c1, c2], campaignName: campaign);
 
         Assert.False(result.Success);
         Assert.Contains("None of the specified combatants are valid and alive", result.Summary);
@@ -117,7 +116,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         }
 
         // Start combat
-        var startResult = await tools.StartCombat(loc, new[] { c1, c2 }, campaignName: campaign);
+        var startResult = await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
         Assert.True(startResult.Success, $"StartCombat failed. Error: {startResult.Error}, Summary: {startResult.Summary}");
         
         var firstActorId = startResult.Data!.ActiveTurnId;
@@ -159,7 +158,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         }
 
         // Start combat
-        var startResult = await tools.StartCombat(loc, new[] { c1, c2 }, campaignName: campaign);
+        var startResult = await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
         Assert.True(startResult.Success, $"StartCombat failed. Error: {startResult.Error}, Summary: {startResult.Summary}");
 
         // Kill EVERYONE
@@ -193,7 +192,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        await tools.StartCombat(loc, new[] { c1 }, campaignName: campaign);
+        await tools.StartCombat(loc, [c1], campaignName: campaign);
 
         var endResult = await tools.EndCombat(campaignName: campaign);
         Assert.True(endResult.Success, $"EndCombat failed. Error: {endResult.Error}, Summary: {endResult.Summary}");
@@ -218,11 +217,11 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
                 CurrentHp = 10,
                 SystemStats = new Dnd5eExtension
                 {
-                    StatusEffects = new System.Collections.Generic.List<StatusEffect>
-                    {
+                    StatusEffects =
+                    [
                         new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 },
                         new StatusEffect { Name = "Poisoned", ExpiresAtRound = 3 }
-                    }
+                    ]
                 }
             });
             await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 });
@@ -230,7 +229,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         }
 
         // Start combat (Round 1)
-        await tools.StartCombat(loc, new[] { c1, c2 }, campaignName: campaign);
+        await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
 
         // Advance turns until round 2
         await tools.NextTurn(campaignName: campaign);
@@ -261,18 +260,18 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
                 CurrentHp = 10,
                 SystemStats = new Dnd5eExtension
                 {
-                    StatusEffects = new System.Collections.Generic.List<StatusEffect>
-                    {
+                    StatusEffects =
+                    [
                         new StatusEffect { Name = "Stunned", ExpiresAtRound = 5 }, // Should be removed
                         new StatusEffect { Name = "Cursed", ExpiresAtDay = 10 }, // Should NOT be removed
-                        new StatusEffect { Name = "Poisoned", ExpiresAtRound = 10 } // Should be removed
-                    }
+                        new StatusEffect { Name = "Poisoned", ExpiresAtRound = 10 }
+                    ]
                 }
             });
             await session.SaveChangesAsync();
         }
 
-        await tools.StartCombat(loc, new[] { c1 }, campaignName: campaign);
+        await tools.StartCombat(loc, [c1], campaignName: campaign);
 
         var endResult = await tools.EndCombat(campaignName: campaign);
         Assert.True(endResult.Success, $"EndCombat failed. Error: {endResult.Error}, Summary: {endResult.Summary}");

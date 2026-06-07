@@ -43,7 +43,8 @@ public record ActiveQuestSummary(
     int TotalObjectiveCount,
     QuestUrgency Urgency,
     int? DeadlineDay = null,
-    string? GiverId = null
+    string? GiverId = null,
+    int LastUpdatedDay = 0
 );
 
 /// <summary>
@@ -79,6 +80,10 @@ public record NpcPresenceSummary(
     Dictionary<string, string> NeedDescriptors,
     string? BehavioralSummary = null,
     string? Notes = null,
+    bool KeepAlive = false,
+    string? CurrentAppearance = null,
+    List<string>? VisualTags = null,
+    List<string>? DistinctiveFeatures = null,
     /// <summary>
     /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills). 
     /// Essential for the LLM to understand mechanical capabilities at a glance.

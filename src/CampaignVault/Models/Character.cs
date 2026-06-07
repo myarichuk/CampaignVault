@@ -13,8 +13,13 @@ public class Character
     public int MaxHp { get; set; }
     
 
-    
     public string? Notes { get; set; }
+    
+    public List<string> DistinctiveFeatures { get; set; } = [];
+    
+    public string? CurrentAppearance { get; set; }
+    
+    public List<string> VisualTags { get; set; } = [];
     
     /// <summary>
     /// If true, this character is protected from TransientEvictionRule even if Schedule == null.

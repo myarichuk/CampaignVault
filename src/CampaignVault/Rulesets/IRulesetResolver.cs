@@ -16,7 +16,7 @@ public class ResolverResult
 
 public class ResolverOutput
 {
-    public IReadOnlyList<WorldChange> Mutations { get; init; } = Array.Empty<WorldChange>();
+    public IReadOnlyList<WorldChange> Mutations { get; init; } = [];
     public ResolverResult Result { get; init; } = ResolverResult.Ok(string.Empty);
 }
 

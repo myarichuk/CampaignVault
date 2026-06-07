@@ -56,7 +56,10 @@ public sealed class TransientEvictionRule : ISimulationRule
         // 3. Evaluate each candidate
         foreach (var c in candidatesQuery)
         {
-            if (c.CurrentLocationId == null) continue; // Safety check
+            if (c.CurrentLocationId == null)
+            {
+                continue; // Safety check
+            }
 
             // Phase 7.3: Quest Giver Eviction Safety
             if (context.ActiveQuests != null && context.ActiveQuests.Any(q => q.GiverId == c.Id && (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)))
@@ -67,7 +70,7 @@ public sealed class TransientEvictionRule : ISimulationRule
 
             if (locations.TryGetValue(c.CurrentLocationId, out var loc) && loc != null)
             {
-                bool shouldEvict = loc.LastVisitedDay == null || (context.Time.TotalDaysElapsed - loc.LastVisitedDay.Value > 1);
+                var shouldEvict = loc.LastVisitedDay == null || (context.Time.TotalDaysElapsed - loc.LastVisitedDay.Value > 1);
                 
                 if (shouldEvict)
                 {

@@ -63,8 +63,8 @@ public sealed class DefaultRollService : IRollService
         var dice = RollDice(diceCount, dieSides);
         var total = dice.Sum() + flatMod + req.Bonus;
 
-        bool isCrit = dieSides == 20 && dice.Any(d => d == 20);
-        bool isComplication = dieSides == 20 && dice.Any(d => d == 1);
+        var isCrit = dieSides == 20 && dice.Any(d => d == 20);
+        var isComplication = dieSides == 20 && dice.Any(d => d == 1);
 
         return new RollOutcome
         {
@@ -92,8 +92,8 @@ public sealed class DefaultRollService : IRollService
         var droppedSet = ReferenceEquals(keptSet, first) ? second : first;
 
         var total = keptSet.Sum() + flatMod + req.Bonus;
-        bool isCrit = dieSides == 20 && keptSet.Any(d => d == 20);
-        bool isComplication = dieSides == 20 && keptSet.Any(d => d == 1);
+        var isCrit = dieSides == 20 && keptSet.Any(d => d == 20);
+        var isComplication = dieSides == 20 && keptSet.Any(d => d == 1);
         var label = keepHigh ? "Advantage" : "Disadvantage";
 
         return new RollOutcome
@@ -113,9 +113,9 @@ public sealed class DefaultRollService : IRollService
     {
         var (diceCount, dieSides, flatMod) = ParseExpression(req.Expression);
         var allDice = new List<int>();
-        int total = 0;
+        var total = 0;
 
-        for (int i = 0; i < diceCount; i++)
+        for (var i = 0; i < diceCount; i++)
         {
             int roll;
             do
@@ -144,7 +144,7 @@ public sealed class DefaultRollService : IRollService
     private RollOutcome EvaluateKeep(RollRequest req, bool keepHigh)
     {
         var (diceCount, dieSides, flatMod) = ParseExpression(req.Expression);
-        int keep = req.Keep ?? diceCount;
+        var keep = req.Keep ?? diceCount;
         var dice = RollDice(diceCount, dieSides);
         var sorted = keepHigh
             ? dice.OrderByDescending(d => d).Take(keep).ToList()
@@ -167,10 +167,10 @@ public sealed class DefaultRollService : IRollService
     private RollOutcome EvaluateRollUnder(RollRequest req)
     {
         var (diceCount, dieSides, _) = ParseExpression(req.Expression);
-        int tn = req.TargetNumber ?? throw new InvalidOperationException($"RollUnder requires TargetNumber (tag: {req.Tag})");
+        var tn = req.TargetNumber ?? throw new InvalidOperationException($"RollUnder requires TargetNumber (tag: {req.Tag})");
         var dice = RollDice(diceCount, dieSides);
         var result = dice.Sum(); // for single-die, just the die; for pools the total
-        bool success = result <= tn;
+        var success = result <= tn;
 
         return new RollOutcome
         {
@@ -187,19 +187,24 @@ public sealed class DefaultRollService : IRollService
     private RollOutcome EvaluateSuccessCount(RollRequest req)
     {
         var (diceCount, dieSides, _) = ParseExpression(req.Expression);
-        int tn = req.TargetNumber ?? throw new InvalidOperationException($"SuccessCount requires TargetNumber (tag: {req.Tag})");
-        int critThreshold = req.CriticalThreshold ?? 0;
+        var tn = req.TargetNumber ?? throw new InvalidOperationException($"SuccessCount requires TargetNumber (tag: {req.Tag})");
+        var critThreshold = req.CriticalThreshold ?? 0;
 
         var dice = RollDice(diceCount, dieSides);
-        int successes = 0;
-        bool hasComplication = false;
+        var successes = 0;
+        var hasComplication = false;
 
         foreach (var d in dice)
         {
             if (d <= tn)
+            {
                 successes += (d == 1 || (critThreshold > 0 && d <= critThreshold)) ? 2 : 1;
+            }
+
             if (d == dieSides) // natural max = complication on Fallout d20
+            {
                 hasComplication = true;
+            }
         }
 
         return new RollOutcome
@@ -223,11 +228,11 @@ public sealed class DefaultRollService : IRollService
         // 1 = blank,  2 = blank,  3 = 1 damage,  4 = 1 damage,
         // 5 = 1 damage + 1 effect,  6 = 2 damage
         int damage = 0, effects = 0;
-        bool hasCritical = false;
+        var hasCritical = false;
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
-            int face = _rng.Next(1, 7);
+            var face = _rng.Next(1, 7);
             switch (face)
             {
                 case 1:
@@ -250,7 +255,11 @@ public sealed class DefaultRollService : IRollService
 
     private List<int> RollDice(int count, int sides)
     {
-        if (sides <= 0) return [0]; // flat-only expression (no dice)
+        if (sides <= 0)
+        {
+            return [0]; // flat-only expression (no dice)
+        }
+
         return Enumerable.Range(0, count)
             .Select(_ => _rng.Next(1, sides + 1))
             .ToList();
@@ -260,11 +269,13 @@ public sealed class DefaultRollService : IRollService
     {
         var m = DiceRegex.Match(expr.Trim());
         if (!m.Success)
+        {
             throw new ArgumentException($"Cannot parse dice expression: '{expr}'");
+        }
 
-        int count   = m.Groups[1].Success ? int.Parse(m.Groups[1].Value) : 1;
-        int sides   = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 0;
-        int flatMod = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0;
+        var count   = m.Groups[1].Success ? int.Parse(m.Groups[1].Value) : 1;
+        var sides   = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 0;
+        var flatMod = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0;
 
         return (count, sides, flatMod);
     }
@@ -273,10 +284,22 @@ public sealed class DefaultRollService : IRollService
     {
         var sb = new System.Text.StringBuilder();
         sb.Append('[').AppendJoin(", ", dice).Append(']');
-        if (flatMod != 0) sb.Append(flatMod > 0 ? $"+{flatMod}" : $"{flatMod}");
-        if (bonus   != 0) sb.Append(bonus   > 0 ? $"+{bonus}"   : $"{bonus}");
+        if (flatMod != 0)
+        {
+            sb.Append(flatMod > 0 ? $"+{flatMod}" : $"{flatMod}");
+        }
+
+        if (bonus   != 0)
+        {
+            sb.Append(bonus   > 0 ? $"+{bonus}"   : $"{bonus}");
+        }
+
         sb.Append($" = {total}");
-        if (suffix is not null) sb.Append($" ({suffix})");
+        if (suffix is not null)
+        {
+            sb.Append($" ({suffix})");
+        }
+
         return sb.ToString();
     }
 }

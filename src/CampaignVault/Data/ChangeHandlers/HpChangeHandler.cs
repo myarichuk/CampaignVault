@@ -23,7 +23,11 @@ public sealed class HpChangeHandler : IWorldChangeHandler
             {
                 var hints = await context.SuggestCharacterMatchAsync(hp.CharacterId);
                 var msg = $"Character {hp.CharacterId} not found.";
-                if (hints != null) msg += $" Did you mean: {hints}?";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
                 context.RecordMessage($"WARNING: {msg}");
                 context.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);

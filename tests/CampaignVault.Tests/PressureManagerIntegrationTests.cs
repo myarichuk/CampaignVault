@@ -23,11 +23,11 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_fixture.Store);
         var rollSvc = new DefaultRollService();
-        var selector = new RulesetResolverSelector(new IRulesetResolver[] {
+        var selector = new RulesetResolverSelector([
             new Dnd5eRulesetResolver(rollSvc),
             new Pf2eRulesetResolver(rollSvc),
             new Fallout2d20RulesetResolver(rollSvc)
-        });
+        ]);
         
         return new CampaignTools(
             repo,
@@ -46,7 +46,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         await tools.SelectCampaign("pressure-cap-test-" + Guid.NewGuid());
         var repo = new CampaignRepository(_fixture.Store);
 
-        string locId = "locations/test-room-" + Guid.NewGuid();
+        var locId = "locations/test-room-" + Guid.NewGuid();
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
@@ -99,7 +99,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         var tools = CreateTools(context);
         await tools.SelectCampaign("pressure-nop-test-" + Guid.NewGuid());
 
-        string locId = "locations/test-nop-" + Guid.NewGuid();
+        var locId = "locations/test-nop-" + Guid.NewGuid();
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
@@ -135,7 +135,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         var tools = CreateTools(context);
         await tools.SelectCampaign("pressure-clear-test-" + Guid.NewGuid());
 
-        string locId = "locations/test-clear-" + Guid.NewGuid();
+        var locId = "locations/test-clear-" + Guid.NewGuid();
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
@@ -187,7 +187,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             await session.StoreAsync(config);
 
             // Add 3 characters who are all starving (same GroupingKey)
-            for (int i = 1; i <= 3; i++)
+            for (var i = 1; i <= 3; i++)
             {
                 var charId = $"characters/batch-test-{i}";
                 var c = new Character { Id = charId, Name = $"Batch Char {i}", CurrentHp = 10, MaxHp = 10, CampaignName = campaignName, KeepAlive = true };
@@ -201,8 +201,8 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 CurrentHp = 10, MaxHp = 10, 
                 CampaignName = campaignName, 
                 KeepAlive = true,
-                SystemStats = new CampaignVault.Models.Dnd5eExtension {
-                    StatusEffects = new System.Collections.Generic.List<CampaignVault.Models.StatusEffect> { new CampaignVault.Models.StatusEffect { Name = "Super Unique Curse", Category = "Curse" } }
+                SystemStats = new Dnd5eExtension {
+                    StatusEffects = [new StatusEffect { Name = "Super Unique Curse", Category = "Curse" }]
                 }
             };
             await session.StoreAsync(uniqueChar);
@@ -240,6 +240,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) });
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
             await session.SaveChangesAsync();
         }
 
@@ -295,7 +296,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task PressureManager_Enforces_Hard_Cap_And_Severity_Ordering()
     {
-        string campName = "pressure-cap-scenario-" + Guid.NewGuid();
+        var campName = "pressure-cap-scenario-" + Guid.NewGuid();
         
         using (var session = _fixture.Store.OpenAsyncSession())
         {
@@ -333,7 +334,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Location data missing", formatted[1]);
 
         // Assert the next 3 are Narrative Prompts from the input
-        for(int i = 2; i < 5; i++)
+        for(var i = 2; i < 5; i++)
         {
             Assert.Contains("NARRATIVE PROMPT", formatted[i]);
             // Ensure no engine warnings slipped down

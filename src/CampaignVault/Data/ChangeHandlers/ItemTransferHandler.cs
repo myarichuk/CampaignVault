@@ -20,7 +20,11 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             {
                 var hints = await context.SuggestItemMatchAsync(transfer.ItemId);
                 var msg = $"Item {transfer.ItemId} not found.";
-                if (hints != null) msg += $" Did you mean: {hints}?";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
                 context.RecordMessage($"WARNING: {msg}");
                 context.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);

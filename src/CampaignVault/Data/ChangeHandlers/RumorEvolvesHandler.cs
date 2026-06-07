@@ -17,12 +17,16 @@ public sealed class RumorEvolvesHandler : IWorldChangeHandler
         var rumor = (RumorEvolves)change;
 
         if (context.Session is null)
+        {
             throw new InvalidOperationException("RumorEvolvesHandler requires a non-null session for Patch operations.");
+        }
 
         context.Session.Advanced.Patch<Rumor, RumorState>(rumor.RumorId, x => x.State, rumor.NewState);
 
         if (rumor.NewText != null)
+        {
             context.Session.Advanced.Patch<Rumor, string>(rumor.RumorId, x => x.CurrentText, rumor.NewText);
+        }
 
         var rtime = await context.GetCurrentTimeAsync();
         context.Session.Advanced.Patch<Rumor, int>(rumor.RumorId, x => x.LastStateChangeDay, rtime.TotalDaysElapsed);
@@ -44,7 +48,9 @@ public sealed class RumorCreateHandler : IWorldChangeHandler
     {
         var rc = (RumorCreate)change;
         if (context.Session is null)
+        {
             throw new InvalidOperationException("RumorCreateHandler requires a non-null session.");
+        }
 
         var time = await context.GetCurrentTimeAsync();
         var rumor = new Rumor

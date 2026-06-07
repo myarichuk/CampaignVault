@@ -24,11 +24,11 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_fixture.Store);
         var rollSvc = new DefaultRollService();
-        var selector = new RulesetResolverSelector(new IRulesetResolver[] { 
+        var selector = new RulesetResolverSelector([
             new Dnd5eRulesetResolver(rollSvc),
             new Pf2eRulesetResolver(rollSvc),
             new Fallout2d20RulesetResolver(rollSvc)
-        });
+        ]);
         
         return new CampaignTools(
             repo,
@@ -46,7 +46,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         var changes = new WorldChange[51];
         
         // Fill with dummy changes
-        for (int i = 0; i < changes.Length; i++)
+        for (var i = 0; i < changes.Length; i++)
         {
             changes[i] = new HpChange { CharacterId = "dummy", Delta = -1 };
         }
@@ -64,15 +64,21 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         var tools = CreateTools();
         var change = new WorldChange[] { new HpChange { CharacterId = "dummy", Delta = -1 } };
         
-        int successCount = 0;
-        int rejectCount = 0;
+        var successCount = 0;
+        var rejectCount = 0;
 
         // The limit is 20 tokens. If we slam it with 30 concurrent or rapid requests, some should fail.
-        for (int i = 0; i < 30; i++)
+        for (var i = 0; i < 30; i++)
         {
             var res = await tools.Commit(change, "Spamming the system");
-            if (res.Success) successCount++;
-            else if (res.Error == "RateLimitExceeded" && res.Summary!.Contains("rate limit exceeded")) rejectCount++;
+            if (res.Success)
+            {
+                successCount++;
+            }
+            else if (res.Error == "RateLimitExceeded" && res.Summary!.Contains("rate limit exceeded"))
+            {
+                rejectCount++;
+            }
         }
 
         Assert.True(successCount <= 20, $"Should have successfully processed at most 20 requests, but got {successCount}.");
@@ -112,11 +118,15 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         }
 
         // Wait for index
-        var indexWaitStart = System.DateTime.UtcNow;
-        while ((System.DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false)) break;
+            if (stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
 
@@ -160,11 +170,15 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         }
 
         // Wait for index
-        var indexWaitStart = System.DateTime.UtcNow;
-        while ((System.DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Quest/Search" && x.IsStale == false)) break;
+            if (stats.Indexes.Any(x => x.Name == "Quest/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
 
@@ -188,11 +202,15 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        var indexWaitStart = System.DateTime.UtcNow;
-        while ((System.DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false)) break;
+            if (stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
 
@@ -220,7 +238,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Id = charId,
                 Name = "Stuck Hero",
                 CurrentActivity = "Travel interrupted en route to the capital by goblins",
-                Schedule = new Schedule { DefaultLocationId = locId, Routines = new System.Collections.Generic.List<Routine>() }
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
             };
             await repo.UpsertCharacterAsync(session, npc);
 
@@ -229,17 +247,23 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await session.StoreAsync(time);
 
             // Deadline in 2 days -> should emit a pressure in GetScene
-            await repo.UpsertQuestAsync(session, new Quest { Id = questId, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12, RelatedLocationIds = new System.Collections.Generic.List<string> { locId } });
+            await repo.UpsertQuestAsync(session, new Quest { Id = questId, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12, RelatedLocationIds =
+                [locId]
+            });
 
             await session.SaveChangesAsync();
         }
 
-        var indexWaitStart = System.DateTime.UtcNow;
-        while ((System.DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false) &&
-                stats.Indexes.Any(x => x.Name == "Quest/Search" && x.IsStale == false)) break;
+                stats.Indexes.Any(x => x.Name == "Quest/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
 
@@ -261,6 +285,69 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(view.ActiveQuests);
         Assert.NotEmpty(view.ActiveQuests);
         Assert.Equal("Impending Doom", view.ActiveQuests.First().Title);
+    }
+
+    [Fact]
+    public async Task GetScene_Emits_Negative_Reputation_Pressure_For_FactionControlledAreas()
+    {
+        var tools = CreateTools();
+        var repo = new CampaignRepository(_fixture.Store);
+        var locId = "locations/faction-rep-test-" + Guid.NewGuid();
+        var charId = "chars/rep-tester-" + Guid.NewGuid();
+        var factionId = "factions/test-faction-" + Guid.NewGuid();
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await repo.UpsertFactionAsync(session, new Faction
+            {
+                Id = factionId,
+                Name = "Test Faction",
+                TerritoryLocationIds = [locId]
+            });
+
+            await repo.UpsertLocationAsync(session, new Location
+            {
+                Id = locId,
+                Name = "Faction HQ",
+                ControllingFactionId = factionId
+            });
+
+            await repo.UpsertCharacterAsync(session, new Character
+            {
+                Id = charId,
+                Name = "Rep Tester",
+                CurrentLocationId = locId,
+                KeepAlive = true,
+                Social = new SocialProfile
+                {
+                    FactionReputations = new()
+                    {
+                        { factionId, -60 }
+                    }
+                }
+            });
+
+            await session.SaveChangesAsync();
+        }
+
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false) &&
+                stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
+            await Task.Delay(100);
+        }
+
+        var result = await tools.GetScene(locId);
+        Assert.True(result.Success);
+        
+        Assert.NotNull(result.WorldPressure);
+        Assert.Contains(result.WorldPressure, p => p.Contains("very low reputation", StringComparison.OrdinalIgnoreCase) && p.Contains("-60", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -287,20 +374,24 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Id = charId,
                 Name = "Stuck Hero",
                 CurrentActivity = "Travel interrupted en route to the capital by goblins",
-                Schedule = new Schedule { DefaultLocationId = locId, Routines = new System.Collections.Generic.List<Routine>() }
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
             };
             await repo.UpsertCharacterAsync(session, npc);
 
             await session.SaveChangesAsync();
         }
 
-        var indexWaitStart = System.DateTime.UtcNow;
-        while ((System.DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.Any(x => x.Name == "Quest/Search" && x.IsStale == false) &&
                 stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false) &&
-                stats.Indexes.Any(x => x.Name == "Location/Search" && x.IsStale == false)) break;
+                stats.Indexes.Any(x => x.Name == "Location/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(100);
         }
 
@@ -327,10 +418,10 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(System.IO.File.Exists(docsPath), $"Docs file not found at {docsPath}");
 
         var lines = System.IO.File.ReadAllLines(docsPath);
-        bool inJsonBlock = false;
+        var inJsonBlock = false;
         var currentBlock = new System.Text.StringBuilder();
 
-        int blockCount = 0;
+        var blockCount = 0;
         foreach (var line in lines)
         {
             if (line.Trim() == "```json")

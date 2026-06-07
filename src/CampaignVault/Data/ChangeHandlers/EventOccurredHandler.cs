@@ -27,7 +27,9 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         };
 
         if (string.IsNullOrEmpty(e.CampaignName))
+        {
             e.CampaignName = context.CampaignName;
+        }
 
         await context.LogEventAsync(e);
         context.RecordMessage($"Event logged: {ev.Summary}");

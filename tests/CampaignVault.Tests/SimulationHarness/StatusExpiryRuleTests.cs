@@ -35,12 +35,12 @@ public class StatusExpiryRuleTests : IClassFixture<RavenDBFixture>
                 Name = "Bob",
                 SystemStats = new Dnd5eExtension
                 {
-                    StatusEffects = new List<StatusEffect>
-                    {
+                    StatusEffects =
+                    [
                         new StatusEffect { Name = "Poisoned", ExpiresAtDay = 5 }, // Should expire
-                        new StatusEffect { Name = "Cursed", ExpiresAtDay = 20 },  // Should NOT expire yet
-                        new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 } // Should NOT expire (round-based handled by EndCombat/NextTurn)
-                    }
+                        new StatusEffect { Name = "Cursed", ExpiresAtDay = 20 }, // Should NOT expire yet
+                        new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 }
+                    ]
                 }
             });
             await session.SaveChangesAsync();

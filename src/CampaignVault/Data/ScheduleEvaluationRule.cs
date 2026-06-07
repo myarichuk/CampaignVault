@@ -35,10 +35,13 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
 
         foreach (var npc in context.ScheduledNpcs)
         {
-            if (npc.Schedule == null) continue;
+            if (npc.Schedule == null)
+            {
+                continue;
+            }
 
-            string? baseLocation = npc.Schedule.DefaultLocationId;
-            string? baseActivity = "Idle / at default location";
+            var baseLocation = npc.Schedule.DefaultLocationId;
+            var baseActivity = "Idle / at default location";
 
             // 1. Find best matching routine for current time (base schedule, before modifiers)
             var candidates = npc.Schedule.Routines
@@ -57,16 +60,16 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
             }
 
             // 2. Apply active StateModifiers (highest priority overrides)
-            var activeModifiers = (npc.Schedule.ActiveModifiers ?? new List<StateModifier>())
+            var activeModifiers = (npc.Schedule.ActiveModifiers ?? [])
                 .Where(m => m.ExpiryDay == null || m.ExpiryDay > context.Time.TotalDaysElapsed)
                 .ToList();
 
-            string? effectiveLocation = baseLocation;
-            string? effectiveActivity = baseActivity;
+            var effectiveLocation = baseLocation;
+            var effectiveActivity = baseActivity;
 
             foreach (var mod in activeModifiers)
             {
-                bool thisModOverrides = false;
+                var thisModOverrides = false;
 
                 if (!string.IsNullOrWhiteSpace(mod.OverrideLocationId))
                 {
@@ -91,8 +94,8 @@ public sealed class ScheduleEvaluationRule : ISimulationRule
             // 3. If location or activity actually changed, emit ActivityChange delta + narrative.
             // Deltas are collected across all rules and applied in batch after the simulation step
             // via StageChangesAsync (gives us consistent clamping, logging, optimistic concurrency, etc.).
-            bool locationChanged = !string.Equals(npc.CurrentLocationId, effectiveLocation, StringComparison.Ordinal);
-            bool activityChanged = !string.Equals(npc.CurrentActivity, effectiveActivity, StringComparison.Ordinal);
+            var locationChanged = !string.Equals(npc.CurrentLocationId, effectiveLocation, StringComparison.Ordinal);
+            var activityChanged = !string.Equals(npc.CurrentActivity, effectiveActivity, StringComparison.Ordinal);
 
             if (locationChanged || activityChanged)
             {

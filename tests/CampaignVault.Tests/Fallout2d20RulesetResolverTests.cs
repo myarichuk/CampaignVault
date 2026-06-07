@@ -24,7 +24,7 @@ public class Fallout2d20RulesetResolverTests
             factions: new Dictionary<string, Faction>(),
             quests: new Dictionary<string, Quest>(),
             logger: NullLogger.Instance,
-            summary: new List<string>(),
+            summary: [],
             dispatcher: new WorldChangeDispatcher(
                 new IWorldChangeHandler[0], 
                 NullLogger<WorldChangeDispatcher>.Instance),
@@ -94,7 +94,7 @@ public class Fallout2d20RulesetResolverTests
         var action = new RulesetAction
         {
             ActorId = "char1",
-            TargetIds = new List<string> { "char2" },
+            TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Laser Rifle",
             Parameters = new Dictionary<string, string> { ["damageType"] = "Energy" }
@@ -120,7 +120,7 @@ public class Fallout2d20RulesetResolverTests
         var action = new RulesetAction
         {
             ActorId = "char1",
-            TargetIds = new List<string> { "char2" },
+            TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack,
             Parameters = new Dictionary<string, string> { ["difficulty"] = "not_a_number" }
         };
@@ -143,7 +143,7 @@ public class Fallout2d20RulesetResolverTests
         var action = new RulesetAction
         {
             ActorId = "char1",
-            TargetIds = new List<string> { "char2" },
+            TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack
         };
 

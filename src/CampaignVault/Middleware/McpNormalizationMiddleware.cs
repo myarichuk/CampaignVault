@@ -53,7 +53,7 @@ public class McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormali
                                         "upsert_location" => "location",
                                         "upsert_character" => "character",
                                         "upsert_lore" => "lore",
-                                        _ => throw new System.InvalidOperationException()
+                                        _ => throw new InvalidOperationException()
                                     };
 
                                     var legacyKey = toolName switch

@@ -24,14 +24,15 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
     public async Task Scenario_TheTavernRest_Workflow()
     {
         var engine = new DefaultSimulationEngine(
-            new ISimulationRule[] { new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule() },
+            [new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule()],
             null);
         var repo = new CampaignRepository(_store, engine, 
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
             new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
         var simulator = new LlmSimulator(tools, session);
 
         // Setup: Location and NPC
@@ -53,11 +54,17 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
         {
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.All(x => x.IsStale == false)) break;
+            if (stats.Indexes.All(x => x.IsStale == false))
+            {
+                break;
+            }
+
             await Task.Delay(30);
         }
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
+        {
             throw new TimeoutException("Indexes did not become non-stale within 10s");
+        }
 
         // Small time advance so ScheduleEvaluationRule runs and populates CurrentActivity / CurrentLocationId.
         // This exercises the new dynamic presence behavior (Phase 1 goal).

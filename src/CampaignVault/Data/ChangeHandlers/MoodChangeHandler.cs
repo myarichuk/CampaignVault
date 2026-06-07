@@ -20,7 +20,11 @@ public sealed class MoodChangeHandler : IWorldChangeHandler
             {
                 var hints = await context.SuggestCharacterMatchAsync(mood.CharacterId);
                 var msg = $"Character {mood.CharacterId} not found.";
-                if (hints != null) msg += $" Did you mean: {hints}?";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
                 context.RecordMessage($"WARNING: {msg}");
                 context.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);

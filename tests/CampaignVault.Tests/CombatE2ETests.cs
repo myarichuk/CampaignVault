@@ -26,9 +26,12 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
     {
         public Task<RollOutcome> RollAsync(RollRequest request, System.Threading.CancellationToken ct = default)
         {
-            int diceVal = 10;
-            if (request.Expression.Contains("d8")) diceVal = 5;
-            
+            var diceVal = 10;
+            if (request.Expression.Contains("d8"))
+            {
+                diceVal = 5;
+            }
+
             return Task.FromResult(new RollOutcome 
             { 
                 Tag = request.Tag,
@@ -65,7 +68,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         var dnd5e = new Dnd5eRulesetResolver(rollService);
         var pf2e = new Pf2eRulesetResolver(rollService);
         var fallout = new Fallout2d20RulesetResolver(rollService);
-        var selector = new RulesetResolverSelector(new IRulesetResolver[] { dnd5e, pf2e, fallout });
+        var selector = new RulesetResolverSelector([dnd5e, pf2e, fallout]);
 
         var context = new CurrentCampaignContext();
         context.SetCurrent(campaignName);
@@ -88,7 +91,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
 
         var repo = new CampaignRepository(
             _store,
-            new DefaultSimulationEngine(System.Array.Empty<ISimulationRule>()),
+            new DefaultSimulationEngine([]),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
             behavior,
             keys,
@@ -117,17 +120,19 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, campaignName);
 
         // 2. Start Combat
-        var startResult = await tools.StartCombat("loc-1", new[] { "characters/hero", "characters/goblin" }, campaignName);
+        var startResult = await tools.StartCombat("loc-1", ["characters/hero", "characters/goblin"], campaignName);
         Assert.True(startResult.Success);
 
         // 3. Commit a Ruleset Action (Hero attacks Goblin)
-        var actionJson = JsonSerializer.Serialize<WorldChange[]>(new[] { new RulesetAction
+        var actionJson = JsonSerializer.Serialize<WorldChange[]>([
+            new RulesetAction
         {
             ActionType = RulesetActionType.Attack,
             ActorId = "characters/hero",
-            TargetIds = new List<string> { "characters/goblin" },
+            TargetIds = ["characters/goblin"],
             Parameters = new Dictionary<string, string> { { "bonus", "5" }, { "damageDice", "1d8" }, { "damageBonus", "3" } }
-        }});
+        }
+        ]);
 
         var commitResult = await tools.Commit(actionJson, "Hero attacks Goblin", campaignName);
         Assert.True(commitResult.Success);
@@ -145,10 +150,9 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         Assert.True(turn1.Success);
 
         // 5. Commit another change (Goblin gets a status)
-        var statusJson = JsonSerializer.Serialize<WorldChange[]>(new[] 
-        { 
+        var statusJson = JsonSerializer.Serialize<WorldChange[]>([
             new StatusChange { CharacterId = "characters/goblin", Effect = new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 } }
-        });
+        ]);
         await tools.Commit(statusJson, "Goblin gets stunned", campaignName);
 
         // 6. End Combat

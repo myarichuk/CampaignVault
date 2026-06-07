@@ -10,6 +10,12 @@ public class Item
     
     public string HolderId { get; set; } = default!; // Character.Id, Location.Id, or Item.Id
     
+    public string? CurrentState { get; set; }
+    
+    public List<string> DistinctiveFeatures { get; set; } = [];
+    
+    public ItemCategory CoreCategory { get; set; }
+    
     public List<string> Tags { get; set; } = [];
     
     public Dictionary<string, object> Properties { get; set; } = [];
@@ -22,4 +28,19 @@ public class Item
     /// (No legacy BC requirement per review feedback; always set for new data. Items may be shareable across camps in some designs.)
     /// </summary>
     public string? CampaignName { get; set; }
+}
+
+public enum ItemCategory
+{
+    Weapon,
+    Armor,
+    Clothing,
+    Container,
+    Consumable,
+    Tool,
+    Material,
+    Valuable,
+    Document,
+    Key,
+    Other
 }

@@ -42,4 +42,16 @@ public class CampaignConfig
     /// Defaults to 5.
     /// </summary>
     public int MaxPressuresPerResponse { get; set; } = 5;
+
+    /// <summary>
+    /// The number of in-game days a pressure nag is suppressed after being surfaced.
+    /// Defaults to 1 (meaning it stays hidden for 1 day, then reappears if ignored).
+    /// </summary>
+    public int PressureCooldownDays { get; set; } = 1;
+
+    /// <summary>
+    /// The number of times a pressure nag is suppressed before escalating to ENGINE WARNING.
+    /// Defaults to 3.
+    /// </summary>
+    public int PressureEscalationCount { get; set; } = 3;
 }

@@ -39,8 +39,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(session, loc, "default");
             await session.SaveChangesAsync();
 
-            var rollSvc = new CampaignVault.Data.DefaultRollService();
-            var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
+            var rollSvc = new DefaultRollService();
+            var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+            ]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
 
             var result = await tools.GetScene(loc.Id, partyPresent: true, campaignName: "default");
             
@@ -55,8 +56,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     public async Task GetScene_MisspelledLocation_ProvidesSuggestions()
     {
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
         
         using (var session = _store.OpenAsyncSession())
         {
@@ -78,6 +80,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         
         Assert.True(result.Success);
         var view = result.Data;
+        Assert.NotNull(view);
         Assert.False(view.IsLocationAnchored); // Hallucinated ID
         
         var pressures = result.WorldPressure;
@@ -89,8 +92,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     public async Task Commit_MisspelledCharacter_ProvidesSuggestions()
     {
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
         
         await tools.SelectCampaign("CharacterLenientTest");
 
@@ -131,14 +135,15 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     public async Task LLM_Forgets_To_Arrive_Produces_TravelInterruptedPressure_And_Resolves_On_Commit()
     {
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("TravelLazinessTest");
 
-        string charId = "chars/traveler-1";
-        string destLocId = "locations/destination-1";
+        var charId = "chars/traveler-1";
+        var destLocId = "locations/destination-1";
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -172,6 +177,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var sceneResult = await tools.GetScene("locations/start", true, "TravelLazinessTest");
         Assert.True(sceneResult.Success);
         var view = sceneResult.Data;
+        Assert.NotNull(view);
         
         // Assert the pressure exists
         var pressures = sceneResult.WorldPressure;
@@ -206,9 +212,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     public async Task LLM_Ignores_Faction_Influence_Shift_Produces_PresencePressure()
     {
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("FactionInfluenceTest");
 
@@ -219,10 +226,13 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             var loc = new Location { Id = "locations/town_01", Name = "Town", CampaignName = "FactionInfluenceTest", Type = LocationType.Settlement };
             await session.StoreAsync(loc);
 
-            var fac = new Faction { Id = "factions/guild", Name = "The Guild", CampaignName = "FactionInfluenceTest", TerritoryLocationIds = new System.Collections.Generic.List<string> { "locations/town_01" } };
+            var fac = new Faction { Id = "factions/guild", Name = "The Guild", CampaignName = "FactionInfluenceTest", TerritoryLocationIds =
+                ["locations/town_01"]
+            };
             await session.StoreAsync(fac);
 
-            var ev = new Event { Id = "events/guild_expand", CampaignName = "FactionInfluenceTest", Category = EventCategory.Simulation, Summary = "The Guild grew in influence (+10).", Involved = new System.Collections.Generic.List<string> { "factions/guild" }, DayLogged = 0 };
+            var ev = new Event { Id = "events/guild_expand", CampaignName = "FactionInfluenceTest", Category = EventCategory.Simulation, Summary = "The Guild grew in influence (+10).", Involved =
+                ["factions/guild"], DayLogged = 0 };
             await session.StoreAsync(ev);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
@@ -240,7 +250,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         // Simulate LLM using suggested commit
         var changes = new WorldChange[] 
         {
-            new EventOccurred { Category = EventCategory.SceneCommit, Summary = "Reflected faction influence", Involved = new System.Collections.Generic.List<string> { "factions/guild" } }
+            new EventOccurred { Category = EventCategory.SceneCommit, Summary = "Reflected faction influence", Involved =
+                ["factions/guild"]
+            }
         };
         var commitResult = await tools.Commit(changes, "Adding rumor for faction influence", "FactionInfluenceTest");
         Assert.True(commitResult.Success, commitResult.Error);
@@ -264,9 +276,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     public async Task LLM_Ignores_Faction_War_Produces_ReputationPressure()
     {
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("FactionWarTest");
 
@@ -277,13 +290,16 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             var loc = new Location { Id = "locations/town_02", Name = "Town 2", CampaignName = "FactionWarTest", Type = LocationType.Settlement };
             await session.StoreAsync(loc);
 
-            var fac = new Faction { Id = "factions/kingdom", Name = "The Kingdom", CampaignName = "FactionWarTest", TerritoryLocationIds = new System.Collections.Generic.List<string> { "locations/town_02" } };
+            var fac = new Faction { Id = "factions/kingdom", Name = "The Kingdom", CampaignName = "FactionWarTest", TerritoryLocationIds =
+                ["locations/town_02"]
+            };
             await session.StoreAsync(fac);
 
             var c = new Character { Id = "chars/local_01", Name = "Local Peasant", CampaignName = "FactionWarTest", CurrentLocationId = "locations/town_02" };
             await session.StoreAsync(c);
 
-            var ev = new Event { Id = "events/kingdom_war", CampaignName = "FactionWarTest", Category = EventCategory.Simulation, Summary = "The Kingdom became Hostile toward Rebels.", Involved = new System.Collections.Generic.List<string> { "factions/kingdom" }, DayLogged = 0 };
+            var ev = new Event { Id = "events/kingdom_war", CampaignName = "FactionWarTest", Category = EventCategory.Simulation, Summary = "The Kingdom became Hostile toward Rebels.", Involved =
+                ["factions/kingdom"], DayLogged = 0 };
             await session.StoreAsync(ev);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
@@ -317,7 +333,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             using (var s = _store.OpenAsyncSession())
             {
                 var evs = await s.Query<Event>().Where(e => e.CampaignName == "FactionWarTest").ToListAsync();
-                var msg = "Events found: " + string.Join("; ", evs.Select(e => $"{e.Category} {e.DayLogged} {e.Timestamp:O} Inv:[{string.Join(",", e.Involved ?? new System.Collections.Generic.List<string>())}]"));
+                var msg = "Events found: " + string.Join("; ", evs.Select(e => $"{e.Category} {e.DayLogged} {e.Timestamp:O} Inv:[{string.Join(",", e.Involved ?? [])}]"));
                 throw new Exception("Pressure still present. " + msg);
             }
         }
@@ -327,9 +343,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     public async Task LLM_Leaves_Quest_Stale_Produces_DeadlinePressure_And_Resolves()
     {
         var repo = new CampaignRepository(_store);
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("QuestStaleTest");
 
@@ -347,8 +364,8 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 CampaignName = "QuestStaleTest", 
                 OverallState = QuestState.InProgress,
                 DeadlineDay = 15,
-                RelatedLocationIds = new System.Collections.Generic.List<string> { "locations/town_03" },
-                Objectives = new System.Collections.Generic.List<QuestObjective> { new QuestObjective("Do something", QuestState.InProgress) }
+                RelatedLocationIds = ["locations/town_03"],
+                Objectives = [new QuestObjective("Do something", QuestState.InProgress)]
             };
             await session.StoreAsync(q);
 
@@ -374,6 +391,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var commitResult = await tools.Commit(changes, "Failing quest due to time limit", "QuestStaleTest");
         Assert.True(commitResult.Success, commitResult.Error);
 
+        // Wait for RavenDB indexes to catch up so the quest search returns accurate state
+        await Task.Delay(500);
+
         var finalSceneResult = await tools.GetScene("locations/town_03", true, "QuestStaleTest");
         if (finalSceneResult.WorldPressure != null)
         {
@@ -385,12 +405,13 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     public async Task Active_Quest_Giver_Is_Protected_From_Eviction()
     {
         var evictionRule = new TransientEvictionRule(Microsoft.Extensions.Logging.Abstractions.NullLogger<TransientEvictionRule>.Instance);
-        var simEngine = new DefaultSimulationEngine(new ISimulationRule[] { evictionRule }, Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultSimulationEngine>.Instance);
+        var simEngine = new DefaultSimulationEngine([evictionRule], Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultSimulationEngine>.Instance);
         var repo = new CampaignRepository(_store, simEngine, Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance, new DefaultBehaviorSynthesizer());
         
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
+        var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector(new IRulesetResolver[] { new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc) }), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("QuestGiverEvictionTest");
 
@@ -413,8 +434,8 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 CampaignName = "QuestGiverEvictionTest", 
                 OverallState = QuestState.InProgress,
                 GiverId = "chars/transient_giver",
-                RelatedLocationIds = new System.Collections.Generic.List<string> { "locations/town_04" },
-                Objectives = new System.Collections.Generic.List<QuestObjective> { new QuestObjective("Do something", QuestState.InProgress) }
+                RelatedLocationIds = ["locations/town_04"],
+                Objectives = [new QuestObjective("Do something", QuestState.InProgress)]
             };
             await session.StoreAsync(q);
 
@@ -478,5 +499,150 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             var c = await session.LoadAsync<Character>("chars/transient_giver");
             Assert.Null(c.CurrentLocationId); // He IS evicted!
         }
+    }
+
+    [Fact]
+    public async Task GetScene_QuestStaleness_ProducesNarrativePrompt_And_Resolves_On_Commit()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        
+        await tools.SelectCampaign("QuestStalenessTest");
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("QuestStalenessTest"), Name = "QuestStalenessTest" });
+            
+            var time = new CampaignTime { Id = keys.StateTime("QuestStalenessTest"), TotalDaysElapsed = 20 };
+            await session.StoreAsync(time);
+
+            var loc = new Location { Id = "locations/town_01", Name = "Town", CampaignName = "QuestStalenessTest", Type = LocationType.Settlement };
+            await session.StoreAsync(loc);
+
+            var quest = new Quest
+            {
+                Id = "quests/stale_quest",
+                Title = "Stale Quest",
+                CampaignName = "QuestStalenessTest",
+                OverallState = QuestState.Open,
+                LastUpdatedDay = 5, // 15 days ago
+                RelatedLocationIds = ["locations/town_01"],
+                Objectives = [new QuestObjective("Find the thing")]
+            };
+            await session.StoreAsync(quest);
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        var sceneResult = await tools.GetScene("locations/town_01", true, "QuestStalenessTest");
+        Assert.True(sceneResult.Success, sceneResult.Error);
+        
+        var pressures = sceneResult.WorldPressure;
+        Assert.NotNull(pressures);
+        Assert.Contains(pressures, p => p.Contains("Quest 'Stale Quest' has seen no progress in over 10 days"));
+
+        var changes = new WorldChange[] 
+        {
+            new QuestProgress { QuestId = "quests/stale_quest", ObjectiveIndex = 0, NewState = QuestState.InProgress }
+        };
+        var commitResult = await tools.Commit(changes, "Made progress on stale quest");
+        Assert.True(commitResult.Success, commitResult.Error);
+
+        var finalSceneResult = await tools.GetScene("locations/town_01", true, "QuestStalenessTest");
+        if (finalSceneResult.WorldPressure != null)
+        {
+            Assert.DoesNotContain(finalSceneResult.WorldPressure, p => p.Contains("Stale Quest"));
+        }
+    }
+
+    [Fact]
+    public async Task GetHelp_ContainsPhase7Examples()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
+        
+        var result = await tools.GetHelp();
+        Assert.True(result.Success);
+        Assert.Contains("Travel, Faction & Quest", result.Data);
+        Assert.Contains("faction_reputation", result.Data);
+        Assert.Contains("quest_progress", result.Data);
+        Assert.Contains("destinationLocationId", result.Data);
+    }
+
+    [Fact]
+    public async Task GetHelp_ContainsPhase8SandboxExamples()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
+        
+        var result = await tools.GetHelp();
+        Assert.True(result.Success);
+        Assert.Contains("The Visual / Physics Sandbox", result.Data);
+        Assert.Contains("item_update", result.Data);
+        Assert.Contains("character_update", result.Data);
+    }
+
+    [Fact]
+    public async Task LLM_UsesItemUpdate_And_CharacterUpdate_For_VisualState()
+    {
+        var repo = new CampaignRepository(_store);
+        var rollSvc = new DefaultRollService();
+        var keys = new CampaignDocumentKeys();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        
+        await tools.SelectCampaign("VisualStateTest");
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Id = keys.Meta("VisualStateTest"), Name = "VisualStateTest" });
+            var time = new CampaignTime { Id = keys.StateTime("VisualStateTest"), TotalDaysElapsed = 1 };
+            await session.StoreAsync(time);
+
+            var loc = new Location { Id = "locations/tavern_01", Name = "Tavern", CampaignName = "VisualStateTest", Type = LocationType.Settlement };
+            await session.StoreAsync(loc);
+
+            var c = new Character { Id = "chars/bob", Name = "Bob", CampaignName = "VisualStateTest", KeepAlive = true, CurrentLocationId = "locations/tavern_01" };
+            await session.StoreAsync(c);
+
+            var item = new Item { Id = "items/sword", Name = "Sword", CampaignName = "VisualStateTest", HolderId = "locations/tavern_01", CoreCategory = ItemCategory.Weapon };
+            await session.StoreAsync(item);
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        var changes = new WorldChange[] 
+        {
+            new CharacterUpdate { CharacterId = "chars/bob", AppearanceOverride = "Covered in mud", TagsToAdd = ["muddy"], FeaturesToAdd = ["Scar"] },
+            new ItemUpdate { ItemId = "items/sword", NewState = "Dull", TagsToAdd = ["rusty"], FeaturesToAdd = ["Leather wrap"] }
+        };
+        var commitResult = await tools.Commit(changes, "Bob fell in mud");
+        Assert.True(commitResult.Success, commitResult.Error);
+
+        var sceneResult = await tools.GetScene("locations/tavern_01", true, "VisualStateTest");
+        Assert.True(sceneResult.Success, sceneResult.Error);
+        
+        var view = sceneResult.Data;
+        Assert.NotNull(view);
+        
+        var bob = view.PresentNPCs.First(n => n.Id == "chars/bob");
+        Assert.Equal("Covered in mud", bob.CurrentAppearance);
+        Assert.NotNull(bob.VisualTags);
+        Assert.Contains("muddy", bob.VisualTags);
+        Assert.NotNull(bob.DistinctiveFeatures);
+        Assert.Contains("Scar", bob.DistinctiveFeatures);
+
+        var sword = view.VisibleItems.First(i => i.Id == "items/sword");
+        Assert.Equal("Dull", sword.CurrentState);
+        Assert.NotNull(sword.Tags);
+        Assert.Contains("rusty", sword.Tags);
+        Assert.NotNull(sword.DistinctiveFeatures);
+        Assert.Contains("Leather wrap", sword.DistinctiveFeatures);
     }
 }

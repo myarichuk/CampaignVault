@@ -9,7 +9,7 @@ public class FactionCreateHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is FactionCreate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, System.Threading.CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
     {
         var fc = (FactionCreate)change;
 
@@ -30,8 +30,8 @@ public class FactionCreateHandler : IWorldChangeHandler
             Description = fc.Description,
             FactionType = fc.FactionType,
             ControllingTerritory = fc.ControllingTerritory,
-            TerritoryLocationIds = fc.TerritoryLocationIds ?? new List<string>(),
-            KnownLeaderIds = fc.KnownLeaderIds ?? new List<string>(),
+            TerritoryLocationIds = fc.TerritoryLocationIds ?? [],
+            KnownLeaderIds = fc.KnownLeaderIds ?? [],
             InfluenceLevel = fc.InitialInfluenceLevel ?? 50,
             CampaignName = context.CampaignName,
             LastUpdated = DateTime.UtcNow
@@ -49,7 +49,7 @@ public class FactionReputationChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is FactionReputationChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, System.Threading.CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
     {
         var frc = (FactionReputationChange)change;
 
@@ -63,11 +63,6 @@ public class FactionReputationChangeHandler : IWorldChangeHandler
         {
             var suggested = await context.SuggestFactionMatchAsync(frc.FactionId);
             return ChangeHandlerResult.Failure($"Faction {frc.FactionId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
-        }
-
-        if (character.Social.FactionReputations == null)
-        {
-            character.Social.FactionReputations = new Dictionary<string, int>();
         }
 
         if (character.Social.FactionReputations.ContainsKey(frc.FactionId))
@@ -87,7 +82,7 @@ public class FactionReputationChangeHandler : IWorldChangeHandler
             {
                 Category = EventCategory.Interaction,
                 Summary = $"Reputation with {faction.Name} changed. {frc.Reason}",
-                Involved = new List<string> { frc.CharacterId, frc.FactionId }
+                Involved = [frc.CharacterId, frc.FactionId]
             }, ct);
         }
 
@@ -101,7 +96,7 @@ public class FactionStateChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is FactionStateChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, System.Threading.CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
     {
         var fsc = (FactionStateChange)change;
 
@@ -119,7 +114,6 @@ public class FactionStateChangeHandler : IWorldChangeHandler
 
         if (fsc.NewStance != null && !string.IsNullOrWhiteSpace(fsc.TargetFactionId))
         {
-            faction.StanceToward ??= new Dictionary<string, FactionStance>();
             faction.StanceToward[fsc.TargetFactionId] = fsc.NewStance.Value;
         }
 

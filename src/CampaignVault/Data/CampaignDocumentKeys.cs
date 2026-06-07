@@ -57,7 +57,9 @@ public sealed class CampaignDocumentKeys
     private static string Normalize(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
+        {
             return "default";
+        }
 
         // Very lightweight normalization — real validation can live in the create/select tools later.
         return name.Trim().ToLowerInvariant()

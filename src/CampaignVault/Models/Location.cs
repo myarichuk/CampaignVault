@@ -27,7 +27,7 @@ public class Location
     /// <summary>
     /// Optional faction ID that controls or "owns" this location.
     /// Set via faction_create or faction_state changes. Null = unclaimed/independent.
-    /// Used by GetScene to surface faction presence and by TravelEncounterRule for encounter bias.
+    /// Used by GetScene to surface faction presence and by EncounterResolver for encounter bias.
     /// </summary>
     public string? ControllingFactionId { get; set; }
 
@@ -38,6 +38,12 @@ public class Location
     /// (No legacy BC requirement per review feedback; always set for new data. Locations may be shareable across camps in some designs.)
     /// </summary>
     public string? CampaignName { get; set; }
+
+    /// <summary>
+    /// Narrative danger modifier set by the LLM (-50 to +50).
+    /// Used by EncounterResolver to dynamically scale threat chances based on narrative events.
+    /// </summary>
+    public int DangerModifier { get; set; } = 0;
 }
 
 public enum LocationType

@@ -47,9 +47,14 @@ public class AuthMiddleware
         {
             var queryToken = context.Request.Query["token"].ToString();
             if (string.IsNullOrEmpty(queryToken))
+            {
                 queryToken = context.Request.Query["auth"].ToString();
+            }
+
             if (string.IsNullOrEmpty(queryToken))
+            {
                 queryToken = context.Request.Query["bearer"].ToString();
+            }
 
             if (TimingSafeEquals(queryToken, _bearerToken))
             {
@@ -69,7 +74,11 @@ public class AuthMiddleware
 
     private static bool TimingSafeEquals(string? a, string? b)
     {
-        if (a is null || b is null) return false;
+        if (a is null || b is null)
+        {
+            return false;
+        }
+
         var aBytes = Encoding.UTF8.GetBytes(a);
         var bBytes = Encoding.UTF8.GetBytes(b);
         return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);

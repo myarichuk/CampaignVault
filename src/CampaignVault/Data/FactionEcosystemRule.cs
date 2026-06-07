@@ -38,18 +38,24 @@ public sealed class FactionEcosystemRule : ISimulationRule
             // Base chance to act: 1% per point of Influence, max 80%, rolled over 30 days
             // So on a single day, the chance is small.
             // If DaysPassed is e.g. 5, chance increases.
-            double chanceToAct = (faction.InfluenceLevel / 100.0) * (context.DaysPassed / 30.0);
+            var chanceToAct = (faction.InfluenceLevel / 100.0) * (context.DaysPassed / 30.0);
             
             // Fast clamp: never higher than 80%
-            if (chanceToAct > 0.8) chanceToAct = 0.8;
+            if (chanceToAct > 0.8)
+            {
+                chanceToAct = 0.8;
+            }
 
             if (_nextDouble() < chanceToAct)
             {
                 // Faction takes an action!
                 // Pick a target faction that is not itself
                 var targets = context.ActiveFactions.Where(f => f.Id != faction.Id).ToList();
-                if (!targets.Any()) continue;
-                
+                if (!targets.Any())
+                {
+                    continue;
+                }
+
                 var target = targets[_nextInt(targets.Count)];
 
                 // Check Domain logic (e.g. if one is urban and another is deep_underdark, maybe skip)
@@ -57,7 +63,7 @@ public sealed class FactionEcosystemRule : ISimulationRule
                 faction.Metadata.TryGetValue("Domains", out var domainsA);
                 target.Metadata.TryGetValue("Domains", out var domainsB);
                 
-                bool domainsOverlap = true;
+                var domainsOverlap = true;
                 if (!string.IsNullOrWhiteSpace(domainsA) && !string.IsNullOrWhiteSpace(domainsB))
                 {
                     var tagsA = domainsA.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -72,7 +78,7 @@ public sealed class FactionEcosystemRule : ISimulationRule
                 }
 
                 // Decide on action: 0 = Hostility/War, 1 = Diplomacy/Trade, 2 = Influence gain/loss
-                int action = _nextInt(3);
+                var action = _nextInt(3);
 
                 if (action == 0) // Conflict
                 {
@@ -95,7 +101,7 @@ public sealed class FactionEcosystemRule : ISimulationRule
                     {
                         Category = EventCategory.Simulation,
                         Summary = eventSummary,
-                        Involved = new List<string> { faction.Id, target.Id }
+                        Involved = [faction.Id, target.Id]
                     });
 
                     deltas.Add(new RumorCreate
@@ -122,7 +128,7 @@ public sealed class FactionEcosystemRule : ISimulationRule
                     {
                         Category = EventCategory.Simulation,
                         Summary = eventSummary,
-                        Involved = new List<string> { faction.Id, target.Id }
+                        Involved = [faction.Id, target.Id]
                     });
 
                     deltas.Add(new RumorCreate
@@ -138,7 +144,7 @@ public sealed class FactionEcosystemRule : ISimulationRule
                 else // Influence shift
                 {
                     // For influence delta, we'll use _nextInt to get a value between 0 and 9, then add 1.
-                    int influenceDelta = _nextInt(9) + 1;
+                    var influenceDelta = _nextInt(9) + 1;
                     var eventSummary = $"{faction.Name} grew in influence (+{influenceDelta}).";
                     deltas.Add(new FactionStateChange
                     {
@@ -151,7 +157,7 @@ public sealed class FactionEcosystemRule : ISimulationRule
                     {
                         Category = EventCategory.Simulation,
                         Summary = eventSummary,
-                        Involved = new List<string> { faction.Id }
+                        Involved = [faction.Id]
                     });
 
                     deltas.Add(new RumorCreate

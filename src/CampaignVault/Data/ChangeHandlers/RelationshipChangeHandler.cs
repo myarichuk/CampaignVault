@@ -20,7 +20,11 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
             {
                 var hints = await context.SuggestCharacterMatchAsync(rel.SourceId);
                 var msg = $"Character {rel.SourceId} not found.";
-                if (hints != null) msg += $" Did you mean: {hints}?";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
                 context.RecordMessage($"WARNING: {msg}");
                 context.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);

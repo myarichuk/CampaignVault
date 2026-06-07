@@ -24,20 +24,21 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
     public async Task ChaoticCampaignLoop_StressTests_Invariants()
     {
         var engine = new DefaultSimulationEngine(
-            new ISimulationRule[] { new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule() },
+            [new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule()],
             null);
         var repo = new CampaignRepository(_store, engine, 
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
             new DefaultBehaviorSynthesizer());
         using var session = _store.OpenAsyncSession();
-        var rollSvc = new CampaignVault.Data.DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new CampaignVault.Rulesets.RulesetResolverSelector(new CampaignVault.Rulesets.IRulesetResolver[] { new CampaignVault.Rulesets.Dnd5eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Pf2eRulesetResolver(rollSvc), new CampaignVault.Rulesets.Fallout2d20RulesetResolver(rollSvc) }), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var rollSvc = new DefaultRollService();
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
         var simulator = new LlmSimulator(tools, session);
 
         // Setup: A small region with 3 NPCs
         var regionId = "locations/fuzz-region-" + Guid.NewGuid();
         var npcs = new List<string>();
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var id = $"npcs/fuzzer-{i}-" + Guid.NewGuid();
             await repo.UpsertCharacterAsync(session, new Character 
@@ -56,7 +57,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
         // RUN LOOP
         await simulator.Kickoff(regionId);
         
-        for (int iteration = 0; iteration < 20; iteration++) // Run 20 cycles
+        for (var iteration = 0; iteration < 20; iteration++) // Run 20 cycles
         {
             // 1. Randomly mutate relationships or needs (Resolution phase simulate)
             var targetId = npcs[_rng.Next(npcs.Count)];
@@ -83,7 +84,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
             Assert.True(resolveResult.Success);
 
             // 2. Random Time Passage (Downtime phase simulate)
-            int days = _rng.Next(1, 15);
+            var days = _rng.Next(1, 15);
             var advanceResult = await tools.AdvanceWorld(days, TimeOfDay.Night, "Fuzz time skip");
             Assert.True(advanceResult.Success);
 

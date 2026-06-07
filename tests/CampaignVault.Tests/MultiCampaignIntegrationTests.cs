@@ -29,7 +29,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var dnd5e = new Dnd5eRulesetResolver(new DefaultRollService());
         var pf2e = new Pf2eRulesetResolver(new DefaultRollService());
         var fallout = new Fallout2d20RulesetResolver(new DefaultRollService());
-        var selector = new RulesetResolverSelector(new IRulesetResolver[] { dnd5e, pf2e, fallout });
+        var selector = new RulesetResolverSelector([dnd5e, pf2e, fallout]);
 
         currentCampaignContext ??= new CurrentCampaignContext();
 
@@ -83,20 +83,20 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Upsert characters with explicit campaign for scoping (no BC for legacy needed)
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10 }, "campaign-a");
-            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10 }, "campaign-b");
+            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10, KeepAlive = true }, "campaign-a");
+            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10, KeepAlive = true }, "campaign-b");
             await session.SaveChangesAsync();
         }
 
         // Setup Campaign A (D&D 5e)
         await tools.SelectCampaign("campaign-a");
         await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, "campaign-a");
-        await tools.StartCombat("loc-1", new[] { "characters/char-1" }, "campaign-a");
+        await tools.StartCombat("loc-1", ["characters/char-1"], "campaign-a");
 
         // Setup Campaign B (Pathfinder 2e)
         await tools.SelectCampaign("campaign-b");
         await tools.SetActiveSystem(RulesetSystem.Pathfinder2e, null, "campaign-b");
-        await tools.StartCombat("loc-2", new[] { "characters/char-2" }, "campaign-b");
+        await tools.StartCombat("loc-2", ["characters/char-2"], "campaign-b");
 
         // Verify Campaign B
         var configB = await tools.GetConfig("campaign-b");
@@ -138,7 +138,8 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Pressures for camp A should include char-1, not char-2
         await tools.SelectCampaign("campaign-a");
         var wsA = await tools.GetWorldState("loc-1", "campaign-a");
-        var pressureTextA = string.Join(" | ", wsA.Data?.WorldPressure ?? Enumerable.Empty<string>());
+        Assert.True(wsA.Success, $"GetWorldState failed: {wsA.Error} / {wsA.Summary}");
+        var pressureTextA = string.Join(" | ", wsA.Data?.WorldPressure ?? []);
         Assert.Contains("Char 1", pressureTextA);
         Assert.DoesNotContain("Char 2", pressureTextA);
 
@@ -155,7 +156,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
 
         // Pressures for camp B should include char-2 (if high), not char-1
         var wsB = await tools.GetWorldState("loc-2", "campaign-b");
-        var pressureTextB = string.Join(" | ", wsB.Data?.WorldPressure ?? Enumerable.Empty<string>());
+        var pressureTextB = string.Join(" | ", wsB.Data?.WorldPressure ?? []);
         Assert.Contains("Char 2", pressureTextB);
         Assert.DoesNotContain("Char 1", pressureTextB);
 

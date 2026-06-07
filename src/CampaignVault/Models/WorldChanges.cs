@@ -33,7 +33,37 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(QuestCreate), "quest_create")]
 [JsonDerivedType(typeof(QuestProgress), "quest_progress")]
 [JsonDerivedType(typeof(FactionCreate), "faction_create")]
+[JsonDerivedType(typeof(RestChange), "rest")]
+[JsonDerivedType(typeof(ItemUpdate), "item_update")]
+[JsonDerivedType(typeof(CharacterUpdate), "character_update")]
 public abstract class WorldChange;
+
+/// <summary>
+/// Attempt to pass time resting. The engine calculates the danger of the location and the LLM's security modifier
+/// to determine if the rest is interrupted by an encounter.
+/// </summary>
+public class RestChange : WorldChange
+{
+    [Description("ID of the character attempting to rest.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("ID of the location where they are resting.")]
+    [JsonPropertyName("locationId")]
+    public string LocationId { get; set; } = default!;
+
+    [Description("How many hours the character intends to rest. (e.g., 1 for short, 8 for long).")]
+    [JsonPropertyName("intendedHours")]
+    public int IntendedHours { get; set; }
+
+    [Description("Modifier representing the safety of the setup (-50 to +50). E.g., +20 for stealthy hidden camp, +100 for Tiny Hut, -20 for drunk in an alley.")]
+    [JsonPropertyName("securityModifier")]
+    public int SecurityModifier { get; set; }
+
+    [Description("Narrative description of how the character rests.")]
+    [JsonPropertyName("narrativeNote")]
+    public string? NarrativeNote { get; set; }
+}
 
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
 public class HpChange : WorldChange
@@ -358,6 +388,10 @@ public class LocationCreate : WorldChange
     [Description("Explicit exits. Usually you can leave this empty and rely on connectedFromLocationId instead.")]
     [JsonPropertyName("exits")]
     public List<LocationExit> Exits { get; set; } = [];
+
+    [Description("Set the narrative danger modifier of this location (-50 to +50). Used to seed random encounters.")]
+    [JsonPropertyName("dangerModifier")]
+    public int DangerModifier { get; set; } = 0;
 }
 
 /// <summary>
@@ -397,6 +431,10 @@ public class LocationUpdate : WorldChange
     [Description("Change the parent location.")]
     [JsonPropertyName("parentLocationId")]
     public string? ParentLocationId { get; set; }
+
+    [Description("Set the narrative danger modifier (-50 to +50) when the area becomes safer or more dangerous.")]
+    [JsonPropertyName("dangerModifier")]
+    public int? DangerModifier { get; set; }
 }
 
 /// <summary>
@@ -600,7 +638,7 @@ public class QuestCreate : WorldChange
     [JsonPropertyName("dmNotes")]
     public string? DmNotes { get; set; }
 
-    [Description("Optional campaign day by which this quest must be completed to avoid failure consequences.")]
+    [Description("Optional ABSOLUTE campaign day (TotalDaysElapsed) by which this quest must be completed to avoid failure consequences.")]
     [JsonPropertyName("deadlineDay")]
     public int? DeadlineDay { get; set; }
 }
@@ -613,6 +651,7 @@ public class QuestObjectiveDto
     [JsonPropertyName("rewardHint")]
     public string? RewardHint { get; set; }
 
+    [Description("Optional ABSOLUTE campaign day (TotalDaysElapsed) deadline for this objective.")]
     [JsonPropertyName("deadlineDay")]
     public int? DeadlineDay { get; set; }
 }
@@ -683,4 +722,66 @@ public class FactionCreate : WorldChange
     [Description("Optional initial influence level (0-100). Defaults to 50.")]
     [JsonPropertyName("initialInfluenceLevel")]
     public int? InitialInfluenceLevel { get; set; }
+}
+
+public class ItemUpdate : WorldChange
+{
+    [Description("ID of the item being updated.")]
+    [JsonPropertyName("itemId")]
+    public string ItemId { get; set; } = default!;
+
+    [Description("Optional new temporary narrative state of the item (e.g. 'Covered in mud'). Overwrites the previous state.")]
+    [JsonPropertyName("newState")]
+    public string? NewState { get; set; }
+
+    [Description("Temporary tags to add to the item (e.g. 'muddy', 'wet').")]
+    [JsonPropertyName("tagsToAdd")]
+    public List<string>? TagsToAdd { get; set; }
+
+    [Description("Temporary tags to remove from the item.")]
+    [JsonPropertyName("tagsToRemove")]
+    public List<string>? TagsToRemove { get; set; }
+
+    [Description("Permanent physical features to add (e.g. 'Leather wrapped handle').")]
+    [JsonPropertyName("featuresToAdd")]
+    public List<string>? FeaturesToAdd { get; set; }
+
+    [Description("Permanent physical features to remove.")]
+    [JsonPropertyName("featuresToRemove")]
+    public List<string>? FeaturesToRemove { get; set; }
+
+    [Description("Key-value properties to upsert/update.")]
+    [JsonPropertyName("propertiesToUpsert")]
+    public Dictionary<string, object>? PropertiesToUpsert { get; set; }
+
+    [Description("Keys of properties to delete.")]
+    [JsonPropertyName("propertiesToRemove")]
+    public List<string>? PropertiesToRemove { get; set; }
+}
+
+public class CharacterUpdate : WorldChange
+{
+    [Description("ID of the character being updated.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("Optional new temporary narrative appearance (e.g. 'Looking exhausted and covered in mud'). Overwrites the previous appearance.")]
+    [JsonPropertyName("appearanceOverride")]
+    public string? AppearanceOverride { get; set; }
+
+    [Description("Temporary visual tags to add (e.g. 'muddy', 'disheveled').")]
+    [JsonPropertyName("tagsToAdd")]
+    public List<string>? TagsToAdd { get; set; }
+
+    [Description("Temporary visual tags to remove.")]
+    [JsonPropertyName("tagsToRemove")]
+    public List<string>? TagsToRemove { get; set; }
+
+    [Description("Permanent physical features to add (e.g. 'Scar across left eye', 'Dragon tattoo').")]
+    [JsonPropertyName("featuresToAdd")]
+    public List<string>? FeaturesToAdd { get; set; }
+
+    [Description("Permanent physical features to remove.")]
+    [JsonPropertyName("featuresToRemove")]
+    public List<string>? FeaturesToRemove { get; set; }
 }

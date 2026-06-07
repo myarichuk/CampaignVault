@@ -17,14 +17,20 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
         {
             var hints = await context.SuggestCharacterMatchAsync(act.CharacterId);
             var msg = $"Character {act.CharacterId} not found during ActivityChange.";
-            if (hints != null) msg += $" Did you mean: {hints}?";
+            if (hints != null)
+            {
+                msg += $" Did you mean: {hints}?";
+            }
+
             context.RecordMessage("WARNING: " + msg);
             context.RecordFailure();
             return ChangeHandlerResult.Failure();
         }
 
         if (act.NewActivity != null)
+        {
             character.CurrentActivity = act.NewActivity;
+        }
 
         if (act.NewLocationId != null || act.UpdateLocation)
         {

@@ -23,7 +23,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
 
     private class CapturingHandler : IWorldChangeHandler
     {
-        public List<WorldChange> Captured { get; } = new();
+        public List<WorldChange> Captured { get; } = [];
         public bool ShouldHandle(WorldChange change) => change is ActivityChange or NeedChange or EventOccurred;
         public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, System.Threading.CancellationToken ct = default)
         {
@@ -49,8 +49,9 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             quests?.ToDictionary(q => q.Id) ?? new Dictionary<string, Quest>(),
             NullLogger.Instance,
             () => Task.FromResult(new CampaignTime { Day = 10, TotalDaysElapsed = 10 }),
+            () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask,
-            new List<string>(),
+            [],
             dispatcher,
             null,
             "test-camp"
@@ -73,8 +74,8 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
 
         var handler = new TravelChangeHandler();
         var capture = new CapturingHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler, capture }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, new[] { char1 }, new[] { start, dest });
+        var dispatcher = new WorldChangeDispatcher([handler, capture], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, [char1], [start, dest]);
 
         var change = new TravelChange
         {
@@ -106,10 +107,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             Id = "locations/start",
             Name = "Start",
             // Pre-populate exit metadata so TravelChangeHandler lookup (via context.Locations or fallback Load) resolves cost/terrain
-            Exits = new List<LocationExit>
-            {
+            Exits =
+            [
                 new LocationExit("locations/dest", "A long wilderness trail", TravelCostHours: 8, Terrain: "wilderness")
-            }
+            ]
         };
         var dest = new Location { Id = "locations/dest", Name = "Destination" };
         
@@ -120,9 +121,9 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
 
         var handler = new TravelChangeHandler();
         var capture = new CapturingHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler, capture }, NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler, capture], NullLogger<WorldChangeDispatcher>.Instance);
         // Pass start in the locations dict so TryGetValue succeeds (normal preloaded path after dispatcher preload improvement)
-        var ctx = CreateTestContext(session, dispatcher, new[] { char1 }, new[] { start, dest });
+        var ctx = CreateTestContext(session, dispatcher, [char1], [start, dest]);
 
         var change = new TravelChange
         {
@@ -150,10 +151,11 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         {
             Id = "locations/start",
             Name = "Start",
-            Exits = new List<LocationExit>
-            {
-                new LocationExit("locations/dest", "A long wilderness trail", TravelCostHours: 12, Terrain: "wilderness")
-            }
+            Exits =
+            [
+                new LocationExit("locations/dest", "A long wilderness trail", TravelCostHours: 12,
+                    Terrain: "wilderness")
+            ]
         };
         var dest = new Location { Id = "locations/dest", Name = "Destination" };
         
@@ -164,10 +166,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
 
         var handler = new TravelChangeHandler();
         var capture = new CapturingHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler, capture }, NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler, capture], NullLogger<WorldChangeDispatcher>.Instance);
         // Deliberately omit 'start' from the preloaded locations dict passed to ctx, so the handler's
         // TryGetValue fails and it exercises the Session.LoadAsync fallback for origin exit metadata.
-        var ctx = CreateTestContext(session, dispatcher, new[] { char1 }, new[] { dest });
+        var ctx = CreateTestContext(session, dispatcher, [char1], [dest]);
 
         var change = new TravelChange
         {
@@ -191,7 +193,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var handler = new FactionCreateHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
         var ctx = CreateTestContext(session, dispatcher);
 
         var change = new FactionCreate
@@ -229,8 +231,8 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         var faction = new Faction { Id = "factions/thieves" };
         
         var handler = new FactionReputationChangeHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, new[] { char1 }, null, new[] { faction });
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, [char1], null, [faction]);
 
         var change = new FactionReputationChange
         {
@@ -256,8 +258,8 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         var targetFaction = new Faction { Id = "factions/guards" };
         
         var handler = new FactionStateChangeHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, null, null, new[] { faction, targetFaction });
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, null, null, [faction, targetFaction]);
 
         var change = new FactionStateChange
         {
@@ -281,7 +283,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var handler = new QuestCreateHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
         var ctx = CreateTestContext(session, dispatcher);
 
         var change = new QuestCreate
@@ -289,7 +291,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             QuestId = "quests/rats_01",
             Title = "Clear the Rats",
             GiverId = "characters/bram",
-            Objectives = new List<QuestObjectiveDto> { new QuestObjectiveDto { Description = "Kill rats" } }
+            Objectives = [new QuestObjectiveDto { Description = "Kill rats" }]
         };
 
         var result = await handler.ApplyAsync(change, ctx);
@@ -320,16 +322,13 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             Id = "quests/rats_01",
             Title = "Clear the Rats",
             OverallState = QuestState.Open,
-            Objectives = new List<QuestObjective> 
-            { 
-                new QuestObjective("Kill rats", QuestState.Open) 
-            }
+            Objectives = [new QuestObjective("Kill rats", QuestState.Open)]
         };
         
         var handler = new QuestProgressHandler();
         var capture = new CapturingHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler, capture }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, null, null, null, new[] { quest });
+        var dispatcher = new WorldChangeDispatcher([handler, capture], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, null, null, null, [quest]);
 
         var change = new QuestProgress
         {
@@ -364,11 +363,11 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             Id = "quests/elapsed_01",
             Title = "Long Campaign Quest",
             OverallState = QuestState.Open,
-            Objectives = new List<QuestObjective> { new QuestObjective("Do the thing", QuestState.Open) }
+            Objectives = [new QuestObjective("Do the thing", QuestState.Open)]
         };
 
         var handler = new QuestProgressHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
         var ctx = new ChangeContext(
             session,
             new Dictionary<string, Character>(),
@@ -378,8 +377,9 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             new Dictionary<string, Quest> { [quest.Id] = quest },
             NullLogger.Instance,
             () => Task.FromResult(new CampaignTime { Day = 11, TotalDaysElapsed = 400 }),
+            () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask,
-            new List<string>(),
+            [],
             dispatcher,
             null,
             "test-camp"
@@ -404,10 +404,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         
-        var quest = new Quest { Id = "quests/rats_01", Objectives = new List<QuestObjective> { new QuestObjective("Kill rats", QuestState.Open) } };
+        var quest = new Quest { Id = "quests/rats_01", Objectives = [new QuestObjective("Kill rats", QuestState.Open)] };
         var handler = new QuestProgressHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, null, null, null, new[] { quest });
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, null, null, null, [quest]);
 
         var change = new QuestProgress
         {
@@ -429,11 +429,11 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         var quest = new Quest 
         { 
             Id = "quests/rats_01",
-            Objectives = new List<QuestObjective> { new QuestObjective("Kill rats", QuestState.Complete) { DayCompleted = 5 } }
+            Objectives = [new QuestObjective("Kill rats", QuestState.Complete) { DayCompleted = 5 }]
         };
         var handler = new QuestProgressHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, null, null, null, new[] { quest });
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, null, null, null, [quest]);
 
         var change = new QuestProgress
         {
@@ -455,7 +455,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
 
         var faction = new Faction { Id = "factions/thieves", InfluenceLevel = 50 };
         var handler = new FactionStateChangeHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
         var summary = new List<string>();
         var ctx = new ChangeContext(
             session,
@@ -465,7 +465,8 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             new Dictionary<string, Faction> { [faction.Id] = faction },
             new Dictionary<string, Quest>(),
             NullLogger.Instance,
-            () => Task.FromResult(new CampaignTime { Day = 10 }),
+            () => Task.FromResult(new CampaignTime { Day = 10, TotalDaysElapsed = 10 }),
+            () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask,
             summary,
             dispatcher,
@@ -496,8 +497,8 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         var faction = new Faction { Id = "factions/thieves", Name = "Thieves Guild" };
 
         var handler = new FactionReputationChangeHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, new[] { char1 }, null, new[] { faction });
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, [char1], null, [faction]);
 
         // Delta of +20 from 95 would give 115 — must be clamped to 100
         var change = new FactionReputationChange
@@ -534,17 +535,17 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             Id = "quests/multipart",
             Title = "A Long Journey",
             OverallState = QuestState.Open,
-            Objectives = new List<QuestObjective>
-            {
+            Objectives =
+            [
                 new QuestObjective("Find the map", QuestState.Open),
                 new QuestObjective("Cross the mountains", QuestState.Open)
-            }
+            ]
         };
 
         var handler = new QuestProgressHandler();
         var capture = new CapturingHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler, capture }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, null, null, null, new[] { quest });
+        var dispatcher = new WorldChangeDispatcher([handler, capture], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, null, null, null, [quest]);
 
         // Complete only the first objective
         var change = new QuestProgress
@@ -574,8 +575,8 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         var start = new Location { Id = "locations/start", Name = "Start" };
 
         var handler = new TravelChangeHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, new[] { char1 }, new[] { start });
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, [char1], [start]);
         // Note: "locations/dest" is NOT in context
 
         var change = new TravelChange
@@ -599,8 +600,8 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
 
         var existing = new Faction { Id = "factions/thieves", Name = "Thieves Guild", CampaignName = "test-camp" };
         var handler = new FactionCreateHandler();
-        var dispatcher = new WorldChangeDispatcher(new IWorldChangeHandler[] { handler }, NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, null, null, new[] { existing });
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, null, null, [existing]);
 
         var change = new FactionCreate
         {

@@ -46,7 +46,11 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
             {
                 var hints = await context.SuggestCharacterMatchAsync(add.CharacterId);
                 var msg = $"Character {add.CharacterId} not found.";
-                if (hints != null) msg += $" Did you mean: {hints}?";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
                 context.RecordMessage($"WARNING: {msg}");
                 context.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
@@ -91,7 +95,11 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
             {
                 var hints = await context.SuggestCharacterMatchAsync(remove.CharacterId);
                 var msg = $"Character {remove.CharacterId} not found.";
-                if (hints != null) msg += $" Did you mean: {hints}?";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
                 context.RecordMessage($"WARNING: {msg}");
                 context.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
@@ -112,9 +120,13 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         var removedCount = originalCount - character.SystemStats.StatusEffects.Count;
 
         if (removedCount > 0)
+        {
             context.RecordMessage($"Status '{remove.Status}' removed from {remove.CharacterId} ({removedCount} effect(s))");
+        }
         else
+        {
             context.RecordMessage($"StatusRemove: '{remove.Status}' was not present on {remove.CharacterId} (no-op)");
+        }
 
         // Removing a non-existent status is harmless (idempotent)
         return ChangeHandlerResult.Ok;

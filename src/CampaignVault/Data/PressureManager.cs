@@ -12,21 +12,17 @@ public interface IPressureManager
     Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay, IEnumerable<WorldPressureItem> rawPressures);
 }
 
-public class PressureManager : IPressureManager
+public class PressureManager(CampaignDocumentKeys keys) : IPressureManager
 {
-    private readonly CampaignDocumentKeys _keys;
-
-    public PressureManager(CampaignDocumentKeys keys)
-    {
-        _keys = keys ?? new CampaignDocumentKeys();
-    }
-
     public async Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay, IEnumerable<WorldPressureItem> rawPressures)
     {
-        var pressures = rawPressures?.ToList() ?? new List<WorldPressureItem>();
-        if (pressures.Count == 0) return Array.Empty<string>();
+        var pressures = rawPressures?.ToList() ?? [];
+        if (pressures.Count == 0)
+        {
+            return [];
+        }
 
-        var metaId = _keys.Meta(campaignName);
+        var metaId = keys.Meta(campaignName);
         var campaign = await session.LoadAsync<Campaign>(metaId);
         if (campaign == null)
         {
@@ -37,28 +33,30 @@ public class PressureManager : IPressureManager
                 .OrderByDescending(g => g.Key.Severity)
                 .Take(5)
                 .ToList();
-            return FormatBatches(fallbackGroups);
+            return FormatBatches(fallbackGroups, 9); // Fallback assumption
         }
 
-        var configId = _keys.Config(campaignName);
+        var configId = keys.Config(campaignName);
         var config = await session.LoadAsync<CampaignConfig>(configId);
-        int maxPressures = config?.MaxPressuresPerResponse ?? 5;
+        var maxPressures = config?.MaxPressuresPerResponse ?? 5;
+        var cooldownDays = config?.PressureCooldownDays ?? 1;
+        var escalationCount = config?.PressureEscalationCount ?? 3;
 
         var finalItems = new List<(WorldPressureItem Item, string OriginalKey, bool Escalated)>();
 
         foreach (var p in pressures)
         {
-            string key = $"{p.Severity}:{p.EntityId}";
+            var key = $"{p.Severity}:{p.EntityId}";
             if (campaign.PressureCooldowns.TryGetValue(key, out var state))
             {
-                if (currentDay - state.LastSurfacedDay < 3)
+                if (currentDay - state.LastSurfacedDay < cooldownDays)
                 {
                     // Suppressed
                     continue;
                 }
 
-                int newCount = state.SuppressionCount + 1;
-                if (newCount >= 3)
+                var newCount = state.SuppressionCount + 1;
+                if (newCount >= escalationCount)
                 {
                     // Escalated
                     var escalatedItem = p with { Severity = PressureSeverity.EngineWarning };
@@ -103,15 +101,15 @@ public class PressureManager : IPressureManager
             }
         }
 
-        return FormatBatches(groups);
+        return FormatBatches(groups, cooldownDays * escalationCount);
     }
 
-    private string[] FormatBatches<TKey>(IEnumerable<IGrouping<TKey, (WorldPressureItem Item, string OriginalKey, bool Escalated)>> groups)
+    private string[] FormatBatches<TKey>(IEnumerable<IGrouping<TKey, (WorldPressureItem Item, string OriginalKey, bool Escalated)>> groups, int escalationDays)
     {
         return groups.Select(g =>
         {
             var first = g.First();
-            string prefix = first.Item.Severity switch
+            var prefix = first.Item.Severity switch
             {
                 PressureSeverity.EngineWarning => "ENGINE WARNING",
                 PressureSeverity.NarrativePrompt => "NARRATIVE PROMPT",
@@ -122,7 +120,7 @@ public class PressureManager : IPressureManager
 
             if (first.Escalated)
             {
-                prefix = $"{prefix} [ESCALATED: Flagged for >9 days]";
+                prefix = $"{prefix} [ESCALATED: Flagged for >{escalationDays} days]";
             }
 
             var items = g.ToList();
@@ -135,7 +133,7 @@ public class PressureManager : IPressureManager
                 var keyParts = first.Item.GroupingKey.Split(':');
                 var category = keyParts.Length > 1 ? string.Join(" ", keyParts.Skip(1)) : first.Item.GroupingKey;
                 
-                string batchedText = string.Join(" | ", items.Select(x => x.Item.Text));
+                var batchedText = string.Join(" | ", items.Select(x => x.Item.Text));
                 return $"{prefix} ({items.Count} similar issues - {category}): {batchedText}";
             }
         }).ToArray();

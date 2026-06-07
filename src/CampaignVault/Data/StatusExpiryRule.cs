@@ -23,7 +23,9 @@ public sealed class StatusExpiryRule : ISimulationRule
         foreach (var character in allCharacters)
         {
             if (character.SystemStats?.StatusEffects == null || character.SystemStats.StatusEffects.Count == 0)
+            {
                 continue;
+            }
 
             // This rule is responsible exclusively for day-based expiry.
             // Round-based expiry is handled natively inside combat tools (e.g. NextTurn, EndCombat).

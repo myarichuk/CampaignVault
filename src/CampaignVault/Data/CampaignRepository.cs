@@ -6,6 +6,7 @@ using Raven.Client.Documents.Session;
 using Raven.Client.Documents.Indexes;
 using Microsoft.Extensions.Logging;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data;
 
@@ -21,8 +22,16 @@ public class CampaignRepository
 
     private string ResolveCampaign(string? campaignName)
     {
-        if (!string.IsNullOrWhiteSpace(campaignName)) return campaignName;
-        if (!string.IsNullOrWhiteSpace(_currentCampaign?.CurrentCampaignName)) return _currentCampaign.CurrentCampaignName;
+        if (!string.IsNullOrWhiteSpace(campaignName))
+        {
+            return campaignName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_currentCampaign?.CurrentCampaignName))
+        {
+            return _currentCampaign.CurrentCampaignName;
+        }
+
         return "default";
     }
 
@@ -42,7 +51,7 @@ public class CampaignRepository
         _keys = keys ?? new CampaignDocumentKeys();
         _currentCampaign = currentCampaign;
 
-        var handlersList = (changeHandlers ?? Array.Empty<IWorldChangeHandler>()).ToList();
+        var handlersList = (changeHandlers ?? []).ToList();
 
         if (handlersList.Count == 0) //TODO: consider what should be done here - this is brittle as fuk
         {
@@ -70,11 +79,22 @@ public class CampaignRepository
                 new QuestCreateHandler(),
                 new QuestProgressHandler(),
                 new FactionCreateHandler(),
-                new RumorCreateHandler()
+                new ItemUpdateHandler(),
+                new CharacterUpdateHandler(),
+                new RulesetActionHandler(
+                    new RulesetResolverSelector([
+                        new Dnd5eRulesetResolver(new DefaultRollService()),
+                        new Pf2eRulesetResolver(new DefaultRollService()),
+                        new Fallout2d20RulesetResolver(new DefaultRollService())
+                    ]),
+                    new CampaignDocumentKeys(),
+                    currentCampaign ?? new CurrentCampaignContext()),
+                new RumorCreateHandler(),
+                new RestChangeHandler()
             ];
         }
 
-        _changeDispatcher = new WorldChangeDispatcher(handlersList, Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance);
+        _changeDispatcher = new(handlersList, Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance);
     }
 
     /// <summary>
@@ -86,7 +106,7 @@ public class CampaignRepository
                new NoOpSimulationEngine(), 
                Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
                new DefaultBehaviorSynthesizer(),
-               new CampaignDocumentKeys(),
+               new(),
                currentCampaign: null)
     {
     }
@@ -101,7 +121,7 @@ public class CampaignRepository
         IWorldSimulationEngine simulationEngine,
         ILogger<CampaignRepository> logger,
         INpcBehaviorSynthesizer behaviorSynthesizer)
-        : this(store, simulationEngine, logger, behaviorSynthesizer, new CampaignDocumentKeys(), currentCampaign: null)
+        : this(store, simulationEngine, logger, behaviorSynthesizer, new(), currentCampaign: null)
     {
     }
 
@@ -137,7 +157,7 @@ public class CampaignRepository
     /// </summary>
     public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes, string? campaignName = null)
     {
-        changes ??= Array.Empty<WorldChange>();
+        changes ??= [];
         var effective = ResolveCampaign(campaignName);
 
         _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes for campaign {Campaign}", changes.Length, effective);
@@ -147,6 +167,7 @@ public class CampaignRepository
             changes,
             effective,
             () => GetTimeAsync(session, effective),
+            async () => { var camp = await session.LoadAsync<Campaign>(_keys.Meta(effective)); return camp?.SystemOptions ?? new(); },
             ev => LogEventAsync(session, ev));
 
         if (result.Success && changes.Length > 0)
@@ -158,46 +179,114 @@ public class CampaignRepository
                 var involvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var c in changes)
                 {
-                    if (c is HpChange hp) involvedEntities.Add(hp.CharacterId);
-                    else if (c is StatusChange sc) involvedEntities.Add(sc.CharacterId);
-                    else if (c is StatusRemove src) involvedEntities.Add(src.CharacterId);
-                    else if (c is NeedChange nc) involvedEntities.Add(nc.CharacterId);
-                    else if (c is FactionReputationChange frc) { involvedEntities.Add(frc.CharacterId); involvedEntities.Add(frc.FactionId); }
-                    else if (c is LocationUpdate lu) involvedEntities.Add(lu.LocationId);
-                    else if (c is RumorEvolves rc) involvedEntities.Add(rc.RumorId);
-                    else if (c is EventOccurred ev && ev.Involved != null)
+                    switch (c)
                     {
-                        foreach (var inv in ev.Involved) involvedEntities.Add(inv);
+                        case HpChange hp:
+                            involvedEntities.Add(hp.CharacterId);
+                            break;
+                        case StatusChange sc:
+                            involvedEntities.Add(sc.CharacterId);
+                            break;
+                        case StatusRemove src:
+                            involvedEntities.Add(src.CharacterId);
+                            break;
+                        case NeedChange nc:
+                            involvedEntities.Add(nc.CharacterId);
+                            break;
+                        case FactionReputationChange frc:
+                            involvedEntities.Add(frc.CharacterId); involvedEntities.Add(frc.FactionId);
+                            break;
+                        case LocationUpdate lu:
+                            involvedEntities.Add(lu.LocationId);
+                            break;
+                        case RumorEvolves rc:
+                            involvedEntities.Add(rc.RumorId);
+                            break;
+                        case EventOccurred { Involved: not null } ev:
+                        {
+                            foreach (var inv in ev.Involved) involvedEntities.Add(inv);
+                            break;
+                        }
+                        case ActivityChange ac:
+                            involvedEntities.Add(ac.CharacterId);
+                            break;
+                        case ScheduleChange shc:
+                            involvedEntities.Add(shc.CharacterId);
+                            break;
+                        case ItemTransfer it:
+                            involvedEntities.Add(it.ItemId); involvedEntities.Add(it.ToHolderId);
+                            break;
+                        case AttributeChange atc:
+                            involvedEntities.Add(atc.CharacterId);
+                            break;
+                        case MoodChange mc:
+                            involvedEntities.Add(mc.CharacterId);
+                            break;
+                        case RulesetAction ra:
+                        {
+                            involvedEntities.Add(ra.ActorId); 
+                            foreach (var tid in ra.TargetIds) 
+                                involvedEntities.Add(tid);
+
+                            break;
+                        }
+                        case LocationCreate lc:
+                            involvedEntities.Add(lc.LocationId);
+                            break;
+                        case CharacterCreate cc:
+                        {
+                            involvedEntities.Add(cc.CharacterId); if (cc.CurrentLocationId != null)
+                            {
+                                involvedEntities.Add(cc.CurrentLocationId);
+                            }
+
+                            break;
+                        }
+                        case ItemCreate ic:
+                        {
+                            involvedEntities.Add(ic.ItemId); 
+                            involvedEntities.Add(ic.HolderId);
+                            break;
+                        }
+                        case TravelChange tc:
+                            involvedEntities.Add(tc.CharacterId); involvedEntities.Add(tc.DestinationLocationId);
+                            break;
+                        case RestChange restC:
+                            involvedEntities.Add(restC.CharacterId); involvedEntities.Add(restC.LocationId);
+                            break;
+                        case FactionStateChange fsc:
+                            involvedEntities.Add(fsc.FactionId);
+                            break;
+                        case QuestCreate qc:
+                        {
+                            involvedEntities.Add(qc.QuestId); 
+                            if (qc.GiverId != null)
+                            {
+                                involvedEntities.Add(qc.GiverId);
+                            }
+
+                            foreach (var l in qc.RelatedLocationIds) involvedEntities.Add(l);
+                            foreach (var f in qc.RelatedFactionIds) involvedEntities.Add(f);
+
+                            break;
+                        }
+                        case QuestProgress qp:
+                        {
+                            involvedEntities.Add(qp.QuestId); 
+                            if (qp.InvolvedIds != null)
+                            {
+                                foreach (var inv in qp.InvolvedIds) involvedEntities.Add(inv);
+                            }
+
+                            break;
+                        }
+                        case FactionCreate fc:
+                            involvedEntities.Add(fc.FactionId);
+                            break;
+                        case RelationshipChange relc:
+                            involvedEntities.Add(relc.SourceId); involvedEntities.Add(relc.TargetId);
+                            break;
                     }
-                    else if (c is ActivityChange ac) involvedEntities.Add(ac.CharacterId);
-                    else if (c is ScheduleChange shc) involvedEntities.Add(shc.CharacterId);
-                    else if (c is ItemTransfer it) { involvedEntities.Add(it.ItemId); involvedEntities.Add(it.ToHolderId); }
-                    else if (c is AttributeChange atc) involvedEntities.Add(atc.CharacterId);
-                    else if (c is MoodChange mc) involvedEntities.Add(mc.CharacterId);
-                    else if (c is RulesetAction ra) 
-                    { 
-                        involvedEntities.Add(ra.ActorId); 
-                        if (ra.TargetIds != null) foreach (var tid in ra.TargetIds) involvedEntities.Add(tid);
-                    }
-                    else if (c is LocationCreate lc) involvedEntities.Add(lc.LocationId);
-                    else if (c is CharacterCreate cc) { involvedEntities.Add(cc.CharacterId); if (cc.CurrentLocationId != null) involvedEntities.Add(cc.CurrentLocationId); }
-                    else if (c is ItemCreate ic) { involvedEntities.Add(ic.ItemId); if (ic.HolderId != null) involvedEntities.Add(ic.HolderId); }
-                    else if (c is TravelChange tc) { involvedEntities.Add(tc.CharacterId); involvedEntities.Add(tc.DestinationLocationId); }
-                    else if (c is FactionStateChange fsc) involvedEntities.Add(fsc.FactionId);
-                    else if (c is QuestCreate qc) 
-                    { 
-                        involvedEntities.Add(qc.QuestId); 
-                        if (qc.GiverId != null) involvedEntities.Add(qc.GiverId);
-                        if (qc.RelatedLocationIds != null) foreach (var l in qc.RelatedLocationIds) involvedEntities.Add(l);
-                        if (qc.RelatedFactionIds != null) foreach (var f in qc.RelatedFactionIds) involvedEntities.Add(f);
-                    }
-                    else if (c is QuestProgress qp) 
-                    { 
-                        involvedEntities.Add(qp.QuestId); 
-                        if (qp.InvolvedIds != null) foreach (var inv in qp.InvolvedIds) involvedEntities.Add(inv);
-                    }
-                    else if (c is FactionCreate fc) involvedEntities.Add(fc.FactionId);
-                    else if (c is RelationshipChange relc) { involvedEntities.Add(relc.SourceId); involvedEntities.Add(relc.TargetId); }
                 }
 
                 if (involvedEntities.Count > 0)
@@ -237,20 +326,88 @@ public class CampaignRepository
         foreach (var c in characters)
         {
             if (c.CurrentHp <= c.MaxHp * 0.25f && c.CurrentHp > 0)
-                pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id, $"{c.Name} is critically wounded ({c.CurrentHp}/{c.MaxHp} HP).", "Character:CriticallyWounded"));
-            else if (c.CurrentHp <= 0)
-                pressure.Add(new WorldPressureItem(PressureSeverity.EngineWarning, c.Id, $"{c.Name} is dying or dead.", "Character:Dying"));
-
-            foreach (var status in c.SystemStats.StatusEffects)
             {
-                if (badCategories.Contains(status.Category, StringComparer.OrdinalIgnoreCase) || status.Category == null)
-                    pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id, $"{c.Name} is suffering from {status.Name} ({status.Category ?? "Unknown"}).", $"Character:Status:{status.Name}"));
+                pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is critically wounded ({c.CurrentHp}/{c.MaxHp} HP).", "Character:CriticallyWounded"));
+            }
+            else if (c.CurrentHp <= 0)
+            {
+                pressure.Add(new(PressureSeverity.EngineWarning, c.Id, $"{c.Name} is dying or dead.", "Character:Dying"));
+            }
+
+            if (c.SystemStats?.StatusEffects != null)
+            {
+                foreach (var status in c.SystemStats.StatusEffects)
+                {
+                    if (badCategories.Contains(status.Category, StringComparer.OrdinalIgnoreCase))
+                    {
+                        pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is suffering from {status.Name} ({status.Category ?? "Unknown"}).", $"Character:Status:{status.Name}"));
+                    }
+                }
             }
 
             foreach (var kvp in c.Needs.ActiveNeeds)
             {
-                if (kvp.Value > 80f)
-                    pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id, $"{c.Name} is in desperate need: {kvp.Key} ({kvp.Value:F0}%).", $"Character:Need:{kvp.Key}"));
+                switch (kvp.Value)
+                {
+                    case > 80f:
+                        pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is in desperate need: {kvp.Key} ({kvp.Value:F0}%).", $"Character:Need:{kvp.Key}"));
+                        break;
+                    case > 50f:
+                        pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} needs should be acted upon: {kvp.Key} ({kvp.Value:F0}%).", $"Character:Need:{kvp.Key}"));
+                        break;
+                    case > 25f:
+                        pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} start feeling the need: {kvp.Key} ({kvp.Value:F0}%).", $"Character:Need:{kvp.Key}"));
+                        break;
+                }
+            }
+
+            if (c.SystemStats != null)
+            {
+                if (c.SystemStats.Morale <= 10f)
+                {
+                    pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name}'s morale is broken ({c.SystemStats.Morale:F0}%). Consider a breakdown, retreat, or refusal to fight.", "Character:Attribute:Morale"));
+                }
+                
+                if (c.SystemStats.Willpower <= 10f)
+                {
+                    pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name}'s willpower is drained ({c.SystemStats.Willpower:F0}%). They are highly susceptible to manipulation, fear, or giving up.", "Character:Attribute:Willpower"));
+                }
+
+                if (c.SystemStats.Temperature <= -20f)
+                {
+                    pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is freezing to death ({c.SystemStats.Temperature:F0}). They should exhibit severe physical symptoms.", "Character:Attribute:TemperatureLow"));
+                }
+                else if (c.SystemStats.Temperature >= 50f)
+                {
+                    pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is suffering from extreme heat ({c.SystemStats.Temperature:F0}). They should exhibit exhaustion or heatstroke.", "Character:Attribute:TemperatureHigh"));
+                }
+
+                if (c.SystemStats.Attributes != null)
+                {
+                    foreach (var attr in c.SystemStats.Attributes)
+                    {
+                        var key = attr.Key.ToLowerInvariant();
+                        if ((key == "corruption" || key == "fear" || key == "exhaustion") && attr.Value >= 90f)
+                        {
+                            pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is consumed by {attr.Key} ({attr.Value:F0}). They should exhibit severe physical or mental symptoms.", $"Character:Attribute:{attr.Key}"));
+                        }
+                    }
+                }
+            }
+
+            if (c.Social?.Relationships != null)
+            {
+                foreach (var rel in c.Social.Relationships)
+                {
+                    if (rel.Value <= -80)
+                    {
+                        pressure.Add(new(PressureSeverity.NarrativePrompt, c.Id, $"{c.Name} actively despises '{rel.Key}' ({rel.Value} relationship). Their dialogue and actions towards them should be highly antagonistic or hostile.", $"Character:Relationship:{rel.Key}"));
+                    }
+                    else if (rel.Value >= 80)
+                    {
+                        pressure.Add(new(PressureSeverity.NarrativePrompt, c.Id, $"{c.Name} has deep trust and affection for '{rel.Key}' (+{rel.Value} relationship). They should act protective or highly agreeable towards them.", $"Character:Relationship:{rel.Key}"));
+                    }
+                }
             }
         }
         return pressure;
@@ -282,7 +439,7 @@ public class CampaignRepository
                 AmbientCrowd = null,
                 LastVisitedDay = null
             };
-            return new SceneView
+            return new()
             {
                 Location = stub,
                 PresentNPCs = [],
@@ -418,6 +575,10 @@ public class CampaignRepository
                 NeedDescriptors: needDescriptors,
                 BehavioralSummary: behavioralSummary,
                 Notes: npc.Notes,
+                KeepAlive: npc.KeepAlive,
+                CurrentAppearance: npc.CurrentAppearance,
+                VisualTags: npc.VisualTags,
+                DistinctiveFeatures: npc.DistinctiveFeatures,
                 SystemStats: npc.SystemStats
             );
         }).ToList();
@@ -442,7 +603,8 @@ public class CampaignRepository
             q.Objectives.Count,
             q.Urgency,
             q.DeadlineDay,
-            q.GiverId
+            q.GiverId,
+            q.LastUpdatedDay
         )).ToList();
 
         var relevantFactions = await GetFactionsForLocationAsync(session, locationId, effective);
@@ -450,20 +612,33 @@ public class CampaignRepository
         {
             int? rep = null;
             var playerRepChar = npcs.FirstOrDefault(c => c.Social?.FactionReputations?.ContainsKey(f.Id) == true);
-            if (playerRepChar != null && playerRepChar.Social != null && playerRepChar.Social.FactionReputations != null)
+            if (playerRepChar is { Social.FactionReputations: not null })
+            {
                 rep = playerRepChar.Social.FactionReputations[f.Id];
+            }
 
             var localStance = FactionStance.Neutral;
             if (f.StanceToward != null)
             {
                 foreach (var other in relevantFactions)
                 {
-                    if (other.Id == f.Id) continue;
+                    if (other.Id == f.Id)
+                    {
+                        continue;
+                    }
+
                     if (f.StanceToward.TryGetValue(other.Id, out var stance))
                     {
                         if (stance == FactionStance.AtWar) { localStance = FactionStance.AtWar; break; }
-                        if (stance == FactionStance.Hostile && localStance != FactionStance.AtWar) localStance = FactionStance.Hostile;
-                        if (stance == FactionStance.Allied && localStance == FactionStance.Neutral) localStance = FactionStance.Allied;
+                        if (stance == FactionStance.Hostile && localStance != FactionStance.AtWar)
+                        {
+                            localStance = FactionStance.Hostile;
+                        }
+
+                        if (stance == FactionStance.Allied && localStance == FactionStance.Neutral)
+                        {
+                            localStance = FactionStance.Allied;
+                        }
                     }
                 }
             }
@@ -482,7 +657,7 @@ public class CampaignRepository
             .FirstOrDefault(e => e.Summary.Contains("travel", StringComparison.OrdinalIgnoreCase) ||
                                  e.Summary.Contains("en route", StringComparison.OrdinalIgnoreCase) ||
                                  e.Summary.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
-        string? lastKnownTravel = travelEvent?.Summary;
+        var lastKnownTravel = travelEvent?.Summary;
 
         var sceneView = new SceneView
         {
@@ -564,7 +739,7 @@ public class CampaignRepository
         // Persist simulation narrative events
         foreach (var narrative in simResult.NarrativeEvents)
         {
-            await LogEventAsync(session, new Event 
+            await LogEventAsync(session, new()
             { 
                 Id = "events/" + Guid.NewGuid(), 
                 Summary = narrative, 
@@ -584,7 +759,7 @@ public class CampaignRepository
         // WorldPressure from the engine can be surfaced by the caller (AdvanceWorld tool) if desired.
         // For now we keep AdvanceResult focused on time + narratives (matching prior contract).
 
-        return new AdvanceResult 
+        return new()
         { 
             NewTime = time, 
             SimulatorEvents = simResult.NarrativeEvents.ToList() 
@@ -642,10 +817,22 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
-        if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
-        if (category.HasValue) q = q.AndAlso().WhereEquals(x => x.Category, category.Value);
+        if (!string.IsNullOrEmpty(query))
+        {
+            q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
+        }
+
+        if (category.HasValue)
+        {
+            q = q.AndAlso().WhereEquals(x => x.Category, category.Value);
+        }
+
         var events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
-        foreach (var ev in events) { if (ev.Details != null) ev.Details = SanitizeDetails(ev.Details); }
+        foreach (var ev in events) { if (ev.Details != null)
+            {
+                ev.Details = SanitizeDetails(ev.Details);
+            }
+        }
         if (!string.IsNullOrEmpty(effective))
         {
             // strict for events (no legacy global cross-camp)
@@ -665,9 +852,17 @@ public class CampaignRepository
         // Current implementation uses direct ID or name lookup (entities are caller-ID-controlled).
         _ = ResolveCampaign(campaignName);
         var character = await session.LoadAsync<Character>(identifier);
-        if (character != null) return character;
+        if (character != null)
+        {
+            return character;
+        }
+
         character = await session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
-        if (character != null) return character;
+        if (character != null)
+        {
+            return character;
+        }
+
         return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>().WhereEquals(x => x.Name, identifier).Fuzzy(0.4m).FirstOrDefaultAsync();
     }
 
@@ -678,11 +873,15 @@ public class CampaignRepository
     public async Task UpsertCharacterAsync(IAsyncDocumentSession session, Character character, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(character.Id))
+        {
             throw new ArgumentException("Character.Id is required for upsert.");
+        }
 
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(character.CampaignName))
+        {
             character.CampaignName = effective;
+        }
 
         character.LastUpdated = DateTime.UtcNow;
 
@@ -718,7 +917,7 @@ public class CampaignRepository
         session.Advanced.WaitForIndexesAfterSaveChanges(
             timeout: TimeSpan.FromSeconds(3),
             throwOnTimeout: false,
-            indexes: new[] { "Character/Search" });
+            indexes: ["Character/Search"]);
     }
 
     /// <summary>
@@ -729,7 +928,7 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         var id = _keys.StateTime(effective);
         var time = await session.LoadAsync<CampaignTime>(id);
-        if (time == null) { time = new CampaignTime { Id = id }; await session.StoreAsync(time, id); }
+        if (time == null) { time = new() { Id = id }; await session.StoreAsync(time, id); }
         return time;
     }
 
@@ -754,7 +953,7 @@ public class CampaignRepository
         var config = await session.LoadAsync<CampaignConfig>(id);
         if (config == null)
         {
-            config = new CampaignConfig { Id = id };
+            config = new() { Id = id };
             await session.StoreAsync(config, id);
         }
         return config;
@@ -781,7 +980,7 @@ public class CampaignRepository
         var docId = _keys.NeedDescriptors(effective);
         var config = await session.LoadAsync<NeedDescriptorsConfig>(docId);
         var source = config?.Descriptors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        return new Dictionary<string, string>(source, StringComparer.OrdinalIgnoreCase);
+        return new(source, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -803,9 +1002,15 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(@event.CampaignName))
+        {
             @event.CampaignName = effective;  // strict for events (campaign-specific per feedback)
+        }
 
-        if (@event.Details != null) @event.Details = SanitizeDetails(@event.Details);
+        if (@event.Details != null)
+        {
+            @event.Details = SanitizeDetails(@event.Details);
+        }
+
         await session.StoreAsync(@event);
     }
 
@@ -863,11 +1068,15 @@ public class CampaignRepository
     public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(lore.Id))
+        {
             throw new ArgumentException("Lore.Id is required for upsert.");
+        }
 
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(lore.CampaignName))
+        {
             lore.CampaignName = effective;
+        }
 
         lore.LastUpdated = DateTime.UtcNow;
 
@@ -895,13 +1104,21 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>();
-        if (!string.IsNullOrEmpty(query)) q = q.OpenSubclause().WhereEquals(x => x.Title, query).Fuzzy(0.4m).OrElse().WhereEquals(x => x.Content, query).Fuzzy(0.4m).CloseSubclause();
-        if (tags != null && tags.Length > 0) { foreach (var tag in tags)
+        if (!string.IsNullOrEmpty(query))
+        {
+            q = q.OpenSubclause().WhereEquals(x => x.Title, query).Fuzzy(0.4m).OrElse().WhereEquals(x => x.Content, query).Fuzzy(0.4m).CloseSubclause();
+        }
+
+        if (tags is { Length: > 0 }) { foreach (var tag in tags)
             {
-                q = q.AndAlso().ContainsAny(x => x.Tags, new[] { tag });
+                q = q.AndAlso().ContainsAny(x => x.Tags, [tag]);
             }
         }
-        if (!string.IsNullOrEmpty(category)) q = q.AndAlso().WhereEquals(x => x.Category, category);
+        if (!string.IsNullOrEmpty(category))
+        {
+            q = q.AndAlso().WhereEquals(x => x.Category, category);
+        }
+
         var list = await q.Take(limit).ToListAsync();
         if (!string.IsNullOrEmpty(effective))
         {
@@ -916,11 +1133,15 @@ public class CampaignRepository
     public async Task UpsertLocationAsync(IAsyncDocumentSession session, Location location, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(location.Id))
+        {
             throw new ArgumentException("Location.Id is required for upsert.");
+        }
 
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(location.CampaignName))
+        {
             location.CampaignName = effective;
+        }
 
         SanitizeLocation(location);
         location.LastUpdated = DateTime.UtcNow;
@@ -955,9 +1176,21 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Location, Location_Search>();
-        if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Name, $"*{query}*").OrElse().Search(x => x.Description, $"*{query}*");
-        if (type.HasValue) q = q.AndAlso().WhereEquals(x => x.Type, type.Value);
-        if (!string.IsNullOrEmpty(parentId)) q = q.AndAlso().WhereEquals(x => x.ParentLocationId, parentId);
+        if (!string.IsNullOrEmpty(query))
+        {
+            q = q.AndAlso().Search(x => x.Name, $"*{query}*").OrElse().Search(x => x.Description, $"*{query}*");
+        }
+
+        if (type.HasValue)
+        {
+            q = q.AndAlso().WhereEquals(x => x.Type, type.Value);
+        }
+
+        if (!string.IsNullOrEmpty(parentId))
+        {
+            q = q.AndAlso().WhereEquals(x => x.ParentLocationId, parentId);
+        }
+
         var locations = await q.Take(limit).ToListAsync();
         foreach (var l in locations)
         {
@@ -977,11 +1210,15 @@ public class CampaignRepository
     public async Task UpsertRumorAsync(IAsyncDocumentSession session, Rumor rumor, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(rumor.Id))
+        {
             throw new ArgumentException("Rumor.Id is required for upsert.");
+        }
 
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(rumor.CampaignName))
+        {
             rumor.CampaignName = effective;  // strict for rumors (campaign-specific per feedback)
+        }
 
         rumor.LastUpdated = DateTime.UtcNow;
         if (rumor.DayCreated == 0)
@@ -1016,9 +1253,21 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Rumor, Rumor_Search>();
-        if (!string.IsNullOrEmpty(query)) q = q.AndAlso().Search(x => x.Subject, $"*{query}*").OrElse().Search(x => x.CurrentText, $"*{query}*");
-        if (!string.IsNullOrEmpty(regionId)) q = q.AndAlso().WhereEquals(x => x.RegionLocationId, regionId);
-        if (state.HasValue) q = q.AndAlso().WhereEquals(x => x.State, state.Value);
+        if (!string.IsNullOrEmpty(query))
+        {
+            q = q.AndAlso().Search(x => x.Subject, $"*{query}*").OrElse().Search(x => x.CurrentText, $"*{query}*");
+        }
+
+        if (!string.IsNullOrEmpty(regionId))
+        {
+            q = q.AndAlso().WhereEquals(x => x.RegionLocationId, regionId);
+        }
+
+        if (state.HasValue)
+        {
+            q = q.AndAlso().WhereEquals(x => x.State, state.Value);
+        }
+
         var list = await q.Take(limit).ToListAsync();
         if (!string.IsNullOrEmpty(effective))
         {
@@ -1054,11 +1303,15 @@ public class CampaignRepository
     public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(item.Id))
+        {
             throw new ArgumentException("Item.Id is required for upsert.");
+        }
 
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(item.CampaignName))
+        {
             item.CampaignName = effective;
+        }
 
         SanitizeItem(item);
         item.LastUpdated = DateTime.UtcNow;
@@ -1085,11 +1338,18 @@ public class CampaignRepository
     {
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("locations/".Length);
+        }
         else if (cleanQuery.StartsWith("locs/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("locs/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return [];
+        }
 
         var suggestions = await session.Query<Location, Location_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -1120,11 +1380,18 @@ public class CampaignRepository
     {
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("chars/".Length);
+        }
         else if (cleanQuery.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("characters/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return [];
+        }
 
         var suggestions = await session.Query<Character, Character_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -1155,11 +1422,18 @@ public class CampaignRepository
     {
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("items/".Length);
+        }
         else if (cleanQuery.StartsWith("item/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("item/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return [];
+        }
 
         var suggestions = await session.Query<Item, Item_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -1193,9 +1467,14 @@ public class CampaignRepository
     {
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("factions/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return [];
+        }
 
         var suggestions = await session.Query<Faction, Faction_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -1214,7 +1493,9 @@ public class CampaignRepository
             foreach (var f in byName)
             {
                 if (suggestions.All(s => s.Id != f.Id) && suggestions.Count < 3)
+                {
                     suggestions.Add(f);
+                }
             }
         }
         return suggestions;
@@ -1227,9 +1508,14 @@ public class CampaignRepository
     {
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
+        {
             cleanQuery = cleanQuery.Substring("quests/".Length);
+        }
 
-        if (string.IsNullOrWhiteSpace(cleanQuery)) return [];
+        if (string.IsNullOrWhiteSpace(cleanQuery))
+        {
+            return [];
+        }
 
         var suggestions = await session.Query<Quest, Quest_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -1248,7 +1534,9 @@ public class CampaignRepository
             foreach (var q in byName)
             {
                 if (suggestions.All(s => s.Id != q.Id) && suggestions.Count < 3)
+                {
                     suggestions.Add(q);
+                }
             }
         }
         return suggestions;
@@ -1285,11 +1573,15 @@ public class CampaignRepository
     public async Task UpsertFactionAsync(IAsyncDocumentSession session, Faction faction, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(faction.Id))
+        {
             throw new ArgumentException("Faction.Id is required for upsert.");
+        }
 
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(faction.CampaignName))
+        {
             faction.CampaignName = effective;
+        }
 
         faction.LastUpdated = DateTime.UtcNow;
 
@@ -1329,11 +1621,15 @@ public class CampaignRepository
     public async Task UpsertQuestAsync(IAsyncDocumentSession session, Quest quest, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(quest.Id))
+        {
             throw new ArgumentException("Quest.Id is required for upsert.");
+        }
 
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(quest.CampaignName))
+        {
             quest.CampaignName = effective;
+        }
 
         quest.LastUpdated = DateTime.UtcNow;
 

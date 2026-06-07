@@ -7,22 +7,18 @@ namespace CampaignVault.Data.ChangeHandlers;
 
 public class TravelChangeHandler : IWorldChangeHandler
 {
-    private readonly TravelEncounterRule _travelRule;
+    private readonly EncounterResolver _resolver;
 
-    public TravelChangeHandler() : this(new TravelEncounterRule()) { }
+    public TravelChangeHandler() : this(new EncounterResolver()) { }
 
-    /// <summary>
-    /// Test seam: allows injecting a TravelEncounterRule with a controlled random source
-    /// (e.g. deterministic Func<double>) so interrupt behavior can be forced reliably in tests.
-    /// </summary>
-    public TravelChangeHandler(TravelEncounterRule travelRule)
+    public TravelChangeHandler(EncounterResolver resolver)
     {
-        _travelRule = travelRule ?? new TravelEncounterRule();
+        _resolver = resolver ?? new EncounterResolver();
     }
 
     public bool ShouldHandle(WorldChange change) => change is TravelChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, System.Threading.CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
     {
         var tc = (TravelChange)change;
 
@@ -41,9 +37,9 @@ public class TravelChangeHandler : IWorldChangeHandler
         var time = await context.GetCurrentTimeAsync();
 
         // 3. Time & Need costs based on distance
-        int totalHours = tc.TravelCostHoursOverride ?? 4; // Fallback default until exit metadata is available
-        string? terrain = tc.TerrainOverride;
-        int encounterRiskModifier = tc.EncounterRiskModifier ?? 0;
+        var totalHours = tc.TravelCostHoursOverride ?? 4; // Fallback default until exit metadata is available
+        var terrain = tc.TerrainOverride;
+        var encounterRiskModifier = tc.EncounterRiskModifier ?? 0;
 
         // 2. Lookup exit metadata if we have the start location
         if (character.CurrentLocationId != null)
@@ -58,21 +54,35 @@ public class TravelChangeHandler : IWorldChangeHandler
                 var exit = startLoc.Exits?.FirstOrDefault(e => e.TargetLocationId == tc.DestinationLocationId);
                 if (exit != null)
                 {
-                    if (tc.TravelCostHoursOverride == null && exit.TravelCostHours.HasValue && exit.TravelCostHours.Value > 0) totalHours = exit.TravelCostHours.Value;
-                    if (tc.TerrainOverride == null) terrain = exit.Terrain;
+                    if (tc.TravelCostHoursOverride == null && exit.TravelCostHours.HasValue && exit.TravelCostHours.Value > 0)
+                    {
+                        totalHours = exit.TravelCostHours.Value;
+                    }
+
+                    if (tc.TerrainOverride == null)
+                    {
+                        terrain = exit.Terrain;
+                    }
                 }
             }
         }
 
-        var (interrupted, hoursTraveled, deltas, narratives) = _travelRule.EvaluateTravel(character, destination, totalHours, terrain, encounterRiskModifier);
+        var (interrupted, hoursTraveled, deltas, narratives) = await _resolver.EvaluateAsync(
+            context,
+            character, 
+            destination, 
+            totalHours, 
+            6, // bucket size 6 hours
+            encounterRiskModifier,
+            "Travel",
+            terrain);
 
         // Apply partial time costs
         if (hoursTraveled > 0)
         {
-            time.TotalDaysElapsed += (time.HourOfDay + hoursTraveled) / 24;
-            time.HourOfDay = (time.HourOfDay + hoursTraveled) % 24;
+            time.AdvanceHours(hoursTraveled);
 
-            float tirednessDelta = (hoursTraveled / 4.0f) * 10f;
+            var tirednessDelta = (hoursTraveled / 4.0f) * 10f;
             if (tirednessDelta > 0)
             {
                 await context.Dispatcher.DispatchMutationAsync(context, new NeedChange
@@ -103,7 +113,7 @@ public class TravelChangeHandler : IWorldChangeHandler
             }, ct);
 
             // Mark destination as visited only if we actually arrived
-            destination.LastVisitedDay = time.TotalDaysElapsed;
+            destination.LastVisitedDay = (int)time.TotalDaysElapsed;
             destination.LastUpdated = DateTime.UtcNow;
             
             context.RecordMessage($"Travel: {character.Name} traveled to {destination.Name}. {tc.Narrative}");

@@ -49,9 +49,10 @@ public class WorldChangeDispatcherTests
 
         var result = await dispatcher.DispatchAsync(
             null!, // session not used when no handlers
-            new WorldChange[] { new HpChange { CharacterId = "c1", Delta = -5 } },
+            [new HpChange { CharacterId = "c1", Delta = -5 }],
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask);
 
         Assert.False(result.Success);
@@ -78,13 +79,13 @@ public class WorldChangeDispatcherTests
 
         var result = await dispatcher.DispatchAsync(
             null!,
-            new WorldChange[]
-            {
+            [
                 new HpChange { CharacterId = "c1", Delta = 3 },
                 new StatusChange { CharacterId = "c1", Status = "Blessed" }
-            },
+            ],
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask);
 
         Assert.True(result.Success);
@@ -111,9 +112,10 @@ public class WorldChangeDispatcherTests
 
         var result = await dispatcher.DispatchAsync(
             null!,
-            new WorldChange[] { new HpChange { CharacterId = "c1", Delta = 1 } },
+            [new HpChange { CharacterId = "c1", Delta = 1 }],
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask);
 
         Assert.True(result.Success);
@@ -135,9 +137,10 @@ public class WorldChangeDispatcherTests
 
         var result = await dispatcher.DispatchAsync(
             null!,
-            new WorldChange[] { new HpChange { CharacterId = "c1", Delta = 1 } },
+            [new HpChange { CharacterId = "c1", Delta = 1 }],
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask);
 
         Assert.False(result.Success);
@@ -159,13 +162,13 @@ public class WorldChangeDispatcherTests
 
         var result = await dispatcher.DispatchAsync(
             null!, // safe because no real handler that needs session will run
-            new WorldChange[]
-            {
+            [
                 new HpChange { CharacterId = "c1", Delta = 5 },
                 new MoodChange { CharacterId = "c1", NewMood = "happy" } // no handler
-            },
+            ],
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask);
 
         Assert.False(result.Success); // because MoodChange is unhandled
