@@ -31,3 +31,23 @@ If strict entity isolation is required later, we can introduce a `CampaignId` pr
 
 ### 3. Simulation Scope
 The `AdvanceWorldAsync` simulation currently operates on a global scope for entities (it evaluates all characters with a schedule). However, it passes the `effective` campaign context down into the simulation loop so rules can (in the future) filter their evaluation scope based on the active campaign. Because time is strictly isolated per campaign, the time-decay mechanics correctly apply only to the running campaign.
+
+## MCP Context & Session State
+
+Because CampaignVault is hosted as a Model Context Protocol (MCP) server utilizing Server-Sent Events (SSE) and HTTP POSTs, standard ASP.NET Core `AsyncLocal` contexts will tear down between individual tool invocations. 
+To preserve context (like the currently selected campaign) across the logical "session" of an LLM client, `ICurrentCampaignContext` is implemented as a long-lived Singleton with standard backing fields, preventing context loss on sequential tool calls. Furthermore, data-access methods enforce optimistic concurrency with built-in retry loops inside the `CampaignTools` wrapper to seamlessly recover from transient `StateDriftConflict` errors on rapidly successive edits (common during heavy simulation phases).
+
+## Environmental & Economic Simulation
+
+Phase 8 expanded the simulation depth to include physics, economics, and logistics, handled by deterministic engine rules rather than LLM guesswork:
+- **Location State & Visuals:** Locations possess `CurrentState` (e.g., "burning", "flooded"), `DistinctiveFeatures`, and `VisualTags`. Changes to these properties are managed by `LocationUpdateHandler` and directly inform the LLM's `GetScene` context, ensuring narrative fidelity to mechanical conditions.
+- **Faction Economics:** Factions operate on supply and demand through `EconomicDemand` dictionaries. The `FactionEcosystemRule` simulates economic decay/recovery and resource consumption based on time cycles and current faction stances (e.g., going to war increases demand for weapons/armor).
+- **Party Intercept:** The core loop identifies when the party is carrying items that factions demand and emits actionable `WorldPressure` (e.g., "The party is carrying highly sought-after Spell Scrolls").
+
+## Ruleset Architecture (Future/In-Progress)
+
+CampaignVault uses a pluggable ruleset system to ensure mechanical determinism (advantage, dice pools, degrees of success) while avoiding hard-coded 5e logic in the core engine. 
+Future architectural milestones will formalize this into focused interfaces:
+- `ICombatRuleset`, `IActionResolution`, `IStatusApplication`, `IInitiative`
+- `ruleset_action` will dispatch directly into the current campaign's selected ruleset implementation for validation and mechanical execution, returning the outcome.
+- Rulesets will be able to inject their own `WorldPressure` items directly into `GetWorldState` or `GetScene` (e.g., a specific Ruleset detecting a poisoned condition and contributing "This character has a condition that should be resolved this round").
