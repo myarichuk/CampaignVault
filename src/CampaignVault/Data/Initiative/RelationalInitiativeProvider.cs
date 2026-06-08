@@ -46,7 +46,9 @@ public sealed class RelationalInitiativeProvider : INpcInitiativeSignalProvider
                 var target = ev.RelatedEntityId ?? ev.Involved.FirstOrDefault(id => !id.Equals(npc.Id, StringComparison.OrdinalIgnoreCase));
                 if (!string.IsNullOrWhiteSpace(target))
                 {
-                    AddCandidate(candidates, seenKeys, BuildAffectionCandidate(npc, target, presentById, 85, "Strong bond — may seek meaningful connection (conversation, shared activity)."));
+                    AddCandidate(candidates, seenKeys, BuildAffectionCandidate(
+                        npc, target, presentById, $"affection:{npc.Id}:{target}", 85,
+                        "Strong bond — may seek meaningful connection (conversation, shared activity)."));
                 }
             }
             else if (string.Equals(ev.EmotionalBeat, "betrayal", StringComparison.OrdinalIgnoreCase)
@@ -109,34 +111,40 @@ public sealed class RelationalInitiativeProvider : INpcInitiativeSignalProvider
                 continue;
             }
 
+            var persistentKey = RelationalInitiativeKeys.TryGetPersistentKey(npc.Id, targetId, value);
+            if (persistentKey == null)
+            {
+                continue;
+            }
+
             if (value >= 80)
             {
                 AddCandidate(candidates, seenKeys, BuildAffectionCandidate(
-                    npc, targetId, presentById, 80,
+                    npc, targetId, presentById, persistentKey, 80,
                     "Strong bond — may seek meaningful connection (conversation, shared activity)."));
             }
             else if (value >= 60)
             {
                 AddCandidate(candidates, seenKeys, BuildAffectionCandidate(
-                    npc, targetId, presentById, 55,
+                    npc, targetId, presentById, persistentKey, 55,
                     "Feels warmly — may check in, share news, or offer comfort."));
             }
             else if (value <= -60)
             {
                 var name = presentById.TryGetValue(targetId, out var target) ? target.Name : "someone present";
                 AddCandidate(candidates, seenKeys, new InitiativeCandidate(
-                    $"resentment:{npc.Id}:{targetId}",
+                    persistentKey,
                     npc.Id,
                     InitiativeDriver.Relational,
                     MemoryUrgency.High,
                     $"Strong resentment toward {name} — may be guarded, sharp, or avoidant.",
                     65));
             }
-            else if (value >= 40)
+            else
             {
                 var name = presentById.TryGetValue(targetId, out var target) ? target.Name : "someone present";
                 AddCandidate(candidates, seenKeys, new InitiativeCandidate(
-                    $"trust:{npc.Id}:{targetId}",
+                    persistentKey,
                     npc.Id,
                     InitiativeDriver.Relational,
                     MemoryUrgency.Normal,
@@ -152,12 +160,13 @@ public sealed class RelationalInitiativeProvider : INpcInitiativeSignalProvider
         Character npc,
         string targetId,
         IReadOnlyDictionary<string, Character> presentById,
+        string key,
         double weight,
         string framing)
     {
         var name = presentById.TryGetValue(targetId, out var target) ? target.Name : "someone present";
         return new InitiativeCandidate(
-            $"affection:{npc.Id}:{targetId}",
+            key,
             npc.Id,
             InitiativeDriver.Relational,
             MemoryUrgency.Normal,

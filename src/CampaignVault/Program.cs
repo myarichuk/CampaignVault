@@ -46,6 +46,7 @@ builder.Services.AddSingleton<ISimulationRule, FactionEcosystemRule>();
 builder.Services.AddSingleton<ISimulationRule, QuestStalenessRule>();
 builder.Services.AddSingleton<ISimulationRule, NeedConflictRule>();
 builder.Services.AddSingleton<ISimulationRule, MemorySalienceDecayRule>();
+builder.Services.AddSingleton<ISimulationRule, RelationalRearmRule>();
 builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>();
 
 // WorldChange handlers (new extensible dispatch system - "ShouldHandle" responsibility pattern)

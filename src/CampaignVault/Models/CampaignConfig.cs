@@ -143,4 +143,10 @@ public class CampaignConfig
     ];
 
     public int InitiativeSuppressionRetentionDays { get; set; } = 30;
+
+    /// <summary>
+    /// Days after a persistent relationship initiative was surfaced before sim may re-arm it
+    /// (affection, resentment, trust bands only).
+    /// </summary>
+    public int RelationalRearmIntervalDays { get; set; } = 7;
 }

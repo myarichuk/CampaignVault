@@ -24,14 +24,22 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         _fixture = fixture;
     }
 
-    private CampaignRepository CreateSimRepo()
+    private CampaignRepository CreateSimRepo(bool includeRelationalRearm = false)
     {
-        var engine = new DefaultSimulationEngine(
-        [
+        var rules = new List<ISimulationRule>
+        {
             new NeedsAccumulationRule(),
             new NeedConflictRule(),
             new MemorySalienceDecayRule()
-        ]);
+        };
+        if (includeRelationalRearm)
+        {
+            rules.Add(new RelationalRearmRule(
+                new CampaignInitiativeSuppressionStore(),
+                _keys));
+        }
+
+        var engine = new DefaultSimulationEngine(rules);
         return new CampaignRepository(
             _fixture.Store,
             engine,
@@ -41,11 +49,13 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             initiativeService: InitiativeServiceFactory.CreateDefault());
     }
 
-    private async Task SeedCampaignAsync(string campaignName, int day = 10)
+    private async Task SeedCampaignAsync(string campaignName, int day = 10, Action<CampaignConfig>? configure = null)
     {
         using var session = _fixture.Store.OpenAsyncSession();
         await session.StoreAsync(new Campaign { Id = _keys.Meta(campaignName), Name = campaignName, DisplayName = campaignName });
-        await session.StoreAsync(new CampaignConfig { Id = _keys.Config(campaignName) });
+        var config = new CampaignConfig { Id = _keys.Config(campaignName) };
+        configure?.Invoke(config);
+        await session.StoreAsync(config);
         await session.StoreAsync(new CampaignTime { Id = _keys.StateTime(campaignName), TotalDaysElapsed = day });
         await session.SaveChangesAsync();
     }
@@ -220,5 +230,111 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(result.WorldPressure);
         Assert.Contains(result.WorldPressure!, p => p.Contains("Guard", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(result.WorldPressure!, p => p.Contains("NARRATIVE PROMPT", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task RelationalRearmRule_ReSurfacesAffection_AfterInterval()
+    {
+        const string campaign = "relational-rearm";
+        const int rearmInterval = 3;
+        await SeedCampaignAsync(campaign, day: 10, configure: c => c.RelationalRearmIntervalDays = rearmInterval);
+
+        var repo = CreateSimRepo(includeRelationalRearm: true);
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var locId = "locs/inn";
+        var npcId = "chars/barliman";
+        var pcId = "chars/pc1";
+        await session.StoreAsync(new Location { Id = locId, Name = "Inn", CampaignName = campaign });
+        await session.StoreAsync(new Character
+        {
+            Id = npcId,
+            Name = "Barliman",
+            CampaignName = campaign,
+            CurrentLocationId = locId,
+            Schedule = new Schedule { DefaultLocationId = locId, Routines = [] },
+            Social = new SocialProfile
+            {
+                Relationships = new Dictionary<string, int> { [pcId] = 85 }
+            }
+        });
+        await session.StoreAsync(new Character
+        {
+            Id = pcId,
+            Name = "Aldric",
+            CampaignName = campaign,
+            CurrentLocationId = locId
+        });
+        await session.SaveChangesAsync();
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+
+        var npc = await session.LoadAsync<Character>(npcId);
+        var pc = await session.LoadAsync<Character>(pcId);
+        var present = new List<Character> { npc!, pc! };
+
+        var first = await repo.EnrichNpcInitiativeAsync(
+            session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
+        await session.SaveChangesAsync();
+
+        Assert.Contains(first.ActiveInitiatives, i => i.Key.StartsWith("affection:", StringComparison.Ordinal));
+
+        var second = await repo.EnrichNpcInitiativeAsync(
+            session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
+        Assert.Empty(second.ActiveInitiatives);
+
+        await repo.AdvanceWorldAsync(session, rearmInterval, TimeOfDay.Morning, campaign);
+        await session.SaveChangesAsync();
+
+        npc = await session.LoadAsync<Character>(npcId);
+        var third = await repo.EnrichNpcInitiativeAsync(
+            session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
+
+        Assert.Contains(third.ActiveInitiatives, i => i.Key.StartsWith("affection:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RelationalRearmRule_DoesNotRearm_BeforeInterval()
+    {
+        const string campaign = "relational-rearm-early";
+        await SeedCampaignAsync(campaign, day: 10, configure: c => c.RelationalRearmIntervalDays = 7);
+
+        var repo = CreateSimRepo(includeRelationalRearm: true);
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var locId = "locs/inn";
+        var npcId = "chars/barliman";
+        var pcId = "chars/pc1";
+        await session.StoreAsync(new Character
+        {
+            Id = npcId,
+            Name = "Barliman",
+            CampaignName = campaign,
+            CurrentLocationId = locId,
+            Schedule = new Schedule { DefaultLocationId = locId, Routines = [] },
+            Social = new SocialProfile
+            {
+                Relationships = new Dictionary<string, int> { [pcId] = 85 }
+            }
+        });
+        await session.StoreAsync(new Character { Id = pcId, Name = "Aldric", CampaignName = campaign });
+        await session.SaveChangesAsync();
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+
+        var npc = await session.LoadAsync<Character>(npcId);
+        var pc = await session.LoadAsync<Character>(pcId);
+        var present = new List<Character> { npc!, pc! };
+
+        await repo.EnrichNpcInitiativeAsync(
+            session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
+        await session.SaveChangesAsync();
+
+        await repo.AdvanceWorldAsync(session, 2, TimeOfDay.Morning, campaign);
+        await session.SaveChangesAsync();
+
+        npc = await session.LoadAsync<Character>(npcId);
+        var afterShortAdvance = await repo.EnrichNpcInitiativeAsync(
+            session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
+
+        Assert.Empty(afterShortAdvance.ActiveInitiatives);
     }
 }
