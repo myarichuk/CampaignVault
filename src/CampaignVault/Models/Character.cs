@@ -63,9 +63,15 @@ public class PsychologyProfile
     /// Example: "Rusty Nail Tavern" -> MemoryNode
     /// </summary>
     public Dictionary<string, MemoryNode> Memories { get; set; } = [];
-    public List<string> Wants { get; set; } = [];                    
-    public List<string> Fears { get; set; } = [];                    
-    public string? CurrentMood { get; set; }                         
+    public List<string> Wants { get; set; } = [];
+    public List<string> Fears { get; set; } = [];
+
+    public string? CurrentMood { get; set; }
+
+    // Phase 10: personality (merged — no separate PersonalityProfile)
+    public List<string> Traits { get; set; } = [];
+    public double Openness { get; set; } = 0.5;
+    public double Resilience { get; set; } = 0.5;
 }
 
 public enum MemoryImportance
@@ -75,12 +81,62 @@ public enum MemoryImportance
     Core
 }
 
+public enum MemorySource
+{
+    Witnessed,
+    Heard,
+    Told,
+    Experienced,
+    Trauma,
+    Conditioned
+}
+
+public enum EmotionalValence
+{
+    Positive,
+    Negative,
+    Neutral,
+    Traumatic
+}
+
+public enum MemoryUrgency
+{
+    Low,
+    Normal,
+    High,
+    Urgent
+}
+
 public class MemoryNode
 {
     public string Topic { get; set; } = default!;
     public string Details { get; set; } = default!;
     public int DayAcquired { get; set; } = 0;
     public MemoryImportance Importance { get; set; } = MemoryImportance.Important;
+
+    public MemorySource Source { get; set; } = MemorySource.Told;
+    public EmotionalValence Valence { get; set; } = EmotionalValence.Neutral;
+    public double Salience { get; set; } = 0.5;
+    public List<string> RelatedEntityIds { get; set; } = [];
+    public string? TriggerCondition { get; set; }
+    public MemoryUrgency Urgency { get; set; } = MemoryUrgency.Normal;
+
+    /// <summary>
+    /// Applies migration defaults for documents saved before Phase 10 enrichment fields existed.
+    /// Legacy nodes deserialize with Salience=0 and enum zero-values; normalize once on touch.
+    /// </summary>
+    public void ApplyMigrationDefaultsIfNeeded()
+    {
+        if (Salience > 0)
+        {
+            return;
+        }
+
+        Source = MemorySource.Told;
+        Valence = EmotionalValence.Neutral;
+        Salience = 0.5;
+        Urgency = MemoryUrgency.Normal;
+    }
 }
 public class SocialProfile
 {

@@ -158,25 +158,122 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         if (string.IsNullOrWhiteSpace(ku.CharacterId)) return ChangeHandlerResult.Failure("characterId is required.");
         if (string.IsNullOrWhiteSpace(ku.Topic)) return ChangeHandlerResult.Failure("topic is required.");
 
+        if (!ku.CreateMemory)
+        {
+            context.RecordMessage($"Skipped memory update for '{ku.CharacterId}' topic '{ku.Topic}' (createMemory=false).");
+            return ChangeHandlerResult.Ok;
+        }
+
         var character = context.Session != null ? await context.Session.LoadAsync<Character>(ku.CharacterId, ct) : null;
         if (character == null) return ChangeHandlerResult.Failure($"Character '{ku.CharacterId}' not found. Cannot update knowledge.");
 
-        if (!character.Psychology.Memories.TryGetValue(ku.Topic, out var memory))
+        var isNew = !character.Psychology.Memories.TryGetValue(ku.Topic, out var memory);
+        if (isNew)
         {
             memory = new MemoryNode { Topic = ku.Topic };
             character.Psychology.Memories[ku.Topic] = memory;
+        }
+        else
+        {
+            memory!.ApplyMigrationDefaultsIfNeeded();
         }
 
         memory.Details = ku.Details;
         var time = await context.GetCurrentTimeAsync();
         memory.DayAcquired = (int)time.TotalDaysElapsed;
-        
+
         if (ku.Importance.HasValue)
         {
             memory.Importance = ku.Importance.Value;
         }
 
+        ApplyEnrichment(memory, ku, isNew);
+
         context.RecordMessage($"Updated memory for character '{ku.CharacterId}' regarding '{ku.Topic}'.");
         return ChangeHandlerResult.Ok;
+    }
+
+    private static void ApplyEnrichment(MemoryNode memory, KnowledgeUpdate ku, bool isNew)
+    {
+        if (isNew)
+        {
+            InferDefaultsFromDetails(memory, ku.Details);
+        }
+
+        if (ku.Source.HasValue)
+        {
+            memory.Source = ku.Source.Value;
+        }
+
+        if (ku.Valence.HasValue)
+        {
+            memory.Valence = ku.Valence.Value;
+        }
+
+        if (ku.Salience.HasValue)
+        {
+            memory.Salience = Math.Clamp(ku.Salience.Value, 0.0, 1.0);
+        }
+
+        if (ku.Urgency.HasValue)
+        {
+            memory.Urgency = ku.Urgency.Value;
+        }
+
+        if (ku.RelatedEntityIds != null)
+        {
+            memory.RelatedEntityIds = ku.RelatedEntityIds;
+        }
+    }
+
+    private static void InferDefaultsFromDetails(MemoryNode memory, string details)
+    {
+        var text = details.AsSpan();
+        if (ContainsAny(text, "trauma", "traumatic", "nightmare", "ptsd"))
+        {
+            memory.Valence = EmotionalValence.Traumatic;
+            memory.Source = MemorySource.Trauma;
+            memory.Urgency = MemoryUrgency.High;
+            memory.Salience = 0.85;
+            return;
+        }
+
+        if (ContainsAny(text, "saw", "witnessed", "watched"))
+        {
+            memory.Source = MemorySource.Witnessed;
+        }
+        else if (ContainsAny(text, "heard", "overheard", "rumor", "rumour"))
+        {
+            memory.Source = MemorySource.Heard;
+        }
+        else if (ContainsAny(text, "lived through", "survived", "experienced"))
+        {
+            memory.Source = MemorySource.Experienced;
+        }
+
+        if (ContainsAny(text, "love", "grateful", "kindness", "gift", "friend", "trust"))
+        {
+            memory.Valence = EmotionalValence.Positive;
+            memory.Salience = Math.Max(memory.Salience, 0.65);
+        }
+        else if (ContainsAny(text, "hate", "betray", "fear", "danger", "violence", "death", "murder"))
+        {
+            memory.Valence = EmotionalValence.Negative;
+            memory.Salience = Math.Max(memory.Salience, 0.7);
+            memory.Urgency = MemoryUrgency.High;
+        }
+    }
+
+    private static bool ContainsAny(ReadOnlySpan<char> text, params string[] tokens)
+    {
+        foreach (var token in tokens)
+        {
+            if (text.Contains(token, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

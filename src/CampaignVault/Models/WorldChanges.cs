@@ -152,6 +152,14 @@ public class EventOccurred : WorldChange
     [Description("Optional list of entity IDs involved (characters, locations, items, etc.). Helps later queries and NPC context.")]
     [JsonPropertyName("involved")]
     public List<string>? Involved { get; set; }
+
+    [Description("Optional emotional beat for relational initiative, e.g. 'gratitude', 'affection', 'betrayal', 'gift_received'.")]
+    [JsonPropertyName("emotionalBeat")]
+    public string? EmotionalBeat { get; set; }
+
+    [Description("Optional. Item, character, or location ID this beat relates to.")]
+    [JsonPropertyName("relatedEntityId")]
+    public string? RelatedEntityId { get; set; }
 }
 
 /// <summary>Change the state of an existing rumor and optionally rewrite its current text.</summary>
@@ -836,4 +844,31 @@ public class KnowledgeUpdate : WorldChange
     [Description("Optional. If provided, overrides the memory's importance level (Trivial, Important, Core).")]
     [JsonPropertyName("importance")]
     public MemoryImportance? Importance { get; set; }
+
+    [Description("Default true. Set false to skip creating or updating the memory graph for this topic.")]
+    [JsonPropertyName("createMemory")]
+    public bool CreateMemory { get; set; } = true;
+
+    [Description("Optional structured enrichment. Overrides inference when provided.")]
+    [JsonPropertyName("source")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public MemorySource? Source { get; set; }
+
+    [Description("Optional structured enrichment. Overrides inference when provided.")]
+    [JsonPropertyName("valence")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public EmotionalValence? Valence { get; set; }
+
+    [Description("Optional structured enrichment (0.0–1.0). Overrides default salience when provided.")]
+    [JsonPropertyName("salience")]
+    public double? Salience { get; set; }
+
+    [Description("Optional structured enrichment. Overrides default urgency when provided.")]
+    [JsonPropertyName("urgency")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public MemoryUrgency? Urgency { get; set; }
+
+    [Description("Optional entity IDs this memory relates to (characters, items, locations).")]
+    [JsonPropertyName("relatedEntityIds")]
+    public List<string>? RelatedEntityIds { get; set; }
 }
