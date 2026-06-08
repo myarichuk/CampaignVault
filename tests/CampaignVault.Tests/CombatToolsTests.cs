@@ -25,7 +25,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(store);
         var rollSvc = new DefaultRollService();
-        var selector = new RulesetResolverSelector([
+        var selector = new RulesetModuleSelector([
             new Dnd5eRulesetResolver(rollSvc),
             new Pf2eRulesetResolver(rollSvc),
             new Fallout2d20RulesetResolver(rollSvc)

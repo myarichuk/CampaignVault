@@ -1,4 +1,5 @@
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using Raven.Client.Documents.Session;
 
@@ -20,21 +21,32 @@ public class ResolverOutput
     public ResolverResult Result { get; init; } = ResolverResult.Ok(string.Empty);
 }
 
-public interface IRulesetResolver
+public interface IActionResolution
+{
+    Task<ResolverOutput> ResolveAsync(
+        ChangeContext context,
+        RulesetAction action,
+        CancellationToken ct = default);
+}
+
+public interface ICombatRuleset
+{
+    Task<float> RollInitiativeAsync(
+        IAsyncDocumentSession session,
+        string characterId,
+        CancellationToken ct = default);
+
+    Task<float> RollInitiativeAsync(
+        Character character,
+        CancellationToken ct = default);
+}
+
+public interface IRulesetPressureContributor : IPressureContributor;
+
+public interface IRulesetModule
 {
     RulesetSystem System { get; }
-    
-    Task<ResolverOutput> ResolveAsync(
-        ChangeContext context, 
-        RulesetAction action, 
-        CancellationToken ct = default);
-
-    Task<float> RollInitiativeAsync(
-        IAsyncDocumentSession session, 
-        string characterId, 
-        CancellationToken ct = default);
-
-    Task<float> RollInitiativeAsync(
-        Character character, 
-        CancellationToken ct = default);
+    IActionResolution Actions { get; }
+    ICombatRuleset Combat { get; }
+    IEnumerable<IRulesetPressureContributor> PressureContributors { get; }
 }

@@ -23,7 +23,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_fixture.Store);
         var rollSvc = new DefaultRollService();
-        var selector = new RulesetResolverSelector([
+        var selector = new RulesetModuleSelector([
             new Dnd5eRulesetResolver(rollSvc),
             new Pf2eRulesetResolver(rollSvc),
             new Fallout2d20RulesetResolver(rollSvc)

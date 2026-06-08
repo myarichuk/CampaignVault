@@ -29,7 +29,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var dnd5e = new Dnd5eRulesetResolver(new DefaultRollService());
         var pf2e = new Pf2eRulesetResolver(new DefaultRollService());
         var fallout = new Fallout2d20RulesetResolver(new DefaultRollService());
-        var selector = new RulesetResolverSelector([dnd5e, pf2e, fallout]);
+        var selector = new RulesetModuleSelector([dnd5e, pf2e, fallout]);
 
         currentCampaignContext ??= new CurrentCampaignContext();
 
@@ -143,14 +143,17 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Char 1", pressureTextA);
         Assert.DoesNotContain("Char 2", pressureTextA);
 
-        // Direct pressure for B (to debug ws)
+        // Direct pressure for B via contributor (to debug ws)
         await tools.SelectCampaign("campaign-b");
         using (var ps = _store.OpenAsyncSession())
         {
-            // debug: total chars without camp filter? (temp for scoping debug)
-            var dps = await repo.GetCharacterPressureAsync(ps, "campaign-b");
-            var dpText = string.Join(" | ", dps);
-            Assert.Contains("Char 2", dpText);  // direct should have
+            var time = await repo.GetTimeAsync(ps, "campaign-b");
+            var config = await repo.GetCampaignConfigAsync(ps, "campaign-b");
+            var contributor = new CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor();
+            var ctx = new CampaignVault.Data.Pressure.PressureContext("campaign-b", time, config, ps);
+            var dps = await contributor.EvaluateAsync(ctx);
+            var dpText = string.Join(" | ", dps.Select(p => p.Text));
+            Assert.Contains("Char 2", dpText);
             Assert.DoesNotContain("Char 1", dpText);
         }
 

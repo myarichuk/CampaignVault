@@ -16,7 +16,7 @@ namespace CampaignVault.Data;
 ///
 /// Future expansions: escalation based on NPC density, party involvement pressure, etc.
 /// </summary>
-public sealed class RumorDecayRule : ISimulationRule
+public class RumorDecayRule : ISimulationRule
 {
     public string Name => "Rumor Decay";
     public int Order => 20;
@@ -25,7 +25,7 @@ public sealed class RumorDecayRule : ISimulationRule
     private const int EscalationDays = 7;   // Nascent → Spreading, Spreading → Peak
     private const int DecayDays = 14;        // Peak → Fading, Fading → Forgotten
 
-    public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();

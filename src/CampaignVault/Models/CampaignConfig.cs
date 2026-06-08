@@ -72,4 +72,52 @@ public class CampaignConfig
     /// Defaults to 7.
     /// </summary>
     public int EconomicDemandDecayDays { get; set; } = 7;
+
+    /// <summary>
+    /// Base per-day need accumulation rate during simulation (multiplied by days passed).
+    /// Defaults to 10.
+    /// </summary>
+    public float NeedAccumulationRate { get; set; } = 10f;
+
+    /// <summary>
+    /// Multiplier applied to thirst need accumulation.
+    /// Defaults to 1.2.
+    /// </summary>
+    public float ThirstAccumulationMultiplier { get; set; } = 1.2f;
+
+    /// <summary>
+    /// Multiplier applied to tiredness need accumulation.
+    /// Defaults to 0.8.
+    /// </summary>
+    public float TirednessAccumulationMultiplier { get; set; } = 0.8f;
+
+    /// <summary>
+    /// Per-day morale drift when NPCs are in sustained bad need states.
+    /// Defaults to -0.8.
+    /// </summary>
+    public float MoraleDriftPerDay { get; set; } = -0.8f;
+
+    /// <summary>
+    /// Grace period (in days) before transient NPCs are evicted from unvisited locations.
+    /// Defaults to 1.
+    /// </summary>
+    public int TransientEvictionGraceDays { get; set; } = 1;
+
+    /// <summary>
+    /// Days a rumor must age without resolution before surfacing world pressure.
+    /// Defaults to 5.
+    /// </summary>
+    public int RumorAgingPressureDays { get; set; } = 5;
+
+    /// <summary>
+    /// Days without quest progress before staleness pressure is surfaced.
+    /// Defaults to 10.
+    /// </summary>
+    public int QuestStalenessDays { get; set; } = 10;
+
+    /// <summary>
+    /// HP ratio threshold (current/max) below which a character is considered critically wounded.
+    /// Defaults to 0.25.
+    /// </summary>
+    public float CharacterPressureHpCriticalThreshold { get; set; } = 0.25f;
 }

@@ -37,6 +37,24 @@ public class RavenDBFixture : IDisposable
         Store = EmbeddedServer.Instance.GetDocumentStore("TestDB");
         Store.Initialize();
         Raven.Client.Documents.Indexes.IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, Store);
+        WaitForStaticIndexes(Store);
+    }
+
+    private static void WaitForStaticIndexes(IDocumentStore store, int timeoutSeconds = 30)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
+        while (DateTime.UtcNow < deadline)
+        {
+            var stats = store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.All(i => !i.IsStale))
+            {
+                return;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        throw new TimeoutException("Static RavenDB indexes did not become non-stale during test fixture startup.");
     }
 
     public void Dispose()
@@ -153,7 +171,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task GetCharacterPressureAsync_Surfaces_Extreme_Attributes_And_Relationships()
+    public async Task CharacterDistressPressureContributor_Surfaces_Extreme_Attributes_And_Relationships()
     {
         var repo = new CampaignRepository(_store);
         using var session = _store.OpenAsyncSession();
@@ -195,7 +213,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             await Task.Delay(50);
         }
 
-        var allPressures = await repo.GetCharacterPressureAsync(session);
+        var time = await repo.GetTimeAsync(session);
+        var config = await repo.GetCampaignConfigAsync(session);
+        var contributor = new CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor();
+        var ctx = new CampaignVault.Data.Pressure.PressureContext("default", time, config, session);
+        var allPressures = (await contributor.EvaluateAsync(ctx)).ToList();
         var pressures = allPressures.Where(p => p.EntityId == id).ToList();
         
         Assert.NotNull(pressures);
@@ -457,7 +479,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
@@ -526,7 +548,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using var session = _store.OpenAsyncSession();
@@ -634,7 +656,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // combined with ExecuteAsync always doing SaveChanges + dispose.
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
@@ -664,7 +686,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Newtonsoft "ValueIsEscaped" crash during SaveChanges in GetScene.
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         var locId = "locations/meta-regression-" + Guid.NewGuid();
@@ -737,7 +759,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // must not explode and should leave clean data behind.
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         var locId = "locations/legacy-polluted-" + Guid.NewGuid();
@@ -811,7 +833,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // If the '$type' property is not FIRST, STJ normally fails.
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
 
         using (var session = _store.OpenAsyncSession())
@@ -1298,7 +1320,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // 3. Test through CampaignTools
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetResolverSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
         
         var getResult = await tools.GetConfig();
@@ -1332,7 +1354,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var tools = new CampaignTools(
             repo,
             new DefaultBehaviorSynthesizer(),
-            new Rulesets.RulesetResolverSelector([
+            new Rulesets.RulesetModuleSelector([
                 new Rulesets.Dnd5eRulesetResolver(rollSvc),
                 new Rulesets.Pf2eRulesetResolver(rollSvc),
                 new Rulesets.Fallout2d20RulesetResolver(rollSvc)
@@ -1369,7 +1391,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var tools = new CampaignTools(
             repo,
             new DefaultBehaviorSynthesizer(),
-            new Rulesets.RulesetResolverSelector([
+            new Rulesets.RulesetModuleSelector([
                 new Rulesets.Dnd5eRulesetResolver(rollSvc),
                 new Rulesets.Pf2eRulesetResolver(rollSvc),
                 new Rulesets.Fallout2d20RulesetResolver(rollSvc)
@@ -1623,7 +1645,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
             if (stats.Indexes.Any(x => x.Name == "Quest/Search" && x.IsStale == false) &&
                 stats.Indexes.Any(x => x.Name == "Faction/Search" && x.IsStale == false) &&
-                stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
+                stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false) &&
+                stats.Indexes.Any(x => x.Name == "Event/Search" && x.IsStale == false))
             {
                 break;
             }

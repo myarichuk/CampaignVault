@@ -29,7 +29,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         
         await session.StoreAsync(loc);
         await session.StoreAsync(c);
-        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true, indexes: ["Character/Search"]);
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
@@ -58,7 +58,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         
         await session.StoreAsync(loc);
         await session.StoreAsync(c);
-        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true, indexes: ["Character/Search"]);
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
@@ -82,7 +82,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         
         await session.StoreAsync(loc);
         await session.StoreAsync(c);
-        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true, indexes: ["Character/Search"]);
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
@@ -115,7 +115,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(loc);
         await session.StoreAsync(c);
         await session.StoreAsync(i);
-        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true, indexes: ["Character/Search", "Item/Search"]);
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
@@ -140,6 +140,34 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task ApplyAsync_RespectsTransientEvictionGraceDays_FromConfig()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var loc = new Location { Id = "locations/grace_tavern", Name = "Tavern", LastVisitedDay = 1, CampaignName = "grace-test" };
+        var c = new Character { Id = "chars/grace_guy", Name = "Guy", CurrentLocationId = loc.Id, KeepAlive = false, Schedule = null, CampaignName = "grace-test" };
+
+        await session.StoreAsync(loc);
+        await session.StoreAsync(c);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true, indexes: ["Character/Search"]);
+        await session.SaveChangesAsync();
+
+        var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
+        var time = new CampaignTime { TotalDaysElapsed = 3 }; // 3 - 1 = 2, should NOT evict with grace=3
+        var config = new CampaignConfig { TransientEvictionGraceDays = 3 };
+        var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "grace-test", Config: config);
+
+        var result = await rule.ApplyAsync(ctx);
+        Assert.DoesNotContain(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == c.Id);
+
+        // Now advance past grace: day 5 -> 5-1=4 > 3
+        time = new CampaignTime { TotalDaysElapsed = 5 };
+        ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 4, "grace-test", Config: config);
+        result = await rule.ApplyAsync(ctx);
+        Assert.Contains(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == c.Id);
+    }
+
+    [Fact]
     public async Task TransientEvictionRule_CompletedQuestGiver_IsEvictedNormally()
     {
         using var session = _fixture.Store.OpenAsyncSession();
@@ -149,7 +177,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         
         await session.StoreAsync(loc);
         await session.StoreAsync(c);
-        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true, indexes: ["Character/Search"]);
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);

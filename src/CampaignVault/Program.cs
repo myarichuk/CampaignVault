@@ -73,16 +73,42 @@ builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHand
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.CharacterUpdateHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RulesetActionHandler>(sp =>
     new CampaignVault.Data.ChangeHandlers.RulesetActionHandler(
-        sp.GetRequiredService<CampaignVault.Rulesets.IRulesetResolverSelector>(),
+        sp.GetRequiredService<CampaignVault.Rulesets.IRulesetModuleSelector>(),
         sp.GetRequiredService<CampaignDocumentKeys>(),
         sp.GetRequiredService<ICurrentCampaignContext>()));
 
 // Combat / Rulesets
 builder.Services.AddSingleton<IRollService, DefaultRollService>();
-builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Dnd5eRulesetResolver>();
-builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Pf2eRulesetResolver>();
-builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolver, CampaignVault.Rulesets.Fallout2d20RulesetResolver>();
-builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetResolverSelector, CampaignVault.Rulesets.RulesetResolverSelector>();
+builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetModule, CampaignVault.Rulesets.Dnd5eRulesetResolver>();
+builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetModule, CampaignVault.Rulesets.Pf2eRulesetResolver>();
+builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetModule, CampaignVault.Rulesets.Fallout2d20RulesetResolver>();
+builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetModuleSelector, CampaignVault.Rulesets.RulesetModuleSelector>();
+
+// Pressure system (Phase 9 extensibility)
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.AgingRumorPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.UnresolvedEventPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.DanglingItemPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.NeverVisitedTransientPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.QuestDeadlinePressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.StuckTravelPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.PressureHintEnricher>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.LocationHallucinationPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.LocationIntegrityPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.LocationConnectivityPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.LocationFlavorPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.SceneQuestStalenessPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.TransientQuestGiverPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.MemoryDecayPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.FactionTerritoryPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.FactionOpportunisticPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.FactionEconomyPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.FactionRecentEventPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureOrchestrator>(sp =>
+    new CampaignVault.Data.Pressure.PressureOrchestrator(
+        sp.GetServices<CampaignVault.Data.Pressure.IPressureContributor>(),
+        sp.GetRequiredService<IPressureManager>(),
+        sp.GetRequiredService<CampaignVault.Rulesets.IRulesetModuleSelector>()));
 // Behavioral synthesis (deterministic first, cheap & predictable)
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
 

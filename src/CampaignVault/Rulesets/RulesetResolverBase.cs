@@ -3,9 +3,12 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Rulesets;
 
-public abstract class RulesetResolverBase<TStats> : IRulesetResolver where TStats : SystemExtension, new()
+public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResolution, ICombatRuleset where TStats : SystemExtension, new()
 {
     public abstract RulesetSystem System { get; }
+    public IActionResolution Actions => this;
+    public ICombatRuleset Combat => this;
+    public virtual IEnumerable<IRulesetPressureContributor> PressureContributors => [];
 
     public async Task<ResolverOutput> ResolveAsync(
         ChangeContext context, 

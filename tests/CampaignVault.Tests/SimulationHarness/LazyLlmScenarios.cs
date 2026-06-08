@@ -40,7 +40,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
 
             var rollSvc = new DefaultRollService();
-            var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+            var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
             ]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
 
             var result = await tools.GetScene(loc.Id, partyPresent: true, campaignName: "default");
@@ -57,7 +57,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
         
         using (var session = _store.OpenAsyncSession())
@@ -93,7 +93,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
         
         await tools.SelectCampaign("CharacterLenientTest");
@@ -137,7 +137,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("TravelLazinessTest");
@@ -214,7 +214,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("FactionInfluenceTest");
@@ -260,7 +260,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         using (var s = _store.OpenAsyncSession())
         {
             await s.StoreAsync(new Event { Id = "events/dummy1", CampaignName = "FactionInfluenceTest" });
-            s.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5));
+            s.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true, indexes: ["Event/Search"]);
             await s.SaveChangesAsync();
         }
 
@@ -278,7 +278,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("FactionWarTest");
@@ -345,7 +345,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("QuestStaleTest");
@@ -410,7 +410,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("QuestGiverEvictionTest");
@@ -507,7 +507,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
 
         await tools.SelectCampaign("MissingTravelTest");
@@ -528,7 +528,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 KeepAlive = true,
                 CurrentLocationId = "locations/start-mt"
             });
-            session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: false, indexes: ["Location/Search", "Character/Search"]);
             await session.SaveChangesAsync();
         }
 
@@ -545,7 +545,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var s = _store.OpenAsyncSession())
         {
-            await s.Query<Character>().Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5))).AnyAsync();
+            await s.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+                .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
+                .Take(1)
+                .AnyAsync();
         }
 
         var finalScene = await tools.GetScene(destId, partyPresent: true, "MissingTravelTest");
@@ -561,7 +564,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
 
         await tools.SelectCampaign("TransientGiverPressureTest");
@@ -609,7 +612,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
 
         await tools.SelectCampaign("QuestCooldownTest");
@@ -631,7 +634,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 RelatedLocationIds = [locId],
                 Objectives = [new QuestObjective("Step one", QuestState.Open)]
             });
-            session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5), throwOnTimeout: true);
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true, indexes: ["Location/Search", "Quest/Search"]);
             await session.SaveChangesAsync();
         }
 
@@ -661,7 +664,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
 
         await tools.SelectCampaign("ObjectiveStaleTest");
@@ -701,7 +704,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("QuestStalenessTest");
@@ -758,7 +761,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
         
         var result = await tools.GetHelp();
         Assert.True(result.Success);
@@ -773,7 +776,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     {
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
         
         var result = await tools.GetHelp();
         Assert.True(result.Success);
@@ -788,7 +791,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var repo = new CampaignRepository(_store);
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetResolverSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), keys, new CurrentCampaignContext(), new PressureManager(keys));
+        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), keys, new CurrentCampaignContext(), new PressureManager(keys));
         
         await tools.SelectCampaign("VisualStateTest");
 

@@ -1,6 +1,7 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
+using CampaignVault.Rulesets.Contributors;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
@@ -15,6 +16,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     }
 
     public override RulesetSystem System => RulesetSystem.Dnd5e;
+
+    public override IEnumerable<IRulesetPressureContributor> PressureContributors =>
+        [new Dnd5eExhaustionPressureContributor()];
 
 
     private int GetSkillOrAbilityBonus(Dnd5eExtension stats, string name)

@@ -83,7 +83,7 @@ public class CampaignRepository
                 new CharacterUpdateHandler(),
                 new KnowledgeUpdateHandler(),
                 new RulesetActionHandler(
-                    new RulesetResolverSelector([
+                    new RulesetModuleSelector([
                         new Dnd5eRulesetResolver(new DefaultRollService()),
                         new Pf2eRulesetResolver(new DefaultRollService()),
                         new Fallout2d20RulesetResolver(new DefaultRollService())
@@ -313,111 +313,6 @@ public class CampaignRepository
     }
 
     /// <summary>
-    /// Scans characters in the current campaign for severe physical or psychological distress to surface as urgent narrative pressure.
-    /// </summary>
-    public async Task<List<WorldPressureItem>> GetCharacterPressureAsync(IAsyncDocumentSession session, string? campaignName = null)
-    {
-        var effective = ResolveCampaign(campaignName);
-        // Hardened: filter by CampaignName (loose for shareable chars per design/feedback; strict would exclude legacy)
-        var characters = await session.Query<Character>()
-            .Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
-            .Where(c => c.KeepAlive)
-            .Take(100)
-            .ToListAsync();
-        var pressure = new List<WorldPressureItem>();
-        var badCategories = new[] { "Injury", "Condition", "Disease", "Poison", "Curse" };
-
-        foreach (var c in characters)
-        {
-            if (c.CurrentHp <= c.MaxHp * 0.25f && c.CurrentHp > 0)
-            {
-                pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is critically wounded ({c.CurrentHp}/{c.MaxHp} HP).", "Character:CriticallyWounded"));
-            }
-            else if (c.CurrentHp <= 0)
-            {
-                pressure.Add(new(PressureSeverity.EngineWarning, c.Id, $"{c.Name} is dying or dead.", "Character:Dying"));
-            }
-
-            if (c.SystemStats?.StatusEffects != null)
-            {
-                foreach (var status in c.SystemStats.StatusEffects)
-                {
-                    if (status.Category == null || badCategories.Contains(status.Category, StringComparer.OrdinalIgnoreCase))
-                    {
-                        pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is suffering from {status.Name} ({status.Category ?? "Unknown"}).", $"Character:Status:{status.Name}"));
-                    }
-                }
-            }
-
-            foreach (var kvp in c.Needs.ActiveNeeds)
-            {
-                switch (kvp.Value)
-                {
-                    case > 80f:
-                        pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is in desperate need: {kvp.Key} ({kvp.Value:F0}%).", $"Character:Need:{kvp.Key}"));
-                        break;
-                    case > 50f:
-                        pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} needs should be acted upon: {kvp.Key} ({kvp.Value:F0}%).", $"Character:Need:{kvp.Key}"));
-                        break;
-                    case > 25f:
-                        pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} start feeling the need: {kvp.Key} ({kvp.Value:F0}%).", $"Character:Need:{kvp.Key}"));
-                        break;
-                }
-            }
-
-            if (c.SystemStats != null)
-            {
-                if (c.SystemStats.Morale <= 10f)
-                {
-                    pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name}'s morale is broken ({c.SystemStats.Morale:F0}%). Consider a breakdown, retreat, or refusal to fight.", "Character:Attribute:Morale"));
-                }
-                
-                if (c.SystemStats.Willpower <= 10f)
-                {
-                    pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name}'s willpower is drained ({c.SystemStats.Willpower:F0}%). They are highly susceptible to manipulation, fear, or giving up.", "Character:Attribute:Willpower"));
-                }
-
-                if (c.SystemStats.Temperature <= -20f)
-                {
-                    pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is freezing to death ({c.SystemStats.Temperature:F0}). They should exhibit severe physical symptoms.", "Character:Attribute:TemperatureLow"));
-                }
-                else if (c.SystemStats.Temperature >= 50f)
-                {
-                    pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is suffering from extreme heat ({c.SystemStats.Temperature:F0}). They should exhibit exhaustion or heatstroke.", "Character:Attribute:TemperatureHigh"));
-                }
-
-                if (c.SystemStats.Attributes != null)
-                {
-                    foreach (var attr in c.SystemStats.Attributes)
-                    {
-                        var key = attr.Key.ToLowerInvariant();
-                        if ((key == "corruption" || key == "fear" || key == "exhaustion") && attr.Value >= 90f)
-                        {
-                            pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is consumed by {attr.Key} ({attr.Value:F0}). They should exhibit severe physical or mental symptoms.", $"Character:Attribute:{attr.Key}"));
-                        }
-                    }
-                }
-            }
-
-            if (c.Social?.Relationships != null)
-            {
-                foreach (var rel in c.Social.Relationships)
-                {
-                    if (rel.Value <= -80)
-                    {
-                        pressure.Add(new(PressureSeverity.NarrativePrompt, c.Id, $"{c.Name} actively despises '{rel.Key}' ({rel.Value} relationship). Their dialogue and actions towards them should be highly antagonistic or hostile.", $"Character:Relationship:{rel.Key}"));
-                    }
-                    else if (rel.Value >= 80)
-                    {
-                        pressure.Add(new(PressureSeverity.NarrativePrompt, c.Id, $"{c.Name} has deep trust and affection for '{rel.Key}' (+{rel.Value} relationship). They should act protective or highly agreeable towards them.", $"Character:Relationship:{rel.Key}"));
-                    }
-                }
-            }
-        }
-        return pressure;
-    }
-
-    /// <summary>
     /// Fetches the synthesized state of a location, including NPCs present, visible items, local rumors, and recent events.
     /// This is the primary read operation used by the LLM when entering a new scene.
     /// </summary>
@@ -503,6 +398,21 @@ public class CampaignRepository
         if (!string.IsNullOrEmpty(effective))
         {
             npcsFromSimulation = npcsFromSimulation.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
+        }
+
+        // Fallback when Character/Search hasn't caught up yet (common right after travel commits in tests).
+        if (npcsFromSimulation.Count == 0)
+        {
+            var recentChars = await session.Query<Character>().Take(200).ToListAsync();
+            if (!string.IsNullOrEmpty(effective))
+            {
+                recentChars = recentChars.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
+            }
+
+            npcsFromSimulation = recentChars
+                .Where(c => c.CurrentLocationId != null && targetIds.Contains(c.CurrentLocationId))
+                .Take(20)
+                .ToList();
         }
 
         // Merge, dedupe by Id, prefer simulation-updated versions when both exist

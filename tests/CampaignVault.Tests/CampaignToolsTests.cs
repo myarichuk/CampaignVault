@@ -20,24 +20,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         _fixture = fixture;
     }
 
-    private CampaignTools CreateTools()
-    {
-        var repo = new CampaignRepository(_fixture.Store);
-        var rollSvc = new DefaultRollService();
-        var selector = new RulesetResolverSelector([
-            new Dnd5eRulesetResolver(rollSvc),
-            new Pf2eRulesetResolver(rollSvc),
-            new Fallout2d20RulesetResolver(rollSvc)
-        ]);
-        
-        return new CampaignTools(
-            repo,
-            new DefaultBehaviorSynthesizer(),
-            selector,
-            new CampaignDocumentKeys(),
-            new CurrentCampaignContext()
-        );
-    }
+    private CampaignTools CreateTools() => TestCampaignToolsFactory.Create(_fixture.Store);
 
     [Fact]
     public async Task Commit_RejectsBatchOverLimit()

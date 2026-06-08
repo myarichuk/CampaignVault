@@ -7,7 +7,7 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data;
 
-public sealed class FactionEcosystemRule : ISimulationRule
+public class FactionEcosystemRule : ISimulationRule
 {
     public string Name => "Faction Ecosystem";
     public int Order => 40;
@@ -23,7 +23,7 @@ public sealed class FactionEcosystemRule : ISimulationRule
         _nextInt = nextInt;
     }
 
-    public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();

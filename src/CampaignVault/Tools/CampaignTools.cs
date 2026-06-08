@@ -1,4 +1,5 @@
 using CampaignVault.Data;
+using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
@@ -27,10 +28,11 @@ public class CampaignTools
 {
     private readonly CampaignRepository _repository;
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
-    private readonly IRulesetResolverSelector _rulesetSelector;
+    private readonly IRulesetModuleSelector _rulesetSelector;
     private readonly CampaignDocumentKeys _keys;
     private readonly ICurrentCampaignContext _currentCampaign;
     private readonly IPressureManager _pressureManager;
+    private readonly IPressureOrchestrator _pressureOrchestrator;
 
     private static readonly RateLimiter _commitRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
     {
@@ -44,10 +46,11 @@ public class CampaignTools
     public CampaignTools(
         CampaignRepository repository,
         INpcBehaviorSynthesizer behaviorSynthesizer,
-        IRulesetResolverSelector rulesetSelector,
+        IRulesetModuleSelector rulesetSelector,
         CampaignDocumentKeys keys,
         ICurrentCampaignContext currentCampaign,
-        IPressureManager? pressureManager = null)
+        IPressureManager? pressureManager = null,
+        IPressureOrchestrator? pressureOrchestrator = null)
     {
         _repository = repository;
         _behaviorSynthesizer = behaviorSynthesizer;
@@ -55,6 +58,10 @@ public class CampaignTools
         _keys = keys ?? new CampaignDocumentKeys();
         _currentCampaign = currentCampaign ?? new CurrentCampaignContext();
         _pressureManager = pressureManager ?? new PressureManager(_keys);
+        _pressureOrchestrator = pressureOrchestrator ?? new PressureOrchestrator(
+            DefaultPressureContributors.All(),
+            _pressureManager,
+            rulesetSelector);
     }
 
     private string EffectiveCampaign(string? explicitName)
@@ -155,27 +162,6 @@ public class CampaignTools
         }
     }
 
-    private void AddQuestDeadlinePressures(
-        List<WorldPressureItem> pressures,
-        IEnumerable<(string Id, string Title, int? DeadlineDay)> questInfos,
-        int currentDay)
-    {
-        foreach (var (id, title, deadline) in questInfos.Where(x => x.DeadlineDay.HasValue))
-        {
-            var daysLeft = deadline!.Value - currentDay;
-            if (daysLeft > 0 && daysLeft <= 3)
-            {
-                pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, id,
-                    $"Quest '{title}' deadline in {daysLeft} days (Day {deadline}). Progress or fail it: [ {{\"$type\": \"quest_progress\", \"questId\": \"{id}\", \"objectiveIndex\": 0, \"newState\": \"Complete\", \"narrativeNote\": \"...\" }} ] (or Failed).",
-                    "Quest:ApproachingDeadline"));
-            }
-            else if (daysLeft <= 0)
-            {
-                pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, id, $"Quest '{title}' deadline passed. Engine may have auto-failed objectives.", "Quest:MissedDeadline"));
-            }
-        }
-    }
-
     [McpServerTool(UseStructuredContent = true)]
     [Description("KICKOFF TOOL: Call this at the start of every session to get the current time, active rumors, recent history, and current party location in one view. Respects the currently selected campaign (via select_campaign).")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
@@ -195,100 +181,27 @@ public class CampaignTools
 
             var events = await _repository.QueryEventsAsync(session, null, null, 5, effective);
             var location = await _repository.GetLocationAsync(session, partyLocationId, effective);
-            
-            var pressure = new List<WorldPressureItem>();
-            foreach (var r in rumors.Where(r => time.TotalDaysElapsed - r.LastStateChangeDay > 5))
-            {
-                pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, r.Id, 
-                    $"Rumor '{r.Subject}' has been spreading for {time.TotalDaysElapsed - r.LastStateChangeDay} days without resolution. " +
-                    "Consider evolving or resolving via commit: [ { \"$type\": \"rumor\", \"rumorId\": \"...\", \"newState\": \"Fading|Resolved\", \"newText\": \"...\" } ]",
-                    "Rumor:Aging"));
-            }
-
-            var agingEvents = await _repository.QueryEventsAsync(session, null, EventCategory.Unresolved, 5, effective);
-            foreach (var e in agingEvents)
-            {
-                pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, e.Id, 
-                    $"Unresolved thread: '{e.Summary}' ({time.TotalDaysElapsed - e.DayLogged} days old). " +
-                    "Resolve or advance via commit e.g. [ { \"$type\": \"event\", \"category\": \"Resolution\", \"summary\": \"...resolved...\", \"involved\": [\"" + (e.Involved?.FirstOrDefault() ?? "ids...") + "\"] } ] or convert to rumor.",
-                    "Event:Unresolved"));
-            }
-            
-            var charPressure = await _repository.GetCharacterPressureAsync(session, effective);
-            // Enhance a few char pressures with copy-paste hints for common cases (reduces need to recall exact JSON shape)
-            foreach (var cp in charPressure)
-            {
-                if (cp.Text.Contains("critically wounded") || cp.Text.Contains("dying"))
-                {
-                    pressure.Add(cp with { Text = cp.Text + " Example fix in commit: [ { \"$type\": \"hp\", \"characterId\": \"chars/xxx\", \"delta\": 10 }, { \"$type\": \"status\", \"characterId\": \"chars/xxx\", \"status\": \"Stable\" } ]" });
-                }
-                else if (cp.Text.Contains("desperate need"))
-                {
-                    pressure.Add(cp with { Text = cp.Text + " Satisfy via: [ { \"$type\": \"need\", \"characterId\": \"chars/xxx\", \"need\": \"hunger\", \"delta\": -30 } ] (negative = satisfy). Consider schedule_change if this NPC is important." });
-                }
-                else
-                {
-                    pressure.Add(cp);
-                }
-            }
-
-            // Dangling items
-            var allItems = await session.Query<Item>().Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2))).Where(i => i.CampaignName == effective).Take(100).ToListAsync();
-            foreach (var item in allItems)
-            {
-                if ((string.IsNullOrEmpty(item.CampaignName) || item.CampaignName == effective) && !string.IsNullOrEmpty(item.HolderId))
-                {
-                    var holderExists = await session.Advanced.ExistsAsync(item.HolderId);
-                    if (!holderExists)
-                    {
-                        pressure.Add(new WorldPressureItem(PressureSeverity.EngineWarning, item.Id,
-                            $"Item '{item.Name}' is held by '{item.HolderId}' which no longer exists (likely GC'd). " +
-                            "Use item_transfer to move it to a valid location or character:\n" +
-                            "[ { \"$type\": \"item_transfer\", \"itemId\": \"" + item.Id + "\", \"newHolderId\": \"locations/some_valid_location\" } ]",
-                            "Item:DanglingHolder"));
-                    }
-                }
-            }
-
-            // Never-visited locations with transients
-            var transients = await session.Query<Character>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
-                .Where(c => c.CampaignName == effective && c.Schedule == null && c.KeepAlive == false)
-                .Take(50)
-                .ToListAsync();
-            var transientLocIds = transients.Select(c => c.CurrentLocationId).Where(id => !string.IsNullOrEmpty(id)).Distinct();
-            foreach (var locId in transientLocIds)
-            {
-                var l = await session.LoadAsync<Location>(locId);
-                if (l != null && l.LastVisitedDay == null)
-                {
-                    pressure.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, l.Id,
-                        $"Location '{l.Name}' has never been visited but has transient NPCs. " +
-                        "Consider visiting this location or setting keepAlive: true on important NPCs so they are not silently evicted.",
-                        "Location:NeverVisitedTransients"));
-                }
-            }
-
-            // Phase 7.4 quest/travel pressures (global view)
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
             var worldActiveQuests = await _repository.GetActiveQuestsAsync(session, effective, 10);
-            AddQuestDeadlinePressures(pressure, worldActiveQuests.Select(q => (q.Id, q.Title, q.DeadlineDay)), (int)time.TotalDaysElapsed);
 
-            // En-route / interrupted travel
+            var pressureCtx = new PressureContext(
+                effective,
+                time,
+                config,
+                session,
+                ActiveRumors: rumors,
+                RecentEvents: events.ToList(),
+                QuestDeadlines: worldActiveQuests.Select(q => new QuestDeadlineInfo(q.Id, q.Title, q.DeadlineDay)).ToList());
+
+            var finalPressures = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.World, pressureCtx);
+
             var stuck = await session.Query<Character>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
-                .Where(c => (string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective) 
-                            && c.CurrentActivity != null 
+                .Where(c => (string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
+                            && c.CurrentActivity != null
                             && (c.CurrentActivity.StartsWith("Travel interrupted en route") || c.CurrentActivity.StartsWith("interrupted en route")))
                 .Take(5)
                 .ToListAsync();
-            foreach (var s in stuck)
-            {
-                pressure.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, s.Id,
-                    $"Character '{s.Name}' is stuck: '{s.CurrentActivity}'. Narrate the encounter resolution then commit e.g. [ {{\"$type\": \"activity\", \"characterId\": \"{s.Id}\", \"newActivity\": \"...resolved...\", \"updateLocation\": false }}, {{\"$type\": \"travel\", \"characterId\": \"{s.Id}\", \"destinationLocationId\": \"...\", \"encounterRiskModifier\": -20 }} ] to continue.",
-                    "Travel:Interrupted"));
-            }
-
-            var finalPressures = await _pressureManager.FilterAndCapAsync(session, effective, (int)time.TotalDaysElapsed, pressure);
             
             var suggestedExamples = new List<string>();
             var questPressureTriggered = finalPressures.Any(p => p.Contains("Quest", StringComparison.OrdinalIgnoreCase) || p.Contains("deadline", StringComparison.OrdinalIgnoreCase));
@@ -353,272 +266,20 @@ public class CampaignTools
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
             var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: partyPresent);
-            var pressures = new List<WorldPressureItem>();
-            var loc = scene.Location;
-
-            if (!scene.IsLocationAnchored)
-            {
-                var suggestions = await _repository.SuggestLocationsAsync(session, locationId, effective);
-                if (suggestions.Any())
-                {
-                    var names = string.Join(", ", suggestions.Select(s => $"'{s.Id}' ({s.Name})"));
-                    pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, locationId,
-                        $"Location '{locationId}' not found. Did you mean one of these: {names}? " +
-                        "If so, use the correct ID. If it is truly new, use `location_create`:\n" +
-                        "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
-                        "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
-                        "\"connectionDescription\": \"...\"\n  }\n]",
-                        "Location:Hallucinated"));
-                }
-                else
-                {
-                    pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, locationId,
-                        $"You requested '{locationId}' but it does not exist in the database! " +
-                        "You are hallucinating. Use the `commit` tool immediately:\n" +
-                        "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
-                        "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
-                        "\"connectionDescription\": \"...\"\n  }\n]",
-                        "Location:Hallucinated"));
-                }
-            }
-            else
-            {
-                if (partyPresent)
-                {
-                    var anyPartyMemberPresent = scene.PresentNPCs.Any(c => c.KeepAlive);
-                    if (!anyPartyMemberPresent)
-                    {
-                        pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, loc.Id,
-                            $"You narrated the party exploring '{loc.Id}', but the engine shows NO main characters (KeepAlive) present here! " +
-                            "Did you forget to commit their travel? Use the `commit` tool with a `travel` or `location_update` change immediately:\n" +
-                            "[ { \"$type\": \"travel\", \"characterId\": \"...\", \"destinationLocationId\": \"" + loc.Id + "\", \"narrative\": \"They arrive at the location.\" } ]",
-                            "Location:MissingTravelCommit"));
-                    }
-                }
-
-                if (loc.Exits.Count == 0 && loc.Type != LocationType.Region)
-                {
-                    pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, loc.Id,
-                        $"This location has no Exits. The players are soft-locked. " +
-                        "Use `location_update` to add an exit back:\n" +
-                        "[ { \"$type\": \"location_update\", \"locationId\": \"" + loc.Id + "\", " +
-                        "\"addExit\": { \"targetLocationId\": \"locations/previous_area\", \"description\": \"...\" } } ]",
-                        "Location:NoExits"));
-                }
-                if (!scene.PresentNPCs.Any() && !string.IsNullOrWhiteSpace(loc.AmbientCrowd))
-                {
-                    pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, loc.Id,
-                        $"This location is currently empty, but expects '{loc.AmbientCrowd}'. " +
-                        "Consider spawning flavorful transient NPCs via `character_create` inside `commit`.",
-                        "Location:EmptyExpectsCrowd"));
-                }
-
-                // Additional laziness / integrity mitigations (Phase 7 prep + Phase 6 amplification)
-                // 1. Missing reverse link from parent (one-way door, even if not created via auto-link path).
-                if (!string.IsNullOrEmpty(loc.ParentLocationId))
-                {
-                    // Cheap extra load; parent is often warm from prior calls or include paths.
-                    // In real use, this surfaces immediately on get_scene so LLM can fix with location_update on the *parent*.
-                    try
-                    {
-                        // We can't easily access raw session here without changing Execute, so do a repo call (it will sanitize).
-                        // Note: GetLocationAsync is lightweight.
-                        var parentLoc = await _repository.GetLocationAsync(session, loc.ParentLocationId, effective);
-                        if (parentLoc != null && !parentLoc.Exits.Any(e => e.TargetLocationId == loc.Id))
-                        {
-                            pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, parentLoc.Id,
-                                $"This location has a ParentLocationId but the parent has no matching exit back to it (one-way link / broken connectivity). " +
-                                "Fix with location_update on the parent:\n" +
-                                "[ { \"$type\": \"location_update\", \"locationId\": \"" + parentLoc.Id + "\", " +
-                                "\"addExit\": { \"targetLocationId\": \"" + loc.Id + "\", \"description\": \"... (back to " + loc.Name + ")\" } } ]",
-                                "Location:MissingReverseLink"));
-                        }
-                    }
-                    catch (Exception ex) { Console.WriteLine($"Pressure check error: {ex.Message}"); }
-                }
-
-                // Phase 8.4: Location Tags Pressure
-                if (loc.VisualTags != null && loc.VisualTags.Any())
-                {
-                    pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, loc.Id,
-                        $"This location has prominent environmental tags: {string.Join(", ", loc.VisualTags)}. " +
-                        $"Consider how these affect visibility, travel, or danger, and narrate accordingly.",
-                        "Location:EnvironmentalTags"));
-                }
-
-                // 2. Flavor vacuum: scene has no PoIs, no AmbientCrowd, no present NPCs, and is not a pure Region.
-                // Nudges LLM to use lightweight non-persistent flavor instead of forcing character_create for every bar patron.
-                if (loc.Type != LocationType.Region && loc.PointsOfInterest.Count == 0 && string.IsNullOrWhiteSpace(loc.AmbientCrowd) && !scene.PresentNPCs.Any())
-                {
-                    pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, loc.Id,
-                        $"This location lacks flavor details (no PointsOfInterest, no AmbientCrowd). " +
-                        "For a lively scene without DB bloat, use location_update (or include in location_create) to add PoIs/AmbientCrowd. Example:\n" +
-                        "[ { \"$type\": \"location_update\", \"locationId\": \"" + loc.Id + "\", " +
-                        "\"addPointOfInterest\": \"A half-empty mug on the bar\", \"ambientCrowd\": \"3-6 locals nursing drinks\" } ]",
-                        "Location:FlavorVacuum"));
-                }
-
-                // 3. Dead-end room with exits that may need promotion or travel hints (future spatial).
-                if (loc.Exits.Count > 0 && loc.Type == LocationType.Room && string.IsNullOrWhiteSpace(loc.AmbientCrowd) && loc.PointsOfInterest.Count == 0 && !scene.PresentNPCs.Any())
-                {
-                    // Light nudge; real travel mechanics come in Phase 7.
-                    pressures.Add(new WorldPressureItem(PressureSeverity.Suggestion, loc.Id,
-                        $"(optional): Room has exits but no ambient hint. If this is a 'quiet' area, consider setting ambientCrowd for future visits or use schedule_change on key NPCs to anchor them here.",
-                        "Location:DeadEndSuggestion"));
-                }
-            }
             var time = await _repository.GetTimeAsync(session, effective);
             var config = await _repository.GetCampaignConfigAsync(session, effective);
 
-            // Phase 7.4 local pressures (quests + interrupted travel)
-            if (scene.ActiveQuests != null)
-            {
-                AddQuestDeadlinePressures(pressures, scene.ActiveQuests.Select(q => (q.QuestId, q.Title, q.DeadlineDay)), (int)time.TotalDaysElapsed);
+            var pressureCtx = new PressureContext(
+                effective,
+                time,
+                config,
+                session,
+                QuestDeadlines: scene.ActiveQuests?.Select(q => new QuestDeadlineInfo(q.QuestId, q.Title, q.DeadlineDay)).ToList(),
+                Scene: scene,
+                RequestedLocationId: locationId,
+                PartyPresent: partyPresent);
 
-                foreach (var q in scene.ActiveQuests)
-                {
-                    var staleAnchor = q.OldestOpenObjectiveDay > 0 ? q.OldestOpenObjectiveDay : q.LastUpdatedDay;
-                    if (time.TotalDaysElapsed - staleAnchor > 10 && !q.DeadlineDay.HasValue)
-                    {
-                        pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, q.QuestId,
-                            $"Quest '{q.Title}' has seen no progress in over 10 days. Consider advancing or failing it: [ {{ \"$type\": \"quest_progress\", \"questId\": \"{q.QuestId}\", \"objectiveIndex\": 0, \"newState\": \"InProgress\", \"narrativeNote\": \"Party investigated...\" }} ]",
-                            "Quest:Stale"));
-                    }
-                }
-            }
-
-            if (scene.PresentNPCs != null)
-            {
-                foreach (var npc in scene.PresentNPCs)
-                {
-                    if (npc.CurrentActivity != null && npc.CurrentActivity.Contains("interrupted en route", StringComparison.OrdinalIgnoreCase))
-                    {
-                        pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, npc.Id,
-                            $"Character '{npc.Name}' is stuck: '{npc.CurrentActivity}'. Narrate the encounter resolution then commit e.g. [ {{\"$type\": \"activity\", \"characterId\": \"{npc.Id}\", \"newActivity\": \"...resolved...\", \"updateLocation\": false }}, {{\"$type\": \"travel\", \"characterId\": \"{npc.Id}\", \"destinationLocationId\": \"...\", \"encounterRiskModifier\": -20 }} ] to continue.",
-                            "Travel:Interrupted"));
-                    }
-
-                    // Transient Eviction guard
-                    if (!npc.KeepAlive && scene.ActiveQuests != null && scene.ActiveQuests.Any(q => q.GiverId == npc.Id))
-                    {
-                        pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, npc.Id,
-                            $"Character '{npc.Name}' is a Quest Giver but is marked as transient (KeepAlive = false). The engine will delete them when the party leaves! Anchor them immediately:\n[ {{ \"$type\": \"character_update\", \"characterId\": \"{npc.Id}\", \"keepAlive\": true }} ]",
-                            "Character:TransientQuestGiver"));
-                    }
-
-                    // Phase 8.3: Memory Decay / Epistemic Drift
-                    if (npc.Memories != null)
-                    {
-                        foreach (var kv in npc.Memories)
-                        {
-                            var mem = kv.Value;
-                            if (mem.Importance == MemoryImportance.Core) continue;
-
-                            var age = time.TotalDaysElapsed - mem.DayAcquired;
-                            var threshold = mem.Importance == MemoryImportance.Important ? config.MemoryImportantDecayDays : config.MemoryTrivialDecayDays;
-
-                            if (age > threshold)
-                            {
-                                pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, npc.Id,
-                                    $"Character '{npc.Name}' has a memory about '{mem.Topic}' that is {age:F0} days old and may be fading. " +
-                                    $"Consider misremembering, distorting, or forgetting details. Update it using `knowledge_update`.",
-                                    $"MemoryDecay:{npc.Id}:{mem.Topic}"));
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (scene.RelevantFactions != null && scene.RelevantFactions.Any())
-            {
-                List<Item>? partyItemsCache = null;
-                foreach (var f in scene.RelevantFactions)
-                {
-                    if (f.PlayerReputation.HasValue)
-                    {
-                        if (f.PlayerReputation.Value <= -50)
-                        {
-                            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
-                                $"The party is in territory influenced by '{f.Name}', a faction they have very low reputation with ({f.PlayerReputation.Value}). " +
-                                "They should face immediate suspicion, hostility, or be denied services. Consider an ambush or confrontation.",
-                                $"Faction:HostileTerritory:{f.FactionId}"));
-                        }
-                        else if (f.PlayerReputation.Value >= 50)
-                        {
-                            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
-                                $"The party is in territory influenced by '{f.Name}', a faction they are highly regarded by ({f.PlayerReputation.Value}). " +
-                                "They should be welcomed, offered better prices, or given assistance.",
-                                $"Faction:AlliedTerritory:{f.FactionId}"));
-                        }
-                    }
-
-                    if (f.LocalStance == FactionStance.Opportunistic)
-                    {
-                        pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, f.FactionId,
-                            $"An Opportunistic faction ('{f.Name}') is present. Evaluate the visual tags, current appearance, and item states of the characters. " +
-                            "If they appear wealthy, exhausted, or otherwise vulnerable, narrate an attempt to exploit, rob, or ambush them.",
-                            $"Faction:Opportunistic:{f.FactionId}"));
-                    }
-
-                    // Phase 8.5: Faction Economy
-                    if (f.EconomicDemand != null && f.EconomicDemand.Any())
-                    {
-                        var highDemands = f.EconomicDemand.Where(kvp => kvp.Value >= 1.5f).Select(kvp => kvp.Key).ToList();
-                        if (highDemands.Any())
-                        {
-                            partyItemsCache ??= await LoadPartyInventoryAsync(session, scene, effective);
-                            foreach (var demand in highDemands)
-                            {
-                                if (partyItemsCache.Any(i => ItemMatchesEconomicDemand(i, demand)))
-                                {
-                                    pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
-                                        $"The local faction '{f.Name}' is desperate for '{demand}' due to recent events. Merchants will pay a premium, and thieves may attempt to steal them. Highlight this in your narration.",
-                                        $"Faction:EconomicDemand:{f.FactionId}:{demand}"));
-                                }
-                            }
-                        }
-                    }
-                }
-
-                var fIds = scene.RelevantFactions.Select(f => f.FactionId).ToList();
-                var minDay = (int)time.TotalDaysElapsed - 2;
-                var recentEvents = await session.Query<Event>()
-                    .Where(e => e.CampaignName == effective && (e.Category == EventCategory.Simulation || e.Category == EventCategory.SceneCommit) && e.DayLogged >= minDay)
-                    .Take(50)
-                    .ToListAsync();
-                    
-                var simEvents = recentEvents.Where(e => e.Category == EventCategory.Simulation).ToList();
-                var commitEvents = recentEvents.Where(e => e.Category == EventCategory.SceneCommit).ToList();
-
-                foreach (var ev in simEvents)
-                {
-                    if (ev.Involved != null && ev.Involved.Any(id => fIds.Contains(id)))
-                    {
-                        var invFaction = ev.Involved.First(id => fIds.Contains(id));
-                        
-                        // If the LLM already interacted with this faction ON or AFTER the simulation event, don't nag.
-                        if (commitEvents.Any(c => c.Timestamp >= ev.Timestamp && c.Involved != null && c.Involved.Contains(invFaction)))
-                        {
-                            continue;
-                        }
-                        
-                        if (ev.Summary.Contains("influence", StringComparison.OrdinalIgnoreCase))
-                        {
-                            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, invFaction, 
-                                $"Faction '{invFaction}' recently expanded influence here. Update a local NPC's dialogue or create a rumor. Example:\n[ {{ \"$type\": \"event\", \"summary\": \"Reflected faction influence\", \"involved\": [\"{invFaction}\"] }} ]", 
-                                "Faction:PresenceChange"));
-                        }
-                        else if (ev.Summary.Contains("Hostile") || ev.Summary.Contains("AtWar") || ev.Summary.Contains("war", StringComparison.OrdinalIgnoreCase))
-                        {
-                            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, invFaction, 
-                                $"Faction '{invFaction}' is involved in recent hostilities. Consider updating a local NPC's reputation to reflect their stance. Example:\n[ {{ \"$type\": \"faction_reputation\", \"characterId\": \"chars/local\", \"factionId\": \"{invFaction}\", \"delta\": -20 }} ]", 
-                                "Faction:Reputation"));
-                        }
-                    }
-                }
-            }
-
-            var finalPressures = await _pressureManager.FilterAndCapAsync(session, effective, (int)time.TotalDaysElapsed, pressures);
+            var finalPressures = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.Scene, pressureCtx);
 
             var suggestedExamples = new List<string>();
             var questPressureTriggered = finalPressures.Any(p => p.Contains("Quest", StringComparison.OrdinalIgnoreCase) || p.Contains("deadline", StringComparison.OrdinalIgnoreCase));
@@ -1087,12 +748,12 @@ Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""mon
             }
 
             var config = await _repository.GetCampaignConfigAsync(session, effective);
-            var resolver = _rulesetSelector.GetResolver(config.ActiveSystem);
+            var module = _rulesetSelector.GetModule(config.ActiveSystem);
 
             var combatants = new List<CombatantState>();
             foreach (var character in validCharacters)
             {
-                var initiative = await resolver.RollInitiativeAsync(character);
+                var initiative = await module.Combat.RollInitiativeAsync(character);
                 combatants.Add(new CombatantState
                 {
                     CharacterId = character.Id,
@@ -1483,7 +1144,7 @@ Pressures appear in **every** `get_world_state`, `get_scene`, and `advance_world
 
 **Never ignore them.** The next `get_scene` after you fix will usually have fewer or none. If you keep seeing the same one, you skipped the commit.
 
-Additional pressures come from `GetCharacterPressureAsync` (HP, bad statuses, high needs) surfaced via get_world_state, plus rule narratives turned into SimulatorEvents on advance.
+Additional pressures come from character distress contributors (HP, bad statuses, high needs) surfaced via get_world_state, plus rule narratives turned into SimulatorEvents on advance.
 
 ## Other Tools & Patterns
 - `get_npc_context` / `get_npc_needs`: Use before deep roleplay. Merge descriptors happen automatically.
@@ -1506,35 +1167,5 @@ Remember: the engine is strict on invariants (map connectivity, no silent delete
         return Task.FromResult(new ToolResult<string>(true, manual, "Help manual retrieved."));
     }
 
-    private static bool ItemMatchesEconomicDemand(Item item, string demand) =>
-        item.CoreCategory.ToString().Equals(demand, StringComparison.OrdinalIgnoreCase)
-        || item.Tags.Any(t => t.Equals(demand, StringComparison.OrdinalIgnoreCase));
-
-    private static async Task<List<Item>> LoadPartyInventoryAsync(IAsyncDocumentSession session, SceneView scene, string campaignName)
-    {
-        var pcHolderIds = scene.PresentNPCs?
-            .Where(n => n.KeepAlive)
-            .Select(n => n.Id)
-            .Distinct()
-            .ToList() ?? [];
-
-        List<Item> items;
-        if (pcHolderIds.Count > 0)
-        {
-            items = await session.Query<Item>()
-                .Where(i => i.HolderId == "party" || i.HolderId.In(pcHolderIds))
-                .ToListAsync();
-        }
-        else
-        {
-            items = await session.Query<Item>()
-                .Where(i => i.HolderId == "party")
-                .ToListAsync();
-        }
-
-        return items
-            .Where(i => string.IsNullOrEmpty(i.CampaignName) || i.CampaignName == campaignName)
-            .ToList();
-    }
 }
 

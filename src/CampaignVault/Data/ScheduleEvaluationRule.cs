@@ -18,12 +18,12 @@ namespace CampaignVault.Data;
 /// - NPCs with high Willpower or certain Wants can generate autonomous EventOccurred or RelationshipChange
 ///   even without player input (e.g. "Aldric decides to confront the party on his own").
 /// </summary>
-public sealed class ScheduleEvaluationRule : ISimulationRule
+public class ScheduleEvaluationRule : ISimulationRule
 {
     public string Name => "Schedule Evaluation & NPC Activity";
     public int Order => 30;
 
-    public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();

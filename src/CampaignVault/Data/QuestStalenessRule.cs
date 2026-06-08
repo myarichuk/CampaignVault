@@ -7,14 +7,14 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data;
 
-public sealed class QuestStalenessRule : ISimulationRule
+public class QuestStalenessRule : ISimulationRule
 {
     public string Name => "Quest Staleness and Deadlines";
     
     // Order = 45 as per plan
     public int Order => 45;
 
-    public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();

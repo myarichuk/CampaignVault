@@ -4,13 +4,13 @@ using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;
 
-public sealed class StatusExpiryRule : ISimulationRule
+public class StatusExpiryRule : ISimulationRule
 {
     public string Name => "Status Expiry Rule";
     
     public int Order => 5; // Runs early before needs and routines
 
-    public async Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual async Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();

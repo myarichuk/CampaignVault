@@ -6,7 +6,7 @@ using Raven.Client.Documents.Linq;
 
 namespace CampaignVault.Data;
 
-public sealed class TransientEvictionRule : ISimulationRule
+public class TransientEvictionRule : ISimulationRule
 {
     private readonly ILogger<TransientEvictionRule> _logger;
     public string Name => "Transient NPC Eviction (anti-bloat)";
@@ -19,7 +19,7 @@ public sealed class TransientEvictionRule : ISimulationRule
         _logger = logger;
     }
 
-    public async Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual async Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
@@ -27,9 +27,11 @@ public sealed class TransientEvictionRule : ISimulationRule
         // 1. Query candidates: Schedule == null && CurrentLocationId != null && !KeepAlive
         // Scoping hardened: filter by camp (loose for shareable chars)
         var effective = context.CampaignName;
-        // RavenDB dynamic index bug workaround: do not filter by KeepAlive or Schedule in DB
-        var candidates = await context.Session.Query<Character>()
-            .Where(c => c.CurrentLocationId != null)
+        // Use Character/Search static index — avoids runtime auto-index creation under load.
+        var candidates = await context.Session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(3))
+            .WhereExists("CurrentLocationId")
+            .Take(500)
             .ToListAsync(ct);
 
         if (!string.IsNullOrEmpty(effective))
@@ -70,7 +72,8 @@ public sealed class TransientEvictionRule : ISimulationRule
 
             if (locations.TryGetValue(c.CurrentLocationId, out var loc) && loc != null)
             {
-                var shouldEvict = loc.LastVisitedDay == null || (context.Time.TotalDaysElapsed - loc.LastVisitedDay.Value > 1);
+                var graceDays = context.Config?.TransientEvictionGraceDays ?? 1;
+                var shouldEvict = loc.LastVisitedDay == null || (context.Time.TotalDaysElapsed - loc.LastVisitedDay.Value > graceDays);
                 
                 if (shouldEvict)
                 {
@@ -103,9 +106,15 @@ public sealed class TransientEvictionRule : ISimulationRule
 
         if (evictedIds.Any())
         {
-            var orphanedItems = await context.Session.Query<Item>()
-                .Where(i => i.HolderId.In(evictedIds))
-                .ToListAsync(ct);
+            var orphanedItems = new List<Item>();
+            foreach (var evictedId in evictedIds)
+            {
+                var held = await context.Session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+                    .WhereEquals(x => x.HolderId, evictedId)
+                    .Take(50)
+                    .ToListAsync(ct);
+                orphanedItems.AddRange(held);
+            }
 
             foreach (var item in orphanedItems)
             {

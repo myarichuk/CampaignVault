@@ -68,7 +68,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         var dnd5e = new Dnd5eRulesetResolver(rollService);
         var pf2e = new Pf2eRulesetResolver(rollService);
         var fallout = new Fallout2d20RulesetResolver(rollService);
-        var selector = new RulesetResolverSelector([dnd5e, pf2e, fallout]);
+        var selector = new RulesetModuleSelector([dnd5e, pf2e, fallout]);
 
         var context = new CurrentCampaignContext();
         context.SetCurrent(campaignName);

@@ -11,12 +11,12 @@ namespace CampaignVault.Data;
 /// - Mood derivation now also considers sustained high tiredness or hunger affecting Morale slightly.
 /// - All changes emitted as proper WorldChange deltas (NeedChange + MoodChange) for unified application.
 /// </summary>
-public sealed class NeedsAccumulationRule : ISimulationRule
+public class NeedsAccumulationRule : ISimulationRule
 {
     public string Name => "Needs & Mood Accumulation";
     public int Order => 35;
 
-    public Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
@@ -26,7 +26,11 @@ public sealed class NeedsAccumulationRule : ISimulationRule
 
         // Use consistent float math (addresses review point about casts)
         var days = (float)context.DaysPassed;
-        var amount = 10f * days;
+        var needRate = context.Config?.NeedAccumulationRate ?? 10f;
+        var thirstMult = context.Config?.ThirstAccumulationMultiplier ?? 1.2f;
+        var tiredMult = context.Config?.TirednessAccumulationMultiplier ?? 0.8f;
+        var moraleDriftPerDay = context.Config?.MoraleDriftPerDay ?? -0.8f;
+        var amount = needRate * days;
 
         foreach (var npc in context.ScheduledNpcs)
         {
@@ -48,15 +52,15 @@ public sealed class NeedsAccumulationRule : ISimulationRule
             }
 
             AddCappedNeed("hunger", amount);
-            AddCappedNeed("thirst", amount * 1.2f);
-            AddCappedNeed("tiredness", amount * 0.8f);
+            AddCappedNeed("thirst", amount * thirstMult);
+            AddCappedNeed("tiredness", amount * tiredMult);
             AddCappedNeed("social_drive", amount * 0.15f); // low rate, was previously dead
 
             // Re-evaluate mood after accumulation (the actual mood value will be applied by the MoodChange we emit below)
             // We compute what the mood *should* become based on the post-delta state.
             // Note: Because deltas are applied later, we approximate using current + projected.
             var projectedHunger = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("hunger") + amount, 0f, 100f);
-            var projectedTiredness = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("tiredness") + (amount * 0.8f), 0f, 100f);
+            var projectedTiredness = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("tiredness") + (amount * tiredMult), 0f, 100f);
 
             var newMood = npc.Psychology.CurrentMood ?? "Content";
             if (projectedTiredness > NpcMoodThresholds.ExhaustedTiredness)
@@ -84,7 +88,7 @@ public sealed class NeedsAccumulationRule : ISimulationRule
             // Small morale drift on sustained bad states (reasonable expansion for "living" feel)
             if (projectedTiredness > NpcMoodThresholds.MoraleDriftTiredness || projectedHunger > NpcMoodThresholds.MoraleDriftHunger)
             {
-                var moraleDrift = -0.8f * days; // slow negative drift (consistent float)
+                var moraleDrift = moraleDriftPerDay * days;
                 deltas.Add(new AttributeChange
                 {
                     CharacterId = npc.Id,

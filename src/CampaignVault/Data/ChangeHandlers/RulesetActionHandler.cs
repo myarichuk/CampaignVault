@@ -5,12 +5,12 @@ namespace CampaignVault.Data.ChangeHandlers;
 
 public sealed class RulesetActionHandler : IWorldChangeHandler
 {
-    private readonly IRulesetResolverSelector _selector;
+    private readonly IRulesetModuleSelector _selector;
     private readonly CampaignDocumentKeys _keys;
     private readonly ICurrentCampaignContext _currentCampaign;
 
     public RulesetActionHandler(
-        IRulesetResolverSelector selector, 
+        IRulesetModuleSelector selector,
         CampaignDocumentKeys keys,
         ICurrentCampaignContext currentCampaign)
     {
@@ -34,8 +34,8 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
         var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct)
                      ?? new CampaignConfig { Id = configId };
 
-        var resolver = _selector.GetResolver(config.ActiveSystem);
-        var output = await resolver.ResolveAsync(context, action, ct);
+        var module = _selector.GetModule(config.ActiveSystem);
+        var output = await module.Actions.ResolveAsync(context, action, ct);
 
         if (!output.Result.Success)
         {

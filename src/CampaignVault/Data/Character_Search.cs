@@ -18,7 +18,9 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                                 // without client-side scans over large character collections (addresses review issues #3 and #8).
                                 CurrentLocationId = c.CurrentLocationId,
                                 CurrentActivity = c.CurrentActivity,
-                                CampaignName = c.CampaignName
+                                CampaignName = c.CampaignName,
+                                c.KeepAlive,
+                                HasSchedule = c.Schedule != null
                             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

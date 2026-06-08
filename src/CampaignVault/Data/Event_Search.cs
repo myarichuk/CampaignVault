@@ -13,6 +13,7 @@ public class Event_Search : AbstractIndexCreationTask<Event>
                             e.Summary,
                             Category = e.Category,
                             e.Timestamp,
+                            e.DayLogged,
                             CampaignName = e.CampaignName
                         };
 
