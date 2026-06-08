@@ -36,6 +36,12 @@ public class Event
     
     public List<string> Involved { get; set; } = [];
 
+    /// <summary>Optional relational beat from EventOccurred (e.g. gratitude, gift_received).</summary>
+    public string? EmotionalBeat { get; set; }
+
+    /// <summary>Optional related entity ID from EventOccurred (item, character, location).</summary>
+    public string? RelatedEntityId { get; set; }
+
     /// <summary>
     /// Associates the entity with a specific campaign for multi-campaign isolation.
     /// Set automatically from current campaign context on create/log (via repo + handlers).

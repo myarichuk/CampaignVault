@@ -26,6 +26,40 @@ public static class DispositionMatcher
         return (fearHits, wantHits, dispositionStress);
     }
 
+    public static IReadOnlyList<string> GetMatchedFears(
+        PsychologyProfile psychology,
+        IReadOnlyList<Character> presentEntities,
+        Location? location,
+        CampaignConfig config)
+    {
+        var sceneTokens = BuildSceneTokens(presentEntities, location, config.DispositionMinTokenLength);
+        return GetMatchedPhrases(psychology.Fears, sceneTokens, config, config.DispositionMinTokenLength);
+    }
+
+    private static List<string> GetMatchedPhrases(
+        IEnumerable<string> phrases,
+        HashSet<string> sceneTokens,
+        CampaignConfig config,
+        int minTokenLength)
+    {
+        var matched = new List<string>();
+        foreach (var phrase in phrases)
+        {
+            if (string.IsNullOrWhiteSpace(phrase))
+            {
+                continue;
+            }
+
+            var keywords = ExpandKeywords(phrase, config, minTokenLength);
+            if (keywords.Any(k => sceneTokens.Any(s => TokensMatch(k, s, minTokenLength))))
+            {
+                matched.Add(phrase);
+            }
+        }
+
+        return matched;
+    }
+
     internal static HashSet<string> BuildSceneTokens(
         IReadOnlyList<Character> presentEntities,
         Location? location,

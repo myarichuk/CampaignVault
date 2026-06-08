@@ -8,6 +8,8 @@ public sealed class NpcInitiativeContext
     public Location? Location { get; init; }
     public IReadOnlyList<Character> PresentEntities { get; init; } = [];
     public IReadOnlyList<Event> RecentEvents { get; init; } = [];
+    public IReadOnlyList<Event> NpcRecentEvents { get; init; } = [];
+    public IReadOnlyList<Item> NpcHeldItems { get; init; } = [];
     public required CampaignConfig Config { get; init; }
     public int CurrentDay { get; init; }
     public required string SurfacedViaTool { get; init; }

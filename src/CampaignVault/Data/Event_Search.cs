@@ -19,5 +19,7 @@ public class Event_Search : AbstractIndexCreationTask<Event>
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
         Index(x => x.Summary, FieldIndexing.Search);
+        Index(x => x.CampaignName, FieldIndexing.Exact);
+        Index(x => x.DayLogged, FieldIndexing.Exact);
     }
 }

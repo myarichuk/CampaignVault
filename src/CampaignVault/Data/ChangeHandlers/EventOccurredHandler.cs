@@ -23,7 +23,9 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             Summary = ev.Summary,
             Category = ev.Category,
             Involved = ev.Involved ?? [],
-            DayLogged = currentTime.TotalDaysElapsed
+            DayLogged = currentTime.TotalDaysElapsed,
+            EmotionalBeat = ev.EmotionalBeat,
+            RelatedEntityId = ev.RelatedEntityId
         };
 
         if (string.IsNullOrEmpty(e.CampaignName))

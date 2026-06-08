@@ -112,7 +112,11 @@ builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureOrchestrator>
 // Behavioral synthesis (deterministic first, cheap & predictable)
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
 
-// NPC initiative (Phase 10 — read-side; signal providers registered in PR 3)
+// NPC initiative (Phase 10 — read-side)
+builder.Services.AddSingleton<CampaignVault.Data.Initiative.INpcInitiativeSignalProvider, CampaignVault.Data.Initiative.RelationalInitiativeProvider>();
+builder.Services.AddSingleton<CampaignVault.Data.Initiative.INpcInitiativeSignalProvider, CampaignVault.Data.Initiative.MemoryInitiativeProvider>();
+builder.Services.AddSingleton<CampaignVault.Data.Initiative.INpcInitiativeSignalProvider, CampaignVault.Data.Initiative.NeedActivityConflictProvider>();
+builder.Services.AddSingleton<CampaignVault.Data.Initiative.INpcInitiativeSignalProvider, CampaignVault.Data.Initiative.DispositionInitiativeProvider>();
 builder.Services.AddSingleton<CampaignVault.Data.Initiative.IRelevantMemorySelector, CampaignVault.Data.Initiative.DefaultRelevantMemorySelector>();
 builder.Services.AddSingleton<CampaignVault.Data.Initiative.IBehavioralTensionCalculator, CampaignVault.Data.Initiative.DefaultBehavioralTensionCalculator>();
 builder.Services.AddSingleton<CampaignVault.Data.Initiative.IInitiativeSuppressionStore, CampaignVault.Data.Initiative.CampaignInitiativeSuppressionStore>();

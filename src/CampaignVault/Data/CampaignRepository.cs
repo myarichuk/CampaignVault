@@ -461,6 +461,10 @@ public class CampaignRepository
 
         var config = await GetCampaignConfigAsync(session, effective);
         var campaign = await LoadOrCreateCampaignMetaAsync(session, effective);
+        var recentCampaignEvents = await InitiativeQueryHelper.QueryRecentCampaignEventsAsync(
+            session, effective, (int)time.TotalDaysElapsed);
+        var itemsByHolder = await InitiativeQueryHelper.QueryItemsForHoldersAsync(
+            session, effective, npcs.Select(n => n.Id).ToList());
 
         // Project to lightweight presence summaries + behavioral synthesis.
         // This fulfills the V4 goal of giving the DM synthesized insight instead of raw data.
@@ -490,6 +494,10 @@ public class CampaignRepository
                 Location = location,
                 PresentEntities = npcs,
                 RecentEvents = events,
+                NpcRecentEvents = recentCampaignEvents
+                    .Where(e => e.Involved.Contains(npc.Id))
+                    .ToList(),
+                NpcHeldItems = itemsByHolder.GetValueOrDefault(npc.Id) ?? [],
                 Config = config,
                 CurrentDay = (int)time.TotalDaysElapsed,
                 SurfacedViaTool = "get_scene",
@@ -629,14 +637,31 @@ public class CampaignRepository
             location = await session.LoadAsync<Location>(npc.CurrentLocationId);
         }
 
+        var currentDay = (int)time.TotalDaysElapsed;
+        var recentCampaignEvents = await InitiativeQueryHelper.QueryRecentCampaignEventsAsync(
+            session, effective, currentDay);
+        if (recentEvents is { Count: > 0 })
+        {
+            recentCampaignEvents = recentCampaignEvents
+                .Concat(recentEvents)
+                .DistinctBy(e => e.Id)
+                .ToList();
+        }
+
+        var npcItems = await InitiativeQueryHelper.QueryItemsHeldByAsync(session, npc.Id);
+
         var ctx = new NpcInitiativeContext
         {
             Npc = npc,
             Location = location,
             PresentEntities = presentEntities ?? [npc],
             RecentEvents = recentEvents ?? [],
+            NpcRecentEvents = recentCampaignEvents
+                .Where(e => e.Involved.Contains(npc.Id))
+                .ToList(),
+            NpcHeldItems = npcItems,
             Config = config,
-            CurrentDay = (int)time.TotalDaysElapsed,
+            CurrentDay = currentDay,
             SurfacedViaTool = surfacedViaTool,
             IncludeTensionBreakdown = includeTensionBreakdown
         };
