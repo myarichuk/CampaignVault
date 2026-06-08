@@ -21,6 +21,7 @@ public static class DefaultPressureContributors
         new SceneQuestStalenessPressureContributor(),
         new TransientQuestGiverPressureContributor(),
         new MemoryDecayPressureContributor(),
+        new UrgentInitiativePressureContributor(),
         new FactionTerritoryPressureContributor(),
         new FactionOpportunisticPressureContributor(),
         new FactionEconomyPressureContributor(),

@@ -19,6 +19,12 @@ internal static class NeedActivityConflictHelper
             return (true, needs.ActivityConflictNeed, null);
         }
 
+        return EvaluateConflict(npc, config);
+    }
+
+    public static (bool HasConflict, string? Need, string? MatchedKeyword) EvaluateConflict(Character npc, CampaignConfig config)
+    {
+        var needs = npc.Needs;
         var activity = npc.CurrentActivity;
         if (string.IsNullOrWhiteSpace(activity))
         {

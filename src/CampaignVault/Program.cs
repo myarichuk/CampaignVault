@@ -44,6 +44,8 @@ builder.Services.AddSingleton<ISimulationRule, StatusExpiryRule>();
 builder.Services.AddSingleton<ISimulationRule, TransientEvictionRule>();
 builder.Services.AddSingleton<ISimulationRule, FactionEcosystemRule>();
 builder.Services.AddSingleton<ISimulationRule, QuestStalenessRule>();
+builder.Services.AddSingleton<ISimulationRule, NeedConflictRule>();
+builder.Services.AddSingleton<ISimulationRule, MemorySalienceDecayRule>();
 builder.Services.AddSingleton<IWorldSimulationEngine, DefaultSimulationEngine>();
 
 // WorldChange handlers (new extensible dispatch system - "ShouldHandle" responsibility pattern)
@@ -100,6 +102,7 @@ builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, 
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.SceneQuestStalenessPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.TransientQuestGiverPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.MemoryDecayPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.UrgentInitiativePressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.FactionTerritoryPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.FactionOpportunisticPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.FactionEconomyPressureContributor>();

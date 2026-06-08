@@ -459,6 +459,25 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 includeTensionBreakdown: true,
                 recentEvents: npcEvents);
 
+            var time = await _repository.GetTimeAsync(session, effective);
+            string[]? initiativePressure = null;
+            var urgentInitiatives = enrichment.ActiveInitiatives
+                .Where(i => i.Urgency >= MemoryUrgency.High)
+                .Select(i => new WorldPressureItem(
+                    PressureSeverity.NarrativePrompt,
+                    characterId,
+                    $"{npc.Name} — {i.FramingPrompt}",
+                    "NpcInitiative:Urgent"))
+                .ToList();
+            if (urgentInitiatives.Count > 0)
+            {
+                initiativePressure = await _pressureManager.FilterAndCapAsync(
+                    session,
+                    effective,
+                    (int)time.TotalDaysElapsed,
+                    urgentInitiatives);
+            }
+
             var context = new NpcContextView
             {
                 Character = npc,
@@ -476,7 +495,11 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 RelevantMemories = enrichment.RelevantMemories.ToList()
             };
 
-            return new ToolResult<NpcContextView>(true, context, $"Psychological context for {npc.Name} retrieved (campaign: {effective}).");
+            return new ToolResult<NpcContextView>(
+                true,
+                context,
+                $"Psychological context for {npc.Name} retrieved (campaign: {effective}).",
+                WorldPressure: initiativePressure is { Length: > 0 } ? initiativePressure : null);
         });
     }
 
