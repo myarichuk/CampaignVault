@@ -21,6 +21,11 @@ public class NpcContextView
     /// Human/LLM-readable descriptions for the needs (seeded by world-builder or previous LLM actions).
     /// </summary>
     public Dictionary<string, string> NeedDescriptors { get; set; } = [];
+
+    public double BehavioralTension { get; set; }
+    public TensionBreakdown? TensionComponents { get; set; }
+    public List<InitiativeCandidate> ActiveInitiatives { get; set; } = [];
+    public List<MemoryNode> RelevantMemories { get; set; } = [];
 }
 
 /// <summary>

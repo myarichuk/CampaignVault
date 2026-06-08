@@ -451,6 +451,14 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 mergedDescriptors[kv.Key] = kv.Value;
             }
 
+            var enrichment = await _repository.EnrichNpcInitiativeAsync(
+                session,
+                npc,
+                effective,
+                surfacedViaTool: "get_npc_context",
+                includeTensionBreakdown: true,
+                recentEvents: npcEvents);
+
             var context = new NpcContextView
             {
                 Character = npc,
@@ -461,7 +469,11 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 RecentInteractions = npcEvents,
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = knownNeeds,
-                NeedDescriptors = mergedDescriptors
+                NeedDescriptors = mergedDescriptors,
+                BehavioralTension = enrichment.BehavioralTension,
+                TensionComponents = enrichment.TensionComponents,
+                ActiveInitiatives = enrichment.ActiveInitiatives.ToList(),
+                RelevantMemories = enrichment.RelevantMemories.ToList()
             };
 
             return new ToolResult<NpcContextView>(true, context, $"Psychological context for {npc.Name} retrieved (campaign: {effective}).");

@@ -159,6 +159,9 @@ public class NeedsProfile
     /// Example: "homesickness" -> "Longing for family and familiar places. High values cause distraction and poor sleep."
     /// </summary>
     public Dictionary<string, string> NeedDescriptors { get; set; } = [];
+
+    public bool ActivityConflictActive { get; set; }
+    public string? ActivityConflictNeed { get; set; }
 }
 
 [System.Text.Json.Serialization.JsonPolymorphic(TypeDiscriminatorPropertyName = "$system", UnknownDerivedTypeHandling = System.Text.Json.Serialization.JsonUnknownDerivedTypeHandling.FallBackToBaseType)]

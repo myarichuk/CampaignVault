@@ -92,7 +92,10 @@ public record NpcPresenceSummary(
     /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills). 
     /// Essential for the LLM to understand mechanical capabilities at a glance.
     /// </summary>
-    SystemExtension? SystemStats = null
+    SystemExtension? SystemStats = null,
+    double BehavioralTension = 0,
+    IReadOnlyList<InitiativeCandidate>? ActiveInitiatives = null,
+    IReadOnlyList<MemoryNode>? RelevantMemories = null
 );
 
 public class CommitResult

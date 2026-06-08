@@ -6,6 +6,7 @@ using Raven.Client.Documents.Session;
 using Raven.Client.Documents.Indexes;
 using Microsoft.Extensions.Logging;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Initiative;
 using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data;
@@ -19,6 +20,7 @@ public class CampaignRepository
     private readonly WorldChangeDispatcher _changeDispatcher;
     private readonly CampaignDocumentKeys _keys;
     private readonly ICurrentCampaignContext? _currentCampaign;
+    private readonly INpcInitiativeService _initiativeService;
 
     private string ResolveCampaign(string? campaignName)
     {
@@ -42,7 +44,8 @@ public class CampaignRepository
         INpcBehaviorSynthesizer behaviorSynthesizer,
         CampaignDocumentKeys keys,
         ICurrentCampaignContext? currentCampaign = null,
-        IEnumerable<IWorldChangeHandler>? changeHandlers = null)
+        IEnumerable<IWorldChangeHandler>? changeHandlers = null,
+        INpcInitiativeService? initiativeService = null)
     {
         _store = store;
         _simulationEngine = simulationEngine;
@@ -50,6 +53,7 @@ public class CampaignRepository
         _behaviorSynthesizer = behaviorSynthesizer;
         _keys = keys ?? new CampaignDocumentKeys();
         _currentCampaign = currentCampaign;
+        _initiativeService = initiativeService ?? InitiativeServiceFactory.CreateDefault();
 
         var handlersList = (changeHandlers ?? []).ToList();
 
@@ -455,20 +459,22 @@ public class CampaignRepository
         // Load global descriptors once (cheap) so we can merge them into every NPC's view
         var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session, effective);
 
+        var config = await GetCampaignConfigAsync(session, effective);
+        var campaign = await LoadOrCreateCampaignMetaAsync(session, effective);
+
         // Project to lightweight presence summaries + behavioral synthesis.
         // This fulfills the V4 goal of giving the DM synthesized insight instead of raw data.
-        var presenceSummaries = npcs.Select(npc =>
+        var presenceSummaries = new List<NpcPresenceSummary>();
+        foreach (var npc in npcs)
         {
             var npcNeeds = npc.Needs ?? new NeedsProfile();
             var npcPsych = npc.Psychology ?? new PsychologyProfile();
 
-            // Take the top 3 highest needs for a compact view (sorted descending)
             var topNeeds = npcNeeds.ActiveNeeds
                 .OrderByDescending(kv => kv.Value)
                 .Take(3)
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
 
-            // Expose all known needs + descriptors (merged global + per-NPC, per-NPC wins)
             var knownNeeds = npcNeeds.ActiveNeeds.ToDictionary(kv => kv.Key, kv => kv.Value);
             var needDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcNeeds.NeedDescriptors ?? new Dictionary<string, string>())
@@ -476,10 +482,22 @@ public class CampaignRepository
                 needDescriptors[kv.Key] = kv.Value;
             }
 
-            // Generate behavioral summary using the injected synthesizer
             var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, time, events);
 
-            return new NpcPresenceSummary(
+            var initiativeCtx = new NpcInitiativeContext
+            {
+                Npc = npc,
+                Location = location,
+                PresentEntities = npcs,
+                RecentEvents = events,
+                Config = config,
+                CurrentDay = (int)time.TotalDaysElapsed,
+                SurfacedViaTool = "get_scene",
+                IncludeTensionBreakdown = false
+            };
+            var enrichment = _initiativeService.Enrich(initiativeCtx, campaign);
+
+            presenceSummaries.Add(new NpcPresenceSummary(
                 Id: npc.Id,
                 Name: npc.Name,
                 CurrentActivity: npc.CurrentActivity ?? "Idle at default location",
@@ -494,9 +512,12 @@ public class CampaignRepository
                 VisualTags: npc.VisualTags,
                 DistinctiveFeatures: npc.DistinctiveFeatures,
                 Memories: npcPsych.Memories,
-                SystemStats: npc.SystemStats
-            );
-        }).ToList();
+                SystemStats: npc.SystemStats,
+                BehavioralTension: enrichment.BehavioralTension,
+                ActiveInitiatives: enrichment.ActiveInitiatives.ToList(),
+                RelevantMemories: enrichment.RelevantMemories.ToList()
+            ));
+        }
 
         var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effective));
         if (activeCombat != null && (!activeCombat.IsActive || activeCombat.LocationId != locationId))
@@ -586,6 +607,60 @@ public class CampaignRepository
             SuggestedCommitExamples = new List<string>()
         };
         return sceneView;
+    }
+
+    public async Task<NpcInitiativeEnrichment> EnrichNpcInitiativeAsync(
+        IAsyncDocumentSession session,
+        Character npc,
+        string? campaignName,
+        string surfacedViaTool,
+        bool includeTensionBreakdown,
+        IReadOnlyList<Character>? presentEntities = null,
+        IReadOnlyList<Event>? recentEvents = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var config = await GetCampaignConfigAsync(session, effective);
+        var campaign = await LoadOrCreateCampaignMetaAsync(session, effective);
+        var time = await GetTimeAsync(session, effective);
+
+        Location? location = null;
+        if (!string.IsNullOrWhiteSpace(npc.CurrentLocationId))
+        {
+            location = await session.LoadAsync<Location>(npc.CurrentLocationId);
+        }
+
+        var ctx = new NpcInitiativeContext
+        {
+            Npc = npc,
+            Location = location,
+            PresentEntities = presentEntities ?? [npc],
+            RecentEvents = recentEvents ?? [],
+            Config = config,
+            CurrentDay = (int)time.TotalDaysElapsed,
+            SurfacedViaTool = surfacedViaTool,
+            IncludeTensionBreakdown = includeTensionBreakdown
+        };
+
+        return _initiativeService.Enrich(ctx, campaign);
+    }
+
+    private async Task<Campaign> LoadOrCreateCampaignMetaAsync(IAsyncDocumentSession session, string campaignName)
+    {
+        var metaId = _keys.Meta(campaignName);
+        var campaign = await session.LoadAsync<Campaign>(metaId);
+        if (campaign != null)
+        {
+            return campaign;
+        }
+
+        campaign = new Campaign
+        {
+            Id = metaId,
+            Name = campaignName,
+            DisplayName = campaignName
+        };
+        await session.StoreAsync(campaign, metaId);
+        return campaign;
     }
 
     // --- Time & Simulator ---

@@ -112,11 +112,31 @@ builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureOrchestrator>
 // Behavioral synthesis (deterministic first, cheap & predictable)
 builder.Services.AddSingleton<INpcBehaviorSynthesizer, DefaultBehaviorSynthesizer>();
 
+// NPC initiative (Phase 10 — read-side; signal providers registered in PR 3)
+builder.Services.AddSingleton<CampaignVault.Data.Initiative.IRelevantMemorySelector, CampaignVault.Data.Initiative.DefaultRelevantMemorySelector>();
+builder.Services.AddSingleton<CampaignVault.Data.Initiative.IBehavioralTensionCalculator, CampaignVault.Data.Initiative.DefaultBehavioralTensionCalculator>();
+builder.Services.AddSingleton<CampaignVault.Data.Initiative.IInitiativeSuppressionStore, CampaignVault.Data.Initiative.CampaignInitiativeSuppressionStore>();
+builder.Services.AddSingleton<CampaignVault.Data.Initiative.INpcInitiativeService>(sp =>
+    new CampaignVault.Data.Initiative.NpcInitiativeService(
+        sp.GetServices<CampaignVault.Data.Initiative.INpcInitiativeSignalProvider>(),
+        sp.GetRequiredService<CampaignVault.Data.Initiative.IRelevantMemorySelector>(),
+        sp.GetRequiredService<CampaignVault.Data.Initiative.IBehavioralTensionCalculator>(),
+        sp.GetRequiredService<CampaignVault.Data.Initiative.IInitiativeSuppressionStore>()));
+
 // Campaign scoping & multi-campaign keying (first-class Campaign model)
 builder.Services.AddSingleton<CampaignDocumentKeys>();
 builder.Services.AddSingleton<ICurrentCampaignContext, CurrentCampaignContext>();
 
-builder.Services.AddSingleton<CampaignRepository>();
+builder.Services.AddSingleton<CampaignRepository>(sp =>
+    new CampaignRepository(
+        sp.GetRequiredService<IDocumentStore>(),
+        sp.GetRequiredService<IWorldSimulationEngine>(),
+        sp.GetRequiredService<ILogger<CampaignRepository>>(),
+        sp.GetRequiredService<INpcBehaviorSynthesizer>(),
+        sp.GetRequiredService<CampaignDocumentKeys>(),
+        sp.GetRequiredService<ICurrentCampaignContext>(),
+        sp.GetServices<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler>(),
+        sp.GetRequiredService<CampaignVault.Data.Initiative.INpcInitiativeService>()));
 builder.Services.AddSingleton<IPressureManager, PressureManager>();
 
 // CORS configuration (Issue #16 from code review)

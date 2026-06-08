@@ -120,4 +120,27 @@ public class CampaignConfig
     /// Defaults to 0.25.
     /// </summary>
     public float CharacterPressureHpCriticalThreshold { get; set; } = 0.25f;
+
+    public float TensionWeightNeed { get; set; } = 0.30f;
+    public float TensionWeightMemory { get; set; } = 0.25f;
+    public float TensionWeightRelational { get; set; } = 0.25f;
+    public float TensionWeightDisposition { get; set; } = 0.20f;
+
+    public float TensionValencePositive { get; set; } = 0.3f;
+    public float TensionValenceNeutral { get; set; } = 0.5f;
+    public float TensionValenceNegative { get; set; } = 0.8f;
+    public float TensionValenceTraumatic { get; set; } = 1.0f;
+
+    public float NeedConflictThreshold { get; set; } = 70f;
+    public float NeedConflictTensionBoost { get; set; } = 15f;
+
+    public int DispositionMinTokenLength { get; set; } = 3;
+    public Dictionary<string, List<string>> DispositionKeywordExpansions { get; set; } = [];
+
+    public List<string> GratitudeHeuristicTokens { get; set; } =
+    [
+        "gift", "gave", "granted", "necklace", "reward", "favor", "saved", "rescued"
+    ];
+
+    public int InitiativeSuppressionRetentionDays { get; set; } = 30;
 }

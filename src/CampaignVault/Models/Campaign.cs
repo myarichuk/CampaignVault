@@ -62,5 +62,11 @@ public class Campaign
     /// </summary>
     public Dictionary<string, PressureState> PressureCooldowns { get; set; } = [];
 
+    /// <summary>
+    /// Tracks NPC initiatives surfaced and consumed on read-side tools.
+    /// Key format: initiative:{npcId}:{initiativeKey}
+    /// </summary>
+    public Dictionary<string, InitiativeSurfacedState> InitiativeSurfaced { get; set; } = [];
+
     // Future: per-campaign defaults, player list, etc. can be added here without breaking storage.
 }
