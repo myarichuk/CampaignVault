@@ -147,12 +147,18 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         }
 
         combatDiceCount = ApplyAllModifiers(actorStats, "DamageRoll", combatDiceCount);
-        var damageType = action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical";
+        var damageType = action.DamageType ?? (action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical");
 
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);
 
         var dr = targetStats.DamageResistance.TryGetValue(damageType, out var res) ? res : 0;
         var finalDamage = Math.Max(0, combatResult.Damage - dr);
+
+        // Apply damage modifiers (resistances/vulnerabilities) multiplier
+        if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
+        {
+            finalDamage = (int)Math.Floor(finalDamage * multiplier);
+        }
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 

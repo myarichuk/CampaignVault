@@ -139,6 +139,13 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             finalDamage *= 2;
         }
 
+        // Apply damage modifiers (resistances/vulnerabilities)
+        var damageType = action.DamageType ?? "Physical";
+        if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
+        {
+            finalDamage = (int)Math.Floor(finalDamage * multiplier);
+        }
+
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
         return ResolverResult.Ok($"{action.ActionName}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.");

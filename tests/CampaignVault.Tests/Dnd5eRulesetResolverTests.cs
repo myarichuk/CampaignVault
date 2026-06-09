@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Moq;
 using Xunit;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
@@ -241,5 +242,67 @@ public class Dnd5eRulesetResolverTests
         var output = await resolver.ResolveAsync(context, action);
 
         Assert.Contains("Actor Wins", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_SavingThrow_UsesAdvantageState()
+    {
+        var mockRollService = new Mock<IRollService>();
+        mockRollService.Setup(r => r.RollAsync(It.IsAny<RollRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RollOutcome { Result = 15, Summary = "Rolled 15" });
+
+        var resolver = new Dnd5eRulesetResolver(mockRollService.Object);
+
+        var actorId = "char_1";
+        var actor = new Character { Id = actorId, SystemStats = new Dnd5eExtension { Dexterity = 14 } };
+        var context = CreateContext(actor);
+
+        var action = new RulesetAction
+        {
+            ActorId = actorId,
+            ActionType = RulesetActionType.SavingThrow,
+            ActionName = "Dexterity Save",
+            AdvantageState = AdvantageState.Advantage,
+            Parameters = new Dictionary<string, string> { { "dc", "14" }, { "save", "Dexterity" } }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.True(output.Result.Success);
+        mockRollService.Verify(r => r.RollAsync(It.Is<RollRequest>(req => req.Mechanic == DiceMechanic.Advantage), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveAttackAsync_AppliesDamageResistance()
+    {
+        var mockRollService = new Mock<IRollService>();
+        mockRollService.SetupSequence(r => r.RollAsync(It.IsAny<RollRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RollOutcome { Result = 20, Summary = "Hit" }) // Attack
+            .ReturnsAsync(new RollOutcome { Result = 10, Summary = "Damage" }); // Damage
+
+        var resolver = new Dnd5eRulesetResolver(mockRollService.Object);
+
+        var actorId = "char_1";
+        var targetId = "char_2";
+        var context = CreateContext(
+            new Character { Id = actorId, SystemStats = new Dnd5eExtension() },
+            new Character { Id = targetId, SystemStats = new Dnd5eExtension { DamageModifiers = new Dictionary<string, float> { { "Fire", 0.5f } } } }
+        );
+
+        var action = new RulesetAction
+        {
+            ActorId = actorId,
+            TargetIds = [targetId],
+            ActionType = RulesetActionType.Attack,
+            ActionName = "Fire Bolt",
+            DamageType = "Fire",
+            Parameters = new Dictionary<string, string> { { "damageDice", "1d10" } }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        var hpChange = output.Mutations.OfType<HpChange>().FirstOrDefault();
+        Assert.NotNull(hpChange);
+        Assert.Equal(-5, hpChange.Delta); // 10 damage * 0.5 resistance
     }
 }

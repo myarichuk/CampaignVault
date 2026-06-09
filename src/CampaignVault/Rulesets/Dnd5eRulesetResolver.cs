@@ -40,6 +40,25 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         };
     }
 
+    private int GetSavingThrowBonus(Dnd5eExtension stats, string name)
+    {
+        if (stats.SavingThrowModifiers.TryGetValue(name, out var saveMod))
+        {
+            return saveMod;
+        }
+
+        return name.ToLower() switch
+        {
+            "strength" => stats.GetAbilityModifier(stats.Strength),
+            "dexterity" => stats.GetAbilityModifier(stats.Dexterity),
+            "constitution" => stats.GetAbilityModifier(stats.Constitution),
+            "intelligence" => stats.GetAbilityModifier(stats.Intelligence),
+            "wisdom" => stats.GetAbilityModifier(stats.Wisdom),
+            "charisma" => stats.GetAbilityModifier(stats.Charisma),
+            _ => 0
+        };
+    }
+
     protected override async Task<ResolverResult> ResolveAttackAsync(
         RulesetAction action, 
         ChangeContext context, 
@@ -121,6 +140,13 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             var critDmg = await _rollService.RollAsync(new RollRequest { Tag = "critDamage", Expression = damageDice, Mechanic = DiceMechanic.Standard }, ct);
             finalDamage += critDmg.Result;
             critMsg = $" CRITICAL HIT! Added {critDmg.Result} extra damage.";
+        }
+
+        // Apply damage modifiers (resistances/vulnerabilities)
+        var damageType = action.DamageType ?? "Physical";
+        if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
+        {
+            finalDamage = (int)Math.Floor(finalDamage * multiplier);
         }
 
         mutations.Add(new HpChange
@@ -216,7 +242,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Dexterity";
-        var bonus = GetSkillOrAbilityBonus(actorStats, saveName);
+        var bonus = GetSavingThrowBonus(actorStats, saveName);
         bonus = ApplyAllModifiers(actorStats, "SavingThrow", bonus);
         bonus = ApplyAllModifiers(actorStats, saveName, bonus);
         var mechanic = GetMechanicFromAction(action);
