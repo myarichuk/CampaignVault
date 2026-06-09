@@ -226,6 +226,12 @@ public class SystemExtension
     public Dictionary<string, float> Attributes { get; set; } = [];
 
     /// <summary>
+    /// Multipliers for incoming damage types (e.g., "Fire" -> 0.5 for resistance).
+    /// Used by EncounterResolver and ruleset-specific combat logic.
+    /// </summary>
+    public Dictionary<string, float> DamageModifiers { get; set; } = [];
+
+    /// <summary>
     /// Structured status effects replacing the old flat <c>Character.Status: List&lt;string&gt;</c>.
     /// Each effect carries stat modifiers, expiration metadata, and a recovery hint authored by the LLM DM.
     /// See <see cref="StatusEffect"/> for the full design and tool-schema documentation.

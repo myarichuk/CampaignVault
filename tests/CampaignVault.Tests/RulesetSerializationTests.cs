@@ -193,4 +193,24 @@ public class RulesetSerializationTests
         Assert.Contains("\"advantageState\":\"Disadvantage\"", json);
         Assert.Contains("\"damageType\":\"Fire\"", json);
     }
+
+    [Fact]
+    public void SystemExtension_SerializesDamageModifiers()
+    {
+        var ext = new SystemExtension
+        {
+            DamageModifiers = new Dictionary<string, float>
+            {
+                { "Fire", 0.5f }, // Resistance (half damage)
+                { "Cold", 2.0f }, // Vulnerability (double damage)
+                { "Poison", 0.0f } // Immunity (no damage)
+            }
+        };
+
+        var json = JsonSerializer.Serialize(ext);
+        
+        Assert.Contains("\"Fire\":0.5", json);
+        Assert.Contains("\"Cold\":2", json);
+        Assert.Contains("\"Poison\":0", json);
+    }
 }
