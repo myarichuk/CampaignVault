@@ -168,6 +168,11 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return Task.FromResult(ResolverResult.Fail("NotImplemented", "PF2e: Contested checks are typically resolved against DCs instead of opposed rolls."));
     }
 
+    protected override Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    {
+        return Task.FromResult(ResolverResult.Fail("NotImplemented", "PF2e: Saving throws are typically resolved against DCs. Needs implementation."));
+    }
+
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Pf2eExtension ?? new Pf2eExtension();

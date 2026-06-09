@@ -85,7 +85,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         damageBonus = ApplyAllModifiers(actorStats, "DamageRoll", damageBonus);
 
-        var mechanic = GetMechanicFromParams(action.Parameters);
+        var mechanic = GetMechanicFromAction(action);
 
         var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = mechanic }, ct);
         var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
@@ -148,7 +148,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, "SkillCheck", bonus);
         bonus = ApplyAllModifiers(actorStats, skillName, bonus);
-        var mechanic = GetMechanicFromParams(action.Parameters);
+        var mechanic = GetMechanicFromAction(action);
 
         var outcome = await _rollService.RollAsync(new RollRequest
         {
@@ -193,7 +193,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         targetBonus = ApplyAllModifiers(targetStats, "SkillCheck", targetBonus);
         targetBonus = ApplyAllModifiers(targetStats, targetSkill, targetBonus);
 
-        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = GetMechanicFromParams(action.Parameters) }, ct);
+        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = GetMechanicFromAction(action) }, ct);
         var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = DiceMechanic.Standard }, ct);
 
         // Ties usually favor the status quo or defender, but we'll assume higher wins, tie = defender wins.
@@ -201,6 +201,38 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var resultStr = actorWins ? "Actor Wins" : "Target Wins";
 
         return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).");
+    }
+
+    protected override async Task<ResolverResult> ResolveSavingThrowAsync(
+        RulesetAction action, 
+        ChangeContext context, 
+        Dnd5eExtension actorStats, 
+        List<WorldChange> mutations, 
+        CancellationToken ct)
+    {
+        if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
+        {
+            return ResolverResult.Fail("InvalidParameter", "Error: Saving throw requires a 'dc' parameter.");
+        }
+
+        var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Dexterity";
+        var bonus = GetSkillOrAbilityBonus(actorStats, saveName);
+        bonus = ApplyAllModifiers(actorStats, "SavingThrow", bonus);
+        bonus = ApplyAllModifiers(actorStats, saveName, bonus);
+        var mechanic = GetMechanicFromAction(action);
+
+        var outcome = await _rollService.RollAsync(new RollRequest
+        {
+            Tag = "save",
+            Expression = "1d20",
+            Bonus = bonus,
+            Mechanic = mechanic
+        }, ct);
+
+        var isSuccess = outcome.Result >= dc;
+        var resultStr = isSuccess ? "Success" : "Failure";
+        
+        return ResolverResult.Ok($"{action.ActionName} ({saveName} Save): {resultStr}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
     }
 
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)

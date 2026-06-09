@@ -164,6 +164,11 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         return Task.FromResult(ResolverResult.Fail("NotImplemented", "Fallout 2d20: Contested checks are resolved as opposed skill tests. Needs implementation."));
     }
 
+    protected override Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    {
+        return Task.FromResult(ResolverResult.Fail("NotSupported", "Fallout 2d20: This system does not use traditional saving throws. Checks are usually attribute + skill tests."));
+    }
+
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
