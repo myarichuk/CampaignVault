@@ -42,7 +42,7 @@ internal static class InitiativeQueryHelper
         IAsyncDocumentSession session,
         string? campaignName,
         IReadOnlyCollection<string> holderIds,
-        int limit = 200,
+        int limitPerHolder = 20,
         CancellationToken ct = default)
     {
         if (holderIds.Count == 0)
@@ -50,24 +50,16 @@ internal static class InitiativeQueryHelper
             return new Dictionary<string, List<Item>>(StringComparer.OrdinalIgnoreCase);
         }
 
-        List<Item> items;
-        if (!string.IsNullOrWhiteSpace(campaignName))
+        var result = new Dictionary<string, List<Item>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var holderId in holderIds)
         {
-            items = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
-                .WhereEquals(x => x.CampaignName, campaignName)
-                .Take(limit)
-                .ToListAsync(ct);
-        }
-        else
-        {
-            items = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
-                .Take(limit)
-                .ToListAsync(ct);
+            var items = await QueryItemsHeldByAsync(session, holderId, limitPerHolder, ct);
+            if (items.Count > 0)
+            {
+                result[holderId] = items;
+            }
         }
 
-        return items
-            .Where(i => holderIds.Contains(i.HolderId))
-            .GroupBy(i => i.HolderId, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        return result;
     }
 }

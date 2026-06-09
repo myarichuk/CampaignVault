@@ -26,6 +26,9 @@ internal static class ToolErrors
 [McpServerToolType]
 public class CampaignTools
 {
+    public const string EventGroupingKey = "Simulation:Event";
+    public const string UrgentGroupingKey = "NpcInitiative:Urgent";
+
     private readonly CampaignRepository _repository;
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
     private readonly IRulesetModuleSelector _rulesetSelector;
@@ -34,7 +37,7 @@ public class CampaignTools
     private readonly IPressureManager _pressureManager;
     private readonly IPressureOrchestrator _pressureOrchestrator;
 
-    private static readonly RateLimiter _commitRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+    private static readonly RateLimiter CommitRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
     {
         TokenLimit = 10000, // Large enough for parallel xUnit test suites, still guards against infinite loops
         TokensPerPeriod = 1000, 
@@ -163,9 +166,9 @@ public class CampaignTools
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("KICKOFF TOOL: Call this at the start of every session to get the current time, active rumors, recent history, and current party location in one view. Respects the currently selected campaign (via select_campaign).")]
+    [Description("KICKOFF TOOL: Call this at the start of every session to get the time, active rumors, recent history, and current party location in one view. Respects the currently selected campaign (via select_campaign). partyLocationId is optional — omit it if you do not know the party's current location and derive it from recent history instead.")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
-        [Description("The current ID of the location where the party is (string type)")] string partyLocationId,
+        [Description("The current ID of the location where the party is (string type). Optional. If not provided, you should determine the party's location from recent history or start them at a default location, then call 'get_scene' to load the location's details.")] string? partyLocationId = null,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
         var effective = EffectiveCampaign(campaignName);
@@ -180,7 +183,12 @@ public class CampaignTools
             var rumors = peak.Concat(spreading).ToList();
 
             var events = await _repository.QueryEventsAsync(session, null, null, 5, effective);
-            var location = await _repository.GetLocationAsync(session, partyLocationId, effective);
+            
+            Location? location = null;
+            if (!string.IsNullOrEmpty(partyLocationId))
+            {
+                location = await _repository.GetLocationAsync(session, partyLocationId, effective);
+            }
             var config = await _repository.GetCampaignConfigAsync(session, effective);
             var worldActiveQuests = await _repository.GetActiveQuestsAsync(session, effective, 10);
 
@@ -252,7 +260,16 @@ public class CampaignTools
                 travelEvent?.Summary,
                 suggestedExamples
             );
-            return new ToolResult<WorldStateView>(true, view, $"Authoritative world state retrieved for session start (campaign: {effective}).");
+            var summary = $"Authoritative world state retrieved for session start (campaign: {effective}).";
+            if (string.IsNullOrEmpty(partyLocationId))
+            {
+                summary += " HINT: partyLocationId was not provided. Review the recent history/events to identify where the party is, then call 'get_scene' with that location ID to load the scene's details, NPCs, and items.";
+            }
+            else if (location == null)
+            {
+                summary += $" WARNING: partyLocationId '{partyLocationId}' was not found in the database. The location may have been deleted or the ID may be incorrect. Verify the correct location ID from recent history and call 'get_scene' with a valid location ID.";
+            }
+            return new ToolResult<WorldStateView>(true, view, summary);
         }, saveChanges: true);
     }
 
@@ -335,7 +352,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.RateLimitExceeded, Summary: $"Commit rejected: Too many changes in a single batch ({changes.Length}). Maximum allowed is 50."));
         }
 
-        if (!_commitRateLimiter.AttemptAcquire().IsAcquired)
+        if (!CommitRateLimiter.AttemptAcquire().IsAcquired)
         {
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.RateLimitExceeded, Summary: "Commit rate limit exceeded. Please wait a few seconds before making more world changes."));
         }
@@ -400,15 +417,18 @@ Basic + creating on the fly examples are also shown in the tool description and 
             var timeDoc = await _repository.GetTimeAsync(session, effective);
             
             string[]? cappedPressure = null;
-            if (result.SimulatorEvents.Count > 0)
+            var rawPressures = result.SimulatorEvents
+                .Select(e => new WorldPressureItem(PressureSeverity.Simulation, "Simulation", e, EventGroupingKey))
+                .Concat(result.WorldPressure)
+                .ToList();
+
+            if (rawPressures.Count > 0)
             {
-                var rawPressures = result.SimulatorEvents
-                    .Select(e => new WorldPressureItem(PressureSeverity.Simulation, "Simulation", e, "Simulation:Event"));
                 cappedPressure = await _pressureManager.FilterAndCapAsync(session, effective, (int)timeDoc.TotalDaysElapsed, rawPressures);
             }
 
             return new ToolResult<AdvanceResult>(true, result, 
-                $"Advanced {days} days. {result.SimulatorEvents.Count} simulation events triggered.",
+                $"Advanced {days} days. {result.SimulatorEvents.Count} events and {result.WorldPressure.Count} structured pressures generated.",
                 WorldPressure: cappedPressure != null && cappedPressure.Length > 0 ? cappedPressure : null);
         });
     }
@@ -467,7 +487,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
                     PressureSeverity.NarrativePrompt,
                     characterId,
                     $"{npc.Name} — {i.FramingPrompt}",
-                    "NpcInitiative:Urgent"))
+                    UrgentGroupingKey))
                 .ToList();
             if (urgentInitiatives.Count > 0)
             {

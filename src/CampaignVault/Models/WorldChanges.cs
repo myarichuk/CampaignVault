@@ -303,8 +303,12 @@ public class ActivityChange : WorldChange
 /// C# resolver roll dice deterministically. The LLM receives back a structured RollResult
 /// and narrates the outcome.
 ///
-/// parameters keys (all optional, resolver-specific):
-///   "dc"            – numeric difficulty class (string) for skill/opposed checks
+/// parameters keys (all optional, resolver-specific; values may be strings or numbers in JSON):
+///   "dc"            – difficulty class for skill/opposed checks
+///   "bonus"         – attack roll bonus for D&amp;D 5e attacks (alias: "toHitBonus")
+///   "damageDice"    – damage expression for attacks (e.g. "1d8")
+///   "damageBonus"   – flat damage bonus for attacks
+///   "ac"            – target AC override for attacks
 ///   "difficulty"    – success count threshold for Fallout 2d20 (default "1")
 ///   "targetPart"    – BodyPart enum string for hit-location targeting (Fallout 2d20)
 ///   "advantage"     – "true"/"false" for D&amp;D 5e
@@ -357,6 +361,7 @@ public class RulesetAction : WorldChange
     /// See class-level summary for the documented parameter keys.
     /// </summary>
     [JsonPropertyName("parameters")]
+    [JsonConverter(typeof(FlexibleStringDictionaryConverter))]
     public Dictionary<string, string> Parameters { get; set; } = [];
 }
 
@@ -558,6 +563,7 @@ public class ItemCreate : WorldChange
 
     [Description("Key-value attributes for mechanics (e.g., {'value': '5', 'material': 'silver'}).")]
     [JsonPropertyName("properties")]
+    [JsonConverter(typeof(FlexibleStringDictionaryConverter))]
     public Dictionary<string, string> Properties { get; set; } = [];
 }
 

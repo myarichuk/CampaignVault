@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class TransientQuestGiverPressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "Character:TransientQuestGiver";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 35;
 
@@ -21,7 +23,7 @@ public sealed class TransientQuestGiverPressureContributor : IPressureContributo
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, npc.Id,
                     $"Character '{npc.Name}' is a Quest Giver but is marked as transient (KeepAlive = false). The engine will delete them when the party leaves! Anchor them immediately:\n[ {{ \"$type\": \"character_update\", \"characterId\": \"{npc.Id}\", \"keepAlive\": true }} ]",
-                    "Character:TransientQuestGiver"));
+                    GroupingKey));
             }
         }
 

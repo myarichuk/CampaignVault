@@ -221,16 +221,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var pressures = allPressures.Where(p => p.EntityId == id).ToList();
         
         Assert.NotNull(pressures);
-        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == "Character:Attribute:Morale");
-        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == "Character:Attribute:TemperatureHigh");
-        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == "Character:Attribute:corruption");
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor.MoraleGroupingKey);
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor.TemperatureHighGroupingKey);
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.Simulation && p.GroupingKey == CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor.GetAttributeGroupingKey("corruption"));
         
-        Assert.Contains(pressures, p => p.Severity == PressureSeverity.NarrativePrompt && p.GroupingKey == "Character:Relationship:Rival");
-        Assert.Contains(pressures, p => p.Severity == PressureSeverity.NarrativePrompt && p.GroupingKey == "Character:Relationship:Friend");
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.NarrativePrompt && p.GroupingKey == CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor.GetRelationshipGroupingKey("Rival"));
+        Assert.Contains(pressures, p => p.Severity == PressureSeverity.NarrativePrompt && p.GroupingKey == CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor.GetRelationshipGroupingKey("Friend"));
         
-        Assert.DoesNotContain(pressures, p => p.GroupingKey == "Character:Attribute:Willpower");
-        Assert.DoesNotContain(pressures, p => p.GroupingKey == "Character:Attribute:fear");
-        Assert.DoesNotContain(pressures, p => p.GroupingKey == "Character:Relationship:Neutral");
+        Assert.DoesNotContain(pressures, p => p.GroupingKey == CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor.WillpowerGroupingKey);
+        Assert.DoesNotContain(pressures, p => p.GroupingKey == CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor.GetAttributeGroupingKey("fear"));
+        Assert.DoesNotContain(pressures, p => p.GroupingKey == CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor.GetRelationshipGroupingKey("Neutral"));
     }
 
     [Fact]

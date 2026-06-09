@@ -27,22 +27,24 @@ public class StatusExpiryRuleTests : IClassFixture<RavenDBFixture>
         var rule = new StatusExpiryRule();
         var charId = "char_" + Guid.NewGuid();
 
+        var character = new Character
+        {
+            Id = charId,
+            Name = "Bob",
+            SystemStats = new Dnd5eExtension
+            {
+                StatusEffects =
+                [
+                    new StatusEffect { Name = "Poisoned", ExpiresAtDay = 5 }, // Should expire
+                    new StatusEffect { Name = "Cursed", ExpiresAtDay = 20 }, // Should NOT expire yet
+                    new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 }
+                ]
+            }
+        };
+
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character
-            {
-                Id = charId,
-                Name = "Bob",
-                SystemStats = new Dnd5eExtension
-                {
-                    StatusEffects =
-                    [
-                        new StatusEffect { Name = "Poisoned", ExpiresAtDay = 5 }, // Should expire
-                        new StatusEffect { Name = "Cursed", ExpiresAtDay = 20 }, // Should NOT expire yet
-                        new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 }
-                    ]
-                }
-            });
+            await session.StoreAsync(character);
             await session.SaveChangesAsync();
         }
 
@@ -51,7 +53,7 @@ public class StatusExpiryRuleTests : IClassFixture<RavenDBFixture>
         var simContext = new SimulationContext(
             new CampaignTime { TotalDaysElapsed = 10 },
             new List<Rumor>(),
-            new List<Character>(),
+            [character],
             simSession,
             1.0,
             "test_campaign"

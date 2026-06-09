@@ -48,12 +48,11 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
         
         var attrVal = GetAttributeValue(actorStats, attribute);
-        var skillVal = actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
+        var skillKey = actorStats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase));
+        var skillVal = skillKey != null && actorStats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
         var targetNumber = attrVal + skillVal;
         
-        targetNumber = ApplyAllModifiers(actorStats, "SkillCheck", targetNumber);
-        targetNumber = ApplyAllModifiers(actorStats, skill, targetNumber);
-        targetNumber = ApplyAllModifiers(actorStats, attribute, targetNumber);
+        targetNumber = ApplyAllModifiers(actorStats, targetNumber, "SkillCheck", skill, attribute);
         
         var isTagged = actorStats.TagSkills.Contains(skill);
         int? critThreshold = isTagged ? skillVal : null;
@@ -96,7 +95,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         }
 
         var defense = targetStats.Defense;
-        defense = ApplyAllModifiers(targetStats, "Defense", defense);
+        defense = ApplyAllModifiers(targetStats, defense, "Defense");
         
         var difficulty = defense;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
@@ -108,12 +107,11 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
         
         var attrVal = GetAttributeValue(actorStats, attribute);
-        var skillVal = actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
+        var skillKey = actorStats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase));
+        var skillVal = skillKey != null && actorStats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
         var targetNumber = attrVal + skillVal;
         
-        targetNumber = ApplyAllModifiers(actorStats, "AttackRoll", targetNumber);
-        targetNumber = ApplyAllModifiers(actorStats, skill, targetNumber);
-        targetNumber = ApplyAllModifiers(actorStats, attribute, targetNumber);
+        targetNumber = ApplyAllModifiers(actorStats, targetNumber, "AttackRoll", skill, attribute);
         var isTagged = actorStats.TagSkills.Contains(skill);
         
         var poolSize = 2;
@@ -146,16 +144,18 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageDice value '{cd}'.");
         }
 
-        combatDiceCount = ApplyAllModifiers(actorStats, "DamageRoll", combatDiceCount);
+        combatDiceCount = ApplyAllModifiers(actorStats, combatDiceCount, "DamageRoll");
         var damageType = action.DamageType ?? (action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical");
 
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);
 
-        var dr = targetStats.DamageResistance.TryGetValue(damageType, out var res) ? res : 0;
+        var drKey = targetStats.DamageResistance.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
+        var dr = drKey != null && targetStats.DamageResistance.TryGetValue(drKey, out var res) ? res : 0;
         var finalDamage = Math.Max(0, combatResult.Damage - dr);
 
         // Apply damage modifiers (resistances/vulnerabilities) multiplier
-        if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
+        var modKey = targetStats.DamageModifiers.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
+        if (modKey != null && targetStats.DamageModifiers.TryGetValue(modKey, out var multiplier))
         {
             finalDamage = (int)Math.Floor(finalDamage * multiplier);
         }
@@ -182,12 +182,13 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : null;
         
         var attrVal = GetAttributeValue(actorStats, attribute);
-        var skillVal = skill != null && actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
+        var skillKey = skill != null ? actorStats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase)) : null;
+        var skillVal = skillKey != null && actorStats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
         var targetNumber = attrVal + skillVal;
         
-        targetNumber = ApplyAllModifiers(actorStats, "SavingThrow", targetNumber);
-        if (skill != null) targetNumber = ApplyAllModifiers(actorStats, skill, targetNumber);
-        targetNumber = ApplyAllModifiers(actorStats, attribute, targetNumber);
+        var tags = new List<string> { "SavingThrow", attribute };
+        if (skill != null) tags.Add(skill);
+        targetNumber = ApplyAllModifiers(actorStats, targetNumber, tags.ToArray());
         
         var isTagged = skill != null && actorStats.TagSkills.Contains(skill);
         int? critThreshold = isTagged ? skillVal : null;
@@ -220,7 +221,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
     {
         var stats = character.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
         var initiative = stats.Perception + stats.Agility;
-        initiative = ApplyAllModifiers(stats, "Initiative", initiative);
+        initiative = ApplyAllModifiers(stats, initiative, "Initiative");
         
         // Add a lightweight roll to add variance instead of pure static stat
         var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = initiative, Mechanic = DiceMechanic.Standard };

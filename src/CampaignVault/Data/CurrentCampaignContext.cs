@@ -29,11 +29,21 @@ public interface ICurrentCampaignContext
 /// </summary>
 public sealed class CurrentCampaignContext : ICurrentCampaignContext
 {
+    private readonly Lock _lock = new();
     private string _current = DefaultCampaign;
 
     private const string DefaultCampaign = "default";
 
-    public string CurrentCampaignName => _current;
+    public string CurrentCampaignName
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _current;
+            }
+        }
+    }
 
     public void SetCurrent(string campaignName)
     {
@@ -42,6 +52,10 @@ public sealed class CurrentCampaignContext : ICurrentCampaignContext
             campaignName = DefaultCampaign;
         }
 
-        _current = campaignName.Trim().ToLowerInvariant();
+        var normalized = campaignName.Trim().ToLowerInvariant();
+        lock (_lock)
+        {
+            _current = normalized;
+        }
     }
 }

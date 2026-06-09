@@ -1,6 +1,4 @@
 using CampaignVault.Models;
-using Raven.Client.Documents;
-using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;
 
@@ -10,17 +8,12 @@ public class StatusExpiryRule : ISimulationRule
     
     public int Order => 5; // Runs early before needs and routines
 
-    public virtual async Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
-        // Scoping hardened: filter by camp (loose for chars)
-        var effective = context.CampaignName;
-        var all = await context.Session.Query<Character>().ToListAsync(ct);
-        var allCharacters = string.IsNullOrEmpty(effective) ? all : all.Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective).ToList();
-
-        foreach (var character in allCharacters)
+        foreach (var character in context.ScheduledNpcs)
         {
             if (character.SystemStats?.StatusEffects == null || character.SystemStats.StatusEffects.Count == 0)
             {
@@ -44,6 +37,6 @@ public class StatusExpiryRule : ISimulationRule
             }
         }
 
-        return new RuleResult(narratives, deltas);
+        return Task.FromResult(new RuleResult(narratives, deltas));
     }
 }

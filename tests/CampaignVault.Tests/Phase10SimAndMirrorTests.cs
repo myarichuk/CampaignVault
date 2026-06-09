@@ -183,6 +183,43 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public void MemorySalienceDecayRule_ZeroDecayDays_UsesMinimumStaleThreshold()
+    {
+        var rule = new MemorySalienceDecayRule();
+        var npc = new Character
+        {
+            Id = "chars/zero-config",
+            Name = "Zero Config NPC",
+            Psychology = new PsychologyProfile
+            {
+                Memories = new Dictionary<string, MemoryNode>
+                {
+                    ["Fresh"] = new MemoryNode
+                    {
+                        Topic = "Fresh",
+                        Salience = 0.8,
+                        Importance = MemoryImportance.Important,
+                        DayAcquired = 0,
+                        Urgency = MemoryUrgency.Normal
+                    }
+                }
+            }
+        };
+
+        var context = new SimulationContext(
+            new CampaignTime { TotalDaysElapsed = 1 },
+            [],
+            [npc],
+            null!,
+            DaysPassed: 1,
+            Config: new CampaignConfig { MemoryImportantDecayDays = 0 });
+
+        rule.ApplyAsync(context).GetAwaiter().GetResult();
+
+        Assert.Equal(MemoryUrgency.Normal, npc.Psychology.Memories["Fresh"].Urgency);
+    }
+
+    [Fact]
     public async Task UrgentInitiative_AppearsInGetSceneWorldPressure()
     {
         const string campaign = "urgent-mirror";

@@ -14,6 +14,8 @@ namespace CampaignVault.Data;
 /// </summary>
 public sealed class DefaultSimulationEngine : IWorldSimulationEngine
 {
+    public const string RumorsGroupingKey = "Simulation:Rumors";
+
     private readonly IEnumerable<ISimulationRule> _rules;
     private readonly ILogger<DefaultSimulationEngine> _logger;
 
@@ -29,13 +31,22 @@ public sealed class DefaultSimulationEngine : IWorldSimulationEngine
     {
         var allNarratives = new List<string>();
         var allDeltas = new List<WorldChange>();
-        var pressure = new List<string>();
+        var pressure = new List<WorldPressureItem>();
 
         _logger.LogInformation("Running simulation engine with {RuleCount} rules for {Days} days", _rules.Count(), context.DaysPassed);
 
         foreach (var rule in _rules)
         {
-            var result = await rule.ApplyAsync(context, ct);
+            RuleResult result;
+            try
+            {
+                result = await rule.ApplyAsync(context, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Simulation rule {RuleName} failed; continuing with remaining rules", rule.Name);
+                continue;
+            }
 
             if (result.NarrativeEvents.Count > 0)
             {
@@ -53,7 +64,7 @@ public sealed class DefaultSimulationEngine : IWorldSimulationEngine
         // Basic pressure signals (can be expanded by dedicated rules later)
         if (context.ActiveRumors.Any(r => r.State is RumorState.Peak or RumorState.Spreading))
         {
-            pressure.Add("Active rumors are circulating and may require attention.");
+            pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, "Simulation", "Active rumors are circulating and may require attention.", RumorsGroupingKey));
         }
 
         return new SimulationResult(

@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class UnresolvedEventPressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "Event:Unresolved";
+
     public PressureScope Scope => PressureScope.World;
     public int Order => 15;
 
@@ -17,7 +19,7 @@ public sealed class UnresolvedEventPressureContributor : IPressureContributor
             pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, e.Id,
                 $"Unresolved thread: '{e.Summary}' ({ctx.Time.TotalDaysElapsed - e.DayLogged} days old). " +
                 "Resolve or advance via commit e.g. [ { \"$type\": \"event\", \"category\": \"Resolution\", \"summary\": \"...resolved...\", \"involved\": [\"" + (e.Involved?.FirstOrDefault() ?? "ids...") + "\"] } ] or convert to rumor.",
-                "Event:Unresolved"));
+                GroupingKey));
         }
 
         return pressures;

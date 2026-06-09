@@ -7,6 +7,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 /// </summary>
 public sealed class UrgentInitiativePressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "NpcInitiative:Urgent";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 12;
 
@@ -36,7 +38,7 @@ public sealed class UrgentInitiativePressureContributor : IPressureContributor
                     PressureSeverity.NarrativePrompt,
                     npc.Id,
                     $"{npc.Name} — {initiative.FramingPrompt}",
-                    "NpcInitiative:Urgent"));
+                    GroupingKey));
             }
         }
 

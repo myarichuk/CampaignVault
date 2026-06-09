@@ -4,6 +4,9 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class FactionTerritoryPressureContributor : IPressureContributor
 {
+    public static string GetHostileTerritoryGroupingKey(string factionId) => $"Faction:HostileTerritory:{factionId}";
+    public static string GetAlliedTerritoryGroupingKey(string factionId) => $"Faction:AlliedTerritory:{factionId}";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 50;
 
@@ -27,14 +30,14 @@ public sealed class FactionTerritoryPressureContributor : IPressureContributor
                 pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
                     $"The party is in territory influenced by '{f.Name}', a faction they have very low reputation with ({f.PlayerReputation.Value}). " +
                     "They should face immediate suspicion, hostility, or be denied services. Consider an ambush or confrontation.",
-                    $"Faction:HostileTerritory:{f.FactionId}"));
+                    GetHostileTerritoryGroupingKey(f.FactionId)));
             }
             else if (f.PlayerReputation.Value >= 50)
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
                     $"The party is in territory influenced by '{f.Name}', a faction they are highly regarded by ({f.PlayerReputation.Value}). " +
                     "They should be welcomed, offered better prices, or given assistance.",
-                    $"Faction:AlliedTerritory:{f.FactionId}"));
+                    GetAlliedTerritoryGroupingKey(f.FactionId)));
             }
         }
 

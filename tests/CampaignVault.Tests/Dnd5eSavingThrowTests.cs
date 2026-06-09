@@ -119,4 +119,54 @@ public class Dnd5eSavingThrowTests
         // Verify that the roll request had a bonus of 2
         Assert.Equal(2, bonusPassed);
     }
+
+    [Fact]
+    public async Task ResolveSavingThrow_UsesAllRollsStatusEffect_OnlyOnce()
+    {
+        var mockRollService = Substitute.For<IRollService>();
+        var bonusPassed = 0;
+        
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => 
+            {
+                var req = callInfo.Arg<RollRequest>();
+                bonusPassed = req.Bonus;
+                return Task.FromResult(new RollOutcome { Result = 15, Summary = "Rolled 15" });
+            });
+
+        var resolver = new Dnd5eRulesetResolver(mockRollService);
+
+        var actorId = "char_1";
+        // Dexterity 10 (mod +0) + StatusEffect with 'AllRolls' (+2.0) = Total Bonus +2
+        var actor = new Character 
+        { 
+            Id = actorId, 
+            SystemStats = new Dnd5eExtension 
+            { 
+                Dexterity = 10,
+                StatusEffects = new List<StatusEffect>
+                {
+                    new StatusEffect
+                    {
+                        Name = "Luck",
+                        StatModifiers = new Dictionary<string, float> { { "AllRolls", 2.0f } }
+                    }
+                }
+            } 
+        };
+        var context = CreateContext(actor);
+
+        var action = new RulesetAction
+        {
+            ActorId = actorId,
+            ActionType = RulesetActionType.SavingThrow,
+            ActionName = "Dexterity Save",
+            Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }
+        };
+
+        await resolver.ResolveAsync(context, action);
+
+        // Verify that the roll request had a bonus of 2, not 4 (double-counted)
+        Assert.Equal(2, bonusPassed);
+    }
 }

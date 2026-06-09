@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class DanglingItemPressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "Item:DanglingHolder";
+
     public PressureScope Scope => PressureScope.World;
     public int Order => 30;
 
@@ -23,7 +25,7 @@ public sealed class DanglingItemPressureContributor : IPressureContributor
                         $"Item '{item.Name}' is held by '{item.HolderId}' which no longer exists (likely GC'd). " +
                         "Use item_transfer to move it to a valid location or character:\n" +
                         "[ { \"$type\": \"item_transfer\", \"itemId\": \"" + item.Id + "\", \"newHolderId\": \"locations/some_valid_location\" } ]",
-                        "Item:DanglingHolder"));
+                        GroupingKey));
                 }
             }
         }

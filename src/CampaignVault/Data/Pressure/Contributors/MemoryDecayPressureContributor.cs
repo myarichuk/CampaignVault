@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class MemoryDecayPressureContributor : IPressureContributor
 {
+    public static string GetMemoryDecayGroupingKey(string npcId, string topic) => $"MemoryDecay:{npcId}:{topic}";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 40;
 
@@ -40,7 +42,7 @@ public sealed class MemoryDecayPressureContributor : IPressureContributor
                     pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, npc.Id,
                         $"Character '{npc.Name}' has a memory about '{mem.Topic}' that is {age:F0} days old and may be fading. " +
                         $"Consider misremembering, distorting, or forgetting details. Update it using `knowledge_update`.",
-                        $"MemoryDecay:{npc.Id}:{mem.Topic}"));
+                        GetMemoryDecayGroupingKey(npc.Id, mem.Topic)));
                 }
             }
         }

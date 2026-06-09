@@ -176,6 +176,39 @@ public class RulesetSerializationTests
     }
 
     [Fact]
+    public void RulesetAction_Parameters_AcceptsNumericAndBooleanValues()
+    {
+        var json = """
+        [
+          {
+            "$type": "ruleset_action",
+            "actorId": "characters/street_thug",
+            "targetIds": ["characters/lira-shadowveil"],
+            "actionName": "Rusty Dagger Attack",
+            "actionType": "Attack",
+            "actionCategory": "Melee",
+            "parameters": {
+              "weapon": "dagger",
+              "toHitBonus": 4,
+              "dc": 15,
+              "advantage": true
+            }
+          }
+        ]
+        """;
+
+        var changes = JsonSerializer.Deserialize<WorldChange[]>(json, _options);
+
+        Assert.NotNull(changes);
+        Assert.Single(changes);
+        var action = Assert.IsType<RulesetAction>(changes[0]);
+        Assert.Equal("4", action.Parameters["toHitBonus"]);
+        Assert.Equal("15", action.Parameters["dc"]);
+        Assert.Equal("true", action.Parameters["advantage"]);
+        Assert.Equal("dagger", action.Parameters["weapon"]);
+    }
+
+    [Fact]
     public void RulesetAction_SerializesNewProperties()
     {
         var action = new RulesetAction

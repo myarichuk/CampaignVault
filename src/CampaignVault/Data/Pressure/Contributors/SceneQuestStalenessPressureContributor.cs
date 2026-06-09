@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class SceneQuestStalenessPressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "Quest:Stale";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 30;
 
@@ -23,7 +25,7 @@ public sealed class SceneQuestStalenessPressureContributor : IPressureContributo
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, q.QuestId,
                     $"Quest '{q.Title}' has seen no progress in over {staleDays} days. Consider advancing or failing it: [ {{ \"$type\": \"quest_progress\", \"questId\": \"{q.QuestId}\", \"objectiveIndex\": 0, \"newState\": \"InProgress\", \"narrativeNote\": \"Party investigated...\" }} ]",
-                    "Quest:Stale"));
+                    GroupingKey));
             }
         }
 

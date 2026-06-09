@@ -26,13 +26,37 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
     private int GetSkillOrAbilityBonus(Pf2eExtension stats, string name)
     {
-        if (stats.SkillModifiers.TryGetValue(name, out var skillMod))
+        var matchedKey = stats.SkillModifiers.Keys.FirstOrDefault(k => string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
+        if (matchedKey != null && stats.SkillModifiers.TryGetValue(matchedKey, out var skillMod))
         {
             return skillMod;
         }
 
         return name.ToLower() switch
         {
+            "strength" => stats.StrengthMod,
+            "dexterity" => stats.DexterityMod,
+            "constitution" => stats.ConstitutionMod,
+            "intelligence" => stats.IntelligenceMod,
+            "wisdom" => stats.WisdomMod,
+            "charisma" => stats.CharismaMod,
+            _ => 0
+        };
+    }
+
+    private int GetSavingThrowBonus(Pf2eExtension stats, string name)
+    {
+        var matchedKey = stats.SavingThrowModifiers.Keys.FirstOrDefault(k => string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
+        if (matchedKey != null && stats.SavingThrowModifiers.TryGetValue(matchedKey, out var saveMod))
+        {
+            return saveMod;
+        }
+
+        return name.ToLower() switch
+        {
+            "fortitude" => stats.ConstitutionMod,
+            "reflex" => stats.DexterityMod,
+            "will" => stats.WisdomMod,
             "strength" => stats.StrengthMod,
             "dexterity" => stats.DexterityMod,
             "constitution" => stats.ConstitutionMod,
@@ -97,7 +121,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         var ac = targetStats.ArmorClass;
-        ac = ApplyAllModifiers(targetStats, "AC", ac);
+        ac = ApplyAllModifiers(targetStats, ac, "AC");
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
         {
             ac = overrideAc;
@@ -109,7 +133,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{b}'.");
         }
 
-        attackBonus = ApplyAllModifiers(actorStats, "AttackRoll", attackBonus);
+        attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
 
         var damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4";
         
@@ -119,7 +143,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageBonus value '{db}'.");
         }
 
-        damageBonus = ApplyAllModifiers(actorStats, "DamageRoll", damageBonus);
+        damageBonus = ApplyAllModifiers(actorStats, damageBonus, "DamageRoll");
 
         var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = DiceMechanic.Standard }, ct);
         
@@ -160,8 +184,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
-        bonus = ApplyAllModifiers(actorStats, "SkillCheck", bonus);
-        bonus = ApplyAllModifiers(actorStats, skillName, bonus);
+        bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
 
         var outcome = await _rollService.RollAsync(new RollRequest { Tag = "skill", Expression = "1d20", Bonus = bonus, Mechanic = DiceMechanic.Standard }, ct);
         
@@ -183,9 +206,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Constitution";
-        var bonus = GetSkillOrAbilityBonus(actorStats, saveName);
-        bonus = ApplyAllModifiers(actorStats, "SavingThrow", bonus);
-        bonus = ApplyAllModifiers(actorStats, saveName, bonus);
+        var bonus = GetSavingThrowBonus(actorStats, saveName);
+        bonus = ApplyAllModifiers(actorStats, bonus, "SavingThrow", saveName);
 
         var outcome = await _rollService.RollAsync(new RollRequest { Tag = "save", Expression = "1d20", Bonus = bonus, Mechanic = DiceMechanic.Standard }, ct);
         
@@ -197,8 +219,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Pf2eExtension ?? new Pf2eExtension();
-        var initBonus = stats.SkillModifiers.TryGetValue("Perception", out var perc) ? perc : stats.WisdomMod;
-        initBonus = ApplyAllModifiers(stats, "Initiative", initBonus);
+        var percKey = stats.SkillModifiers.Keys.FirstOrDefault(k => string.Equals(k, "Perception", StringComparison.OrdinalIgnoreCase));
+        var initBonus = percKey != null && stats.SkillModifiers.TryGetValue(percKey, out var perc) ? perc : stats.WisdomMod;
+        initBonus = ApplyAllModifiers(stats, initBonus, "Initiative");
         
         var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = initBonus, Mechanic = DiceMechanic.Standard };
         var outcome = await _rollService.RollAsync(request, ct);

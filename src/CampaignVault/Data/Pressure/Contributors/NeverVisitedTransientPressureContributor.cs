@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class NeverVisitedTransientPressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "Location:NeverVisitedTransients";
+
     public PressureScope Scope => PressureScope.World;
     public int Order => 35;
 
@@ -21,7 +23,7 @@ public sealed class NeverVisitedTransientPressureContributor : IPressureContribu
                 pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, l.Id,
                     $"Location '{l.Name}' has never been visited but has transient NPCs. " +
                     "Consider visiting this location or setting keepAlive: true on important NPCs so they are not silently evicted.",
-                    "Location:NeverVisitedTransients"));
+                    GroupingKey));
             }
         }
 

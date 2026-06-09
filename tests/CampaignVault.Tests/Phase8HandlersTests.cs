@@ -394,4 +394,31 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Contains("crater", loaded.DistinctiveFeatures);
         Assert.DoesNotContain("sign", loaded.DistinctiveFeatures);
     }
+
+    [Fact]
+    public async Task ActivityChange_LoadsCharacterFromSession_WhenNotPreloaded()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = new Character
+        {
+            Id = "chars/offline-npc",
+            Name = "Offline NPC",
+            CurrentActivity = "Idle"
+        };
+        await session.StoreAsync(character);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+        var handler = new ActivityChangeHandler();
+
+        var result = await handler.ApplyAsync(new ActivityChange
+        {
+            CharacterId = character.Id,
+            NewActivity = "Patrolling"
+        }, ctx);
+
+        Assert.True(result.Success);
+        Assert.Equal("Patrolling", character.CurrentActivity);
+        Assert.True(ctx.Characters.ContainsKey(character.Id));
+    }
 }

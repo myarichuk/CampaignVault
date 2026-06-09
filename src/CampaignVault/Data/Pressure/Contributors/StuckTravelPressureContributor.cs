@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class StuckTravelPressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "Travel:Interrupted";
+
     public PressureScope Scope => PressureScope.Both;
     public int Order => 45;
 
@@ -15,11 +17,11 @@ public sealed class StuckTravelPressureContributor : IPressureContributor
         {
             foreach (var npc in ctx.Scene.PresentNPCs)
             {
-                if (npc.CurrentActivity != null && npc.CurrentActivity.Contains("interrupted en route", StringComparison.OrdinalIgnoreCase))
+                if (npc.CurrentActivity?.Contains("interrupted en route", StringComparison.OrdinalIgnoreCase) == true)
                 {
                     pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, npc.Id,
                         $"Character '{npc.Name}' is stuck: '{npc.CurrentActivity}'. Narrate the encounter resolution then commit e.g. [ {{\"$type\": \"activity\", \"characterId\": \"{npc.Id}\", \"newActivity\": \"...resolved...\", \"updateLocation\": false }}, {{\"$type\": \"travel\", \"characterId\": \"{npc.Id}\", \"destinationLocationId\": \"...\", \"encounterRiskModifier\": -20 }} ] to continue.",
-                        "Travel:Interrupted"));
+                        GroupingKey));
                 }
             }
 
@@ -38,7 +40,7 @@ public sealed class StuckTravelPressureContributor : IPressureContributor
         {
             pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, s.Id,
                 $"Character '{s.Name}' is stuck: '{s.CurrentActivity}'. Narrate the encounter resolution then commit e.g. [ {{\"$type\": \"activity\", \"characterId\": \"{s.Id}\", \"newActivity\": \"...resolved...\", \"updateLocation\": false }}, {{\"$type\": \"travel\", \"characterId\": \"{s.Id}\", \"destinationLocationId\": \"...\", \"encounterRiskModifier\": -20 }} ] to continue.",
-                "Travel:Interrupted"));
+                GroupingKey));
         }
 
         return pressures;

@@ -19,9 +19,11 @@ public class FakeRollService : IRollService
     public Queue<RollOutcome> NextRolls { get; } = new();
     public Queue<IReadOnlyList<RollOutcome>> NextBatches { get; } = new();
     public Queue<FalloutCombatDiceResult> NextFalloutRolls { get; } = new();
+    public List<RollRequest> RecordedRequests { get; } = [];
 
     public Task<RollOutcome> RollAsync(RollRequest request, CancellationToken ct = default)
     {
+        RecordedRequests.Add(request);
         return Task.FromResult(NextRolls.Dequeue());
     }
 
@@ -86,6 +88,35 @@ public class Dnd5eRulesetResolverTests
         Assert.Equal("char2", hpChange.CharacterId);
         Assert.Equal(-8, hpChange.Delta);
         Assert.Contains("Hit for 8 damage", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_ToHitBonusAlias_AppliesAttackBonus()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 12, HasCritical = false, HasComplication = false, Summary = "[8] + 4 = 12" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 5, Summary = "Rolled 5" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension() };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            ActorId = "char1",
+            TargetIds = ["char2"],
+            ActionType = RulesetActionType.Attack,
+            ActionName = "Dagger",
+            Parameters = new Dictionary<string, string> { ["toHitBonus"] = "4" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Equal(4, rollService.RecordedRequests[0].Bonus);
+        Assert.Single(output.Mutations);
+        Assert.Contains("Attack 12 vs AC 12", output.Result.Narrative);
     }
 
     [Fact]

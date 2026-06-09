@@ -110,6 +110,7 @@ public class AdvanceResult
 {
     public CampaignTime NewTime { get; set; } = default!;
     public List<string> SimulatorEvents { get; set; } = [];
+    public List<WorldPressureItem> WorldPressure { get; set; } = [];
 }
 
 public record RumorSummary(string Subject, string CurrentText, RumorState State);

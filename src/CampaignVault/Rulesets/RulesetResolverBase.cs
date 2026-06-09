@@ -118,6 +118,23 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         return GetMechanicFromParams(action.Parameters);
     }
 
+    protected static bool TryGetParameter(
+        Dictionary<string, string> parameters,
+        out string value,
+        params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (parameters.TryGetValue(key, out value!))
+            {
+                return true;
+            }
+        }
+
+        value = string.Empty;
+        return false;
+    }
+
     protected DiceMechanic GetMechanicFromParams(Dictionary<string, string> parameters)
     {
         if (parameters.TryGetValue("advantage", out var adv) && bool.TryParse(adv, out var isAdv) && isAdv)
@@ -137,7 +154,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
     /// Folds all active status modifiers matching the given tag into a base value.
     /// Also considers systemic values like Fatigue if applicable.
     /// </summary>
-    protected int ApplyAllModifiers(TStats stats, string modifierTag, int baseValue)
+    protected int ApplyAllModifiers(TStats stats, int baseValue, params string[] modifierTags)
     {
         var bonus = 0f;
         if (stats.StatusEffects != null)
@@ -145,25 +162,44 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
             foreach (var effect in stats.StatusEffects)
             {
                 if (effect.StatModifiers == null) continue;
-                
-                if (effect.StatModifiers.TryGetValue(modifierTag, out var directMod))
-                {
-                    bonus += directMod;
-                }
 
-                if (modifierTag != "AC" && modifierTag != "Defense")
+                var appliedAllRolls = false;
+                var appliedAllChecks = false;
+                var appliedAllSaves = false;
+
+                foreach (var tag in modifierTags)
                 {
-                    if (effect.StatModifiers.TryGetValue("AllRolls", out var allRollsMod)) bonus += allRollsMod;
-                    
-                    var lowerTag = modifierTag.ToLowerInvariant();
-                    if (lowerTag.Contains("check") || lowerTag.Contains("skill"))
+                    if (effect.StatModifiers.TryGetValue(tag, out var directMod))
                     {
-                        if (effect.StatModifiers.TryGetValue("AllChecks", out var allChecksMod)) bonus += allChecksMod;
+                        bonus += directMod;
                     }
-                    
-                    if (lowerTag.Contains("save") || lowerTag.Contains("saving"))
+
+                    if (tag != "AC" && tag != "Defense")
                     {
-                        if (effect.StatModifiers.TryGetValue("AllSaves", out var allSavesMod)) bonus += allSavesMod;
+                        if (!appliedAllRolls && effect.StatModifiers.TryGetValue("AllRolls", out var allRollsMod))
+                        {
+                            bonus += allRollsMod;
+                            appliedAllRolls = true;
+                        }
+
+                        var lowerTag = tag.ToLowerInvariant();
+                        if (lowerTag.Contains("check") || lowerTag.Contains("skill"))
+                        {
+                            if (!appliedAllChecks && effect.StatModifiers.TryGetValue("AllChecks", out var allChecksMod))
+                            {
+                                bonus += allChecksMod;
+                                appliedAllChecks = true;
+                            }
+                        }
+
+                        if (lowerTag.Contains("save") || lowerTag.Contains("saving"))
+                        {
+                            if (!appliedAllSaves && effect.StatModifiers.TryGetValue("AllSaves", out var allSavesMod))
+                            {
+                                bonus += allSavesMod;
+                                appliedAllSaves = true;
+                            }
+                        }
                     }
                 }
             }

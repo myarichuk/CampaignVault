@@ -6,6 +6,8 @@ namespace CampaignVault.Rulesets.Contributors;
 
 public sealed class Dnd5eExhaustionPressureContributor : IRulesetPressureContributor
 {
+    public const string GroupingKey = "Character:Attribute:exhaustion";
+
     public PressureScope Scope => PressureScope.World;
     public int Order => 25;
 
@@ -27,7 +29,7 @@ public sealed class Dnd5eExhaustionPressureContributor : IRulesetPressureContrib
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id,
                     $"{c.Name} has exhaustion level {exhaustion:F0} (D&D 5e). At level 3+, they suffer disadvantage on attacks/saves and reduced speed. Narrate fatigue and consider rest.",
-                    "Character:Attribute:exhaustion"));
+                    GroupingKey));
             }
         }
 

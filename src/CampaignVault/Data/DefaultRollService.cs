@@ -109,6 +109,8 @@ public sealed class DefaultRollService : IRollService
 
     // ── Explosive ─────────────────────────────────────────────────────────────
 
+    private const int MaxExplosiveExtraRolls = 20;
+
     private RollOutcome EvaluateExplosive(RollRequest req)
     {
         var (diceCount, dieSides, flatMod) = ParseExpression(req.Expression);
@@ -118,12 +120,14 @@ public sealed class DefaultRollService : IRollService
         for (var i = 0; i < diceCount; i++)
         {
             int roll;
+            var extraRolls = 0;
             do
             {
                 roll = _rng.Next(1, dieSides + 1);
                 allDice.Add(roll);
                 total += roll;
-            } while (roll == dieSides); // keep rolling on max
+                extraRolls++;
+            } while (roll == dieSides && extraRolls < MaxExplosiveExtraRolls); // keep rolling on max
         }
 
         total += flatMod + req.Bonus;

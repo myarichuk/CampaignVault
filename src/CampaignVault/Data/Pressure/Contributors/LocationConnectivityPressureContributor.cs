@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class LocationConnectivityPressureContributor : IPressureContributor
 {
+    public const string MissingReverseLinkGroupingKey = "Location:MissingReverseLink";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 20;
 
@@ -28,7 +30,7 @@ public sealed class LocationConnectivityPressureContributor : IPressureContribut
                         "Fix with location_update on the parent:\n" +
                         "[ { \"$type\": \"location_update\", \"locationId\": \"" + parentLoc.Id + "\", " +
                         "\"addExit\": { \"targetLocationId\": \"" + loc.Id + "\", \"description\": \"... (back to " + loc.Name + ")\" } } ]",
-                        "Location:MissingReverseLink"));
+                        MissingReverseLinkGroupingKey));
                 }
             }
             catch (Exception ex)

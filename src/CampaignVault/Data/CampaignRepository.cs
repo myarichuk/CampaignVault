@@ -368,6 +368,7 @@ public class CampaignRepository
         // Primary discovery via static schedule index (good for cold starts / world building)
         // Scoping hardened: filter by CampaignName (loose to allow shared NPCs/locations per design/feedback; strict for events/rumors).
         var npcsFromIndex = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
             .ContainsAny("Locations", targetIds)
             .Take(20)
             .ToListAsync();
@@ -376,26 +377,12 @@ public class CampaignRepository
             npcsFromIndex = npcsFromIndex.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
         }
 
-        // Fallback: if the index hasn't caught up (common in fast tests), load recent characters and filter client-side
-        //TODO: add a warning log - so I can catch it in live instances
-        if (npcsFromIndex.Count == 0)
-        {
-            var recentChars = await session.Query<Character>().Take(200).ToListAsync();
-            if (!string.IsNullOrEmpty(effective))
-            {
-                recentChars = recentChars.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
-            }
-            npcsFromIndex = recentChars
-                .Where(x => x.Schedule != null &&
-                            (targetIds.Contains(x.Schedule.DefaultLocationId) ||
-                             x.Schedule.Routines.Any(r => targetIds.Contains(r.LocationId))))
-                .Take(20)
-                .ToList();
-        }
+        // discovery via Character_Search index is authoritative; UpsertCharacterAsync waits for index catch-up.
 
         // Efficient query for simulation-updated locations using the extended Character_Search index.
         // This replaces the previous unconditional .Take(100) + client-side LINQ filter (O(n) scan).
         var npcsFromSimulation = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
             .WhereIn("CurrentLocationId", targetIds)
             .Take(20)
             .ToListAsync();
@@ -404,20 +391,7 @@ public class CampaignRepository
             npcsFromSimulation = npcsFromSimulation.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
         }
 
-        // Fallback when Character/Search hasn't caught up yet (common right after travel commits in tests).
-        if (npcsFromSimulation.Count == 0)
-        {
-            var recentChars = await session.Query<Character>().Take(200).ToListAsync();
-            if (!string.IsNullOrEmpty(effective))
-            {
-                recentChars = recentChars.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
-            }
-
-            npcsFromSimulation = recentChars
-                .Where(c => c.CurrentLocationId != null && targetIds.Contains(c.CurrentLocationId))
-                .Take(20)
-                .ToList();
-        }
+        // discovery via Character_Search index is authoritative; UpsertCharacterAsync waits for index catch-up.
 
         // Merge, dedupe by Id, prefer simulation-updated versions when both exist
         var npcMap = npcsFromIndex.ToDictionary(n => n.Id, n => n);
@@ -716,24 +690,12 @@ public class CampaignRepository
         // Scoping hardened: entity queries now filter by CampaignName (see code_review.md and plan).
         // For shareables (NPCs/locs) loose filter allows cross-camp if desired; events/rumors strict.
         // Per user feedback: no BC for play data (none exists), don't support global where doesn't make sense (e.g. no global events).
-        var activeRumors = (await session.Query<Rumor>()
-            .Where(x => x.State != RumorState.Resolved && x.State != RumorState.Forgotten)
-            .ToListAsync())
-            .Where(r => string.IsNullOrEmpty(r.CampaignName) || string.Equals(r.CampaignName, effective, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        var npcs = (await session.Query<Character>().Where(x => x.Schedule != null).ToListAsync())
-            .Where(c => string.IsNullOrEmpty(c.CampaignName) || string.Equals(c.CampaignName, effective, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var activeRumors = await SimulationQueryHelper.QueryActiveRumorsAsync(session, effective, ct: default);
+        var npcs = await SimulationQueryHelper.QueryCampaignCharactersAsync(session, effective, ct: default);
 
         // Phase 7.1: Load active factions and quests so simulation rules can reason about them.
-        var activeFactions = (await session.Query<Faction>().Take(200).ToListAsync())
-            .Where(f => string.IsNullOrEmpty(f.CampaignName) || string.Equals(f.CampaignName, effective, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        var activeQuests = (await session.Query<Quest>()
-            .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
-            .Take(200).ToListAsync())
-            .Where(q => string.IsNullOrEmpty(q.CampaignName) || string.Equals(q.CampaignName, effective, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var activeFactions = await SimulationQueryHelper.QueryCampaignFactionsAsync(session, effective, ct: default);
+        var activeQuests = await SimulationQueryHelper.QueryActiveQuestsAsync(session, effective, ct: default);
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
         var config = await GetCampaignConfigAsync(session, effective);
@@ -769,13 +731,12 @@ public class CampaignRepository
             await StageChangesAsync(session, simResult.Deltas.ToArray(), effective);
         }
 
-        // WorldPressure from the engine can be surfaced by the caller (AdvanceWorld tool) if desired.
-        // For now we keep AdvanceResult focused on time + narratives (matching prior contract).
-
+        // WorldPressure from the engine is surfaced to the caller (AdvanceWorld tool).
         return new()
         { 
             NewTime = time, 
-            SimulatorEvents = simResult.NarrativeEvents.ToList() 
+            SimulatorEvents = simResult.NarrativeEvents.ToList(),
+            WorldPressure = simResult.WorldPressure.ToList()
         };
     }
 

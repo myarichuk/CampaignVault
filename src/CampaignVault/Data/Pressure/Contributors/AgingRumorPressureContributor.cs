@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class AgingRumorPressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "Rumor:Aging";
+
     public PressureScope Scope => PressureScope.World;
     public int Order => 10;
 
@@ -22,7 +24,7 @@ public sealed class AgingRumorPressureContributor : IPressureContributor
             pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, r.Id,
                 $"Rumor '{r.Subject}' has been spreading for {ctx.Time.TotalDaysElapsed - r.LastStateChangeDay} days without resolution. " +
                 "Consider evolving or resolving via commit: [ { \"$type\": \"rumor\", \"rumorId\": \"...\", \"newState\": \"Fading|Resolved\", \"newText\": \"...\" } ]",
-                "Rumor:Aging"));
+                GroupingKey));
         }
 
         return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);

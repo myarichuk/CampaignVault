@@ -4,6 +4,9 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class LocationIntegrityPressureContributor : IPressureContributor
 {
+    public const string MissingTravelCommitGroupingKey = "Location:MissingTravelCommit";
+    public const string NoExitsGroupingKey = "Location:NoExits";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 15;
 
@@ -26,7 +29,7 @@ public sealed class LocationIntegrityPressureContributor : IPressureContributor
                     $"You narrated the party exploring '{loc.Id}', but the engine shows NO main characters (KeepAlive) present here! " +
                     "Did you forget to commit their travel? Use the `commit` tool with a `travel` or `location_update` change immediately:\n" +
                     "[ { \"$type\": \"travel\", \"characterId\": \"...\", \"destinationLocationId\": \"" + loc.Id + "\", \"narrative\": \"They arrive at the location.\" } ]",
-                    "Location:MissingTravelCommit"));
+                    MissingTravelCommitGroupingKey));
             }
         }
 
@@ -37,7 +40,7 @@ public sealed class LocationIntegrityPressureContributor : IPressureContributor
                 "Use `location_update` to add an exit back:\n" +
                 "[ { \"$type\": \"location_update\", \"locationId\": \"" + loc.Id + "\", " +
                 "\"addExit\": { \"targetLocationId\": \"locations/previous_area\", \"description\": \"...\" } } ]",
-                "Location:NoExits"));
+                NoExitsGroupingKey));
         }
 
         return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);

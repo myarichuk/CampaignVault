@@ -23,7 +23,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     private int GetSkillOrAbilityBonus(Dnd5eExtension stats, string name)
     {
-        if (stats.SkillModifiers.TryGetValue(name, out var skillMod))
+        var matchedKey = stats.SkillModifiers.Keys.FirstOrDefault(k => string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
+        if (matchedKey != null && stats.SkillModifiers.TryGetValue(matchedKey, out var skillMod))
         {
             return skillMod;
         }
@@ -42,7 +43,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     private int GetSavingThrowBonus(Dnd5eExtension stats, string name)
     {
-        if (stats.SavingThrowModifiers.TryGetValue(name, out var saveMod))
+        var matchedKey = stats.SavingThrowModifiers.Keys.FirstOrDefault(k => string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
+        if (matchedKey != null && stats.SavingThrowModifiers.TryGetValue(matchedKey, out var saveMod))
         {
             return saveMod;
         }
@@ -78,7 +80,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         var ac = targetStats.ArmorClass;
-        ac = ApplyAllModifiers(targetStats, "AC", ac);
+        ac = ApplyAllModifiers(targetStats, ac, "AC");
         
         // AC override
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
@@ -87,12 +89,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         var attackBonus = 0;
-        if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
+        if (TryGetParameter(action.Parameters, out var b, "bonus", "toHitBonus") && !int.TryParse(b, out attackBonus))
         {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{b}'.");
         }
 
-        attackBonus = ApplyAllModifiers(actorStats, "AttackRoll", attackBonus);
+        attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
 
         var damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4"; // Unarmed default
         
@@ -102,7 +104,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageBonus value '{db}'.");
         }
 
-        damageBonus = ApplyAllModifiers(actorStats, "DamageRoll", damageBonus);
+        damageBonus = ApplyAllModifiers(actorStats, damageBonus, "DamageRoll");
 
         var mechanic = GetMechanicFromAction(action);
 
@@ -172,8 +174,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
-        bonus = ApplyAllModifiers(actorStats, "SkillCheck", bonus);
-        bonus = ApplyAllModifiers(actorStats, skillName, bonus);
+        bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
         var mechanic = GetMechanicFromAction(action);
 
         var outcome = await _rollService.RollAsync(new RollRequest
@@ -212,12 +213,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var targetSkill = action.Parameters.TryGetValue("targetSkill", out var ts_name) ? ts_name : actorSkill;
 
         var actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
-        actorBonus = ApplyAllModifiers(actorStats, "SkillCheck", actorBonus);
-        actorBonus = ApplyAllModifiers(actorStats, actorSkill, actorBonus);
+        actorBonus = ApplyAllModifiers(actorStats, actorBonus, "SkillCheck", actorSkill);
 
         var targetBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
-        targetBonus = ApplyAllModifiers(targetStats, "SkillCheck", targetBonus);
-        targetBonus = ApplyAllModifiers(targetStats, targetSkill, targetBonus);
+        targetBonus = ApplyAllModifiers(targetStats, targetBonus, "SkillCheck", targetSkill);
 
         var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = GetMechanicFromAction(action) }, ct);
         var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = DiceMechanic.Standard }, ct);
@@ -244,8 +243,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Dexterity";
         var bonus = GetSavingThrowBonus(actorStats, saveName);
         
-        bonus = ApplyAllModifiers(actorStats, "SavingThrow", bonus);
-        bonus = ApplyAllModifiers(actorStats, saveName, bonus);
+        bonus = ApplyAllModifiers(actorStats, bonus, "SavingThrow", saveName);
         var mechanic = GetMechanicFromAction(action);
 
         var outcome = await _rollService.RollAsync(new RollRequest
@@ -266,7 +264,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         var stats = character.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
         var dexMod = stats.GetAbilityModifier(stats.Dexterity);
-        dexMod = ApplyAllModifiers(stats, "Initiative", dexMod);
+        dexMod = ApplyAllModifiers(stats, dexMod, "Initiative");
         
         var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = dexMod, Mechanic = DiceMechanic.Standard };
         var outcome = await _rollService.RollAsync(request, ct);

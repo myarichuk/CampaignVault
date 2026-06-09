@@ -4,6 +4,9 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class QuestDeadlinePressureContributor : IPressureContributor
 {
+    public const string ApproachingDeadlineGroupingKey = "Quest:ApproachingDeadline";
+    public const string MissedDeadlineGroupingKey = "Quest:MissedDeadline";
+
     public PressureScope Scope => PressureScope.Both;
     public int Order => 40;
 
@@ -23,11 +26,11 @@ public sealed class QuestDeadlinePressureContributor : IPressureContributor
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, id,
                     $"Quest '{title}' deadline in {daysLeft} days (Day {deadline}). Progress or fail it: [ {{\"$type\": \"quest_progress\", \"questId\": \"{id}\", \"objectiveIndex\": 0, \"newState\": \"Complete\", \"narrativeNote\": \"...\" }} ] (or Failed).",
-                    "Quest:ApproachingDeadline"));
+                    ApproachingDeadlineGroupingKey));
             }
             else if (daysLeft <= 0)
             {
-                pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, id, $"Quest '{title}' deadline passed. Engine may have auto-failed objectives.", "Quest:MissedDeadline"));
+                pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, id, $"Quest '{title}' deadline passed. Engine may have auto-failed objectives.", MissedDeadlineGroupingKey));
             }
         }
 

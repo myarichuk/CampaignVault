@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class LocationHallucinationPressureContributor : IPressureContributor
 {
+    public const string GroupingKey = "Location:Hallucinated";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 10;
 
@@ -26,7 +28,7 @@ public sealed class LocationHallucinationPressureContributor : IPressureContribu
                 "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
                 "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
                 "\"connectionDescription\": \"...\"\n  }\n]",
-                "Location:Hallucinated"));
+                GroupingKey));
         }
         else
         {
@@ -36,7 +38,7 @@ public sealed class LocationHallucinationPressureContributor : IPressureContribu
                 "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
                 "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
                 "\"connectionDescription\": \"...\"\n  }\n]",
-                "Location:Hallucinated"));
+                GroupingKey));
         }
 
         return pressures;

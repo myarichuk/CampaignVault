@@ -1,6 +1,6 @@
 # D&D Campaign Vault - Living World DM Engine
 
-A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a persistent, reactive simulation engine for long-running D&D (or other TTRPG) campaigns. It is purpose-built for LLM Dungeon Masters who need reliable world state, NPC psychology, rumor lifecycles, and atomic narrative resolution across many sessions.
+A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a persistent, reactive simulation engine for long-running D&D (or other TTRPG) campaigns. It is purpose-built as an MCP to solve the challenges of state tracking, context limits, and hallucination when an LLM performs the DM role over long campaigns, providing reliable world state tracking, NPC psychology, rumor lifecycles, and atomic narrative resolution across many sessions.
 
 ## Features
 - **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC tiredness, and escalate unresolved plot threads via the `WorldSimulator`.
@@ -33,7 +33,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 **World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). See the recommended system prompt in `docs/recommended-system-prompt.md` for detailed guidance.
 
-**Open-World Flavor, Transients & Laziness Mitigation (Phase 6+)**: The system is deliberately designed so an LLM DM can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted via small `commit` payloads using `location_create` / `character_create` / `item_create` etc. 
+**Open-World Flavor, Transients & Laziness Mitigation (Phase 6+)**: The system is deliberately designed so an LLM performing the DM role can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted via small `commit` payloads using `location_create` / `character_create` / `item_create` etc. 
 
 - `get_scene` returns `PointsOfInterest` (light list) and uses `AmbientCrowd` hints for flavor without creating documents.
 - The engine auto-links maps on `location_create` (supply `connectedFromLocationId`).
@@ -49,7 +49,7 @@ The engine provides deep structural tracking for macro-mechanics:
 - **Location Physics & Tags**: Add temporary tags (e.g., `["wet", "smoky"]`), narrative states, or distinctive features directly to Locations, Characters, and Items via `commit`. The engine will pressure you when tags impact a scene. You are the physics engine: interpret the tags and narrate accordingly!
 - **Epistemic Drift & Memories**: Use `knowledge_update` to record key facts in an NPC's `Memories`. Over time, trivial and important memories will "decay", and the engine will pressure you to reflect memory loss, epistemic drift, or confusion.
 - **Factions & Economy**: Track influence, wealth, and stance matrices. Background rules shift their influence over time, and factions dynamically demand resources (`EconomicDemand`). If a faction is desperate for "spell scrolls" and the party has them, `get_scene` will surface the pressure. Use `get_faction_context` to do a deep dive.
-- **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the DM doesn't forget them. Use `get_quest_details` to pull the full objective list and history.
+- **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the LLM doesn't forget them. Use `get_quest_details` to pull the full objective list and history.
 - **Travel**: Record journeys with `$type: travel` in `commit` (applies exit distance, tiredness, time advance, and optional random encounters). If you call `get_scene` with `partyPresent=true` but no `KeepAlive` PC is at that location, the engine raises `Location:MissingTravelCommit` with ready `travel` JSON. Interrupted en-route travel surfaces `Travel:Interrupted` pressure until you resolve the encounter and commit another `travel`.
 
 

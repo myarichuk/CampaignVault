@@ -15,16 +15,22 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(act.CharacterId, out var character))
         {
-            var hints = await context.SuggestCharacterMatchAsync(act.CharacterId);
-            var msg = $"Character {act.CharacterId} not found during ActivityChange.";
-            if (hints != null)
+            character = context.Session != null ? await context.Session.LoadAsync<Character>(act.CharacterId, ct) : null;
+            if (character == null)
             {
-                msg += $" Did you mean: {hints}?";
+                var hints = await context.SuggestCharacterMatchAsync(act.CharacterId);
+                var msg = $"Character {act.CharacterId} not found during ActivityChange.";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
+                context.RecordMessage("WARNING: " + msg);
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
             }
 
-            context.RecordMessage("WARNING: " + msg);
-            context.RecordFailure();
-            return ChangeHandlerResult.Failure();
+            context.RegisterNewCharacter(character);
         }
 
         if (act.NewActivity != null)

@@ -15,7 +15,8 @@ public class MemorySalienceDecayRule : ISimulationRule
         var narratives = new List<string>();
         var days = (float)context.DaysPassed;
         var currentDay = context.Time.TotalDaysElapsed;
-        var staleThreshold = (context.Config?.MemoryImportantDecayDays ?? 40) / 2;
+        var decayDays = context.Config?.MemoryImportantDecayDays ?? 40;
+        var staleThreshold = Math.Max(1, decayDays / 2);
 
         foreach (var npc in context.ScheduledNpcs)
         {

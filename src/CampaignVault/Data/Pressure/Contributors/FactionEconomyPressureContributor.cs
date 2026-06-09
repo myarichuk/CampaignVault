@@ -4,6 +4,8 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class FactionEconomyPressureContributor : IPressureContributor
 {
+    public static string GetEconomicDemandGroupingKey(string factionId, string demand) => $"Faction:EconomicDemand:{factionId}:{demand}";
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 60;
 
@@ -36,7 +38,7 @@ public sealed class FactionEconomyPressureContributor : IPressureContributor
                 {
                     pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, f.FactionId,
                         $"The local faction '{f.Name}' is desperate for '{demand}' due to recent events. Merchants will pay a premium, and thieves may attempt to steal them. Highlight this in your narration.",
-                        $"Faction:EconomicDemand:{f.FactionId}:{demand}"));
+                        GetEconomicDemandGroupingKey(f.FactionId, demand)));
                 }
             }
         }

@@ -8,5 +8,5 @@ namespace CampaignVault.Data;
 public sealed record SimulationResult(
     IReadOnlyList<string> NarrativeEvents,
     IReadOnlyList<WorldChange> Deltas,
-    IReadOnlyList<string> WorldPressure
+    IReadOnlyList<WorldPressureItem> WorldPressure
 );
