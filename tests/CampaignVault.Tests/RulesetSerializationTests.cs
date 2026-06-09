@@ -174,4 +174,23 @@ public class RulesetSerializationTests
     {
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<WorldChange[]>(json, _options));
     }
+
+    [Fact]
+    public void RulesetAction_SerializesNewProperties()
+    {
+        var action = new RulesetAction
+        {
+            ActionType = RulesetActionType.SavingThrow,
+            ActionCategory = ActionCategory.Spell,
+            AdvantageState = AdvantageState.Disadvantage,
+            DamageType = "Fire",
+            ActionName = "Fireball Save"
+        };
+
+        var json = JsonSerializer.Serialize(action, _options);
+
+        Assert.Contains("\"actionType\":\"SavingThrow\"", json);
+        Assert.Contains("\"advantageState\":\"Disadvantage\"", json);
+        Assert.Contains("\"damageType\":\"Fire\"", json);
+    }
 }

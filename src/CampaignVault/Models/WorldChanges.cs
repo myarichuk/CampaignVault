@@ -343,6 +343,15 @@ public class RulesetAction : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ActionCategory ActionCategory { get; set; }
 
+    /// <summary>D&D-style advantage state for this specific action.</summary>
+    [JsonPropertyName("advantageState")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public AdvantageState AdvantageState { get; set; } = AdvantageState.None;
+
+    /// <summary>Narrative damage type (e.g. "Fire", "Slashing", "Radiation").</summary>
+    [JsonPropertyName("damageType")]
+    public string? DamageType { get; set; }
+
     /// <summary>
     /// Resolver-specific overrides as string key-value pairs.
     /// See class-level summary for the documented parameter keys.

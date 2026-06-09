@@ -43,8 +43,22 @@ public enum RulesetActionType
     /// <summary>Medical or rest-based recovery action (First Aid, Treat Wounds, Bandage).</summary>
     Recovery,
 
+    /// <summary>Target rolls to resist an effect (D&D/PF2e Saving Throw).</summary>
+    SavingThrow,
+
     /// <summary>Meta-action: rolling initiative, ending a turn, spending Action Points, etc.</summary>
     Meta
+}
+
+/// <summary>
+/// Status of D&D-style advantage/disadvantage for an action.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum AdvantageState
+{
+    None,
+    Advantage,
+    Disadvantage
 }
 
 /// <summary>
