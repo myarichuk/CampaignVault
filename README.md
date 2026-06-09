@@ -3,37 +3,66 @@
 A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a persistent, reactive simulation engine for long-running D&D (or other TTRPG) campaigns. It is purpose-built as an MCP to solve the challenges of state tracking, context limits, and hallucination when an LLM performs the DM role over long campaigns, providing reliable world state tracking, NPC psychology, rumor lifecycles, and atomic narrative resolution across many sessions.
 
 ## Features
-- **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC tiredness, and escalate unresolved plot threads via the `WorldSimulator`.
+- **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC tiredness, and surface aging unresolved events as pressure via `DefaultSimulationEngine` and its simulation rules.
 - **Multi-System Ruleset Engine**: Full polymorphic support for **D&D 5e**, **Pathfinder 2e**, and **Fallout 2d20**. The C# MCP handles math, advantage, 4-degrees of success, and dice pools deterministically.
-- **Structured Combat Encounters**: Start, advance, and resolve tactical combat with turn-order tracking, dynamic initiative, and real-time HP/status mutations.
+- **Structured Combat Encounters**: Start, advance, and resolve tactical combat with ruleset initiative rolls at `start_combat`, turn-order tracking, and HP/status mutations applied atomically via `commit`.
 - **Scene-Centric Workflow**: Load entire locations, NPCs, rumors, and visible items in a single call (`get_scene`). The LLM instantly receives the `ActiveCombat` state and `SystemStats` (AC, SPECIAL, etc.) for everyone present.
 - **Psychological NPC Minds**: NPCs have Wants, Fears, Moods, and Relationships. The engine synthesizes behavioral summaries to help the LLM roleplay them authentically.
 - **Atomic Scene Resolution**: Commit an entire combat's worth of HP deltas, item transfers, and status changes in one transaction (`commit`).
-- **Situational Awareness**: Every tool response includes `WorldPressure`—proactive alerts about ticking clocks and background events.
-- **Unified Fuzzy Search**: Search across lore, characters, and locations in one shot.
+- **Situational Awareness**: `get_world_state`, `get_scene`, and `advance_world` surface `WorldPressure`—proactive alerts about ticking clocks and background events. `get_npc_context` can also surface urgent initiative pressures.
+- **Unified Search**: Keyword/wildcard search across lore, characters, and locations in one shot (`search_world`).
 
 ## Recent Updates
-- **Multi-Campaign Support**: Fully isolated campaign contexts with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in).
+- **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in). World entities are campaign-tagged and filtered at query time; characters/locations with no `CampaignName` may still appear across campaigns (shared-universe design).
 - **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
 - **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
 
 ## Core Tool Surface
 
-| Tool                   | Purpose                                           | Primary Usage |
-|------------------------|---------------------------------------------------|---------------|
-| `get_world_state`      | Session kickoff (time + pressure + rumors)        | Start of every session |
-| `get_scene`            | Rich scene view (NPCs + behavioral summaries + items + rumors) | When entering a location |
-| `get_npc_context`      | Deep psychological profile + recent history       | Before major NPC roleplay |
-| `commit`               | **Universal atomic write tool**                   | End of every narrative beat (combat, conversation, discovery, etc.) |
-| `advance_world`        | Time passage + full background simulation         | Travel, long rests, downtime |
-| `search_world`         | Unified fuzzy search across everything            | Discovery / avoiding duplicates |
-| `recall_history`       | Semantic search over past events                  | "What happened last time...?" |
-| `get_npc_needs`        | Current needs + merged descriptors for an NPC     | Quick psychological read |
-| `get_need_descriptors` | List globally defined need descriptions           | Before introducing new need types |
+### Session & exploration
 
-**World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). See the recommended system prompt in `docs/recommended-system-prompt.md` for detailed guidance.
+| Tool | Purpose |
+|------|---------|
+| `get_current_campaign` | Active campaign name, ruleset, lock-in status |
+| `get_world_state` | Session kickoff: time, rumors, recent events, pressures (`Data.WorldPressure`) |
+| `get_scene` | Location, NPCs, items, rumors, `ActiveCombat`, `SystemStats`, pressures (`ToolResult.WorldPressure`) |
+| `get_npc_context` | Deep NPC psychology, memories, initiative signals |
+| `get_npc_needs` | Current needs + merged descriptors |
+| `get_need_descriptors` | Per-campaign shared need descriptions |
+| `search_world` | Keyword search across lore, characters, locations |
+| `recall_history` | Keyword search over past event summaries |
+| `get_help` | Built-in DM manual and copy-paste patterns |
 
-**Open-World Flavor, Transients & Laziness Mitigation (Phase 6+)**: The system is deliberately designed so an LLM performing the DM role can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted via small `commit` payloads using `location_create` / `character_create` / `item_create` etc. 
+### Mutation & time
+
+| Tool | Purpose |
+|------|---------|
+| `commit` | Universal atomic write (`WorldChange[]` with `$type` discriminators) |
+| `advance_world` | Fast-forward days, run simulation rules, return pressures |
+
+### Combat & rulesets
+
+| Tool | Purpose |
+|------|---------|
+| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Fallout 2d20) |
+| `start_combat` / `next_turn` / `end_combat` | Initiative at start, turn tracking, round-based status expiry |
+
+### Campaign management
+
+| Tool | Purpose |
+|------|---------|
+| `create_campaign` / `list_campaigns` / `select_campaign` | Create, list, and activate campaigns |
+
+### Deep dives
+
+| Tool | Purpose |
+|------|---------|
+| `get_faction_context` | Full faction document (stances, territory, `EconomicDemand`) |
+| `get_quest_details` | Full quest document (objectives, deadlines, progress timestamps) |
+
+**World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). Call `get_help` for detailed guidance and copy-paste patterns.
+
+**Open-World Flavor, Transients & Laziness Mitigation**: The system is deliberately designed so an LLM performing the DM role can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted via small `commit` payloads using `location_create` / `character_create` / `item_create` etc. 
 
 - `get_scene` returns `PointsOfInterest` (light list) and uses `AmbientCrowd` hints for flavor without creating documents.
 - The engine auto-links maps on `location_create` (supply `connectedFromLocationId`).
@@ -41,15 +70,15 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 - **Critical**: `get_scene`, `get_world_state`, and `advance_world` return `WorldPressure` containing `ENGINE WARNING:` and `NARRATIVE PROMPT:` items. These include **exact copy-paste JSON** for the `commit` needed to fix hallucinations, dead-ends, empty-but-expected-crowds, broken links, etc. Treat them as mandatory directives. Call `get_help` for the full "Lazy Tavern" walkthrough and patterns.
 - This directly addresses the "silly factor" of forcing perfect polymorphic JSON arrays for every flavor element the LLM narrates.
 
-See `get_help`, the recommended system prompt, and `docs/Phase6_OpenWorld_Design.md` for details. The `phase7.md` tracks work on travel/spatial, factions, and quests.
+See `get_help` for the full DM manual. See `ARCHITECTURE.md` for scoping, simulation, and ruleset design.
 
-## Deep Mechanics (Phase 7 & 8: Open-World & Sandbox Physics)
+## Open-World & Sandbox Mechanics
 
 The engine provides deep structural tracking for macro-mechanics:
 - **Location Physics & Tags**: Add temporary tags (e.g., `["wet", "smoky"]`), narrative states, or distinctive features directly to Locations, Characters, and Items via `commit`. The engine will pressure you when tags impact a scene. You are the physics engine: interpret the tags and narrate accordingly!
 - **Epistemic Drift & Memories**: Use `knowledge_update` to record key facts in an NPC's `Memories`. Over time, trivial and important memories will "decay", and the engine will pressure you to reflect memory loss, epistemic drift, or confusion.
 - **Factions & Economy**: Track influence, wealth, and stance matrices. Background rules shift their influence over time, and factions dynamically demand resources (`EconomicDemand`). If a faction is desperate for "spell scrolls" and the party has them, `get_scene` will surface the pressure. Use `get_faction_context` to do a deep dive.
-- **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the LLM doesn't forget them. Use `get_quest_details` to pull the full objective list and history.
+- **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the LLM doesn't forget them. Use `get_quest_details` to pull the full quest document (objectives, deadlines, rewards, and per-objective progress timestamps).
 - **Travel**: Record journeys with `$type: travel` in `commit` (applies exit distance, tiredness, time advance, and optional random encounters). If you call `get_scene` with `partyPresent=true` but no `KeepAlive` PC is at that location, the engine raises `Location:MissingTravelCommit` with ready `travel` JSON. Interrupted en-route travel surfaces `Travel:Interrupted` pressure until you resolve the encounter and commit another `travel`.
 
 
@@ -59,13 +88,13 @@ The engine provides deep structural tracking for macro-mechanics:
 The NPC "Mind" system is intentionally open-ended. There is no closed list of needs.
 
 - Discover needs at runtime via `get_npc_needs`, `get_scene`, `get_npc_context`, and `get_need_descriptors`.
-- Use `define_need_descriptor` to create **global** shared descriptions for custom needs. These are automatically merged into NPC views (per-NPC descriptors override).
+- Use `define_need_descriptor` to create **per-campaign** shared descriptions for custom needs. These are automatically merged into NPC views (per-NPC descriptors override).
 - Freely invent narrative-appropriate needs (`wanderlust`, `duty`, `guilt`, `debt_pressure`, etc.) and provide human-readable `NeedDescriptors`.
 - For initial world building, the `upsert_*` tools exist. In practice, many users find `commit` (with rich `EventOccurred` + `RelationshipChange` + `ActivityChange` + `NeedChange`) to be the more reliable way to evolve the world during play.
 
 Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom needs + descriptors, Schedule + Routines, equipment via Items). The simulation and behavioral synthesis will make much better use of that data than shallow characters.
 
-**Global Need Descriptors**: Use `define_need_descriptor` to create shared, reusable descriptions for custom needs (e.g. "homesickness"). These are stored globally and automatically appear (merged) in `get_npc_needs`, `get_npc_context`, and `get_scene`. Use the companion `get_need_descriptors` tool to list everything that has been defined.
+**Shared Need Descriptors**: Use `define_need_descriptor` to create reusable descriptions for custom needs (e.g. "homesickness") within the active campaign. They are stored at `campaigns/{name}/config/need-descriptors` and automatically appear (merged) in `get_npc_needs`, `get_npc_context`, and `get_scene`. Use `get_need_descriptors` to list what is defined for the campaign.
 
 
 
@@ -73,9 +102,11 @@ Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom need
 
 ### 1. Create the App and Volume
 ```bash
-fly apps create my-campaign-vault-v4
+fly apps create my-campaign-vault
 fly volumes create campaign_data --region ams --size 1
 ```
+
+The repo includes a `fly.toml` (currently `app = "my-campaign-vault-for-grok"`). Rename the `app` field to match your Fly app name before deploying.
 
 ### 2. Set Security Secrets
 ```bash
@@ -142,15 +173,23 @@ See the Deployment section for how to set `BEARER_TOKEN` on Fly.io.
 
 ## Configuration
 
-- `CAMPAIGN_DB_PATH` — Path to the RavenDB data directory (default: `./RavenData` inside the container).
-- `BEARER_TOKEN` — When set, enables authentication. Full details (including header vs query parameter behavior and security trade-offs) are in the [Authentication](#authentication) section above.
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `CAMPAIGN_DB_PATH` | RavenDB data directory | `{AppBase}/RavenData` (Fly.io: `/app/data/campaign.db` via `fly.toml`) |
+| `BEARER_TOKEN` | Optional auth token (env only) | unset = no auth |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated origins, or `*` | `*` (allow any) |
 
 ## Development
-- **Models**: `/Models` (Character + NpcMind, WorldChanges including `ActivityChange`, SceneView, etc.).
-- **Core Logic**: `/Data/CampaignRepository.cs` + `JsonSanitizer.cs` (central protection against mixed STJ/Newtonsoft `JsonElement` leakage).
-- **Simulation**: `DefaultSimulationEngine` + rules in `/Data` (ScheduleEvaluation, NeedsAccumulation, RumorDecay).
-- **Tools**: `/Tools/CampaignTools.cs` (MCP surface; `upsert_*` tools are strongly typed, with notes on current Grok Web client behavior).
-- **Tests**: `/CampaignVault.Tests` (integration + regression tests for client compatibility fixes).
+
+See `ARCHITECTURE.md` for the full system design. Key code locations:
+
+- **Models** — `src/CampaignVault/Models/` (`Character`, `WorldChanges`, `SceneView`, ruleset extensions)
+- **Repository** — `src/CampaignVault/Data/CampaignRepository.cs` + `JsonSanitizer.cs`
+- **Simulation** — `DefaultSimulationEngine` + rules: `ScheduleEvaluationRule`, `NeedsAccumulationRule`, `RumorDecayRule`, `StatusExpiryRule`, `MemorySalienceDecayRule`, `NeedConflictRule`, `FactionEcosystemRule`, `QuestStalenessRule`, `RelationalRearmRule`, `TransientEvictionRule`
+- **Pressure** — `src/CampaignVault/Data/Pressure/` (orchestrator + contributors)
+- **Rulesets** — `src/CampaignVault/Rulesets/` (D&D 5e, PF2e, Fallout 2d20 resolvers + `DefaultRollService`)
+- **Tools** — `src/CampaignVault/Tools/CampaignTools.cs`
+- **Tests** — `tests/CampaignVault.Tests/`
 
 ## Client Compatibility Notes (as of latest testing)
 
@@ -167,6 +206,6 @@ When introducing a new significant location or NPC, do as much as possible in a 
 - One or more `activity` changes to place NPCs where the narrative says they are
 - Relationship deltas, need adjustments, mood, etc.
 
-See the `commit` tool description and `docs/recommended-system-prompt.md` for detailed guidance and copy-paste examples.
+See the `commit` tool description and `get_help` for detailed guidance and copy-paste examples.
 
 Full history of robustness improvements lives in the git log and the regression tests in `CampaignRepositoryTests.cs`.
