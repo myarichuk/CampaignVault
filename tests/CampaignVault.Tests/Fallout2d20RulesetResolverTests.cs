@@ -8,7 +8,7 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -37,11 +37,11 @@ public class Fallout2d20RulesetResolverTests
     [Fact]
     public async Task ResolveAsync_SavingThrow_UsesSuccessCount()
     {
-        var mockRollService = new Mock<IRollService>();
-        mockRollService.Setup(r => r.RollAsync(It.IsAny<RollRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RollOutcome { Successes = 2, Summary = "2 Successes" });
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Successes = 2, Summary = "2 Successes" }));
 
-        var resolver = new Fallout2d20RulesetResolver(mockRollService.Object);
+        var resolver = new Fallout2d20RulesetResolver(mockRollService);
 
         var actorId = "char_1";
         var actor = new Character { Id = actorId, SystemStats = new Fallout2d20Extension { Endurance = 8 } };
@@ -59,6 +59,6 @@ public class Fallout2d20RulesetResolverTests
 
         Assert.True(output.Result.Success);
         Assert.Contains("Success", output.Result.Narrative);
-        mockRollService.Verify(r => r.RollAsync(It.Is<RollRequest>(req => req.Mechanic == DiceMechanic.SuccessCount), It.IsAny<CancellationToken>()), Times.Once);
+        await mockRollService.Received(1).RollAsync(Arg.Is<RollRequest>(req => req.Mechanic == DiceMechanic.SuccessCount), Arg.Any<CancellationToken>());
     }
 }

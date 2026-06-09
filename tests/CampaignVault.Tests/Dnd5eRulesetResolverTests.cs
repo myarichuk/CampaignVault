@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Moq;
+using NSubstitute;
 using Xunit;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
@@ -247,11 +247,11 @@ public class Dnd5eRulesetResolverTests
     [Fact]
     public async Task ResolveAsync_SavingThrow_UsesAdvantageState()
     {
-        var mockRollService = new Mock<IRollService>();
-        mockRollService.Setup(r => r.RollAsync(It.IsAny<RollRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RollOutcome { Result = 15, Summary = "Rolled 15" });
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Result = 15, Summary = "Rolled 15" }));
 
-        var resolver = new Dnd5eRulesetResolver(mockRollService.Object);
+        var resolver = new Dnd5eRulesetResolver(mockRollService);
 
         var actorId = "char_1";
         var actor = new Character { Id = actorId, SystemStats = new Dnd5eExtension { Dexterity = 14 } };
@@ -269,18 +269,20 @@ public class Dnd5eRulesetResolverTests
         var output = await resolver.ResolveAsync(context, action);
 
         Assert.True(output.Result.Success);
-        mockRollService.Verify(r => r.RollAsync(It.Is<RollRequest>(req => req.Mechanic == DiceMechanic.Advantage), It.IsAny<CancellationToken>()), Times.Once);
+        await mockRollService.Received(1).RollAsync(Arg.Is<RollRequest>(req => req.Mechanic == DiceMechanic.Advantage), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ResolveAttackAsync_AppliesDamageResistance()
     {
-        var mockRollService = new Mock<IRollService>();
-        mockRollService.SetupSequence(r => r.RollAsync(It.IsAny<RollRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RollOutcome { Result = 20, Summary = "Hit" }) // Attack
-            .ReturnsAsync(new RollOutcome { Result = 10, Summary = "Damage" }); // Damage
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult(new RollOutcome { Result = 20, Summary = "Hit" }), // Attack
+                Task.FromResult(new RollOutcome { Result = 10, Summary = "Damage" }) // Damage
+            );
 
-        var resolver = new Dnd5eRulesetResolver(mockRollService.Object);
+        var resolver = new Dnd5eRulesetResolver(mockRollService);
 
         var actorId = "char_1";
         var targetId = "char_2";

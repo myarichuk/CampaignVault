@@ -243,6 +243,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Dexterity";
         var bonus = GetSavingThrowBonus(actorStats, saveName);
+        
         bonus = ApplyAllModifiers(actorStats, "SavingThrow", bonus);
         bonus = ApplyAllModifiers(actorStats, saveName, bonus);
         var mechanic = GetMechanicFromAction(action);

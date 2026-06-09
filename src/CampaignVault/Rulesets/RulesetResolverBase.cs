@@ -42,6 +42,10 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
                 result = await ResolveContestedCheckAsync(action, context, actorStats, mutations, ct);
                 break;
 
+            case RulesetActionType.SavingThrow:
+                result = await ResolveSavingThrowAsync(action, context, actorStats, mutations, ct);
+                break;
+
             default:
                 result = ResolverResult.Fail("NotImplemented", $"{System}: Action type {action.ActionType} not yet fully implemented.");
                 break;
@@ -75,6 +79,13 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         List<WorldChange> mutations, 
         CancellationToken ct);
 
+    protected abstract Task<ResolverResult> ResolveSavingThrowAsync(
+        RulesetAction action, 
+        ChangeContext context, 
+        TStats actorStats, 
+        List<WorldChange> mutations, 
+        CancellationToken ct);
+
     /// <summary>
     /// Session-based initiative roll for direct tool use. 
     /// For combat flows, the preferred path is the Character overload (pre-loaded context).
@@ -96,6 +107,16 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
     public abstract Task<float> RollInitiativeAsync(
         Character character, 
         CancellationToken ct = default);
+
+    protected DiceMechanic GetMechanicFromAction(RulesetAction action)
+    {
+        // 1. Check explicit AdvantageState first (the modern way)
+        if (action.AdvantageState == AdvantageState.Advantage) return DiceMechanic.Advantage;
+        if (action.AdvantageState == AdvantageState.Disadvantage) return DiceMechanic.Disadvantage;
+
+        // 2. Fall back to legacy Parameters for backward compatibility
+        return GetMechanicFromParams(action.Parameters);
+    }
 
     protected DiceMechanic GetMechanicFromParams(Dictionary<string, string> parameters)
     {
@@ -119,35 +140,34 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
     protected int ApplyAllModifiers(TStats stats, string modifierTag, int baseValue)
     {
         var bonus = 0f;
-
-        // Apply structured status effects
         if (stats.StatusEffects != null)
         {
             foreach (var effect in stats.StatusEffects)
             {
-                if (effect.StatModifiers != null && effect.StatModifiers.TryGetValue(modifierTag, out var mod))
+                if (effect.StatModifiers == null) continue;
+                
+                if (effect.StatModifiers.TryGetValue(modifierTag, out var directMod))
                 {
-                    bonus += mod;
+                    bonus += directMod;
                 }
-                // Also check generic 'AllRolls' or 'AllChecks' tags if appropriate
-                if (modifierTag != "AC" && modifierTag != "Defense") 
-                {
-                    if (effect.StatModifiers != null && effect.StatModifiers.TryGetValue("AllRolls", out var allRollsMod))
-                    {
-                        bonus += allRollsMod;
-                    }
 
-                    if (modifierTag.Contains("Skill") || modifierTag.Contains("Check"))
+                if (modifierTag != "AC" && modifierTag != "Defense")
+                {
+                    if (effect.StatModifiers.TryGetValue("AllRolls", out var allRollsMod)) bonus += allRollsMod;
+                    
+                    var lowerTag = modifierTag.ToLowerInvariant();
+                    if (lowerTag.Contains("check") || lowerTag.Contains("skill"))
                     {
-                        if (effect.StatModifiers != null && effect.StatModifiers.TryGetValue("AllChecks", out var allChecksMod))
-                        {
-                            bonus += allChecksMod;
-                        }
+                        if (effect.StatModifiers.TryGetValue("AllChecks", out var allChecksMod)) bonus += allChecksMod;
+                    }
+                    
+                    if (lowerTag.Contains("save") || lowerTag.Contains("saving"))
+                    {
+                        if (effect.StatModifiers.TryGetValue("AllSaves", out var allSavesMod)) bonus += allSavesMod;
                     }
                 }
             }
         }
-
         return baseValue + (int)Math.Floor(bonus);
     }
 }

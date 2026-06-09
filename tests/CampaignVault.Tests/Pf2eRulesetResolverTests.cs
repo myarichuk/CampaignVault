@@ -8,7 +8,7 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -37,11 +37,11 @@ public class Pf2eRulesetResolverTests
     [Fact]
     public async Task ResolveAsync_SavingThrow_CalculatesDegreeOfSuccess()
     {
-        var mockRollService = new Mock<IRollService>();
-        mockRollService.Setup(r => r.RollAsync(It.IsAny<RollRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RollOutcome { Result = 25, Summary = "Rolled 25" });
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Result = 25, Summary = "Rolled 25" }));
 
-        var resolver = new Pf2eRulesetResolver(mockRollService.Object);
+        var resolver = new Pf2eRulesetResolver(mockRollService);
 
         var actorId = "char_1";
         var actor = new Character { Id = actorId, SystemStats = new Pf2eExtension() };
