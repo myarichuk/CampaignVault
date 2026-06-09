@@ -170,9 +170,50 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         return Task.FromResult(ResolverResult.Fail("NotImplemented", "Fallout 2d20: Contested checks are resolved as opposed skill tests. Needs implementation."));
     }
 
-    protected override Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        return Task.FromResult(ResolverResult.Fail("NotSupported", "Fallout 2d20: This system does not use traditional saving throws. Checks are usually attribute + skill tests."));
+        var difficulty = 1;
+        if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
+        {
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
+        }
+
+        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Endurance";
+        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : null;
+        
+        var attrVal = GetAttributeValue(actorStats, attribute);
+        var skillVal = skill != null && actorStats.Skills.TryGetValue(skill, out var s) ? s : 0;
+        var targetNumber = attrVal + skillVal;
+        
+        targetNumber = ApplyAllModifiers(actorStats, "SavingThrow", targetNumber);
+        if (skill != null) targetNumber = ApplyAllModifiers(actorStats, skill, targetNumber);
+        targetNumber = ApplyAllModifiers(actorStats, attribute, targetNumber);
+        
+        var isTagged = skill != null && actorStats.TagSkills.Contains(skill);
+        int? critThreshold = isTagged ? skillVal : null;
+        
+        var poolSize = 2;
+        if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
+        {
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid pool value '{p}'.");
+        }
+
+        var request = new RollRequest
+        {
+            Tag = "save",
+            Expression = $"{poolSize}d20",
+            Mechanic = DiceMechanic.SuccessCount,
+            TargetNumber = targetNumber,
+            CriticalThreshold = critThreshold
+        };
+
+        var outcome = await _rollService.RollAsync(request, ct);
+        
+        var success = outcome.Successes >= difficulty;
+        var apGenerated = Math.Max(0, outcome.Successes - difficulty);
+        var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
+        
+        return ResolverResult.Ok($"{action.ActionName} ({attribute}{(skill != null ? "+" + skill : "")} TN {targetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
     }
 
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)

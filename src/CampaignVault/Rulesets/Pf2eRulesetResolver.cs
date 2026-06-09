@@ -175,9 +175,23 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return Task.FromResult(ResolverResult.Fail("NotImplemented", "PF2e: Contested checks are typically resolved against DCs instead of opposed rolls."));
     }
 
-    protected override Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        return Task.FromResult(ResolverResult.Fail("NotImplemented", "PF2e: Saving throws are typically resolved against DCs. Needs implementation."));
+        if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
+        {
+            return ResolverResult.Fail("InvalidParameter", "Error: Saving throw requires a 'dc' parameter.");
+        }
+
+        var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Constitution";
+        var bonus = GetSkillOrAbilityBonus(actorStats, saveName);
+        bonus = ApplyAllModifiers(actorStats, "SavingThrow", bonus);
+        bonus = ApplyAllModifiers(actorStats, saveName, bonus);
+
+        var outcome = await _rollService.RollAsync(new RollRequest { Tag = "save", Expression = "1d20", Bonus = bonus, Mechanic = DiceMechanic.Standard }, ct);
+        
+        var degree = CalculateDegreeOfSuccess(outcome, dc);
+        
+        return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
     }
 
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
