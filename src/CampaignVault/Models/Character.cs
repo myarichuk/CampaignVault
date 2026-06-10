@@ -237,6 +237,21 @@ public class SystemExtension
     /// See <see cref="StatusEffect"/> for the full design and tool-schema documentation.
     /// </summary>
     public List<StatusEffect> StatusEffects { get; set; } = [];
+
+    /// <summary>
+    /// Relative spatial and engagement relations with other entities.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("spatialRelations")]
+    public List<SpatialRelation> SpatialRelations { get; set; } = [];
+}
+
+public class SpatialRelation
+{
+    [System.Text.Json.Serialization.JsonPropertyName("targetId")]
+    public string TargetId { get; set; } = default!;
+
+    [System.Text.Json.Serialization.JsonPropertyName("relationType")]
+    public string RelationType { get; set; } = default!;
 }
 
 public class Schedule
