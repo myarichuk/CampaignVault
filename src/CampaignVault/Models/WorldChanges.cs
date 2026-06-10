@@ -37,6 +37,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(ItemUpdate), "item_update")]
 [JsonDerivedType(typeof(CharacterUpdate), "character_update")]
 [JsonDerivedType(typeof(KnowledgeUpdate), "knowledge_update")]
+[JsonDerivedType(typeof(SpatialRelationChange), "spatial_relation")]
 public abstract class WorldChange;
 
 /// <summary>
@@ -212,6 +213,28 @@ public class RelationshipChange : WorldChange
     [Description("Narrative reason for the shift. This is stored with the relationship and helps the behavioral synthesizer explain why the NPC feels this way.")]
     [JsonPropertyName("reason")]
     public string Reason { get; set; } = default!;
+}
+
+/// <summary>
+/// Establish, update, or remove a relative spatial or engagement relationship between two entities.
+/// </summary>
+public class SpatialRelationChange : WorldChange
+{
+    [Description("ID of the character initiating or anchoring the relation (e.g. 'characters/bard').")]
+    [JsonPropertyName("actorId")]
+    public string ActorId { get; set; } = default!;
+
+    [Description("ID of the target character or object (e.g. 'characters/archivist').")]
+    [JsonPropertyName("targetId")]
+    public string TargetId { get; set; } = default!;
+
+    [Description("The type of relationship (e.g. 'Grappling', 'LeaningIn', 'CloseProximity'). Use null or empty string to remove the relation.")]
+    [JsonPropertyName("relationType")]
+    public string? RelationType { get; set; }
+
+    [Description("Whether to automatically establish the inverse relationship on the target (e.g., if actor Grapples target, target becomes GrappledBy actor).")]
+    [JsonPropertyName("bidirectional")]
+    public bool Bidirectional { get; set; } = true;
 }
 
 /// <summary>Adjust one of a character's open-ended psychological or physical needs (hunger, thirst, tiredness, wanderlust, duty, etc.).</summary>
