@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Models;
 
@@ -26,6 +27,18 @@ public class TravelChangeHandler : IWorldChangeHandler
         {
             var suggested = await context.SuggestCharacterMatchAsync(tc.CharacterId);
             return ChangeHandlerResult.Failure($"Character {tc.CharacterId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
+        }
+
+        if (character.SystemStats?.SpatialRelations != null)
+        {
+            var blocks = character.SystemStats.SpatialRelations
+                .Where(r => r.RelationType == "GrappledBy" || r.RelationType == "Grappling" || r.RelationType == "LeaningIn")
+                .ToList();
+            if (blocks.Any())
+            {
+                var block = blocks.First();
+                return ChangeHandlerResult.Failure($"Character {character.Name} cannot travel because they have a spatial relation '{block.RelationType}' with character {block.TargetId}. Resolve this relationship first.");
+            }
         }
 
         if (!context.Locations.TryGetValue(tc.DestinationLocationId, out var destination))
