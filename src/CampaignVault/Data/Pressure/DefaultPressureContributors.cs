@@ -25,6 +25,7 @@ public static class DefaultPressureContributors
         new FactionTerritoryPressureContributor(),
         new FactionOpportunisticPressureContributor(),
         new FactionEconomyPressureContributor(),
-        new FactionRecentEventPressureContributor()
+        new FactionRecentEventPressureContributor(),
+        new SpatialRelationPressureContributor()
     ];
 }
