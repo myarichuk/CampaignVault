@@ -68,6 +68,7 @@ public class CampaignRepository
                 new EventOccurredHandler(),
                 new RumorEvolvesHandler(),
                 new RelationshipChangeHandler(),
+                new SpatialRelationChangeHandler(),
                 new NeedChangeHandler(),
                 new AttributeChangeHandler(),
                 new MoodChangeHandler(),
