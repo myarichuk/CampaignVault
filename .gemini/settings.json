@@ -1,8 +1,17 @@
- {
+{
       "mcpServers": {
         "campaign-vault": {
 	 "type": "sse",
           "url": "http://localhost:5275"
+        },
+        "serena": {
+          "command": "uvx",
+          "args": [
+            "--from",
+            "git+https://github.com/oraios/serena",
+            "serena",
+            "start-mcp-server"
+          ]
         }
       }
  }
