@@ -1125,12 +1125,30 @@ Later promote a transient (so it survives GC and participates in AdvanceWorld):
   { ""$type"": ""schedule_change"", ""characterId"": ""chars/cloaked_figure"", ""schedule"": { ""defaultLocationId"": ""locations/market_square"", ""routines"": [ { ""condition"": ""Any"", ""locationId"": ""locations/market_square"", ""activity"": ""Haggling"", ""probability"": 0.8 } ] } }
 ]
 
-**Engagements & Spatial Positions (relative distance/zone anchoring):**
+**Engagements & Spatial Positions:** pairwise state (`engagement_relation`) vs. relative placement (`spatial_position`). Different field names: `actorId` vs `characterId`.
+
+Categories for `engagement_relation`: `Physical`, `Social`, `Medical`, `Attention`, `Proximity`. Use a freeform `verb` (e.g. ""grappling"", ""ranting at"", ""stitching""). Omit `restrictionLevel` to use category defaults — Physical/Medical = Hard (blocks `travel` + scene pressure), Social = Soft (pressure only), Attention/Proximity = None (informational). Override with `restrictionLevel` when a beat must hard-lock travel (e.g. farewell embrace).
+
+`distanceBand` values: `Touch`, `Close`, `Near`, `Far`, `Distant`. Optional `bearing` and `zone`.
+
+Tavern example (drunk five paces from the party, ranting):
 [
-  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/mother"", ""targetId"": ""chars/son"", ""category"": ""Social"", ""verb"": ""embracing"", ""restrictionLevel"": ""Hard"", ""bidirectional"": true },
-  { ""$type"": ""spatial_position"", ""characterId"": ""chars/drunk"", ""targetId"": ""locations/tavern_bar"", ""distanceBand"": ""Near"", ""bearing"": ""AtBar"" }
+  { ""$type"": ""spatial_position"", ""characterId"": ""chars/drunk"", ""targetId"": ""chars/pc"", ""distanceBand"": ""Near"", ""zone"": ""bar"" },
+  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/drunk"", ""targetId"": ""chars/pc"", ""category"": ""Social"", ""verb"": ""ranting at"", ""bidirectional"": true }
 ]
-*Note: In combat, ruleset resolvers automatically establish and clear mechanical engagements (like grappling) upon successful maneuver checks. For non-combat roleplay (hugs, kisses, tending wounds, conversations), you (the LLM) should manually commit these to enforce narrative continuity, block travel, or receive scene prompt pressures.*
+
+Farewell embrace (hard-lock until resolved — override Social default):
+[
+  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/mother"", ""targetId"": ""chars/son"", ""category"": ""Social"", ""verb"": ""embracing"", ""restrictionLevel"": ""Hard"", ""bidirectional"": true }
+]
+
+Clear when the beat ends (`verb` or `distanceBand` null):
+[
+  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/mother"", ""targetId"": ""chars/son"", ""verb"": null, ""bidirectional"": true },
+  { ""$type"": ""spatial_position"", ""characterId"": ""chars/drunk"", ""targetId"": ""chars/pc"", ""distanceBand"": null }
+]
+
+*Combat vs manual: ruleset resolvers automatically establish and clear mechanical engagements (grappling, escape) via `ruleset_action` contested checks. For unresolved non-combat beats (hugs, tending wounds, intense confrontations), commit `engagement_relation` yourself — otherwise scene pressure will nag you and Hard engagements block `travel`.*
 
 Item + transfer patterns, status with modifiers, ruleset_action (see below), etc.
 

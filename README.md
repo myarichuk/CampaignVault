@@ -13,6 +13,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 - **Unified Search**: Keyword/wildcard search across lore, characters, and locations in one shot (`search_world`).
 
 ## Recent Updates
+- **Engagement Relations & Spatial Positioning**: Pairwise scene anchors (`engagement_relation`: category + freeform verb) vs. relative placement (`spatial_position`: distance band, bearing, zone). Category defaults control travel blocks and scene pressure; ruleset resolvers auto-establish/clear grapple engagements on contested maneuver checks. See `get_help` and `ARCHITECTURE.md`.
 - **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in). World entities are campaign-tagged and filtered at query time; characters/locations with no `CampaignName` may still appear across campaigns (shared-universe design).
 - **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
 - **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
@@ -70,7 +71,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 - **Critical**: `get_scene`, `get_world_state`, and `advance_world` return `WorldPressure` containing `ENGINE WARNING:` and `NARRATIVE PROMPT:` items. These include **exact copy-paste JSON** for the `commit` needed to fix hallucinations, dead-ends, empty-but-expected-crowds, broken links, etc. Treat them as mandatory directives. Call `get_help` for the full "Lazy Tavern" walkthrough and patterns.
 - This directly addresses the "silly factor" of forcing perfect polymorphic JSON arrays for every flavor element the LLM narrates.
 
-See `get_help` for the full DM manual. See `ARCHITECTURE.md` for scoping, simulation, and ruleset design.
+See `get_help` for the full DM manual (engagements, spatial positions, grapple patterns). See `ARCHITECTURE.md` for scoping, simulation, engagement/spatial design, and ruleset integration. See `docs/recommended-system-prompt.md` for a copy-paste LLM system prompt.
 
 ## Open-World & Sandbox Mechanics
 
@@ -79,7 +80,8 @@ The engine provides deep structural tracking for macro-mechanics:
 - **Epistemic Drift & Memories**: Use `knowledge_update` to record key facts in an NPC's `Memories`. Over time, trivial and important memories will "decay", and the engine will pressure you to reflect memory loss, epistemic drift, or confusion.
 - **Factions & Economy**: Track influence, wealth, and stance matrices. Background rules shift their influence over time, and factions dynamically demand resources (`EconomicDemand`). If a faction is desperate for "spell scrolls" and the party has them, `get_scene` will surface the pressure. Use `get_faction_context` to do a deep dive.
 - **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the LLM doesn't forget them. Use `get_quest_details` to pull the full quest document (objectives, deadlines, rewards, and per-objective progress timestamps).
-- **Travel**: Record journeys with `$type: travel` in `commit` (applies exit distance, tiredness, time advance, and optional random encounters). If you call `get_scene` with `partyPresent=true` but no `KeepAlive` PC is at that location, the engine raises `Location:MissingTravelCommit` with ready `travel` JSON. Interrupted en-route travel surfaces `Travel:Interrupted` pressure until you resolve the encounter and commit another `travel`.
+- **Travel**: Record journeys with `$type: travel` in `commit` (applies exit distance, tiredness, time advance, and optional random encounters). Hard `engagement_relation` entries block travel until cleared. If you call `get_scene` with `partyPresent=true` but no `KeepAlive` PC is at that location, the engine raises `Location:MissingTravelCommit` with ready `travel` JSON. Interrupted en-route travel surfaces `Travel:Interrupted` pressure until you resolve the encounter and commit another `travel`.
+- **Engagements & Spatial Positions**: Use `engagement_relation` for unresolved pairwise beats (grapples, hugs, tending wounds) and `spatial_position` for relative placement (e.g. drunk `Near` the party at the bar). Combat grapples are handled by `ruleset_action`; commit engagements manually for RP beats. Call `get_help` for copy-paste patterns and clearance (`verb` / `distanceBand` null).
 
 
 

@@ -58,7 +58,7 @@ Typical write flow: `commit` → `WorldChangeDispatcher` → handler(s) per chan
 
 ## World-Change Dispatch
 
-`commit` accepts a polymorphic `WorldChange[]` (27 `$type` discriminators in `WorldChanges.cs`). Each change is routed to exactly one `IWorldChangeHandler` via `ShouldHandle`.
+`commit` accepts a polymorphic `WorldChange[]` (30 `$type` discriminators in `WorldChanges.cs`, including legacy `spatial_relation`). Each change is routed to exactly one `IWorldChangeHandler` via `ShouldHandle`.
 
 Registered handlers (via DI in `Program.cs`):
 
@@ -67,9 +67,55 @@ Registered handlers (via DI in `Program.cs`):
 - Narrative: `EventOccurredHandler`, `RumorEvolvesHandler`, `RelationshipChangeHandler`, `MoodChangeHandler`, `ActivityChangeHandler`
 - NPC mind: `NeedChangeHandler`, `KnowledgeUpdateHandler`, `ScheduleChangeHandler`
 - World building: `LocationCreateHandler`, `LocationUpdateHandler`, `CharacterCreateHandler`, `CharacterUpdateHandler`
+- Scene anchoring: `EngagementRelationChangeHandler`, `SpatialPositionChangeHandler`
 - Macro: `TravelChangeHandler`, `RestChangeHandler`, `FactionCreateHandler`, `FactionReputationChangeHandler`, `FactionStateChangeHandler`, `QuestCreateHandler`, `QuestProgressHandler`
 
-`RulesetActionHandler` loads the campaign's `CampaignConfig`, selects the active `IRulesetModule`, calls `IActionResolution.ResolveAsync`, and dispatches any returned follow-up mutations (HP, status, etc.).
+`RulesetActionHandler` loads the campaign's `CampaignConfig`, selects the active `IRulesetModule`, calls `IActionResolution.ResolveAsync`, and dispatches any returned follow-up mutations (HP, status, engagement relations from grapple maneuvers, etc.).
+
+### Engagement Relations & Spatial Positioning
+
+Two complementary primitives on `SystemExtension` track *who is doing what to whom* vs. *where someone is relative to something else*. They are intentionally separate from location IDs (`CurrentLocationId`) and social graph edges (`RelationshipChange`).
+
+| Primitive | `$type` | Stored on | Purpose |
+|-----------|---------|-----------|---------|
+| **Engagement relation** | `engagement_relation` (legacy: `spatial_relation`) | `engagementRelations[]` | Pairwise state anchor — freeform `verb` + `category` |
+| **Spatial position** | `spatial_position` | `spatialPositions[]` | Relative placement — `distanceBand`, optional `bearing` / `zone` |
+
+**Engagement relation shape** (`EngagementRelation`):
+
+- `targetId` — other character or object anchor
+- `category` — `Physical`, `Social`, `Medical`, `Attention`, `Proximity`
+- `verb` — freeform string (e.g. `grappling`, `ranting at`, `stitching`); legacy JSON key `relationType` still deserializes as `verb`
+- `restrictionLevel` — optional override of category default (`None` / `Soft` / `Hard`)
+
+**Category defaults** (`EngagementRelationCatalog`):
+
+| Category | Default restriction | Blocks `travel`? | Scene pressure? |
+|----------|---------------------|------------------|-----------------|
+| Physical, Medical | Hard | yes | yes |
+| Social | Soft | no | yes |
+| Attention, Proximity | None | no | no |
+
+`EngagementRelationChangeHandler` supports bidirectional inverse pairs for asymmetric verbs (e.g. `Grappling` ↔ `GrappledBy`); symmetric categories copy the same verb to both sides.
+
+**Spatial position shape** (`SpatialPosition`):
+
+- `targetId` — reference entity (PC, bar zone, etc.)
+- `distanceBand` — `Touch`, `Close`, `Near`, `Far`, `Distant`
+- `bearing`, `zone` — optional freeform scene hints
+
+**Enforcement:**
+
+- `TravelChangeHandler` blocks travel when any `engagementRelations` entry has Hard restriction.
+- `EngagementRelationPressureContributor` emits `NARRATIVE PROMPT` for Soft and Hard engagements on scene NPCs (`Character:EngagementLock`).
+
+**Ruleset integration (grapple):** On successful grapple `ruleset_action` (`ContestedCheck` + `ActionCategory.Maneuver` or grapple name), resolvers emit `EngagementRelationChange` mutations via `EngagementMutationHelper`:
+
+- **D&D 5e** — opposed Athletics (or Acrobatics) d20; tie → defender wins
+- **PF2e** — Athletics vs target Fortitude DC (not opposed; matches CRB grapple)
+- **Fallout 2d20** — opposed success-count pools (Strength + Athletics default)
+
+Escape grapple (`escape: true` or escape action name) clears the engagement on success. Combat grapples need not be manually committed; unresolved RP beats (hugs, tending wounds) should be committed by the LLM.
 
 ## Simulation Engine
 
@@ -102,7 +148,7 @@ Read-side tools call `PressureOrchestrator.CollectAndCapAsync` with a scope:
 - **Scene** — `get_scene`
 - **Npc** — `get_npc_context` (urgent initiative pressures)
 
-Contributors include rumor aging, unresolved events, character distress, quest deadlines, travel interruptions, location integrity/hallucination/connectivity, faction economy/territory, memory decay, and more. Rulesets can add contributors via `IRulesetPressureContributor` (e.g. D&D 5e exhaustion).
+Contributors include rumor aging, unresolved events, character distress, quest deadlines, travel interruptions, engagement locks, location integrity/hallucination/connectivity, faction economy/territory, memory decay, and more. Rulesets can add contributors via `IRulesetPressureContributor` (e.g. D&D 5e exhaustion).
 
 `PressureManager` deduplicates, caps volume, and escalates repeated nags to `ENGINE WARNING:` after configurable suppression counts (`CampaignConfig.PressureEscalationCount`).
 
@@ -121,9 +167,9 @@ Implemented and registered at startup:
 
 | Implementation | System | Notable mechanics |
 |----------------|--------|-------------------|
-| `Dnd5eRulesetResolver` | D&D 5e | Advantage/disadvantage, saving throws, exhaustion pressure |
-| `Pf2eRulesetResolver` | Pathfinder 2e | Four degrees of success |
-| `Fallout2d20RulesetResolver` | Fallout 2d20 | d20 dice pools, target numbers |
+| `Dnd5eRulesetResolver` | D&D 5e | Advantage/disadvantage, saving throws, contested checks, grapple → engagement mutations, exhaustion pressure |
+| `Pf2eRulesetResolver` | Pathfinder 2e | Four degrees of success, Athletics vs Fortitude DC grapple |
+| `Fallout2d20RulesetResolver` | Fallout 2d20 | d20 dice pools, target numbers, opposed pool contested checks |
 
 `RulesetModuleSelector` validates that every `RulesetSystem` enum value has a registered module at startup. `DefaultRollService` provides deterministic dice evaluation.
 
@@ -137,7 +183,7 @@ Combat flow: `start_combat` rolls initiative once per combatant, sorts turn orde
 
 - **Location state:** `CurrentState`, `VisualTags`, `DistinctiveFeatures`, `PointsOfInterest`, `AmbientCrowd` — surfaced in `get_scene` and monitored by `LocationFlavorPressureContributor`.
 - **Faction economics:** `Faction.EconomicDemand` dictionaries; `FactionEcosystemRule` simulates decay/recovery; `FactionEconomyPressureContributor` surfaces opportunities when the party carries demanded items.
-- **Travel:** `TravelChangeHandler` + `EncounterResolver` apply time/need costs, optional random encounters, and interrupted-travel activity states.
+- **Travel:** `TravelChangeHandler` + `EncounterResolver` apply time/need costs, optional random encounters, interrupted-travel activity states, and Hard engagement locks.
 
 ## Indexes & Search
 
@@ -152,6 +198,7 @@ RavenDB static indexes (`Character_Search`, `Location_Search`, `Lore_Search`, `E
 | MCP tools | `src/CampaignVault/Tools/CampaignTools.cs` |
 | Repository | `src/CampaignVault/Data/CampaignRepository.cs` |
 | World changes | `src/CampaignVault/Models/WorldChanges.cs` |
+| Engagement / spatial models | `src/CampaignVault/Models/EngagementRelationMetadata.cs`, `SpatialDistanceBand.cs` |
 | Handlers | `src/CampaignVault/Data/ChangeHandlers/` |
 | Simulation rules | `src/CampaignVault/Data/*Rule.cs` |
 | Pressure | `src/CampaignVault/Data/Pressure/` |
