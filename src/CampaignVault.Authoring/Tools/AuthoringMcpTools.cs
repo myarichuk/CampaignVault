@@ -13,21 +13,24 @@ public class AuthoringMcpTools
 {
     [McpServerTool(UseStructuredContent = true)]
     [Description("Lists all campaign entities (npcs, locations, factions, quests) found in the active local workspace.")]
-    public Task<object> ListWorkspaceEntities()
+    public async Task<object> ListWorkspaceEntities()
     {
         var mainVm = WorkspaceService.MainWindowViewModel;
         if (mainVm == null || string.IsNullOrEmpty(mainVm.Workspace.CurrentDirectory))
         {
-            return Task.FromResult<object>(new { success = false, error = "No workspace directory loaded." });
+            return new { success = false, error = "No workspace directory loaded." };
         }
 
-        var files = mainVm.Workspace.Files.Select(f => new {
-            fileName = f.FileName,
-            filePath = f.FilePath,
-            relativeUrl = Path.GetRelativePath(mainVm.Workspace.CurrentDirectory, f.FilePath)
-        }).ToList();
+        var files = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            return mainVm.Workspace.Files.Select(f => new {
+                fileName = f.FileName,
+                filePath = f.FilePath,
+                relativeUrl = Path.GetRelativePath(mainVm.Workspace.CurrentDirectory, f.FilePath)
+            }).ToList();
+        });
 
-        return Task.FromResult<object>(new { success = true, files });
+        return new { success = true, files };
     }
 
     [McpServerTool(UseStructuredContent = true)]
@@ -85,14 +88,7 @@ public class AuthoringMcpTools
 
             File.WriteAllText(fullPath, content);
 
-            // Refresh workspace list on UI thread
-            if (mainVm != null && !string.IsNullOrEmpty(activeDir))
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    mainVm.Workspace.LoadDirectory(activeDir);
-                });
-            }
+            // FileSystemWatcher will automatically handle the refresh.
 
             return Task.FromResult<object>(new { success = true });
         }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.AspNetCore;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CampaignVault.Authoring.Services;
@@ -13,30 +14,35 @@ public class McpServerService
 {
     private IHost? _host;
     private int _currentPort;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     public bool IsRunning => _host != null;
 
     public async Task StartAsync(int port)
     {
-        if (_host != null)
+        await _semaphore.WaitAsync();
+        try
         {
-            if (_currentPort == port) return;
-            await StopAsync();
-        }
+            if (_host != null)
+            {
+                if (_currentPort == port) return;
+                await StopInternalAsync();
+            }
 
-        _currentPort = port;
+            _currentPort = port;
 
-        var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseKestrel(kestrel =>
-        {
-            kestrel.ListenAnyIP(port);
-        });
+            var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseKestrel(kestrel =>
+            {
+                kestrel.ListenAnyIP(port);
+            });
 
-        // Disable noisy logs
-        builder.Logging.ClearProviders();
-        builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
-        builder.Logging.AddFilter("System", LogLevel.Warning);
-        builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
+            // Disable noisy logs
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole();
+            builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
+            builder.Logging.AddFilter("System", LogLevel.Warning);
+            builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
 
         // Register MCP
         builder.Services.AddMcpServer(options =>
@@ -67,9 +73,27 @@ public class McpServerService
 
         _host = app;
         await _host.StartAsync();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     public async Task StopAsync()
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            await StopInternalAsync();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    private async Task StopInternalAsync()
     {
         if (_host != null)
         {

@@ -25,8 +25,9 @@ public class SettingsService
                 return settings ?? new CampaignAuthoringSettings();
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"Failed to load settings from {_filePath}: {ex.Message}");
             // Fallback to defaults on error
         }
         return new CampaignAuthoringSettings();

@@ -8,6 +8,7 @@ using Xunit;
 
 namespace CampaignVault.Tests.Authoring;
 
+[Collection("McpServerTests")]
 public class McpServerTests
 {
     [Fact]

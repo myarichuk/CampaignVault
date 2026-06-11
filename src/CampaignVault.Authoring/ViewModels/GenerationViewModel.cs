@@ -7,7 +7,7 @@ using CampaignVault.Authoring.Services;
 
 namespace CampaignVault.Authoring.ViewModels;
 
-public partial class GenerationViewModel : ObservableObject
+public partial class GenerationViewModel : ObservableObject, IDisposable
 {
     private readonly SettingsViewModel _settingsViewModel;
 
@@ -32,16 +32,23 @@ public partial class GenerationViewModel : ObservableObject
         UpdateEnabledState();
 
         // Subscribe to settings changes
-        _settingsViewModel.PropertyChanged += (s, e) =>
+        _settingsViewModel.PropertyChanged += OnSettingsChanged;
+    }
+
+    public void Dispose()
+    {
+        _settingsViewModel.PropertyChanged -= OnSettingsChanged;
+    }
+
+    private void OnSettingsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsViewModel.LlmProvider) ||
+            e.PropertyName == nameof(SettingsViewModel.LlmApiKey) ||
+            e.PropertyName == nameof(SettingsViewModel.LlmEndpoint) ||
+            e.PropertyName == nameof(SettingsViewModel.LlmModel))
         {
-            if (e.PropertyName == nameof(SettingsViewModel.LlmProvider) ||
-                e.PropertyName == nameof(SettingsViewModel.LlmApiKey) ||
-                e.PropertyName == nameof(SettingsViewModel.LlmEndpoint) ||
-                e.PropertyName == nameof(SettingsViewModel.LlmModel))
-            {
-                UpdateEnabledState();
-            }
-        };
+            UpdateEnabledState();
+        }
     }
 
     private void UpdateEnabledState()
@@ -50,6 +57,11 @@ public partial class GenerationViewModel : ObservableObject
         {
             IsEnabled = false;
             StatusMessage = "In-app generation is disabled. Please configure your LLM provider in the Settings tab.";
+        }
+        else if ((_settingsViewModel.LlmProvider == "OpenAI" || _settingsViewModel.LlmProvider == "Gemini") && string.IsNullOrWhiteSpace(_settingsViewModel.LlmApiKey))
+        {
+            IsEnabled = false;
+            StatusMessage = $"API Key is required for {_settingsViewModel.LlmProvider}. Please configure it in the Settings tab.";
         }
         else
         {

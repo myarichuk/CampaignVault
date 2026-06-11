@@ -48,8 +48,9 @@ public partial class App : Application
             // Hook up settings changes to restart server if port changes
             settings.PropertyChanged += async (s, e) =>
             {
-                if (e.PropertyName == nameof(settings.McpPortValue) && settings.McpPortValue.HasValue && _mcpServerService != null)
+                if (e.PropertyName == nameof(settings.McpPortValue) && settings.McpPortValue.HasValue)
                 {
+                    _mcpServerService ??= new McpServerService();
                     try
                     {
                         await _mcpServerService.StartAsync((int)settings.McpPortValue.Value);
