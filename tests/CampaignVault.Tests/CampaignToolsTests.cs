@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Tools;
+using ModelContextProtocol.Server;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -600,6 +602,24 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public void AllMcpTools_HaveToolCategoryAttribute()
+    {
+        var methods = typeof(CampaignTools)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
+            .ToList();
+
+        Assert.True(methods.Count >= 25);
+
+        foreach (var method in methods)
+        {
+            var category = method.GetCustomAttribute<ToolCategoryAttribute>()?.Category;
+            Assert.False(string.IsNullOrWhiteSpace(category), $"Missing [ToolCategory] on {method.Name}");
+            Assert.NotEqual("Other", category);
+        }
+    }
+
+    [Fact]
     public async Task ListTools_ReturnsFullCatalog()
     {
         var tools = CreateTools();
@@ -609,7 +629,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
         Assert.True(result.Data!.Count >= 25);
+        Assert.DoesNotContain(result.Data, t => t.Category == "Other");
         Assert.Contains(result.Data, t => t.Name == "get_help" && t.Category == "System");
+        Assert.Contains(result.Data, t => t.Name == "list_tools" && t.Category == "System");
         Assert.Contains(result.Data, t => t.Name == "commit" && t.Category == "Mutation & time");
         Assert.Contains(result.Data, t => t.Name == "get_quest_details" && t.Category == "Deep dives");
     }

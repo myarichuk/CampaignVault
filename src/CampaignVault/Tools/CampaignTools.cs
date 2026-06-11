@@ -165,6 +165,7 @@ public class CampaignTools
         }
     }
 
+    [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("KICKOFF TOOL: Call this at the start of every session to get the time, active rumors, recent history, and current party location in one view. Respects the currently selected campaign (via select_campaign). partyLocationId is optional — omit it if you do not know the party's current location and derive it from recent history instead.")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
@@ -273,6 +274,7 @@ public class CampaignTools
         }, saveChanges: true);
     }
 
+    [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors. Respects the currently selected campaign.\nSet 'partyPresent=true' ONLY if the party is physically entering or spending time here. Leave false if just looking around for pressures to prevent messing up the simulation's character eviction logic.")]
     public Task<ToolResult<SceneView>> GetScene(
@@ -319,8 +321,9 @@ public class CampaignTools
         }, saveChanges: true);
     }
 
+    [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
-    [Description(@"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world. 
+    [Description(@"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world.
 Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action, and the open-world creates/updates). 
 Use ActivityChange liberally to keep get_scene in sync with your narrative. 
 
@@ -396,6 +399,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         return Commit(elements, narrative, campaignName); // respects context + explicit override
     }
 
+    [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("TIME PASSAGE: Call this for travel, long rests, or downtime. Fast-forwards the world clock and runs background simulations (rumor decay, NPC needs). Returns narrative updates on what changed while the party was away. Respects the currently selected campaign.")]
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
@@ -433,6 +437,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         });
     }
 
+    [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychological state. Returns their relationships, goals, fears, knowledge, and current emotional mood. Respects the currently selected campaign for need descriptors etc.")]
     public Task<ToolResult<NpcContextView>> GetNpcContext(
@@ -523,6 +528,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         });
     }
 
+    [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("DEEP DIVE TOOL: Returns the full Faction document (stances, influence, territory, leaders, metadata, DM notes) for a known faction ID. Use this (instead of guessing from get_scene summaries) when you need to roleplay faction reactions, declare war, expand territory, or check player rep impact. Campaign-scoped.")]
     public Task<ToolResult<Faction>> GetFactionContext(
@@ -544,6 +550,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         }, saveChanges: false);
     }
 
+    [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("DEEP DIVE TOOL: Returns the full Quest document (all objectives with states, deadlines, rewards, giver, related locations/factions, DM notes, urgency). Use when get_scene shows an ActiveQuestSummary and you need to advance/fail specific objectives or check stakes. Supports per-objective deadlines from Phase 7.3.")]
     public Task<ToolResult<Quest>> GetQuestDetails(
@@ -563,6 +570,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         }, saveChanges: false);
     }
 
+    [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("UNIFIED SEARCH: Search across Lore, Characters, Locations, and Items in one shot. Use this when searching for anything by name or keyword. (Campaign context is recorded for future per-campaign scoping.)")]
     public Task<ToolResult<IEnumerable<object>>> SearchWorld(
@@ -577,6 +585,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         }, saveChanges: false);
     }
 
+    [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("HISTORY RECALL: Semantic search over past events. Use this to remember 'what happened last time we were here' or recall specific plot points.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
@@ -593,6 +602,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
 
     // --- Configuration Tools (Genuine state setup) ---
 
+    [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Directly create or overwrite a character/NPC.
 
@@ -618,6 +628,7 @@ This is the best opportunity to create deep, simulatable NPCs.")]
         });
     }
 
+    [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Register a new location on the world map. For first-time setup only.
 
@@ -634,6 +645,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         });
     }
 
+    [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("WORLD BUILDER TOOL: Create or update a lore entry. Always use SearchWorld first to check whether similar lore already exists.")]
     public Task<ToolResult<Lore>> UpsertLore(
@@ -650,6 +662,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
 
     // --- Needs Discoverability Tools ---
 
+    [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("DISCOVERABILITY TOOL: Returns all known needs for an NPC along with their current values and any descriptors. Use this to understand what psychological or physical drives an NPC has before roleplaying or making changes. The needs system is open — you are encouraged to invent new narrative-appropriate needs.")]
     public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(
@@ -687,6 +700,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         }, saveChanges: false);
     }
 
+    [ToolCategory("World builder")]
     [McpServerTool]
     [Description("WORLD BUILDER TOOL: Define or update a descriptor for a need type for the current/selected campaign. Automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list defined ones for the campaign. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
     public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor, string? campaignName = null)
@@ -704,6 +718,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         });
     }
 
+    [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("DISCOVERABILITY TOOL: Lists all defined need descriptors for the current (or specified) campaign.")]
     public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(
@@ -720,6 +735,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         }, saveChanges: false);
     }
 
+    [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"RULES CONFIG TOOL: Get the current campaign configuration.
 Returns the ruleset and system-specific options (e.g., house rules). Respects the currently selected campaign.")]
@@ -734,6 +750,7 @@ Returns the ruleset and system-specific options (e.g., house rules). Respects th
         }, saveChanges: false);
     }
 
+    [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"RULES CONFIG TOOL: Set the active ruleset system for a campaign.
 Respects lock-in (cannot change system once locked). Use this to define house rules or system options.
@@ -775,6 +792,7 @@ Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
 
     // --- Combat & Dispatch Tools ---
 
+    [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"COMBAT TOOL: Starts a new combat encounter at the specified location.
 Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Respects the currently selected campaign.
@@ -837,6 +855,7 @@ Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""mon
     }
 
 
+    [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"COMBAT TOOL: Advances the turn order to the next combatant.
 If all combatants have acted, advances to the next round. Skips dead combatants (HP <= 0).
@@ -923,6 +942,7 @@ Respects the currently selected campaign.")]
         });
     }
 
+    [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"COMBAT TOOL: Ends the current active combat encounter and wraps up the state.
 Aggressively clears all round-based status effects (e.g., 'until end of combat' effects) from all combatants.
@@ -980,6 +1000,7 @@ Day-based effects remain active. Respects the currently selected campaign.")]
 
     // --- Dedicated Campaign Management Tools ---
 
+    [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"CAMPAIGN TOOL: Creates a new campaign with a name and initial ruleset.
 The ruleset is immediately locked for this campaign, preventing accidental system changes later.
@@ -1011,6 +1032,7 @@ Example: create_campaign(""dragonheist"", RulesetSystem.Dnd5e, ""Waterdeep: Drag
         });
     }
 
+    [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"CAMPAIGN TOOL: Lists all existing campaigns in the database.
 Useful for discovering existing worlds to join before calling select_campaign.")]
@@ -1027,6 +1049,7 @@ Useful for discovering existing worlds to join before calling select_campaign.")
         }, saveChanges: false);
     }
 
+    [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"CAMPAIGN TOOL: Selects a campaign as the current one for this session.
 Most tools will use this campaign context automatically, meaning you don't need to specify 'campaignName' on subsequent tool calls.
@@ -1061,6 +1084,7 @@ Example: select_campaign(""dragonheist"")")]
         });
     }
 
+    [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"CAMPAIGN DISCOVERABILITY: Returns the currently active campaign context (name, lock-in status, and active ruleset).
 Use this if you are unsure which campaign you are currently in or if you need to know the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.")]
@@ -1080,8 +1104,9 @@ Use this if you are unsure which campaign you are currently in or if you need to
         }, saveChanges: false);
     }
 
+    [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST. Returns the canonical DM manual with quickstart, tool index, copy-paste commit patterns, ruleset_actions, StatusEffects, and WorldPressure handling. Use list_tools for the full machine-readable catalog.")]
+    [Description(@"TOOL CATALOG: Returns the complete list of CampaignVault MCP tools (name, category, one-line description). Call this if search-based discovery only surfaced a subset. Optional category filter available.")]
     public Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(
         [Description("Optional category filter. Omit to return all tools. Values: Session & exploration, Mutation & time, Combat & rulesets, Campaign management, Deep dives, World builder, System.")] string? category = null)
     {
@@ -1092,6 +1117,7 @@ Use this if you are unsure which campaign you are currently in or if you need to
         return Task.FromResult(new ToolResult<IReadOnlyList<ToolCatalogEntry>>(true, tools, summary));
     }
 
+    [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST. Returns the canonical DM manual with quickstart, tool index, copy-paste commit patterns, ruleset_actions, StatusEffects, and WorldPressure handling. Use list_tools for the full machine-readable catalog.")]
     public Task<ToolResult<string>> GetHelp()
