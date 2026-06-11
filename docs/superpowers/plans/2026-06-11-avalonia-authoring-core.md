@@ -16,25 +16,25 @@
 - Create: `src/CampaignVault.Authoring/CampaignVault.Authoring.csproj`
 - Modify: `CampaignVault.slnx`
 
-- [ ] **Step 1: Create the Avalonia project via dotnet CLI**
+- [x] **Step 1: Create the Avalonia project via dotnet CLI**
 
 ```powershell
 dotnet new avalonia.mvvm -n CampaignVault.Authoring -o src/CampaignVault.Authoring
 ```
 
-- [ ] **Step 2: Add project references to the new project**
+- [x] **Step 2: Add project references to the new project**
 
 ```powershell
 dotnet add src/CampaignVault.Authoring/CampaignVault.Authoring.csproj reference src/CampaignVault/CampaignVault.csproj
 ```
 
-- [ ] **Step 3: Add NuGet packages for parsing**
+- [x] **Step 3: Add NuGet packages for parsing**
 
 ```powershell
 dotnet add src/CampaignVault.Authoring/CampaignVault.Authoring.csproj package YamlDotNet
 ```
 
-- [ ] **Step 4: Add the new project to the SLNX solution file**
+- [x] **Step 4: Add the new project to the SLNX solution file**
 *(Note: As `dotnet sln` does not natively support `.slnx` files well in all SDKs, we will manually append it or use the standard XML snippet).*
 
 Modify `CampaignVault.slnx` to include the project under the "src" folder:
@@ -45,12 +45,12 @@ Modify `CampaignVault.slnx` to include the project under the "src" folder:
   </Folder>
 ```
 
-- [ ] **Step 5: Verify build passes**
+- [x] **Step 5: Verify build passes**
 
 Run: `dotnet build src/CampaignVault.Authoring/CampaignVault.Authoring.csproj`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/CampaignVault.Authoring CampaignVault.slnx
@@ -65,7 +65,7 @@ git commit -m "chore: scaffold CampaignVault.Authoring Avalonia project with dep
 - Create: `src/CampaignVault.Authoring/Services/WorkspaceParser.cs`
 - Create: `tests/CampaignVault.Tests/Authoring/WorkspaceParserTests.cs`
 
-- [ ] **Step 1: Write the failing test for parsing a Character markdown file**
+- [x] **Step 1: Write the failing test for parsing a Character markdown file**
 
 Create `tests/CampaignVault.Tests/Authoring/WorkspaceParserTests.cs`:
 ```csharp
@@ -104,12 +104,12 @@ This is a note.";
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dotnet test tests/CampaignVault.Tests --filter WorkspaceParserTests`
 Expected: FAIL (Does not compile because WorkspaceParser doesn't exist).
 
-- [ ] **Step 3: Implement `WorkspaceParser` minimal logic**
+- [x] **Step 3: Implement `WorkspaceParser` minimal logic**
 
 Create `src/CampaignVault.Authoring/Services/WorkspaceParser.cs`:
 ```csharp
@@ -149,12 +149,12 @@ public class WorkspaceParser
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `dotnet test tests/CampaignVault.Tests --filter WorkspaceParserTests`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src/CampaignVault.Authoring/Services/WorkspaceParser.cs tests/CampaignVault.Tests/Authoring/WorkspaceParserTests.cs
@@ -168,7 +168,7 @@ git commit -m "feat: add WorkspaceParser for YAML frontmatter to Character mappi
 **Files:**
 - Create: `src/CampaignVault.Authoring/ViewModels/WorkspaceViewModel.cs`
 
-- [ ] **Step 1: Write the ViewModel implementation**
+- [x] **Step 1: Write the ViewModel implementation**
 
 Create `src/CampaignVault.Authoring/ViewModels/WorkspaceViewModel.cs`:
 ```csharp
@@ -213,7 +213,7 @@ public partial class FileNodeViewModel : ObservableObject
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```powershell
 git add src/CampaignVault.Authoring/ViewModels/WorkspaceViewModel.cs
@@ -228,7 +228,7 @@ git commit -m "feat: add WorkspaceViewModel for file tree binding"
 - Modify: `src/CampaignVault.Authoring/ViewModels/MainWindowViewModel.cs`
 - Modify: `src/CampaignVault.Authoring/Views/MainWindow.axaml`
 
-- [ ] **Step 1: Wire up the ViewModels**
+- [x] **Step 1: Wire up the ViewModels**
 
 Modify `src/CampaignVault.Authoring/ViewModels/MainWindowViewModel.cs`:
 ```csharp
@@ -272,7 +272,7 @@ public partial class MainWindowViewModel : ViewModelBase
 }
 ```
 
-- [ ] **Step 2: Define the UI Layout**
+- [x] **Step 2: Define the UI Layout**
 
 Modify `src/CampaignVault.Authoring/Views/MainWindow.axaml` to replace the default content with a grid:
 ```xml
@@ -312,12 +312,12 @@ Modify `src/CampaignVault.Authoring/Views/MainWindow.axaml` to replace the defau
 </Window>
 ```
 
-- [ ] **Step 3: Verify the build passes**
+- [x] **Step 3: Verify the build passes**
 
 Run: `dotnet build src/CampaignVault.Authoring/CampaignVault.Authoring.csproj`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add src/CampaignVault.Authoring/ViewModels/MainWindowViewModel.cs src/CampaignVault.Authoring/Views/MainWindow.axaml
