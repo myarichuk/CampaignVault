@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
@@ -190,7 +191,21 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             for (var i = 1; i <= 3; i++)
             {
                 var charId = $"characters/batch-test-{i}";
-                var c = new Character { Id = charId, Name = $"Batch Char {i}", CurrentHp = 10, MaxHp = 10, CampaignName = campaignName, KeepAlive = true };
+                var c = new Character
+                {
+                    Id = charId,
+                    Name = $"Batch Char {i}",
+                    CurrentHp = 10,
+                    MaxHp = 10,
+                    CampaignName = campaignName,
+                    KeepAlive = true,
+                    SystemStats = new Dnd5eExtension
+                    {
+                        ArmorClass = 12,
+                        Dexterity = 12,
+                        SkillModifiers = new Dictionary<string, int> { { "Survival", 2 } }
+                    }
+                };
                 c.Needs.ActiveNeeds["hunger"] = 95f;
                 await session.StoreAsync(c);
             }
@@ -201,7 +216,11 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 CurrentHp = 10, MaxHp = 10, 
                 CampaignName = campaignName, 
                 KeepAlive = true,
-                SystemStats = new Dnd5eExtension {
+                SystemStats = new Dnd5eExtension
+                {
+                    ArmorClass = 12,
+                    Constitution = 12,
+                    SkillModifiers = new Dictionary<string, int> { { "Arcana", 1 } },
                     StatusEffects = [new StatusEffect { Name = "Super Unique Curse", Category = "Curse" }]
                 }
             };

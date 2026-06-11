@@ -182,24 +182,29 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Id = id,
             Name = "Pressure Test NPC",
             KeepAlive = true,
-            SystemStats = new SystemExtension 
-            { 
-                Morale = 5f, // <= 10
-                Willpower = 50f, // OK
-                Temperature = 60f, // >= 50
+            MaxHp = 20,
+            CurrentHp = 20,
+            SystemStats = new Dnd5eExtension
+            {
+                ArmorClass = 12,
+                Wisdom = 12,
+                Morale = 5f,
+                Willpower = 50f,
+                Temperature = 60f,
+                SkillModifiers = new Dictionary<string, int> { { "Insight", 3 } },
                 Attributes = new Dictionary<string, float>
                 {
-                    { "corruption", 95f }, // >= 90
-                    { "fear", 20f } // OK
+                    { "corruption", 95f },
+                    { "fear", 20f }
                 }
             },
             Social = new SocialProfile
             {
                 Relationships = new Dictionary<string, int>
                 {
-                    { "Rival", -85 }, // <= -80
-                    { "Friend", 85 }, // >= 80
-                    { "Neutral", 0 } // OK
+                    { "Rival", -85 },
+                    { "Friend", 85 },
+                    { "Neutral", 0 }
                 }
             }
         });

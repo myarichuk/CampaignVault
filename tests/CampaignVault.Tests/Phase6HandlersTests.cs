@@ -1,3 +1,4 @@
+using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -58,5 +59,40 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Single(child.Exits);
         Assert.Equal("locations/parent", child.Exits[0].TargetLocationId);
         Assert.Equal("Leads back toward Parent (A sturdy oak door)", child.Exits[0].Description);
+    }
+
+    [Fact]
+    public async Task CharacterCreate_InitializesHpAndSystemStats_BasedOnRuleset()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        
+        var keys = new CampaignDocumentKeys();
+        var configId = keys.Config("test-camp-hp");
+        var config = new CampaignConfig { Id = configId, ActiveSystem = RulesetSystem.Dnd5e };
+        await session.StoreAsync(config);
+        await session.SaveChangesAsync();
+
+        var handler = new CharacterCreateHandler();
+        var change = new CharacterCreate 
+        { 
+            CharacterId = "characters/test-char-hp", 
+            Name = "Grog",
+            MaxHp = 25
+        };
+
+        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location>(), new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), NullLogger.Instance,
+            [], dispatcher, null, "test-camp-hp");
+
+        var result = await handler.ApplyAsync(change, ctx);
+        Assert.True(result.Success);
+
+        await session.SaveChangesAsync();
+
+        var character = await session.LoadAsync<Character>("characters/test-char-hp");
+        Assert.NotNull(character);
+        Assert.Equal(25, character.MaxHp);
+        Assert.Equal(25, character.CurrentHp);
+        Assert.IsType<Dnd5eExtension>(character.SystemStats);
     }
 }

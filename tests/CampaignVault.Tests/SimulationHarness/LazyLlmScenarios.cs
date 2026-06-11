@@ -769,7 +769,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         
         var result = await tools.GetHelp();
         Assert.True(result.Success);
-        Assert.Contains("Travel, Faction & Quest", result.Data);
+        Assert.Contains("Travel, Faction, Quest & Rumor", result.Data);
         Assert.Contains("faction_reputation", result.Data);
         Assert.Contains("quest_progress", result.Data);
         Assert.Contains("destinationLocationId", result.Data);

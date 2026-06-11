@@ -602,6 +602,53 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task GetParty_ReturnsOnlyKeepAliveCharacters_ForCampaign()
+    {
+        var repo = new CampaignRepository(_fixture.Store);
+        var tools = CreateTools();
+        var campaignName = "getparty-camp-" + Guid.NewGuid();
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var configId = new CampaignDocumentKeys().Config(campaignName);
+            await session.StoreAsync(new CampaignConfig { Id = configId });
+
+            await repo.UpsertCharacterAsync(session, new Character
+            {
+                Id = "characters/pc-1-" + Guid.NewGuid(),
+                Name = "PC Hero",
+                KeepAlive = true
+            }, campaignName);
+
+            await repo.UpsertCharacterAsync(session, new Character
+            {
+                Id = "characters/npc-1-" + Guid.NewGuid(),
+                Name = "Transient Bard",
+                KeepAlive = false
+            }, campaignName);
+
+            await session.SaveChangesAsync();
+        }
+
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
+            {
+                break;
+            }
+            await Task.Delay(100);
+        }
+
+        var result = await tools.GetParty(campaignName);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.Single(result.Data!);
+        Assert.Equal("PC Hero", result.Data![0].Name);
+    }
+
+    [Fact]
     public void AllMcpTools_HaveToolCategoryAttribute()
     {
         var methods = typeof(CampaignTools)
