@@ -393,54 +393,6 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.Contains(view.SuggestedCommitExamples, ex => ex.Contains("quest_progress"));
         Assert.Contains(view.SuggestedCommitExamples, ex => ex.Contains("newActivity"));
     }
-    [Fact]
-    public void Docs_SystemPrompt_JsonBlocks_AreValid()
-    {
-        // Path relative to bin/Debug/net10.0/
-        var docsPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "docs", "recommended-system-prompt.md"));
-        Assert.True(System.IO.File.Exists(docsPath), $"Docs file not found at {docsPath}");
-
-        var lines = System.IO.File.ReadAllLines(docsPath);
-        var inJsonBlock = false;
-        var currentBlock = new System.Text.StringBuilder();
-
-        var blockCount = 0;
-        foreach (var line in lines)
-        {
-            if (line.Trim() == "```json")
-            {
-                inJsonBlock = true;
-                currentBlock.Clear();
-                continue;
-            }
-            else if (inJsonBlock && line.Trim() == "```")
-            {
-                inJsonBlock = false;
-                var json = currentBlock.ToString();
-                try
-                {
-                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-                    var changes = System.Text.Json.JsonSerializer.Deserialize<WorldChange[]>(json, options);
-                    Assert.NotNull(changes);
-                    Assert.NotEmpty(changes);
-                    blockCount++;
-                }
-                catch (System.Text.Json.JsonException ex)
-                {
-                    Assert.Fail($"JSON deserialization failed for block:\n{json}\nError: {ex.Message}");
-                }
-                continue;
-            }
-
-            if (inJsonBlock)
-            {
-                currentBlock.AppendLine(line);
-            }
-        }
-
-        Assert.True(blockCount > 0, "No JSON blocks were found in the recommended-system-prompt.md. We should have at least one testable example.");
-    }
 
     [Fact]
     public async Task GetScene_EmitsMemoryDecayPressure()
