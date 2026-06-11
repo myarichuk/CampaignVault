@@ -7,14 +7,28 @@
         x:Class="CampaignVault.Authoring.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="CampaignVault.Authoring">
+        Title="CampaignVault Authoring App">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
+    <Grid ColumnDefinitions="250, *">
+        <!-- Sidebar -->
+        <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="0,0,1,0" Padding="10">
+            <ListBox ItemsSource="{Binding Workspace.Files}" 
+                     SelectedItem="{Binding Workspace.SelectedFile}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding FileName}" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <!-- Editor -->
+        <TextBox Grid.Column="1" 
+                 Text="{Binding EditorText, Mode=TwoWay}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 FontFamily="Consolas"
+                 Padding="20" />
+    </Grid>
 
 </Window>
