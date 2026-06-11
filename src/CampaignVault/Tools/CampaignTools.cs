@@ -331,7 +331,7 @@ Use ActivityChange liberally to keep get_scene in sync with your narrative.
 
 See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
 
-Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, knowledge_update, schedule_change, item_create, travel, rest, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
+Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, system_stats, knowledge_update, schedule_change, item_create, travel, rest, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
 
 === RECOMMENDED PATTERNS (copy-paste friendly) ===
 
@@ -525,6 +525,23 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 context,
                 $"Psychological context for {npc.Name} retrieved (campaign: {effective}).",
                 WorldPressure: initiativePressure is { Length: > 0 } ? initiativePressure : null);
+        });
+    }
+
+    [ToolCategory("Session & exploration")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("PARTY TOOL: Retrieve all player characters (PCs) and major KeepAlive characters in the campaign. Returns their current HP, Max HP, location, activity, and key stats/attributes.")]
+    public Task<ToolResult<List<Character>>> GetParty(
+        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+    {
+        var effective = EffectiveCampaign(campaignName);
+        return ExecuteAsync(async session => {
+            var party = await session.Query<Character>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+                .Where(c => (string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective) && c.KeepAlive)
+                .ToListAsync();
+
+            return new ToolResult<List<Character>>(true, party, $"Retrieved {party.Count} party/KeepAlive characters (campaign: {effective}).");
         });
     }
 
@@ -1143,6 +1160,7 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 | `get_world_state` | Session kickoff: time, rumors, recent events, pressures |
 | `get_scene` | Location, NPCs, items, rumors, ActiveCombat, SystemStats, pressures |
 | `get_npc_context` | Deep NPC psychology, memories, initiative signals |
+| `get_party` | Retrieve all PCs and major KeepAlive characters |
 | `get_npc_needs` | Current needs + merged descriptors |
 | `get_need_descriptors` | Per-campaign shared need descriptions |
 | `search_world` | Keyword search across lore, characters, locations |
@@ -1193,9 +1211,12 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 **Golden Rule:** If you just narrated something that should ""exist"" next time the party returns or is referenced, `commit` it (via create or update). If it's pure color, use PointsOfInterest + AmbientCrowd (lightweight, no docs created until you decide to promote).
 
 ## The Commit Tool (Universal Write)
-ALWAYS call at end of combat/conversation/discovery. Atomic array of `$type` mutations. Rate limited + batch capped (50).
+ALWAYS call at end of combat/conversation/discovery. Atomic array of `$type` mutations. Mutations are processed atomically as a single database transaction. 
 
-Supported `$type`s: `hp`, `item`, `item_update`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `engagement_relation`, `spatial_position`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `character_update`, `knowledge_update`, `schedule_change`, `item_create`, `travel`, `rest`, `faction_create`, `faction_reputation`, `faction_state`, `quest_create`, `quest_progress`.
+- **Batch Size Guidance:** Individual commits are capped at a maximum of **50 changes** per call. Group all related mutations (e.g. travel, quest progress, HP updates, and activity updates) into a single batch to ensure consistency.
+- **ID Hygiene & Campaign Isolation:** To prevent ID collisions and cross-campaign data leakage, **always namespace your entity IDs** with a unique campaign prefix/slug (e.g., `locations/dragonheist-trollskull-alley`, `chars/dragonheist-volo` instead of `locations/starting-tavern`, `chars/bard`).
+
+Supported `$type`s: `hp`, `item`, `item_update`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `engagement_relation`, `spatial_position`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `character_update`, `system_stats`, `knowledge_update`, `schedule_change`, `item_create`, `travel`, `rest`, `faction_create`, `faction_reputation`, `faction_state`, `quest_create`, `quest_progress`.
 
 **Travel and Resting:** Use `travel` (with `destinationLocationId`) to safely move the party; it applies time and tiredness, and evaluates encounters based on distance. Use `rest` (with `intendedHours` and `securityModifier`) for camping or sleeping. The engine rolls for interruptions. If `rest` is interrupted, resolve the encounter before committing `hp` recovery!
 
@@ -1275,16 +1296,99 @@ Later, party talks to the bard or barman engages:
 - If later the bard becomes a quest giver recurring: `schedule_change` or add Schedule at birth + `keepAlive`.
 - If they just drink and leave: no commit needed for the 12 unnamed sailors. Engine will GC any you did transiently create if area goes cold.
 
-**Full ""Travel, Faction & Quest"" Batch Example (Phase 7 Masterclass):**
-When the party travels, finishes a quest objective, and affects faction standing all at once, batch it!
+**Full ""Travel, Faction, Quest & Rumor"" Batch Example (Cohesive World Beats):**
+When the party resolves a rumor about a rebel smuggler by betraying them to the city watch, batch all the consequences:
 [
-  { ""$type"": ""travel"", ""characterId"": ""chars/pc1"", ""destinationLocationId"": ""locations/rebel-camp"", ""encounterRiskModifier"": -20 },
-  { ""$type"": ""quest_progress"", ""questId"": ""quests/find-rebel-camp"", ""objectiveIndex"": 0, ""newState"": ""Complete"", ""narrativeNote"": ""Found the hidden camp."" },
-  { ""$type"": ""faction_reputation"", ""factionId"": ""factions/rebels"", ""characterId"": ""chars/pc1"", ""delta"": 15 }
+  { ""$type"": ""travel"", ""characterId"": ""chars/pc1"", ""destinationLocationId"": ""locations/city-jail"", ""encounterRiskModifier"": -30 },
+  { ""$type"": ""quest_progress"", ""questId"": ""quests/betray-smuggler"", ""objectiveIndex"": 0, ""newState"": ""Complete"", ""narrativeNote"": ""Handed the rebel smuggler over to the City Watch."" },
+  { ""$type"": ""faction_reputation"", ""factionId"": ""factions/city-watch"", ""characterId"": ""chars/pc1"", ""delta"": 15 },
+  { ""$type"": ""faction_reputation"", ""factionId"": ""factions/rebels"", ""characterId"": ""chars/pc1"", ""delta"": -20 },
+  { ""$type"": ""rumor"", ""subject"": ""smuggling"", ""newText"": ""The smuggler who supplied the rebels was caught and jailed."", ""newState"": ""Resolved"" },
+  { ""$type"": ""character_update"", ""characterId"": ""chars/smuggler-npc"", ""keepAlive"": true },
+  { ""$type"": ""activity"", ""characterId"": ""chars/smuggler-npc"", ""newLocationId"": ""locations/city-jail"", ""newActivity"": ""Imprisoned behind iron bars"" },
+  { ""$type"": ""event"", ""category"": ""Narrative"", ""summary"": ""Party betrayed the rebel smuggler at the city gate; smuggler is now locked up."" }
 ]
-This safely moves the party (applying time/tiredness), updates the quest, and makes the faction like them more, instantly resolving multiple pressures at once.
+This safely moves the party (with time + fatigue), updates the quest, modifies standing with two factions, resolves the active rumor, moves the smuggler NPC into jail with a new activity, and logs a narrative event in a single atomic database operation.
 
 This is how you stay creative *and* keep the world model healthy without perfect JSON for every flavor element.
+
+**Full ""Quest + Faction + Rumor Lifecycle"" Walkthrough (how a narrative thread breathes across multiple sessions):**
+
+A complete arc — from seeded rumor through investigation, faction reaction, and resolution — spans several commits. Here is the canonical pattern. Adapt IDs to your campaign prefix.
+
+**Beat 1 — Seed the thread (tavern, session start):**
+Bram the barkeep mentions the Nightshade gang has been raiding river barges. Commit the rumor and the quest hook, and flag Bram as the quest giver:
+[
+  { ""$type"": ""rumor"", ""subject"": ""Nightshade Gang"", ""newText"": ""Nightshade pirates have raided three barges on the Ashford River this month — cargo vanishing, crews turning up dead."", ""newState"": ""Active"", ""sourceCharacterId"": ""chars/bram-the-barkeep"" },
+  { ""$type"": ""quest_create"", ""questId"": ""quests/stop-nightshade"", ""title"": ""Cut Out the Nightshade"", ""description"": ""The river merchants are desperate. Find and disrupt the Nightshade Gang's operations on the Ashford."", ""objectives"": [ { ""description"": ""Locate the Nightshade hideout"", ""state"": ""Active"" }, { ""description"": ""Destroy or scatter the gang"", ""state"": ""Pending"" }, { ""description"": ""Report back to the River Merchants' Guild"", ""state"": ""Pending"" } ], ""deadlineDays"": 14 },
+  { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Bram Ironarm told the party about the Nightshade Gang's river raids. Quest: Cut Out the Nightshade accepted."" }
+]
+
+**Beat 2 — Investigation (party scouting the docks):**
+Party discovers the gang uses a hidden canal warehouse. Create the location, advance the quest, record the discovery:
+[
+  { ""$type"": ""location_create"", ""locationId"": ""locations/nightshade-warehouse"", ""name"": ""Nightshade Canal Warehouse"", ""description"": ""A damp, low-ceilinged warehouse reachable only by flat-bottomed barge. Crates of stolen cargo line the walls."", ""type"": ""Building"", ""connectedFromLocationId"": ""locations/ashford-docks"", ""connectionDescription"": ""A concealed canal lock, invisible at high tide"" },
+  { ""$type"": ""quest_progress"", ""questId"": ""quests/stop-nightshade"", ""objectiveIndex"": 0, ""newState"": ""Complete"", ""narrativeNote"": ""Party located the warehouse via the canal lock at low tide."" },
+  { ""$type"": ""knowledge_update"", ""characterId"": ""chars/pc1"", ""topic"": ""Nightshade Gang"", ""details"": ""Hideout is the canal warehouse south of Ashford Docks, accessible only at low tide."" },
+  { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party found the Nightshade Gang hideout: a canal warehouse south of Ashford Docks."" }
+]
+
+**Beat 3 — Confrontation + faction ripple (the gang is broken):**
+Party raids the warehouse, kills the gang leader, frees hostages. Faction standing shifts:
+[
+  { ""$type"": ""hp"", ""characterId"": ""chars/nightshade-boss"", ""delta"": -99, ""sourceCharacterId"": ""chars/pc1"" },
+  { ""$type"": ""quest_progress"", ""questId"": ""quests/stop-nightshade"", ""objectiveIndex"": 1, ""newState"": ""Complete"", ""narrativeNote"": ""Gang leader slain; surviving members fled or surrendered."" },
+  { ""$type"": ""faction_state"", ""factionId"": ""factions/nightshade-gang"", ""influenceDelta"": -30, ""narrative"": ""Leadership killed in the warehouse raid. Gang scattered."" },
+  { ""$type"": ""faction_reputation"", ""factionId"": ""factions/river-merchants-guild"", ""characterId"": ""chars/pc1"", ""delta"": 20 },
+  { ""$type"": ""faction_reputation"", ""factionId"": ""factions/city-watch"", ""characterId"": ""chars/pc1"", ""delta"": 8 },
+  { ""$type"": ""rumor"", ""subject"": ""Nightshade Gang"", ""newText"": ""The Nightshade pirates were smashed by a band of adventurers at their own hideout. The river may be safe again."", ""newState"": ""Resolved"" },
+  { ""$type"": ""event"", ""category"": ""Combat"", ""summary"": ""Party raided the Nightshade warehouse. Boss killed, gang scattered. River Merchants Guild grateful."" }
+]
+
+**Beat 4 — Resolution + world state shift (report to the guild):**
+Party reports back. Quest closes, territory adjusts, maybe a new rumor seeds:
+[
+  { ""$type"": ""quest_progress"", ""questId"": ""quests/stop-nightshade"", ""objectiveIndex"": 2, ""newState"": ""Complete"", ""narrativeNote"": ""Party reported to the River Merchants Guild. Reward collected."" },
+  { ""$type"": ""faction_state"", ""factionId"": ""factions/river-merchants-guild"", ""influenceDelta"": 10, ""narrative"": ""Guild influence rising now the river route is open; trade caravans resuming."" },
+  { ""$type"": ""rumor"", ""subject"": ""Ashford River"", ""newText"": ""Merchants are saying the Ashford route is profitable again. Caravans are reforming for the first time in weeks."", ""newState"": ""Active"" },
+  { ""$type"": ""event"", ""category"": ""Narrative"", ""summary"": ""Quest complete. River Merchants Guild paid the reward. Trade caravans reforming on the Ashford."" }
+]
+
+After Beat 4: `get_world_state` will show the quest as resolved, both factions at updated standing, the original rumor as Resolved (no longer nagging), and a new active rumor seeding the next hook. Faction pressure contributors will start surfacing new opportunistic moves from the now-stronger River Merchants Guild if their influence crossed the threshold. The engine does the bookkeeping; you drive the story.
+
+**KEY PATTERNS from this arc:**
+- One rumor → one quest → multiple quest_progress commits (one per objective). Never skip objectives.
+- Faction rep + faction_state are separate: `faction_reputation` is per-character standing; `faction_state` is the global influence/territory of the faction itself. Both should shift after major events.
+- Always resolve the rumor when the quest closes — they are linked narratively but not auto-linked technically. Forgotten rumors age into pressure nagging.
+- New rumors seed naturally from consequences. That last rumor about caravans is tomorrow's quest hook.
+- `knowledge_update` on key discoveries gives the character something to ""remember"" that decays over time — pressure will remind you to refresh it if the info goes stale.
+
+**Character Combat Bootstrap — required for all combatants (KeepAlive OR maxHp > 0):**
+The engine emits ENGINE WARNING until BOTH are set:
+1. **HP**: `maxHp` (+ optional `currentHp`)
+2. **systemStats**: ruleset-specific combat stats via `systemStats` on `character_create` or `system_stats` patch
+
+D&D 5e reference (level 1, max hit die + CON modifier):
+- Fighter / Paladin / Ranger: d10 → 10 + CON mod
+- Cleric / Druid / Monk / Warlock / Bard: d8 → 8 + CON mod
+- Rogue / Artificer: d8 → 8 + CON mod
+- Wizard / Sorcerer: d6 → 6 + CON mod
+- Barbarian: d12 → 12 + CON mod
+
+For NPCs/creatures: use the stat block value (e.g. Goblin = 7 HP, AC 15, DEX 14).
+Infer from class+level for PCs. Pure flavor transients (no HP, not KeepAlive) skip this.
+
+Full 5e bootstrap at create:
+{ ""$type"": ""character_create"", ""characterId"": ""chars/goblin-scout"", ""name"": ""Goblin Scout"", ""maxHp"": 7, ""currentHp"": 7, ""classLevel"": ""Goblin 1"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 15, ""dexterity"": 14, ""strength"": 8, ""skillModifiers"": { ""Stealth"": 6, ""Perception"": 2 }, ""savingThrowModifiers"": { ""Dexterity"": 2 } } }
+
+PF2e bootstrap:
+{ ""$type"": ""character_create"", ""characterId"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""maxHp"": 32, ""currentHp"": 32, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""armorClass"": 19, ""strengthMod"": 4, ""dexterityMod"": 2, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 }, ""savingThrowModifiers"": { ""Fortitude"": 9, ""Reflex"": 7, ""Will"": 6 } } }
+
+Fallout 2d20 bootstrap:
+{ ""$type"": ""character_create"", ""characterId"": ""chars/raider"", ""name"": ""Raider"", ""maxHp"": 10, ""currentHp"": 10, ""systemStats"": { ""$system"": ""fallout2d20"", ""agility"": 7, ""perception"": 6, ""endurance"": 5, ""defense"": 1, ""skills"": { ""SmallGuns"": 2 }, ""tagSkills"": [""SmallGuns""] } }
+
+Patch stats on existing character:
+{ ""$type"": ""system_stats"", ""characterId"": ""chars/campaign-thorin"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 16, ""strength"": 16, ""skillModifiers"": { ""Athletics"": 5 } } }
 
 **The Visual / Physics Sandbox (Tags & Appearance) & Knowledge:**
 The engine intentionally avoids hardcoding vulnerability scores or mechanical checks for narrative states like ""wet"" or ""disheveled"". You (the LLM) are the physics engine.
