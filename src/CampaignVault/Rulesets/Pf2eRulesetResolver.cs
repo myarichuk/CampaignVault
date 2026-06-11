@@ -133,6 +133,18 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{b}'.");
         }
 
+        if (action.Parameters.TryGetValue("mapPenalty", out var mapStr))
+        {
+            if (int.TryParse(mapStr, out var mapVal))
+            {
+                attackBonus -= Math.Abs(mapVal);
+            }
+            else
+            {
+                return ResolverResult.Fail("InvalidParameter", $"Error: invalid mapPenalty value '{mapStr}'.");
+            }
+        }
+
         attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
 
         var damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4";
@@ -193,9 +205,105 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return ResolverResult.Ok($"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
     }
 
-    protected override Task<ResolverResult> ResolveContestedCheckAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveContestedCheckAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Pf2eExtension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
     {
-        return Task.FromResult(ResolverResult.Fail("NotImplemented", "PF2e: Contested checks are typically resolved against DCs instead of opposed rolls."));
+        var targetId = action.TargetIds.FirstOrDefault();
+        if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
+        {
+            return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for contested check.");
+        }
+
+        if (target.SystemStats is not Pf2eExtension targetStats)
+        {
+            return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
+        }
+
+        var isGrapple = EngagementMutationHelper.IsGrappleAction(action);
+        var isEscape = EngagementMutationHelper.IsEscapeGrappleAction(action);
+
+        if (isGrapple)
+        {
+            var skillName = action.Parameters.TryGetValue("skill", out var skill) ? skill : "Athletics";
+            var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
+            bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
+
+            var fortDc = 10 + GetSavingThrowBonus(targetStats, "Fortitude");
+            if (action.Parameters.TryGetValue("dc", out var dcStr) && int.TryParse(dcStr, out var overrideDc))
+            {
+                fortDc = overrideDc;
+            }
+
+            var outcome = await _rollService.RollAsync(new RollRequest
+            {
+                Tag = "grapple",
+                Expression = "1d20",
+                Bonus = bonus,
+                Mechanic = DiceMechanic.Standard
+            }, ct);
+
+            var degree = CalculateDegreeOfSuccess(outcome, fortDc);
+            var success = degree is Pf2eDegreeOfSuccess.Success or Pf2eDegreeOfSuccess.CriticalSuccess;
+
+            if (success)
+            {
+                EngagementMutationHelper.ApplyGrappleSuccess(action.ActorId, targetId, mutations);
+            }
+
+            var resultSuffix = success ? " Target is now grabbed." : string.Empty;
+            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Fortitude DC {fortDc}.{resultSuffix} {outcome.Summary}");
+        }
+
+        if (isEscape)
+        {
+            var skillName = action.Parameters.TryGetValue("skill", out var skill) ? skill : "Athletics";
+            var actorBonus = GetSkillOrAbilityBonus(actorStats, skillName);
+            actorBonus = ApplyAllModifiers(actorStats, actorBonus, "SkillCheck", skillName);
+
+            var grapplerBonus = GetSkillOrAbilityBonus(targetStats, skillName);
+            grapplerBonus = ApplyAllModifiers(targetStats, grapplerBonus, "SkillCheck", skillName);
+            var escapeDc = 10 + grapplerBonus;
+
+            var outcome = await _rollService.RollAsync(new RollRequest
+            {
+                Tag = "escape",
+                Expression = "1d20",
+                Bonus = actorBonus,
+                Mechanic = DiceMechanic.Standard
+            }, ct);
+
+            var degree = CalculateDegreeOfSuccess(outcome, escapeDc);
+            var success = degree is Pf2eDegreeOfSuccess.Success or Pf2eDegreeOfSuccess.CriticalSuccess;
+
+            if (success)
+            {
+                EngagementMutationHelper.ApplyGrappleEscape(action.ActorId, targetId, mutations);
+            }
+
+            var resultSuffix = success ? " Actor breaks free." : string.Empty;
+            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Escape DC {escapeDc}.{resultSuffix} {outcome.Summary}");
+        }
+
+        var actorSkill = action.Parameters.TryGetValue("skill", out var actorSkillName) ? actorSkillName : "Athletics";
+        var targetSkill = action.Parameters.TryGetValue("targetSkill", out var targetSkillName) ? targetSkillName : actorSkill;
+
+        var actorRollBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
+        actorRollBonus = ApplyAllModifiers(actorStats, actorRollBonus, "SkillCheck", actorSkill);
+
+        var targetRollBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
+        targetRollBonus = ApplyAllModifiers(targetStats, targetRollBonus, "SkillCheck", targetSkill);
+
+        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorRollBonus, Mechanic = DiceMechanic.Standard }, ct);
+        var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetRollBonus, Mechanic = DiceMechanic.Standard }, ct);
+
+        var actorWins = actorRoll.Result > targetRoll.Result;
+        var resultStr = actorWins ? "Actor Wins" : "Target Wins";
+
+        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).");
     }
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)

@@ -29,15 +29,15 @@ public class TravelChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Character {tc.CharacterId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
-        if (character.SystemStats?.SpatialRelations != null)
+        if (character.SystemStats?.EngagementRelations != null)
         {
-            var blocks = character.SystemStats.SpatialRelations
-                .Where(r => r.RelationType == "GrappledBy" || r.RelationType == "Grappling" || r.RelationType == "LeaningIn")
+            var blocks = character.SystemStats.EngagementRelations
+                .Where(EngagementRelationCatalog.BlocksTravel)
                 .ToList();
             if (blocks.Any())
             {
                 var block = blocks.First();
-                return ChangeHandlerResult.Failure($"Character {character.Name} cannot travel because they have a spatial relation '{block.RelationType}' with character {block.TargetId}. Resolve this relationship first.");
+                return ChangeHandlerResult.Failure($"Character {character.Name} cannot travel because they are {block.Verb} with character {block.TargetId}. Resolve this engagement first.");
             }
         }
 

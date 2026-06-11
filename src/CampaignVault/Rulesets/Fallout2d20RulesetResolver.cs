@@ -149,9 +149,24 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);
 
+        var isVicious = action.Parameters.TryGetValue("vicious", out var vicStr) &&
+                         (vicStr == "true" || vicStr == "1" || (bool.TryParse(vicStr, out var vb) && vb));
+        
+        var piercingRating = 0;
+        if (action.Parameters.TryGetValue("piercing", out var pierceStr))
+        {
+            int.TryParse(pierceStr, out piercingRating);
+        }
+
+        var damageBonusFromEffects = isVicious ? combatResult.Effects : 0;
+        var ignoredDr = combatResult.Effects * piercingRating;
+
         var drKey = targetStats.DamageResistance.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
         var dr = drKey != null && targetStats.DamageResistance.TryGetValue(drKey, out var res) ? res : 0;
-        var finalDamage = Math.Max(0, combatResult.Damage - dr);
+        
+        var effectiveDr = Math.Max(0, dr - ignoredDr);
+        var totalDamage = combatResult.Damage + damageBonusFromEffects;
+        var finalDamage = Math.Max(0, totalDamage - effectiveDr);
 
         // Apply damage modifiers (resistances/vulnerabilities) multiplier
         var modKey = targetStats.DamageModifiers.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
@@ -165,9 +180,92 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         return ResolverResult.Ok($"{action.ActionName}: Hit for {finalDamage} damage ({combatResult.Effects} Effects).{compMsg}");
     }
 
-    protected override Task<ResolverResult> ResolveContestedCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveContestedCheckAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Fallout2d20Extension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
     {
-        return Task.FromResult(ResolverResult.Fail("NotImplemented", "Fallout 2d20: Contested checks are resolved as opposed skill tests. Needs implementation."));
+        var targetId = action.TargetIds.FirstOrDefault();
+        if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
+        {
+            return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for contested check.");
+        }
+
+        if (target.SystemStats is not Fallout2d20Extension targetStats)
+        {
+            return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
+        }
+
+        var isGrapple = EngagementMutationHelper.IsGrappleAction(action);
+        var isEscape = EngagementMutationHelper.IsEscapeGrappleAction(action);
+
+        var actorAttribute = action.Parameters.TryGetValue("attribute", out var actorAttr)
+            ? actorAttr
+            : isGrapple || isEscape ? "Strength" : "Agility";
+        var actorSkill = action.Parameters.TryGetValue("skill", out var actorSk)
+            ? actorSk
+            : "Athletics";
+
+        var targetAttribute = action.Parameters.TryGetValue("targetAttribute", out var targetAttr)
+            ? targetAttr
+            : actorAttribute;
+        var targetSkill = action.Parameters.TryGetValue("targetSkill", out var targetSk)
+            ? targetSk
+            : actorSkill;
+
+        var actorOutcome = await RollOpposedPoolAsync(actorStats, actorAttribute, actorSkill, action, "actor", ct);
+        var targetOutcome = await RollOpposedPoolAsync(targetStats, targetAttribute, targetSkill, action, "target", ct);
+
+        var actorWins = actorOutcome.Successes > targetOutcome.Successes;
+        var resultStr = actorWins ? "Actor Wins" : "Target Wins";
+
+        if (isGrapple && actorWins)
+        {
+            EngagementMutationHelper.ApplyGrappleSuccess(action.ActorId, targetId, mutations);
+            resultStr += " Target is now grappled.";
+        }
+        else if (isEscape && actorWins)
+        {
+            EngagementMutationHelper.ApplyGrappleEscape(action.ActorId, targetId, mutations);
+            resultStr += " Actor breaks free of the grapple.";
+        }
+
+        return ResolverResult.Ok(
+            $"{action.ActionName}: {resultStr}. Actor {actorOutcome.Successes} successes ({actorAttribute}+{actorSkill}), Target {targetOutcome.Successes} successes ({targetAttribute}+{targetSkill}). {actorOutcome.Summary} vs {targetOutcome.Summary}");
+    }
+
+    private async Task<RollOutcome> RollOpposedPoolAsync(
+        Fallout2d20Extension stats,
+        string attribute,
+        string skill,
+        RulesetAction action,
+        string tag,
+        CancellationToken ct)
+    {
+        var attrVal = GetAttributeValue(stats, attribute);
+        var skillKey = stats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase));
+        var skillVal = skillKey != null && stats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
+        var targetNumber = attrVal + skillVal;
+        targetNumber = ApplyAllModifiers(stats, targetNumber, "SkillCheck", skill, attribute);
+
+        var isTagged = stats.TagSkills.Contains(skill);
+        var poolSize = 2;
+        var poolKey = tag == "actor" ? "pool" : "targetPool";
+        if (action.Parameters.TryGetValue(poolKey, out var poolStr) && !int.TryParse(poolStr, out poolSize))
+        {
+            throw new InvalidOperationException($"Error: invalid {poolKey} value '{poolStr}'.");
+        }
+
+        return await _rollService.RollAsync(new RollRequest
+        {
+            Tag = tag,
+            Expression = $"{poolSize}d20",
+            Mechanic = DiceMechanic.SuccessCount,
+            TargetNumber = targetNumber,
+            CriticalThreshold = isTagged ? skillVal : null
+        }, ct);
     }
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
@@ -217,15 +315,12 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         return ResolverResult.Ok($"{action.ActionName} ({attribute}{(skill != null ? "+" + skill : "")} TN {targetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
     }
 
-    public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
+    public override Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
         var initiative = stats.Perception + stats.Agility;
         initiative = ApplyAllModifiers(stats, initiative, "Initiative");
         
-        // Add a lightweight roll to add variance instead of pure static stat
-        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = initiative, Mechanic = DiceMechanic.Standard };
-        var outcome = await _rollService.RollAsync(request, ct);
-        return outcome.Result;
+        return Task.FromResult((float)initiative);
     }
 }

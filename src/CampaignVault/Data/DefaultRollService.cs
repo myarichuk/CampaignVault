@@ -229,8 +229,7 @@ public sealed class DefaultRollService : IRollService
     private FalloutCombatDiceResult RollFalloutCombatDice(int count)
     {
         // Fallout 2d20 combat die faces (d6 reskin):
-        // 1 = blank,  2 = blank,  3 = 1 damage,  4 = 1 damage,
-        // 5 = 1 damage + 1 effect,  6 = 2 damage
+        // 1 = 1 damage,  2 = 2 damage,  3 & 4 = blank,  5 & 6 = 1 damage + 1 effect
         int damage = 0, effects = 0;
         var hasCritical = false;
 
@@ -240,15 +239,20 @@ public sealed class DefaultRollService : IRollService
             switch (face)
             {
                 case 1:
+                    damage++;
+                    break;
                 case 2:
-                    break;                         // blank
+                    damage += 2;
+                    hasCritical = true;
+                    break;
                 case 3:
                 case 4:
-                    damage++;  break;              // 1 dmg
+                    break;                         // blank
                 case 5:
-                    damage++; effects++; break;    // 1 dmg + 1 effect
                 case 6:
-                    damage += 2; hasCritical = true; break; // 2 dmg + crit symbol
+                    damage++;
+                    effects++;
+                    break;
             }
         }
 

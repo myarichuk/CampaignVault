@@ -239,19 +239,75 @@ public class SystemExtension
     public List<StatusEffect> StatusEffects { get; set; } = [];
 
     /// <summary>
-    /// Relative spatial and engagement relations with other entities.
+    /// Pairwise engagement states (grappling, embracing, watching, etc.) that anchor characters together.
+    /// Distinct from future zone/distance positioning.
     /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("engagementRelations")]
+    public List<EngagementRelation> EngagementRelations { get; set; } = [];
+
+    /// <summary>Legacy JSON key; read-only alias for <see cref="EngagementRelations"/>.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("spatialRelations")]
-    public List<SpatialRelation> SpatialRelations { get; set; } = [];
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<EngagementRelation>? SpatialRelationsLegacy
+    {
+        get => null;
+        set
+        {
+            if (value == null) return;
+            EngagementRelations ??= [];
+            foreach (var relation in value)
+            {
+                if (EngagementRelations.All(r => r.TargetId != relation.TargetId))
+                    EngagementRelations.Add(relation);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Relative zone/distance positioning to other entities (e.g. drunk five paces north).
+    /// Distinct from <see cref="EngagementRelations"/>.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("spatialPositions")]
+    public List<SpatialPosition> SpatialPositions { get; set; } = [];
 }
 
-public class SpatialRelation
+public record SpatialPosition
 {
+    /// <summary>ID of the reference character, object, or zone anchor.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("targetId")]
-    public string TargetId { get; set; } = default!;
+    public string TargetId { get; init; } = default!;
 
-    [System.Text.Json.Serialization.JsonPropertyName("relationType")]
-    public string RelationType { get; set; } = default!;
+    /// <summary>Distance band. See <see cref="SpatialDistanceBand"/>.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("distanceBand")]
+    public string DistanceBand { get; init; } = SpatialDistanceBand.Near;
+
+    /// <summary>Optional compass bearing (e.g. North, Behind, AtBar).</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("bearing")]
+    public string? Bearing { get; init; }
+
+    /// <summary>Optional sub-zone within the scene (e.g. bar, doorway, alley mouth).</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("zone")]
+    public string? Zone { get; init; }
+}
+
+[System.Text.Json.Serialization.JsonConverter(typeof(EngagementRelationJsonConverter))]
+public record EngagementRelation
+{
+    /// <summary>ID of the target character or object (e.g. 'characters/archivist').</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("targetId")]
+    public string TargetId { get; init; } = default!;
+
+    /// <summary>Broad engagement category — drives default restriction and prompts.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("category")]
+    public EngagementCategory Category { get; init; } = EngagementCategory.Physical;
+
+    /// <summary>Freeform verb phrase (e.g. 'grappling', 'ranting at', 'stitching').</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("verb")]
+    public string Verb { get; init; } = default!;
+
+    /// <summary>Optional override of the category default restriction level.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("restrictionLevel")]
+    public EngagementRestrictionLevel? RestrictionLevel { get; init; }
 }
 
 public class Schedule

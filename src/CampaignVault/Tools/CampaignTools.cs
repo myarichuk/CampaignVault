@@ -328,7 +328,7 @@ Use ActivityChange liberally to keep get_scene in sync with your narrative.
 
 See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
 
-Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, knowledge_update, schedule_change, item_create, travel, rest, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
+Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, knowledge_update, schedule_change, item_create, travel, rest, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
 
 === RECOMMENDED PATTERNS (copy-paste friendly) ===
 
@@ -1102,7 +1102,7 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 ## The Commit Tool (Universal Write)
 ALWAYS call at end of combat/conversation/discovery. Atomic array of `$type` mutations. Rate limited + batch capped (50).
 
-Supported `$type`s: `hp`, `item`, `item_update`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `character_update`, `knowledge_update`, `schedule_change`, `item_create`, `travel`, `rest`, `faction_create`, `faction_reputation`, `faction_state`, `quest_create`, `quest_progress`.
+Supported `$type`s: `hp`, `item`, `item_update`, `status`, `statusremove`, `event`, `rumor`, `relationship`, `engagement_relation`, `spatial_position`, `need`, `attribute`, `mood`, `activity`, `ruleset_action`, `location_create`, `location_update`, `character_create`, `character_update`, `knowledge_update`, `schedule_change`, `item_create`, `travel`, `rest`, `faction_create`, `faction_reputation`, `faction_state`, `quest_create`, `quest_progress`.
 
 **Travel and Resting:** Use `travel` (with `destinationLocationId`) to safely move the party; it applies time and tiredness, and evaluates encounters based on distance. Use `rest` (with `intendedHours` and `securityModifier`) for camping or sleeping. The engine rolls for interruptions. If `rest` is interrupted, resolve the encounter before committing `hp` recovery!
 
@@ -1124,6 +1124,13 @@ Later promote a transient (so it survives GC and participates in AdvanceWorld):
 [
   { ""$type"": ""schedule_change"", ""characterId"": ""chars/cloaked_figure"", ""schedule"": { ""defaultLocationId"": ""locations/market_square"", ""routines"": [ { ""condition"": ""Any"", ""locationId"": ""locations/market_square"", ""activity"": ""Haggling"", ""probability"": 0.8 } ] } }
 ]
+
+**Engagements & Spatial Positions (relative distance/zone anchoring):**
+[
+  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/mother"", ""targetId"": ""chars/son"", ""category"": ""Social"", ""verb"": ""embracing"", ""restrictionLevel"": ""Hard"", ""bidirectional"": true },
+  { ""$type"": ""spatial_position"", ""characterId"": ""chars/drunk"", ""targetId"": ""locations/tavern_bar"", ""distanceBand"": ""Near"", ""bearing"": ""AtBar"" }
+]
+*Note: In combat, ruleset resolvers automatically establish and clear mechanical engagements (like grappling) upon successful maneuver checks. For non-combat roleplay (hugs, kisses, tending wounds, conversations), you (the LLM) should manually commit these to enforce narrative continuity, block travel, or receive scene prompt pressures.*
 
 Item + transfer patterns, status with modifiers, ruleset_action (see below), etc.
 

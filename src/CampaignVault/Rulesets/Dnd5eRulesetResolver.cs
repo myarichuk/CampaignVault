@@ -209,8 +209,15 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         }
 
-        var actorSkill = action.Parameters.TryGetValue("skill", out var as_name) ? as_name : "Strength";
-        var targetSkill = action.Parameters.TryGetValue("targetSkill", out var ts_name) ? ts_name : actorSkill;
+        var isGrapple = EngagementMutationHelper.IsGrappleAction(action);
+        var isEscape = EngagementMutationHelper.IsEscapeGrappleAction(action);
+
+        var actorSkill = action.Parameters.TryGetValue("skill", out var as_name)
+            ? as_name
+            : isGrapple || isEscape ? "Athletics" : "Strength";
+        var targetSkill = action.Parameters.TryGetValue("targetSkill", out var ts_name)
+            ? ts_name
+            : isGrapple ? "Athletics" : actorSkill;
 
         var actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
         actorBonus = ApplyAllModifiers(actorStats, actorBonus, "SkillCheck", actorSkill);
@@ -221,9 +228,19 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = GetMechanicFromAction(action) }, ct);
         var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = DiceMechanic.Standard }, ct);
 
-        // Ties usually favor the status quo or defender, but we'll assume higher wins, tie = defender wins.
-        var actorWins = actorRoll.Result > targetRoll.Result; 
+        var actorWins = actorRoll.Result > targetRoll.Result;
         var resultStr = actorWins ? "Actor Wins" : "Target Wins";
+
+        if (isGrapple && actorWins)
+        {
+            EngagementMutationHelper.ApplyGrappleSuccess(action.ActorId, targetId, mutations);
+            resultStr += " Target is now grappled.";
+        }
+        else if (isEscape && actorWins)
+        {
+            EngagementMutationHelper.ApplyGrappleEscape(action.ActorId, targetId, mutations);
+            resultStr += " Actor breaks free of the grapple.";
+        }
 
         return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).");
     }

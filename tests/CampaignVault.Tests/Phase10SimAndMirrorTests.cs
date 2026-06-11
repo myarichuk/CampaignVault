@@ -141,7 +141,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public void MemorySalienceDecayRule_ReducesSalience_AndBumpsUrgency()
+    public async Task MemorySalienceDecayRule_ReducesSalience_AndBumpsUrgency()
     {
         var rule = new MemorySalienceDecayRule();
         var npc = new Character
@@ -174,7 +174,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             DaysPassed: 5,
             Config: new CampaignConfig { MemoryImportantDecayDays = 40 });
 
-        var result = rule.ApplyAsync(context).GetAwaiter().GetResult();
+        var result = await rule.ApplyAsync(context);
         var memory = npc.Psychology.Memories["Old"];
 
         Assert.True(memory.Salience < 0.8);
@@ -183,7 +183,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public void MemorySalienceDecayRule_ZeroDecayDays_UsesMinimumStaleThreshold()
+    public async Task MemorySalienceDecayRule_ZeroDecayDays_UsesMinimumStaleThreshold()
     {
         var rule = new MemorySalienceDecayRule();
         var npc = new Character
@@ -214,7 +214,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             DaysPassed: 1,
             Config: new CampaignConfig { MemoryImportantDecayDays = 0 });
 
-        rule.ApplyAsync(context).GetAwaiter().GetResult();
+        await rule.ApplyAsync(context);
 
         Assert.Equal(MemoryUrgency.Normal, npc.Psychology.Memories["Fresh"].Urgency);
     }

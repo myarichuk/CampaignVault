@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
@@ -9,22 +8,27 @@ using Xunit;
 
 namespace CampaignVault.Tests;
 
-public class TravelSpatialLockTests
+public class TravelEngagementLockTests
 {
     [Fact]
     public async Task ApplyAsync_BlocksTravel_IfGrappled()
     {
-        var character = new Character 
-        { 
-            Id = "char_1", 
+        var character = new Character
+        {
+            Id = "char_1",
             Name = "Bram",
-            SystemStats = new SystemExtension 
-            { 
-                SpatialRelations = new List<SpatialRelation> 
-                { 
-                    new() { TargetId = "char_2", RelationType = "GrappledBy" } 
-                } 
-            } 
+            SystemStats = new SystemExtension
+            {
+                EngagementRelations =
+                [
+                    new EngagementRelation
+                    {
+                        TargetId = "char_2",
+                        Category = EngagementCategory.Physical,
+                        Verb = "GrappledBy"
+                    }
+                ]
+            }
         };
         var destination = new Location { Id = "loc_2", Name = "Forest" };
 
@@ -56,6 +60,6 @@ public class TravelSpatialLockTests
         var result = await handler.ApplyAsync(change, context);
 
         Assert.False(result.Success);
-        Assert.Contains("cannot travel because they have a spatial relation 'GrappledBy'", result.Message);
+        Assert.Contains("cannot travel because they are GrappledBy with character", result.Message);
     }
 }

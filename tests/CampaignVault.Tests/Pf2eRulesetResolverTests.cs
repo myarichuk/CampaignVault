@@ -60,4 +60,42 @@ public class Pf2eRulesetResolverTests
         Assert.True(output.Result.Success);
         Assert.Contains("CriticalSuccess", output.Result.Narrative);
     }
+
+    [Fact]
+    public async Task ResolveAttackAsync_AppliesMapPenalty()
+    {
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Result = 12, Summary = "Rolled 12" }));
+
+        var resolver = new Pf2eRulesetResolver(mockRollService);
+
+        var actorId = "char_1";
+        var targetId = "char_2";
+        
+        var actor = new Character { Id = actorId, SystemStats = new Pf2eExtension() };
+        var target = new Character { Id = targetId, SystemStats = new Pf2eExtension { ArmorClass = 10 } };
+        
+        var context = CreateContext(actor, target);
+
+        var action = new RulesetAction
+        {
+            ActorId = actorId,
+            TargetIds = [targetId],
+            ActionType = RulesetActionType.Attack,
+            ActionName = "Fist",
+            Parameters = new Dictionary<string, string> 
+            { 
+                { "bonus", "4" },
+                { "mapPenalty", "5" } 
+            }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        await mockRollService.Received(1).RollAsync(
+            Arg.Is<RollRequest>(req => req.Tag == "attack" && req.Bonus == -1), 
+            Arg.Any<CancellationToken>()
+        );
+    }
 }

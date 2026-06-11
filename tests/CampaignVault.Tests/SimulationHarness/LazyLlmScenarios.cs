@@ -392,9 +392,13 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         Assert.True(commitResult.Success, commitResult.Error);
 
         // Wait for RavenDB indexes to catch up so the quest search returns accurate state
-        await Task.Delay(500);
-
         var finalSceneResult = await tools.GetScene("locations/town_03", true, "QuestStaleTest");
+        for (int i = 0; i < 15 && finalSceneResult.WorldPressure != null && finalSceneResult.WorldPressure.Any(p => p.Contains("Quest 'The Stale Quest' deadline")); i++)
+        {
+            await Task.Delay(200);
+            finalSceneResult = await tools.GetScene("locations/town_03", true, "QuestStaleTest");
+        }
+
         if (finalSceneResult.WorldPressure != null)
         {
             Assert.DoesNotContain(finalSceneResult.WorldPressure, p => p.Contains("Quest 'The Stale Quest' deadline"));

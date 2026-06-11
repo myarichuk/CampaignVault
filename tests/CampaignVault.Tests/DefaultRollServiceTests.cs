@@ -375,17 +375,20 @@ public class DefaultRollServiceTests
             var face = testRng.Next(1, 7);
             switch (face)
             {
-                case 3:
-                case 4:
+                case 1:
                     expectedDamage++;
                     break;
-                case 5:
-                    expectedDamage++;
-                    expectedEffects++;
-                    break;
-                case 6:
+                case 2:
                     expectedDamage += 2;
                     expectedCrit = true;
+                    break;
+                case 3:
+                case 4:
+                    break;
+                case 5:
+                case 6:
+                    expectedDamage++;
+                    expectedEffects++;
                     break;
             }
         }

@@ -61,4 +61,70 @@ public class Fallout2d20RulesetResolverTests
         Assert.Contains("Success", output.Result.Narrative);
         await mockRollService.Received(1).RollAsync(Arg.Is<RollRequest>(req => req.Mechanic == DiceMechanic.SuccessCount), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task ResolveAttackAsync_AppliesPiercingAndViciousEffects()
+    {
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Successes = 2, Summary = "2 Successes" }));
+        
+        mockRollService.RollFalloutCombatDiceAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new FalloutCombatDiceResult(1, 1, false)));
+
+        var resolver = new Fallout2d20RulesetResolver(mockRollService);
+
+        var actorId = "char_1";
+        var targetId = "char_2";
+        
+        var actor = new Character { Id = actorId, SystemStats = new Fallout2d20Extension() };
+        var target = new Character { Id = targetId, SystemStats = new Fallout2d20Extension 
+        { 
+            Defense = 1, 
+            DamageResistance = new Dictionary<string, int> { { "Physical", 2 } } 
+        } };
+        
+        var context = CreateContext(actor, target);
+
+        var action = new RulesetAction
+        {
+            ActorId = actorId,
+            TargetIds = [targetId],
+            ActionType = RulesetActionType.Attack,
+            ActionName = "Combat Knife",
+            DamageType = "Physical",
+            Parameters = new Dictionary<string, string> 
+            { 
+                { "difficulty", "1" }, 
+                { "damageDice", "3" },
+                { "vicious", "true" },
+                { "piercing", "1" }
+            }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.True(output.Result.Success);
+        var hpChange = output.Mutations.OfType<HpChange>().FirstOrDefault();
+        Assert.NotNull(hpChange);
+        Assert.Equal(-1, hpChange.Delta);
+    }
+
+    [Fact]
+    public async Task RollInitiativeAsync_DoesNotRollDice()
+    {
+        var mockRollService = Substitute.For<IRollService>();
+        var resolver = new Fallout2d20RulesetResolver(mockRollService);
+
+        var character = new Character 
+        { 
+            Id = "char_1", 
+            SystemStats = new Fallout2d20Extension { Perception = 6, Agility = 7 } 
+        };
+
+        var initiativeResult = await resolver.RollInitiativeAsync(character);
+
+        Assert.Equal(13f, initiativeResult);
+        await mockRollService.DidNotReceiveWithAnyArgs().RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>());
+    }
 }

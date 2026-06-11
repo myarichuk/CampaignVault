@@ -37,7 +37,9 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(ItemUpdate), "item_update")]
 [JsonDerivedType(typeof(CharacterUpdate), "character_update")]
 [JsonDerivedType(typeof(KnowledgeUpdate), "knowledge_update")]
+[JsonDerivedType(typeof(EngagementRelationChange), "engagement_relation")]
 [JsonDerivedType(typeof(SpatialRelationChange), "spatial_relation")]
+[JsonDerivedType(typeof(SpatialPositionChange), "spatial_position")]
 public abstract class WorldChange;
 
 /// <summary>
@@ -216,9 +218,10 @@ public class RelationshipChange : WorldChange
 }
 
 /// <summary>
-/// Establish, update, or remove a relative spatial or engagement relationship between two entities.
+/// Establish, update, or remove a pairwise engagement state between two entities (grapple, embrace, watch, etc.).
+/// For zone/distance positioning, use a future spatial-position change instead.
 /// </summary>
-public class SpatialRelationChange : WorldChange
+public class EngagementRelationChange : WorldChange
 {
     [Description("ID of the character initiating or anchoring the relation (e.g. 'characters/bard').")]
     [JsonPropertyName("actorId")]
@@ -228,13 +231,57 @@ public class SpatialRelationChange : WorldChange
     [JsonPropertyName("targetId")]
     public string TargetId { get; set; } = default!;
 
-    [Description("The type of relationship (e.g. 'Grappling', 'LeaningIn', 'CloseProximity'). Use null or empty string to remove the relation.")]
+    [Description("Engagement category: Physical, Social, Medical, Attention, or Proximity.")]
+    [JsonPropertyName("category")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public EngagementCategory? Category { get; set; }
+
+    [Description("Freeform verb (e.g. 'grappling', 'ranting at', 'stitching'). Use null/empty with relationType null to remove.")]
+    [JsonPropertyName("verb")]
+    public string? Verb { get; set; }
+
+    [Description("Optional restriction override: None, Soft, or Hard.")]
+    [JsonPropertyName("restrictionLevel")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public EngagementRestrictionLevel? RestrictionLevel { get; set; }
+
+    [Description("Legacy alias for verb. Prefer verb + category.")]
     [JsonPropertyName("relationType")]
     public string? RelationType { get; set; }
 
     [Description("Whether to automatically establish the inverse relationship on the target (e.g., if actor Grapples target, target becomes GrappledBy actor).")]
     [JsonPropertyName("bidirectional")]
     public bool Bidirectional { get; set; } = true;
+}
+
+/// <summary>Legacy world-change discriminator; use <see cref="EngagementRelationChange"/> with <c>engagement_relation</c>.</summary>
+public sealed class SpatialRelationChange : EngagementRelationChange;
+
+/// <summary>
+/// Establish, update, or remove relative zone/distance positioning for a character.
+/// For pairwise grapple/embrace anchors, use <see cref="EngagementRelationChange"/> instead.
+/// </summary>
+public class SpatialPositionChange : WorldChange
+{
+    [Description("ID of the character whose position is being set (e.g. 'characters/drunk').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("ID of the reference entity (e.g. 'characters/pc', 'locations/tavern_bar').")]
+    [JsonPropertyName("targetId")]
+    public string TargetId { get; set; } = default!;
+
+    [Description("Distance band (Touch, Close, Near, Far, Distant). Use null or empty to remove.")]
+    [JsonPropertyName("distanceBand")]
+    public string? DistanceBand { get; set; }
+
+    [Description("Optional bearing (North, Behind, AtBar, etc.).")]
+    [JsonPropertyName("bearing")]
+    public string? Bearing { get; set; }
+
+    [Description("Optional sub-zone within the scene (bar, doorway, etc.).")]
+    [JsonPropertyName("zone")]
+    public string? Zone { get; set; }
 }
 
 /// <summary>Adjust one of a character's open-ended psychological or physical needs (hunger, thirst, tiredness, wanderlust, duty, etc.).</summary>
