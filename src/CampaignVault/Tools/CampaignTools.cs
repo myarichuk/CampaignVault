@@ -1081,12 +1081,79 @@ Use this if you are unsure which campaign you are currently in or if you need to
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: Returns a comprehensive DM manual. Call this if you forget how to use the tools, how to write ruleset_actions, how StatusEffects work, or the core gameplay loop.")]
+    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST. Returns the canonical DM manual with quickstart, tool index, copy-paste commit patterns, ruleset_actions, StatusEffects, and WorldPressure handling. Use list_tools for the full machine-readable catalog.")]
+    public Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(
+        [Description("Optional category filter. Omit to return all tools. Values: Session & exploration, Mutation & time, Combat & rulesets, Campaign management, Deep dives, World builder, System.")] string? category = null)
+    {
+        var tools = ToolCatalog.GetByCategory(category);
+        var summary = string.IsNullOrWhiteSpace(category)
+            ? $"Returned {tools.Count} tools across all categories. Call get_help for usage patterns."
+            : $"Returned {tools.Count} tools in category '{category.Trim()}'.";
+        return Task.FromResult(new ToolResult<IReadOnlyList<ToolCatalogEntry>>(true, tools, summary));
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST. Returns the canonical DM manual with quickstart, tool index, copy-paste commit patterns, ruleset_actions, StatusEffects, and WorldPressure handling. Use list_tools for the full machine-readable catalog.")]
     public Task<ToolResult<string>> GetHelp()
     {
         var manual = @"# CampaignVault DM Manual
 
 Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narrative while letting the MCP engine handle the persistence, math, and simulation.
+
+## Quickstart for Models
+1. **Call `get_help`** (this document) and **`list_tools`** if search-based discovery only showed a subset.
+2. **Call `get_current_campaign`** or **`create_campaign`** / **`select_campaign`** to establish campaign context.
+3. **Call `get_world_state`** at session start to sync time, rumors, events, and **WorldPressure**.
+4. **Call `get_scene`** whenever the party enters a location. Action any `ENGINE WARNING` / `NARRATIVE PROMPT` immediately.
+5. **Call `commit`** at the end of every meaningful beat (combat, conversation, discovery, persistence).
+6. **Call `advance_world`** for travel, rests, or downtime skips.
+
+## Tool Index by Category
+
+### Session & exploration
+| Tool | Purpose |
+|------|---------|
+| `get_current_campaign` | Active campaign name, ruleset, lock-in status |
+| `get_world_state` | Session kickoff: time, rumors, recent events, pressures |
+| `get_scene` | Location, NPCs, items, rumors, ActiveCombat, SystemStats, pressures |
+| `get_npc_context` | Deep NPC psychology, memories, initiative signals |
+| `get_npc_needs` | Current needs + merged descriptors |
+| `get_need_descriptors` | Per-campaign shared need descriptions |
+| `search_world` | Keyword search across lore, characters, locations |
+| `recall_history` | Keyword search over past event summaries |
+| `get_help` | Built-in DM manual and copy-paste patterns |
+| `list_tools` | Full machine-readable tool catalog |
+
+### Mutation & time
+| Tool | Purpose |
+|------|---------|
+| `commit` | Universal atomic write (`WorldChange[]` with `$type` discriminators) |
+| `advance_world` | Fast-forward days, run simulation rules, return pressures |
+
+### Combat & rulesets
+| Tool | Purpose |
+|------|---------|
+| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Fallout 2d20) |
+| `start_combat` / `next_turn` / `end_combat` | Initiative at start, turn tracking, round-based status expiry |
+
+### Campaign management
+| Tool | Purpose |
+|------|---------|
+| `create_campaign` / `list_campaigns` / `select_campaign` | Create, list, and activate campaigns |
+
+### Deep dives
+| Tool | Purpose |
+|------|---------|
+| `get_faction_context` | Full faction document (stances, territory, EconomicDemand) |
+| `get_quest_details` | Full quest document (objectives, deadlines, progress timestamps) |
+
+### World builder
+| Tool | Purpose |
+|------|---------|
+| `upsert_character` / `upsert_location` / `upsert_lore` | Initial seeding and major structural work |
+| `define_need_descriptor` | Per-campaign shared need descriptions |
+
+**During play, strongly prefer `commit` (especially `activity` changes) over world-builder upserts.**
 
 **KEY PHILOSOPHY (Anti-LLM-Laziness / Schrödinger's World):** 95%+ of the world is ephemeral flavor that lives ONLY in your current narration/context. Only *meaningful* interactions (that will be referenced again, combat, theft, named recurring NPCs, discovered secret doors the party will use) should be anchored via `commit`. The engine owns linking, GC of transients, visit tracking, and nags you *immediately* on the next `get_scene` or `get_world_state` with **exact, copy-paste-ready JSON** when you (or prior LLM turns) were lazy/incomplete. Treat every string in `WorldPressure` that starts with `ENGINE WARNING:` or `NARRATIVE PROMPT:` as a **mandatory high-priority directive**. Paste the example JSON into your next `commit` call. This defeats the ""silly factor"" of being forced to output perfect polymorphic arrays for every tavern bard or crate.
 

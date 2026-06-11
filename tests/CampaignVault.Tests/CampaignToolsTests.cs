@@ -598,4 +598,47 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await Task.Delay(100);
         }
     }
+
+    [Fact]
+    public async Task ListTools_ReturnsFullCatalog()
+    {
+        var tools = CreateTools();
+
+        var result = await tools.ListTools();
+
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.True(result.Data!.Count >= 25);
+        Assert.Contains(result.Data, t => t.Name == "get_help" && t.Category == "System");
+        Assert.Contains(result.Data, t => t.Name == "commit" && t.Category == "Mutation & time");
+        Assert.Contains(result.Data, t => t.Name == "get_quest_details" && t.Category == "Deep dives");
+    }
+
+    [Fact]
+    public async Task ListTools_FiltersByCategory()
+    {
+        var tools = CreateTools();
+
+        var result = await tools.ListTools("Combat & rulesets");
+
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.All(result.Data!, t => Assert.Equal("Combat & rulesets", t.Category));
+        Assert.Contains(result.Data, t => t.Name == "start_combat");
+        Assert.DoesNotContain(result.Data, t => t.Name == "get_help");
+    }
+
+    [Fact]
+    public async Task GetHelp_ContainsQuickstartAndToolIndex()
+    {
+        var tools = CreateTools();
+
+        var result = await tools.GetHelp();
+
+        Assert.True(result.Success);
+        Assert.Contains("Quickstart for Models", result.Data);
+        Assert.Contains("Tool Index by Category", result.Data);
+        Assert.Contains("`list_tools`", result.Data);
+        Assert.Contains("get_quest_details", result.Data);
+    }
 }
