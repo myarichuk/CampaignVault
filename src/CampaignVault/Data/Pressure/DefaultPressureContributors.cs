@@ -9,6 +9,7 @@ public static class DefaultPressureContributors
         new AgingRumorPressureContributor(),
         new UnresolvedEventPressureContributor(),
         new CharacterDistressPressureContributor(),
+        new IncompleteSystemStatsPressureContributor(),
         new DanglingItemPressureContributor(),
         new NeverVisitedTransientPressureContributor(),
         new QuestDeadlinePressureContributor(),

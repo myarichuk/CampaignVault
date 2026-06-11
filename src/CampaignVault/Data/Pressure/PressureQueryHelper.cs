@@ -49,6 +49,26 @@ internal static class PressureQueryHelper
         return simulation.Concat(commits).ToList();
     }
 
+    public static async Task<List<Character>> QueryCombatantCharactersAsync(
+        IAsyncDocumentSession session, string campaignName, int limit, CancellationToken ct = default)
+    {
+        var indexed = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WhereEquals(x => x.CampaignName, campaignName)
+            .Take(limit * 2)
+            .ToListAsync(ct);
+
+        var shareable = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .Not.WhereExists(x => x.CampaignName)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        return indexed.Concat(shareable)
+            .Where(c => c.KeepAlive || c.MaxHp > 0)
+            .DistinctBy(c => c.Id)
+            .Take(limit)
+            .ToList();
+    }
+
     public static async Task<List<Character>> QueryKeepAliveCharactersAsync(
         IAsyncDocumentSession session, string campaignName, int limit, CancellationToken ct = default)
     {

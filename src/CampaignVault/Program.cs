@@ -76,6 +76,7 @@ builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHand
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RestChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.ItemUpdateHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.CharacterUpdateHandler>();
+builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.SystemStatsChangeHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.KnowledgeUpdateHandler>();
 builder.Services.AddSingleton<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler, CampaignVault.Data.ChangeHandlers.RulesetActionHandler>(sp =>
     new CampaignVault.Data.ChangeHandlers.RulesetActionHandler(
@@ -94,6 +95,7 @@ builder.Services.AddSingleton<CampaignVault.Rulesets.IRulesetModuleSelector, Cam
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.AgingRumorPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.UnresolvedEventPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor>();
+builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.IncompleteSystemStatsPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.DanglingItemPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.NeverVisitedTransientPressureContributor>();
 builder.Services.AddSingleton<CampaignVault.Data.Pressure.IPressureContributor, CampaignVault.Data.Pressure.Contributors.QuestDeadlinePressureContributor>();

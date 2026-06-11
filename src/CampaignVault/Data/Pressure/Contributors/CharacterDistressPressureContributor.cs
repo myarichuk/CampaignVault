@@ -4,6 +4,7 @@ namespace CampaignVault.Data.Pressure.Contributors;
 
 public sealed class CharacterDistressPressureContributor : IPressureContributor
 {
+    public const string UninitializedHpGroupingKey = "Character:UninitializedHp";
     public const string CriticallyWoundedGroupingKey = "Character:CriticallyWounded";
     public const string DyingGroupingKey = "Character:Dying";
     public const string MoraleGroupingKey = "Character:Attribute:Morale";
@@ -29,13 +30,30 @@ public sealed class CharacterDistressPressureContributor : IPressureContributor
 
         foreach (var c in characters)
         {
+            // MaxHp == 0 means the character was created without HP — the LLM must fix this.
+            // D&D 5e PCs: max hit die + CON modifier. NPCs/creatures: use stat block value.
+            if (c.MaxHp <= 0)
+            {
+                pressure.Add(new(
+                    PressureSeverity.EngineWarning,
+                    c.Id,
+                    $"[ENGINE] {c.Name} has no MaxHp set (created with 0 or omitted). "
+                    + $"This MUST be fixed immediately. Example commit: "
+                    + $"[ {{ \"$type\": \"character_create\", \"characterId\": \"{c.Id}\", \"name\": \"{c.Name}\", \"maxHp\": <VALUE>, \"currentHp\": <VALUE> }} ] "
+                    + "or patch via character_create on existing ID. "
+                    + "D&D 5e PCs: max hit die + CON mod (Fighter=d10, Wizard=d6, Cleric=d8, etc.). "
+                    + "NPCs/creatures: use the stat block value or infer a narratively appropriate number.",
+                    UninitializedHpGroupingKey));
+                continue; // skip dying/dead check; HP is simply not set yet
+            }
+
             if (c.CurrentHp <= c.MaxHp * threshold && c.CurrentHp > 0)
             {
                 pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is critically wounded ({c.CurrentHp}/{c.MaxHp} HP).", CriticallyWoundedGroupingKey));
             }
-            else if (c.CurrentHp <= 0)
+            else if (c.MaxHp > 0 && c.CurrentHp <= 0)
             {
-                pressure.Add(new(PressureSeverity.EngineWarning, c.Id, $"{c.Name} is dying or dead.", DyingGroupingKey));
+                pressure.Add(new(PressureSeverity.EngineWarning, c.Id, $"{c.Name} is dying or dead ({c.CurrentHp}/{c.MaxHp} HP). Resolve this: stabilize, death save, or mark as deceased.", DyingGroupingKey));
             }
 
             if (c.SystemStats?.StatusEffects != null)
