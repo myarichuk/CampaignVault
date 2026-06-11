@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CampaignVault\CampaignVault.csproj" />
+    <ProjectReference Include="..\..\src\CampaignVault.Authoring\CampaignVault.Authoring.csproj" />
   </ItemGroup>
 
 </Project>
