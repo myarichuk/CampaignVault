@@ -8,12 +8,15 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     public WorkspaceViewModel Workspace { get; } = new();
     public SettingsViewModel Settings { get; } = new();
+    public GenerationViewModel Generation { get; }
 
     [ObservableProperty]
     private string _editorText = string.Empty;
 
     public MainWindowViewModel()
     {
+        Generation = new GenerationViewModel(Settings);
+
         // Subscribe to selection changes
         Workspace.PropertyChanged += (s, e) =>
         {

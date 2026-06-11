@@ -12,7 +12,7 @@
     <TabControl>
         <!-- Tab 1: Editor -->
         <TabItem Header="Workspace Editor">
-            <Grid ColumnDefinitions="250, *">
+            <Grid ColumnDefinitions="250, *, 300">
                 <!-- Sidebar -->
                 <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="0,0,1,0" Padding="10">
                     <ListBox ItemsSource="{Binding Workspace.Files}" 
@@ -32,6 +32,34 @@
                          TextWrapping="Wrap"
                          FontFamily="Consolas"
                          Padding="20" />
+
+                <!-- Generation Drawer -->
+                <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1,0,0,0" Padding="15">
+                    <Grid RowDefinitions="Auto, Auto, *, Auto">
+                        <TextBlock Grid.Row="0" Text="AI Entity Generator" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
+                        
+                        <TextBlock Grid.Row="1" Text="{Binding Generation.StatusMessage}" TextWrapping="Wrap" Margin="0,0,0,10" Foreground="Gray" FontSize="12" />
+
+                        <TextBox Grid.Row="2" 
+                                 Text="{Binding Generation.UserPrompt, Mode=TwoWay}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 PlaceholderText="Describe the entity to generate..."
+                                 IsEnabled="{Binding Generation.IsEnabled}"
+                                 Margin="0,0,0,10" />
+
+                        <StackPanel Grid.Row="3" Spacing="10">
+                            <Button Content="Generate" 
+                                    Command="{Binding Generation.GenerateCommand}"
+                                    IsEnabled="{Binding Generation.IsEnabled}"
+                                    HorizontalAlignment="Stretch" />
+                            <Button Content="Insert to Editor" 
+                                    Command="{Binding Generation.InsertCommand}"
+                                    IsEnabled="{Binding Generation.IsEnabled}"
+                                    HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </Grid>
         </TabItem>
 
@@ -62,7 +90,7 @@
 
                     <StackPanel Spacing="5">
                         <TextBlock Text="Endpoint URL (Optional for Gemini/OpenAI)" />
-                        <TextBox Text="{Binding Settings.LlmEndpoint}" Watermark="http://localhost:11434/v1" />
+                        <TextBox Text="{Binding Settings.LlmEndpoint}" PlaceholderText="http://localhost:11434/v1" />
                     </StackPanel>
 
                     <StackPanel Spacing="5">
