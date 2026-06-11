@@ -9,26 +9,74 @@
         Icon="/Assets/avalonia-logo.ico"
         Title="CampaignVault Authoring App">
 
-    <Grid ColumnDefinitions="250, *">
-        <!-- Sidebar -->
-        <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="0,0,1,0" Padding="10">
-            <ListBox ItemsSource="{Binding Workspace.Files}" 
-                     SelectedItem="{Binding Workspace.SelectedFile}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:FileNodeViewModel">
-                        <TextBlock Text="{Binding FileName}" />
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Border>
+    <TabControl>
+        <!-- Tab 1: Editor -->
+        <TabItem Header="Workspace Editor">
+            <Grid ColumnDefinitions="250, *">
+                <!-- Sidebar -->
+                <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="0,0,1,0" Padding="10">
+                    <ListBox ItemsSource="{Binding Workspace.Files}" 
+                             SelectedItem="{Binding Workspace.SelectedFile}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FileNodeViewModel">
+                                <TextBlock Text="{Binding FileName}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
 
-        <!-- Editor -->
-        <TextBox Grid.Column="1" 
-                 Text="{Binding EditorText, Mode=TwoWay}"
-                 AcceptsReturn="True"
-                 TextWrapping="Wrap"
-                 FontFamily="Consolas"
-                 Padding="20" />
-    </Grid>
+                <!-- Editor -->
+                <TextBox Grid.Column="1" 
+                         Text="{Binding EditorText, Mode=TwoWay}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         FontFamily="Consolas"
+                         Padding="20" />
+            </Grid>
+        </TabItem>
 
+        <!-- Tab 2: Settings -->
+        <TabItem Header="Settings">
+            <ScrollViewer>
+                <StackPanel Margin="20" Spacing="15" MaxWidth="500" HorizontalAlignment="Left">
+                    <TextBlock Text="Local MCP Server Configuration" FontSize="18" FontWeight="Bold" Margin="0,0,0,10" />
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="MCP Server Port" />
+                        <NumericUpDown Value="{Binding Settings.McpPortValue}" Minimum="1" Maximum="65535" FormatString="0" />
+                    </StackPanel>
+
+                    <TextBlock Text="In-App AI Generation (Microsoft.Extensions.AI)" FontSize="18" FontWeight="Bold" Margin="0,15,0,10" />
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="LLM Provider" />
+                        <ComboBox ItemsSource="{Binding Settings.LlmProviders}" 
+                                  SelectedItem="{Binding Settings.LlmProvider}" 
+                                  HorizontalAlignment="Stretch" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="API Key (Optional for Ollama)" />
+                        <TextBox Text="{Binding Settings.LlmApiKey}" PasswordChar="*" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Endpoint URL (Optional for Gemini/OpenAI)" />
+                        <TextBox Text="{Binding Settings.LlmEndpoint}" Watermark="http://localhost:11434/v1" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Model Name (e.g. llama3, gemini-1.5-flash)" />
+                        <TextBox Text="{Binding Settings.LlmModel}" />
+                    </StackPanel>
+
+                    <Button Content="Save Configuration" 
+                            Command="{Binding Settings.SaveCommand}" 
+                            HorizontalAlignment="Left" 
+                            Margin="0,15,0,0" 
+                            Padding="15,8" />
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
 </Window>

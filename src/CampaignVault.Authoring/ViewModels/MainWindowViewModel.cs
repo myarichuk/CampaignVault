@@ -7,6 +7,7 @@ namespace CampaignVault.Authoring.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
     public WorkspaceViewModel Workspace { get; } = new();
+    public SettingsViewModel Settings { get; } = new();
 
     [ObservableProperty]
     private string _editorText = string.Empty;
