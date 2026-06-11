@@ -87,6 +87,7 @@ public class CampaignRepository
                 new FactionCreateHandler(),
                 new ItemUpdateHandler(),
                 new CharacterUpdateHandler(),
+                new SystemStatsChangeHandler(),
                 new KnowledgeUpdateHandler(),
                 new RulesetActionHandler(
                     new RulesetModuleSelector([
@@ -295,6 +296,9 @@ public class CampaignRepository
                             break;
                         case CharacterUpdate cu:
                             involvedEntities.Add(cu.CharacterId);
+                            break;
+                        case SystemStatsChange ssc:
+                            involvedEntities.Add(ssc.CharacterId);
                             break;
                     }
                 }

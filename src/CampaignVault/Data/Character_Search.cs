@@ -20,6 +20,7 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                                 CurrentActivity = c.CurrentActivity,
                                 CampaignName = c.CampaignName,
                                 c.KeepAlive,
+                                c.MaxHp,
                                 HasSchedule = c.Schedule != null
                             };
 

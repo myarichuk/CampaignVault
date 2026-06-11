@@ -1,4 +1,6 @@
 using CampaignVault.Models;
+using CampaignVault.Data;
+using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
@@ -48,8 +50,51 @@ public class CharacterCreateHandler : IWorldChangeHandler
                 existing.Psychology = cc.Psychology;
             }
 
+            if (cc.MaxHp.HasValue)
+            {
+                existing.MaxHp = cc.MaxHp.Value;
+            }
+
+            if (cc.CurrentHp.HasValue)
+            {
+                existing.CurrentHp = cc.CurrentHp.Value;
+            }
+
+            if (cc.ClassLevel != null)
+            {
+                existing.ClassLevel = cc.ClassLevel;
+            }
+
+            if (cc.SystemStats != null)
+            {
+                var existingSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, ct);
+                if (!SystemStatsMerger.TryValidateRuleset(cc.SystemStats, existingSystem, out var existingValidationError))
+                {
+                    return ChangeHandlerResult.Failure(existingValidationError!);
+                }
+
+                existing.SystemStats = SystemStatsMerger.Merge(
+                    existing.SystemStats ?? SystemStatsMerger.CreateDefault(existingSystem),
+                    SystemStatsMerger.CoerceToRuleset(cc.SystemStats, existingSystem));
+            }
+
             context.RecordMessage($"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.");
             return ChangeHandlerResult.Ok;
+        }
+
+        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, ct);
+
+        if (cc.SystemStats != null && !SystemStatsMerger.TryValidateRuleset(cc.SystemStats, activeSystem, out var validationError))
+        {
+            return ChangeHandlerResult.Failure(validationError!);
+        }
+
+        var systemStats = SystemStatsMerger.CreateDefault(activeSystem);
+        if (cc.SystemStats != null)
+        {
+            systemStats = SystemStatsMerger.Merge(
+                systemStats,
+                SystemStatsMerger.CoerceToRuleset(cc.SystemStats, activeSystem));
         }
 
         var newChar = new Character
@@ -61,7 +106,11 @@ public class CharacterCreateHandler : IWorldChangeHandler
             CurrentActivity = cc.CurrentActivity,
             KeepAlive = cc.KeepAlive,
             Schedule = cc.Schedule,
-            Psychology = cc.Psychology ?? new PsychologyProfile()
+            Psychology = cc.Psychology ?? new PsychologyProfile(),
+            ClassLevel = cc.ClassLevel,
+            MaxHp = cc.MaxHp ?? 0,
+            CurrentHp = cc.CurrentHp ?? cc.MaxHp ?? 0,
+            SystemStats = systemStats
         };
 
         if (string.IsNullOrEmpty(newChar.CampaignName))
@@ -143,8 +192,76 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             character.KeepAlive = cu.KeepAlive.Value;
         }
 
+        if (cu.SystemStats != null)
+        {
+            var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, ct);
+            if (!SystemStatsMerger.TryValidateRuleset(cu.SystemStats, activeSystem, out var validationError))
+            {
+                return ChangeHandlerResult.Failure(validationError!);
+            }
+
+            character.SystemStats = SystemStatsMerger.Merge(
+                character.SystemStats ?? SystemStatsMerger.CreateDefault(activeSystem),
+                SystemStatsMerger.CoerceToRuleset(cu.SystemStats, activeSystem));
+        }
+
         context.RecordMessage($"Updated character '{cu.CharacterId}'.");
         return ChangeHandlerResult.Ok;
+    }
+}
+
+public class SystemStatsChangeHandler : IWorldChangeHandler
+{
+    public bool ShouldHandle(WorldChange change) => change is SystemStatsChange;
+
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    {
+        var ssc = (SystemStatsChange)change;
+        if (string.IsNullOrWhiteSpace(ssc.CharacterId))
+        {
+            return ChangeHandlerResult.Failure("characterId is required.");
+        }
+
+        if (ssc.SystemStats == null)
+        {
+            return ChangeHandlerResult.Failure("systemStats is required.");
+        }
+
+        var character = context.Session != null
+            ? await context.Session.LoadAsync<Character>(ssc.CharacterId, ct)
+            : null;
+        if (character == null)
+        {
+            return ChangeHandlerResult.Failure($"Character '{ssc.CharacterId}' not found. Cannot update system stats.");
+        }
+
+        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, ct);
+        if (!SystemStatsMerger.TryValidateRuleset(ssc.SystemStats, activeSystem, out var validationError))
+        {
+            return ChangeHandlerResult.Failure(validationError!);
+        }
+
+        character.SystemStats = SystemStatsMerger.Merge(
+            character.SystemStats ?? SystemStatsMerger.CreateDefault(activeSystem),
+            SystemStatsMerger.CoerceToRuleset(ssc.SystemStats, activeSystem));
+
+        context.RecordMessage($"Updated system stats for '{ssc.CharacterId}'.");
+        return ChangeHandlerResult.Ok;
+    }
+}
+
+internal static class CharacterHandlerHelpers
+{
+    public static async Task<RulesetSystem> ResolveActiveSystemAsync(ChangeContext context, CancellationToken ct)
+    {
+        if (context.Session == null || string.IsNullOrEmpty(context.CampaignName))
+        {
+            return RulesetSystem.Dnd5e;
+        }
+
+        var configId = new CampaignDocumentKeys().Config(context.CampaignName);
+        var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct);
+        return config?.ActiveSystem ?? RulesetSystem.Dnd5e;
     }
 }
 
