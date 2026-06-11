@@ -12,8 +12,12 @@ public partial class WorkspaceViewModel : ObservableObject
     [ObservableProperty]
     private FileNodeViewModel? _selectedFile;
 
+    [ObservableProperty]
+    private string _currentDirectory = string.Empty;
+
     public void LoadDirectory(string path)
     {
+        CurrentDirectory = path;
         Files.Clear();
         if (!Directory.Exists(path)) return;
 
