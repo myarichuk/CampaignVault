@@ -8,24 +8,33 @@ namespace CampaignVault.Authoring.Services;
 
 public class WorkspaceParser
 {
-    private readonly IDeserializer _yamlDeserializer;
+    private static readonly IDeserializer _yamlDeserializer = new DeserializerBuilder()
+        .WithNamingConvention(CamelCaseNamingConvention.Instance)
+        .IgnoreUnmatchedProperties()
+        .Build();
 
     public WorkspaceParser()
     {
-        _yamlDeserializer = new DeserializerBuilder()
-            .WithNamingConvention(CamelCaseNamingConvention.Instance)
-            .IgnoreUnmatchedProperties()
-            .Build();
     }
 
     public Character ParseCharacter(string fileContent)
     {
-        var match = Regex.Match(fileContent, @"^---\s*(.*?)\s*---\s*(.*)", RegexOptions.Singleline);
-        if (!match.Success)
+        var lines = fileContent.ReplaceLineEndings("\n").Split('\n');
+        int start = -1, end = -1;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Trim() == "---")
+            {
+                if (start == -1) start = i;
+                else { end = i; break; }
+            }
+        }
+
+        if (start == -1 || end == -1)
             throw new ArgumentException("Invalid frontmatter format.");
 
-        var yamlBlock = match.Groups[1].Value;
-        var markdownBody = match.Groups[2].Value.Trim();
+        var yamlBlock = string.Join('\n', lines[(start + 1)..end]);
+        var markdownBody = string.Join('\n', lines[(end + 1)..]).Trim();
 
         var character = _yamlDeserializer.Deserialize<Character>(yamlBlock);
         character.Notes = markdownBody;

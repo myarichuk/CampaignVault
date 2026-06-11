@@ -1,8 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 
 namespace CampaignVault.Authoring.ViewModels;
 

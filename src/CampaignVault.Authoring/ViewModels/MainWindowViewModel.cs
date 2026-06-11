@@ -22,10 +22,12 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         };
 
+#if DEBUG
         // For dev testing, auto-load a dummy path or local path if it exists
         var testPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestCampaign");
         if (!Directory.Exists(testPath)) Directory.CreateDirectory(testPath);
         Workspace.LoadDirectory(testPath);
+#endif
     }
 
     private void LoadFileContent(string path)

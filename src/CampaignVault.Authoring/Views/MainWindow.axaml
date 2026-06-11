@@ -15,7 +15,7 @@
             <ListBox ItemsSource="{Binding Workspace.Files}" 
                      SelectedItem="{Binding Workspace.SelectedFile}">
                 <ListBox.ItemTemplate>
-                    <DataTemplate>
+                    <DataTemplate x:DataType="vm:FileNodeViewModel">
                         <TextBlock Text="{Binding FileName}" />
                     </DataTemplate>
                 </ListBox.ItemTemplate>
