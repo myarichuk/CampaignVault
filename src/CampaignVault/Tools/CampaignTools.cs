@@ -1401,10 +1401,48 @@ The engine intentionally avoids hardcoding vulnerability scores or mechanical ch
 - Factions have dynamic `EconomicDemand`. If a faction is desperate for an item the party is carrying (e.g. ""spell scrolls""), `get_scene` will pressure you to narrate merchants offering a premium or thieves attempting to steal them. Fulfill this naturally during roleplay!
 
 ## Ruleset Actions (Combat & Skill Checks)
-... (same as before, keep the examples)
+Use `ruleset_action` inside a `commit` to roll dice and resolve attacks or skill checks via the active ruleset. The engine rolls, does the math, and returns the result (including degrees of success).
+- **$type**: `""ruleset_action""`
+- **actorId**: The character performing the action.
+- **targetIds**: Array of target character IDs (for attacks or opposed checks).
+- **actionType**: `""Strike""`, `""SkillCheck""`, `""SavingThrow""`, `""ContestedCheck""`, `""UseItem""`.
+- **actionName**: Freeform text (e.g. `""longsword""`, `""Athletics""`, `""Fireball""`).
+- **parameters**: Dictionary of overrides and hints for the resolver:
+  - `""dc""`: Difficulty Class for skill checks or saves (5e/PF2e).
+  - `""bonus""`: Attack roll bonus.
+  - `""damageDice""`: Damage expression (e.g. `""1d8""` or `""3""` for Fallout).
+  - `""damageBonus""`: Flat damage bonus.
+  - `""ac""`: Override target AC.
+  - `""mapPenalty""`: Multiple Attack Penalty for PF2e (e.g. `""5""` or `""10""`).
+  - `""difficulty""`: Success count threshold for Fallout 2d20 (default 1).
+  - `""attribute""`: Attribute to use for Fallout 2d20 (e.g. `""Agility""`).
+  - `""skill""`: Skill to use for Fallout 2d20 (e.g. `""SmallGuns""`).
+  - `""pool""`: Number of d20s to roll for Fallout 2d20 (default 2).
+  - `""vicious""`: `""true""` to add effects symbols to damage bonus in Fallout.
+  - `""piercing""`: Piercing rating for Fallout DR calculation.
+- **advantageState**: `""Advantage""`, `""Disadvantage""`, or `""None""` (currently natively supports 5e; PF2e Fortune effects must be handled manually or by adjusting `""bonus""`).
+
+Example:
+```json
+[
+  {
+    ""$type"": ""ruleset_action"",
+    ""actorId"": ""chars/fighter"",
+    ""targetIds"": [""chars/goblin""],
+    ""actionType"": ""Strike"",
+    ""actionName"": ""longsword"",
+    ""parameters"": {
+      ""bonus"": ""7"",
+      ""damageDice"": ""1d8"",
+      ""damageBonus"": ""4"",
+      ""mapPenalty"": ""0""
+    }
+  }
+]
+```
 
 ## Status Effects & Stat Modifiers
-... (same)
+Use `status` inside `commit` to add effects, including mechanical modifiers.
 
 ## Phase 7.4 Deep Dives & Suggested Commits
 If a scene has `ActiveQuests` or `RelevantFactions`, you can explore them directly via:
