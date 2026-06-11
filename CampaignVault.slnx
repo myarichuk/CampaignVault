@@ -3,7 +3,8 @@
     <File Path="docs/recommended-system-prompt.md" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/CampaignVault/CampaignVault.csproj" />
+    <Project Path="src\CampaignVault\CampaignVault.csproj" />
+    <Project Path="src\CampaignVault.Authoring\CampaignVault.Authoring.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CampaignVault.Tests/CampaignVault.Tests.csproj" />
