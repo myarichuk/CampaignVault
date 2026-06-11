@@ -1,0 +1,39 @@
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace CampaignVault.Authoring.ViewModels;
+
+public partial class WorkspaceViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private ObservableCollection<FileNodeViewModel> _files = new();
+
+    [ObservableProperty]
+    private FileNodeViewModel? _selectedFile;
+
+    public void LoadDirectory(string path)
+    {
+        Files.Clear();
+        if (!Directory.Exists(path)) return;
+
+        foreach (var file in Directory.GetFiles(path, "*.md", SearchOption.AllDirectories))
+        {
+            Files.Add(new FileNodeViewModel { 
+                FilePath = file, 
+                FileName = Path.GetFileName(file) 
+            });
+        }
+    }
+}
+
+public partial class FileNodeViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private string _fileName = string.Empty;
+
+    [ObservableProperty]
+    private string _filePath = string.Empty;
+}
