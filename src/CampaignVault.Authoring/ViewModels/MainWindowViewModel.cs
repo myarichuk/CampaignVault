@@ -31,6 +31,14 @@ public partial class MainWindowViewModel : ViewModelBase
 #endif
     }
 
+    public void ReloadActiveFileContent()
+    {
+        if (Workspace.SelectedFile != null)
+        {
+            LoadFileContent(Workspace.SelectedFile.FilePath);
+        }
+    }
+
     private void LoadFileContent(string path)
     {
         if (File.Exists(path))

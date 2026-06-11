@@ -67,6 +67,7 @@ public partial class App : Application
                 {
                     await _mcpServerService.StopAsync();
                 }
+                mainWindowViewModel.Workspace.Dispose();
             };
         }
 
