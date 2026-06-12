@@ -263,6 +263,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
 
         Assert.True(result.Success);
         var npc = result.Data!.PresentNPCs.Single();
+        Assert.NotNull(npc.ActiveInitiatives);
         Assert.Contains(npc.ActiveInitiatives, i => i.Urgency >= MemoryUrgency.High);
         Assert.NotNull(result.WorldPressure);
         Assert.Contains(result.WorldPressure!, p => p.Contains("Guard", StringComparison.OrdinalIgnoreCase));

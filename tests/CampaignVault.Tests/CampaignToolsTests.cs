@@ -425,7 +425,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.GetScene(locId, true);
         Assert.True(result.Success);
-        
+        Assert.NotNull(result.WorldPressure);
         Assert.Contains(result.WorldPressure, p => p.Contains("fading") && p.Contains("Secret"));
     }
 
@@ -478,7 +478,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.GetScene(locId, true);
         Assert.True(result.Success);
-        
+        Assert.NotNull(result.WorldPressure);
         Assert.Contains(result.WorldPressure, p => p.Contains("Opportunistic faction") && p.Contains("Thieves"));
     }
 
@@ -530,6 +530,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.GetScene(locId, partyPresent: true);
         Assert.True(result.Success);
+        Assert.NotNull(result.WorldPressure);
         Assert.Contains(result.WorldPressure, p => p.Contains("desperate for 'Weapon'") && p.Contains("War Merchants"));
     }
 
@@ -582,6 +583,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.GetScene(locId, partyPresent: true);
         Assert.True(result.Success);
+        Assert.NotNull(result.WorldPressure);
         Assert.Contains(result.WorldPressure, p => p.Contains("desperate for 'spell scrolls'") && p.Contains("Arcane Scribes"));
     }
 

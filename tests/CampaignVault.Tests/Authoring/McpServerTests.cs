@@ -8,7 +8,7 @@ using Xunit;
 
 namespace CampaignVault.Tests.Authoring;
 
-[Collection("McpServerTests")]
+[Collection("WorkspaceService")]
 public class McpServerTests
 {
     [Fact]
@@ -20,12 +20,10 @@ public class McpServerTests
         var result = await tools.ListWorkspaceEntities();
         Assert.NotNull(result);
 
-        // Access via reflection or cast to dynamic
-        var successProp = result.GetType().GetProperty("success")?.GetValue(result);
-        var errorProp = result.GetType().GetProperty("error")?.GetValue(result);
-
-        Assert.Equal(false, successProp);
-        Assert.Equal("No workspace directory loaded.", errorProp);
+        // Access via dynamic cast
+        dynamic dynResult = result;
+        Assert.Equal(false, dynResult.success);
+        Assert.Equal("No workspace directory loaded.", dynResult.error);
     }
 
     [Fact]
@@ -47,20 +45,20 @@ public class McpServerTests
             var testContent = "---\n$type: character\n---\n# Test";
             var writeResult = await tools.WriteWorkspaceEntity(testFilePath, testContent);
 
-            var writeSuccess = writeResult.GetType().GetProperty("success")?.GetValue(writeResult);
-            Assert.Equal(true, writeSuccess);
+            dynamic dynWrite = writeResult;
+            Assert.Equal(true, dynWrite.success);
             Assert.True(File.Exists(testFilePath));
 
             // Read
             var readResult = await tools.ReadWorkspaceEntity(testFilePath);
-            var readSuccess = readResult.GetType().GetProperty("success")?.GetValue(readResult);
-            var readContent = readResult.GetType().GetProperty("content")?.GetValue(readResult);
+            dynamic dynRead = readResult;
 
-            Assert.Equal(true, readSuccess);
-            Assert.Equal(testContent, readContent);
+            Assert.Equal(true, dynRead.success);
+            Assert.Equal(testContent, dynRead.content);
         }
         finally
         {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
         }
     }

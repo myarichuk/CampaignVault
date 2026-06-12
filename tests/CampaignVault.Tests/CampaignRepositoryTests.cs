@@ -29,7 +29,8 @@ public class RavenDBFixture : IDisposable
             EmbeddedServer.Instance.StartServer(new ServerOptions
             {
                 DataDirectory = _dataDir,
-                ServerUrl = "http://127.0.0.1:0"
+                ServerUrl = "http://127.0.0.1:0",
+                FrameworkVersion = "10.0.7"
             });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already started")) { }
