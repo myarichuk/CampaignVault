@@ -1,0 +1,52 @@
+syntax = "proto3";
+option csharp_namespace = "CampaignVault.Grpc";
+package campaignvault;
+
+service CampaignSync {
+    // Discovery: Get list of all campaigns available on the server
+    rpc GetCampaigns (EmptyRequest) returns (CampaignListResponse);
+
+    // Sync Pull: Get all entities belonging to a specific campaign
+    rpc GetCampaignEntities (GetCampaignEntitiesRequest) returns (EntityListResponse);
+
+    // Sync Push: Push an entity to a specific campaign
+    rpc PushCampaignEntity (PushCampaignEntityRequest) returns (PushResponse);
+}
+
+message EmptyRequest {}
+
+message CampaignListResponse {
+    repeated CampaignItem campaigns = 1;
+}
+
+message CampaignItem {
+    string name = 1;
+    string ruleset = 2; // e.g., "Dnd5e", "Pf2e", "Fallout2d20"
+}
+
+message GetCampaignEntitiesRequest {
+    string campaignName = 1;
+}
+
+message EntityListResponse {
+    repeated EntityItem entities = 1;
+}
+
+message EntityItem {
+    string id = 1;
+    string type = 2;
+    string content = 3; // Serialized JSON document
+}
+
+message PushCampaignEntityRequest {
+    string campaignName = 1;
+    string id = 2;
+    string type = 3;
+    string content = 4; // Serialized JSON document
+}
+
+message PushResponse {
+    bool success = 1;
+    string message = 2;
+}
+
