@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CampaignVault.Authoring.Services;
 
@@ -9,6 +10,10 @@ namespace CampaignVault.Authoring.ViewModels;
 
 public partial class WorkspaceViewModel : ObservableObject, IDisposable
 {
+    private readonly WorkspaceDbService _dbService = new();
+    private readonly WorkspaceParser _parser = new();
+    private WorkspaceScanner? _scanner;
+
     [ObservableProperty]
     private ObservableCollection<FileNodeViewModel> _files = new();
 
@@ -19,6 +24,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private string _currentDirectory = string.Empty;
 
     private FileSystemWatcher? _watcher;
+
+    public WorkspaceDbService DbService => _dbService;
 
     public void LoadDirectory(string path)
     {
@@ -31,10 +38,18 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             _watcher = null;
         }
 
-        RefreshFilesList();
-
         if (Directory.Exists(path))
         {
+            _dbService.InitializeDatabase(path);
+            _scanner = new WorkspaceScanner(_dbService, _parser);
+            
+            // Sync-scan on load
+            Task.Run(async () =>
+            {
+                await _scanner.ScanWorkspaceAsync(path);
+                Avalonia.Threading.Dispatcher.UIThread.Post(RefreshFilesList);
+            });
+
             _watcher = new FileSystemWatcher(path, "*.md")
             {
                 IncludeSubdirectories = true,
@@ -46,14 +61,23 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             _watcher.Changed += OnWorkspaceChanged;
             _watcher.Renamed += OnWorkspaceChanged;
         }
+        else
+        {
+            RefreshFilesList();
+        }
     }
 
     private void OnWorkspaceChanged(object sender, FileSystemEventArgs e)
     {
         // Must run on Avalonia UI thread
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
         {
             var selectedPath = SelectedFile?.FilePath;
+
+            if (_scanner != null && !string.IsNullOrEmpty(CurrentDirectory))
+            {
+                await _scanner.ScanWorkspaceAsync(CurrentDirectory);
+            }
 
             RefreshFilesList();
 
@@ -73,18 +97,28 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         });
     }
 
-    private void RefreshFilesList()
+    public void RefreshFilesList()
     {
         Files.Clear();
         if (!Directory.Exists(CurrentDirectory)) return;
 
-        foreach (var file in Directory.GetFiles(CurrentDirectory, "*.md", SearchOption.AllDirectories))
+        try
         {
-            Files.Add(new FileNodeViewModel { 
-                FilePath = file, 
-                FileName = Path.GetFileName(file) 
-            });
+            var entities = _dbService.GetAllEntities();
+            foreach (var entity in entities)
+            {
+                var absolutePath = Path.Combine(CurrentDirectory, entity.RelativePath);
+                Files.Add(new FileNodeViewModel
+                {
+                    FileName = Path.GetFileName(absolutePath),
+                    FilePath = absolutePath,
+                    EntityType = entity.EntityType,
+                    EntityId = entity.Id,
+                    SyncStatus = entity.SyncStatus
+                });
+            }
         }
+        catch {}
     }
 
     public void Dispose()
@@ -105,4 +139,14 @@ public partial class FileNodeViewModel : ObservableObject
 
     [ObservableProperty]
     private string _filePath = string.Empty;
+
+    [ObservableProperty]
+    private string _entityType = string.Empty;
+
+    [ObservableProperty]
+    private string _entityId = string.Empty;
+
+    [ObservableProperty]
+    private string _syncStatus = "Synced";
 }
+
