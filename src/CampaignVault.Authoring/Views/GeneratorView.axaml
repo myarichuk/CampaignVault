@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CampaignVault.Authoring.ViewModels"
+             x:Class="CampaignVault.Authoring.Views.GeneratorView"
+             x:DataType="vm:GenerationViewModel">
+    <Grid RowDefinitions="Auto, Auto, *, Auto">
+        <TextBlock Grid.Row="0" Text="AI Entity Generator" FontSize="13" FontWeight="Bold" Margin="0,0,0,10" Foreground="#E4E4EB" />
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,0,0,15" Foreground="#71717A" FontSize="11" />
+        <TextBox Grid.Row="2" 
+                 Text="{Binding UserPrompt, Mode=TwoWay}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 PlaceholderText="Describe the entity to generate..."
+                 IsEnabled="{Binding IsEnabled}"
+                 Background="#18181F"
+                 BorderBrush="#2D2D3A"
+                 Padding="10"
+                 Margin="0,0,0,15" />
+        <StackPanel Grid.Row="3" Spacing="10">
+            <Button Content="Generate Entity" 
+                    Command="{Binding GenerateCommand}"
+                    IsEnabled="{Binding IsEnabled}"
+                    Background="#2563EB"
+                    Foreground="White"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Padding="10,8" />
+            <Button Content="Insert to Active File" 
+                    Command="{Binding InsertCommand}"
+                    IsEnabled="{Binding IsEnabled}"
+                    Background="#27272A"
+                    BorderBrush="#3F3F46"
+                    BorderThickness="1"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Padding="10,8" />
+        </StackPanel>
+    </Grid>
+</UserControl>

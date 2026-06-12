@@ -1,0 +1,120 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CampaignVault.Authoring.ViewModels"
+             x:Class="CampaignVault.Authoring.Views.SyncView"
+             x:DataType="vm:SyncViewModel">
+    <Grid ColumnDefinitions="300, *">
+        <!-- Left Column: Diff Tree -->
+        <Border Grid.Column="0" BorderBrush="#2D2D3A" BorderThickness="0,0,1,0" Background="#1C1C24" Padding="8">
+            <Grid RowDefinitions="Auto, *, Auto">
+                <!-- Campaign Selector -->
+                <Grid Grid.Row="0" RowDefinitions="Auto, Auto, Auto" Margin="0,0,0,10">
+                    <TextBlock Grid.Row="0" Text="Campaign" FontSize="11" FontWeight="Bold" Foreground="#71717A" Margin="4,0,0,4"/>
+                    <ComboBox Grid.Row="1" ItemsSource="{Binding AvailableCampaigns}"
+                              SelectedItem="{Binding SelectedCampaign}"
+                              HorizontalAlignment="Stretch"
+                              PlaceholderText="(none selected)"
+                              Margin="0,0,0,6" />
+                    <Button Grid.Row="2" Content="↻ Fetch Campaigns"
+                            Command="{Binding FetchCampaignsCommand}"
+                            IsEnabled="{Binding IsConnected}"
+                            Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            FontSize="11" Padding="6,5" />
+                </Grid>
+
+                <ListBox Grid.Row="1" ItemsSource="{Binding SyncDiffs}" 
+                         SelectedItem="{Binding SelectedDiff}"
+                         Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SyncDiffItem">
+                            <Grid ColumnDefinitions="*, Auto" Height="36">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Bold" />
+                                    <TextBlock Text="{Binding FilePath}" FontSize="10" Foreground="#71717A" />
+                                </StackPanel>
+                                <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="4" Padding="6,2" Margin="5,0,0,0"
+                                        Background="{Binding Status, Converter={x:Static vm:StatusColorConverter.Instance}}">
+                                    <TextBlock Text="{Binding Status}" FontSize="9" FontWeight="Bold" Foreground="White" />
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="2" Spacing="8" Margin="0,10,0,0">
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="#A0A0AB" TextWrapping="Wrap" Margin="5,0,5,5" />
+                    <Button Content="Sync All (Non-Conflicting)" 
+                            Command="{Binding SyncAllCommand}"
+                            IsEnabled="{Binding IsConnected}"
+                            Background="#10B981"
+                            Foreground="White"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Padding="12,10" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Right Column: Diff Visualizer -->
+        <Grid Grid.Column="1" RowDefinitions="Auto, *" Margin="15" IsVisible="{Binding SelectedDiff, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <!-- Diff Headers -->
+            <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding SelectedDiff.FileName}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{Binding SelectedDiff.FilePath, StringFormat='Path: \{0\}'}" FontSize="11" Foreground="#71717A" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <!-- Push Button -->
+                    <Button Content="Push (Local -> Remote)" 
+                            Command="{Binding PushSelectedCommand}"
+                            IsEnabled="{Binding CanPushSelected}"
+                            IsVisible="{Binding !IsConflictSelected}"
+                            Background="#10B981"
+                            Foreground="White"
+                            Padding="12,8" />
+                    <!-- Pull Button -->
+                    <Button Content="Pull (Remote -> Local)" 
+                            Command="{Binding PullSelectedCommand}"
+                            IsEnabled="{Binding CanPullSelected}"
+                            IsVisible="{Binding !IsConflictSelected}"
+                            Background="#3B82F6"
+                            Foreground="White"
+                            Padding="12,8" />
+                    <!-- Conflict Resolution Keep Local -->
+                    <Button Content="Keep Local (Push)" 
+                            Command="{Binding ResolveKeepLocalCommand}"
+                            IsVisible="{Binding IsConflictSelected}"
+                            Background="#D97706"
+                            Foreground="White"
+                            Padding="12,8" />
+                    <!-- Conflict Resolution Keep Remote -->
+                    <Button Content="Keep Remote (Pull)" 
+                            Command="{Binding ResolveKeepRemoteCommand}"
+                            IsVisible="{Binding IsConflictSelected}"
+                            Background="#EF4444"
+                            Foreground="White"
+                            Padding="12,8" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Content Panels -->
+            <Grid Grid.Row="1" ColumnDefinitions="*, *">
+                <!-- Local Content -->
+                <Grid Grid.Column="0" RowDefinitions="Auto, *" Margin="0,0,8,0">
+                    <TextBlock Grid.Row="0" Text="Local Changes" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,5" />
+                    <TextBox Grid.Row="1" Text="{Binding SelectedDiff.LocalContent}" IsReadOnly="True" 
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
+                </Grid>
+
+                <!-- Remote Content -->
+                <Grid Grid.Column="1" RowDefinitions="Auto, *" Margin="8,0,0,0">
+                    <TextBlock Grid.Row="0" Text="Remote Database Content" FontSize="12" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,5" />
+                    <TextBox Grid.Row="1" Text="{Binding SelectedDiff.RemoteContent}" IsReadOnly="True" 
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

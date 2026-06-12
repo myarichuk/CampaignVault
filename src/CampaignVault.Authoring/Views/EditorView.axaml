@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CampaignVault.Authoring.ViewModels"
+             xmlns:dock="clr-namespace:Dock.Controls.ProportionalStackPanel;assembly=Dock.Controls.ProportionalStackPanel"
+             xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             x:Class="CampaignVault.Authoring.Views.EditorView"
+             x:DataType="vm:MainWindowViewModel">
+    <dock:ProportionalStackPanel Orientation="Horizontal">
+        <!-- Left Editor Pane -->
+        <Grid dock:ProportionalStackPanel.Proportion="0.5" RowDefinitions="Auto, *" Margin="8" MinWidth="300">
+            <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="5,0,0,8">
+                <TextBlock Grid.Column="0" Text="Raw Markdown / YAML" FontSize="13" FontWeight="Bold" Foreground="#A0A0AB" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="Save File" Command="{Binding SaveActiveFileCommand}" Background="#10B981" Foreground="White" Padding="10,5" FontSize="11" CornerRadius="4" IsEnabled="{Binding Workspace.SelectedFile, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </Grid>
+            <Border Grid.Row="1" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="4">
+                <ae:TextEditor Name="Editor" 
+                               FontFamily="Consolas"
+                               FontSize="12"
+                               Background="#1F1F28"
+                               Foreground="#E4E4EB"
+                               HorizontalScrollBarVisibility="Auto"
+                               VerticalScrollBarVisibility="Visible"
+                               ShowLineNumbers="True" />
+            </Border>
+        </Grid>
+
+        <dock:ProportionalStackPanelSplitter />
+
+        <!-- Right Live Preview Pane -->
+        <Grid dock:ProportionalStackPanel.Proportion="0.5" RowDefinitions="Auto, *" Margin="8" MinWidth="250">
+            <TextBlock Grid.Row="0" Text="Live Entity Preview" FontSize="13" FontWeight="Bold" Margin="5,0,0,8" Foreground="#A0A0AB" />
+            <Border Grid.Row="1" Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="4" Padding="15">
+                <ScrollViewer>
+                    <StackPanel Spacing="15">
+                        <!-- Parsing Success States (Metadata Badges) -->
+                        <StackPanel Spacing="8" IsVisible="{Binding ParsedCharacter, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <TextBlock Text="Parsed System Metadata" FontSize="11" FontWeight="Bold" Foreground="#71717A" />
+                            <WrapPanel Orientation="Horizontal">
+                                <!-- Entity Type Badge -->
+                                <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="Type:" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" />
+                                        <TextBlock Text="{Binding EntityTypeDisplay}" Foreground="#E4E4EB" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <!-- ID Badge -->
+                                <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="ID:" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" />
+                                        <TextBlock Text="{Binding ParsedCharacter.Id}" Foreground="#E4E4EB" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <!-- Name Badge -->
+                                <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="Name:" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" VerticalAlignment="Center" />
+                                        <TextBox Text="{Binding FormName, Mode=TwoWay}" FontSize="11" Padding="2" MinWidth="80" />
+                                    </StackPanel>
+                                </Border>
+                                <!-- Dynamic Badge 1 -->
+                                <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6" IsVisible="{Binding Badge1Label, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding Badge1Label}" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" />
+                                        <TextBlock Text="{Binding Badge1Value}" Foreground="#E4E4EB" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <!-- Dynamic Badge 2 -->
+                                <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6" IsVisible="{Binding Badge2Label, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding Badge2Label}" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" />
+                                        <TextBlock Text="{Binding Badge2Value}" Foreground="#E4E4EB" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <!-- Character Stats Badges -->
+                                <WrapPanel Orientation="Horizontal" IsVisible="{Binding IsCharacter}">
+                                    <!-- ClassLevel Badge -->
+                                    <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6" IsVisible="{Binding ParsedCharacter.ClassLevel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="Class/Lvl:" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" />
+                                            <TextBlock Text="{Binding ParsedCharacter.ClassLevel}" Foreground="#E4E4EB" FontSize="11" />
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- HP Badge -->
+                                    <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="HP:" FontWeight="Bold" Foreground="#F43F5E" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Value="{Binding FormCurrentHp, Mode=TwoWay}" Minimum="0" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="2" FontSize="11" MinWidth="40" />
+                                            <TextBlock Text="/" Foreground="#71717A" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Value="{Binding FormMaxHp, Mode=TwoWay}" Minimum="1" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="2" FontSize="11" MinWidth="40" />
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Willpower / Stress Badges -->
+                                    <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="Will:" FontWeight="Bold" Foreground="#10B981" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Value="{Binding FormWillpower, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="2" FontSize="11" MinWidth="40" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="#2D2D3D" CornerRadius="4" Padding="6,3" Margin="0,0,6,6">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="Stress:" FontWeight="Bold" Foreground="#F59E0B" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Value="{Binding FormStress, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="2" FontSize="11" MinWidth="40" />
+                                        </StackPanel>
+                                    </Border>
+                                </WrapPanel>
+                            </WrapPanel>
+                            <Separator Height="1" Background="#2D2D3A" Margin="0,5,0,5" />
+                        </StackPanel>
+                        <!-- Rendered Notes/Content -->
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Markdown Rendered Body" FontSize="11" FontWeight="Bold" Foreground="#71717A" />
+                            <SelectableTextBlock Text="{Binding PreviewNotes}" 
+                                                 TextWrapping="Wrap" 
+                                                 FontFamily="Consolas" 
+                                                 FontSize="13" 
+                                                 Foreground="#E4E4EB" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </dock:ProportionalStackPanel>
+</UserControl>

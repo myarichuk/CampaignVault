@@ -8,8 +8,9 @@
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
     <Application.Styles>
         <FluentTheme />
+        <DockFluentTheme />
+        <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     </Application.Styles>
 </Application>

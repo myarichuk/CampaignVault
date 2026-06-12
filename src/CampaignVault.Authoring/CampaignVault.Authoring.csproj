@@ -23,6 +23,9 @@
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <PackageReference Include="Dock.Avalonia" Version="12.0.0.2" />
+    <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.0.0.2" />
+    <PackageReference Include="Dock.Controls.ProportionalStackPanel" Version="12.0.0.2" />
+    <PackageReference Include="Dock.Model.Mvvm" Version="12.0.0.2" />
     <PackageReference Include="Google.Protobuf" Version="3.31.1" />
     <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />
     <PackageReference Include="Grpc.Tools" Version="2.81.1">
@@ -42,5 +45,10 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>CampaignVault.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>

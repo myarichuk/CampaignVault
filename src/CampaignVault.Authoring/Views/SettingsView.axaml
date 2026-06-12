@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CampaignVault.Authoring.ViewModels"
+             x:Class="CampaignVault.Authoring.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="30" Spacing="25" MaxWidth="600" HorizontalAlignment="Left">
+            
+            <!-- MCP Card -->
+            <Border Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="15">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <TextBlock Grid.Column="0" Text="Authoring MCP Server (AI CLIs)" FontSize="16" FontWeight="Bold" Foreground="#E4E4EB" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="10" Height="10" Fill="{Binding McpStatusColor}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding McpStatusText}" FontSize="12" VerticalAlignment="Center" Foreground="#71717A" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*, Auto" Margin="0,5,0,0">
+                        <StackPanel Grid.Column="0" Spacing="5" Width="150" HorizontalAlignment="Left">
+                            <TextBlock Text="Server Port" FontSize="12" Foreground="#A0A0AB" />
+                            <NumericUpDown Value="{Binding McpPortValue}" Minimum="1" Maximum="65535" FormatString="0" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Content="Auto-start Server" IsChecked="{Binding AutoStartMcp}" VerticalAlignment="Bottom" Margin="20,0,0,0" />
+                    </Grid>
+
+                    <TextBlock Text="Exposes workspace read/write tools for AI assistants (NPCs, locations, factions). Separate from CampaignVault play MCP."
+                               FontSize="11" Foreground="#71717A" TextWrapping="Wrap" />
+
+                    <Button Content="Toggle Authoring MCP Server" 
+                            Command="{Binding ToggleMcpServerCommand}" 
+                            Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
+                            Padding="15,8" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <!-- gRPC Sync Card -->
+            <Border Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="15">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <TextBlock Grid.Column="0" Text="CampaignVault Sync (gRPC)" FontSize="16" FontWeight="Bold" Foreground="#E4E4EB" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="10" Height="10" Fill="{Binding GrpcStatusColor}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding GrpcStatusText}" FontSize="12" VerticalAlignment="Center" Foreground="#71717A" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="3*, 1*">
+                        <StackPanel Grid.Column="0" Spacing="5" Margin="0,0,10,0">
+                            <TextBlock Text="Vault Server IP / Hostname" FontSize="12" Foreground="#A0A0AB" />
+                            <TextBox Text="{Binding GrpcHost}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="5">
+                            <TextBlock Text="Port" FontSize="12" Foreground="#A0A0AB" />
+                            <NumericUpDown Value="{Binding GrpcPortValue}" Minimum="1" Maximum="65535" FormatString="0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Sync Token (matches CampaignVault BEARER_TOKEN, if set)" FontSize="12" Foreground="#A0A0AB" />
+                        <TextBox Text="{Binding GrpcToken}" PasswordChar="*" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="CampaignVault Play MCP Port (reference only)" FontSize="12" Foreground="#A0A0AB" />
+                        <NumericUpDown Value="{Binding VaultMcpPortValue}" Minimum="1" Maximum="65535" FormatString="0" />
+                        <TextBlock Text="Live play sessions use the CampaignVault MCP on this port. Sync uses gRPC on the port above."
+                                   FontSize="11" Foreground="#71717A" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <Button Content="{Binding IsGrpcConnected, Converter={x:Static vm:SyncButtonTextConverter.Instance}}"
+                            Command="{Binding ToggleGrpcConnectionCommand}" 
+                            Background="#2563EB" Foreground="White"
+                            Padding="15,8" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <!-- LLM Card -->
+            <Border Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="In-App AI Seeding (Microsoft.Extensions.AI)" FontSize="16" FontWeight="Bold" Foreground="#E4E4EB" />
+
+                    <Grid ColumnDefinitions="*, *">
+                        <StackPanel Grid.Column="0" Spacing="5" Margin="0,0,10,0">
+                            <TextBlock Text="LLM Provider" FontSize="12" Foreground="#A0A0AB" />
+                            <ComboBox ItemsSource="{Binding LlmProviders}" 
+                                      SelectedItem="{Binding LlmProvider}" 
+                                      HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="5">
+                            <TextBlock Text="Model Name (e.g. llama3, gemini-1.5-flash)" FontSize="12" Foreground="#A0A0AB" />
+                            <TextBox Text="{Binding LlmModel}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="API Key (Optional for Ollama)" FontSize="12" Foreground="#A0A0AB" />
+                        <TextBox Text="{Binding LlmApiKey}" PasswordChar="*" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Endpoint URL (Optional for Gemini/OpenAI)" FontSize="12" Foreground="#A0A0AB" />
+                        <TextBox Text="{Binding LlmEndpoint}" PlaceholderText="http://localhost:11434/v1" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Save Configuration -->
+            <Button Content="Save Configuration Settings" 
+                    Command="{Binding SaveCommand}" 
+                    Background="#10B981" 
+                    Foreground="White"
+                    HorizontalAlignment="Left" 
+                    Padding="20,10" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

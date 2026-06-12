@@ -1,110 +1,73 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:CampaignVault.Authoring.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:views="using:CampaignVault.Authoring.Views"
+        xmlns:dock="clr-namespace:Dock.Avalonia.Controls;assembly=Dock.Avalonia"
         x:Class="CampaignVault.Authoring.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="CampaignVault Authoring App">
+        Title="CampaignVault Authoring App"
+        Background="#18181F"
+        Foreground="#E4E4EB">
 
-    <TabControl>
-        <!-- Tab 1: Editor -->
-        <TabItem Header="Workspace Editor">
-            <Grid ColumnDefinitions="250, *, 300">
-                <!-- Sidebar -->
-                <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="0,0,1,0" Padding="10">
-                    <ListBox ItemsSource="{Binding Workspace.Files}" 
-                             SelectedItem="{Binding Workspace.SelectedFile}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:FileNodeViewModel">
-                                <TextBlock Text="{Binding FileName}" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Border>
+    <Window.DataTemplates>
+        <!-- Wrappers from DockFactory -->
+        <DataTemplate DataType="vm:ToolViewModelWrapper">
+            <ContentControl Content="{Binding ViewModel}" />
+        </DataTemplate>
+        <DataTemplate DataType="vm:DocumentViewModelWrapper">
+            <ContentControl Content="{Binding ViewModel}" />
+        </DataTemplate>
+        
+        <!-- Underlying ViewModels -->
+        <DataTemplate DataType="vm:WorkspaceViewModel">
+            <views:ExplorerView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:GenerationViewModel">
+            <views:GeneratorView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:SyncViewModel">
+            <views:SyncView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:SettingsViewModel">
+            <views:SettingsView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:MainWindowViewModel">
+            <views:EditorView />
+        </DataTemplate>
+    </Window.DataTemplates>
 
-                <!-- Editor -->
-                <TextBox Grid.Column="1" 
-                         Text="{Binding EditorText, Mode=TwoWay}"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         FontFamily="Consolas"
-                         Padding="20" />
+    <Grid RowDefinitions="*, 32">
+        
+        <!-- Main Content: Docking Framework -->
+        <dock:DockControl Grid.Row="0" Layout="{Binding Layout}" />
 
-                <!-- Generation Drawer -->
-                <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1,0,0,0" Padding="15">
-                    <Grid RowDefinitions="Auto, Auto, *, Auto">
-                        <TextBlock Grid.Row="0" Text="AI Entity Generator" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
-                        
-                        <TextBlock Grid.Row="1" Text="{Binding Generation.StatusMessage}" TextWrapping="Wrap" Margin="0,0,0,10" Foreground="Gray" FontSize="12" />
-
-                        <TextBox Grid.Row="2" 
-                                 Text="{Binding Generation.UserPrompt, Mode=TwoWay}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 PlaceholderText="Describe the entity to generate..."
-                                 IsEnabled="{Binding Generation.IsEnabled}"
-                                 Margin="0,0,0,10" />
-
-                        <StackPanel Grid.Row="3" Spacing="10">
-                            <Button Content="Generate" 
-                                    Command="{Binding Generation.GenerateCommand}"
-                                    IsEnabled="{Binding Generation.IsEnabled}"
-                                    HorizontalAlignment="Stretch" />
-                            <Button Content="Insert to Editor" 
-                                    Command="{Binding Generation.InsertCommand}"
-                                    IsEnabled="{Binding Generation.IsEnabled}"
-                                    HorizontalAlignment="Stretch" />
-                        </StackPanel>
-                    </Grid>
-                </Border>
-            </Grid>
-        </TabItem>
-
-        <!-- Tab 2: Settings -->
-        <TabItem Header="Settings">
-            <ScrollViewer>
-                <StackPanel Margin="20" Spacing="15" MaxWidth="500" HorizontalAlignment="Left">
-                    <TextBlock Text="Local MCP Server Configuration" FontSize="18" FontWeight="Bold" Margin="0,0,0,10" />
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="MCP Server Port" />
-                        <NumericUpDown Value="{Binding Settings.McpPortValue}" Minimum="1" Maximum="65535" FormatString="0" />
-                    </StackPanel>
-
-                    <TextBlock Text="In-App AI Generation (Microsoft.Extensions.AI)" FontSize="18" FontWeight="Bold" Margin="0,15,0,10" />
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="LLM Provider" />
-                        <ComboBox ItemsSource="{Binding Settings.LlmProviders}" 
-                                  SelectedItem="{Binding Settings.LlmProvider}" 
-                                  HorizontalAlignment="Stretch" />
-                    </StackPanel>
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="API Key (Optional for Ollama)" />
-                        <TextBox Text="{Binding Settings.LlmApiKey}" PasswordChar="*" />
-                    </StackPanel>
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="Endpoint URL (Optional for Gemini/OpenAI)" />
-                        <TextBox Text="{Binding Settings.LlmEndpoint}" PlaceholderText="http://localhost:11434/v1" />
-                    </StackPanel>
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="Model Name (e.g. llama3, gemini-1.5-flash)" />
-                        <TextBox Text="{Binding Settings.LlmModel}" />
-                    </StackPanel>
-
-                    <Button Content="Save Configuration" 
-                            Command="{Binding Settings.SaveCommand}" 
-                            HorizontalAlignment="Left" 
-                            Margin="0,15,0,0" 
-                            Padding="15,8" />
+        <!-- Bottom Status Bar -->
+        <Border Grid.Row="1" Background="#111115" BorderBrush="#2D2D3A" BorderThickness="0,1,0,0" Padding="15,0">
+            <Grid ColumnDefinitions="Auto, Auto, *, Auto">
+                <!-- MCP Server Status -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="0,0,20,0" VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8" Fill="{Binding Settings.McpStatusColor}" />
+                    <TextBlock Text="Authoring MCP: " FontSize="11" Foreground="#71717A" />
+                    <TextBlock Text="{Binding Settings.McpStatusText}" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
                 </StackPanel>
-            </ScrollViewer>
-        </TabItem>
-    </TabControl>
+
+                <!-- Remote Vault Status -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8" Fill="{Binding Settings.GrpcStatusColor}" />
+                    <TextBlock Text="gRPC Sync: " FontSize="11" Foreground="#71717A" />
+                    <TextBlock Text="{Binding Settings.GrpcStatusText}" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                </StackPanel>
+
+                <!-- Message Info -->
+                <TextBlock Grid.Column="2" Text="{Binding Sync.StatusMessage}" FontSize="11" Foreground="#A0A0AB" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                <!-- Last Sync Status -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Text="Last Sync: " FontSize="11" Foreground="#71717A" />
+                    <TextBlock Text="{Binding Sync.LastSyncTime}" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>

@@ -29,19 +29,20 @@ public partial class App : Application
                 DataContext = mainWindowViewModel,
             };
 
-            // Start local MCP server
+            // Start the authoring MCP server (separate from CampaignVault play MCP on 5275)
             var settings = mainWindowViewModel.Settings;
-            if (settings.McpPortValue.HasValue)
+            if (settings.AutoStartMcp == true && settings.McpPortValue.HasValue)
             {
                 _mcpServerService = new McpServerService();
+                WorkspaceService.McpServerService = _mcpServerService;
                 try
                 {
                     await _mcpServerService.StartAsync((int)settings.McpPortValue.Value);
+                    settings.UpdateMcpStatus();
                 }
                 catch (Exception ex)
                 {
-                    // Fail gracefully
-                    Console.Error.WriteLine($"Failed to start MCP server: {ex.Message}");
+                    Console.Error.WriteLine($"Failed to start authoring MCP server: {ex.Message}");
                 }
             }
 
@@ -51,6 +52,7 @@ public partial class App : Application
                 if (e.PropertyName == nameof(settings.McpPortValue) && settings.McpPortValue.HasValue)
                 {
                     _mcpServerService ??= new McpServerService();
+                    WorkspaceService.McpServerService = _mcpServerService;
                     try
                     {
                         await _mcpServerService.StartAsync((int)settings.McpPortValue.Value);
