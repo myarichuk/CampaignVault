@@ -5,4 +5,5 @@ namespace CampaignVault.Authoring.Services;
 public static class WorkspaceService
 {
     public static MainWindowViewModel? MainWindowViewModel { get; set; }
+    public static McpServerService? McpServerService { get; set; }
 }

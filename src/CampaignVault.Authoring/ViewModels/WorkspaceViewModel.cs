@@ -2,8 +2,11 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using CampaignVault.Authoring.Services;
 
 namespace CampaignVault.Authoring.ViewModels;
@@ -14,6 +17,9 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private readonly WorkspaceParser _parser = new();
     private WorkspaceScanner? _scanner;
 
+    private IStorageProvider? _storageProvider;
+    private CancellationTokenSource? _debounceSource;
+
     [ObservableProperty]
     private ObservableCollection<FileNodeViewModel> _files = new();
 
@@ -23,9 +29,43 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _currentDirectory = string.Empty;
 
+    [ObservableProperty]
+    private string _workspaceStatusMessage = "Open a campaign folder to begin.";
+
     private FileSystemWatcher? _watcher;
 
     public WorkspaceDbService DbService => _dbService;
+
+    public void SetStorageProvider(IStorageProvider sp) { _storageProvider = sp; }
+
+    [RelayCommand]
+    private async Task OpenCampaignFolderAsync()
+    {
+        if (_storageProvider == null)
+        {
+            WorkspaceStatusMessage = "Folder picker is not available yet.";
+            return;
+        }
+
+        var folders = await _storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select Campaign Workspace Folder",
+            AllowMultiple = false
+        });
+
+        var folder = folders.FirstOrDefault();
+        if (folder == null) return;
+
+        var path = folder.TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            WorkspaceStatusMessage = "Could not resolve the selected folder path.";
+            return;
+        }
+
+        LoadDirectory(path);
+        WorkspaceStatusMessage = $"Workspace: {path}";
+    }
 
     public void LoadDirectory(string path)
     {
@@ -69,30 +109,43 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     private void OnWorkspaceChanged(object sender, FileSystemEventArgs e)
     {
-        // Must run on Avalonia UI thread
+        // Cancel any pending debounced scan and start a new one
+        _debounceSource?.Cancel();
+        _debounceSource = new CancellationTokenSource();
+        var token = _debounceSource.Token;
+
         Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
         {
-            var selectedPath = SelectedFile?.FilePath;
-
-            if (_scanner != null && !string.IsNullOrEmpty(CurrentDirectory))
+            try
             {
-                await _scanner.ScanWorkspaceAsync(CurrentDirectory);
+                await Task.Delay(400, token);
+
+                var selectedPath = SelectedFile?.FilePath;
+
+                if (_scanner != null && !string.IsNullOrEmpty(CurrentDirectory))
+                {
+                    await _scanner.ScanWorkspaceAsync(CurrentDirectory);
+                }
+
+                RefreshFilesList();
+
+                if (!string.IsNullOrEmpty(selectedPath))
+                {
+                    var found = Files.FirstOrDefault(f => f.FilePath == selectedPath);
+                    if (found != null)
+                    {
+                        SelectedFile = found;
+                        WorkspaceService.MainWindowViewModel?.ReloadActiveFileContent();
+                    }
+                    else
+                    {
+                        SelectedFile = null;
+                    }
+                }
             }
-
-            RefreshFilesList();
-
-            if (!string.IsNullOrEmpty(selectedPath))
+            catch (OperationCanceledException)
             {
-                var found = Files.FirstOrDefault(f => f.FilePath == selectedPath);
-                if (found != null)
-                {
-                    SelectedFile = found;
-                    WorkspaceService.MainWindowViewModel?.ReloadActiveFileContent();
-                }
-                else
-                {
-                    SelectedFile = null;
-                }
+                // Debounce cancelled — a newer event will take over
             }
         });
     }
@@ -123,6 +176,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _debounceSource?.Cancel();
+        _debounceSource?.Dispose();
         if (_watcher != null)
         {
             _watcher.EnableRaisingEvents = false;
