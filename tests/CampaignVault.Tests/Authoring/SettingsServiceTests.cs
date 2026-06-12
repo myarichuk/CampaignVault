@@ -20,6 +20,35 @@ public class SettingsServiceTests
             Assert.NotNull(settings);
             Assert.Equal(8080, settings.McpPort);
             Assert.Equal("None", settings.LlmProvider);
+            Assert.Equal(50051, settings.GrpcPort);
+            Assert.Equal(5275, settings.VaultMcpPort);
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void LoadSettings_PartialJson_AppliesDefaultsForMissingFields()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, """
+                {
+                  "McpPort": 8080,
+                  "LlmProvider": "None"
+                }
+                """);
+
+            var service = new SettingsService(tempFile);
+            var settings = service.LoadSettings();
+
+            Assert.Equal(8080, settings.McpPort);
+            Assert.Equal(50051, settings.GrpcPort);
+            Assert.Equal("localhost", settings.GrpcHost);
+            Assert.Equal(5275, settings.VaultMcpPort);
         }
         finally
         {

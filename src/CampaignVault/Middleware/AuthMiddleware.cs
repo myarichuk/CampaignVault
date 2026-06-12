@@ -21,7 +21,9 @@ public class AuthMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path == "/" || context.Request.Path == "/health")
+        // /health is a public liveness probe and must always be reachable by orchestrators.
+        // Every other path (MCP at "/", gRPC services, /info) requires authentication.
+        if (context.Request.Path == "/health")
         {
             await _next(context);
             return;

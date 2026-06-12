@@ -22,7 +22,7 @@ public class SettingsService
             {
                 var json = File.ReadAllText(_filePath);
                 var settings = JsonSerializer.Deserialize<CampaignAuthoringSettings>(json);
-                return settings ?? new CampaignAuthoringSettings();
+                return ApplyDefaults(settings);
             }
         }
         catch (Exception ex)
@@ -31,6 +31,24 @@ public class SettingsService
             // Fallback to defaults on error
         }
         return new CampaignAuthoringSettings();
+    }
+
+    private static CampaignAuthoringSettings ApplyDefaults(CampaignAuthoringSettings? settings)
+    {
+        var defaults = new CampaignAuthoringSettings();
+        if (settings == null)
+        {
+            return defaults;
+        }
+
+        if (settings.McpPort <= 0) settings.McpPort = defaults.McpPort;
+        settings.AutoStartMcp ??= defaults.AutoStartMcp;
+        if (string.IsNullOrWhiteSpace(settings.LlmProvider)) settings.LlmProvider = defaults.LlmProvider;
+        if (string.IsNullOrWhiteSpace(settings.GrpcHost)) settings.GrpcHost = defaults.GrpcHost;
+        if (settings.GrpcPort <= 0) settings.GrpcPort = defaults.GrpcPort;
+        if (settings.VaultMcpPort <= 0) settings.VaultMcpPort = defaults.VaultMcpPort;
+
+        return settings;
     }
 
     public void SaveSettings(CampaignAuthoringSettings settings)
