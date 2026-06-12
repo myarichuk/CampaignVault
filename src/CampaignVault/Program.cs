@@ -139,15 +139,16 @@ if (!string.IsNullOrEmpty(bearerToken))
 }
 
 // Bind MCP + HTTP utility endpoints exclusively to the MCP port.
-// Without RequireHost(), both services would be reachable on both Kestrel endpoints.
-app.MapMcp("/").RequireHost($"localhost:{mcpPort}");
+// Use *:port (not localhost:port) so 127.0.0.1 and [::1] clients still match — Grok Web
+// and other MCP clients often resolve localhost to 127.0.0.1 in the Host header.
+app.MapMcp("/").RequireHost($"*:{mcpPort}");
 app.MapGet("/info", () => "D&D Campaign Vault MCP Server (RavenDB) is running.")
-   .RequireHost($"localhost:{mcpPort}");
+   .RequireHost($"*:{mcpPort}");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
-   .RequireHost($"localhost:{mcpPort}");
+   .RequireHost($"*:{mcpPort}");
 
 // Bind gRPC sync exclusively to the dedicated gRPC port.
-app.MapGrpcService<CampaignSyncService>().RequireHost($"localhost:{grpcPort}");
+app.MapGrpcService<CampaignSyncService>().RequireHost($"*:{grpcPort}");
 
 // Diagnostic Startup Info
 app.Lifetime.ApplicationStarted.Register(() =>
