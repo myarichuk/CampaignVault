@@ -99,4 +99,51 @@ internal static class SimulationQueryHelper
                 || string.Equals(q.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
+
+    public static async Task<List<Character>> QueryEvictableTransientCharactersAsync(
+        IAsyncDocumentSession session,
+        string? campaignName,
+        int limit = 200,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(campaignName))
+        {
+            return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+                .WaitForNonStaleResults(IndexWait)
+                .WhereEquals(x => x.KeepAlive, false)
+                .AndAlso()
+                .WhereEquals("HasSchedule", false)
+                .AndAlso()
+                .WhereExists("CurrentLocationId")
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
+        var indexed = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(IndexWait)
+            .WhereEquals(x => x.CampaignName, campaignName)
+            .AndAlso()
+            .WhereEquals(x => x.KeepAlive, false)
+            .AndAlso()
+            .WhereEquals("HasSchedule", false)
+            .AndAlso()
+            .WhereExists("CurrentLocationId")
+            .Take(limit)
+            .ToListAsync(ct);
+
+        // Legacy shareable characters may have no CampaignName set.
+        var shareable = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(IndexWait)
+            .Not.WhereExists(x => x.CampaignName)
+            .AndAlso()
+            .WhereEquals(x => x.KeepAlive, false)
+            .AndAlso()
+            .WhereEquals("HasSchedule", false)
+            .AndAlso()
+            .WhereExists("CurrentLocationId")
+            .Take(limit)
+            .ToListAsync(ct);
+
+        return indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit).ToList();
+    }
 }

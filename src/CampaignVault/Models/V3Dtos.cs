@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace CampaignVault.Models;
 
 public class ToolResult<T>
@@ -7,15 +9,17 @@ public class ToolResult<T>
     public string? Summary { get; set; }
     public string? Error { get; set; }
     public string[]? WorldPressure { get; set; }
+    public JsonElement? RetryExample { get; set; }
 
     public ToolResult() { }
-    public ToolResult(bool Success, T? Data = default, string? Summary = null, string? Error = null, string[]? WorldPressure = null)
+    public ToolResult(bool Success, T? Data = default, string? Summary = null, string? Error = null, string[]? WorldPressure = null, JsonElement? RetryExample = null)
     {
         this.Success = Success;
         this.Data = Data;
         this.Summary = Summary;
         this.Error = Error;
         this.WorldPressure = WorldPressure;
+        this.RetryExample = RetryExample;
     }
 }
 
