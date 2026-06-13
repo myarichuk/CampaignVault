@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="150"
+        x:Class="CampaignVault.Authoring.Views.SyncProgressDialog"
+        Title="Syncing Campaign..."
+        Width="400" Height="150"
+        WindowStartupLocation="CenterOwner"
+        Background="#1C1C24"
+        Foreground="#E4E4EB">
+    <StackPanel Margin="20" Spacing="15" VerticalAlignment="Center">
+        <TextBlock Name="StatusText" Text="Preparing to sync..." HorizontalAlignment="Center" FontSize="12" />
+        <ProgressBar Name="SyncProgressBar" Minimum="0" Maximum="100" Value="0" Height="20" />
+    </StackPanel>
+</Window>
