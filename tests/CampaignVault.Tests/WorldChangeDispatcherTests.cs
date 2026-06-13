@@ -1,6 +1,7 @@
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Raven.Client.Documents.Session;
 using System;
 using System.Collections.Generic;
@@ -174,5 +175,72 @@ public class WorldChangeDispatcherTests
         Assert.False(result.Success); // because MoodChange is unhandled
         Assert.Contains("HP handled (fake)", result.Summary);
         Assert.Contains(result.Summary, s => s.Contains("Unhandled change type: MoodChange"));
+    }
+
+    [Fact]
+    public async Task EventOccurredHandler_ConversationCategory_WithoutInvolved_ReturnsFailure()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Conversation,
+                    Summary = "Lirael and Valen talking at the bar.",
+                    Involved = null
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Summary, s => s.Contains("MUST specify the 'involved' property"));
+    }
+
+    [Fact]
+    public async Task EventOccurredHandler_ConversationCategory_WithInvolved_ReturnsSuccess()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var loggedEvents = new List<Event>();
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Conversation,
+                    Summary = "Lirael and Valen talking at the bar.",
+                    Involved = ["chars/lirael", "chars/valen"]
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            e => { loggedEvents.Add(e); return Task.CompletedTask; });
+
+        Assert.True(result.Success);
+        Assert.Single(loggedEvents);
+        Assert.Contains("chars/lirael", loggedEvents[0].Involved);
+        Assert.Contains("chars/valen", loggedEvents[0].Involved);
     }
 }

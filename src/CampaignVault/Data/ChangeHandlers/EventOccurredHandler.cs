@@ -16,6 +16,11 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
     {
         var ev = (EventOccurred)change;
 
+        if (ev.Category == EventCategory.Conversation && (ev.Involved == null || ev.Involved.Count == 0))
+        {
+            return ChangeHandlerResult.Failure("Events of category 'Conversation' MUST specify the 'involved' property containing the character IDs of the participants so they can recall it.");
+        }
+
         var currentTime = await context.GetCurrentTimeAsync();
         var e = new Event
         {

@@ -153,7 +153,7 @@ public class EventOccurred : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EventCategory Category { get; set; } = EventCategory.Unresolved;
 
-    [Description("Optional list of entity IDs involved (characters, locations, items, etc.). Helps later queries and NPC context.")]
+    [Description("List of entity IDs involved (characters, locations, items, etc.). REQUIRED for 'Conversation' category events so participating NPCs can recall them. Helps later queries and NPC context.")]
     [JsonPropertyName("involved")]
     public List<string>? Involved { get; set; }
 
