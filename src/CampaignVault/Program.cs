@@ -139,17 +139,17 @@ if (!string.IsNullOrEmpty(bearerToken))
     app.UseMiddleware<AuthMiddleware>(bearerToken);
 }
 
-// Bind MCP + HTTP utility endpoints exclusively to the MCP port.
-// Use *:port (not localhost:port) so 127.0.0.1 and [::1] clients still match — Grok Web
-// and other MCP clients often resolve localhost to 127.0.0.1 in the Host header.
-app.MapMcp("/").RequireHost($"*:{mcpPort}");
+// Bind MCP + HTTP utility endpoints exclusively to the MCP listener port.
+// Do not use RequireHost() — Grok Web and other MCP clients often send Host headers
+// without a port suffix (e.g. "localhost"), which still 404s with *:port patterns.
+app.MapMcp("/").RequireLocalPort(mcpPort);
 app.MapGet("/info", () => "D&D Campaign Vault MCP Server (RavenDB) is running.")
-   .RequireHost($"*:{mcpPort}");
+   .RequireLocalPort(mcpPort);
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
-   .RequireHost($"*:{mcpPort}");
+   .RequireLocalPort(mcpPort);
 
-// Bind gRPC sync exclusively to the dedicated gRPC port.
-app.MapGrpcService<CampaignSyncService>().RequireHost($"*:{grpcPort}");
+// Bind gRPC sync exclusively to the dedicated gRPC listener port.
+app.MapGrpcService<CampaignSyncService>().RequireLocalPort(grpcPort);
 
 // Diagnostic Startup Info
 app.Lifetime.ApplicationStarted.Register(() =>
