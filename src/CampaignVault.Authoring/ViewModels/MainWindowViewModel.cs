@@ -20,11 +20,16 @@ public partial class MainWindowViewModel : ViewModelBase
     public SettingsViewModel Settings { get; } = new();
     public GenerationViewModel Generation { get; }
     public SyncViewModel Sync { get; }
+    public HubViewModel Hub { get; }
+
+    [ObservableProperty]
+    private AppStateService _applicationState = new();
 
     public Dock.Model.Core.IFactory Factory { get; }
     public Dock.Model.Controls.IRootDock? Layout { get; }
 
     private readonly WorkspaceParser _parser = new();
+    private readonly CampaignHistoryService _historyService = new();
     private IStorageProvider? _storageProvider;
 
     [ObservableProperty]
@@ -61,6 +66,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         Sync = new SyncViewModel(Settings, Workspace);
         Generation = new GenerationViewModel(Settings);
+        Hub = new HubViewModel(this);
 
         // Subscribe to selection changes
         Workspace.PropertyChanged += (s, e) =>
@@ -83,7 +89,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // For dev testing, auto-load a dummy path or local path if it exists
         var testPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestCampaign");
         if (!Directory.Exists(testPath)) Directory.CreateDirectory(testPath);
-        Workspace.LoadDirectory(testPath);
+        // LoadCampaign(testPath); // Skip auto-load to show Hub by default
 #endif
     }
 
@@ -120,9 +126,19 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        LoadCampaign(path);
+    }
+
+    // Command to open a campaign and switch state
+    [RelayCommand]
+    public void LoadCampaign(string path)
+    {
+        _historyService.Add(path);
+        Hub.LoadRecentCampaigns();
         Workspace.LoadDirectory(path);
         WorkspaceStatusMessage = $"Workspace: {path}";
         Sync.StatusMessage = "Workspace loaded. Connect gRPC sync to compare with CampaignVault.";
+        ApplicationState.CurrentState = CampaignVault.Authoring.Services.AppState.Editor;
     }
 
     public void ReloadActiveFileContent()

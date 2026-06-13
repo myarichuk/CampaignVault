@@ -54,3 +54,18 @@ public class SyncButtonTextConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+public class EnumToBoolConverter : IValueConverter
+{
+    public static readonly EnumToBoolConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value?.ToString() == parameter?.ToString();
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

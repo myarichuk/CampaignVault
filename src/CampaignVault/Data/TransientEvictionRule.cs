@@ -1,8 +1,6 @@
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging;
 using Raven.Client.Documents;
-using Raven.Client.Documents.Session;
-using Raven.Client.Documents.Linq;
 
 namespace CampaignVault.Data;
 
@@ -24,25 +22,10 @@ public class TransientEvictionRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
-        // 1. Query candidates: Schedule == null && CurrentLocationId != null && !KeepAlive
-        // Scoping hardened: filter by camp (loose for shareable chars)
-        var effective = context.CampaignName;
-        // Use Character/Search static index — avoids runtime auto-index creation under load.
-        var candidates = await context.Session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
-            .WaitForNonStaleResults(TimeSpan.FromSeconds(3))
-            .WhereExists("CurrentLocationId")
-            .Take(500)
-            .ToListAsync(ct);
-
-        if (!string.IsNullOrEmpty(effective))
-        {
-            candidates = candidates.Where(c => string.IsNullOrEmpty(c.CampaignName) || string.Equals(c.CampaignName, effective, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-
-        // Filter out characters that have a schedule or are KeepAlive (only transients should be evicted)
-        candidates = candidates.Where(c => c.Schedule == null && c.KeepAlive == false).ToList();
-
-        var candidatesQuery = candidates.Take(200).ToList();
+        // Campaign-scoped index query — avoids unscoped Take(N) truncation when the shared
+        // embedded test DB accumulates characters from the full suite.
+        var candidatesQuery = await SimulationQueryHelper.QueryEvictableTransientCharactersAsync(
+            context.Session, context.CampaignName, 200, ct);
 
         if (!candidatesQuery.Any())
         {
@@ -110,6 +93,7 @@ public class TransientEvictionRule : ISimulationRule
             foreach (var evictedId in evictedIds)
             {
                 var held = await context.Session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+                    .WaitForNonStaleResults(TimeSpan.FromSeconds(3))
                     .WhereEquals(x => x.HolderId, evictedId)
                     .Take(50)
                     .ToListAsync(ct);

@@ -122,7 +122,8 @@ mcpServerBuilder
     {
         options.Stateless = true;
     })
-    .WithToolsFromAssembly();
+    .WithToolsFromAssembly()
+    .WithRequestFilters(McpToolErrorFilter.Register);
 
 builder.Services.AddGrpc();
 

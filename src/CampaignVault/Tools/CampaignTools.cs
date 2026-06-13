@@ -21,6 +21,7 @@ internal static class ToolErrors
     public const string InternalError = "InternalError";
     public const string RateLimitExceeded = "RateLimitExceeded";
     public const string BadRequest = "BadRequest";
+    public const string InvalidArgument = "InvalidArgument";
 }
 
 [McpServerToolType]
@@ -332,6 +333,7 @@ Use ActivityChange liberally to keep get_scene in sync with your narrative.
 See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
 
 Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, system_stats, knowledge_update, schedule_change, item_create, travel, rest, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
+" + CommitEnumCheatSheet.Compact + @"
 
 === RECOMMENDED PATTERNS (copy-paste friendly) ===
 
@@ -339,16 +341,53 @@ Supported types for $type: hp, item, item_update, status, statusremove, event, r
 
 Basic + creating on the fly examples are also shown in the tool description and get_help.")]
     public Task<ToolResult<CommitResult>> Commit(
-        [Description("Array of world changes. Each item must be a JSON object with a '$type' discriminator.")] WorldChange[] changes,
-        [Description("Narrative summary of what happened (for the log and world pressure).")] string narrative,
+        [Description("Array of world changes. Each item must be a JSON object with a '$type' discriminator.")] JsonElement? changes = null,
+        [Description("Narrative summary of what happened (for the log and world pressure).")] string? narrative = null,
         [Description("Optional campaign name. Falls back to currently selected campaign.")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-
-        if (changes.Length == 0)
+        if (!CommitChangesParser.TryParse(changes, out var parsedChanges, out var parseError))
         {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.BadRequest, Summary: "Commit requires at least one change."));
+            if (parseError is not null)
+            {
+                var (summary, retryExample) = ToolCallExamples.BuildDeserializationErrorResponse("commit", parseError);
+                return Task.FromResult(new ToolResult<CommitResult>(
+                    false,
+                    Error: ToolErrors.InvalidArgument,
+                    Summary: summary,
+                    RetryExample: retryExample));
+            }
+
+            return ToolArgumentErrors.Missing<CommitResult>(
+                "changes",
+                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
+                toolName: "commit");
         }
+
+        return Commit(parsedChanges!, narrative, campaignName);
+    }
+
+    public Task<ToolResult<CommitResult>> Commit(
+        WorldChange[]? changes,
+        string? narrative = null,
+        string? campaignName = null)
+    {
+        if (changes is null || changes.Length == 0)
+        {
+            return ToolArgumentErrors.Missing<CommitResult>(
+                "changes",
+                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
+                toolName: "commit");
+        }
+
+        if (string.IsNullOrWhiteSpace(narrative))
+        {
+            return ToolArgumentErrors.Missing<CommitResult>(
+                "narrative",
+                "Provide a short summary of what happened for the event log.",
+                toolName: "commit");
+        }
+
+        var effective = EffectiveCampaign(campaignName);
 
         if (changes.Length > 50)
         {
@@ -382,21 +421,28 @@ Basic + creating on the fly examples are also shown in the tool description and 
     {
         if (string.IsNullOrWhiteSpace(changesJson))
         {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: "Commit requires at least one change."));
+            return ToolArgumentErrors.Missing<CommitResult>(
+                "changes",
+                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
+                toolName: "commit");
         }
 
-        WorldChange[] elements;
+        JsonElement json;
         try
         {
-            var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowOutOfOrderMetadataProperties = true };
-            elements = JsonSerializer.Deserialize<WorldChange[]>(changesJson, serializerOptions) ?? [];
+            json = JsonSerializer.Deserialize<JsonElement>(changesJson);
         }
         catch (JsonException ex)
         {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: "BadRequest", Summary: $"Invalid changes JSON: {ex.Message}"));
+            var (summary, retryExample) = ToolCallExamples.BuildDeserializationErrorResponse("commit", ex.Message);
+            return Task.FromResult(new ToolResult<CommitResult>(
+                false,
+                Error: ToolErrors.InvalidArgument,
+                Summary: summary,
+                RetryExample: retryExample));
         }
 
-        return Commit(elements, narrative, campaignName); // respects context + explicit override
+        return Commit(json, narrative, campaignName);
     }
 
     [ToolCategory("Mutation & time")]
@@ -441,9 +487,17 @@ Basic + creating on the fly examples are also shown in the tool description and 
     [McpServerTool(UseStructuredContent = true)]
     [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychological state. Returns their relationships, goals, fears, knowledge, and current emotional mood. Respects the currently selected campaign for need descriptors etc.")]
     public Task<ToolResult<NpcContextView>> GetNpcContext(
-        string characterId,
+        string? characterId = null,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        if (string.IsNullOrWhiteSpace(characterId))
+        {
+            return ToolArgumentErrors.Missing<NpcContextView>(
+                "characterId",
+                "Use get_scene or search_world to find the exact character ID.",
+                toolName: "get_npc_context");
+        }
+
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session => {
             var npc = await _repository.GetCharacterAsync(session, characterId, effective);
@@ -816,17 +870,37 @@ Rolls initiative for all combatants based on the active ruleset system and estab
 
 Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""monsters/goblin1""])")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
-        [Description("The location ID where combat is happening.")] string locationId,
-        [Description("List of character IDs participating in combat.")] string[] combatantIds,
+        [Description("The location ID where combat is happening.")] string? locationId = null,
+        [Description("List of character IDs participating in combat.")] string[]? combatantIds = null,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
+        if (string.IsNullOrWhiteSpace(locationId))
+        {
+            return ToolArgumentErrors.Missing<CombatEncounter>(
+                "locationId",
+                "Pass where combat occurs.",
+                exampleCall: "start_combat(\"locations/tavern\", [\"characters/hero\"])");
+        }
+
+        if (combatantIds is null)
+        {
+            return ToolArgumentErrors.Missing<CombatEncounter>(
+                "combatantIds",
+                "Pass an array of character IDs participating in combat.",
+                exampleCall: "start_combat(\"locations/tavern\", [\"characters/hero\"])");
+        }
+
+        if (combatantIds.Length == 0)
+        {
+            return Task.FromResult(new ToolResult<CombatEncounter>(
+                false,
+                Error: "InvalidInput",
+                Summary: "Cannot start combat with zero combatants."));
+        }
+
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-            if (combatantIds == null || combatantIds.Length == 0)
-            {
-                return new ToolResult<CombatEncounter>(false, Error: "InvalidInput", Summary: "Cannot start combat with zero combatants.");
-            }
 
             var uniqueIds = combatantIds.Distinct().ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
@@ -1073,11 +1147,14 @@ Most tools will use this campaign context automatically, meaning you don't need 
 
 Example: select_campaign(""dragonheist"")")]
     public Task<ToolResult<string>> SelectCampaign(
-        [Description("Name of the campaign to select.")] string campaignName)
+        [Description("Name of the campaign to select.")] string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(campaignName))
         {
-            return Task.FromResult(new ToolResult<string>(false, Error: "InvalidArgument", Summary: "campaignName is required."));
+            return ToolArgumentErrors.Missing<string>(
+                "campaignName",
+                "Call list_campaigns first, then pass campaignName as a slug.",
+                toolName: "select_campaign");
         }
 
         var normalized = campaignName.Trim().ToLowerInvariant();
@@ -1479,6 +1556,14 @@ Call `get_help` any time you (the LLM) are unsure. Re-read the pressures section
 
 Remember: the engine is strict on invariants (map connectivity, no silent deletes of important state) so *you* can be creatively lazy about flavor.
 ";
+        const string enumInsertAfter = "over world-builder upserts.**";
+        var enumMarkerIndex = manual.IndexOf(enumInsertAfter, StringComparison.Ordinal);
+        if (enumMarkerIndex >= 0)
+        {
+            var insertAt = enumMarkerIndex + enumInsertAfter.Length;
+            manual = manual.Insert(insertAt, CommitEnumCheatSheet.Full);
+        }
+
         return Task.FromResult(new ToolResult<string>(true, manual, "Help manual retrieved."));
     }
 
