@@ -88,7 +88,7 @@ public partial class SyncViewModel : ObservableObject
         StatusMessage = message;
     }
 
-    private CampaignSync.CampaignSyncClient CreateClient()
+    internal CampaignSync.CampaignSyncClient CreateClient()
     {
         if (ClientFactory != null)
         {

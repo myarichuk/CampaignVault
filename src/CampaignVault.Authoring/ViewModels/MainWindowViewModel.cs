@@ -21,6 +21,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public GenerationViewModel Generation { get; }
     public SyncViewModel Sync { get; }
     public HubViewModel Hub { get; }
+    public CampaignStateService CampaignState { get; }
 
     [ObservableProperty]
     private AppStateService _applicationState = new();
@@ -67,13 +68,18 @@ public partial class MainWindowViewModel : ViewModelBase
         Sync = new SyncViewModel(Settings, Workspace);
         Generation = new GenerationViewModel(Settings);
         Hub = new HubViewModel(this);
+        CampaignState = new CampaignStateService(Workspace.DbService);
+        CampaignState.SetClientFactory(() => Sync.CreateClient());
+
+        Workspace.SetStateService(CampaignState);
 
         // Subscribe to selection changes
         Workspace.PropertyChanged += (s, e) =>
         {
-            if (e.PropertyName == nameof(Workspace.SelectedFile) && Workspace.SelectedFile != null)
+            if (e.PropertyName == nameof(Workspace.SelectedNode) && Workspace.SelectedNode is EntityNodeViewModel entityNode)
             {
-                LoadFileContent(Workspace.SelectedFile.FilePath);
+                var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
+                LoadFileContent(absolutePath);
                 OnEditorTextChanged(EditorText);
             }
         };
@@ -143,9 +149,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public void ReloadActiveFileContent()
     {
-        if (Workspace.SelectedFile != null)
+        if (Workspace.SelectedNode is EntityNodeViewModel entityNode)
         {
-            LoadFileContent(Workspace.SelectedFile.FilePath);
+            var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
+            LoadFileContent(absolutePath);
         }
     }
 
@@ -160,10 +167,11 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveActiveFileAsync()
     {
-        if (Workspace.SelectedFile != null && !string.IsNullOrEmpty(Workspace.SelectedFile.FilePath))
+        if (Workspace.SelectedNode is EntityNodeViewModel entityNode)
         {
-            await File.WriteAllTextAsync(Workspace.SelectedFile.FilePath, EditorText);
-            Sync.StatusMessage = $"Saved {Workspace.SelectedFile.FileName} locally at {DateTime.Now:HH:mm:ss}";
+            var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
+            await File.WriteAllTextAsync(absolutePath, EditorText);
+            Sync.StatusMessage = $"Saved {entityNode.Title} locally at {DateTime.Now:HH:mm:ss}";
         }
     }
 
@@ -203,7 +211,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
 
-            var type = Workspace.SelectedFile?.EntityType?.ToLower() ?? "character";
+            var type = (Workspace.SelectedNode as EntityNodeViewModel)?.Entity.EntityType?.ToLower() ?? "character";
 
             if (type == "location")
             {
