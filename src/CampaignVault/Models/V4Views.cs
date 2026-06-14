@@ -46,8 +46,10 @@ public record ActiveQuestSummary(
     string? GiverId = null,
     int LastUpdatedDay = 0,
     /// <summary>Oldest open/in-progress objective anchor day (TotalDaysElapsed). Used for staleness pressures.</summary>
-    int OldestOpenObjectiveDay = 0
-);
+    int OldestOpenObjectiveDay = 0)
+{
+    public ActiveQuestSummary() : this(default!, default!, default!, default!, default!) { }
+}
 
 /// <summary>
 /// Lightweight summary of a faction with presence/territory overlap at the current location.
@@ -60,8 +62,10 @@ public record FactionPresenceSummary(
     FactionStance LocalStance = FactionStance.Neutral,
     int? PlayerReputation = null,
     int TerritoryLocationCount = 0,
-    Dictionary<string, float>? EconomicDemand = null
-);
+    Dictionary<string, float>? EconomicDemand = null)
+{
+    public FactionPresenceSummary() : this(default!, default!, default!) { }
+}
 
 /// <summary>
 /// Lightweight view of an NPC for scene exploration.
@@ -95,8 +99,10 @@ public record NpcPresenceSummary(
     SystemExtension? SystemStats = null,
     double BehavioralTension = 0,
     IReadOnlyList<InitiativeCandidate>? ActiveInitiatives = null,
-    IReadOnlyList<MemoryNode>? RelevantMemories = null
-);
+    IReadOnlyList<MemoryNode>? RelevantMemories = null)
+{
+    public NpcPresenceSummary() : this(default!, default!, default!, default!, default!, default!, default!) { }
+}
 
 public class CommitResult
 {
@@ -113,8 +119,17 @@ public class AdvanceResult
     public List<WorldPressureItem> WorldPressure { get; set; } = [];
 }
 
-public record RumorSummary(string Subject, string CurrentText, RumorState State);
+public record RumorSummary(string Subject, string CurrentText, RumorState State)
+{
+    public RumorSummary() : this(default!, default!, default!) { }
+}
 
-public record LocationSummary(string Id, string Name, LocationType Type);
+public record LocationSummary(string Id, string Name, LocationType Type)
+{
+    public LocationSummary() : this(default!, default!, default!) { }
+}
 
-public record NpcActivitySummary(string Name, string CurrentActivity);
+public record NpcActivitySummary(string Name, string CurrentActivity)
+{
+    public NpcActivitySummary() : this(default!, default!) { }
+}

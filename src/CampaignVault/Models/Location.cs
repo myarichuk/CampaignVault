@@ -67,4 +67,7 @@ public record LocationExit(
     int? TravelCostHours = 0,
     string? Terrain = null,
     string? EncounterHint = null
-);
+)
+{
+    public LocationExit() : this(default!, default!) { }
+}

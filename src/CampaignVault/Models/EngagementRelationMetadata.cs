@@ -20,7 +20,10 @@ public sealed record EngagementRelationMetadata(
     EngagementCategory Category,
     EngagementRestrictionLevel RestrictionLevel,
     string DescriptionTemplate,
-    string ResolutionPrompt);
+    string ResolutionPrompt)
+{
+    public EngagementRelationMetadata() : this(default!, default!, default!, default!) { }
+}
 
 public static class EngagementRelationCatalog
 {

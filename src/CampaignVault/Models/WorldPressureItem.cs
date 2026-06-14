@@ -15,5 +15,7 @@ public record WorldPressureItem(
     PressureSeverity Severity,
     string EntityId,
     string Text,
-    string GroupingKey
-);
+    string GroupingKey)
+{
+    public WorldPressureItem() : this(default!, default!, default!, default!) { }
+}

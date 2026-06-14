@@ -39,7 +39,10 @@ public record QuestObjective(
     int? DayCompleted = null,
     /// <summary>Absolute <see cref="CampaignTime.TotalDaysElapsed"/> deadline for this objective.</summary>
     int? DeadlineDay = null
-);
+)
+{
+    public QuestObjective() : this(default!) { }
+}
 
 public enum QuestState 
 { 
