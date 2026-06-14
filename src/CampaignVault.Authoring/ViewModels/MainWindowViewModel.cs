@@ -237,6 +237,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private float _formStress;
 
+    [ObservableProperty]
+    private string _parseErrorMessage = string.Empty;
+
     private bool _isUpdatingFromForm;
 
     partial void OnEditorTextChanged(string value)
@@ -245,6 +248,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
+            ParseErrorMessage = string.Empty;
+
             if (string.IsNullOrEmpty(value))
             {
                 ParsedCharacter = null;
@@ -326,7 +331,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Fail gracefully while user is typing incomplete frontmatter
             ParsedCharacter = null;
@@ -336,6 +341,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Badge1Value = string.Empty;
             Badge2Label = string.Empty;
             Badge2Value = string.Empty;
+            ParseErrorMessage = ex.ToString();
         }
         finally
         {

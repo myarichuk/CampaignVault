@@ -11,33 +11,6 @@
         Background="#18181F"
         Foreground="#E4E4EB">
 
-    <Window.DataTemplates>
-        <!-- Wrappers from DockFactory -->
-        <DataTemplate DataType="vm:ToolViewModelWrapper">
-            <ContentControl Content="{Binding ViewModel}" />
-        </DataTemplate>
-        <DataTemplate DataType="vm:DocumentViewModelWrapper">
-            <ContentControl Content="{Binding ViewModel}" />
-        </DataTemplate>
-        
-        <!-- Underlying ViewModels -->
-        <DataTemplate DataType="vm:WorkspaceViewModel">
-            <views:ExplorerView />
-        </DataTemplate>
-        <DataTemplate DataType="vm:GenerationViewModel">
-            <views:GeneratorView />
-        </DataTemplate>
-        <DataTemplate DataType="vm:SyncViewModel">
-            <views:SyncView />
-        </DataTemplate>
-        <DataTemplate DataType="vm:SettingsViewModel">
-            <views:SettingsView />
-        </DataTemplate>
-        <DataTemplate DataType="vm:MainWindowViewModel">
-            <views:EditorView />
-        </DataTemplate>
-    </Window.DataTemplates>
-
     <Window.Resources>
         <vm:EnumToBoolConverter x:Key="EnumToBoolConverter" />
     </Window.Resources>
@@ -61,29 +34,22 @@
         <DockPanel Grid.Row="1">
             <Border DockPanel.Dock="Top" Background="#2D2D3A" Padding="15,5">
                 <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button Content="Campaign Hub"
+                            Command="{Binding BackToHubCommand}"
+                            FontSize="11"
+                            Padding="8,4"
+                            IsVisible="{Binding ApplicationState.CurrentState, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Editor}" />
                     <Button Content="Open Folder" Command="{Binding OpenCampaignFolderCommand}" FontSize="11" Padding="8,4" />
                     <Button Content="Save All" Command="{Binding SaveActiveFileCommand}" FontSize="11" Padding="8,4" IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </StackPanel>
             </Border>
 
-            <TransitioningContentControl Content="{Binding ApplicationState}" x:CompileBindings="False">
-                <TransitioningContentControl.PageTransition>
-                    <CrossFade Duration="0:0:0.25" />
-                </TransitioningContentControl.PageTransition>
-                <TransitioningContentControl.ContentTemplate>
-                    <DataTemplate>
-                        <Panel>
-                            <!-- Idle State: Welcome Hub -->
-                            <views:HubView IsVisible="{Binding CurrentState, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Idle}" 
-                                          DataContext="{Binding $parent[Window].DataContext}" />
-                            
-                            <!-- Editor State: Authoring Workspace -->
-                            <dock:DockControl IsVisible="{Binding CurrentState, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Editor}" 
-                                             Layout="{Binding $parent[Window].DataContext.Layout}" />
-                        </Panel>
-                    </DataTemplate>
-                </TransitioningContentControl.ContentTemplate>
-            </TransitioningContentControl>
+            <Grid>
+                <views:HubView IsVisible="{Binding ApplicationState.CurrentState, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Idle}" />
+                <dock:DockControl IsVisible="{Binding ApplicationState.CurrentState, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Editor}"
+                                  Layout="{Binding Layout}"
+                                  Factory="{Binding Factory}" />
+            </Grid>
         </DockPanel>
 
         <!-- Bottom Status Bar -->

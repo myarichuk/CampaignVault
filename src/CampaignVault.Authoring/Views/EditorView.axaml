@@ -114,11 +114,14 @@
                         </ScrollViewer>
 
                         <!-- Parse Error Overlay -->
-                        <StackPanel IsVisible="{Binding HasParseError}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" Margin="20">
-                            <PathIcon Data="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z" Width="48" Height="48" Foreground="#F43F5E" />
+                        <StackPanel IsVisible="{Binding HasParseError}" VerticalAlignment="Center" HorizontalAlignment="Stretch" Spacing="16" Margin="20">
+                            <PathIcon Data="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z" Width="48" Height="48" Foreground="#F43F5E" HorizontalAlignment="Center" />
                             <TextBlock Text="YAML Parse Error" FontSize="16" FontWeight="Bold" Foreground="#F43F5E" HorizontalAlignment="Center" />
                             <TextBlock Text="The frontmatter is invalid. Please check your YAML syntax to enable properties and preview." 
-                                       TextWrapping="Wrap" TextAlignment="Center" FontSize="12" Foreground="#A0A0AB" MaxWidth="200" />
+                                       TextWrapping="Wrap" TextAlignment="Center" FontSize="12" Foreground="#A0A0AB" MaxWidth="250" HorizontalAlignment="Center" />
+                            <Expander Header="View Error Details" HorizontalAlignment="Stretch" Margin="0,10,0,0">
+                                <TextBox Text="{Binding ParseErrorMessage}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="250" FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderThickness="0" />
+                            </Expander>
                         </StackPanel>
                     </Panel>
                 </Border>

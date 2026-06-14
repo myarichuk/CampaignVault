@@ -2,10 +2,33 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CampaignVault.Authoring.App"
              xmlns:local="using:CampaignVault.Authoring"
+             xmlns:vm="using:CampaignVault.Authoring.ViewModels"
+             xmlns:views="using:CampaignVault.Authoring.Views"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
+        <DataTemplate DataType="vm:ToolViewModelWrapper">
+            <ContentControl Content="{Binding ViewModel}" />
+        </DataTemplate>
+        <DataTemplate DataType="vm:DocumentViewModelWrapper">
+            <ContentControl Content="{Binding ViewModel}" />
+        </DataTemplate>
+        <DataTemplate DataType="vm:WorkspaceViewModel">
+            <views:ExplorerView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:GenerationViewModel">
+            <views:GeneratorView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:SyncViewModel">
+            <views:SyncView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:SettingsViewModel">
+            <views:SettingsView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:MainWindowViewModel">
+            <views:EditorView />
+        </DataTemplate>
         <local:ViewLocator/>
     </Application.DataTemplates>
     <Application.Styles>

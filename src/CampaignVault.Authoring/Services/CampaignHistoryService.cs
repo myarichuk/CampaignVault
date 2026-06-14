@@ -53,18 +53,35 @@ public class CampaignHistoryService
                 history.RecentPaths = history.RecentPaths.Take(10).ToList();
             }
 
-            var dir = Path.GetDirectoryName(_path);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-
-            var json = JsonSerializer.Serialize(history);
-            File.WriteAllText(_path, json);
+            Save(history);
         }
         catch
         {
             // Silently fail if history cannot be saved
         }
+    }
+
+    public void Remove(string path)
+    {
+        try
+        {
+            var history = Load();
+            history.RecentPaths.RemoveAll(p => p.Equals(path, StringComparison.OrdinalIgnoreCase));
+            Save(history);
+        }
+        catch
+        {
+            // Silently fail if history cannot be saved
+        }
+    }
+
+    private void Save(CampaignHistory history)
+    {
+        var dir = Path.GetDirectoryName(_path);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+
+        var json = JsonSerializer.Serialize(history);
+        File.WriteAllText(_path, json);
     }
 }

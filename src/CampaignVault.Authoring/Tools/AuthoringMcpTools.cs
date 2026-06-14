@@ -24,8 +24,7 @@ public class AuthoringMcpTools
 
         var files = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
-            return mainVm.Workspace.Categories
-                .SelectMany(c => c.Children.OfType<EntityNodeViewModel>())
+            return EnumerateEntityNodes(mainVm.Workspace.Categories)
                 .Select(f => new {
                     fileName = Path.GetFileName(f.Entity.RelativePath ?? ""),
                     filePath = Path.Combine(mainVm.Workspace.CurrentDirectory, f.Entity.RelativePath ?? ""),
@@ -34,6 +33,19 @@ public class AuthoringMcpTools
         });
 
         return new { success = true, files };
+    }
+
+    private static System.Collections.Generic.IEnumerable<EntityNodeViewModel> EnumerateEntityNodes(
+        System.Collections.Generic.IEnumerable<ExplorerNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node is EntityNodeViewModel entityNode)
+                yield return entityNode;
+
+            foreach (var child in EnumerateEntityNodes(node.Children))
+                yield return child;
+        }
     }
 
     [McpServerTool(UseStructuredContent = true)]

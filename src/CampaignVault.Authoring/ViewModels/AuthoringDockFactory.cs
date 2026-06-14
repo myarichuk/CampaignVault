@@ -12,11 +12,13 @@ public class ToolViewModelWrapper : Tool
 {
     public object ViewModel { get; }
 
-    public ToolViewModelWrapper(string id, string title, object viewModel)
+    public ToolViewModelWrapper(string id, string title, object viewModel, bool canClose = true)
     {
         Id = id;
         Title = title;
         ViewModel = viewModel;
+        CanClose = canClose;
+        CanPin = true;
     }
 }
 
@@ -24,17 +26,21 @@ public class DocumentViewModelWrapper : Document
 {
     public object ViewModel { get; }
 
-    public DocumentViewModelWrapper(string id, string title, object viewModel)
+    public DocumentViewModelWrapper(string id, string title, object viewModel, bool canClose = false)
     {
         Id = id;
         Title = title;
         ViewModel = viewModel;
+        CanClose = canClose;
     }
 }
 
 public class AuthoringDockFactory : Factory
 {
     private readonly MainWindowViewModel _context;
+    private IRootDock? _rootDock;
+    private IDocumentDock? _documentDock;
+    private IDockable? _explorerTool;
 
     public AuthoringDockFactory(MainWindowViewModel context)
     {
@@ -43,18 +49,19 @@ public class AuthoringDockFactory : Factory
 
     public override IRootDock CreateLayout()
     {
-        var explorerTool = new ToolViewModelWrapper("Explorer", "Campaign Explorer", _context.Workspace);
+        var explorerTool = new ToolViewModelWrapper("Explorer", "Campaign Explorer", _context.Workspace, canClose: false);
         var generatorTool = new ToolViewModelWrapper("Generator", "AI Generator", _context.Generation);
         var syncTool = new ToolViewModelWrapper("Sync", "Sync Diffs", _context.Sync);
         var settingsTool = new ToolViewModelWrapper("Settings", "Settings", _context.Settings);
-        
-        var editorDocument = new DocumentViewModelWrapper("Editor", "Workspace Editor", _context);
+        var editorDocument = new DocumentViewModelWrapper("Editor", "Workspace Editor", _context, canClose: false);
 
         var documentDock = new DocumentDock
         {
             Id = "DocumentsPane",
-            Title = "DocumentsPane",
+            Title = "Documents",
             Proportion = double.NaN,
+            IsCollapsable = false,
+            CanCloseLastDockable = false,
             ActiveDockable = editorDocument,
             VisibleDockables = CreateList<IDockable>(editorDocument)
         };
@@ -62,8 +69,10 @@ public class AuthoringDockFactory : Factory
         var leftDock = new ToolDock
         {
             Id = "LeftPane",
-            Title = "LeftPane",
-            Proportion = 0.25,
+            Title = "Explorer",
+            Proportion = 0.22,
+            Alignment = Alignment.Left,
+            GripMode = GripMode.Visible,
             ActiveDockable = explorerTool,
             VisibleDockables = CreateList<IDockable>(explorerTool)
         };
@@ -71,8 +80,10 @@ public class AuthoringDockFactory : Factory
         var rightDock = new ToolDock
         {
             Id = "RightPane",
-            Title = "RightPane",
-            Proportion = 0.25,
+            Title = "Tools",
+            Proportion = 0.22,
+            Alignment = Alignment.Right,
+            GripMode = GripMode.Visible,
             ActiveDockable = generatorTool,
             VisibleDockables = CreateList<IDockable>(generatorTool, settingsTool)
         };
@@ -80,42 +91,53 @@ public class AuthoringDockFactory : Factory
         var bottomDock = new ToolDock
         {
             Id = "BottomPane",
-            Title = "BottomPane",
+            Title = "Sync",
             Proportion = 0.25,
+            Alignment = Alignment.Bottom,
+            GripMode = GripMode.Visible,
             ActiveDockable = syncTool,
             VisibleDockables = CreateList<IDockable>(syncTool)
         };
 
-        var layout = new RootDock
+        var centerDock = new ProportionalDock
         {
-            Id = "Root",
-            Title = "Root",
-            ActiveDockable = documentDock,
-            DefaultDockable = documentDock,
+            Id = "CenterPane",
+            Orientation = Orientation.Vertical,
+            IsCollapsable = false,
             VisibleDockables = CreateList<IDockable>(
-                new ProportionalDock
-                {
-                    Orientation = Orientation.Horizontal,
-                    VisibleDockables = CreateList<IDockable>(
-                        leftDock,
-                        new ProportionalDockSplitter(),
-                        new ProportionalDock
-                        {
-                            Orientation = Orientation.Vertical,
-                            VisibleDockables = CreateList<IDockable>(
-                                documentDock,
-                                new ProportionalDockSplitter(),
-                                bottomDock
-                            )
-                        },
-                        new ProportionalDockSplitter(),
-                        rightDock
-                    )
-                }
+                documentDock,
+                new ProportionalDockSplitter(),
+                bottomDock
             )
         };
 
-        return layout;
+        var mainLayout = new ProportionalDock
+        {
+            Id = "MainLayout",
+            Orientation = Orientation.Horizontal,
+            IsCollapsable = false,
+            VisibleDockables = CreateList<IDockable>(
+                leftDock,
+                new ProportionalDockSplitter(),
+                centerDock,
+                new ProportionalDockSplitter(),
+                rightDock
+            )
+        };
+
+        var rootDock = CreateRootDock();
+        rootDock.Id = "Root";
+        rootDock.Title = "Root";
+        rootDock.IsCollapsable = false;
+        rootDock.ActiveDockable = mainLayout;
+        rootDock.DefaultDockable = mainLayout;
+        rootDock.VisibleDockables = CreateList<IDockable>(mainLayout);
+
+        _rootDock = rootDock;
+        _documentDock = documentDock;
+        _explorerTool = explorerTool;
+
+        return rootDock;
     }
 
     public override void InitLayout(IDockable layout)
@@ -129,11 +151,26 @@ public class AuthoringDockFactory : Factory
             ["Editor"] = () => _context
         };
 
+        DockableLocator = new Dictionary<string, Func<IDockable?>>
+        {
+            ["Root"] = () => _rootDock,
+            ["DocumentsPane"] = () => _documentDock,
+            ["Explorer"] = () => _explorerTool
+        };
+
         HostWindowLocator = new Dictionary<string, Func<IHostWindow?>>
         {
             [nameof(IDockWindow)] = () => new HostWindow()
         };
 
         base.InitLayout(layout);
+    }
+
+    public override void CloseDockable(IDockable dockable)
+    {
+        if (dockable is ToolViewModelWrapper { CanClose: false } or DocumentViewModelWrapper { CanClose: false })
+            return;
+
+        base.CloseDockable(dockable);
     }
 }
