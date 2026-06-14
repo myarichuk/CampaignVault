@@ -66,17 +66,27 @@ public partial class HubViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void OpenCampaign(string path)
+    private async Task OpenCampaign(string path)
     {
         if (Directory.Exists(path))
         {
             _historyService.Add(path);
-            _mainViewModel.LoadCampaign(path);
+            await _mainViewModel.LoadCampaignAsync(path);
         }
         else
         {
             StatusMessage = $"Directory not found: {path}";
+            _historyService.Remove(path);
+            LoadRecentCampaigns();
         }
+    }
+
+    [RelayCommand]
+    private void RemoveFromRecent(string path)
+    {
+        _historyService.Remove(path);
+        LoadRecentCampaigns();
+        StatusMessage = "Removed from recent campaigns.";
     }
 
     [RelayCommand]
@@ -99,7 +109,7 @@ public partial class HubViewModel : ViewModelBase
                 CampaignName = campaignName 
             });
 
-            _mainViewModel.LoadCampaign(path);
+            await _mainViewModel.LoadCampaignAsync(path);
             StatusMessage = $"Created new campaign '{campaignName}' locally.";
         }
         catch (Exception ex)
@@ -132,7 +142,7 @@ public partial class HubViewModel : ViewModelBase
 
             // 3. Load the campaign into workspace
             _mainViewModel.Sync.SelectedCampaign = campaignName;
-            _mainViewModel.LoadCampaign(path);
+            await _mainViewModel.LoadCampaignAsync(path);
 
             // 4. Trigger the initial sync (Pull everything)
             StatusMessage = $"Streaming '{campaignName}' contents...";

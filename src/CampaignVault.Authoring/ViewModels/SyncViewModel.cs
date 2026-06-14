@@ -383,7 +383,7 @@ public partial class SyncViewModel : ObservableObject
             schemaData
         );
 
-        _workspace.RefreshFilesList();
+        await _workspace.RefreshLocalStateAsync();
     }
 
     private (string? json, string entityType) SerializeEntity(SyncDiffItem diff)

@@ -27,37 +27,42 @@
                        TextWrapping="Wrap" />
         </StackPanel>
         <TreeView Grid.Row="2" ItemsSource="{Binding Categories}"
-                  SelectedItem="{Binding SelectedNode}"
+                  SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                   Background="Transparent" BorderThickness="0">
             <TreeView.DataTemplates>
                 <TreeDataTemplate DataType="vm:CategoryNodeViewModel" ItemsSource="{Binding Children}">
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <!-- Folder Icon -->
-                        <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" 
+                        <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
                                   Width="14" Height="14" Foreground="#71717A" />
                         <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#A0A0AB" FontSize="12" />
                     </StackPanel>
                 </TreeDataTemplate>
-                <TreeDataTemplate DataType="vm:EntityNodeViewModel">
+                <TreeDataTemplate DataType="vm:FolderNodeViewModel" ItemsSource="{Binding Children}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+                                  Width="14" Height="14" Foreground="#52525B" />
+                        <TextBlock Text="{Binding Title}" Foreground="#A0A0AB" FontSize="11" />
+                    </StackPanel>
+                </TreeDataTemplate>
+                <DataTemplate DataType="vm:EntityNodeViewModel">
                     <Grid ColumnDefinitions="*, Auto" Height="24">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                            <!-- File Icon / Cloud Icon -->
                             <Panel Width="12" Height="12">
-                                <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" 
-                                          Width="12" Height="12" Foreground="#71717A" 
+                                <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z"
+                                          Width="12" Height="12" Foreground="#71717A"
                                           IsVisible="{Binding Entity.LocalHash, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                <PathIcon Data="M17.5,15C19.38,15 21,13.38 21,11.5C21,9.62 19.38,8 17.5,8C17.15,8 16.81,8.05 16.5,8.14C15.86,5.77 13.68,4 11,4C8.24,4 6,6.24 6,9C6,9.15 6.02,9.3 6.05,9.44C4.26,9.88 3,11.54 3,13.5C3,15.93 4.97,17.9 7.4,18H17.5V15Z" 
-                                          Width="12" Height="12" Foreground="#38BDF8" 
+                                <PathIcon Data="M17.5,15C19.38,15 21,13.38 21,11.5C21,9.62 19.38,8 17.5,8C17.15,8 16.81,8.05 16.5,8.14C15.86,5.77 13.68,4 11,4C8.24,4 6,6.24 6,9C6,9.15 6.02,9.3 6.05,9.44C4.26,9.88 3,11.54 3,13.5C3,15.93 4.97,17.9 7.4,18H17.5V15Z"
+                                          Width="12" Height="12" Foreground="#38BDF8"
                                           IsVisible="{Binding Entity.LocalHash, Converter={x:Static ObjectConverters.IsNull}}"/>
                             </Panel>
-                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="11" 
+                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="11"
                                        Opacity="{Binding Entity.LocalHash, Converter={x:Static vm:WorkspaceViewModel.NullToOpacityConverter}}"/>
                         </StackPanel>
                         <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="3" Padding="4,1" Background="#2A2A35" Margin="4,0,0,0">
-                            <TextBlock Text="{Binding Entity.CalculatedState}" FontSize="8" Foreground="#A0A0B0" />
+                            <TextBlock Text="{Binding Entity.CalculatedState, Converter={x:Static vm:SyncStateDisplayConverter.Instance}}" FontSize="8" Foreground="#A0A0B0" />
                         </Border>
                     </Grid>
-                </TreeDataTemplate>
+                </DataTemplate>
             </TreeView.DataTemplates>
         </TreeView>
     </Grid>

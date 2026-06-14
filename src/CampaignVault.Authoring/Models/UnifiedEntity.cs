@@ -1,4 +1,6 @@
 // src/CampaignVault.Authoring/Models/UnifiedEntity.cs
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace CampaignVault.Authoring.Models;
 
 public enum SyncState
@@ -11,16 +13,34 @@ public enum SyncState
     Conflict
 }
 
-public class UnifiedEntity
+public partial class UnifiedEntity : ObservableObject
 {
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string EntityType { get; set; } = string.Empty;
-    public string? LocalHash { get; set; }
-    public string? RemoteHash { get; set; }
-    public string? LastSyncedHash { get; set; }
-    public string? RelativePath { get; set; }
-    public string? RemoteMarkdown { get; set; }
+    [ObservableProperty]
+    private string _id = string.Empty;
+
+    [ObservableProperty]
+    private string _name = string.Empty;
+
+    [ObservableProperty]
+    private string _entityType = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalculatedState))]
+    private string? _localHash;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalculatedState))]
+    private string? _remoteHash;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalculatedState))]
+    private string? _lastSyncedHash;
+
+    [ObservableProperty]
+    private string? _relativePath;
+
+    [ObservableProperty]
+    private string? _remoteMarkdown;
 
     public SyncState CalculatedState
     {

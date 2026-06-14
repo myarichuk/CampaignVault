@@ -2,8 +2,56 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using CampaignVault.Authoring.Models;
 
 namespace CampaignVault.Authoring.ViewModels;
+
+public class PathDisplayConverter : IValueConverter
+{
+    public static readonly PathDisplayConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string path && !string.IsNullOrWhiteSpace(path))
+            return System.IO.Path.GetFileName(path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+
+        return value?.ToString() ?? string.Empty;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class SyncStateDisplayConverter : IValueConverter
+{
+    public static readonly SyncStateDisplayConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is SyncState state)
+        {
+            return state switch
+            {
+                SyncState.Synced => "Synced",
+                SyncState.LocalOnly => "Local",
+                SyncState.RemoteOnly => "Remote",
+                SyncState.ModifiedLocally => "Modified",
+                SyncState.ModifiedRemotely => "Remote Δ",
+                SyncState.Conflict => "Conflict",
+                _ => state.ToString()
+            };
+        }
+
+        return value?.ToString() ?? string.Empty;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
 
 public class StatusColorConverter : IValueConverter
 {

@@ -158,21 +158,31 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var path = await PickFolderAsync();
         if (path != null)
-        {
-            LoadCampaign(path);
-        }
+            await LoadCampaignAsync(path);
     }
 
-    // Command to open a campaign and switch state
     [RelayCommand]
-    public void LoadCampaign(string path)
+    private void BackToHub()
+    {
+        ApplicationState.CurrentState = AppState.Idle;
+        WorkspaceStatusMessage = "Returned to Campaign Hub.";
+    }
+
+    [RelayCommand]
+    public async Task LoadCampaignAsync(string path)
     {
         _historyService.Add(path);
         Hub.LoadRecentCampaigns();
-        Workspace.LoadDirectory(path);
+        WorkspaceStatusMessage = $"Loading workspace: {path}";
+        ApplicationState.CurrentState = AppState.Editor;
+        await Workspace.LoadDirectoryAsync(path);
         WorkspaceStatusMessage = $"Workspace: {path}";
         Sync.StatusMessage = "Workspace loaded. Connect gRPC sync to compare with CampaignVault.";
-        ApplicationState.CurrentState = CampaignVault.Authoring.Services.AppState.Editor;
+    }
+
+    public void LoadCampaign(string path)
+    {
+        _ = LoadCampaignAsync(path);
     }
 
     public void ReloadActiveFileContent()

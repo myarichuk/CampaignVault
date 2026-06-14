@@ -89,12 +89,7 @@ public class CampaignStateService
                 catch { /* Ignore network errors for now */ }
             }
 
-            // Sync local collection with idMap (avoiding full Clear if possible, but for simplicity now...)
-            Entities.Clear();
-            foreach (var entity in idMap.Values.OrderBy(e => e.EntityType).ThenBy(e => e.Name))
-            {
-                Entities.Add(entity);
-            }
+            SyncEntitiesCollection(idMap.Values);
 
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -109,22 +104,51 @@ public class CampaignStateService
         await _refreshLock.WaitAsync();
         try
         {
-            Entities.Clear();
-
             // 1. Get local entities
             var localEntities = _dbService.GetAllEntities();
 
+            // Create a set of local IDs
+            var localIdSet = new HashSet<string>();
+
             foreach (var local in localEntities)
             {
-                Entities.Add(new UnifiedEntity
+                localIdSet.Add(local.Id);
+                var existing = Entities.FirstOrDefault(e => e.Id == local.Id);
+                if (existing != null)
                 {
-                    Id = local.Id,
-                    Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath),
-                    EntityType = local.EntityType,
-                    LocalHash = local.FileHash,
-                    LastSyncedHash = local.LastSyncedHash,
-                    RelativePath = local.RelativePath
-                });
+                    existing.LocalHash = local.FileHash;
+                    existing.LastSyncedHash = local.LastSyncedHash;
+                    existing.RelativePath = local.RelativePath;
+                    // Update name in case it changed locally
+                    existing.Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath);
+                }
+                else
+                {
+                    Entities.Add(new UnifiedEntity
+                    {
+                        Id = local.Id,
+                        Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath),
+                        EntityType = local.EntityType,
+                        LocalHash = local.FileHash,
+                        LastSyncedHash = local.LastSyncedHash,
+                        RelativePath = local.RelativePath
+                    });
+                }
+            }
+
+            // Remove entities that are no longer local AND have no remote data
+            var toRemove = Entities.Where(e => !localIdSet.Contains(e.Id) && e.RemoteHash == null).ToList();
+            foreach (var r in toRemove)
+            {
+                Entities.Remove(r);
+            }
+
+            // For entities that exist remotely but were deleted locally, clear local fields
+            var deletedLocally = Entities.Where(e => !localIdSet.Contains(e.Id) && e.RemoteHash != null).ToList();
+            foreach (var d in deletedLocally)
+            {
+                d.LocalHash = null;
+                d.LastSyncedHash = null;
             }
 
             StateChanged?.Invoke(this, EventArgs.Empty);
@@ -132,6 +156,35 @@ public class CampaignStateService
         finally
         {
             _refreshLock.Release();
+        }
+    }
+
+    private void SyncEntitiesCollection(IEnumerable<UnifiedEntity> updatedEntities)
+    {
+        var updatedById = updatedEntities.ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var existing in Entities.ToList())
+        {
+            if (!updatedById.ContainsKey(existing.Id))
+                Entities.Remove(existing);
+        }
+
+        foreach (var updated in updatedById.Values.OrderBy(e => e.EntityType).ThenBy(e => e.Name))
+        {
+            var existing = Entities.FirstOrDefault(e => string.Equals(e.Id, updated.Id, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                Entities.Add(updated);
+                continue;
+            }
+
+            existing.Name = updated.Name;
+            existing.EntityType = updated.EntityType;
+            existing.LocalHash = updated.LocalHash;
+            existing.RemoteHash = updated.RemoteHash;
+            existing.LastSyncedHash = updated.LastSyncedHash;
+            existing.RelativePath = updated.RelativePath;
+            existing.RemoteMarkdown = updated.RemoteMarkdown;
         }
     }
 
