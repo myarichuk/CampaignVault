@@ -1467,6 +1467,91 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Contains("addPointOfInterest", vacuumPressure);
         Assert.Contains("ambientCrowd", vacuumPressure);
     }
+
+    [Fact]
+    public async Task CampaignScoped_Reads_DoNot_Load_Documents_From_Other_Campaigns()
+    {
+        var repo = new CampaignRepository(_store);
+        var locationId = "locations/cross-campaign-" + Guid.NewGuid();
+        var itemId = "items/cross-campaign-" + Guid.NewGuid();
+        var factionId = "factions/cross-campaign-" + Guid.NewGuid();
+        var questId = "quests/cross-campaign-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locationId, Name = "Beta Room", Type = LocationType.Room }, "beta");
+            await repo.UpsertItemAsync(session, new Item { Id = itemId, Name = "Beta Relic", HolderId = locationId }, "beta");
+            await repo.UpsertFactionAsync(session, new Faction { Id = factionId, Name = "Beta Circle" }, "beta");
+            await repo.UpsertQuestAsync(session, new Quest
+            {
+                Id = questId,
+                Title = "Beta Errand",
+                OverallState = QuestState.Open,
+                Objectives = []
+            }, "beta");
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            Assert.Null(await repo.GetLocationAsync(session, locationId, "alpha"));
+            Assert.Null(await repo.GetItemAsync(session, itemId, "alpha"));
+            Assert.Null(await repo.GetFactionAsync(session, factionId, "alpha"));
+            Assert.Null(await repo.GetQuestAsync(session, questId, "alpha"));
+
+            Assert.NotNull(await repo.GetLocationAsync(session, locationId, "beta"));
+            Assert.NotNull(await repo.GetItemAsync(session, itemId, "beta"));
+            Assert.NotNull(await repo.GetFactionAsync(session, factionId, "beta"));
+            Assert.NotNull(await repo.GetQuestAsync(session, questId, "beta"));
+        }
+    }
+
+    [Fact]
+    public async Task Suggesters_Use_Current_Campaign_And_Normalize_Alias_Prefixes()
+    {
+        var currentCampaign = new CurrentCampaignContext();
+        currentCampaign.SetCurrent("alpha");
+        var repo = new CampaignRepository(
+            _store,
+            new DefaultSimulationEngine([]),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
+            new DefaultBehaviorSynthesizer(),
+            new CampaignDocumentKeys(),
+            currentCampaign);
+
+        var locationSlug = "sunken-harbor-" + Guid.NewGuid();
+        var characterSlug = "mira-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location
+            {
+                Id = "locations/" + locationSlug,
+                Name = "Sunken Harbor",
+                Type = LocationType.Region
+            }, "alpha");
+
+            await repo.UpsertCharacterAsync(session, new Character
+            {
+                Id = "chars/" + characterSlug,
+                Name = "Mira Harborhand"
+            }, "alpha");
+
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var repoLocationSuggestions = await repo.SuggestLocationsAsync(session, "locs/" + locationSlug, null);
+            var pressureLocationSuggestions = await CampaignVault.Data.Pressure.PressureHelpers.SuggestLocationsAsync(session, "locs/" + locationSlug, "alpha");
+            var characterSuggestions = await repo.SuggestCharactersAsync(session, "characters/" + characterSlug, null);
+
+            Assert.Contains(repoLocationSuggestions, s => s.Id == "locations/" + locationSlug);
+            Assert.Contains(pressureLocationSuggestions, s => s.Id == "locations/" + locationSlug);
+            Assert.Contains(characterSuggestions, s => s.Id == "chars/" + characterSlug);
+        }
+    }
+
     [Fact]
     public async Task UpsertCharacter_Preserves_KeepAlive()
     {

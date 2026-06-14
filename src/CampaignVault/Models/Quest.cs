@@ -41,7 +41,7 @@ public record QuestObjective(
     int? DeadlineDay = null
 )
 {
-    public QuestObjective() : this(default!) { }
+    public QuestObjective() : this(Description: string.Empty) { }
 }
 
 public enum QuestState 

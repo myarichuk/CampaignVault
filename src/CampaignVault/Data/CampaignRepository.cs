@@ -37,6 +37,13 @@ public class CampaignRepository
         return "default";
     }
 
+    private static bool IsVisibleInCampaign(string? entityCampaignName, string effectiveCampaign) =>
+        string.IsNullOrEmpty(entityCampaignName)
+        || string.Equals(entityCampaignName, effectiveCampaign, StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildCanonicalIdPrefix(string cleanQuery, string prefix) =>
+        cleanQuery.Contains('/', StringComparison.Ordinal) ? cleanQuery : prefix + cleanQuery;
+
     public CampaignRepository(
         IDocumentStore store, 
         IWorldSimulationEngine simulationEngine,
@@ -1269,7 +1276,13 @@ public class CampaignRepository
     /// </summary>
     public async Task<Location?> GetLocationAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
     {
+        var effective = ResolveCampaign(campaignName);
         var loc = await session.LoadAsync<Location>(id);
+        if (loc != null && !IsVisibleInCampaign(loc.CampaignName, effective))
+        {
+            return null;
+        }
+
         SanitizeLocation(loc);
         return loc;
     }
@@ -1279,9 +1292,9 @@ public class CampaignRepository
     /// </summary>
     public async Task<Item?> GetItemAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
     {
-        // campaignName accepted for API consistency / future entity namespacing.
-        _ = ResolveCampaign(campaignName);
-        return await session.LoadAsync<Item>(id);
+        var effective = ResolveCampaign(campaignName);
+        var item = await session.LoadAsync<Item>(id);
+        return item != null && !IsVisibleInCampaign(item.CampaignName, effective) ? null : item;
     }
 
     /// <summary>
@@ -1323,7 +1336,9 @@ public class CampaignRepository
 
     public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
     {
-        var cleanQuery = nameQuery;
+        var effective = ResolveCampaign(campaignName);
+        var rawQuery = nameQuery.Trim();
+        var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
         {
             cleanQuery = cleanQuery.Substring("locations/".Length);
@@ -1338,17 +1353,19 @@ public class CampaignRepository
             return [];
         }
 
+        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "locations/");
+
         var suggestions = await session.Query<Location, Location_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(nameQuery))
+            .Where(x => x.CampaignName == effective || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
             .Take(3).ToListAsync();
 
         if (suggestions.Count < 3)
         {
             var byName = await session.Query<Location, Location_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Where(x => x.CampaignName == effective || x.CampaignName == null)
                 .Search(x => x.Name, cleanQuery + "*")
                 .Take(3).ToListAsync();
 
@@ -1365,7 +1382,9 @@ public class CampaignRepository
 
     public async Task<List<Character>> SuggestCharactersAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
     {
-        var cleanQuery = nameQuery;
+        var effective = ResolveCampaign(campaignName);
+        var rawQuery = nameQuery.Trim();
+        var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
         {
             cleanQuery = cleanQuery.Substring("chars/".Length);
@@ -1380,17 +1399,19 @@ public class CampaignRepository
             return [];
         }
 
+        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "chars/");
+
         var suggestions = await session.Query<Character, Character_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(nameQuery))
+            .Where(x => x.CampaignName == effective || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
             .Take(3).ToListAsync();
 
         if (suggestions.Count < 3)
         {
             var byName = await session.Query<Character, Character_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Where(x => x.CampaignName == effective || x.CampaignName == null)
                 .Search(x => x.Name, cleanQuery + "*")
                 .Take(3).ToListAsync();
 
@@ -1407,7 +1428,9 @@ public class CampaignRepository
 
     public async Task<List<Item>> SuggestItemsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
     {
-        var cleanQuery = nameQuery;
+        var effective = ResolveCampaign(campaignName);
+        var rawQuery = nameQuery.Trim();
+        var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
         {
             cleanQuery = cleanQuery.Substring("items/".Length);
@@ -1422,17 +1445,19 @@ public class CampaignRepository
             return [];
         }
 
+        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "items/");
+
         var suggestions = await session.Query<Item, Item_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(nameQuery))
+            .Where(x => x.CampaignName == effective || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
             .Take(3).ToListAsync();
 
         if (suggestions.Count < 3)
         {
             var byName = await session.Query<Item, Item_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Where(x => x.CampaignName == effective || x.CampaignName == null)
                 .Search(x => x.Name, cleanQuery + "*")
                 .Take(3).ToListAsync();
 
@@ -1452,7 +1477,9 @@ public class CampaignRepository
     /// </summary>
     public async Task<List<Faction>> SuggestFactionsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
     {
-        var cleanQuery = nameQuery;
+        var effective = ResolveCampaign(campaignName);
+        var rawQuery = nameQuery.Trim();
+        var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
         {
             cleanQuery = cleanQuery.Substring("factions/".Length);
@@ -1463,17 +1490,19 @@ public class CampaignRepository
             return [];
         }
 
+        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "factions/");
+
         var suggestions = await session.Query<Faction, Faction_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(nameQuery))
+            .Where(x => x.CampaignName == effective || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
             .Take(3).ToListAsync();
 
         if (suggestions.Count < 3)
         {
             var byName = await session.Query<Faction, Faction_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Where(x => x.CampaignName == effective || x.CampaignName == null)
                 .Search(x => x.Name, cleanQuery + "*")
                 .Take(3).ToListAsync();
 
@@ -1493,7 +1522,9 @@ public class CampaignRepository
     /// </summary>
     public async Task<List<Quest>> SuggestQuestsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
     {
-        var cleanQuery = nameQuery;
+        var effective = ResolveCampaign(campaignName);
+        var rawQuery = nameQuery.Trim();
+        var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
         {
             cleanQuery = cleanQuery.Substring("quests/".Length);
@@ -1504,17 +1535,19 @@ public class CampaignRepository
             return [];
         }
 
+        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "quests/");
+
         var suggestions = await session.Query<Quest, Quest_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(nameQuery))
+            .Where(x => x.CampaignName == effective || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
             .Take(3).ToListAsync();
 
         if (suggestions.Count < 3)
         {
             var byName = await session.Query<Quest, Quest_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Where(x => x.CampaignName == effective || x.CampaignName == null)
                 .Search(x => x.Title, cleanQuery + "*")
                 .Take(3).ToListAsync();
 
@@ -1550,8 +1583,9 @@ public class CampaignRepository
     /// </summary>
     public async Task<Faction?> GetFactionAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
     {
-        _ = ResolveCampaign(campaignName);
-        return await session.LoadAsync<Faction>(id);
+        var effective = ResolveCampaign(campaignName);
+        var faction = await session.LoadAsync<Faction>(id);
+        return faction != null && !IsVisibleInCampaign(faction.CampaignName, effective) ? null : faction;
     }
 
     /// <summary>
@@ -1598,8 +1632,9 @@ public class CampaignRepository
     /// </summary>
     public async Task<Quest?> GetQuestAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
     {
-        _ = ResolveCampaign(campaignName);
-        return await session.LoadAsync<Quest>(id);
+        var effective = ResolveCampaign(campaignName);
+        var quest = await session.LoadAsync<Quest>(id);
+        return quest != null && !IsVisibleInCampaign(quest.CampaignName, effective) ? null : quest;
     }
 
     /// <summary>

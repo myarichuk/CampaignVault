@@ -29,10 +29,11 @@ internal static class ToolCallExamples
 
         if (example.LegacyWrapperKey is { } legacyKey &&
             example.WrapperKey is { } wrapperKey &&
-            arguments.ContainsKey(legacyKey) &&
+            arguments.TryGetPropertyValue(legacyKey, out var legacyNode) &&
+            legacyNode is not null &&
             !arguments.ContainsKey(wrapperKey))
         {
-            arguments[wrapperKey] = JsonNode.Parse(arguments[legacyKey]!.ToJsonString());
+            arguments[wrapperKey] = legacyNode.DeepClone();
             arguments.Remove(legacyKey);
             applied.Add($"{legacyKey}→{wrapperKey}");
             modified = true;
@@ -294,6 +295,16 @@ internal static class ToolCallExamples
                     {
                       "locationId": "locations/tavern",
                       "partyPresent": true
+                    }
+                    """)!.AsObject(),
+            },
+            ["select_campaign"] = new ToolCallExample
+            {
+                ToolName = "select_campaign",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "campaignName": "storm-coast"
                     }
                     """)!.AsObject(),
             },

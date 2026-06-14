@@ -7,6 +7,9 @@ namespace CampaignVault.Data.Pressure;
 
 internal static class PressureHelpers
 {
+    private static string BuildCanonicalIdPrefix(string cleanQuery, string prefix) =>
+        cleanQuery.Contains('/', StringComparison.Ordinal) ? cleanQuery : prefix + cleanQuery;
+
     public static bool ItemMatchesEconomicDemand(Item item, string demand) =>
         item.CoreCategory.ToString().Equals(demand, StringComparison.OrdinalIgnoreCase)
         || item.Tags.Any(t => t.Equals(demand, StringComparison.OrdinalIgnoreCase));
@@ -42,7 +45,9 @@ internal static class PressureHelpers
 
     public static async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
     {
-        var cleanQuery = nameQuery;
+        var effective = string.IsNullOrWhiteSpace(campaignName) ? "default" : campaignName;
+        var rawQuery = nameQuery.Trim();
+        var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
         {
             cleanQuery = cleanQuery.Substring("locations/".Length);
@@ -57,17 +62,19 @@ internal static class PressureHelpers
             return [];
         }
 
+        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "locations/");
+
         var suggestions = await session.Query<Location, Location_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(nameQuery))
+            .Where(x => x.CampaignName == effective || x.CampaignName == null)
+            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
             .Take(3).ToListAsync();
 
         if (suggestions.Count < 3)
         {
             var byName = await session.Query<Location, Location_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == campaignName || x.CampaignName == null)
+                .Where(x => x.CampaignName == effective || x.CampaignName == null)
                 .Search(x => x.Name, cleanQuery + "*")
                 .Take(3).ToListAsync();
 
