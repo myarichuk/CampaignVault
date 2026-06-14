@@ -12,6 +12,7 @@ internal static class CommitEnumCheatSheet
   - Common mistakes: City/Town → **Settlement**; Tavern/Inn/Shop → **Building**
 - `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test
   - Common mistake: Narrative/Roleplay → **Conversation**
+  - **Conversation events MUST include `involved`: [`chars/pc`, `chars/npc`]** (every speaker). NOT `participants`.
 - `rumor.newState` → Nascent, Spreading, Peak, Fading, Resolved, Forgotten
 - `quest_progress.newState` / quest overall → Open, InProgress, Complete, Failed, Skipped
 - `quest_create.urgency` → Low, Normal, Urgent, Critical
@@ -41,6 +42,10 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 | Field | Valid values | LLM alias hints |
 |-------|----------------|-----------------|
 | `category` | Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test | Narrative, Roleplay → **Conversation**; Scene → **Interaction** |
+| `involved` | **Required** when `category` is `Conversation` | Array of character IDs for every participant. Field name is `involved` (NOT `participants`). Auto-inferred from `engagement_relation`/`activity` in the same batch if omitted. |
+
+**Conversation commit template (copy-paste):**
+{ "$type": "event", "category": "Conversation", "summary": "Valen asked Lirael about the missing caravans.", "involved": ["chars/valen", "chars/lirael-goldvein"] }
 
 ### rumor (`$type: rumor`)
 | Field | Valid values |

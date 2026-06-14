@@ -12,6 +12,8 @@ public class CommitEnumCheatSheetTests
         Assert.Contains("Conversation", CommitEnumCheatSheet.Compact);
         Assert.Contains("City/Town", CommitEnumCheatSheet.Compact);
         Assert.Contains("Narrative", CommitEnumCheatSheet.Compact);
+        Assert.Contains("involved", CommitEnumCheatSheet.Compact);
+        Assert.Contains("participants", CommitEnumCheatSheet.Compact);
     }
 
     [Fact]

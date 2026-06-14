@@ -300,6 +300,13 @@ public class CampaignRepository
                         case SystemStatsChange ssc:
                             involvedEntities.Add(ssc.CharacterId);
                             break;
+                        case EngagementRelationChange erc:
+                            involvedEntities.Add(erc.ActorId);
+                            involvedEntities.Add(erc.TargetId);
+                            break;
+                        case KnowledgeUpdate kuc:
+                            involvedEntities.Add(kuc.CharacterId);
+                            break;
                     }
                 }
 

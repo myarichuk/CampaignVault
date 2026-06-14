@@ -153,7 +153,7 @@ public class EventOccurred : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EventCategory Category { get; set; } = EventCategory.Unresolved;
 
-    [Description("List of entity IDs involved (characters, locations, items, etc.). REQUIRED for 'Conversation' category events so participating NPCs can recall them. Helps later queries and NPC context.")]
+    [Description("Character IDs of everyone who participated. REQUIRED when category is 'Conversation' — without this, get_npc_context cannot recall the exchange. Use exact IDs (e.g. ['chars/valen', 'chars/lirael-goldvein']). Field name is 'involved' (NOT 'participants'). If omitted but engagement_relation/activity for the same speakers are in the same commit batch, the engine auto-infers.")]
     [JsonPropertyName("involved")]
     public List<string>? Involved { get; set; }
 

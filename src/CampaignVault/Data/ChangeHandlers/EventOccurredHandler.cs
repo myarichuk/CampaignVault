@@ -18,7 +18,11 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
 
         if (ev.Category == EventCategory.Conversation && (ev.Involved == null || ev.Involved.Count == 0))
         {
-            return ChangeHandlerResult.Failure("Events of category 'Conversation' MUST specify the 'involved' property containing the character IDs of the participants so they can recall it.");
+            return ChangeHandlerResult.Failure(
+                "Events of category 'Conversation' MUST include 'involved': an array of character IDs for everyone who participated (e.g. [\"chars/valen\", \"chars/lirael-goldvein\"]). " +
+                "Without this, get_npc_context cannot recall the conversation. " +
+                "Add 'involved' explicitly, or include engagement_relation + activity for the same characters in the same commit batch so the engine can auto-infer. " +
+                "Do NOT use 'participants' — the field name is 'involved'.");
         }
 
         var currentTime = await context.GetCurrentTimeAsync();

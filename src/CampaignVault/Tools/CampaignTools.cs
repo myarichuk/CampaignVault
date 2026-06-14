@@ -337,6 +337,15 @@ Supported types for $type: hp, item, item_update, status, statusremove, event, r
 
 === RECOMMENDED PATTERNS (copy-paste friendly) ===
 
+**Conversation (REQUIRED: `involved` with every speaker — NOT `participants`):**
+[
+  { ""$type"": ""event"", ""category"": ""Conversation"", ""summary"": ""Valen asked Lirael about missing caravans on the Gold Road."", ""involved"": [""chars/valen"", ""chars/lirael-goldvein""] },
+  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/valen"", ""targetId"": ""chars/lirael-goldvein"", ""category"": ""Social"", ""verb"": ""discussing the disappearances with"", ""bidirectional"": true },
+  { ""$type"": ""activity"", ""characterId"": ""chars/valen"", ""newActivity"": ""Listening intently at the bar"" },
+  { ""$type"": ""activity"", ""characterId"": ""chars/lirael-goldvein"", ""newActivity"": ""Sharing guarded information over the bar"" },
+  { ""$type"": ""knowledge_update"", ""characterId"": ""chars/valen"", ""topic"": ""Caravan Disappearances on the Gold Road"", ""details"": ""Three caravans vanished without trace near Whispering Pass."", ""source"": ""Heard"", ""valence"": ""Negative"", ""urgency"": ""High"", ""importance"": ""Important"" }
+]
+
 (See get_help for the full expanded list including the tavern creation + promotion flow, one-way link fixes, ambient/PoI flavor without bloat, etc.)
 
 Basic + creating on the fly examples are also shown in the tool description and get_help.")]
@@ -1299,9 +1308,20 @@ Supported `$type`s: `hp`, `item`, `item_update`, `status`, `statusremove`, `even
 
 **RECOMMENDED PATTERNS (copy-paste and adapt):**
 
-Basic update + sync:
+**Conversation beats (CRITICAL — every `Conversation` event needs `involved`):**
+When PCs talk with NPCs, always list every speaker in `involved` so `get_npc_context` can recall the exchange later. Field name is `involved` (NOT `participants`). If you forget `involved` but include `engagement_relation` + `activity` for the same characters in the same batch, the engine auto-infers — but explicit `involved` is strongly preferred.
+
 [
-  { ""$type"": ""event"", ""category"": ""Narrative"", ""summary"": ""Party found the hidden stair."" },
+  { ""$type"": ""event"", ""category"": ""Conversation"", ""summary"": ""Valen asked Lirael about missing caravans on the Gold Road."", ""involved"": [""chars/valen"", ""chars/lirael-goldvein""] },
+  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/valen"", ""targetId"": ""chars/lirael-goldvein"", ""category"": ""Social"", ""verb"": ""discussing the disappearances with"", ""bidirectional"": true },
+  { ""$type"": ""activity"", ""characterId"": ""chars/valen"", ""newActivity"": ""Listening intently at the bar"" },
+  { ""$type"": ""activity"", ""characterId"": ""chars/lirael-goldvein"", ""newActivity"": ""Sharing guarded information over the bar"" },
+  { ""$type"": ""knowledge_update"", ""characterId"": ""chars/valen"", ""topic"": ""Caravan Disappearances on the Gold Road"", ""details"": ""Three caravans vanished without trace near Whispering Pass."", ""source"": ""Heard"", ""valence"": ""Negative"", ""urgency"": ""High"", ""importance"": ""Important"" }
+]
+
+Discovery + activity sync:
+[
+  { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party found the hidden stair."", ""involved"": [""chars/pc1"", ""locations/cellar""] },
   { ""$type"": ""activity"", ""characterId"": ""chars/guard1"", ""newLocationId"": ""locations/cellar"", ""newActivity"": ""Searching crates nervously"" }
 ]
 
@@ -1367,7 +1387,7 @@ Later, party talks to the bard or barman engages:
   [
     { ""$type"": ""character_create"", ""characterId"": ""chars/bram-the-barkeep"", ""name"": ""Bram Ironarm"", ""currentLocationId"": ""locations/rusty-nail"", ""currentActivity"": ""Wiping mugs and watching the door"", ""notes"": ""Toothless, one good eye, ex-sailor. Knows harbor gossip."", ""psychology"": { ""wants"": [""quiet night"", ""coin""], ""fears"": [""trouble in his bar""] } },
     { ""$type"": ""character_create"", ""characterId"": ""chars/one-eyed-bard"", ... similar ... },
-    { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party met Bram and the bard at the Rusty Nail."" }
+    { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party met Bram and the bard at the Rusty Nail."", ""involved"": [""chars/pc1"", ""chars/bram-the-barkeep"", ""chars/one-eyed-bard""] }
   ] ""The party enters and interacts with the locals.""
 
 - If later the bard becomes a quest giver recurring: `schedule_change` or add Schedule at birth + `keepAlive`.
@@ -1383,7 +1403,7 @@ When the party resolves a rumor about a rebel smuggler by betraying them to the 
   { ""$type"": ""rumor"", ""subject"": ""smuggling"", ""newText"": ""The smuggler who supplied the rebels was caught and jailed."", ""newState"": ""Resolved"" },
   { ""$type"": ""character_update"", ""characterId"": ""chars/smuggler-npc"", ""keepAlive"": true },
   { ""$type"": ""activity"", ""characterId"": ""chars/smuggler-npc"", ""newLocationId"": ""locations/city-jail"", ""newActivity"": ""Imprisoned behind iron bars"" },
-  { ""$type"": ""event"", ""category"": ""Narrative"", ""summary"": ""Party betrayed the rebel smuggler at the city gate; smuggler is now locked up."" }
+  { ""$type"": ""event"", ""category"": ""Betrayal"", ""summary"": ""Party betrayed the rebel smuggler at the city gate; smuggler is now locked up."", ""involved"": [""chars/pc1"", ""chars/smuggler-npc"", ""factions/city-watch""] }
 ]
 This safely moves the party (with time + fatigue), updates the quest, modifies standing with two factions, resolves the active rumor, moves the smuggler NPC into jail with a new activity, and logs a narrative event in a single atomic database operation.
 
@@ -1428,7 +1448,7 @@ Party reports back. Quest closes, territory adjusts, maybe a new rumor seeds:
   { ""$type"": ""quest_progress"", ""questId"": ""quests/stop-nightshade"", ""objectiveIndex"": 2, ""newState"": ""Complete"", ""narrativeNote"": ""Party reported to the River Merchants Guild. Reward collected."" },
   { ""$type"": ""faction_state"", ""factionId"": ""factions/river-merchants-guild"", ""influenceDelta"": 10, ""narrative"": ""Guild influence rising now the river route is open; trade caravans resuming."" },
   { ""$type"": ""rumor"", ""subject"": ""Ashford River"", ""newText"": ""Merchants are saying the Ashford route is profitable again. Caravans are reforming for the first time in weeks."", ""newState"": ""Active"" },
-  { ""$type"": ""event"", ""category"": ""Narrative"", ""summary"": ""Quest complete. River Merchants Guild paid the reward. Trade caravans reforming on the Ashford."" }
+  { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Quest complete. River Merchants Guild paid the reward. Trade caravans reforming on the Ashford."", ""involved"": [""chars/pc1"", ""factions/river-merchants-guild""] }
 ]
 
 After Beat 4: `get_world_state` will show the quest as resolved, both factions at updated standing, the original rumor as Resolved (no longer nagging), and a new active rumor seeding the next hook. Faction pressure contributors will start surfacing new opportunistic moves from the now-stronger River Merchants Guild if their influence crossed the threshold. The engine does the bookkeeping; you drive the story.

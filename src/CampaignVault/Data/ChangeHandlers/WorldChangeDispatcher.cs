@@ -60,6 +60,11 @@ public sealed class WorldChangeDispatcher
         _logger.LogDebug("Dispatching {ChangeCount} world changes via {HandlerCount} handlers", changes.Length, _handlers.Count);
 
         var summary = new List<string>();
+        foreach (var note in ConversationInvolvedResolver.Apply(changes))
+        {
+            summary.Add(note);
+        }
+
         var overallSuccess = true;
 
         if (changes.Length == 0)
@@ -210,6 +215,13 @@ public sealed class WorldChangeDispatcher
                         locationIds.Add(rc.LocationId);
                     }
 
+                    break;
+                case EngagementRelationChange erc:
+                    characterIds.Add(erc.ActorId);
+                    characterIds.Add(erc.TargetId);
+                    break;
+                case KnowledgeUpdate ku:
+                    characterIds.Add(ku.CharacterId);
                     break;
             }
         }

@@ -206,7 +206,7 @@ public class WorldChangeDispatcherTests
             _ => Task.CompletedTask);
 
         Assert.False(result.Success);
-        Assert.Contains(result.Summary, s => s.Contains("MUST specify the 'involved' property"));
+        Assert.Contains(result.Summary, s => s.Contains("MUST include 'involved'"));
     }
 
     [Fact]
@@ -242,5 +242,53 @@ public class WorldChangeDispatcherTests
         Assert.Single(loggedEvents);
         Assert.Contains("chars/lirael", loggedEvents[0].Involved);
         Assert.Contains("chars/valen", loggedEvents[0].Involved);
+    }
+
+    [Fact]
+    public async Task EventOccurredHandler_ConversationCategory_InfersInvolved_FromEngagementRelationInBatch()
+    {
+        var handler = new EventOccurredHandler();
+        var engagementStub = new TestHandler(
+            "Engagement",
+            c => c is EngagementRelationChange,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(engagementStub, handler);
+        var loggedEvents = new List<Event>();
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Conversation,
+                    Summary = "Valen asked Lirael about the caravans.",
+                    Involved = null
+                },
+                new EngagementRelationChange
+                {
+                    ActorId = "chars/valen",
+                    TargetId = "chars/lirael-goldvein",
+                    Category = EngagementCategory.Social,
+                    Verb = "discussing the disappearances with",
+                    Bidirectional = true
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            e => { loggedEvents.Add(e); return Task.CompletedTask; });
+
+        Assert.True(result.Success);
+        Assert.Single(loggedEvents);
+        Assert.Contains("chars/valen", loggedEvents[0].Involved);
+        Assert.Contains("chars/lirael-goldvein", loggedEvents[0].Involved);
+        Assert.Contains(result.Summary, s => s.Contains("Auto-inferred involved"));
     }
 }

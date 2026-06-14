@@ -26,6 +26,34 @@ public class ToolCallExamplesTests
     }
 
     [Fact]
+    public void TryNormalize_Commit_RewritesEventParticipantsToInvolved()
+    {
+        var args = new JsonObject
+        {
+            ["changes"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["$type"] = "event",
+                    ["category"] = "Conversation",
+                    ["summary"] = "Valen spoke with Lirael.",
+                    ["participants"] = new JsonArray { "chars/valen", "chars/lirael-goldvein" },
+                },
+            },
+            ["narrative"] = "Bar conversation.",
+        };
+
+        var modified = ToolCallExamples.TryNormalize("commit", args, out var rewrites);
+
+        Assert.True(modified);
+        Assert.Contains("event.participants→involved", rewrites);
+        var change = args["changes"]![0]!.AsObject();
+        Assert.True(change.ContainsKey("involved"));
+        Assert.False(change.ContainsKey("participants"));
+        Assert.Equal("chars/valen", change["involved"]![0]!.GetValue<string>());
+    }
+
+    [Fact]
     public void TryNormalize_UpsertLocation_RenamesLegacyLKey()
     {
         var args = new JsonObject

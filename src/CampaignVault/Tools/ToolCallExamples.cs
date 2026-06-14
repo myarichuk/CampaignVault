@@ -82,30 +82,104 @@ internal static class ToolCallExamples
         }
 
         if (string.Equals(toolName, "commit", StringComparison.OrdinalIgnoreCase)
-            && arguments.TryGetPropertyValue("changes", out var changesNode)
-            && changesNode is JsonValue
-            && changesNode.GetValueKind() == JsonValueKind.String
-            && changesNode.GetValue<string>() is { } changesText
-            && changesText.TrimStart().StartsWith('['))
+            && arguments.TryGetPropertyValue("changes", out var changesNode))
         {
-            try
+            if (changesNode is JsonValue
+                && changesNode.GetValueKind() == JsonValueKind.String
+                && changesNode.GetValue<string>() is { } changesText
+                && changesText.TrimStart().StartsWith('['))
             {
-                var parsed = JsonNode.Parse(changesText);
-                if (parsed is JsonArray)
+                try
                 {
-                    arguments["changes"] = parsed;
-                    applied.Add("changes(string)→changes(array)");
-                    modified = true;
+                    var parsed = JsonNode.Parse(changesText);
+                    if (parsed is JsonArray)
+                    {
+                        arguments["changes"] = parsed;
+                        applied.Add("changes(string)→changes(array)");
+                        modified = true;
+                        changesNode = parsed;
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Leave as-is; CommitChangesParser will surface a deserialization error.
                 }
             }
-            catch (JsonException)
+
+            if (changesNode is JsonArray changesArray
+                && NormalizeCommitChangesArray(changesArray, applied))
             {
-                // Leave as-is; CommitChangesParser will surface a deserialization error.
+                modified = true;
             }
         }
 
         rewrites = applied;
         return modified;
+    }
+
+    private static bool NormalizeCommitChangesArray(JsonArray changesArray, List<string> applied)
+    {
+        var modified = false;
+        foreach (var node in changesArray)
+        {
+            if (node is not JsonObject changeObj)
+            {
+                continue;
+            }
+
+            if (!TryGetChangeType(changeObj, out var changeType))
+            {
+                continue;
+            }
+
+            if (!string.Equals(changeType, "event", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!changeObj.ContainsKey("involved"))
+            {
+                foreach (var alias in new[] { "participants", "participantIds", "participant_ids" })
+                {
+                    if (!changeObj.ContainsKey(alias))
+                    {
+                        continue;
+                    }
+
+                    changeObj["involved"] = JsonNode.Parse(changeObj[alias]!.ToJsonString());
+                    changeObj.Remove(alias);
+                    applied.Add($"event.{alias}→involved");
+                    modified = true;
+                    break;
+                }
+            }
+        }
+
+        return modified;
+    }
+
+    private static bool TryGetChangeType(JsonObject changeObj, out string changeType)
+    {
+        changeType = string.Empty;
+        if (changeObj.TryGetPropertyValue("$type", out var typeNode)
+            && typeNode is JsonValue typeValue
+            && typeValue.GetValue<string>() is { } fromDollarType
+            && !string.IsNullOrWhiteSpace(fromDollarType))
+        {
+            changeType = fromDollarType;
+            return true;
+        }
+
+        if (changeObj.TryGetPropertyValue("type", out var legacyTypeNode)
+            && legacyTypeNode is JsonValue legacyValue
+            && legacyValue.GetValue<string>() is { } fromType
+            && !string.IsNullOrWhiteSpace(fromType))
+        {
+            changeType = fromType;
+            return true;
+        }
+
+        return false;
     }
 
     public static (string Summary, JsonElement? RetryExample) BuildMissingParamResponse(
@@ -231,6 +305,8 @@ internal static class ToolCallExamples
                     ["changes"] = ["change", "commits", "worldChanges", "world_changes", "deltas"],
                     ["narrative"] = ["summary", "description", "narration"],
                 },
+                DeserializationHint =
+                    "Conversation events MUST include 'involved' with every participant's character ID (NOT 'participants'). Example: \"involved\": [\"chars/valen\", \"chars/innkeeper\"].",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
@@ -238,12 +314,26 @@ internal static class ToolCallExamples
                         {
                           "$type": "event",
                           "category": "Conversation",
-                          "summary": "Party spoke with the innkeeper at the bar."
+                          "summary": "Valen spoke with the innkeeper at the bar about harbor gossip.",
+                          "involved": ["chars/valen", "chars/innkeeper"]
+                        },
+                        {
+                          "$type": "engagement_relation",
+                          "actorId": "chars/valen",
+                          "targetId": "chars/innkeeper",
+                          "category": "Social",
+                          "verb": "talking with",
+                          "bidirectional": true
                         },
                         {
                           "$type": "activity",
-                          "characterId": "characters/innkeeper",
-                          "newActivity": "Tending bar and watching the door"
+                          "characterId": "chars/valen",
+                          "newActivity": "Leaning on the bar, listening to the innkeeper"
+                        },
+                        {
+                          "$type": "activity",
+                          "characterId": "chars/innkeeper",
+                          "newActivity": "Tending bar and sharing gossip with Valen"
                         }
                       ],
                       "narrative": "Valen ordered ale and exchanged news with the innkeeper."
