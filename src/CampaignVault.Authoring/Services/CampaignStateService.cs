@@ -28,24 +28,7 @@ public class CampaignStateService
 
     public async Task RefreshStateAsync(string campaignName)
     {
-        Entities.Clear();
-
-        // 1. Get local entities
-        var localEntities = _dbService.GetAllEntities();
-        var idMap = new Dictionary<string, UnifiedEntity>();
-
-        foreach (var local in localEntities)
-        {
-            idMap[local.Id] = new UnifiedEntity
-            {
-                Id = local.Id,
-                Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath),
-                EntityType = local.EntityType,
-                LocalHash = local.FileHash,
-                LastSyncedHash = local.LastSyncedHash,
-                RelativePath = local.RelativePath
-            };
-        }
+        await RefreshLocalStateOnlyAsync();
 
         // 2. Try get remote entities
         if (_clientFactory != null && !string.IsNullOrEmpty(campaignName))
@@ -55,34 +38,53 @@ public class CampaignStateService
                 var client = _clientFactory();
                 var response = await client.GetCampaignEntitiesAsync(new GetCampaignEntitiesRequest { CampaignName = campaignName });
 
-                // For this implementation, we will use a dummy hash for remote until full logic is ported
+                // Update entities with remote info (keeping local if exists)
                 foreach (var remote in response.Entities)
                 {
-                    if (idMap.TryGetValue(remote.Id, out var existing))
+                    var existing = Entities.FirstOrDefault(e => e.Id == remote.Id);
+                    if (existing != null)
                     {
-                        // In a real scenario, deserialize and hash. Using "dummy" to indicate existence.
                         existing.RemoteHash = "dummy_remote_hash";
                     }
                     else
                     {
-                        idMap[remote.Id] = new UnifiedEntity
+                        Entities.Add(new UnifiedEntity
                         {
                             Id = remote.Id,
                             Name = remote.Id, // Fallback name
                             EntityType = remote.Type,
                             RemoteHash = "dummy_remote_hash"
-                        };
+                        });
                     }
                 }
             }
             catch { /* Ignore network errors for now */ }
         }
 
-        foreach (var entity in idMap.Values.OrderBy(e => e.EntityType).ThenBy(e => e.Name))
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public Task RefreshLocalStateOnlyAsync()
+    {
+        Entities.Clear();
+
+        // 1. Get local entities
+        var localEntities = _dbService.GetAllEntities();
+
+        foreach (var local in localEntities)
         {
-            Entities.Add(entity);
+            Entities.Add(new UnifiedEntity
+            {
+                Id = local.Id,
+                Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath),
+                EntityType = local.EntityType,
+                LocalHash = local.FileHash,
+                LastSyncedHash = local.LastSyncedHash,
+                RelativePath = local.RelativePath
+            });
         }
 
         StateChanged?.Invoke(this, EventArgs.Empty);
+        return Task.CompletedTask;
     }
 }

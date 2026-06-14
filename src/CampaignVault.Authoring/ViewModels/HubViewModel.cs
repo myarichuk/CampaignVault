@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Models;
 
 namespace CampaignVault.Authoring.ViewModels;
 
@@ -88,19 +89,42 @@ public partial class HubViewModel : ViewModelBase
     [RelayCommand]
     private async Task DownloadRemoteCampaign(string campaignName)
     {
-        StatusMessage = $"Streaming campaign '{campaignName}' to local...";
+        StatusMessage = $"Preparing to stream campaign '{campaignName}'...";
         
         try
         {
             // 1. Pick folder
-            await _mainViewModel.OpenCampaignFolderCommand.ExecuteAsync(null);
-            
+            var path = await _mainViewModel.PickFolderAsync();
+            if (string.IsNullOrEmpty(path))
+            {
+                StatusMessage = "Download cancelled: No folder selected.";
+                return;
+            }
+
+            // 2. Create vault-metadata.json
+            var metadataService = new MetadataService();
+            await metadataService.SaveMetadataAsync(path, new VaultMetadata 
+            { 
+                CampaignName = campaignName 
+            });
+
+            // 3. Load the campaign into workspace
             _mainViewModel.Sync.SelectedCampaign = campaignName;
-            await _mainViewModel.Sync.FetchCampaignsAsync(); // Ensure campaign is selected
+            _mainViewModel.LoadCampaign(path);
+
+            // 4. Trigger the initial sync (Pull everything)
+            StatusMessage = $"Streaming '{campaignName}' contents...";
+            await _mainViewModel.Sync.PopulateActualDiffsAsync();
             
-            // This is complex to do right now without a proper service. 
-            // I'll leave it as a robust placeholder that calls LoadCampaign if folder is found.
-            StatusMessage = $"Connecting to {campaignName}...";
+            if (_mainViewModel.Sync.SyncDiffs.Any())
+            {
+                await _mainViewModel.Sync.SyncAllAsync();
+                StatusMessage = $"Successfully downloaded '{campaignName}'.";
+            }
+            else
+            {
+                StatusMessage = $"Campaign '{campaignName}' is empty or already up to date.";
+            }
         }
         catch (Exception ex)
         {

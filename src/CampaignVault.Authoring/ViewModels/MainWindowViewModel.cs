@@ -104,13 +104,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _storageProvider = storageProvider;
     }
 
-    [RelayCommand]
-    private async Task OpenCampaignFolderAsync()
+    public async Task<string?> PickFolderAsync()
     {
         if (_storageProvider == null)
         {
             WorkspaceStatusMessage = "Folder picker is not available yet. Restart the app.";
-            return;
+            return null;
         }
 
         var folders = await _storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
@@ -120,19 +119,26 @@ public partial class MainWindowViewModel : ViewModelBase
         });
 
         var folder = folders.FirstOrDefault();
-        if (folder == null)
-        {
-            return;
-        }
+        if (folder == null) return null;
 
         var path = folder.TryGetLocalPath();
         if (string.IsNullOrWhiteSpace(path))
         {
             WorkspaceStatusMessage = "Could not resolve the selected folder path.";
-            return;
+            return null;
         }
 
-        LoadCampaign(path);
+        return path;
+    }
+
+    [RelayCommand]
+    private async Task OpenCampaignFolderAsync()
+    {
+        var path = await PickFolderAsync();
+        if (path != null)
+        {
+            LoadCampaign(path);
+        }
     }
 
     // Command to open a campaign and switch state

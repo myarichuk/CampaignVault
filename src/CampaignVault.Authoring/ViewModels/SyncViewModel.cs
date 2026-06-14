@@ -416,7 +416,7 @@ public partial class SyncViewModel : ObservableObject
         var localHash = ComputeSha256Hash(diff.LocalContent);
         _workspace.DbService.UpdateLastSyncedHash(diff.EntityId, localHash, "Synced");
 
-        _workspace.RefreshFilesList();
+        await _workspace.RefreshLocalStateAsync();
     }
 
     private async Task PullItemAsync(SyncDiffItem diff)

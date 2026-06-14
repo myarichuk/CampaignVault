@@ -60,8 +60,25 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private FileSystemWatcher? _watcher;
 
     public WorkspaceDbService DbService => _dbService;
+    public CampaignStateService? StateService => _stateService;
 
     public void SetStorageProvider(IStorageProvider sp) { _storageProvider = sp; }
+
+    public async Task RefreshStateAsync()
+    {
+        if (_stateService != null && !string.IsNullOrEmpty(CurrentDirectory))
+        {
+            await _stateService.RefreshStateAsync(Path.GetFileName(CurrentDirectory));
+        }
+    }
+
+    public async Task RefreshLocalStateAsync()
+    {
+        if (_stateService != null)
+        {
+            await _stateService.RefreshLocalStateOnlyAsync();
+        }
+    }
 
     public void SetStateService(CampaignStateService stateService)
     {
