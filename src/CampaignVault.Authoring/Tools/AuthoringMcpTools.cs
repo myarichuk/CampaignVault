@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.ViewModels;
 
 namespace CampaignVault.Authoring.Tools;
 
@@ -23,11 +24,13 @@ public class AuthoringMcpTools
 
         var files = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
-            return mainVm.Workspace.Files.Select(f => new {
-                fileName = f.FileName,
-                filePath = f.FilePath,
-                relativeUrl = Path.GetRelativePath(mainVm.Workspace.CurrentDirectory, f.FilePath)
-            }).ToList();
+            return mainVm.Workspace.Categories
+                .SelectMany(c => c.Children.OfType<EntityNodeViewModel>())
+                .Select(f => new {
+                    fileName = Path.GetFileName(f.Entity.RelativePath ?? ""),
+                    filePath = Path.Combine(mainVm.Workspace.CurrentDirectory, f.Entity.RelativePath ?? ""),
+                    relativeUrl = f.Entity.RelativePath
+                }).ToList();
         });
 
         return new { success = true, files };

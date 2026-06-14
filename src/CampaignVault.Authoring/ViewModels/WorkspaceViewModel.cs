@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -8,8 +9,31 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Models;
 
 namespace CampaignVault.Authoring.ViewModels;
+
+public partial class ExplorerNodeViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private string _title = string.Empty;
+    public ObservableCollection<ExplorerNodeViewModel> Children { get; } = new();
+}
+
+public partial class CategoryNodeViewModel : ExplorerNodeViewModel
+{
+}
+
+public partial class EntityNodeViewModel : ExplorerNodeViewModel
+{
+    public UnifiedEntity Entity { get; }
+
+    public EntityNodeViewModel(UnifiedEntity entity)
+    {
+        Entity = entity;
+        Title = entity.Name;
+    }
+}
 
 public partial class WorkspaceViewModel : ObservableObject, IDisposable
 {
@@ -19,12 +43,13 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     private IStorageProvider? _storageProvider;
     private CancellationTokenSource? _debounceSource;
+    private CampaignStateService? _stateService;
 
     [ObservableProperty]
-    private ObservableCollection<FileNodeViewModel> _files = new();
+    private ObservableCollection<ExplorerNodeViewModel> _categories = new();
 
     [ObservableProperty]
-    private FileNodeViewModel? _selectedFile;
+    private ExplorerNodeViewModel? _selectedNode;
 
     [ObservableProperty]
     private string _currentDirectory = string.Empty;
@@ -37,6 +62,22 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public WorkspaceDbService DbService => _dbService;
 
     public void SetStorageProvider(IStorageProvider sp) { _storageProvider = sp; }
+
+    public void SetStateService(CampaignStateService stateService)
+    {
+        if (_stateService != null)
+        {
+            _stateService.StateChanged -= OnStateChanged;
+        }
+        _stateService = stateService;
+        _stateService.StateChanged += OnStateChanged;
+        RefreshFilesList();
+    }
+
+    private void OnStateChanged(object? sender, EventArgs e)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(RefreshFilesList);
+    }
 
     [RelayCommand]
     private async Task OpenCampaignFolderAsync()
@@ -87,6 +128,10 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             Task.Run(async () =>
             {
                 await _scanner.ScanWorkspaceAsync(path);
+                if (_stateService != null)
+                {
+                    await _stateService.RefreshStateAsync(Path.GetFileName(path));
+                }
                 Avalonia.Threading.Dispatcher.UIThread.Post(RefreshFilesList);
             });
 
@@ -120,26 +165,30 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             {
                 await Task.Delay(400, token);
 
-                var selectedPath = SelectedFile?.FilePath;
+                var selectedEntityId = (SelectedNode as EntityNodeViewModel)?.Entity.Id;
 
                 if (_scanner != null && !string.IsNullOrEmpty(CurrentDirectory))
                 {
                     await _scanner.ScanWorkspaceAsync(CurrentDirectory);
+                    if (_stateService != null)
+                    {
+                        await _stateService.RefreshStateAsync(Path.GetFileName(CurrentDirectory));
+                    }
                 }
 
                 RefreshFilesList();
 
-                if (!string.IsNullOrEmpty(selectedPath))
+                if (!string.IsNullOrEmpty(selectedEntityId))
                 {
-                    var found = Files.FirstOrDefault(f => f.FilePath == selectedPath);
-                    if (found != null)
+                    foreach (var cat in Categories)
                     {
-                        SelectedFile = found;
-                        WorkspaceService.MainWindowViewModel?.ReloadActiveFileContent();
-                    }
-                    else
-                    {
-                        SelectedFile = null;
+                        var found = cat.Children.OfType<EntityNodeViewModel>().FirstOrDefault(f => f.Entity.Id == selectedEntityId);
+                        if (found != null)
+                        {
+                            SelectedNode = found;
+                            WorkspaceService.MainWindowViewModel?.ReloadActiveFileContent();
+                            break;
+                        }
                     }
                 }
             }
@@ -152,26 +201,22 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     public void RefreshFilesList()
     {
-        Files.Clear();
-        if (!Directory.Exists(CurrentDirectory)) return;
+        Categories.Clear();
+        if (_stateService == null) return;
 
-        try
+        var groups = _stateService.Entities
+            .GroupBy(e => e.EntityType)
+            .OrderBy(g => g.Key);
+
+        foreach (var group in groups)
         {
-            var entities = _dbService.GetAllEntities();
-            foreach (var entity in entities)
+            var category = new CategoryNodeViewModel { Title = group.Key + "s" };
+            foreach (var entity in group.OrderBy(e => e.Name))
             {
-                var absolutePath = Path.Combine(CurrentDirectory, entity.RelativePath);
-                Files.Add(new FileNodeViewModel
-                {
-                    FileName = Path.GetFileName(absolutePath),
-                    FilePath = absolutePath,
-                    EntityType = entity.EntityType,
-                    EntityId = entity.Id,
-                    SyncStatus = entity.SyncStatus
-                });
+                category.Children.Add(new EntityNodeViewModel(entity));
             }
+            Categories.Add(category);
         }
-        catch {}
     }
 
     public void Dispose()
@@ -184,24 +229,10 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             _watcher.Dispose();
             _watcher = null;
         }
+        if (_stateService != null)
+        {
+            _stateService.StateChanged -= OnStateChanged;
+        }
     }
-}
-
-public partial class FileNodeViewModel : ObservableObject
-{
-    [ObservableProperty]
-    private string _fileName = string.Empty;
-
-    [ObservableProperty]
-    private string _filePath = string.Empty;
-
-    [ObservableProperty]
-    private string _entityType = string.Empty;
-
-    [ObservableProperty]
-    private string _entityId = string.Empty;
-
-    [ObservableProperty]
-    private string _syncStatus = "Synced";
 }
 
