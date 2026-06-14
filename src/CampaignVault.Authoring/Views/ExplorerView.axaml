@@ -12,7 +12,8 @@
                           Width="14" Height="14" Foreground="#71717A" />
             </Button>
         </Grid>
-        <StackPanel Grid.Row="1" Spacing="6" Margin="0,0,0,10">
+        <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="2" Margin="0,0,0,4" Foreground="#2563EB" VerticalAlignment="Top"/>
+        <StackPanel Grid.Row="1" Spacing="6" Margin="0,6,0,10">
             <Button Content="Open Campaign Folder"
                     Command="{Binding OpenCampaignFolderCommand}"
                     Background="#2563EB"
@@ -28,6 +29,7 @@
         </StackPanel>
         <TreeView Grid.Row="2" ItemsSource="{Binding Categories}"
                   SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                  IsEnabled="{Binding !IsLoading}"
                   Background="Transparent" BorderThickness="0">
             <TreeView.DataTemplates>
                 <TreeDataTemplate DataType="vm:CategoryNodeViewModel" ItemsSource="{Binding Children}">

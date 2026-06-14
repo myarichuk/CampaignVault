@@ -71,6 +71,9 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _workspaceStatusMessage = "Open a campaign folder to begin.";
 
+    [ObservableProperty]
+    private bool _isLoading;
+
     private FileSystemWatcher? _watcher;
 
     public WorkspaceDbService DbService => _dbService;
@@ -136,15 +139,23 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     {
         if (_stateService != null)
         {
-            var campaignName = Path.GetFileName(CurrentDirectory);
-            try 
+            IsLoading = true;
+            try
             {
-                var metadata = await new MetadataService().LoadMetadataAsync(CurrentDirectory);
-                if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
-                    campaignName = metadata.CampaignName;
-            } catch {}
+                var campaignName = Path.GetFileName(CurrentDirectory);
+                try 
+                {
+                    var metadata = await new MetadataService().LoadMetadataAsync(CurrentDirectory);
+                    if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
+                        campaignName = metadata.CampaignName;
+                } catch {}
 
-            await _stateService.RefreshStateAsync(campaignName);
+                await _stateService.RefreshStateAsync(campaignName);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
     }
 
@@ -155,50 +166,58 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     public async Task LoadDirectoryAsync(string path)
     {
-        CurrentDirectory = path;
-
-        if (_watcher != null)
-        {
-            _watcher.EnableRaisingEvents = false;
-            _watcher.Dispose();
-            _watcher = null;
-        }
-
-        if (!Directory.Exists(path))
-        {
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(RefreshFilesList);
-            return;
-        }
-
-        _dbService.InitializeDatabase(path);
-        _scanner = new WorkspaceScanner(_dbService, Parser);
-
-        await _scanner.ScanWorkspaceAsync(path);
-
-        var campaignName = Path.GetFileName(path);
+        IsLoading = true;
         try
         {
-            var metadata = await new MetadataService().LoadMetadataAsync(path);
-            if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
-                campaignName = metadata.CampaignName;
+            CurrentDirectory = path;
+
+            if (_watcher != null)
+            {
+                _watcher.EnableRaisingEvents = false;
+                _watcher.Dispose();
+                _watcher = null;
+            }
+
+            if (!Directory.Exists(path))
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(RefreshFilesList);
+                return;
+            }
+
+            _dbService.InitializeDatabase(path);
+            _scanner = new WorkspaceScanner(_dbService, Parser);
+
+            await _scanner.ScanWorkspaceAsync(path);
+
+            var campaignName = Path.GetFileName(path);
+            try
+            {
+                var metadata = await new MetadataService().LoadMetadataAsync(path);
+                if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
+                    campaignName = metadata.CampaignName;
+            }
+            catch { }
+
+            if (_stateService != null)
+                await _stateService.RefreshStateAsync(campaignName);
+
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(RefreshFilesList);
+
+            _watcher = new FileSystemWatcher(path, "*.md")
+            {
+                IncludeSubdirectories = true,
+                EnableRaisingEvents = true
+            };
+
+            _watcher.Created += OnWorkspaceChanged;
+            _watcher.Deleted += OnWorkspaceChanged;
+            _watcher.Changed += OnWorkspaceChanged;
+            _watcher.Renamed += OnWorkspaceChanged;
         }
-        catch { }
-
-        if (_stateService != null)
-            await _stateService.RefreshStateAsync(campaignName);
-
-        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(RefreshFilesList);
-
-        _watcher = new FileSystemWatcher(path, "*.md")
+        finally
         {
-            IncludeSubdirectories = true,
-            EnableRaisingEvents = true
-        };
-
-        _watcher.Created += OnWorkspaceChanged;
-        _watcher.Deleted += OnWorkspaceChanged;
-        _watcher.Changed += OnWorkspaceChanged;
-        _watcher.Renamed += OnWorkspaceChanged;
+            IsLoading = false;
+        }
     }
 
     private void OnWorkspaceChanged(object sender, FileSystemEventArgs e)
@@ -210,6 +229,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
         Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
         {
+            IsLoading = true;
             try
             {
                 await Task.Delay(400, token);
@@ -248,6 +268,11 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             catch (OperationCanceledException)
             {
                 // Debounce cancelled — a newer event will take over
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
+                    IsLoading = false;
             }
         });
     }
