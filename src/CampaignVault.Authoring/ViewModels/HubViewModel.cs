@@ -27,6 +27,9 @@ public partial class HubViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isCloudConnected;
 
+    [ObservableProperty]
+    private bool _isBusy;
+
     public HubViewModel(MainWindowViewModel mainViewModel)
     {
         _mainViewModel = mainViewModel;
@@ -36,6 +39,8 @@ public partial class HubViewModel : ViewModelBase
     [RelayCommand]
     public async Task RefreshCloudAsync()
     {
+        if (IsBusy) return;
+        IsBusy = true;
         StatusMessage = "Connecting to Vault...";
         try
         {
@@ -53,6 +58,10 @@ public partial class HubViewModel : ViewModelBase
             IsCloudConnected = false;
             StatusMessage = $"Cloud Error: {ex.Message}";
         }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     public void LoadRecentCampaigns()
@@ -68,16 +77,25 @@ public partial class HubViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenCampaign(string path)
     {
-        if (Directory.Exists(path))
+        if (IsBusy) return;
+        IsBusy = true;
+        try
         {
-            _historyService.Add(path);
-            await _mainViewModel.LoadCampaignAsync(path);
+            if (Directory.Exists(path))
+            {
+                _historyService.Add(path);
+                await _mainViewModel.LoadCampaignAsync(path);
+            }
+            else
+            {
+                StatusMessage = $"Directory not found: {path}";
+                _historyService.Remove(path);
+                LoadRecentCampaigns();
+            }
         }
-        else
+        finally
         {
-            StatusMessage = $"Directory not found: {path}";
-            _historyService.Remove(path);
-            LoadRecentCampaigns();
+            IsBusy = false;
         }
     }
 
@@ -92,6 +110,8 @@ public partial class HubViewModel : ViewModelBase
     [RelayCommand]
     private async Task CreateNewCampaign()
     {
+        if (IsBusy) return;
+        IsBusy = true;
         StatusMessage = "Creating new campaign...";
         try
         {
@@ -116,11 +136,17 @@ public partial class HubViewModel : ViewModelBase
         {
             StatusMessage = $"Create failed: {ex.Message}";
         }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
     private async Task DownloadRemoteCampaign(string campaignName)
     {
+        if (IsBusy) return;
+        IsBusy = true;
         StatusMessage = $"Preparing to stream campaign '{campaignName}'...";
         
         try
@@ -161,6 +187,10 @@ public partial class HubViewModel : ViewModelBase
         catch (Exception ex)
         {
             StatusMessage = $"Download failed: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 }

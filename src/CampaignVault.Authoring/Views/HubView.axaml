@@ -6,9 +6,17 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="CampaignVault.Authoring.Views.HubView"
              x:DataType="vm:MainWindowViewModel">
-    <Grid ColumnDefinitions="*, 300">
+    <Grid RowDefinitions="Auto, *" ColumnDefinitions="*, 300" IsEnabled="{Binding !Hub.IsBusy}">
+        <ProgressBar Grid.Row="0" Grid.ColumnSpan="2"
+                     IsIndeterminate="True" 
+                     IsVisible="{Binding Hub.IsBusy}" 
+                     HorizontalAlignment="Stretch" 
+                     Height="4" 
+                     Margin="0,0,0,0"
+                     Foreground="#2563EB" />
+
         <!-- Left: Recent Campaigns -->
-        <Border Grid.Column="0" Background="#18181F" Padding="40">
+        <Border Grid.Row="1" Grid.Column="0" Background="#18181F" Padding="40">
             <StackPanel Spacing="25">
                 <TextBlock Text="CampaignVault Authoring" FontSize="28" FontWeight="Bold" Foreground="#E4E4EB" />
                 
@@ -18,14 +26,25 @@
                         <ItemsControl ItemsSource="{Binding Hub.RecentCampaigns}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Classes="RecentItem" 
-                                            Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).Hub.OpenCampaignCommand}" 
-                                            CommandParameter="{Binding}">
-                                        <StackPanel Spacing="2">
-                                            <TextBlock Text="{Binding}" FontSize="12" FontWeight="SemiBold" Foreground="#E4E4EB" />
-                                            <TextBlock Text="{Binding}" FontSize="10" Foreground="#71717A" MaxLines="1" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
-                                    </Button>
+                                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,4">
+                                        <Button Grid.Column="0"
+                                                Classes="RecentItem"
+                                                Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).Hub.OpenCampaignCommand}"
+                                                CommandParameter="{Binding}">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{Binding Converter={x:Static vm:PathDisplayConverter.Instance}}" FontSize="12" FontWeight="SemiBold" Foreground="#E4E4EB" />
+                                                <TextBlock Text="{Binding}" FontSize="10" Foreground="#71717A" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="1"
+                                                Classes="RemoveRecentItem"
+                                                ToolTip.Tip="Remove from recent"
+                                                Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).Hub.RemoveFromRecentCommand}"
+                                                CommandParameter="{Binding}">
+                                            <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                                                      Width="12" Height="12" Foreground="#71717A" />
+                                        </Button>
+                                    </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -37,7 +56,7 @@
         </Border>
 
         <!-- Right: Actions -->
-        <Border Grid.Column="1" Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1,0,0,0" Padding="30">
+        <Border Grid.Row="1" Grid.Column="1" Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1,0,0,0" Padding="30">
             <StackPanel Spacing="20">
                 <TextBlock Text="Actions" FontSize="16" FontWeight="Bold" Foreground="#E4E4EB" Margin="0,0,0,10" />
                 
@@ -102,6 +121,15 @@
         </Style>
         <Style Selector="Button.RecentItem:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#2D2D3D" />
+        </Style>
+        <Style Selector="Button.RemoveRecentItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.RemoveRecentItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3F1D1D" />
         </Style>
     </UserControl.Styles>
 </UserControl>
