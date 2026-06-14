@@ -6,6 +6,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Models;
 using CampaignVault.Models;
 
 namespace CampaignVault.Authoring.ViewModels;
@@ -65,19 +66,40 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        Sync = new SyncViewModel(Settings, Workspace);
+        CampaignState = new CampaignStateService(Workspace.DbService);
+        Sync = new SyncViewModel(Settings, Workspace, CampaignState);
         Generation = new GenerationViewModel(Settings);
         Hub = new HubViewModel(this);
-        CampaignState = new CampaignStateService(Workspace.DbService);
         CampaignState.SetClientFactory(() => Sync.CreateClient());
 
         Workspace.SetStateService(CampaignState);
 
         // Subscribe to selection changes
-        Workspace.PropertyChanged += (s, e) =>
+        Workspace.PropertyChanged += async (s, e) =>
         {
             if (e.PropertyName == nameof(Workspace.SelectedNode) && Workspace.SelectedNode is EntityNodeViewModel entityNode)
             {
+                if (entityNode.Entity.CalculatedState == SyncState.RemoteOnly)
+                {
+                    // Auto-pull
+                    var diff = new SyncDiffItem
+                    {
+                        EntityId = entityNode.Entity.Id,
+                        EntityType = entityNode.Entity.EntityType,
+                        RemoteContent = entityNode.Entity.RemoteMarkdown ?? string.Empty,
+                        FilePath = Path.Combine(Workspace.CurrentDirectory, $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md"),
+                        FileName = entityNode.Entity.Name,
+                        Status = "AddedRemotely"
+                    };
+                    try 
+                    {
+                        await Sync.PullSelectedCommand.ExecuteAsync(diff);
+                        // Refresh the node's entity after pull
+                        entityNode.Entity.LocalHash = entityNode.Entity.RemoteHash;
+                        entityNode.Entity.RelativePath = $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md";
+                    } catch {}
+                }
+
                 var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
                 LoadFileContent(absolutePath);
                 OnEditorTextChanged(EditorText);

@@ -18,6 +18,7 @@ public class SyncViewModelTests : IDisposable
     private readonly string _tempDirectory;
     private readonly SettingsViewModel _settings;
     private readonly WorkspaceViewModel _workspace;
+    private readonly CampaignStateService _campaignState;
     private readonly SyncViewModel _syncViewModel;
     private readonly CampaignSync.CampaignSyncClient _mockClient;
 
@@ -28,15 +29,17 @@ public class SyncViewModelTests : IDisposable
 
         _settings = new SettingsViewModel();
         _workspace = new WorkspaceViewModel();
+        _campaignState = new CampaignStateService(_workspace.DbService);
         
         // Manual quiet load to avoid background threads and dispatcher calls
         _workspace.CurrentDirectory = _tempDirectory;
         _workspace.DbService.InitializeDatabase(_tempDirectory);
 
-        _syncViewModel = new SyncViewModel(_settings, _workspace);
+        _syncViewModel = new SyncViewModel(_settings, _workspace, _campaignState);
 
         _mockClient = Substitute.For<CampaignSync.CampaignSyncClient>();
         _syncViewModel.ClientFactory = () => _mockClient;
+        _campaignState.SetClientFactory(() => _mockClient);
     }
 
     public void Dispose()
@@ -53,7 +56,7 @@ public class SyncViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task PopulateActualDiffs_AddedLocally_WorksCorrectly()
+    public async Task PopulateActualDiffs_LocalOnly_WorksCorrectly()
     {
         // 1. Arrange
         var charId = "characters/grog";
@@ -70,7 +73,7 @@ public class SyncViewModelTests : IDisposable
             relativePath,
             _syncViewModel.CallPrivateComputeHash(localMarkdown),
             null, // Not synced yet
-            "AddedLocally",
+            "LocalOnly",
             "{}"
         );
 
@@ -90,7 +93,7 @@ public class SyncViewModelTests : IDisposable
         // 3. Assert Diff
         Assert.Single(_syncViewModel.SyncDiffs);
         var diff = _syncViewModel.SyncDiffs[0];
-        Assert.Equal("AddedLocally", diff.Status);
+        Assert.Equal("LocalOnly", diff.Status);
         Assert.Equal(charId, diff.EntityId);
         Assert.Equal(localMarkdown, diff.LocalContent);
 
@@ -107,7 +110,7 @@ public class SyncViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task PopulateActualDiffs_AddedRemotely_WorksCorrectly()
+    public async Task PopulateActualDiffs_RemoteOnly_WorksCorrectly()
     {
         // 1. Arrange
         var charId = "characters/grog";
@@ -138,7 +141,7 @@ public class SyncViewModelTests : IDisposable
         // 3. Assert Diff
         Assert.Single(_syncViewModel.SyncDiffs);
         var diff = _syncViewModel.SyncDiffs[0];
-        Assert.Equal("AddedRemotely", diff.Status);
+        Assert.Equal("RemoteOnly", diff.Status);
         Assert.Equal(charId, diff.EntityId);
         Assert.Contains("Remote Grog notes", diff.RemoteContent);
 
@@ -373,8 +376,10 @@ public static class SyncViewModelTestExtensions
 
     public static string CallPrivateDeserializeRemoteToMarkdown(this SyncViewModel syncVm, EntityItem remote)
     {
-        var method = typeof(SyncViewModel).GetMethod("DeserializeRemoteToMarkdown", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        // Now in CampaignStateService
+        var stateService = (CampaignStateService)typeof(SyncViewModel).GetField("_campaignState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(syncVm)!;
+        var method = typeof(CampaignStateService).GetMethod("DeserializeRemoteToMarkdown", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (method == null) throw new InvalidOperationException("Could not find DeserializeRemoteToMarkdown method");
-        return (string)method.Invoke(syncVm, new object[] { remote })!;
+        return (string)method.Invoke(stateService, new object[] { remote })!;
     }
 }

@@ -37,8 +37,11 @@ public partial class EntityNodeViewModel : ExplorerNodeViewModel
 
 public partial class WorkspaceViewModel : ObservableObject, IDisposable
 {
+    public static Avalonia.Data.Converters.FuncValueConverter<object?, double> NullToOpacityConverter { get; } =
+        new(v => v == null ? 0.6 : 1.0);
+
     private readonly WorkspaceDbService _dbService = new();
-    private readonly WorkspaceParser _parser = new();
+    public WorkspaceParser Parser { get; } = new();
     private WorkspaceScanner? _scanner;
 
     private IStorageProvider? _storageProvider;
@@ -63,14 +66,6 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public CampaignStateService? StateService => _stateService;
 
     public void SetStorageProvider(IStorageProvider sp) { _storageProvider = sp; }
-
-    public async Task RefreshStateAsync()
-    {
-        if (_stateService != null && !string.IsNullOrEmpty(CurrentDirectory))
-        {
-            await _stateService.RefreshStateAsync(Path.GetFileName(CurrentDirectory));
-        }
-    }
 
     public async Task RefreshLocalStateAsync()
     {
@@ -125,6 +120,23 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         WorkspaceStatusMessage = $"Workspace: {path}";
     }
 
+    [RelayCommand]
+    public async Task RefreshStateAsync()
+    {
+        if (_stateService != null)
+        {
+            var campaignName = Path.GetFileName(CurrentDirectory);
+            try 
+            {
+                var metadata = await new MetadataService().LoadMetadataAsync(CurrentDirectory);
+                if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
+                    campaignName = metadata.CampaignName;
+            } catch {}
+
+            await _stateService.RefreshStateAsync(campaignName);
+        }
+    }
+
     public void LoadDirectory(string path)
     {
         CurrentDirectory = path;
@@ -139,15 +151,24 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         if (Directory.Exists(path))
         {
             _dbService.InitializeDatabase(path);
-            _scanner = new WorkspaceScanner(_dbService, _parser);
+            _scanner = new WorkspaceScanner(_dbService, Parser);
             
             // Sync-scan on load
             Task.Run(async () =>
             {
                 await _scanner.ScanWorkspaceAsync(path);
+                
+                var campaignName = Path.GetFileName(path);
+                try 
+                {
+                    var metadata = await new MetadataService().LoadMetadataAsync(path);
+                    if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
+                        campaignName = metadata.CampaignName;
+                } catch {}
+
                 if (_stateService != null)
                 {
-                    await _stateService.RefreshStateAsync(Path.GetFileName(path));
+                    await _stateService.RefreshStateAsync(campaignName);
                 }
                 Avalonia.Threading.Dispatcher.UIThread.Post(RefreshFilesList);
             });

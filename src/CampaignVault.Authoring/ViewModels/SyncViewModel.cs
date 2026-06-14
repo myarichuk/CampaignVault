@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Text.Json;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Models;
 using CampaignVault.Models;
 
 namespace CampaignVault.Authoring.ViewModels;
@@ -42,7 +43,7 @@ public partial class SyncViewModel : ObservableObject
 {
     private readonly SettingsViewModel _settings;
     private readonly WorkspaceViewModel _workspace;
-    private readonly WorkspaceParser _parser = new();
+    private readonly CampaignStateService _campaignState;
 
     [ObservableProperty]
     private bool _isConnected;
@@ -70,10 +71,11 @@ public partial class SyncViewModel : ObservableObject
 
     public Func<CampaignSync.CampaignSyncClient>? ClientFactory { get; set; }
 
-    public SyncViewModel(SettingsViewModel settings, WorkspaceViewModel workspace)
+    public SyncViewModel(SettingsViewModel settings, WorkspaceViewModel workspace, CampaignStateService campaignState)
     {
         _settings = settings;
         _workspace = workspace;
+        _campaignState = campaignState;
     }
 
     public void ClearDiffs()
@@ -158,7 +160,7 @@ public partial class SyncViewModel : ObservableObject
             return;
         }
 
-        StatusMessage = "Scanning local workspace and remote catalog...";
+        StatusMessage = "Syncing state with CampaignVault Remote...";
 
         try
         {
@@ -168,118 +170,47 @@ public partial class SyncViewModel : ObservableObject
                 StatusMessage = "No campaign selected. Use 'Fetch Campaigns' to discover server campaigns.";
                 return;
             }
-            var client = CreateClient();
 
-            // 1. Fetch remote entities
-            var remoteResponse = await client.GetCampaignEntitiesAsync(new GetCampaignEntitiesRequest { CampaignName = campaignName });
-            var remoteEntities = remoteResponse.Entities;
+            await _campaignState.RefreshStateAsync(campaignName);
 
-            // 2. Fetch local entities from SQLite
-            var localEntities = _workspace.DbService.GetAllEntities();
-
-            // 3. Compare
-            var allIds = localEntities.Select(e => e.Id)
-                .Union(remoteEntities.Select(e => e.Id))
-                .Distinct()
-                .ToList();
-
-            foreach (var id in allIds)
+            foreach (var entity in _campaignState.Entities)
             {
-                var local = localEntities.FirstOrDefault(e => e.Id == id);
-                var remote = remoteEntities.FirstOrDefault(e => e.Id == id);
+                var state = entity.CalculatedState;
+                if (state == SyncState.Synced) continue;
 
-                if (remote == null && local != null)
+                string localContent = string.Empty;
+                var absolutePath = entity.RelativePath != null 
+                    ? Path.Combine(_workspace.CurrentDirectory, entity.RelativePath)
+                    : Path.Combine(_workspace.CurrentDirectory, $"{entity.EntityType}s/{Path.GetFileName(entity.Id)}.md");
+
+                if (entity.LocalHash != null && File.Exists(absolutePath))
                 {
-                    // Only exists locally
-                    var absolutePath = Path.Combine(_workspace.CurrentDirectory, local.RelativePath);
-                    if (File.Exists(absolutePath))
-                    {
-                        var content = await File.ReadAllTextAsync(absolutePath);
-                        SyncDiffs.Add(new SyncDiffItem
-                        {
-                            FilePath = absolutePath,
-                            FileName = Path.GetFileName(absolutePath),
-                            Status = string.IsNullOrEmpty(local.LastSyncedHash) ? "AddedLocally" : "ModifiedLocally",
-                            LocalContent = content,
-                            RemoteContent = string.Empty,
-                            EntityType = local.EntityType,
-                            EntityId = id
-                        });
-                    }
+                    localContent = await File.ReadAllTextAsync(absolutePath);
                 }
-                else if (remote != null && local == null)
+
+                SyncDiffs.Add(new SyncDiffItem
                 {
-                    // Only exists remotely
-                    var remoteMarkdown = DeserializeRemoteToMarkdown(remote);
-                    var relativePath = $"{remote.Type}s/{Path.GetFileName(remote.Id)}.md";
-                    var absolutePath = Path.Combine(_workspace.CurrentDirectory, relativePath);
-
-                    SyncDiffs.Add(new SyncDiffItem
-                    {
-                        FilePath = absolutePath,
-                        FileName = Path.GetFileName(absolutePath),
-                        Status = "AddedRemotely",
-                        LocalContent = string.Empty,
-                        RemoteContent = remoteMarkdown,
-                        EntityType = remote.Type,
-                        EntityId = id
-                    });
-                }
-                else if (remote != null && local != null)
-                {
-                    // Exists in both
-                    var absolutePath = Path.Combine(_workspace.CurrentDirectory, local.RelativePath);
-                    if (File.Exists(absolutePath))
-                    {
-                        var localMarkdown = await File.ReadAllTextAsync(absolutePath);
-                        var localHash = ComputeSha256Hash(localMarkdown);
-                        var syncedHash = local.LastSyncedHash;
-
-                        var remoteMarkdown = DeserializeRemoteToMarkdown(remote);
-                        var remoteHash = ComputeSha256Hash(remoteMarkdown);
-
-                        if (localHash != remoteHash)
-                        {
-                            string status;
-                            if (localHash == syncedHash && remoteHash != syncedHash)
-                            {
-                                status = "ModifiedRemotely";
-                            }
-                            else if (localHash != syncedHash && remoteHash == syncedHash)
-                            {
-                                status = "ModifiedLocally";
-                            }
-                            else
-                            {
-                                status = "Conflict";
-                            }
-
-                            SyncDiffs.Add(new SyncDiffItem
-                            {
-                                FilePath = absolutePath,
-                                FileName = Path.GetFileName(absolutePath),
-                                Status = status,
-                                LocalContent = localMarkdown,
-                                RemoteContent = remoteMarkdown,
-                                EntityType = local.EntityType,
-                                EntityId = id
-                            });
-                        }
-                    }
-                }
+                    FilePath = absolutePath,
+                    FileName = entity.Name,
+                    Status = state.ToString(),
+                    LocalContent = localContent,
+                    RemoteContent = entity.RemoteMarkdown ?? string.Empty,
+                    EntityType = entity.EntityType,
+                    EntityId = entity.Id
+                });
             }
 
             if (SyncDiffs.Count > 0) SelectedDiff = SyncDiffs[0];
-            StatusMessage = $"Connected to Campaign '{campaignName}'. Found {SyncDiffs.Count} unsynchronized entities.";
+            StatusMessage = $"Connected to '{campaignName}'. Found {SyncDiffs.Count} unsynchronized entities.";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"gRPC Error: {ex.Message}";
+            StatusMessage = $"Sync Error: {ex.Message}";
         }
     }
 
     [RelayCommand]
-    private async Task SyncAllAsync()
+    internal async Task SyncAllAsync()
     {
         if (SyncDiffs.Count == 0) return;
         IsSyncing = true;
@@ -432,11 +363,11 @@ public partial class SyncViewModel : ObservableObject
         try
         {
             if (diff.EntityType == "character")
-                schemaData = JsonSerializer.Serialize(_parser.ParseCharacter(diff.RemoteContent));
+                schemaData = JsonSerializer.Serialize(_workspace.Parser.ParseCharacter(diff.RemoteContent));
             else if (diff.EntityType == "location")
-                schemaData = JsonSerializer.Serialize(_parser.ParseLocation(diff.RemoteContent));
+                schemaData = JsonSerializer.Serialize(_workspace.Parser.ParseLocation(diff.RemoteContent));
             else if (diff.EntityType == "quest")
-                schemaData = JsonSerializer.Serialize(_parser.ParseQuest(diff.RemoteContent));
+                schemaData = JsonSerializer.Serialize(_workspace.Parser.ParseQuest(diff.RemoteContent));
         }
         catch {}
 
@@ -459,104 +390,10 @@ public partial class SyncViewModel : ObservableObject
     {
         return diff.EntityType switch
         {
-            "location" => (JsonSerializer.Serialize(_parser.ParseLocation(diff.LocalContent)), "location"),
-            "quest"    => (JsonSerializer.Serialize(_parser.ParseQuest(diff.LocalContent)), "quest"),
-            _          => (JsonSerializer.Serialize(_parser.ParseCharacter(diff.LocalContent)), "character")
+            "location" => (JsonSerializer.Serialize(_workspace.Parser.ParseLocation(diff.LocalContent)), "location"),
+            "quest"    => (JsonSerializer.Serialize(_workspace.Parser.ParseQuest(diff.LocalContent)), "quest"),
+            _          => (JsonSerializer.Serialize(_workspace.Parser.ParseCharacter(diff.LocalContent)), "character")
         };
-    }
-
-    private string DeserializeRemoteToMarkdown(EntityItem remote)
-    {
-        var serializer = new YamlDotNet.Serialization.SerializerBuilder()
-            .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
-            .Build();
-
-        if (remote.Type == "character")
-        {
-            var c = JsonSerializer.Deserialize<Character>(remote.Content);
-            if (c != null)
-            {
-                var copy = new Character
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    ClassLevel = c.ClassLevel,
-                    CurrentHp = c.CurrentHp,
-                    MaxHp = c.MaxHp,
-                    DistinctiveFeatures = c.DistinctiveFeatures,
-                    CurrentAppearance = c.CurrentAppearance,
-                    VisualTags = c.VisualTags,
-                    KeepAlive = c.KeepAlive,
-                    Schedule = c.Schedule,
-                    CurrentLocationId = c.CurrentLocationId,
-                    CurrentActivity = c.CurrentActivity,
-                    Psychology = c.Psychology,
-                    Social = c.Social,
-                    Needs = c.Needs,
-                    SystemStats = c.SystemStats,
-                    LastUpdated = c.LastUpdated,
-                    CampaignName = c.CampaignName
-                };
-                var yaml = serializer.Serialize(copy);
-                return $"---\n{yaml}---\n\n{c.Notes ?? string.Empty}".ReplaceLineEndings("\n");
-            }
-        }
-        else if (remote.Type == "location")
-        {
-            var l = JsonSerializer.Deserialize<Location>(remote.Content);
-            if (l != null)
-            {
-                var copy = new Location
-                {
-                    Id = l.Id,
-                    Name = l.Name,
-                    Type = l.Type,
-                    ParentLocationId = l.ParentLocationId,
-                    Exits = l.Exits,
-                    PointsOfInterest = l.PointsOfInterest,
-                    AmbientCrowd = l.AmbientCrowd,
-                    LastVisitedDay = l.LastVisitedDay,
-                    Metadata = l.Metadata,
-                    CurrentState = l.CurrentState,
-                    VisualTags = l.VisualTags,
-                    DistinctiveFeatures = l.DistinctiveFeatures,
-                    LastUpdated = l.LastUpdated,
-                    ControllingFactionId = l.ControllingFactionId,
-                    DangerModifier = l.DangerModifier,
-                    CampaignName = l.CampaignName
-                };
-                var yaml = serializer.Serialize(copy);
-                return $"---\n{yaml}---\n\n{l.Description ?? string.Empty}".ReplaceLineEndings("\n");
-            }
-        }
-        else if (remote.Type == "quest")
-        {
-            var q = JsonSerializer.Deserialize<Quest>(remote.Content);
-            if (q != null)
-            {
-                var copy = new Quest
-                {
-                    Id = q.Id,
-                    Title = q.Title,
-                    GiverId = q.GiverId,
-                    Objectives = q.Objectives,
-                    OverallState = q.OverallState,
-                    Category = q.Category,
-                    Urgency = q.Urgency,
-                    RelatedLocationIds = q.RelatedLocationIds,
-                    RelatedFactionIds = q.RelatedFactionIds,
-                    VisibleToCharacterIds = q.VisibleToCharacterIds,
-                    DeadlineDay = q.DeadlineDay,
-                    LastUpdatedDay = q.LastUpdatedDay,
-                    LastUpdated = q.LastUpdated,
-                    CampaignName = q.CampaignName
-                };
-                var yaml = serializer.Serialize(copy);
-                return $"---\n{yaml}---\n\n{q.DmNotes ?? string.Empty}".ReplaceLineEndings("\n");
-            }
-        }
-
-        return string.Empty;
     }
 
     private string ComputeSha256Hash(string text)

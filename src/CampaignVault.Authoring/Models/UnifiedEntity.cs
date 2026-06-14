@@ -20,6 +20,7 @@ public class UnifiedEntity
     public string? RemoteHash { get; set; }
     public string? LastSyncedHash { get; set; }
     public string? RelativePath { get; set; }
+    public string? RemoteMarkdown { get; set; }
 
     public SyncState CalculatedState
     {

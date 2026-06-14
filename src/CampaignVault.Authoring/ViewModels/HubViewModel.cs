@@ -80,10 +80,32 @@ public partial class HubViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CreateNewCampaign()
+    private async Task CreateNewCampaign()
     {
-        // Placeholder for Stage 3/4
-        StatusMessage = "Create New Campaign coming soon!";
+        StatusMessage = "Creating new campaign...";
+        try
+        {
+            var path = await _mainViewModel.PickFolderAsync();
+            if (string.IsNullOrEmpty(path))
+            {
+                StatusMessage = "Create cancelled: No folder selected.";
+                return;
+            }
+
+            var campaignName = Path.GetFileName(path);
+            var metadataService = new MetadataService();
+            await metadataService.SaveMetadataAsync(path, new VaultMetadata 
+            { 
+                CampaignName = campaignName 
+            });
+
+            _mainViewModel.LoadCampaign(path);
+            StatusMessage = $"Created new campaign '{campaignName}' locally.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Create failed: {ex.Message}";
+        }
     }
 
     [RelayCommand]

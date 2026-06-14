@@ -98,14 +98,16 @@
                         </Border>
 
                         <!-- Rendered Content Section -->
-                        <StackPanel Padding="20" Spacing="12">
-                            <TextBlock Text="NOTES &amp; DESCRIPTION" FontSize="10" FontWeight="Bold" Foreground="#52525B" LetterSpacing="0.5" />
-                            <SelectableTextBlock Text="{Binding PreviewNotes}" 
-                                                 TextWrapping="Wrap" 
-                                                 FontSize="14" 
-                                                 LineHeight="22"
-                                                 Foreground="#E4E4EB" />
-                        </StackPanel>
+                        <Border Padding="20">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="NOTES &amp; DESCRIPTION" FontSize="10" FontWeight="Bold" Foreground="#52525B" LetterSpacing="0.5" />
+                                <SelectableTextBlock Text="{Binding PreviewNotes}" 
+                                                     TextWrapping="Wrap" 
+                                                     FontSize="14" 
+                                                     LineHeight="22"
+                                                     Foreground="#E4E4EB" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
