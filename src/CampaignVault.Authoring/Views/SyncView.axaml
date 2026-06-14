@@ -4,8 +4,16 @@
              x:Class="CampaignVault.Authoring.Views.SyncView"
              x:DataType="vm:SyncViewModel">
     <Grid ColumnDefinitions="300, *">
+        <!-- Progress Bar at the top -->
+        <ProgressBar Grid.Row="0" Grid.ColumnSpan="2" 
+                     IsIndeterminate="True" 
+                     IsVisible="{Binding IsSyncing}" 
+                     HorizontalAlignment="Stretch" 
+                     Height="4" VerticalAlignment="Top"
+                     Foreground="#10B981" />
+
         <!-- Left Column: Diff Tree -->
-        <Border Grid.Column="0" BorderBrush="#2D2D3A" BorderThickness="0,0,1,0" Background="#1C1C24" Padding="8">
+        <Border Grid.Column="0" BorderBrush="#2D2D3A" BorderThickness="0,0,1,0" Background="#1C1C24" Padding="8" IsEnabled="{Binding !IsSyncing}">
             <Grid RowDefinitions="Auto, *, Auto">
                 <!-- Campaign Selector -->
                 <Grid Grid.Row="0" RowDefinitions="Auto, Auto, Auto" Margin="0,0,0,10">

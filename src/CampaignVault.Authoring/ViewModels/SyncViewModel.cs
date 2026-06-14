@@ -61,6 +61,9 @@ public partial class SyncViewModel : ObservableObject
     private SyncDiffItem? _selectedDiff;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanPushSelected))]
+    [NotifyPropertyChangedFor(nameof(CanPullSelected))]
+    [NotifyPropertyChangedFor(nameof(IsConflictSelected))]
     private bool _isSyncing;
 
     [ObservableProperty]
@@ -106,6 +109,8 @@ public partial class SyncViewModel : ObservableObject
     [RelayCommand]
     internal async Task FetchCampaignsAsync()
     {
+        if (IsSyncing) return;
+        IsSyncing = true;
         StatusMessage = "Fetching campaign list from server...";
         try
         {
@@ -132,12 +137,16 @@ public partial class SyncViewModel : ObservableObject
         {
             StatusMessage = $"Failed to fetch campaigns: {ex.Message}";
         }
+        finally
+        {
+            IsSyncing = false;
+        }
     }
 
-    public bool CanPushSelected => SelectedDiff != null && 
+    public bool CanPushSelected => !IsSyncing && SelectedDiff != null && 
         (SelectedDiff.Status == "LocalOnly" || SelectedDiff.Status == "ModifiedLocally");
 
-    public bool CanPullSelected => SelectedDiff != null && 
+    public bool CanPullSelected => !IsSyncing && SelectedDiff != null && 
         (SelectedDiff.Status == "RemoteOnly" || SelectedDiff.Status == "ModifiedRemotely");
 
     public bool IsConflictSelected => SelectedDiff != null && SelectedDiff.Status == "Conflict";
@@ -151,12 +160,15 @@ public partial class SyncViewModel : ObservableObject
 
     public async Task PopulateActualDiffsAsync()
     {
+        if (IsSyncing) return;
+        IsSyncing = true;
         SyncDiffs.Clear();
         SelectedDiff = null;
 
         if (string.IsNullOrWhiteSpace(_workspace.CurrentDirectory))
         {
             StatusMessage = "No workspace directory opened.";
+            IsSyncing = false;
             return;
         }
 
@@ -207,12 +219,16 @@ public partial class SyncViewModel : ObservableObject
         {
             StatusMessage = $"Sync Error: {ex.Message}";
         }
+        finally
+        {
+            IsSyncing = false;
+        }
     }
 
     [RelayCommand]
     internal async Task SyncAllAsync()
     {
-        if (SyncDiffs.Count == 0) return;
+        if (IsSyncing || SyncDiffs.Count == 0) return;
         IsSyncing = true;
         StatusMessage = "Syncing all non-conflicting changes...";
 
@@ -269,7 +285,7 @@ public partial class SyncViewModel : ObservableObject
     [RelayCommand]
     private async Task PushSelectedAsync()
     {
-        if (SelectedDiff == null) return;
+        if (IsSyncing || SelectedDiff == null) return;
         IsSyncing = true;
         StatusMessage = $"Pushing {SelectedDiff.FileName} to remote...";
 
@@ -293,7 +309,7 @@ public partial class SyncViewModel : ObservableObject
     [RelayCommand]
     private async Task PullSelectedAsync()
     {
-        if (SelectedDiff == null) return;
+        if (IsSyncing || SelectedDiff == null) return;
         IsSyncing = true;
         StatusMessage = $"Pulling {SelectedDiff.FileName} from remote...";
 
