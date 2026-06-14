@@ -64,6 +64,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _badge2Value = string.Empty;
 
+    public bool HasSelection => Workspace.SelectedNode is EntityNodeViewModel;
+    public bool HasParseError => Workspace.SelectedNode is EntityNodeViewModel && ParsedCharacter == null && !string.IsNullOrEmpty(EditorText);
+
     public MainWindowViewModel()
     {
         CampaignState = new CampaignStateService(Workspace.DbService);
@@ -77,32 +80,38 @@ public partial class MainWindowViewModel : ViewModelBase
         // Subscribe to selection changes
         Workspace.PropertyChanged += async (s, e) =>
         {
-            if (e.PropertyName == nameof(Workspace.SelectedNode) && Workspace.SelectedNode is EntityNodeViewModel entityNode)
+            if (e.PropertyName == nameof(Workspace.SelectedNode))
             {
-                if (entityNode.Entity.CalculatedState == SyncState.RemoteOnly)
-                {
-                    // Auto-pull
-                    var diff = new SyncDiffItem
-                    {
-                        EntityId = entityNode.Entity.Id,
-                        EntityType = entityNode.Entity.EntityType,
-                        RemoteContent = entityNode.Entity.RemoteMarkdown ?? string.Empty,
-                        FilePath = Path.Combine(Workspace.CurrentDirectory, $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md"),
-                        FileName = entityNode.Entity.Name,
-                        Status = "AddedRemotely"
-                    };
-                    try 
-                    {
-                        await Sync.PullSelectedCommand.ExecuteAsync(diff);
-                        // Refresh the node's entity after pull
-                        entityNode.Entity.LocalHash = entityNode.Entity.RemoteHash;
-                        entityNode.Entity.RelativePath = $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md";
-                    } catch {}
-                }
+                OnPropertyChanged(nameof(HasSelection));
+                OnPropertyChanged(nameof(HasParseError));
 
-                var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
-                LoadFileContent(absolutePath);
-                OnEditorTextChanged(EditorText);
+                if (Workspace.SelectedNode is EntityNodeViewModel entityNode)
+                {
+                    if (entityNode.Entity.CalculatedState == SyncState.RemoteOnly)
+                    {
+                        // Auto-pull
+                        var diff = new SyncDiffItem
+                        {
+                            EntityId = entityNode.Entity.Id,
+                            EntityType = entityNode.Entity.EntityType,
+                            RemoteContent = entityNode.Entity.RemoteMarkdown ?? string.Empty,
+                            FilePath = Path.Combine(Workspace.CurrentDirectory, $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md"),
+                            FileName = entityNode.Entity.Name,
+                            Status = "AddedRemotely"
+                        };
+                        try 
+                        {
+                            await Sync.PullSelectedCommand.ExecuteAsync(diff);
+                            // Refresh the node's entity after pull
+                            entityNode.Entity.LocalHash = entityNode.Entity.RemoteHash;
+                            entityNode.Entity.RelativePath = $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md";
+                        } catch {}
+                    }
+
+                    var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
+                    LoadFileContent(absolutePath);
+                    OnEditorTextChanged(EditorText);
+                }
             }
         };
 
@@ -246,6 +255,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 Badge1Value = string.Empty;
                 Badge2Label = string.Empty;
                 Badge2Value = string.Empty;
+                OnPropertyChanged(nameof(HasParseError));
                 return;
             }
 
@@ -327,7 +337,13 @@ public partial class MainWindowViewModel : ViewModelBase
             Badge2Label = string.Empty;
             Badge2Value = string.Empty;
         }
+        finally
+        {
+            OnPropertyChanged(nameof(HasParseError));
+        }
     }
+
+    partial void OnParsedCharacterChanged(Character? value) => OnPropertyChanged(nameof(HasParseError));
 
     partial void OnFormNameChanged(string value) => SyncFormToEditor();
     partial void OnFormCurrentHpChanged(int value) => SyncFormToEditor();
