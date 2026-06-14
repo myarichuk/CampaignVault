@@ -62,7 +62,7 @@
             <Border DockPanel.Dock="Top" Background="#2D2D3A" Padding="15,5">
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <Button Content="Open Folder" Command="{Binding OpenCampaignFolderCommand}" FontSize="11" Padding="8,4" />
-                    <Button Content="Save All" Command="{Binding SaveActiveFileCommand}" FontSize="11" Padding="8,4" IsEnabled="{Binding Workspace.SelectedFile, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <Button Content="Save All" Command="{Binding SaveActiveFileCommand}" FontSize="11" Padding="8,4" IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </StackPanel>
             </Border>
 

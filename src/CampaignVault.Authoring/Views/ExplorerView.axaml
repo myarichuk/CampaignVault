@@ -19,22 +19,32 @@
                        Foreground="#71717A"
                        TextWrapping="Wrap" />
         </StackPanel>
-        <ListBox Grid.Row="2" ItemsSource="{Binding Files}"
-                 SelectedItem="{Binding SelectedFile}"
-                 Background="Transparent" BorderThickness="0">
-            <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:FileNodeViewModel">
-                    <Grid ColumnDefinitions="*, Auto" Height="28">
+        <TreeView Grid.Row="2" ItemsSource="{Binding Categories}"
+                  SelectedItem="{Binding SelectedNode}"
+                  Background="Transparent" BorderThickness="0">
+            <TreeView.DataTemplates>
+                <TreeDataTemplate DataType="vm:CategoryNodeViewModel" ItemsSource="{Binding Children}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <!-- Folder Icon -->
+                        <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" 
+                                  Width="14" Height="14" Foreground="#71717A" />
+                        <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#A0A0AB" FontSize="12" />
+                    </StackPanel>
+                </TreeDataTemplate>
+                <TreeDataTemplate DataType="vm:EntityNodeViewModel">
+                    <Grid ColumnDefinitions="*, Auto" Height="24">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" Width="14" Height="14" Foreground="#71717A" />
-                            <TextBlock Text="{Binding FileName}" VerticalAlignment="Center" FontSize="11" />
+                            <!-- File Icon -->
+                            <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" 
+                                      Width="12" Height="12" Foreground="#71717A" />
+                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="11" />
                         </StackPanel>
                         <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="3" Padding="4,1" Background="#2A2A35" Margin="4,0,0,0">
-                            <TextBlock Text="{Binding SyncStatus}" FontSize="8" Foreground="#A0A0B0" />
+                            <TextBlock Text="{Binding Entity.CalculatedState}" FontSize="8" Foreground="#A0A0B0" />
                         </Border>
                     </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+                </TreeDataTemplate>
+            </TreeView.DataTemplates>
+        </TreeView>
     </Grid>
 </UserControl>

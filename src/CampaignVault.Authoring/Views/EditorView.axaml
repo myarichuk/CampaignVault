@@ -10,7 +10,7 @@
         <Grid dock:ProportionalStackPanel.Proportion="0.5" RowDefinitions="Auto, *" Margin="8" MinWidth="300">
             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="5,0,0,8">
                 <TextBlock Grid.Column="0" Text="Raw Markdown / YAML" FontSize="13" FontWeight="Bold" Foreground="#A0A0AB" VerticalAlignment="Center" />
-                <Button Grid.Column="1" Content="Save File" Command="{Binding SaveActiveFileCommand}" Background="#10B981" Foreground="White" Padding="10,5" FontSize="11" CornerRadius="4" IsEnabled="{Binding Workspace.SelectedFile, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Button Grid.Column="1" Content="Save File" Command="{Binding SaveActiveFileCommand}" Background="#10B981" Foreground="White" Padding="10,5" FontSize="11" CornerRadius="4" IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </Grid>
             <Border Grid.Row="1" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="4">
                 <ae:TextEditor Name="Editor" 
