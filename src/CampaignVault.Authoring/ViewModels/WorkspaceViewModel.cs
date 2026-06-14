@@ -210,7 +210,15 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                     await _scanner.ScanWorkspaceAsync(CurrentDirectory);
                     if (_stateService != null)
                     {
-                        await _stateService.RefreshStateAsync(Path.GetFileName(CurrentDirectory));
+                        var campaignName = Path.GetFileName(CurrentDirectory);
+                        try 
+                        {
+                            var metadata = await new MetadataService().LoadMetadataAsync(CurrentDirectory);
+                            if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
+                                campaignName = metadata.CampaignName;
+                        } catch {}
+                        
+                        await _stateService.RefreshStateAsync(campaignName);
                     }
                 }
 
@@ -239,21 +247,51 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     public void RefreshFilesList()
     {
-        Categories.Clear();
         if (_stateService == null) return;
 
         var groups = _stateService.Entities
             .GroupBy(e => e.EntityType)
-            .OrderBy(g => g.Key);
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        // Remove categories that no longer exist
+        var toRemoveCats = Categories.Where(c => !groups.Any(g => g.Key + "s" == c.Title)).ToList();
+        foreach (var c in toRemoveCats) Categories.Remove(c);
 
         foreach (var group in groups)
         {
-            var category = new CategoryNodeViewModel { Title = group.Key + "s" };
-            foreach (var entity in group.OrderBy(e => e.Name))
+            var title = group.Key + "s";
+            var category = Categories.FirstOrDefault(c => c.Title == title);
+            if (category == null)
             {
-                category.Children.Add(new EntityNodeViewModel(entity));
+                category = new CategoryNodeViewModel { Title = title };
+                Categories.Add(category);
             }
-            Categories.Add(category);
+
+            var groupEntities = group.OrderBy(e => e.Name).ToList();
+
+            // Remove entities that no longer exist
+            var toRemoveEnts = category.Children.OfType<EntityNodeViewModel>()
+                .Where(n => !groupEntities.Any(e => e.Id == n.Entity.Id)).ToList();
+            foreach (var e in toRemoveEnts) category.Children.Remove(e);
+
+            foreach (var entity in groupEntities)
+            {
+                var existing = category.Children.OfType<EntityNodeViewModel>().FirstOrDefault(n => n.Entity.Id == entity.Id);
+                if (existing == null)
+                {
+                    // Add in alphabetical order
+                    var newNode = new EntityNodeViewModel(entity);
+                    var index = 0;
+                    foreach (var child in category.Children.OfType<EntityNodeViewModel>())
+                    {
+                        if (string.Compare(child.Title, newNode.Title, StringComparison.OrdinalIgnoreCase) > 0)
+                            break;
+                        index++;
+                    }
+                    category.Children.Insert(index, newNode);
+                }
+            }
         }
     }
 
