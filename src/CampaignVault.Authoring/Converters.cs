@@ -17,12 +17,10 @@ public class StatusColorConverter : IValueConverter
             {
                 "ModifiedLocally" => Brush.Parse("#D97706"),  // Orange
                 "ModifiedRemotely" => Brush.Parse("#2563EB"), // Blue
-                "AddedLocally" => Brush.Parse("#16A34A"),     // Green
-                "AddedRemotely" => Brush.Parse("#7C3AED"),    // Purple
+                "LocalOnly" => Brush.Parse("#16A34A"),        // Green
+                "RemoteOnly" => Brush.Parse("#7C3AED"),       // Purple
                 "Conflict" => Brush.Parse("#DC2626"),         // Red
                 "Modified" => Brush.Parse("#D97706"),
-                "Added Remote" => Brush.Parse("#2563EB"),
-                "Added Local" => Brush.Parse("#16A34A"),
                 "Deleted" => Brush.Parse("#DC2626"),
                 _ => Brush.Parse("#4B5563")                   // Gray
             };

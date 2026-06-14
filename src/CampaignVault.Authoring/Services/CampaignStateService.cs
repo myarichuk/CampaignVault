@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Models;
 using CampaignVault.Grpc;
@@ -20,6 +21,8 @@ public class CampaignStateService
     public ObservableCollection<UnifiedEntity> Entities { get; } = new();
     public event EventHandler? StateChanged;
 
+    private readonly SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
+
     public CampaignStateService(WorkspaceDbService dbService)
     {
         _dbService = dbService;
@@ -32,89 +35,104 @@ public class CampaignStateService
 
     public async Task RefreshStateAsync(string campaignName)
     {
-        // 1. Get local entities from SQLite
-        var localEntities = _dbService.GetAllEntities();
-        var idMap = new Dictionary<string, UnifiedEntity>();
-
-        foreach (var local in localEntities)
+        await _refreshLock.WaitAsync();
+        try
         {
-            idMap[local.Id] = new UnifiedEntity
-            {
-                Id = local.Id,
-                Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath),
-                EntityType = local.EntityType,
-                LocalHash = local.FileHash,
-                LastSyncedHash = local.LastSyncedHash,
-                RelativePath = local.RelativePath
-            };
-        }
+            // 1. Get local entities from SQLite
+            var localEntities = _dbService.GetAllEntities();
+            var idMap = new Dictionary<string, UnifiedEntity>();
 
-        // 2. Try get remote entities from gRPC
-        if (_clientFactory != null && !string.IsNullOrEmpty(campaignName))
-        {
-            try
+            foreach (var local in localEntities)
             {
-                var client = _clientFactory();
-                var response = await client.GetCampaignEntitiesAsync(new GetCampaignEntitiesRequest { CampaignName = campaignName });
-
-                foreach (var remote in response.Entities)
+                idMap[local.Id] = new UnifiedEntity
                 {
-                    var remoteMarkdown = DeserializeRemoteToMarkdown(remote);
-                    var remoteHash = ComputeSha256Hash(remoteMarkdown);
+                    Id = local.Id,
+                    Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath),
+                    EntityType = local.EntityType,
+                    LocalHash = local.FileHash,
+                    LastSyncedHash = local.LastSyncedHash,
+                    RelativePath = local.RelativePath
+                };
+            }
 
-                    if (idMap.TryGetValue(remote.Id, out var existing))
+            // 2. Try get remote entities from gRPC
+            if (_clientFactory != null && !string.IsNullOrEmpty(campaignName))
+            {
+                try
+                {
+                    var client = _clientFactory();
+                    var response = await client.GetCampaignEntitiesAsync(new GetCampaignEntitiesRequest { CampaignName = campaignName });
+
+                    foreach (var remote in response.Entities)
                     {
-                        existing.RemoteHash = remoteHash;
-                        existing.RemoteMarkdown = remoteMarkdown;
-                    }
-                    else
-                    {
-                        idMap[remote.Id] = new UnifiedEntity
+                        var remoteMarkdown = DeserializeRemoteToMarkdown(remote);
+                        var remoteHash = ComputeSha256Hash(remoteMarkdown);
+
+                        if (idMap.TryGetValue(remote.Id, out var existing))
                         {
-                            Id = remote.Id,
-                            Name = remote.Id, // Fallback name
-                            EntityType = remote.Type,
-                            RemoteHash = remoteHash,
-                            RemoteMarkdown = remoteMarkdown
-                        };
+                            existing.RemoteHash = remoteHash;
+                            existing.RemoteMarkdown = remoteMarkdown;
+                        }
+                        else
+                        {
+                            idMap[remote.Id] = new UnifiedEntity
+                            {
+                                Id = remote.Id,
+                                Name = remote.Id, // Fallback name
+                                EntityType = remote.Type,
+                                RemoteHash = remoteHash,
+                                RemoteMarkdown = remoteMarkdown
+                            };
+                        }
                     }
                 }
+                catch { /* Ignore network errors for now */ }
             }
-            catch { /* Ignore network errors for now */ }
-        }
 
-        // Sync local collection with idMap (avoiding full Clear if possible, but for simplicity now...)
-        Entities.Clear();
-        foreach (var entity in idMap.Values.OrderBy(e => e.EntityType).ThenBy(e => e.Name))
+            // Sync local collection with idMap (avoiding full Clear if possible, but for simplicity now...)
+            Entities.Clear();
+            foreach (var entity in idMap.Values.OrderBy(e => e.EntityType).ThenBy(e => e.Name))
+            {
+                Entities.Add(entity);
+            }
+
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+        finally
         {
-            Entities.Add(entity);
+            _refreshLock.Release();
         }
-
-        StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public Task RefreshLocalStateOnlyAsync()
+    public async Task RefreshLocalStateOnlyAsync()
     {
-        Entities.Clear();
-
-        // 1. Get local entities
-        var localEntities = _dbService.GetAllEntities();
-
-        foreach (var local in localEntities)
+        await _refreshLock.WaitAsync();
+        try
         {
-            Entities.Add(new UnifiedEntity
-            {
-                Id = local.Id,
-                Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath),
-                EntityType = local.EntityType,
-                LocalHash = local.FileHash,
-                LastSyncedHash = local.LastSyncedHash,
-                RelativePath = local.RelativePath
-            });
-        }
+            Entities.Clear();
 
-        StateChanged?.Invoke(this, EventArgs.Empty);
-        return Task.CompletedTask;
+            // 1. Get local entities
+            var localEntities = _dbService.GetAllEntities();
+
+            foreach (var local in localEntities)
+            {
+                Entities.Add(new UnifiedEntity
+                {
+                    Id = local.Id,
+                    Name = System.IO.Path.GetFileNameWithoutExtension(local.RelativePath),
+                    EntityType = local.EntityType,
+                    LocalHash = local.FileHash,
+                    LastSyncedHash = local.LastSyncedHash,
+                    RelativePath = local.RelativePath
+                });
+            }
+
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            _refreshLock.Release();
+        }
     }
 
     private string DeserializeRemoteToMarkdown(EntityItem remote)
@@ -123,9 +141,11 @@ public class CampaignStateService
             .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
             .Build();
 
+        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
         if (remote.Type == "character")
         {
-            var c = JsonSerializer.Deserialize<Character>(remote.Content);
+            var c = JsonSerializer.Deserialize<Character>(remote.Content, opts);
             if (c != null)
             {
                 var copy = new Character
@@ -155,7 +175,7 @@ public class CampaignStateService
         }
         else if (remote.Type == "location")
         {
-            var l = JsonSerializer.Deserialize<Location>(remote.Content);
+            var l = JsonSerializer.Deserialize<Location>(remote.Content, opts);
             if (l != null)
             {
                 var copy = new Location
@@ -183,7 +203,7 @@ public class CampaignStateService
         }
         else if (remote.Type == "quest")
         {
-            var q = JsonSerializer.Deserialize<Quest>(remote.Content);
+            var q = JsonSerializer.Deserialize<Quest>(remote.Content, opts);
             if (q != null)
             {
                 var copy = new Quest

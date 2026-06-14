@@ -135,10 +135,10 @@ public partial class SyncViewModel : ObservableObject
     }
 
     public bool CanPushSelected => SelectedDiff != null && 
-        (SelectedDiff.Status == "AddedLocally" || SelectedDiff.Status == "ModifiedLocally");
+        (SelectedDiff.Status == "LocalOnly" || SelectedDiff.Status == "ModifiedLocally");
 
     public bool CanPullSelected => SelectedDiff != null && 
-        (SelectedDiff.Status == "AddedRemotely" || SelectedDiff.Status == "ModifiedRemotely");
+        (SelectedDiff.Status == "RemoteOnly" || SelectedDiff.Status == "ModifiedRemotely");
 
     public bool IsConflictSelected => SelectedDiff != null && SelectedDiff.Status == "Conflict";
 
@@ -233,13 +233,13 @@ public partial class SyncViewModel : ObservableObject
 
                 try
                 {
-                    if (diff.Status == "AddedLocally" || diff.Status == "ModifiedLocally")
+                    if (diff.Status == "LocalOnly" || diff.Status == "ModifiedLocally")
                     {
                         await PushItemAsync(diff);
                         SyncDiffs.Remove(diff);
                         pushedCount++;
                     }
-                    else if (diff.Status == "AddedRemotely" || diff.Status == "ModifiedRemotely")
+                    else if (diff.Status == "RemoteOnly" || diff.Status == "ModifiedRemotely")
                     {
                         await PullItemAsync(diff);
                         SyncDiffs.Remove(diff);
