@@ -367,9 +367,9 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
 
     private async Task WaitForCombatantsIndexedAsync(string campaign, params string[] characterIds)
     {
-        using var session = _store.OpenAsyncSession();
         for (var attempt = 0; attempt < 50; attempt++)
         {
+            using var session = _store.OpenAsyncSession();
             var found = await PressureQueryHelper.QueryCombatantCharactersAsync(session, campaign, 100);
             if (characterIds.All(id => found.Any(c => c.Id == id)))
             {

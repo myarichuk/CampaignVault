@@ -712,4 +712,36 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.Contains("`list_tools`", result.Data);
         Assert.Contains("get_quest_details", result.Data);
     }
+
+    [Fact]
+    public async Task GetScene_ViaTools_PartyPresent_StampsLastVisitedDay_AndSavesChanges()
+    {
+        var repo = new CampaignRepository(_fixture.Store);
+        var tools = CreateTools();
+        var locId = "locations/visit-tool-" + Guid.NewGuid();
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Tool Visit Location", LastVisitedDay = 0 });
+            
+            var time = await repo.GetTimeAsync(session, null);
+            time.TotalDaysElapsed = 7;
+            await session.StoreAsync(time);
+            
+            await session.SaveChangesAsync();
+        }
+
+        // Call GetScene with partyPresent: true
+        var result = await tools.GetScene(locId, partyPresent: true);
+        Assert.True(result.Success);
+        Assert.Equal(7, result.Data.Location.LastVisitedDay);
+
+        // Verify that the change was persisted to database
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var loc = await repo.GetLocationAsync(session, locId);
+            Assert.NotNull(loc);
+            Assert.Equal(7, loc.LastVisitedDay);
+        }
+    }
 }

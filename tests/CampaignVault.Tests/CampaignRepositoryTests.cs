@@ -1949,4 +1949,398 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var intTiredness = reloadedIntTraveler.Needs.ActiveNeeds["tiredness"];
         Assert.True(intTiredness >= 14f, $"Partial tiredness should have been applied even on interrupt; was {intTiredness}");
     }
+
+    private async Task WaitForAllIndexesAsync()
+    {
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            var staleCount = stats.Indexes.Count(x => x.IsStale);
+            if (staleCount == 0)
+            {
+                break;
+            }
+            await Task.Delay(100);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_Includes_Npcs_From_Child_Locations()
+    {
+        var repo = new CampaignRepository(_store);
+        var parentId = "locations/p-loc-" + Guid.NewGuid();
+        var childId = "locations/c-loc-" + Guid.NewGuid();
+        var char1Id = "chars/p-char-" + Guid.NewGuid();
+        var char2Id = "chars/c-char-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = parentId, Name = "Parent Location" });
+            await repo.UpsertLocationAsync(session, new Location { Id = childId, Name = "Child Location", ParentLocationId = parentId });
+
+            var npc1 = new Character 
+            { 
+                Id = char1Id, 
+                Name = "Parent NPC", 
+                CurrentLocationId = parentId,
+                Schedule = new Schedule { DefaultLocationId = parentId, Routines = [] }
+            };
+            var npc2 = new Character 
+            { 
+                Id = char2Id, 
+                Name = "Child NPC", 
+                CurrentLocationId = childId,
+                Schedule = new Schedule { DefaultLocationId = childId, Routines = [] }
+            };
+
+            await repo.UpsertCharacterAsync(session, npc1);
+            await repo.UpsertCharacterAsync(session, npc2);
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForAllIndexesAsync();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, parentId);
+            Assert.Contains(scene.PresentNPCs, n => n.Id == char1Id);
+            Assert.Contains(scene.PresentNPCs, n => n.Id == char2Id);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_Applies_CampaignScoping_To_Npcs_Items_And_Events()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/scoped-loc-" + Guid.NewGuid();
+        var campA = "CampA";
+        var campB = "CampB";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Scoped Location", CampaignName = campA });
+
+            // NPCs
+            var npcA = new Character { Id = "chars/npc-a-" + Guid.NewGuid(), Name = "NPC A", CurrentLocationId = locId, CampaignName = campA, Schedule = new Schedule { DefaultLocationId = locId } };
+            var npcB = new Character { Id = "chars/npc-b-" + Guid.NewGuid(), Name = "NPC B", CurrentLocationId = locId, CampaignName = campB, Schedule = new Schedule { DefaultLocationId = locId } };
+            var npcShared = new Character { Id = "chars/npc-shared-" + Guid.NewGuid(), Name = "NPC Shared", CurrentLocationId = locId, CampaignName = null, Schedule = new Schedule { DefaultLocationId = locId } };
+
+            await session.StoreAsync(npcA);
+            await session.StoreAsync(npcB);
+            await session.StoreAsync(npcShared);
+
+            // Items
+            await session.StoreAsync(new Item { Id = "items/item-a-" + Guid.NewGuid(), Name = "Item A", HolderId = locId, CampaignName = campA });
+            await session.StoreAsync(new Item { Id = "items/item-b-" + Guid.NewGuid(), Name = "Item B", HolderId = locId, CampaignName = campB });
+            await session.StoreAsync(new Item { Id = "items/item-shared-" + Guid.NewGuid(), Name = "Item Shared", HolderId = locId, CampaignName = null });
+
+            // Rumors
+            await session.StoreAsync(new Rumor { Id = "rumors/rumor-a-" + Guid.NewGuid(), Subject = "Rumor A", CurrentText = "Text A", RegionLocationId = locId, State = RumorState.Nascent, CampaignName = campA });
+            await session.StoreAsync(new Rumor { Id = "rumors/rumor-b-" + Guid.NewGuid(), Subject = "Rumor B", CurrentText = "Text B", RegionLocationId = locId, State = RumorState.Nascent, CampaignName = campB });
+            await session.StoreAsync(new Rumor { Id = "rumors/rumor-shared-" + Guid.NewGuid(), Subject = "Rumor Shared", CurrentText = "Text Shared", RegionLocationId = locId, State = RumorState.Nascent, CampaignName = null });
+
+            // Events
+            await repo.LogEventAsync(session, new Event { Id = "events/event-a-" + Guid.NewGuid(), Summary = "Event A occurred", Involved = [locId], CampaignName = campA });
+            await repo.LogEventAsync(session, new Event { Id = "events/event-b-" + Guid.NewGuid(), Summary = "Event B occurred", Involved = [locId], CampaignName = campB });
+            await repo.LogEventAsync(session, new Event { Id = "events/event-shared-" + Guid.NewGuid(), Summary = "Event Shared occurred", Involved = [locId], CampaignName = null });
+
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForAllIndexesAsync();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId, campA);
+
+            // NPCs (A and Shared are included, B is excluded)
+            Assert.Contains(scene.PresentNPCs, n => n.Name == "NPC A");
+            Assert.Contains(scene.PresentNPCs, n => n.Name == "NPC Shared");
+            Assert.DoesNotContain(scene.PresentNPCs, n => n.Name == "NPC B");
+
+            // Items (A and Shared are included, B is excluded)
+            Assert.Contains(scene.VisibleItems, i => i.Name == "Item A");
+            Assert.Contains(scene.VisibleItems, i => i.Name == "Item Shared");
+            Assert.DoesNotContain(scene.VisibleItems, i => i.Name == "Item B");
+
+            // Rumors (A is included, B and Shared are excluded)
+            Assert.Contains(scene.LocalRumors, r => r.Subject == "Rumor A");
+            Assert.DoesNotContain(scene.LocalRumors, r => r.Subject == "Rumor Shared");
+            Assert.DoesNotContain(scene.LocalRumors, r => r.Subject == "Rumor B");
+
+            // Events (A is included strictly, B and Shared are excluded)
+            Assert.Contains(scene.RecentEvents, e => e.Summary == "Event A occurred");
+            Assert.DoesNotContain(scene.RecentEvents, e => e.Summary == "Event B occurred");
+            Assert.DoesNotContain(scene.RecentEvents, e => e.Summary == "Event Shared occurred");
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_NPC_Merging_Prefers_Simulation_State_Over_Schedule_State()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/merge-loc-" + Guid.NewGuid();
+        var charId = "chars/merge-npc-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Merge Location" });
+
+            var npc = new Character
+            {
+                Id = charId,
+                Name = "Merged NPC",
+                CurrentLocationId = locId,
+                Schedule = new Schedule
+                {
+                    DefaultLocationId = locId,
+                    Routines = []
+                }
+            };
+            await repo.UpsertCharacterAsync(session, npc);
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForAllIndexesAsync();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId);
+            var npcs = scene.PresentNPCs.Where(n => n.Id == charId).ToList();
+            Assert.Single(npcs);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_Merges_Global_Need_Descriptors_With_Npc_Local_Descriptors_Correctly()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/desc-loc-" + Guid.NewGuid();
+        var charId = "chars/desc-npc-" + Guid.NewGuid();
+        var campaignName = "desc-camp-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Desc Location" }, campaignName);
+
+            // Set global need descriptors
+            await repo.SetNeedDescriptorAsync(session, "hunger", "Feeling a bit hungry", campaignName);
+            await repo.SetNeedDescriptorAsync(session, "tiredness", "A bit sleepy", campaignName);
+
+            var npc = new Character
+            {
+                Id = charId,
+                Name = "Desc NPC",
+                CurrentLocationId = locId,
+                Schedule = new Schedule { DefaultLocationId = locId },
+                Needs = new NeedsProfile
+                {
+                    ActiveNeeds = new Dictionary<string, float> { { "hunger", 50f }, { "tiredness", 30f } },
+                    NeedDescriptors = new Dictionary<string, string> { { "hunger", "NPC specific hunger" } }
+                }
+            };
+            await repo.UpsertCharacterAsync(session, npc, campaignName);
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForAllIndexesAsync();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId, campaignName);
+            var npcSummary = scene.PresentNPCs.FirstOrDefault(n => n.Id == charId);
+            Assert.NotNull(npcSummary);
+            
+            // Check hunger: overridden by NPC specific hunger
+            Assert.True(npcSummary.NeedDescriptors.ContainsKey("hunger"));
+            Assert.Equal("NPC specific hunger", npcSummary.NeedDescriptors["hunger"]);
+
+            // Check tiredness: falls back to global "A bit sleepy"
+            Assert.True(npcSummary.NeedDescriptors.ContainsKey("tiredness"));
+            Assert.Equal("A bit sleepy", npcSummary.NeedDescriptors["tiredness"]);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_Handles_CombatEncounter_Correctly()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/combat-loc-" + Guid.NewGuid();
+        var keys = new CampaignDocumentKeys();
+        var combatDocId = keys.CombatCurrent("");
+
+        // Case 1: Combat is active and at the correct location
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Combat Location" });
+            var combat = new CombatEncounter
+            {
+                Id = combatDocId,
+                LocationId = locId,
+                IsActive = true,
+                Round = 3
+            };
+            await session.StoreAsync(combat);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId);
+            Assert.NotNull(scene.ActiveCombat);
+            Assert.Equal(3, scene.ActiveCombat.Round);
+        }
+
+        // Case 2: Combat is at a different location
+        using (var session = _store.OpenAsyncSession())
+        {
+            var combat = await session.LoadAsync<CombatEncounter>(combatDocId);
+            combat.LocationId = "locations/different-loc";
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId);
+            Assert.Null(scene.ActiveCombat);
+        }
+
+        // Case 3: Combat is at the correct location but is NOT active
+        using (var session = _store.OpenAsyncSession())
+        {
+            var combat = await session.LoadAsync<CombatEncounter>(combatDocId);
+            combat.LocationId = locId;
+            combat.IsActive = false;
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId);
+            Assert.Null(scene.ActiveCombat);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_FactionStanceAndReputation_Calculations()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/faction-loc-" + Guid.NewGuid();
+        var factAId = "factions/fact-a-" + Guid.NewGuid();
+        var factBId = "factions/fact-b-" + Guid.NewGuid();
+        var charId = "chars/npc-rep-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Faction Location" });
+
+            // Faction A: Hostile toward Faction B
+            var factionA = new Faction
+            {
+                Id = factAId,
+                Name = "Faction A",
+                TerritoryLocationIds = [locId],
+                StanceToward = new Dictionary<string, FactionStance>
+                {
+                    { factBId, FactionStance.Hostile }
+                }
+            };
+
+            // Faction B: Allied toward Faction A, and Opportunistic toward Party
+            var factionB = new Faction
+            {
+                Id = factBId,
+                Name = "Faction B",
+                TerritoryLocationIds = [locId],
+                StanceToward = new Dictionary<string, FactionStance>
+                {
+                    { factAId, FactionStance.Allied },
+                    { "party", FactionStance.Opportunistic }
+                }
+            };
+
+            await repo.UpsertFactionAsync(session, factionA);
+            await repo.UpsertFactionAsync(session, factionB);
+
+            // NPC has reputation with Faction A
+            var npc = new Character
+            {
+                Id = charId,
+                Name = "Rep NPC",
+                CurrentLocationId = locId,
+                Social = new SocialProfile
+                {
+                    FactionReputations = new Dictionary<string, int>
+                    {
+                        { factAId, 75 }
+                    }
+                },
+                Schedule = new Schedule { DefaultLocationId = locId }
+            };
+            await repo.UpsertCharacterAsync(session, npc);
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForAllIndexesAsync();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId);
+            
+            var summaryA = scene.RelevantFactions!.FirstOrDefault(f => f.FactionId == factAId);
+            Assert.NotNull(summaryA);
+            // Faction A is hostile to Faction B, so local stance should be Hostile
+            Assert.Equal(FactionStance.Hostile, summaryA.LocalStance);
+            // Reputation value 75 is populated from the NPC
+            Assert.Equal(75, summaryA.PlayerReputation);
+
+            var summaryB = scene.RelevantFactions!.FirstOrDefault(f => f.FactionId == factBId);
+            Assert.NotNull(summaryB);
+            // Faction B stance toward party is Opportunistic, which overrides allied
+            Assert.Equal(FactionStance.Opportunistic, summaryB.LocalStance);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_IdentifiesLastKnownTravelFromEvents()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/travel-loc-" + Guid.NewGuid();
+
+        var campaignName = "travel-camp-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Travel Location" }, campaignName);
+
+            // Travel event 1: does not match
+            await repo.LogEventAsync(session, new Event
+            {
+                Id = "events/ev1-" + Guid.NewGuid(),
+                Summary = "Talking to a merchant.",
+                Involved = [locId],
+                Timestamp = DateTime.UtcNow.AddDays(5)
+            }, campaignName);
+
+            // Travel event 2: matches "interrupted"
+            await repo.LogEventAsync(session, new Event
+            {
+                Id = "events/ev2-" + Guid.NewGuid(),
+                Summary = "Travel was interrupted by an ambush.",
+                Involved = [locId],
+                Timestamp = DateTime.UtcNow.AddDays(10)
+            }, campaignName);
+
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForAllIndexesAsync();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId, campaignName);
+            Assert.Equal("Travel was interrupted by an ambush.", scene.LastKnownTravel);
+        }
+    }
 }
