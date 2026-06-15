@@ -1,0 +1,78 @@
+using CampaignVault.Data.Initiative;
+using CampaignVault.Models;
+
+namespace CampaignVault.Data.Scenes;
+
+internal sealed class SceneNpcPresenceFactory
+{
+    private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
+    private readonly INpcInitiativeService _initiativeService;
+
+    public SceneNpcPresenceFactory(
+        INpcBehaviorSynthesizer behaviorSynthesizer,
+        INpcInitiativeService initiativeService)
+    {
+        _behaviorSynthesizer = behaviorSynthesizer;
+        _initiativeService = initiativeService;
+    }
+
+    public List<NpcPresenceSummary> Create(SceneNpcPresenceContext context)
+    {
+        var presenceSummaries = new List<NpcPresenceSummary>();
+
+        foreach (var npc in context.PresentNpcs)
+        {
+            var topNeeds = npc.Needs.ActiveNeeds
+                .OrderByDescending(kv => kv.Value)
+                .Take(3)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            var knownNeeds = npc.Needs.ActiveNeeds.ToDictionary(kv => kv.Key, kv => kv.Value);
+            var needDescriptors = new Dictionary<string, string>(context.GlobalNeedDescriptors, StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in npc.Needs.NeedDescriptors)
+            {
+                needDescriptors[kv.Key] = kv.Value;
+            }
+
+            var initiativeContext = new NpcInitiativeContext
+            {
+                Npc = npc,
+                Location = context.Location,
+                PresentEntities = context.PresentNpcs,
+                RecentEvents = context.RecentSceneEvents,
+                NpcRecentEvents = context.RecentCampaignEvents
+                    .Where(e => e.Involved.Contains(npc.Id))
+                    .ToList(),
+                NpcHeldItems = context.ItemsByHolder.GetValueOrDefault(npc.Id) ?? [],
+                Config = context.Config,
+                CurrentDay = context.Time.TotalDaysElapsed,
+                SurfacedViaTool = "get_scene",
+                IncludeTensionBreakdown = false
+            };
+            var enrichment = _initiativeService.Enrich(initiativeContext, context.Campaign);
+
+            presenceSummaries.Add(new NpcPresenceSummary(
+                Id: npc.Id,
+                Name: npc.Name,
+                CurrentActivity: npc.CurrentActivity ?? "Idle at default location",
+                CurrentMood: npc.Psychology.CurrentMood,
+                TopNeeds: topNeeds,
+                KnownNeeds: knownNeeds,
+                NeedDescriptors: needDescriptors,
+                BehavioralSummary: _behaviorSynthesizer.GenerateSummary(npc, context.Time, context.RecentSceneEvents),
+                Notes: npc.Notes,
+                KeepAlive: npc.KeepAlive,
+                CurrentAppearance: npc.CurrentAppearance,
+                VisualTags: npc.VisualTags,
+                DistinctiveFeatures: npc.DistinctiveFeatures,
+                Memories: npc.Psychology.Memories,
+                SystemStats: npc.SystemStats,
+                BehavioralTension: enrichment.BehavioralTension,
+                ActiveInitiatives: enrichment.ActiveInitiatives.ToList(),
+                RelevantMemories: enrichment.RelevantMemories.ToList()
+            ));
+        }
+
+        return presenceSummaries;
+    }
+}

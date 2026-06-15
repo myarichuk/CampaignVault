@@ -2113,6 +2113,98 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task GetScene_BlackBox_Preserves_Filtering_Merging_And_Travel_Summary()
+    {
+        var repo = new CampaignRepository(_store);
+        var locId = "locations/blackbox-loc-" + Guid.NewGuid();
+        var campA = "blackbox-a";
+        var campB = "blackbox-b";
+        var mergedNpcId = "chars/merged-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Black Box Location", CampaignName = campA });
+
+            await session.StoreAsync(new Character
+            {
+                Id = mergedNpcId,
+                Name = "Merged Guard",
+                CampaignName = campA,
+                CurrentLocationId = locId,
+                CurrentActivity = "patrolling the square",
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
+            });
+
+            await session.StoreAsync(new Character
+            {
+                Id = "chars/shared-" + Guid.NewGuid(),
+                Name = "Shared Witness",
+                CampaignName = null,
+                CurrentLocationId = locId,
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
+            });
+
+            await session.StoreAsync(new Character
+            {
+                Id = "chars/other-campaign-" + Guid.NewGuid(),
+                Name = "Other Campaign NPC",
+                CampaignName = campB,
+                CurrentLocationId = locId,
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
+            });
+
+            await session.StoreAsync(new Item { Id = "items/a-" + Guid.NewGuid(), Name = "Camp A Item", HolderId = locId, CampaignName = campA });
+            await session.StoreAsync(new Item { Id = "items/shared-" + Guid.NewGuid(), Name = "Shared Item", HolderId = locId, CampaignName = null });
+            await session.StoreAsync(new Item { Id = "items/b-" + Guid.NewGuid(), Name = "Camp B Item", HolderId = locId, CampaignName = campB });
+
+            await repo.LogEventAsync(session, new Event
+            {
+                Id = "events/travel-" + Guid.NewGuid(),
+                Summary = "The party travel through the market before arriving.",
+                Involved = [locId],
+                CampaignName = campA
+            });
+            await repo.LogEventAsync(session, new Event
+            {
+                Id = "events/other-" + Guid.NewGuid(),
+                Summary = "Other campaign event",
+                Involved = [locId],
+                CampaignName = campB
+            });
+            await repo.LogEventAsync(session, new Event
+            {
+                Id = "events/shared-" + Guid.NewGuid(),
+                Summary = "Shared event should stay hidden",
+                Involved = [locId],
+                CampaignName = null
+            });
+
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForAllIndexesAsync();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId, campA);
+
+            Assert.Equal(scene.PresentNPCs.Count(), scene.PresentNPCs.Select(n => n.Id).Distinct().Count());
+            Assert.Contains(scene.PresentNPCs, n => n.Name == "Merged Guard" && n.CurrentActivity == "patrolling the square");
+            Assert.Contains(scene.PresentNPCs, n => n.Name == "Shared Witness");
+            Assert.DoesNotContain(scene.PresentNPCs, n => n.Name == "Other Campaign NPC");
+
+            Assert.Contains(scene.VisibleItems, i => i.Name == "Camp A Item");
+            Assert.Contains(scene.VisibleItems, i => i.Name == "Shared Item");
+            Assert.DoesNotContain(scene.VisibleItems, i => i.Name == "Camp B Item");
+
+            Assert.Contains(scene.RecentEvents, e => e.Summary == "The party travel through the market before arriving.");
+            Assert.DoesNotContain(scene.RecentEvents, e => e.Summary == "Other campaign event");
+            Assert.DoesNotContain(scene.RecentEvents, e => e.Summary == "Shared event should stay hidden");
+            Assert.Equal("The party travel through the market before arriving.", scene.LastKnownTravel);
+        }
+    }
+
+    [Fact]
     public async Task GetScene_Merges_Global_Need_Descriptors_With_Npc_Local_Descriptors_Correctly()
     {
         var repo = new CampaignRepository(_store);

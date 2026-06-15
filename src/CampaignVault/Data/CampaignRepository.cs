@@ -7,6 +7,7 @@ using Raven.Client.Documents.Indexes;
 using Microsoft.Extensions.Logging;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Initiative;
+using CampaignVault.Data.Scenes;
 using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data;
@@ -21,6 +22,7 @@ public class CampaignRepository
     private readonly CampaignDocumentKeys _keys;
     private readonly ICurrentCampaignContext? _currentCampaign;
     private readonly INpcInitiativeService _initiativeService;
+    private readonly SceneAssembler _sceneAssembler;
 
     private string ResolveCampaign(string? campaignName)
     {
@@ -61,6 +63,7 @@ public class CampaignRepository
         _keys = keys ?? new CampaignDocumentKeys();
         _currentCampaign = currentCampaign;
         _initiativeService = initiativeService ?? InitiativeServiceFactory.CreateDefault();
+        _sceneAssembler = new SceneAssembler(_behaviorSynthesizer, _initiativeService);
 
         var handlersList = (changeHandlers ?? []).ToList();
 
@@ -348,267 +351,136 @@ public class CampaignRepository
 
         if (location == null)
         {
-            // Per Phase 6 design: never throw on hallucinated location IDs.
-            // Return a minimal stub so the tool layer can emit clear "use location_create" WorldPressure.
-            // The stub is safe to return; callers should check IsLocationAnchored.
-            var stub = new Location
-            {
-                Id = locationId,
-                Name = "[Unanchored]",
-                Description = "This location does not exist in the persistent world model yet.",
-                Type = LocationType.Room,
-                Exits = [],
-                PointsOfInterest = [],
-                AmbientCrowd = null,
-                LastVisitedDay = null
-            };
-            return new()
-            {
-                Location = stub,
-                PresentNPCs = [],
-                LocalRumors = [],
-                VisibleItems = [],
-                RecentEvents = [],
-                ActiveCombat = null,
-                IsLocationAnchored = false,
-                ActiveQuests = [],
-                RelevantFactions = [],
-                LastKnownTravel = null,
-                SuggestedCommitExamples = []
-            };
+            return _sceneAssembler.CreateUnanchoredScene(locationId);
         }
 
         var effective = ResolveCampaign(campaignName);
-        var regionId = location.ParentLocationId ?? locationId;
-        var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20, effective)).ToList();
+        var sceneContext = await LoadSceneAssemblyContextAsync(session, location, locationId, effective, markVisited);
+        return _sceneAssembler.Assemble(sceneContext);
+    }
 
+    private async Task<SceneAssemblyContext> LoadSceneAssemblyContextAsync(
+        IAsyncDocumentSession session,
+        Location location,
+        string locationId,
+        string effectiveCampaign,
+        bool markVisited)
+    {
+        var regionId = location.ParentLocationId ?? locationId;
+        var targetIds = await GetSceneTargetIdsAsync(session, locationId, effectiveCampaign);
+        var npcsFromIndex = await LoadSceneNpcsFromIndexAsync(session, targetIds);
+        var npcsFromSimulation = await LoadSceneNpcsFromSimulationAsync(session, targetIds);
+        var rumors = (await QueryRumorsAsync(session, null, regionId, null, 5, effectiveCampaign)).ToList();
+        var items = await LoadVisibleSceneItemsAsync(session, locationId, effectiveCampaign);
+        var events = await LoadSceneEventsAsync(session, locationId, effectiveCampaign);
+
+        JsonSanitizer.Sanitize(location);
+
+        var time = await GetTimeAsync(session, effectiveCampaign);
+        var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session, effectiveCampaign);
+        var config = await GetCampaignConfigAsync(session, effectiveCampaign);
+        var campaign = await LoadOrCreateCampaignMetaAsync(session, effectiveCampaign);
+        var recentCampaignEvents = await InitiativeQueryHelper.QueryRecentCampaignEventsAsync(
+            session, effectiveCampaign, time.TotalDaysElapsed);
+        var itemsByHolder = await InitiativeQueryHelper.QueryItemsForHoldersAsync(
+            session,
+            effectiveCampaign,
+            GatherSceneNpcIds(npcsFromIndex, npcsFromSimulation));
+        var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effectiveCampaign));
+        var activeQuests = await GetActiveQuestsForLocationAsync(session, locationId, effectiveCampaign);
+        var relevantFactions = await GetFactionsForLocationAsync(session, locationId, effectiveCampaign);
+
+        return new SceneAssemblyContext
+        {
+            RequestedLocationId = locationId,
+            EffectiveCampaign = effectiveCampaign,
+            Location = location,
+            NpcsFromIndex = npcsFromIndex,
+            NpcsFromSimulation = npcsFromSimulation,
+            Rumors = rumors,
+            Items = items,
+            Events = events,
+            Time = time,
+            GlobalNeedDescriptors = globalDescriptors,
+            Config = config,
+            Campaign = campaign,
+            RecentCampaignEvents = recentCampaignEvents,
+            ItemsByHolder = itemsByHolder,
+            ActiveCombat = activeCombat,
+            ActiveQuests = activeQuests,
+            RelevantFactions = relevantFactions,
+            MarkVisited = markVisited
+        };
+    }
+
+    private async Task<List<string>> GetSceneTargetIdsAsync(
+        IAsyncDocumentSession session,
+        string locationId,
+        string effectiveCampaign)
+    {
+        var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20, effectiveCampaign)).ToList();
         var targetIds = new List<string> { locationId };
         targetIds.AddRange(subLocations.Select(l => l.Id));
+        return targetIds;
+    }
 
-        // Primary discovery via static schedule index (good for cold starts / world building)
-        // Scoping hardened: filter by CampaignName (loose to allow shared NPCs/locations per design/feedback; strict for events/rumors).
-        var npcsFromIndex = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+    private async Task<List<Character>> LoadSceneNpcsFromIndexAsync(IAsyncDocumentSession session, IReadOnlyCollection<string> targetIds)
+    {
+        return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
             .ContainsAny("Locations", targetIds)
             .Take(20)
             .ToListAsync();
-        if (!string.IsNullOrEmpty(effective))
-        {
-            npcsFromIndex = npcsFromIndex.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
-        }
+    }
 
-        // discovery via Character_Search index is authoritative; UpsertCharacterAsync waits for index catch-up.
-
-        // Efficient query for simulation-updated locations using the extended Character_Search index.
-        // This replaces the previous unconditional .Take(100) + client-side LINQ filter (O(n) scan).
-        var npcsFromSimulation = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+    private async Task<List<Character>> LoadSceneNpcsFromSimulationAsync(IAsyncDocumentSession session, IReadOnlyCollection<string> targetIds)
+    {
+        return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
             .WhereIn("CurrentLocationId", targetIds)
             .Take(20)
             .ToListAsync();
-        if (!string.IsNullOrEmpty(effective))
-        {
-            npcsFromSimulation = npcsFromSimulation.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
-        }
+    }
 
-        // discovery via Character_Search index is authoritative; UpsertCharacterAsync waits for index catch-up.
-
-        // Merge, dedupe by Id, prefer simulation-updated versions when both exist
-        var npcMap = npcsFromIndex.ToDictionary(n => n.Id, n => n);
-        foreach (var simNpc in npcsFromSimulation)
-        {
-            npcMap[simNpc.Id] = simNpc; // simulation state wins
-        }
-        var npcs = npcMap.Values.ToList();
-
-        // Apply campaign scoping filter (loose for shareable NPCs per design)
-        if (!string.IsNullOrEmpty(effective))
-        {
-            npcs = npcs.Where(n => string.IsNullOrEmpty(n.CampaignName) || n.CampaignName == effective).ToList();
-        }
-
-        var rumors = await QueryRumorsAsync(session, null, regionId, null, 5, effective);
-        
-        // Items filtered for campaign scoping (loose for shareables).
+    private async Task<List<Item>> LoadVisibleSceneItemsAsync(
+        IAsyncDocumentSession session,
+        string locationId,
+        string effectiveCampaign)
+    {
         var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
-        if (!string.IsNullOrEmpty(effective))
+        items = items
+            .Where(i => IsVisibleInCampaign(i.CampaignName, effectiveCampaign))
+            .ToList();
+
+        foreach (var item in items)
         {
-            items = items.Where(i => string.IsNullOrEmpty(i.CampaignName) || i.CampaignName == effective).ToList();
-        }
-        foreach (var it in items)
-        {
-            JsonSanitizer.Sanitize(it);
+            JsonSanitizer.Sanitize(item);
         }
 
-        JsonSanitizer.Sanitize(location);
+        return items;
+    }
 
-        var events = (await QueryEventsAsync(session, null, null, 5, effective))
+    private async Task<List<Event>> LoadSceneEventsAsync(
+        IAsyncDocumentSession session,
+        string locationId,
+        string effectiveCampaign)
+    {
+        return (await QueryEventsAsync(session, null, null, 5, effectiveCampaign))
             .Where(e => e.Involved.Contains(locationId))
             .OrderByDescending(e => e.Timestamp)
             .Take(5)
             .ToList();
+    }
 
-        var time = await GetTimeAsync(session, effective);
-
-        // Load global descriptors once (cheap) so we can merge them into every NPC's view
-        var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session, effective);
-
-        var config = await GetCampaignConfigAsync(session, effective);
-        var campaign = await LoadOrCreateCampaignMetaAsync(session, effective);
-        var recentCampaignEvents = await InitiativeQueryHelper.QueryRecentCampaignEventsAsync(
-            session, effective, (int)time.TotalDaysElapsed);
-        var itemsByHolder = await InitiativeQueryHelper.QueryItemsForHoldersAsync(
-            session, effective, npcs.Select(n => n.Id).ToList());
-
-        // Project to lightweight presence summaries + behavioral synthesis.
-        // This fulfills the V4 goal of giving the DM synthesized insight instead of raw data.
-        var presenceSummaries = new List<NpcPresenceSummary>();
-        foreach (var npc in npcs)
-        {
-            var npcNeeds = npc.Needs ?? new NeedsProfile();
-            var npcPsych = npc.Psychology ?? new PsychologyProfile();
-
-            var topNeeds = npcNeeds.ActiveNeeds
-                .OrderByDescending(kv => kv.Value)
-                .Take(3)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-            var knownNeeds = npcNeeds.ActiveNeeds.ToDictionary(kv => kv.Key, kv => kv.Value);
-            var needDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in npcNeeds.NeedDescriptors ?? new Dictionary<string, string>())
-            {
-                needDescriptors[kv.Key] = kv.Value;
-            }
-
-            var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, time, events);
-
-            var initiativeCtx = new NpcInitiativeContext
-            {
-                Npc = npc,
-                Location = location,
-                PresentEntities = npcs,
-                RecentEvents = events,
-                NpcRecentEvents = recentCampaignEvents
-                    .Where(e => e.Involved.Contains(npc.Id))
-                    .ToList(),
-                NpcHeldItems = itemsByHolder.GetValueOrDefault(npc.Id) ?? [],
-                Config = config,
-                CurrentDay = (int)time.TotalDaysElapsed,
-                SurfacedViaTool = "get_scene",
-                IncludeTensionBreakdown = false
-            };
-            var enrichment = _initiativeService.Enrich(initiativeCtx, campaign);
-
-            presenceSummaries.Add(new NpcPresenceSummary(
-                Id: npc.Id,
-                Name: npc.Name,
-                CurrentActivity: npc.CurrentActivity ?? "Idle at default location",
-                CurrentMood: npcPsych.CurrentMood,
-                TopNeeds: topNeeds,
-                KnownNeeds: knownNeeds,
-                NeedDescriptors: needDescriptors,
-                BehavioralSummary: behavioralSummary,
-                Notes: npc.Notes,
-                KeepAlive: npc.KeepAlive,
-                CurrentAppearance: npc.CurrentAppearance,
-                VisualTags: npc.VisualTags,
-                DistinctiveFeatures: npc.DistinctiveFeatures,
-                Memories: npcPsych.Memories,
-                SystemStats: npc.SystemStats,
-                BehavioralTension: enrichment.BehavioralTension,
-                ActiveInitiatives: enrichment.ActiveInitiatives.ToList(),
-                RelevantMemories: enrichment.RelevantMemories.ToList()
-            ));
-        }
-
-        var activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effective));
-        if (activeCombat != null && (!activeCombat.IsActive || activeCombat.LocationId != locationId))
-        {
-            activeCombat = null;
-        }
-
-        if (markVisited)
-        {
-            location.LastVisitedDay = time.TotalDaysElapsed;
-        }
-
-        // Phase 7.4: Populate quest + faction context for the location.
-        var activeQuests = await GetActiveQuestsForLocationAsync(session, locationId, effective);
-        var questSummaries = activeQuests.Select(ToActiveQuestSummary).ToList();
-
-        var relevantFactions = await GetFactionsForLocationAsync(session, locationId, effective);
-        var factionSummaries = relevantFactions.Select(f =>
-        {
-            int? rep = null;
-            var playerRepChar = npcs.FirstOrDefault(c => c.Social?.FactionReputations?.ContainsKey(f.Id) == true);
-            if (playerRepChar is { Social.FactionReputations: not null })
-            {
-                rep = playerRepChar.Social.FactionReputations[f.Id];
-            }
-
-            var localStance = FactionStance.Neutral;
-            if (f.StanceToward != null)
-            {
-                foreach (var other in relevantFactions)
-                {
-                    if (other.Id == f.Id)
-                    {
-                        continue;
-                    }
-
-                    if (f.StanceToward.TryGetValue(other.Id, out var stance))
-                    {
-                        if (stance == FactionStance.AtWar) { localStance = FactionStance.AtWar; break; }
-                        if (stance == FactionStance.Hostile && localStance != FactionStance.AtWar)
-                        {
-                            localStance = FactionStance.Hostile;
-                        }
-
-                        if (stance == FactionStance.Allied && localStance == FactionStance.Neutral)
-                        {
-                            localStance = FactionStance.Allied;
-                        }
-                    }
-                }
-
-                if (f.StanceToward.TryGetValue("party", out var partyStance) && partyStance == FactionStance.Opportunistic)
-                {
-                    localStance = FactionStance.Opportunistic;
-                }
-            }
-
-            return new FactionPresenceSummary(
-                f.Id,
-                f.Name,
-                f.InfluenceLevel,
-                localStance,
-                rep,
-                f.TerritoryLocationIds.Count,
-                f.EconomicDemand
-            );
-        }).ToList();
-
-        var travelEvent = events
-            .FirstOrDefault(e => e.Summary.Contains("travel", StringComparison.OrdinalIgnoreCase) ||
-                                 e.Summary.Contains("en route", StringComparison.OrdinalIgnoreCase) ||
-                                 e.Summary.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
-        var lastKnownTravel = travelEvent?.Summary;
-
-        var sceneView = new SceneView
-        {
-            Location = location,
-            PresentNPCs = presenceSummaries,
-            LocalRumors = rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
-            VisibleItems = items,
-            RecentEvents = events,
-            ActiveCombat = activeCombat,
-            IsLocationAnchored = true,
-            ActiveQuests = questSummaries,
-            RelevantFactions = factionSummaries,
-            LastKnownTravel = lastKnownTravel,
-            SuggestedCommitExamples = new List<string>()
-        };
-        return sceneView;
+    private static List<string> GatherSceneNpcIds(
+        IEnumerable<Character> npcsFromIndex,
+        IEnumerable<Character> npcsFromSimulation)
+    {
+        return npcsFromIndex
+            .Concat(npcsFromSimulation)
+            .Select(n => n.Id)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public async Task<NpcInitiativeEnrichment> EnrichNpcInitiativeAsync(
