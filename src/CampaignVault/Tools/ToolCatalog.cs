@@ -28,8 +28,10 @@ internal static class ToolCatalog
 
     private static IReadOnlyList<ToolCatalogEntry> BuildEntries()
     {
-        return typeof(CampaignTools)
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+        return Assembly.GetExecutingAssembly()
+            .GetTypes()
+            .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
+            .SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
             .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
             .Select(m =>
             {

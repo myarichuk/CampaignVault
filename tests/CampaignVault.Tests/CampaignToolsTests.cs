@@ -653,8 +653,10 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public void AllMcpTools_HaveToolCategoryAttribute()
     {
-        var methods = typeof(CampaignTools)
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+        var methods = typeof(CampaignTools).Assembly
+            .GetTypes()
+            .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
+            .SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
             .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
             .ToList();
 
