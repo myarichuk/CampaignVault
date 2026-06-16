@@ -14,9 +14,9 @@ public class RulesetsModule : Module
         builder.RegisterAssemblyTypes(assembly)
             .Where(t => t.IsAssignableTo<IRulesetModule>() && !t.IsAbstract)
             .As<IRulesetModule>()
-            .SingleInstance();
+            .InstancePerLifetimeScope();
 
         builder.RegisterType<DefaultRollService>().As<IRollService>().SingleInstance();
-        builder.RegisterType<RulesetModuleSelector>().As<IRulesetModuleSelector>().SingleInstance();
+        builder.RegisterType<RulesetModuleSelector>().As<IRulesetModuleSelector>().InstancePerLifetimeScope();
     }
 }

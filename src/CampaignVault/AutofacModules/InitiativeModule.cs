@@ -13,11 +13,11 @@ public class InitiativeModule : Module
         builder.RegisterAssemblyTypes(assembly)
             .Where(t => t.IsAssignableTo<INpcInitiativeSignalProvider>() && !t.IsAbstract)
             .As<INpcInitiativeSignalProvider>()
-            .SingleInstance();
+            .InstancePerLifetimeScope();
 
-        builder.RegisterType<DefaultRelevantMemorySelector>().As<IRelevantMemorySelector>().SingleInstance();
-        builder.RegisterType<DefaultBehavioralTensionCalculator>().As<IBehavioralTensionCalculator>().SingleInstance();
-        builder.RegisterType<CampaignInitiativeSuppressionStore>().As<IInitiativeSuppressionStore>().SingleInstance();
-        builder.RegisterType<NpcInitiativeService>().As<INpcInitiativeService>().SingleInstance();
+        builder.RegisterType<DefaultRelevantMemorySelector>().As<IRelevantMemorySelector>().InstancePerLifetimeScope();
+        builder.RegisterType<DefaultBehavioralTensionCalculator>().As<IBehavioralTensionCalculator>().InstancePerLifetimeScope();
+        builder.RegisterType<CampaignInitiativeSuppressionStore>().As<IInitiativeSuppressionStore>().InstancePerLifetimeScope();
+        builder.RegisterType<NpcInitiativeService>().As<INpcInitiativeService>().InstancePerLifetimeScope();
     }
 }

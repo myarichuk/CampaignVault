@@ -14,9 +14,9 @@ public class PressureModule : Module
         builder.RegisterAssemblyTypes(assembly)
             .Where(t => t.IsAssignableTo<IPressureContributor>() && !t.IsAbstract)
             .As<IPressureContributor>()
-            .SingleInstance();
+            .InstancePerLifetimeScope();
 
-        builder.RegisterType<PressureOrchestrator>().As<IPressureOrchestrator>().SingleInstance();
-        builder.RegisterType<PressureManager>().As<IPressureManager>().SingleInstance();
+        builder.RegisterType<PressureOrchestrator>().As<IPressureOrchestrator>().InstancePerLifetimeScope();
+        builder.RegisterType<PressureManager>().As<IPressureManager>().InstancePerLifetimeScope();
     }
 }

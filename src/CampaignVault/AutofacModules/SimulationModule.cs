@@ -13,15 +13,15 @@ public class SimulationModule : Module
         builder.RegisterAssemblyTypes(assembly)
             .Where(t => t.IsAssignableTo<ISimulationRule>() && !t.IsAbstract)
             .As<ISimulationRule>()
-            .SingleInstance();
+            .InstancePerLifetimeScope();
 
         // World Change Handlers
         builder.RegisterAssemblyTypes(assembly)
             .Where(t => t.IsAssignableTo<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler>() && !t.IsAbstract)
             .As<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler>()
-            .SingleInstance();
+            .InstancePerLifetimeScope();
 
-        builder.RegisterType<DefaultSimulationEngine>().As<IWorldSimulationEngine>().SingleInstance();
-        builder.RegisterType<DefaultBehaviorSynthesizer>().As<INpcBehaviorSynthesizer>().SingleInstance();
+        builder.RegisterType<DefaultSimulationEngine>().As<IWorldSimulationEngine>().InstancePerLifetimeScope();
+        builder.RegisterType<DefaultBehaviorSynthesizer>().As<INpcBehaviorSynthesizer>().InstancePerLifetimeScope();
     }
 }
