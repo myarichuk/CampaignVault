@@ -258,7 +258,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             throwOnTimeout: true,
             indexes: ["Character/Search"]);
 
-        var tools = TestCampaignToolsFactory.Create(_fixture.Store);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         var result = await tools.GetScene(locId, partyPresent: false, campaignName: campaign);
 
         Assert.True(result.Success);

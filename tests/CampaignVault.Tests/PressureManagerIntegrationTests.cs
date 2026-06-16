@@ -22,7 +22,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
 
     private CampaignTools CreateTools(ICurrentCampaignContext context)
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var selector = new RulesetModuleSelector([
             new Dnd5eRulesetResolver(rollSvc),
@@ -45,7 +45,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
         await tools.SelectCampaign("pressure-cap-test-" + Guid.NewGuid());
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
 
         var locId = "locations/test-room-" + Guid.NewGuid();
 

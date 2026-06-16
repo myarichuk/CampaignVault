@@ -15,16 +15,18 @@ namespace CampaignVault.Tests;
 public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
+    private readonly RavenDBFixture _fixture;
 
     public Phase9ExtensibilityTests(RavenDBFixture fixture)
     {
         _store = fixture.Store;
+        _fixture = fixture;
     }
 
     [Fact]
     public async Task PressureOrchestrator_ScopeIsolation_WorldDoesNotIncludeSceneOnlyContributors()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var locId = "locations/scope-test-" + Guid.NewGuid();

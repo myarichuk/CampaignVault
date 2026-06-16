@@ -67,91 +67,12 @@ public class CampaignRepository
 
         var handlersList = (changeHandlers ?? []).ToList();
 
-        if (handlersList.Count == 0) //TODO: consider what should be done here - this is brittle as fuk
-        {
-            // Default to full production handler set so simulation tests and legacy 4-arg constructions continue to work
-            handlersList =
-            [
-                new HpChangeHandler(),
-                new ItemTransferHandler(),
-                new StatusChangeHandler(),
-                new EventOccurredHandler(),
-                new RumorEvolvesHandler(),
-                new RelationshipChangeHandler(),
-                new EngagementRelationChangeHandler(),
-                new SpatialPositionChangeHandler(),
-                new NeedChangeHandler(),
-                new AttributeChangeHandler(),
-                new MoodChangeHandler(),
-                new ActivityChangeHandler(),
-                new LocationCreateHandler(),
-                new LocationUpdateHandler(),
-                new CharacterCreateHandler(),
-                new ItemCreateHandler(),
-                new ScheduleChangeHandler(),
-                new TravelChangeHandler(),
-                new FactionReputationChangeHandler(),
-                new FactionStateChangeHandler(),
-                new QuestCreateHandler(),
-                new QuestProgressHandler(),
-                new FactionCreateHandler(),
-                new ItemUpdateHandler(),
-                new CharacterUpdateHandler(),
-                new SystemStatsChangeHandler(),
-                new KnowledgeUpdateHandler(),
-                new RulesetActionHandler(
-                    new RulesetModuleSelector([
-                        new Dnd5eRulesetResolver(new DefaultRollService()),
-                        new Pf2eRulesetResolver(new DefaultRollService()),
-                        new Fallout2d20RulesetResolver(new DefaultRollService())
-                    ]),
-                    new CampaignDocumentKeys(),
-                    currentCampaign ?? new CurrentCampaignContext()),
-                new RumorCreateHandler(),
-                new RestChangeHandler()
-            ];
-        }
-
         _changeDispatcher = new(handlersList, Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance);
     }
 
-    /// <summary>
-    /// Convenience constructor primarily for test scenarios.
-    /// Supplies the full set of production handlers so the legacy fallback can be removed.
-    /// </summary>
-    public CampaignRepository(IDocumentStore store)
-        : this(store, 
-               new NoOpSimulationEngine(), 
-               Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-               new DefaultBehaviorSynthesizer(),
-               new(),
-               currentCampaign: null)
-    {
-    }
 
-    /// <summary>
-    /// Legacy 4-argument constructor used extensively by existing tests.
-    /// Supplies modern defaults for CampaignDocumentKeys and ICurrentCampaignContext so tests continue to compile
-    /// after the multi-campaign / deep-propagation changes without requiring mass updates to test setup code.
-    /// </summary>
-    public CampaignRepository(
-        IDocumentStore store,
-        IWorldSimulationEngine simulationEngine,
-        ILogger<CampaignRepository> logger,
-        INpcBehaviorSynthesizer behaviorSynthesizer)
-        : this(store, simulationEngine, logger, behaviorSynthesizer, new(), currentCampaign: null)
-    {
-    }
 
-    /// <summary>
-    /// Minimal no-op implementation so existing tests that do not care about simulation behavior continue to compile.
-    /// AdvanceWorld tests will still need to construct a real engine (or we will update them in verification phase).
-    /// </summary>
-    private sealed class NoOpSimulationEngine : IWorldSimulationEngine
-    {
-        public Task<SimulationResult> RunAsync(SimulationContext context, CancellationToken ct = default)
-            => Task.FromResult(new SimulationResult([], [], []));
-    }
+
 
     /// <summary>
     /// Opens an asynchronous document session with Optimistic Concurrency enabled.

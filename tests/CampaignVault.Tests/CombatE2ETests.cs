@@ -16,10 +16,12 @@ namespace CampaignVault.Tests;
 public class CombatE2ETests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
+    private readonly RavenDBFixture _fixture;
 
     public CombatE2ETests(RavenDBFixture fixture)
     {
         _store = fixture.Store;
+        _fixture = fixture;
     }
 
     private class PredictableRollService : IRollService
@@ -107,7 +109,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
     {
         var campaignName = "e2e-combat-test";
         var tools = CreateTools(campaignName);
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
 
         using (var session = _store.OpenAsyncSession())
         {

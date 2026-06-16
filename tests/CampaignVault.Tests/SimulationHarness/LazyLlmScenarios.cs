@@ -14,10 +14,12 @@ namespace CampaignVault.Tests.SimulationHarness;
 public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
+    private readonly RavenDBFixture _fixture;
 
     public LazyLlmScenarios(RavenDBFixture fixture)
     {
         _store = fixture.Store;
+        _fixture = fixture;
         new Location_Search().Execute(_store);
         new Character_Search().Execute(_store);
     }
@@ -25,7 +27,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_EmptyFlavorVacuum_ProducesNarrativePrompt()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using (var session = _store.OpenAsyncSession())
         {
             var loc = new Location
@@ -55,7 +57,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_MisspelledLocation_ProvidesSuggestions()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
@@ -91,7 +93,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task Commit_MisspelledCharacter_ProvidesSuggestions()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
@@ -134,7 +136,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Forgets_To_Arrive_Produces_TravelInterruptedPressure_And_Resolves_On_Commit()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -211,7 +213,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Ignores_Faction_Influence_Shift_Produces_PresencePressure()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -275,7 +277,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Ignores_Faction_War_Produces_ReputationPressure()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -342,7 +344,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Leaves_Quest_Stale_Produces_DeadlinePressure_And_Resolves()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -410,7 +412,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     {
         var evictionRule = new TransientEvictionRule(Microsoft.Extensions.Logging.Abstractions.NullLogger<TransientEvictionRule>.Instance);
         var simEngine = new DefaultSimulationEngine([evictionRule], Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultSimulationEngine>.Instance);
-        var repo = new CampaignRepository(_store, simEngine, Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance, new DefaultBehaviorSynthesizer());
+        var repo = _fixture.CreateRepository(engineOverride: simEngine);
         
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
@@ -508,7 +510,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_PartyPresentWithoutTravel_ProducesMissingTravelCommit_And_Resolves_On_Commit()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -565,7 +567,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_TransientQuestGiver_ProducesKeepAlivePressure_And_Resolves_On_CharacterUpdate()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -613,7 +615,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task QuestProgress_ClearsStaleQuestPressureCooldown()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -665,7 +667,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_QuestStaleness_UsesOldestOpenObjective_NotLastQuestTouch()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -705,7 +707,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_QuestStaleness_ProducesNarrativePrompt_And_Resolves_On_Commit()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)
@@ -763,7 +765,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetHelp_ContainsPhase7Examples()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
         
@@ -778,7 +780,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetHelp_ContainsPhase8SandboxExamples()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), new CampaignDocumentKeys(), new CurrentCampaignContext(), new PressureManager(new CampaignDocumentKeys()));
         
@@ -792,7 +794,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_UsesItemUpdate_And_CharacterUpdate_For_VisualState()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new RulesetModuleSelector([new Dnd5eRulesetResolver(rollSvc), new Pf2eRulesetResolver(rollSvc), new Fallout2d20RulesetResolver(rollSvc)]), keys, new CurrentCampaignContext(), new PressureManager(keys));

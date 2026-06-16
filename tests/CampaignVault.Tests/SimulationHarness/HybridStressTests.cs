@@ -14,10 +14,12 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
     private readonly Random _rng = new();
+    private readonly RavenDBFixture _fixture;
 
     public HybridStressTests(RavenDBFixture fixture)
     {
         _store = fixture.Store;
+        _fixture = fixture;
     }
 
     [Fact]
@@ -26,9 +28,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
         var engine = new DefaultSimulationEngine(
             [new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule()],
             null);
-        var repo = new CampaignRepository(_store, engine, 
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer());
+        var repo = _fixture.CreateRepository(engineOverride: engine);
         using var session = _store.OpenAsyncSession();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)

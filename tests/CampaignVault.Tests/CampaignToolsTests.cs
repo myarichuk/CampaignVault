@@ -22,7 +22,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         _fixture = fixture;
     }
 
-    private CampaignTools CreateTools() => TestCampaignToolsFactory.Create(_fixture.Store);
+    private CampaignTools CreateTools() => TestCampaignToolsFactory.Create(_fixture);
 
     [Fact]
     public async Task Commit_RejectsBatchOverLimit()
@@ -73,7 +73,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetFactionContext_ValidId_ReturnsFullFaction()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var fid = "factions/tool-faction-" + Guid.NewGuid();
 
@@ -92,7 +92,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetFactionContext_BadId_ReturnsNotFound_WithSuggestions()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var fid = "factions/real-faction-" + Guid.NewGuid();
 
@@ -125,7 +125,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetQuestDetails_ValidId_ReturnsFullQuest()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var qid = "quests/tool-quest-" + Guid.NewGuid();
 
@@ -144,7 +144,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetQuestDetails_BadId_ReturnsNotFound_WithSuggestions()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var qid = "quests/real-quest-" + Guid.NewGuid();
 
@@ -177,7 +177,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetFactionContext_TypoName_ReturnsSuggestions_BasedOnName()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var fid = "factions/weirdid-" + Guid.NewGuid();
 
@@ -209,7 +209,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_Emits_SuggestedCommitExamples_ForInterruptedTravel_AndPopulatesSummaries()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var locId = "locations/travel-loc-" + Guid.NewGuid();
         var charId = "chars/stuck-hero-" + Guid.NewGuid();
@@ -276,7 +276,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     public async Task GetScene_Emits_Negative_Reputation_Pressure_For_FactionControlledAreas()
     {
         var tools = CreateTools();
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/faction-rep-test-" + Guid.NewGuid();
         var charId = "chars/rep-tester-" + Guid.NewGuid();
         var factionId = "factions/test-faction-" + Guid.NewGuid();
@@ -338,7 +338,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetWorldState_Emits_QuestDeadlineNags_AndTravelInterrupted()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var qid = "quests/deadline-quest-" + Guid.NewGuid();
         var locId = "locations/valid-loc-" + Guid.NewGuid();
@@ -399,7 +399,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_EmitsMemoryDecayPressure()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var locId = "locations/test-memory";
         var npcId = "chars/decay-bob";
@@ -432,7 +432,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_IgnoresCoreMemoryDecay()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var locId = "locations/test-core";
         var npcId = "chars/core-bob";
@@ -461,7 +461,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_EmitsOpportunisticPressure()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var locId = "locations/test-opportunistic";
         var factionId = "factions/thieves";
@@ -485,7 +485,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_EmitsEconomicDemandPressure()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var locId = "locations/test-economy-" + Guid.NewGuid();
         var charId = "chars/pc-economy-" + Guid.NewGuid();
@@ -537,7 +537,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_EmitsEconomicDemandPressure_MatchesTagsCaseInsensitively()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var locId = "locations/test-economy-tags-" + Guid.NewGuid();
         var charId = "chars/pc-scroll-" + Guid.NewGuid();
@@ -606,7 +606,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetParty_ReturnsOnlyKeepAliveCharacters_ForCampaign()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var campaignName = "getparty-camp-" + Guid.NewGuid();
 
@@ -718,7 +718,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_ViaTools_PartyPresent_StampsLastVisitedDay_AndSavesChanges()
     {
-        var repo = new CampaignRepository(_fixture.Store);
+        var repo = _fixture.CreateRepository();
         var tools = CreateTools();
         var locId = "locations/visit-tool-" + Guid.NewGuid();
 

@@ -15,15 +15,17 @@ namespace CampaignVault.Tests;
 public class CombatToolsTests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
+    private readonly RavenDBFixture _fixture;
 
     public CombatToolsTests(RavenDBFixture fixture)
     {
         _store = fixture.Store;
+        _fixture = fixture;
     }
 
     private CampaignTools CreateTools(IDocumentStore store)
     {
-        var repo = new CampaignRepository(store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var selector = new RulesetModuleSelector([
             new Dnd5eRulesetResolver(rollSvc),

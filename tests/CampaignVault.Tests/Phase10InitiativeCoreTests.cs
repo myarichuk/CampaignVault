@@ -244,7 +244,7 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
         await SeedCampaignAsync("context-tension");
         var campaignContext = new CurrentCampaignContext();
         campaignContext.SetCurrent("context-tension");
-        var tools = TestCampaignToolsFactory.Create(_fixture.Store, campaignContext);
+        var tools = TestCampaignToolsFactory.Create(_fixture, campaignContext);
         using var session = _fixture.Store.OpenAsyncSession();
 
         var charId = "chars/deep";

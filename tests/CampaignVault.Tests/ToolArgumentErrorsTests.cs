@@ -15,7 +15,7 @@ public class ToolArgumentErrorsTests : IClassFixture<RavenDBFixture>
         _fixture = fixture;
     }
 
-    private CampaignTools CreateTools() => TestCampaignToolsFactory.Create(_fixture.Store);
+    private CampaignTools CreateTools() => TestCampaignToolsFactory.Create(_fixture);
 
     [Fact]
     public async Task SelectCampaign_MissingName_ReturnsFriendlyError()

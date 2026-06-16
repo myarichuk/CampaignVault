@@ -14,6 +14,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace CampaignVault.Tests;
 
@@ -52,11 +53,12 @@ public class RavenDBFixture : IDisposable
         builder.RegisterModule<CampaignVault.AutofacModules.SimulationModule>();
         builder.RegisterModule<CampaignVault.AutofacModules.RulesetsModule>();
         builder.RegisterModule<CampaignVault.AutofacModules.CampaignCoreModule>();
+        builder.RegisterInstance(Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance).As<ILogger<CampaignRepository>>();
         builder.RegisterType<TestNoOpSimulationEngine>().As<IWorldSimulationEngine>().InstancePerLifetimeScope();
         Container = builder.Build();
     }
 
-    public CampaignRepository CreateRepository(IWorldSimulationEngine? engineOverride = null)
+    public CampaignRepository CreateRepository(IWorldSimulationEngine? engineOverride = null, Action<ContainerBuilder>? overrides = null)
     {
         var scope = Container.BeginLifetimeScope(b => 
         {
@@ -64,6 +66,11 @@ public class RavenDBFixture : IDisposable
             {
                 b.RegisterInstance(engineOverride).As<IWorldSimulationEngine>();
             }
+            if (overrides != null)
+            {
+                overrides(b);
+            }
+            b.RegisterType<CampaignRepository>();
         });
         return scope.Resolve<CampaignRepository>();
     }
@@ -115,7 +122,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetCharacter_Fuzzy_Match_Works()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
         
         var id = "npcs/gandalf-" + Guid.NewGuid();
@@ -148,7 +155,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task Commit_Updates_HP_Delta_Atomically()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using (var session = _store.OpenAsyncSession())
         {
             var id = "npcs/gimli-" + Guid.NewGuid();
@@ -174,7 +181,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task Commit_Supports_Arbitrary_Attributes_Via_Open_Dictionary()
     {
         // Regression / feature test for review issue #13
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/attributetest-" + Guid.NewGuid();
@@ -210,7 +217,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task CharacterDistressPressureContributor_Surfaces_Extreme_Attributes_And_Relationships()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/pressuretest-" + Guid.NewGuid();
@@ -281,9 +288,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var engine = new DefaultSimulationEngine(
             [new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule()],
             null);
-        var repo = new CampaignRepository(_store, engine, 
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer());
+        var repo = _fixture.CreateRepository(engineOverride: engine);
         using var session = _store.OpenAsyncSession();
         
         await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 100 });
@@ -320,9 +325,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var engine = new DefaultSimulationEngine(
             [new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule()],
             null);
-        var repo = new CampaignRepository(_store, engine, 
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer());
+        var repo = _fixture.CreateRepository(engineOverride: engine);
         using var session = _store.OpenAsyncSession();
 
         // Time + rumor (existing behavior)
@@ -388,7 +391,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task AdvanceWorld_CalendarMath_Handles_Large_Day_Jumps_Correctly()
     {
         // Regression test for review issue #6: the old Day += + while loops produced wrong Y/M/D on large advances.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         // Start at a known point
@@ -420,9 +423,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             [new NeedsAccumulationRule()],
             null);
 
-        var repo = new CampaignRepository(_store, engine,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer());
+        var repo = _fixture.CreateRepository(engineOverride: engine);
 
         using var session = _store.OpenAsyncSession();
 
@@ -458,7 +459,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetSceneAsync_WithMissingLocation_ReturnsUnanchoredStub()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var missingId = "locations/does-not-exist-" + Guid.NewGuid();
@@ -481,7 +482,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetSceneAsync_Finds_NPCs_By_CurrentLocationId_Using_Index()
     {
         // Verifies the fix for review issue #3: simulation-updated NPCs are discovered via index, not client-side 100-char scan.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var locId = "locations/test-scene-loc-" + Guid.NewGuid();
@@ -519,7 +520,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetWorldState_Aggregates_Context()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
@@ -544,7 +545,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task SanitizeValue_Prevents_JsonElement_Leakage()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
         
         var id = "events/json-test-" + Guid.NewGuid();
@@ -588,7 +589,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetNpcContext_Sanitizes_Event_Details_And_Uses_Safe_Query()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
@@ -648,7 +649,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task V4_Operations_Only_Populate_Mind_Fields_Legacy_TopLevel_Remain_Empty()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var charId = "npcs/legacy-test-" + Guid.NewGuid();
@@ -696,7 +697,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // "Disposing session with active async task is forbidden... Number of active async tasks: 2"
         // The root cause was Task-capture + WhenAll + re-await inside UnifiedSearchAsync
         // combined with ExecuteAsync always doing SaveChanges + dispose.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
@@ -726,7 +727,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Mirrors SanitizeValue_Prevents_JsonElement_Leakage but for the two other
         // Dictionary<string, object> bags that were unprotected and caused the exact
         // Newtonsoft "ValueIsEscaped" crash during SaveChanges in GetScene.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
@@ -799,7 +800,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Simulate legacy data that was written before we had sanitization guards
         // (e.g. direct session.Store or old code paths). GetScene + ExecuteAsync SaveChanges
         // must not explode and should leave clean data behind.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
@@ -873,7 +874,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         // This verifies the fix for AllowOutOfOrderMetadataProperties = true.
         // If the '$type' property is not FIRST, STJ normally fails.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
         ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
@@ -1009,7 +1010,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task HP_Clamping_Enforces_Bounds()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/hpclamp-" + Guid.NewGuid();
@@ -1044,7 +1045,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task AttributeChange_Applies_Delta_When_IsDelta_True()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/attrdelta-" + Guid.NewGuid();
@@ -1086,7 +1087,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task Commit_Returns_Success_False_On_Missing_Character()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var missingId = "npcs/does-not-exist-" + Guid.NewGuid();
@@ -1103,7 +1104,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task StatusChange_And_StatusRemove_Work_Safely_With_Preloaded_Character()
     {
         // Verifies the new handler-based implementation + fix for the previous dangerous Patch pattern.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/status-test-" + Guid.NewGuid();
@@ -1151,9 +1152,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var engine = new DefaultSimulationEngine(
             [new RumorDecayRule()],
             null);
-        var repo = new CampaignRepository(_store, engine,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer());
+        var repo = _fixture.CreateRepository(engineOverride: engine);
         using var session = _store.OpenAsyncSession();
 
         await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 100 });
@@ -1203,7 +1202,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task StatusChangeHandler_LegacyFallback_CreatesMinimalEffect()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/legacy-test-" + Guid.NewGuid();
@@ -1236,7 +1235,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task StatusChangeHandler_DuplicateStructuredEffects_AreAllowed()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/duplicate-test-" + Guid.NewGuid();
@@ -1279,7 +1278,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task StatusChangeHandler_CaseInsensitiveRemoval_RemovesAllMatches()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/removal-test-" + Guid.NewGuid();
@@ -1319,7 +1318,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task StatusChangeHandler_CharacterNotFound_FailsGracefully()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         var missingId = "npcs/does-not-exist-" + Guid.NewGuid();
@@ -1340,7 +1339,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task CampaignConfig_And_Tools_Work_Safely()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
         // 1. Check direct repository default behavior
@@ -1391,7 +1390,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         // Verifies the full tool + pressure path for the key anti-laziness feature:
         // hallucinated location -> immediate copy-pasteable location_create example in WorldPressure.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(
             repo,
@@ -1428,7 +1427,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         // Verifies new Phase 6/7 laziness mitigations: engine detects one-way links (missing reverse from parent)
         // even for non-create paths, and detects "flavor vacuum" (no PoIs/Ambient + empty) and provides ready update JSON.
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var tools = new CampaignTools(
             repo,
@@ -1508,7 +1507,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task CampaignScoped_Reads_DoNot_Load_Documents_From_Other_Campaigns()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locationId = "locations/cross-campaign-" + Guid.NewGuid();
         var itemId = "items/cross-campaign-" + Guid.NewGuid();
         var factionId = "factions/cross-campaign-" + Guid.NewGuid();
@@ -1592,7 +1591,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task UpsertCharacter_Preserves_KeepAlive()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
         var id = "npcs/keepalive-" + Guid.NewGuid();
         
@@ -1610,7 +1609,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_DoesNotStamp_LastVisitedDay_When_MarkVisitedFalse()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var id = "locations/test-visit-" + Guid.NewGuid();
         using (var session = _store.OpenAsyncSession())
         {
@@ -1635,7 +1634,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_Stamps_LastVisitedDay_When_MarkVisitedTrue()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var id = "locations/test-visit-true-" + Guid.NewGuid();
         using (var session = _store.OpenAsyncSession())
         {
@@ -1665,7 +1664,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_CurrentActivity_FallsBack_To_Idle_Not_LocationId()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/activity-test-" + Guid.NewGuid();
         var charId = "chars/activity-test-" + Guid.NewGuid();
         
@@ -1709,7 +1708,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_PopulatesActiveQuestsAndFactions_Correctly()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/quest-faction-loc-" + Guid.NewGuid();
         var questId = "quests/test-quest-" + Guid.NewGuid();
         var factionId = "factions/test-faction-" + Guid.NewGuid();
@@ -1818,7 +1817,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task FallbackHandlers_IncludesPhase6()
     {
-        var repo = new CampaignRepository(_store); // empty handlers fallback
+        var repo = _fixture.CreateRepository(); // empty handlers fallback
         using var session = _store.OpenAsyncSession();
         
         // This would fail if CharacterCreateHandler was missing
@@ -1845,14 +1844,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         };
 
         var engine = new DefaultSimulationEngine(new ISimulationRule[0], null);
-        var repo = new CampaignRepository(
-            _store,
-            engine,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer(),
-            new CampaignDocumentKeys(),
-            currentCampaign: null,
-            changeHandlers: changeHandlers);
+        var repo = _fixture.CreateRepository(engineOverride: engine, overrides: b => 
+        {
+            b.Register(_ => changeHandlers.AsEnumerable()).As<IEnumerable<IWorldChangeHandler>>();
+        });
 
         using var session = _store.OpenAsyncSession();
 
@@ -2005,7 +2000,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_Includes_Npcs_From_Child_Locations()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var parentId = "locations/p-loc-" + Guid.NewGuid();
         var childId = "locations/c-loc-" + Guid.NewGuid();
         var char1Id = "chars/p-char-" + Guid.NewGuid();
@@ -2049,7 +2044,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_Applies_CampaignScoping_To_Npcs_Items_And_Events()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/scoped-loc-" + Guid.NewGuid();
         var campA = "CampA";
         var campB = "CampB";
@@ -2116,7 +2111,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_NPC_Merging_Prefers_Simulation_State_Over_Schedule_State()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/merge-loc-" + Guid.NewGuid();
         var charId = "chars/merge-npc-" + Guid.NewGuid();
 
@@ -2152,7 +2147,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_BlackBox_Preserves_Filtering_Merging_And_Travel_Summary()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/blackbox-loc-" + Guid.NewGuid();
         var campA = "blackbox-a";
         var campB = "blackbox-b";
@@ -2244,7 +2239,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_Merges_Global_Need_Descriptors_With_Npc_Local_Descriptors_Correctly()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/desc-loc-" + Guid.NewGuid();
         var charId = "chars/desc-npc-" + Guid.NewGuid();
         var campaignName = "desc-camp-" + Guid.NewGuid();
@@ -2294,7 +2289,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_Handles_CombatEncounter_Correctly()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/combat-loc-" + Guid.NewGuid();
         var keys = new CampaignDocumentKeys();
         var combatDocId = keys.CombatCurrent("");
@@ -2354,7 +2349,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_FactionStanceAndReputation_Calculations()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/faction-loc-" + Guid.NewGuid();
         var factAId = "factions/fact-a-" + Guid.NewGuid();
         var factBId = "factions/fact-b-" + Guid.NewGuid();
@@ -2434,7 +2429,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_IdentifiesLastKnownTravelFromEvents()
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var locId = "locations/travel-loc-" + Guid.NewGuid();
 
         var campaignName = "travel-camp-" + Guid.NewGuid();

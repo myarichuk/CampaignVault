@@ -9,12 +9,12 @@ namespace CampaignVault.Tests;
 internal static class TestCampaignToolsFactory
 {
     public static CampaignTools Create(
-        IDocumentStore store,
+        RavenDBFixture fixture,
         ICurrentCampaignContext? context = null,
         IPressureOrchestrator? orchestrator = null,
         IPressureManager? pressureManager = null)
     {
-        var repo = new CampaignRepository(store);
+        var repo = fixture.CreateRepository();
         var rollSvc = new DefaultRollService();
         var selector = new RulesetModuleSelector([
             new Dnd5eRulesetResolver(rollSvc),

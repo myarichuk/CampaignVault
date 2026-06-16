@@ -15,15 +15,17 @@ namespace CampaignVault.Tests;
 public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
+    private readonly RavenDBFixture _fixture;
 
     public MultiCampaignIntegrationTests(RavenDBFixture fixture)
     {
         _store = fixture.Store;
+        _fixture = fixture;
     }
 
     private CampaignTools CreateTools(CurrentCampaignContext? currentCampaignContext = null)
     {
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
         var behavior = new DefaultBehaviorSynthesizer();
         
         var dnd5e = new Dnd5eRulesetResolver(new DefaultRollService());
@@ -78,7 +80,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
     {
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
-        var repo = new CampaignRepository(_store);
+        var repo = _fixture.CreateRepository();
 
         // Upsert characters with explicit campaign for scoping (no BC for legacy needed)
         using (var session = _store.OpenAsyncSession())
