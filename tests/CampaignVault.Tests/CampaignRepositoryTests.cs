@@ -1,3 +1,4 @@
+using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
@@ -16,9 +17,16 @@ using Xunit;
 
 namespace CampaignVault.Tests;
 
+public sealed class TestNoOpSimulationEngine : IWorldSimulationEngine
+{
+    public Task<SimulationResult> RunAsync(SimulationContext context, CancellationToken ct = default)
+        => Task.FromResult(new SimulationResult([], [], []));
+}
+
 public class RavenDBFixture : IDisposable
 {
     public IDocumentStore Store { get; }
+    public IContainer Container { get; private set; }
     private readonly string _dataDir;
 
     public RavenDBFixture()
@@ -38,6 +46,26 @@ public class RavenDBFixture : IDisposable
         Store.Initialize();
         Raven.Client.Documents.Indexes.IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, Store);
         WaitForStaticIndexes(Store);
+
+        var builder = new ContainerBuilder();
+        builder.RegisterInstance(Store).As<IDocumentStore>();
+        builder.RegisterModule<CampaignVault.AutofacModules.SimulationModule>();
+        builder.RegisterModule<CampaignVault.AutofacModules.RulesetsModule>();
+        builder.RegisterModule<CampaignVault.AutofacModules.CampaignCoreModule>();
+        builder.RegisterType<TestNoOpSimulationEngine>().As<IWorldSimulationEngine>().InstancePerLifetimeScope();
+        Container = builder.Build();
+    }
+
+    public CampaignRepository CreateRepository(IWorldSimulationEngine? engineOverride = null)
+    {
+        var scope = Container.BeginLifetimeScope(b => 
+        {
+            if (engineOverride != null)
+            {
+                b.RegisterInstance(engineOverride).As<IWorldSimulationEngine>();
+            }
+        });
+        return scope.Resolve<CampaignRepository>();
     }
 
     private static void WaitForStaticIndexes(IDocumentStore store, int timeoutSeconds = 30)
@@ -69,10 +97,19 @@ public class RavenDBFixture : IDisposable
 public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
+    private readonly RavenDBFixture _fixture;
 
     public CampaignRepositoryTests(RavenDBFixture fixture)
     {
         _store = fixture.Store;
+        _fixture = fixture;
+    }
+
+    [Fact]
+    public void Container_Resolves_CampaignRepository()
+    {
+        var repo = _fixture.CreateRepository();
+        Assert.NotNull(repo);
     }
 
     [Fact]
