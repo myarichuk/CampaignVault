@@ -51,7 +51,6 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 | `get_npc_context` | Deep NPC psychology, memories, initiative signals |
 | `get_party` | Retrieve all PCs and major KeepAlive characters |
 | `get_npc_needs` | Current needs + merged descriptors |
-| `get_need_descriptors` | Per-campaign shared need descriptions |
 | `search_world` | Keyword search across lore, characters, locations |
 | `recall_history` | Keyword search over past event summaries |
 | `get_help` | Built-in DM manual and copy-paste patterns |
@@ -66,13 +65,13 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 ### Combat & rulesets
 | Tool | Purpose |
 |------|---------|
-| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Fallout 2d20) |
 | `start_combat` / `next_turn` / `end_combat` | Initiative at start, turn tracking, round-based status expiry |
 
 ### Campaign management
 | Tool | Purpose |
 |------|---------|
 | `create_campaign` / `list_campaigns` / `select_campaign` | Create, list, and activate campaigns |
+| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Fallout 2d20) |
 
 ### Deep dives
 | Tool | Purpose |
@@ -84,7 +83,7 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 | Tool | Purpose |
 |------|---------|
 | `upsert_character` / `upsert_location` / `upsert_lore` | Initial seeding and major structural work |
-| `define_need_descriptor` | Per-campaign shared need descriptions |
+| `define_need_descriptor` / `get_need_descriptors` | Per-campaign shared need descriptions |
 
 **During play, strongly prefer `commit` (especially `activity` changes) over world-builder upserts.**
 

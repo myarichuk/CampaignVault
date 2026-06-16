@@ -20,7 +20,7 @@ public class CampaignManagementTools : CampaignToolBase
     {
     }
 
-    [ToolCategory("Combat & rulesets")]
+    [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"RULES CONFIG TOOL: Get the current campaign configuration.
 Returns the ruleset and system-specific options (e.g., house rules). Respects the currently selected campaign.")]
@@ -35,7 +35,7 @@ Returns the ruleset and system-specific options (e.g., house rules). Respects th
         }, saveChanges: false);
     }
 
-    [ToolCategory("Combat & rulesets")]
+    [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"RULES CONFIG TOOL: Set the active ruleset system for a campaign.
 Respects lock-in (cannot change system once locked). Use this to define house rules or system options.

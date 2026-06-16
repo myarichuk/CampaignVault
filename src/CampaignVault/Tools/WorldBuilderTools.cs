@@ -94,7 +94,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         });
     }
 
-    [ToolCategory("Session & exploration")]
+    [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("DISCOVERABILITY TOOL: Lists all defined need descriptors for the current (or specified) campaign.")]
     public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(
