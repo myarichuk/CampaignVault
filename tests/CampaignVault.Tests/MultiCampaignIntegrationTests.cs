@@ -25,17 +25,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
 
     private CampaignTools CreateTools(CurrentCampaignContext? currentCampaignContext = null)
     {
-        var repo = _fixture.CreateRepository();
-        var behavior = new DefaultBehaviorSynthesizer();
-        
-        var dnd5e = new Dnd5eRulesetResolver(new DefaultRollService());
-        var pf2e = new Pf2eRulesetResolver(new DefaultRollService());
-        var fallout = new Fallout2d20RulesetResolver(new DefaultRollService());
-        var selector = new RulesetModuleSelector([dnd5e, pf2e, fallout]);
-
-        currentCampaignContext ??= new CurrentCampaignContext();
-
-        return new CampaignTools(repo, behavior, selector, new CampaignDocumentKeys(), currentCampaignContext);
+        return TestCampaignToolsFactory.Create(_fixture, currentCampaignContext);
     }
 
     [Fact]

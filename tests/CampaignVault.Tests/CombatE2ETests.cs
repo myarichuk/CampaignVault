@@ -64,44 +64,9 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
 
     private CampaignTools CreateTools(string campaignName)
     {
-        var behavior = new DefaultBehaviorSynthesizer();
-        var rollService = new PredictableRollService();
-        
-        var dnd5e = new Dnd5eRulesetResolver(rollService);
-        var pf2e = new Pf2eRulesetResolver(rollService);
-        var fallout = new Fallout2d20RulesetResolver(rollService);
-        var selector = new RulesetModuleSelector([dnd5e, pf2e, fallout]);
-
         var context = new CurrentCampaignContext();
         context.SetCurrent(campaignName);
-
-        var keys = new CampaignDocumentKeys();
-        var handlers = new IWorldChangeHandler[]
-        {
-            new HpChangeHandler(),
-            new ItemTransferHandler(),
-            new StatusChangeHandler(),
-            new EventOccurredHandler(),
-            new RumorEvolvesHandler(),
-            new RelationshipChangeHandler(),
-            new NeedChangeHandler(),
-            new AttributeChangeHandler(),
-            new MoodChangeHandler(),
-            new ActivityChangeHandler(),
-            new RulesetActionHandler(selector, keys, context)
-        };
-
-        var repo = new CampaignRepository(
-            _store,
-            new DefaultSimulationEngine([]),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            behavior,
-            keys,
-            context,
-            handlers
-        );
-
-        return new CampaignTools(repo, behavior, selector, keys, context);
+        return TestCampaignToolsFactory.Create(_fixture, context, rollService: new PredictableRollService());
     }
 
     [Fact]

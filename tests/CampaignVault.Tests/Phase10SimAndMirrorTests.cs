@@ -40,13 +40,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         }
 
         var engine = new DefaultSimulationEngine(rules);
-        return new CampaignRepository(
-            _fixture.Store,
-            engine,
-            NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer(),
-            _keys,
-            initiativeService: InitiativeServiceFactory.CreateDefault());
+        return _fixture.CreateRepository(engineOverride: engine);
     }
 
     private async Task SeedCampaignAsync(string campaignName, int day = 10, Action<CampaignConfig>? configure = null)

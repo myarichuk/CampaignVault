@@ -29,10 +29,8 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
             [new NeedsAccumulationRule(), new RumorDecayRule(), new ScheduleEvaluationRule()],
             null);
         var repo = _fixture.CreateRepository(engineOverride: engine);
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
         using var session = _store.OpenAsyncSession();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
         var simulator = new LlmSimulator(tools, session);
 
         // Setup: A small region with 3 NPCs

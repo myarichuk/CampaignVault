@@ -1,3 +1,4 @@
+using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Rulesets;
@@ -12,10 +13,18 @@ internal static class TestCampaignToolsFactory
         RavenDBFixture fixture,
         ICurrentCampaignContext? context = null,
         IPressureOrchestrator? orchestrator = null,
-        IPressureManager? pressureManager = null)
+        IPressureManager? pressureManager = null,
+        IRollService? rollService = null,
+        CampaignRepository? repository = null,
+        IWorldSimulationEngine? simulationEngine = null)
     {
-        var repo = fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
+        var currentCampaign = context ?? new CurrentCampaignContext();
+        var repo = repository ?? fixture.CreateRepository(engineOverride: simulationEngine, overrides: b => {
+            if (rollService != null) b.RegisterInstance(rollService).As<IRollService>();
+            b.RegisterInstance(currentCampaign).As<ICurrentCampaignContext>();
+        });
+        
+        var rollSvc = rollService ?? new DefaultRollService();
         var selector = new RulesetModuleSelector([
             new Dnd5eRulesetResolver(rollSvc),
             new Pf2eRulesetResolver(rollSvc),
@@ -30,7 +39,7 @@ internal static class TestCampaignToolsFactory
             new DefaultBehaviorSynthesizer(),
             selector,
             keys,
-            context ?? new CurrentCampaignContext(),
+            currentCampaign,
             pm,
             orchestrator);
     }

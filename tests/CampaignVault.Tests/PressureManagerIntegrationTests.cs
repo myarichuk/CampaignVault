@@ -22,21 +22,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
 
     private CampaignTools CreateTools(ICurrentCampaignContext context)
     {
-        var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var selector = new RulesetModuleSelector([
-            new Dnd5eRulesetResolver(rollSvc),
-            new Pf2eRulesetResolver(rollSvc),
-            new Fallout2d20RulesetResolver(rollSvc)
-        ]);
-        
-        return new CampaignTools(
-            repo,
-            new DefaultBehaviorSynthesizer(),
-            selector,
-            new CampaignDocumentKeys(),
-            context
-        );
+        return TestCampaignToolsFactory.Create(_fixture, context);
     }
 
     [Fact]

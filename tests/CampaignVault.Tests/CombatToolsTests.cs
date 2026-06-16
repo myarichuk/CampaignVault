@@ -25,15 +25,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
     private CampaignTools CreateTools(IDocumentStore store)
     {
-        var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var selector = new RulesetModuleSelector([
-            new Dnd5eRulesetResolver(rollSvc),
-            new Pf2eRulesetResolver(rollSvc),
-            new Fallout2d20RulesetResolver(rollSvc)
-        ]);
-        
-        return new CampaignTools(repo, new DefaultBehaviorSynthesizer(), selector, new CampaignDocumentKeys(), new CurrentCampaignContext());
+        return TestCampaignToolsFactory.Create(_fixture);
     }
 
     [Fact]

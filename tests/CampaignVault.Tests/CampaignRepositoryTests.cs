@@ -521,9 +521,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetWorldState_Aggregates_Context()
     {
         var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -590,9 +588,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetNpcContext_Sanitizes_Event_Details_And_Uses_Safe_Query()
     {
         var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         using var session = _store.OpenAsyncSession();
 
@@ -698,9 +694,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // The root cause was Task-capture + WhenAll + re-await inside UnifiedSearchAsync
         // combined with ExecuteAsync always doing SaveChanges + dispose.
         var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -728,9 +722,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Dictionary<string, object> bags that were unprotected and caused the exact
         // Newtonsoft "ValueIsEscaped" crash during SaveChanges in GetScene.
         var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         var locId = "locations/meta-regression-" + Guid.NewGuid();
         var itemId = "items/prop-regression-" + Guid.NewGuid();
@@ -801,9 +793,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // (e.g. direct session.Store or old code paths). GetScene + ExecuteAsync SaveChanges
         // must not explode and should leave clean data behind.
         var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         var locId = "locations/legacy-polluted-" + Guid.NewGuid();
 
@@ -875,9 +865,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // This verifies the fix for AllowOutOfOrderMetadataProperties = true.
         // If the '$type' property is not FIRST, STJ normally fails.
         var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -1360,9 +1348,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Equal("true", reloaded.SystemOptions["mapEnabled"]);
 
         // 3. Test through CampaignTools
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(repo, new DefaultBehaviorSynthesizer(), new Rulesets.RulesetModuleSelector([new Rulesets.Dnd5eRulesetResolver(rollSvc), new Rulesets.Pf2eRulesetResolver(rollSvc), new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-        ]), new CampaignDocumentKeys(), new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         
         var getResult = await tools.GetConfig();
         Assert.True(getResult.Success);
@@ -1391,17 +1377,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Verifies the full tool + pressure path for the key anti-laziness feature:
         // hallucinated location -> immediate copy-pasteable location_create example in WorldPressure.
         var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(
-            repo,
-            new DefaultBehaviorSynthesizer(),
-            new Rulesets.RulesetModuleSelector([
-                new Rulesets.Dnd5eRulesetResolver(rollSvc),
-                new Rulesets.Pf2eRulesetResolver(rollSvc),
-                new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-            ]),
-            new CampaignDocumentKeys(),
-            new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         var missingId = "locations/hallucinated-tavern-" + Guid.NewGuid();
 
@@ -1428,17 +1404,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Verifies new Phase 6/7 laziness mitigations: engine detects one-way links (missing reverse from parent)
         // even for non-create paths, and detects "flavor vacuum" (no PoIs/Ambient + empty) and provides ready update JSON.
         var repo = _fixture.CreateRepository();
-        var rollSvc = new DefaultRollService();
-        var tools = new CampaignTools(
-            repo,
-            new DefaultBehaviorSynthesizer(),
-            new Rulesets.RulesetModuleSelector([
-                new Rulesets.Dnd5eRulesetResolver(rollSvc),
-                new Rulesets.Pf2eRulesetResolver(rollSvc),
-                new Rulesets.Fallout2d20RulesetResolver(rollSvc)
-            ]),
-            new CampaignDocumentKeys(),
-            new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         var parentId = "locations/broken-parent-" + Guid.NewGuid();
         var childId = "locations/broken-child-" + Guid.NewGuid();
@@ -1547,13 +1513,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         var currentCampaign = new CurrentCampaignContext();
         currentCampaign.SetCurrent("alpha");
-        var repo = new CampaignRepository(
-            _store,
-            new DefaultSimulationEngine([]),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer(),
-            new CampaignDocumentKeys(),
-            currentCampaign);
+        var repo = _fixture.CreateRepository(overrides: b => {
+            b.RegisterInstance(currentCampaign).As<ICurrentCampaignContext>();
+        });
 
         var locationSlug = "sunken-harbor-" + Guid.NewGuid();
         var characterSlug = "mira-" + Guid.NewGuid();
@@ -1926,14 +1888,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             new EventOccurredHandler()
         };
         var intEngine = new DefaultSimulationEngine(new ISimulationRule[0], null);
-        var intRepo = new CampaignRepository(
-            _store,
-            intEngine,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer(),
-            new CampaignDocumentKeys(),
-            currentCampaign: null,
-            changeHandlers: intChangeHandlers);
+        var intRepo = _fixture.CreateRepository(engineOverride: intEngine, overrides: b => 
+        {
+            b.Register(_ => intChangeHandlers.AsEnumerable()).As<IEnumerable<IWorldChangeHandler>>();
+        });
 
         var intCharId = "characters/travel-pc-int-" + Guid.NewGuid().ToString("N");
         var intOriginId = "locations/travel-int-origin-" + Guid.NewGuid().ToString("N");

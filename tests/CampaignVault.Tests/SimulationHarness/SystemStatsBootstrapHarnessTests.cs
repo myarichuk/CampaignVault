@@ -25,10 +25,12 @@ namespace CampaignVault.Tests.SimulationHarness;
 public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
+    private readonly RavenDBFixture _fixture;
 
     public SystemStatsBootstrapHarnessTests(RavenDBFixture fixture)
     {
         _store = fixture.Store;
+        _fixture = fixture;
         new Character_Search().Execute(_store);
     }
 
@@ -386,36 +388,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     {
         var context = new CurrentCampaignContext();
         context.SetCurrent(campaign);
-
-        var rollService = new HarnessPredictableRollService();
-        var selector = new RulesetModuleSelector([
-            new Dnd5eRulesetResolver(rollService),
-            new Pf2eRulesetResolver(rollService),
-            new Fallout2d20RulesetResolver(rollService)
-        ]);
-
-        var keys = new CampaignDocumentKeys();
-        var handlers = BuildProductionHandlers(selector, keys, context);
-        var repo = new CampaignRepository(
-            _store,
-            new DefaultSimulationEngine([]),
-            NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer(),
-            keys,
-            context,
-            handlers);
-
-        var pressureManager = new PressureManager(keys);
-        var orchestrator = new PressureOrchestrator(DefaultPressureContributors.All(), pressureManager, selector);
-
-        return new CampaignTools(
-            repo,
-            new DefaultBehaviorSynthesizer(),
-            selector,
-            keys,
-            context,
-            pressureManager,
-            orchestrator);
+        return TestCampaignToolsFactory.Create(_fixture, context, rollService: new HarnessPredictableRollService());
     }
 
     private static IWorldChangeHandler[] BuildProductionHandlers(

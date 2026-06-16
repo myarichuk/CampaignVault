@@ -1,3 +1,4 @@
+using Autofac;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,13 +46,10 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
             new DefaultRelevantMemorySelector(),
             new DefaultBehavioralTensionCalculator(),
             new CampaignInitiativeSuppressionStore());
-        return new CampaignRepository(
-            _fixture.Store,
-            new TestSimulationEngine(),
-            NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer(),
-            _keys,
-            initiativeService: service);
+            
+        return _fixture.CreateRepository(overrides: b => {
+            b.RegisterInstance(service).As<INpcInitiativeService>();
+        });
     }
 
     private sealed class TestSimulationEngine : IWorldSimulationEngine
