@@ -3,7 +3,7 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data.Scenes;
 
-internal sealed class SceneNpcPresenceFactory
+public sealed class SceneNpcPresenceFactory
 {
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
     private readonly INpcInitiativeService _initiativeService;

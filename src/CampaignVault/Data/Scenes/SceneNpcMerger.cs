@@ -2,7 +2,7 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data.Scenes;
 
-internal sealed class SceneNpcMerger
+public sealed class SceneNpcMerger
 {
     public List<Character> Merge(
         IEnumerable<Character> npcsFromIndex,
@@ -34,6 +34,7 @@ internal sealed class SceneNpcMerger
         return npcMap.Values.ToList();
     }
 
+    //note: if campaign name is emtpy - assume its shared entity - for sharing homebrew NPCs, locations, factions, etc
     private static bool IsVisibleInCampaign(string? entityCampaignName, string effectiveCampaign) =>
         string.IsNullOrEmpty(entityCampaignName)
         || string.Equals(entityCampaignName, effectiveCampaign, StringComparison.OrdinalIgnoreCase);

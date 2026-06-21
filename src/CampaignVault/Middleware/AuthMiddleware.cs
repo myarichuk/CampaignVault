@@ -12,11 +12,13 @@ public class AuthMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly string _bearerToken;
+    private readonly byte[] _bearerTokenBytes;
 
     public AuthMiddleware(RequestDelegate next, string bearerToken)
     {
         _next = next;
         _bearerToken = bearerToken;
+        _bearerTokenBytes = Encoding.UTF8.GetBytes(bearerToken);
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -74,7 +76,7 @@ public class AuthMiddleware
         await _next(context);
     }
 
-    private static bool TimingSafeEquals(string? a, string? b)
+    private bool TimingSafeEquals(string? a, string? b)
     {
         if (a is null || b is null)
         {
@@ -82,7 +84,7 @@ public class AuthMiddleware
         }
 
         var aBytes = Encoding.UTF8.GetBytes(a);
-        var bBytes = Encoding.UTF8.GetBytes(b);
+        var bBytes = ReferenceEquals(b, _bearerToken) ? _bearerTokenBytes : Encoding.UTF8.GetBytes(b);
         return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
     }
 }

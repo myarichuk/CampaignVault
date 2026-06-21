@@ -28,8 +28,11 @@ public class ScheduleEvaluationRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
-        // POLICY NOTE: Entities (like Character) are not currently namespaced per-campaign.
-        // Therefore, this simulation rule operates globally across all campaigns.
+        // POLICY NOTE: Characters can be shared across campaigns if their CampaignName is null.
+        // For shared characters, this rule evaluates their schedule in EVERY campaign's simulation step.
+        // This is intentional: a shared NPC "lives" in all campaigns and progresses their routine
+        // whenever any campaign's time advances. ActivityChange deltas are scoped to the campaign
+        // driving the simulation, so the event log remains isolated per-campaign.
 
         var timeOfDay = context.Time.TimeOfDay.ToString();
 

@@ -45,16 +45,20 @@ internal static class PressureHelpers
 
     public static async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
     {
-        var effective = string.IsNullOrWhiteSpace(campaignName) ? "default" : campaignName;
+        var effective = 
+            string.IsNullOrWhiteSpace(campaignName) ? 
+                throw new ArgumentNullException(nameof(campaignName)) : 
+                campaignName;
+        
         var rawQuery = nameQuery.Trim();
         var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("locations/".Length);
+            cleanQuery = cleanQuery["locations/".Length..];
         }
         else if (cleanQuery.StartsWith("locs/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("locs/".Length);
+            cleanQuery = cleanQuery["locs/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -68,7 +72,8 @@ internal static class PressureHelpers
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
             .Where(x => x.CampaignName == effective || x.CampaignName == null)
             .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-            .Take(3).ToListAsync();
+            .Take(3)
+            .ToListAsync();
 
         if (suggestions.Count < 3)
         {
@@ -76,7 +81,8 @@ internal static class PressureHelpers
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(x => x.CampaignName == effective || x.CampaignName == null)
                 .Search(x => x.Name, cleanQuery + "*")
-                .Take(3).ToListAsync();
+                .Take(3)
+                .ToListAsync();
 
             foreach (var item in byName)
             {

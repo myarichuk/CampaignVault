@@ -61,7 +61,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = "cmp/1", Name = "LenientTest" });
+            await session.StoreAsync(new Campaign { Id = keys.Meta("LenientTest"), Name = "LenientTest" });
             
             var loc = new Location
             {

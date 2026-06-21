@@ -39,6 +39,7 @@ Returns the ruleset and system-specific options (e.g., house rules). Respects th
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"RULES CONFIG TOOL: Set the active ruleset system for a campaign.
 Respects lock-in (cannot change system once locked). Use this to define house rules or system options.
+Available Systems: Dnd5e, Pathfinder2e, Fallout2d20, Narrative
 
 Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(
@@ -80,6 +81,7 @@ Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
     [Description(@"CAMPAIGN TOOL: Creates a new campaign with a name and initial ruleset.
 The ruleset is immediately locked for this campaign, preventing accidental system changes later.
 Automatically selects the newly created campaign as the current one.
+Available Systems: Dnd5e, Pathfinder2e, Fallout2d20, Narrative
 
 Example: create_campaign(""dragonheist"", RulesetSystem.Dnd5e, ""Waterdeep: Dragon Heist"")")]
     public Task<ToolResult<Campaign>> CreateCampaign(
@@ -131,7 +133,7 @@ Most tools will use this campaign context automatically, meaning you don't need 
 
 Example: select_campaign(""dragonheist"")")]
     public Task<ToolResult<string>> SelectCampaign(
-        [Description("Name of the campaign to select.")] string? campaignName = null)
+        [Description("Name of the campaign to select.")] string campaignName)
     {
         if (string.IsNullOrWhiteSpace(campaignName))
         {
@@ -142,7 +144,6 @@ Example: select_campaign(""dragonheist"")")]
         }
 
         var normalized = campaignName.Trim().ToLowerInvariant();
-        _currentCampaign.SetCurrent(normalized);
 
         return ExecuteAsync(async session =>
         {
@@ -153,11 +154,12 @@ Example: select_campaign(""dragonheist"")")]
             {
                 // Auto-create a minimal campaign entry so lock-in and per-campaign state can work
                 await GetOrCreateCampaignMetaAsync(session, normalized, RulesetSystem.Dnd5e, forceLock: false);
-
+                _currentCampaign.SetCurrent(normalized);
                 return new ToolResult<string>(true, normalized, 
                     $"Campaign '{normalized}' selected (new minimal campaign created with D&D 5e as default system).");
             }
 
+            _currentCampaign.SetCurrent(normalized);
             return new ToolResult<string>(true, normalized, $"Campaign '{normalized}' is now selected as current.");
         });
     }

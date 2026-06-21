@@ -34,7 +34,7 @@ public class RestChangeHandlerTests
             new Dictionary<string, Quest>(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
             [],
-            new WorldChangeDispatcher([], Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance)
+            new WorldChangeDispatcher([], new CampaignVault.Data.CampaignDocumentKeys(), Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance)
         );
 
         // Act

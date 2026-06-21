@@ -4,6 +4,7 @@ using CampaignVault.Data.Pressure;
 using CampaignVault.Rulesets;
 using CampaignVault.Tools;
 using Raven.Client.Documents;
+using System.Collections.Generic;
 
 namespace CampaignVault.Tests;
 
@@ -24,23 +25,22 @@ internal static class TestCampaignToolsFactory
             b.RegisterInstance(currentCampaign).As<ICurrentCampaignContext>();
         });
         
-        var rollSvc = rollService ?? new DefaultRollService();
-        var selector = new RulesetModuleSelector([
-            new Dnd5eRulesetResolver(rollSvc),
-            new Pf2eRulesetResolver(rollSvc),
-            new Fallout2d20RulesetResolver(rollSvc)
-        ]);
-        var keys = new CampaignDocumentKeys();
-        var pm = pressureManager ?? new PressureManager(keys);
-        orchestrator ??= new PressureOrchestrator(DefaultPressureContributors.All(), pm, selector);
+        var scope = fixture.Container.BeginLifetimeScope(b => {
+            if (rollService != null) b.RegisterInstance(rollService).As<IRollService>();
+            b.RegisterInstance(currentCampaign).As<ICurrentCampaignContext>();
+            b.RegisterInstance(repo).As<CampaignRepository>();
+            
+            if (orchestrator != null) b.RegisterInstance(orchestrator).As<IPressureOrchestrator>();
+            if (pressureManager != null) b.RegisterInstance(pressureManager).As<IPressureManager>();
+        });
 
         return new CampaignTools(
-            repo,
-            new DefaultBehaviorSynthesizer(),
-            selector,
-            keys,
-            currentCampaign,
-            pm,
-            orchestrator);
+            scope.Resolve<ExplorationTools>(),
+            scope.Resolve<MutationTools>(),
+            scope.Resolve<DeepDiveTools>(),
+            scope.Resolve<WorldBuilderTools>(),
+            scope.Resolve<CombatTools>(),
+            scope.Resolve<CampaignManagementTools>(),
+            scope.Resolve<MetaTools>());
     }
 }

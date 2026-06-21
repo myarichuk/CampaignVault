@@ -15,8 +15,8 @@ public class MutationTools : CampaignToolBase
 
     private static readonly RateLimiter CommitRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
     {
-        TokenLimit = 10000, 
-        TokensPerPeriod = 1000, 
+        TokenLimit = 50, 
+        TokensPerPeriod = 10, 
         ReplenishmentPeriod = TimeSpan.FromSeconds(10),
         AutoReplenishment = true
     });
@@ -186,7 +186,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
             
             string[]? cappedPressure = null;
             var rawPressures = result.SimulatorEvents
-                .Select(e => new WorldPressureItem(PressureSeverity.Simulation, "Simulation", e, ExplorationTools.EventGroupingKey))
+                .Select(e => new WorldPressureItem(PressureSeverity.Simulation, "Simulation", e, WorldPressureItem.SimulationEventGroupingKey))
                 .Concat(result.WorldPressure)
                 .ToList();
 

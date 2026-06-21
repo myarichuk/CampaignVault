@@ -18,7 +18,7 @@ public class EncounterResolverTests
         
         var dispatcher = new WorldChangeDispatcher(
             [], 
-            NullLogger<WorldChangeDispatcher>.Instance);
+            new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
 
         var context = new ChangeContext(
             null!, // Session

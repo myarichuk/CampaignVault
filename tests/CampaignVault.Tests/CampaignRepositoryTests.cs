@@ -53,6 +53,8 @@ public class RavenDBFixture : IDisposable
         builder.RegisterModule<CampaignVault.AutofacModules.SimulationModule>();
         builder.RegisterModule<CampaignVault.AutofacModules.RulesetsModule>();
         builder.RegisterModule<CampaignVault.AutofacModules.CampaignCoreModule>();
+        builder.RegisterModule<CampaignVault.AutofacModules.PressureModule>();
+        builder.RegisterModule<CampaignVault.AutofacModules.InitiativeModule>();
         builder.RegisterInstance(Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance).As<ILogger<CampaignRepository>>();
         builder.RegisterType<TestNoOpSimulationEngine>().As<IWorldSimulationEngine>().InstancePerLifetimeScope();
         Container = builder.Build();
@@ -2250,7 +2252,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         var locId = "locations/combat-loc-" + Guid.NewGuid();
         var keys = new CampaignDocumentKeys();
-        var combatDocId = keys.CombatCurrent("");
+        var combatDocId = keys.CombatCurrent("default");
 
         // Case 1: Combat is active and at the correct location
         using (var session = _store.OpenAsyncSession())
@@ -2269,7 +2271,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            var scene = await repo.GetSceneAsync(session, locId);
+            var scene = await repo.GetSceneAsync(session, locId, "default");
             Assert.NotNull(scene.ActiveCombat);
             Assert.Equal(3, scene.ActiveCombat.Round);
         }
@@ -2284,7 +2286,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            var scene = await repo.GetSceneAsync(session, locId);
+            var scene = await repo.GetSceneAsync(session, locId, "default");
             Assert.Null(scene.ActiveCombat);
         }
 

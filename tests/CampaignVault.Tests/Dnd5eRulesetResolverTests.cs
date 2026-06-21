@@ -54,7 +54,7 @@ public class Dnd5eRulesetResolverTests
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 new IWorldChangeHandler[0], 
-                NullLogger<WorldChangeDispatcher>.Instance),
+                new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             campaignName: null
         );
     }

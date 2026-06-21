@@ -44,4 +44,44 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
 
         return ChangeHandlerResult.Ok;
     }
+
+    public bool ExtractInvolvedEntities(
+        WorldChange change,
+        HashSet<string>? characterIds = null,
+        HashSet<string>? locationIds = null,
+        HashSet<string>? factionIds = null,
+        HashSet<string>? questIds = null,
+        HashSet<string>? itemIds = null,
+        HashSet<string>? allInvolvedIds = null)
+    {
+        if (change is not EventOccurred eo) return false;
+
+        if (eo.Involved != null)
+        {
+            foreach (var id in eo.Involved)
+            {
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (id.StartsWith("chars/")) characterIds?.Add(id);
+                    else if (id.StartsWith("locations/")) locationIds?.Add(id);
+                    else if (id.StartsWith("factions/")) factionIds?.Add(id);
+                    else if (id.StartsWith("quests/")) questIds?.Add(id);
+                    else if (id.StartsWith("items/")) itemIds?.Add(id);
+                    allInvolvedIds?.Add(id);
+                }
+            }
+        }
+
+        if (!string.IsNullOrEmpty(eo.RelatedEntityId))
+        {
+            if (eo.RelatedEntityId.StartsWith("chars/")) characterIds?.Add(eo.RelatedEntityId);
+            else if (eo.RelatedEntityId.StartsWith("locations/")) locationIds?.Add(eo.RelatedEntityId);
+            else if (eo.RelatedEntityId.StartsWith("factions/")) factionIds?.Add(eo.RelatedEntityId);
+            else if (eo.RelatedEntityId.StartsWith("quests/")) questIds?.Add(eo.RelatedEntityId);
+            else if (eo.RelatedEntityId.StartsWith("items/")) itemIds?.Add(eo.RelatedEntityId);
+            allInvolvedIds?.Add(eo.RelatedEntityId);
+        }
+
+        return true;
+    }
 }

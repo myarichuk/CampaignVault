@@ -736,6 +736,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         // Call GetScene with partyPresent: true
         var result = await tools.GetScene(locId, partyPresent: true);
         Assert.True(result.Success);
+        Assert.NotNull(result.Data);
         Assert.Equal(7, result.Data.Location.LastVisitedDay);
 
         // Verify that the change was persisted to database

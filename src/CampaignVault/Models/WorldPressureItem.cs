@@ -18,4 +18,7 @@ public record WorldPressureItem(
     string GroupingKey)
 {
     public WorldPressureItem() : this(default!, default!, default!, default!) { }
+
+    public const string RumorsGroupingKey = "Simulation:Rumors";
+    public const string SimulationEventGroupingKey = "Simulation:Event";
 }

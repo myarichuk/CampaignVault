@@ -24,7 +24,7 @@ public class GrappleRulesetTests
             quests: new Dictionary<string, Quest>(),
             logger: NullLogger.Instance,
             summary: [],
-            dispatcher: new WorldChangeDispatcher([], NullLogger<WorldChangeDispatcher>.Instance),
+            dispatcher: new WorldChangeDispatcher([], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             campaignName: null);
     }
 
@@ -89,11 +89,11 @@ public class GrappleRulesetTests
             quests: new Dictionary<string, Quest>(),
             logger: NullLogger.Instance,
             summary: [],
-            dispatcher: new WorldChangeDispatcher([new TravelChangeHandler()], NullLogger<WorldChangeDispatcher>.Instance),
+            dispatcher: new WorldChangeDispatcher([new TravelChangeHandler(new EncounterResolver())], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             activeCombat: null,
             campaignName: null);
 
-        var result = await new TravelChangeHandler().ApplyAsync(
+        var result = await new TravelChangeHandler(new EncounterResolver()).ApplyAsync(
             new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2" },
             context);
 

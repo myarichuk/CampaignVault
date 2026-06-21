@@ -25,7 +25,7 @@ public class EngagementRelationChangeHandlerTests
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 [new EngagementRelationChangeHandler()],
-                NullLogger<WorldChangeDispatcher>.Instance),
+                new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             campaignName: null);
     }
 

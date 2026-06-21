@@ -59,7 +59,7 @@ public class SpatialPositionTests
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 [new SpatialPositionChangeHandler()],
-                NullLogger<WorldChangeDispatcher>.Instance),
+                new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             campaignName: null);
 
         var handler = new SpatialPositionChangeHandler();

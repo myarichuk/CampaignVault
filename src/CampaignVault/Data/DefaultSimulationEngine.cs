@@ -14,7 +14,6 @@ namespace CampaignVault.Data;
 /// </summary>
 public sealed class DefaultSimulationEngine : IWorldSimulationEngine
 {
-    public const string RumorsGroupingKey = "Simulation:Rumors";
 
     private readonly IEnumerable<ISimulationRule> _rules;
     private readonly ILogger<DefaultSimulationEngine> _logger;
@@ -64,7 +63,7 @@ public sealed class DefaultSimulationEngine : IWorldSimulationEngine
         // Basic pressure signals (can be expanded by dedicated rules later)
         if (context.ActiveRumors.Any(r => r.State is RumorState.Peak or RumorState.Spreading))
         {
-            pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, "Simulation", "Active rumors are circulating and may require attention.", RumorsGroupingKey));
+            pressure.Add(new WorldPressureItem(PressureSeverity.Simulation, "Simulation", "Active rumors are circulating and may require attention.", WorldPressureItem.RumorsGroupingKey));
         }
 
         return new SimulationResult(

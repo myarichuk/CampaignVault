@@ -128,7 +128,7 @@ public class FactionEcosystemRule : ISimulationRule
 
                     deltas.Add(new RumorCreate
                     {
-                        RumorId = $"rumors/faction_{faction.Id.Split('/').LastOrDefault()}_{context.Time.TotalDaysElapsed}_{Guid.NewGuid().ToString("N").Substring(0, 4)}",
+                        RumorId = $"rumors/faction_{faction.Id.Split('/').LastOrDefault()}_{context.Time.TotalDaysElapsed}_{Guid.NewGuid().ToString("N")[..4]}",
                         Subject = $"{faction.Name} Conflict",
                         Text = $"Rumor is spreading that {eventSummary}"
                     });
@@ -162,7 +162,7 @@ public class FactionEcosystemRule : ISimulationRule
                     deltas.Add(new RumorCreate
                     {
                         // Use a GUID fragment to avoid collisions if multiple events happen on the same day
-                        RumorId = $"rumors/faction_{faction.Id.Split('/').LastOrDefault()}_{context.Time.TotalDaysElapsed}_{Guid.NewGuid().ToString("N").Substring(0, 4)}",
+                        RumorId = $"rumors/faction_{faction.Id.Split('/').LastOrDefault()}_{context.Time.TotalDaysElapsed}_{Guid.NewGuid().ToString("N")[..4]}",
                         Subject = $"{faction.Name} Alliance",
                         Text = $"Rumor is spreading that {eventSummary}"
                     });
@@ -190,7 +190,7 @@ public class FactionEcosystemRule : ISimulationRule
 
                     deltas.Add(new RumorCreate
                     {
-                        RumorId = $"rumors/faction_{faction.Id.Split('/').LastOrDefault()}_{context.Time.TotalDaysElapsed}_{Guid.NewGuid().ToString("N").Substring(0, 4)}",
+                        RumorId = $"rumors/faction_{faction.Id.Split('/').LastOrDefault()}_{context.Time.TotalDaysElapsed}_{Guid.NewGuid().ToString("N")[..4]}",
                         Subject = $"{faction.Name} Influence",
                         Text = $"Rumor has it that {eventSummary}"
                     });

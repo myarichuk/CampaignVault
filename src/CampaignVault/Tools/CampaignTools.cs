@@ -24,27 +24,21 @@ public class CampaignTools
     private readonly MetaTools _meta;
 
     public CampaignTools(
-        CampaignRepository repository,
-        INpcBehaviorSynthesizer behaviorSynthesizer,
-        IRulesetModuleSelector rulesetSelector,
-        CampaignDocumentKeys keys,
-        ICurrentCampaignContext currentCampaign,
-        IPressureManager? pressureManager = null,
-        IPressureOrchestrator? pressureOrchestrator = null)
+        ExplorationTools exploration,
+        MutationTools mutation,
+        DeepDiveTools deepDive,
+        WorldBuilderTools worldBuilder,
+        CombatTools combat,
+        CampaignManagementTools management,
+        MetaTools meta)
     {
-        // Supply defaults mimicking original behavior
-        keys ??= new CampaignDocumentKeys();
-        currentCampaign ??= new CurrentCampaignContext();
-        pressureManager ??= new PressureManager(keys);
-        pressureOrchestrator ??= new PressureOrchestrator(DefaultPressureContributors.All(), pressureManager, rulesetSelector);
-
-        _exploration = new ExplorationTools(repository, behaviorSynthesizer, rulesetSelector, keys, currentCampaign, pressureManager, pressureOrchestrator);
-        _mutation = new MutationTools(repository, currentCampaign, keys, pressureManager);
-        _deepDive = new DeepDiveTools(repository, keys, currentCampaign);
-        _worldBuilder = new WorldBuilderTools(repository, keys, currentCampaign);
-        _combat = new CombatTools(repository, currentCampaign, keys, rulesetSelector);
-        _management = new CampaignManagementTools(repository, currentCampaign, keys);
-        _meta = new MetaTools();
+        _exploration = exploration;
+        _mutation = mutation;
+        _deepDive = deepDive;
+        _worldBuilder = worldBuilder;
+        _combat = combat;
+        _management = management;
+        _meta = meta;
     }
 
     // --- Exploration ---

@@ -87,7 +87,7 @@ public class EncounterResolver
                     directive += $" NOTE: This area is controlled by faction '{location.ControllingFactionId}'.";
                 }
 
-                var transientId = $"chars/transient_encounter_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+                var transientId = $"chars/transient_encounter_{Guid.NewGuid().ToString("N")[..6]}";
                 deltas.Add(new CharacterCreate
                 {
                     CharacterId = transientId,

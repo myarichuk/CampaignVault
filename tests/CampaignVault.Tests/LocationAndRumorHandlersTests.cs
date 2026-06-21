@@ -27,7 +27,7 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
         string campaignName = "test-campaign",
         List<string>? summaryList = null)
     {
-        var dispatcher = new WorldChangeDispatcher(new List<IWorldChangeHandler>());
+        var dispatcher = new WorldChangeDispatcher(new List<IWorldChangeHandler>(), new CampaignVault.Data.CampaignDocumentKeys());
         return new ChangeContext(
             session,
             new Dictionary<string, Character>(),

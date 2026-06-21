@@ -5,7 +5,9 @@ namespace CampaignVault.Data;
 
 /// <summary>
 /// Default implementation of <see cref="IRollService"/> using <see cref="Random.Shared"/>.
-/// Inject a seeded <see cref="SeededRollService"/> in tests for deterministic scenarios.
+/// Registered as a Singleton in production because Random.Shared is thread-safe.
+/// For deterministic test scenarios, override this registration in the test's DI scope 
+/// with a custom mock or seeded implementation.
 /// </summary>
 public sealed class DefaultRollService : IRollService
 {

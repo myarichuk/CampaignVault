@@ -28,6 +28,7 @@ public sealed class ChangeContext
     /// Propagated from dispatcher for create handlers to set CampaignName on new entities.
     /// </summary>
     public string? CampaignName { get; }
+    public HashSet<string> InvolvedEntities { get; }
 
     /// <summary>
     /// Resolves the current CampaignTime safely without binding directly to the session implementation.
@@ -88,6 +89,7 @@ public sealed class ChangeContext
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
         CampaignName = campaignName;
+        InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -121,6 +123,7 @@ public sealed class ChangeContext
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
         CampaignName = campaignName;
+        InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
     public void RegisterNewLocation(Location loc) => _locations[loc.Id] = loc;
@@ -161,11 +164,11 @@ public sealed class ChangeContext
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("locations/".Length);
+            cleanQuery = cleanQuery["locations/".Length..];
         }
         else if (cleanQuery.StartsWith("locs/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("locs/".Length);
+            cleanQuery = cleanQuery["locs/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -214,11 +217,11 @@ public sealed class ChangeContext
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("chars/".Length);
+            cleanQuery = cleanQuery["chars/".Length..];
         }
         else if (cleanQuery.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("characters/".Length);
+            cleanQuery = cleanQuery["characters/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -267,11 +270,11 @@ public sealed class ChangeContext
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("items/".Length);
+            cleanQuery = cleanQuery["items/".Length..];
         }
         else if (cleanQuery.StartsWith("item/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("item/".Length);
+            cleanQuery = cleanQuery["item/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -319,7 +322,7 @@ public sealed class ChangeContext
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("factions/".Length);
+            cleanQuery = cleanQuery["factions/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -368,7 +371,7 @@ public sealed class ChangeContext
         var cleanQuery = nameQuery;
         if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("quests/".Length);
+            cleanQuery = cleanQuery["quests/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))

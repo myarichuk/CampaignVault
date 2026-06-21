@@ -58,10 +58,11 @@ public sealed class CampaignDocumentKeys
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            return "default";
+            throw new ArgumentNullException(name);
         }
 
         // Very lightweight normalization — real validation can live in the create/select tools later.
+        // Note: *very* inefficient, refactor at first opportunity 
         return name.Trim().ToLowerInvariant()
                    .Replace(' ', '-')
                    .Replace('_', '-')

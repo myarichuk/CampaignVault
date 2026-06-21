@@ -10,11 +10,9 @@ public class TravelChangeHandler : IWorldChangeHandler
 {
     private readonly EncounterResolver _resolver;
 
-    public TravelChangeHandler() : this(new EncounterResolver()) { }
-
     public TravelChangeHandler(EncounterResolver resolver)
     {
-        _resolver = resolver ?? new EncounterResolver();
+        _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
     }
 
     public bool ShouldHandle(WorldChange change) => change is TravelChange;
@@ -129,7 +127,13 @@ public class TravelChangeHandler : IWorldChangeHandler
             destination.LastVisitedDay = (int)time.TotalDaysElapsed;
             destination.LastUpdated = DateTime.UtcNow;
             
-            context.RecordMessage($"Travel: {character.Name} traveled to {destination.Name}. {tc.Narrative}");
+            var msg = $"Travel: {character.Name} traveled to {destination.Name}. {tc.Narrative}";
+            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred 
+            { 
+                Category = EventCategory.Travel, 
+                Summary = msg, 
+                Involved = [character.Id, destination.Id] 
+            }, ct);
         }
         else
         {
@@ -137,5 +141,34 @@ public class TravelChangeHandler : IWorldChangeHandler
         }
 
         return ChangeHandlerResult.Ok;
+    }
+
+    public bool ExtractInvolvedEntities(
+        WorldChange change,
+        HashSet<string>? characterIds = null,
+        HashSet<string>? locationIds = null,
+        HashSet<string>? factionIds = null,
+        HashSet<string>? questIds = null,
+        HashSet<string>? itemIds = null,
+        HashSet<string>? allInvolvedIds = null)
+    {
+        if (change is not TravelChange tc) return false;
+
+        if (!string.IsNullOrEmpty(tc.CharacterId))
+        {
+            characterIds?.Add(tc.CharacterId);
+            allInvolvedIds?.Add(tc.CharacterId);
+            // Note: We cannot pre-extract the origin location here because we don't have the character loaded yet
+            // to check character.CurrentLocationId. This must be handled by the dispatcher's fallback or 
+            // by a subsequent context load inside the handler.
+        }
+
+        if (!string.IsNullOrEmpty(tc.DestinationLocationId))
+        {
+            locationIds?.Add(tc.DestinationLocationId);
+            allInvolvedIds?.Add(tc.DestinationLocationId);
+        }
+
+        return true;
     }
 }

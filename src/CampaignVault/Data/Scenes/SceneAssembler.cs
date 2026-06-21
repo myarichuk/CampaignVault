@@ -3,7 +3,7 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data.Scenes;
 
-internal sealed class SceneAssembler
+public sealed class SceneAssembler
 {
     private readonly SceneNpcMerger _npcMerger;
     private readonly SceneNpcPresenceFactory _npcPresenceFactory;

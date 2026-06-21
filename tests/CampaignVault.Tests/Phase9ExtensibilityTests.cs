@@ -6,6 +6,8 @@ using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Pressure.Contributors;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using Autofac;
+using System.Collections.Generic;
 using Raven.Client.Documents;
 using Xunit;
 
@@ -49,10 +51,11 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
         var selector = new RulesetModuleSelector([
             new Dnd5eRulesetResolver(rollSvc),
             new Pf2eRulesetResolver(rollSvc),
-            new Fallout2d20RulesetResolver(rollSvc)
+            new Fallout2d20RulesetResolver(rollSvc),
+            new NarrativeRulesetResolver(rollSvc)
         ]);
         var pm = new PressureManager(new CampaignDocumentKeys());
-        var orchestrator = new PressureOrchestrator(DefaultPressureContributors.All(), pm, selector);
+        var orchestrator = new PressureOrchestrator(_fixture.Container.Resolve<IEnumerable<IPressureContributor>>(), pm, selector);
 
         var worldCtx = new PressureContext("scope-test", time, config, session,
             Scene: scene, RequestedLocationId: locId);

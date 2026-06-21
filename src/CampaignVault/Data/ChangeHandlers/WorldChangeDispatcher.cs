@@ -22,12 +22,15 @@ public sealed class WorldChangeDispatcher
 {
     private readonly IReadOnlyList<IWorldChangeHandler> _handlers;
     private readonly ILogger<WorldChangeDispatcher> _logger;
+    private readonly CampaignDocumentKeys _keys;
 
     public WorldChangeDispatcher(
         IEnumerable<IWorldChangeHandler> handlers,
+        CampaignDocumentKeys keys,
         ILogger<WorldChangeDispatcher>? logger = null)
     {
         _handlers = handlers?.ToList() ?? [];
+        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance;
     }
 
@@ -74,10 +77,12 @@ public sealed class WorldChangeDispatcher
 
         if (_handlers.Count == 0)
         {
-            // Fast path for tests / early migration: no handlers registered
+            _logger.LogError("WorldChangeDispatcher invoked with 0 registered handlers. Changes will be dropped.");
             foreach (var c in changes)
             {
-                summary.Add($"WARNING: Unhandled change type: {c?.GetType().Name}");
+                var msg = $"ERROR: Unhandled change type: {c?.GetType().Name}";
+                _logger.LogError(msg);
+                summary.Add(msg);
             }
 
             return new CommitResult { Success = false, ChangesProcessed = changes.Length, Summary = summary };
@@ -90,140 +95,12 @@ public sealed class WorldChangeDispatcher
         var factionIds = new HashSet<string>();
         var questIds = new HashSet<string>();
         var needsCombat = false;
+        var allInvolved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var change in changes)
         {
-            switch (change)
-            {
-                case ItemTransfer it:
-                    itemIds.Add(it.ItemId);
-                    break;
-                case ItemUpdate iu:
-                    itemIds.Add(iu.ItemId);
-                    break;
-                case CharacterUpdate cu:
-                    characterIds.Add(cu.CharacterId);
-                    break;
-                case RelationshipChange rc:
-                    characterIds.Add(rc.SourceId);
-                    break;
-                case NeedChange nc:
-                    characterIds.Add(nc.CharacterId);
-                    break;
-                case AttributeChange ac:
-                    characterIds.Add(ac.CharacterId);
-                    break;
-                case ActivityChange act:
-                    characterIds.Add(act.CharacterId);
-                    break;
-                case MoodChange mc:
-                    characterIds.Add(mc.CharacterId);
-                    break;
-                case HpChange hc:
-                    characterIds.Add(hc.CharacterId);
-                    break;
-                case StatusChange sc:
-                    characterIds.Add(sc.CharacterId);
-                    break;
-                case RulesetAction ra:
-                    characterIds.Add(ra.ActorId);
-                    foreach(var targetId in ra.TargetIds ?? Enumerable.Empty<string>()) characterIds.Add(targetId);
-                    needsCombat = true; // Ruleset actions often interact with combat
-                    break;
-                case StatusRemove sr:
-                    characterIds.Add(sr.CharacterId);
-                    break;
-                case LocationCreate lc:
-                    if (!string.IsNullOrEmpty(lc.ConnectedFromLocationId))
-                    {
-                        locationIds.Add(lc.ConnectedFromLocationId);
-                    }
-
-                    if (!string.IsNullOrEmpty(lc.ParentLocationId))
-                    {
-                        locationIds.Add(lc.ParentLocationId);
-                    }
-
-                    break;
-                case LocationUpdate lu:
-                    locationIds.Add(lu.LocationId);
-                    break;
-                case CharacterCreate cc:
-                    if (!string.IsNullOrEmpty(cc.CurrentLocationId))
-                    {
-                        locationIds.Add(cc.CurrentLocationId);
-                    }
-
-                    break;
-                case ScheduleChange sc:
-                    characterIds.Add(sc.CharacterId);
-                    if (sc.Schedule != null)
-                    {
-                        locationIds.Add(sc.Schedule.DefaultLocationId);
-                        foreach(var r in sc.Schedule.Routines) locationIds.Add(r.LocationId);
-                    }
-                    break;
-                case ItemCreate ic:
-                    // Might be a location id or character id (support common ID prefixes used in examples/docs)
-                    if (ic.HolderId != null &&
-                        (ic.HolderId.StartsWith("locations/") || ic.HolderId.StartsWith("locs/")))
-                    {
-                        locationIds.Add(ic.HolderId);
-                    }
-                    else if (ic.HolderId != null &&
-                             (ic.HolderId.StartsWith("chars/") || ic.HolderId.StartsWith("characters/")))
-                    {
-                        characterIds.Add(ic.HolderId);
-                    }
-
-                    break;
-                // Phase 7.1/7.3: pre-load destination explicitly. The traveler's CurrentLocationId (origin) is
-                // supplemented *after* characters are loaded (see below) so TravelChangeHandler can resolve exit metadata.
-                case TravelChange tc:
-                    characterIds.Add(tc.CharacterId);
-                    if (!string.IsNullOrEmpty(tc.DestinationLocationId))
-                    {
-                        locationIds.Add(tc.DestinationLocationId);
-                    }
-
-                    break;
-                case FactionReputationChange frc:
-                    characterIds.Add(frc.CharacterId);
-                    factionIds.Add(frc.FactionId);
-                    break;
-                case FactionStateChange fsc:
-                    factionIds.Add(fsc.FactionId);
-                    if (!string.IsNullOrEmpty(fsc.TargetFactionId))
-                    {
-                        factionIds.Add(fsc.TargetFactionId!);
-                    }
-
-                    break;
-                case QuestProgress qp:
-                    questIds.Add(qp.QuestId);
-                    break;
-                case FactionCreate fc2:
-                    // No pre-load needed — create path loads to check existence
-                    break;
-                case QuestCreate qc:
-                    // No pre-load needed — create path loads to check existence
-                    break;
-                case RestChange rc:
-                    characterIds.Add(rc.CharacterId);
-                    if (!string.IsNullOrEmpty(rc.LocationId))
-                    {
-                        locationIds.Add(rc.LocationId);
-                    }
-
-                    break;
-                case EngagementRelationChange erc:
-                    characterIds.Add(erc.ActorId);
-                    characterIds.Add(erc.TargetId);
-                    break;
-                case KnowledgeUpdate ku:
-                    characterIds.Add(ku.CharacterId);
-                    break;
-            }
+            ExtractInvolvedIds(change, characterIds, locationIds, factionIds, questIds, itemIds, allInvolved);
+            if (change is RulesetAction) needsCombat = true;
         }
 
         Dictionary<string, Character> characters;
@@ -241,6 +118,7 @@ public sealed class WorldChangeDispatcher
             // Phase 7.3 / Travel: preload the traveler's *origin* CurrentLocationId (in addition to the explicit Destination).
             // This allows TravelChangeHandler to resolve LocationExit metadata (TravelCostHours, Terrain) via the
             // preloaded context.Locations dictionary in the normal case, avoiding a mid-handler Session.LoadAsync fallback.
+            // Note: Cannot be done in ExtractInvolvedEntities because the Character is not yet loaded.
             foreach (var change in changes.OfType<TravelChange>())
             {
                 if (characters.TryGetValue(change.CharacterId, out var traveler) &&
@@ -262,8 +140,7 @@ public sealed class WorldChangeDispatcher
             // Assumption: Single combat encounter per campaign at a time.
             if (needsCombat && !string.IsNullOrEmpty(effectiveCampaign))
             {
-                var keys = new CampaignDocumentKeys();
-                activeCombat = await session.LoadAsync<CombatEncounter>(keys.CombatCurrent(effectiveCampaign));
+                activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effectiveCampaign));
             }
         }
         else
@@ -286,6 +163,11 @@ public sealed class WorldChangeDispatcher
         else
         {
             context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign);
+        }
+
+        foreach (var id in allInvolved)
+        {
+            context.InvolvedEntities.Add(id);
         }
 
         // 2. Process each change in caller-supplied order
@@ -328,10 +210,10 @@ public sealed class WorldChangeDispatcher
                 {
                     result = await chosen.ApplyAsync(change, context);
                 }
-                catch (ArgumentNullException ex) when (ex.ParamName == "key")
+                catch (ArgumentNullException ex)
                 {
-                    // If an LLM completely omits an ID field, TryGetValue(null) will throw.
-                    result = ChangeHandlerResult.Failure($"A required ID property is missing on {change.GetType().Name}.");
+                    _logger.LogWarning(ex, "ArgumentNullException during handler application");
+                    result = ChangeHandlerResult.Failure($"A required property is missing on {change.GetType().Name}.");
                 }
 
                 if (result.Message is not null)
@@ -361,7 +243,8 @@ public sealed class WorldChangeDispatcher
         {
             Success = overallSuccess,
             ChangesProcessed = changes.Length,
-            Summary = summary
+            Summary = summary,
+            InvolvedEntities = context.InvolvedEntities.ToList()
         };
     }
 
@@ -380,6 +263,8 @@ public sealed class WorldChangeDispatcher
             return;
         }
 
+        ExtractInvolvedIds(mutation, null, null, null, null, null, parentContext.InvolvedEntities);
+
         try
         {
             var result = await chosen.ApplyAsync(mutation, parentContext, ct);
@@ -396,6 +281,22 @@ public sealed class WorldChangeDispatcher
         {
             _logger.LogError(ex, "Error processing child mutation of type {ChangeType}", mutation?.GetType().Name);
             parentContext.RecordFailure();
+        }
+    }
+
+    private void ExtractInvolvedIds(
+        WorldChange change,
+        HashSet<string>? characterIds = null,
+        HashSet<string>? locationIds = null,
+        HashSet<string>? factionIds = null,
+        HashSet<string>? questIds = null,
+        HashSet<string>? itemIds = null,
+        HashSet<string>? allInvolvedIds = null)
+    {
+        var chosen = FindHandler(change);
+        if (chosen != null)
+        {
+            chosen.ExtractInvolvedEntities(change, characterIds, locationIds, factionIds, questIds, itemIds, allInvolvedIds);
         }
     }
 }

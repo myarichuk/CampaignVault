@@ -2,7 +2,7 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data.Scenes;
 
-internal sealed class SceneNpcPresenceContext
+public sealed class SceneNpcPresenceContext
 {
     public required IReadOnlyList<Character> PresentNpcs { get; init; }
     public required Location Location { get; init; }

@@ -23,7 +23,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         _fixture = fixture;
     }
 
-    private CampaignTools CreateTools(IDocumentStore store)
+    private CampaignTools CreateTools()
     {
         return TestCampaignToolsFactory.Create(_fixture);
     }
@@ -32,7 +32,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     public async Task StartCombat_ValidCharacters_InitializesEncounter()
     {
         var store = _store;
-        var tools = CreateTools(store);
+        var tools = CreateTools();
         var c1 = "char1_" + Guid.NewGuid();
         var c2 = "char2_" + Guid.NewGuid();
         var loc = "loc1_" + Guid.NewGuid();
@@ -61,7 +61,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     public async Task StartCombat_EmptyList_ReturnsError()
     {
         var store = _store;
-        var tools = CreateTools(store);
+        var tools = CreateTools();
         var campaign = "camp_" + Guid.NewGuid();
 
         var result = await tools.StartCombat("loc1", [], campaignName: campaign);
@@ -74,7 +74,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     public async Task StartCombat_DeadCharacters_FiltersOutAndMayFail()
     {
         var store = _store;
-        var tools = CreateTools(store);
+        var tools = CreateTools();
         var c1 = "char1_" + Guid.NewGuid();
         var c2 = "char2_" + Guid.NewGuid();
         var campaign = "camp_" + Guid.NewGuid();
@@ -96,7 +96,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     public async Task NextTurn_SkipsDeadCharacters()
     {
         var store = _store;
-        var tools = CreateTools(store);
+        var tools = CreateTools();
         var c1 = "char1_" + Guid.NewGuid();
         var c2 = "char2_" + Guid.NewGuid();
         var loc = "loc1_" + Guid.NewGuid();
@@ -138,7 +138,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     public async Task NextTurn_EveryoneDead_EndsCombatOrFails()
     {
         var store = _store;
-        var tools = CreateTools(store);
+        var tools = CreateTools();
         var c1 = "char1_" + Guid.NewGuid();
         var c2 = "char2_" + Guid.NewGuid();
         var loc = "loc1_" + Guid.NewGuid();
@@ -175,7 +175,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     public async Task EndCombat_WrapsUpSuccessfully()
     {
         var store = _store;
-        var tools = CreateTools(store);
+        var tools = CreateTools();
         var c1 = "char1_" + Guid.NewGuid();
         var loc = "loc1_" + Guid.NewGuid();
         var campaign = "camp_" + Guid.NewGuid();
@@ -196,7 +196,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     public async Task NextTurn_ExpiresRoundBasedStatusEffects()
     {
         var store = _store;
-        var tools = CreateTools(store);
+        var tools = CreateTools();
         var c1 = "char1_" + Guid.NewGuid();
         var c2 = "char2_" + Guid.NewGuid();
         var loc = "loc1_" + Guid.NewGuid();
@@ -240,7 +240,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     public async Task EndCombat_ClearsRoundBasedStatuses()
     {
         var store = _store;
-        var tools = CreateTools(store);
+        var tools = CreateTools();
         var c1 = "char1_" + Guid.NewGuid();
         var loc = "loc1_" + Guid.NewGuid();
         var campaign = "camp_" + Guid.NewGuid();

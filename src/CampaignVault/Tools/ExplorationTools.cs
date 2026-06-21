@@ -12,7 +12,7 @@ namespace CampaignVault.Tools;
 [McpServerToolType]
 public class ExplorationTools : CampaignToolBase
 {
-    public const string EventGroupingKey = "Simulation:Event";
+
     public const string UrgentGroupingKey = "NpcInitiative:Urgent";
 
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
@@ -26,17 +26,14 @@ public class ExplorationTools : CampaignToolBase
         IRulesetModuleSelector rulesetSelector,
         CampaignDocumentKeys keys,
         ICurrentCampaignContext currentCampaign,
-        IPressureManager? pressureManager = null,
-        IPressureOrchestrator? pressureOrchestrator = null)
+        IPressureManager pressureManager,
+        IPressureOrchestrator pressureOrchestrator)
         : base(repository, currentCampaign, keys)
     {
         _behaviorSynthesizer = behaviorSynthesizer;
         _rulesetSelector = rulesetSelector;
-        _pressureManager = pressureManager ?? new PressureManager(_keys);
-        _pressureOrchestrator = pressureOrchestrator ?? new PressureOrchestrator(
-            DefaultPressureContributors.All(),
-            _pressureManager,
-            _rulesetSelector);
+        _pressureManager = pressureManager;
+        _pressureOrchestrator = pressureOrchestrator;
     }
 
     [ToolCategory("Session & exploration")]
@@ -103,7 +100,7 @@ public class ExplorationTools : CampaignToolBase
             
             var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
             
-            var travelEvent = events.FirstOrDefault(e => e.Summary.Contains("travel", StringComparison.OrdinalIgnoreCase) || e.Summary.Contains("en route", StringComparison.OrdinalIgnoreCase) || e.Summary.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
+            var travelEvent = events.FirstOrDefault(e => e.Category == EventCategory.Travel || (e.Category == EventCategory.Simulation && (e.Summary.Contains("Travel interrupted", StringComparison.OrdinalIgnoreCase) || e.Summary.Contains("en route", StringComparison.OrdinalIgnoreCase))));
 
             var view = new WorldStateView(
                 time, 

@@ -4,7 +4,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 ## Features
 - **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC tiredness, and surface aging unresolved events as pressure via `DefaultSimulationEngine` and its simulation rules.
-- **Multi-System Ruleset Engine**: Full polymorphic support for **D&D 5e**, **Pathfinder 2e**, and **Fallout 2d20**. The C# MCP handles math, advantage, 4-degrees of success, and dice pools deterministically.
+- **Multi-System Ruleset Engine**: Full polymorphic support for **D&D 5e**, **Pathfinder 2e**, **Fallout 2d20**, and a brand new **Narrative** ruleset featuring a d6 Oracle. The C# MCP handles math, advantage, 4-degrees of success, and dice pools deterministically.
 - **Structured Combat Encounters**: Start, advance, and resolve tactical combat with ruleset initiative rolls at `start_combat`, turn-order tracking, and HP/status mutations applied atomically via `commit`.
 - **Scene-Centric Workflow**: Load entire locations, NPCs, rumors, and visible items in a single call (`get_scene`). The LLM instantly receives the `ActiveCombat` state and `SystemStats` (AC, SPECIAL, etc.) for everyone present.
 - **Psychological NPC Minds**: NPCs have Wants, Fears, Moods, and Relationships. The engine synthesizes behavioral summaries to help the LLM roleplay them authentically.
@@ -15,7 +15,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 ## Recent Updates
 - **Engagement Relations & Spatial Positioning**: Pairwise scene anchors (`engagement_relation`: category + freeform verb) vs. relative placement (`spatial_position`: distance band, bearing, zone). Category defaults control travel blocks and scene pressure; ruleset resolvers auto-establish/clear grapple engagements on contested maneuver checks. See `get_help` and `ARCHITECTURE.md`.
 - **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in). World entities are campaign-tagged and filtered at query time; characters/locations with no `CampaignName` may still appear across campaigns (shared-universe design).
-- **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
+- **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20, Narrative), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
 - **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
 
 ## Core Tool Surface
@@ -45,7 +45,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 | Tool | Purpose |
 |------|---------|
-| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Fallout 2d20) |
+| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Fallout 2d20, Narrative) |
 | `start_combat` / `next_turn` / `end_combat` | Initiative at start, turn tracking, round-based status expiry |
 
 ### Campaign management
@@ -189,7 +189,7 @@ See `ARCHITECTURE.md` for the full system design. Key code locations:
 - **Repository** — `src/CampaignVault/Data/CampaignRepository.cs` + `JsonSanitizer.cs`
 - **Simulation** — `DefaultSimulationEngine` + rules: `ScheduleEvaluationRule`, `NeedsAccumulationRule`, `RumorDecayRule`, `StatusExpiryRule`, `MemorySalienceDecayRule`, `NeedConflictRule`, `FactionEcosystemRule`, `QuestStalenessRule`, `RelationalRearmRule`, `TransientEvictionRule`
 - **Pressure** — `src/CampaignVault/Data/Pressure/` (orchestrator + contributors)
-- **Rulesets** — `src/CampaignVault/Rulesets/` (D&D 5e, PF2e, Fallout 2d20 resolvers + `DefaultRollService`)
+- **Rulesets** — `src/CampaignVault/Rulesets/` (D&D 5e, PF2e, Fallout 2d20, Narrative resolvers + `DefaultRollService`)
 - **Tools** — `src/CampaignVault/Tools/CampaignTools.cs`
 - **Tests** — `tests/CampaignVault.Tests/`
 

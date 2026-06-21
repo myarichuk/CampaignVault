@@ -38,7 +38,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             ConnectionDescription = "A sturdy oak door"
         };
 
-        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location> { { parent.Id, parent } }, new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), NullLogger.Instance,
             [], dispatcher, null, "test-camp");
 
@@ -72,7 +72,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(config);
         await session.SaveChangesAsync();
 
-        var handler = new CharacterCreateHandler();
+        var handler = new CharacterCreateHandler(new CampaignDocumentKeys());
         var change = new CharacterCreate 
         { 
             CharacterId = "characters/test-char-hp", 
@@ -80,7 +80,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             MaxHp = 25
         };
 
-        var dispatcher = new WorldChangeDispatcher([handler], NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location>(), new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), NullLogger.Instance,
             [], dispatcher, null, "test-camp-hp");
 

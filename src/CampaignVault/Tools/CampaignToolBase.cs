@@ -27,13 +27,14 @@ public abstract class CampaignToolBase
         if (!string.IsNullOrWhiteSpace(explicitName))
             return explicitName;
 
-        return string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName) ? "default" : _currentCampaign.CurrentCampaignName;
+        return string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName) ? throw new InvalidOperationException("CurrentCampaignName should not be null or empty") : _currentCampaign.CurrentCampaignName;
     }
 
     protected async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
     {
         int maxRetries = 2;
-        int attempt = 0;
+        int actionAttempt = 0;
+        int saveAttempt = 0;
 
         while (true)
         {
@@ -46,7 +47,7 @@ public abstract class CampaignToolBase
             }
             catch (ConcurrencyException)
             {
-                if (++attempt <= maxRetries) continue;
+                if (++actionAttempt <= maxRetries) continue;
                 return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "State changed mid-operation. Re-fetch and retry.");
             }
             catch (Exception ex)
@@ -67,7 +68,7 @@ public abstract class CampaignToolBase
                 }
                 catch (ConcurrencyException)
                 {
-                    if (++attempt <= maxRetries) continue;
+                    if (++saveAttempt <= maxRetries) continue;
                     return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "Commit failed due to concurrent modification. Re-fetch and retry.");
                 }
             }

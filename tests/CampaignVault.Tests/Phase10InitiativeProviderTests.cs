@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Models;
@@ -31,13 +32,9 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
     }
 
     private CampaignRepository CreateRepo() =>
-        new(
-            _fixture.Store,
-            new TestSimulationEngine(),
-            NullLogger<CampaignRepository>.Instance,
-            new DefaultBehaviorSynthesizer(),
-            _keys,
-            initiativeService: InitiativeServiceFactory.CreateDefault());
+        _fixture.CreateRepository(
+            engineOverride: new TestSimulationEngine(),
+            overrides: b => b.RegisterInstance(InitiativeServiceFactory.CreateDefault()).As<INpcInitiativeService>());
 
     private static NpcInitiativeContext BuildCtx(
         Character npc,

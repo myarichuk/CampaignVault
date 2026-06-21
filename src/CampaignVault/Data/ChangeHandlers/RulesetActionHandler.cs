@@ -7,16 +7,13 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
 {
     private readonly IRulesetModuleSelector _selector;
     private readonly CampaignDocumentKeys _keys;
-    private readonly ICurrentCampaignContext _currentCampaign;
 
     public RulesetActionHandler(
         IRulesetModuleSelector selector,
-        CampaignDocumentKeys keys,
-        ICurrentCampaignContext currentCampaign)
+        CampaignDocumentKeys keys)
     {
         _selector = selector ?? throw new ArgumentNullException(nameof(selector));
-        _keys = keys ?? new CampaignDocumentKeys();
-        _currentCampaign = currentCampaign ?? throw new ArgumentNullException(nameof(currentCampaign));
+        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
     }
 
     public bool ShouldHandle(WorldChange change) => change is RulesetAction;
@@ -28,8 +25,13 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
         {
             return ChangeHandlerResult.Failure("Change is not a RulesetAction.");
         }
+
+        if (string.IsNullOrWhiteSpace(context.CampaignName))
+        {
+            return new ChangeHandlerResult(false, $"The field {nameof(context.CampaignName)} is required (in the ChangeContext).");
+        }
         
-        var effectiveCampaign = _currentCampaign.CurrentCampaignName ?? "default";
+        var effectiveCampaign = context.CampaignName;
         var configId = _keys.Config(effectiveCampaign);
         var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct)
                      ?? new CampaignConfig { Id = configId };
@@ -51,5 +53,37 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
         return string.IsNullOrWhiteSpace(output.Result.Narrative)
             ? ChangeHandlerResult.Ok
             : new ChangeHandlerResult(true, output.Result.Narrative);
+    }
+
+    public bool ExtractInvolvedEntities(
+        WorldChange change,
+        HashSet<string>? characterIds = null,
+        HashSet<string>? locationIds = null,
+        HashSet<string>? factionIds = null,
+        HashSet<string>? questIds = null,
+        HashSet<string>? itemIds = null,
+        HashSet<string>? allInvolvedIds = null)
+    {
+        if (change is not RulesetAction ra) return false;
+
+        if (!string.IsNullOrEmpty(ra.ActorId))
+        {
+            characterIds?.Add(ra.ActorId);
+            allInvolvedIds?.Add(ra.ActorId);
+        }
+
+        if (ra.TargetIds != null)
+        {
+            foreach (var targetId in ra.TargetIds)
+            {
+                if (!string.IsNullOrEmpty(targetId))
+                {
+                    characterIds?.Add(targetId);
+                    allInvolvedIds?.Add(targetId);
+                }
+            }
+        }
+
+        return true;
     }
 }

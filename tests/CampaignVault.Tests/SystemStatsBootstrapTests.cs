@@ -69,7 +69,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         await StoreDnd5eConfigAsync(session, "bootstrap-create");
 
-        var handler = new CharacterCreateHandler();
+        var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys());
         var change = new CharacterCreate
         {
             CharacterId = "chars/elara-voss",
@@ -121,7 +121,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(existing);
         await session.SaveChangesAsync();
 
-        var handler = new SystemStatsChangeHandler();
+        var handler = new SystemStatsChangeHandler(new CampaignVault.Data.CampaignDocumentKeys());
         var change = new SystemStatsChange
         {
             CharacterId = "chars/goblin-1",
@@ -150,7 +150,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         await StoreDnd5eConfigAsync(session, "bootstrap-mismatch");
 
-        var handler = new CharacterCreateHandler();
+        var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys());
         var change = new CharacterCreate
         {
             CharacterId = "chars/bad-stats",
@@ -281,7 +281,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
 
     private static ChangeContext CreateContext(IAsyncDocumentSession session, string campaign)
     {
-        var dispatcher = new WorldChangeDispatcher([], NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         return new ChangeContext(
             session,
             new Dictionary<string, Character>(),

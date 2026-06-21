@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -27,4 +30,71 @@ public interface IWorldChangeHandler
         WorldChange change,
         ChangeContext context,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Extracts all entity IDs involved in the change so they can be pre-loaded by the dispatcher.
+    /// Returns true if the change type is supported by this handler, false otherwise.
+    /// </summary>
+    bool ExtractInvolvedEntities(
+        WorldChange change,
+        HashSet<string>? characterIds = null,
+        HashSet<string>? locationIds = null,
+        HashSet<string>? factionIds = null,
+        HashSet<string>? questIds = null,
+        HashSet<string>? itemIds = null,
+        HashSet<string>? allInvolvedIds = null)
+    {
+        if (!ShouldHandle(change)) return false;
+
+        foreach (var prop in change.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.PropertyType == typeof(string))
+            {
+                var val = prop.GetValue(change) as string;
+                WorldChangeHandlerHelpers.ProcessExtractedString(val, prop.Name, characterIds, locationIds, factionIds, questIds, itemIds, allInvolvedIds);
+            }
+            else if (typeof(System.Collections.IEnumerable).IsAssignableFrom(prop.PropertyType) && prop.PropertyType != typeof(string))
+            {
+                var vals = prop.GetValue(change) as System.Collections.IEnumerable;
+                if (vals != null)
+                {
+                    foreach (var item in vals)
+                    {
+                        WorldChangeHandlerHelpers.ProcessExtractedString(item as string, prop.Name, characterIds, locationIds, factionIds, questIds, itemIds, allInvolvedIds);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+}
+
+internal static class WorldChangeHandlerHelpers
+{
+    public static void ProcessExtractedString(
+        string? val, string propName,
+        HashSet<string>? characterIds, HashSet<string>? locationIds,
+        HashSet<string>? factionIds, HashSet<string>? questIds,
+        HashSet<string>? itemIds, HashSet<string>? allInvolvedIds)
+    {
+        if (string.IsNullOrWhiteSpace(val)) return;
+
+        bool isIdLike = propName.EndsWith("Id", StringComparison.OrdinalIgnoreCase) ||
+                        propName.EndsWith("Ids", StringComparison.OrdinalIgnoreCase) ||
+                        propName.Equals("Involved", StringComparison.OrdinalIgnoreCase);
+
+        bool hasPrefix = val.StartsWith("chars/") || val.StartsWith("characters/") ||
+                         val.StartsWith("loc") || val.StartsWith("fac") ||
+                         val.StartsWith("que") || val.StartsWith("item");
+
+        if (isIdLike || hasPrefix)
+        {
+            allInvolvedIds?.Add(val);
+            if (val.StartsWith("chars/") || val.StartsWith("characters/")) characterIds?.Add(val);
+            else if (val.StartsWith("loc")) locationIds?.Add(val);
+            else if (val.StartsWith("fac")) factionIds?.Add(val);
+            else if (val.StartsWith("que")) questIds?.Add(val);
+            else if (val.StartsWith("item")) itemIds?.Add(val);
+        }
+    }
 }

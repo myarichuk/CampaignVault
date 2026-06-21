@@ -42,7 +42,7 @@ internal static class ToolCallExamples
         if (example.AllowFlattenedWrapper &&
             example.WrapperKey is { } wrapKey &&
             !arguments.ContainsKey(wrapKey) &&
-            example.FlattenedFieldDetector(arguments))
+            example.FlattenedFieldDetector?.Invoke(arguments) == true)
         {
             var wrapped = new JsonObject();
             var clone = JsonNode.Parse(arguments.ToJsonString()) as JsonObject;

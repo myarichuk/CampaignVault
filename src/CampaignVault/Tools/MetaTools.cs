@@ -45,7 +45,6 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 ### Session & exploration
 | Tool | Purpose |
 |------|---------|
-| `get_current_campaign` | Active campaign name, ruleset, lock-in status |
 | `get_world_state` | Session kickoff: time, rumors, recent events, pressures |
 | `get_scene` | Location, NPCs, items, rumors, ActiveCombat, SystemStats, pressures |
 | `get_npc_context` | Deep NPC psychology, memories, initiative signals |
@@ -53,8 +52,6 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 | `get_npc_needs` | Current needs + merged descriptors |
 | `search_world` | Keyword search across lore, characters, locations |
 | `recall_history` | Keyword search over past event summaries |
-| `get_help` | Built-in DM manual and copy-paste patterns |
-| `list_tools` | Full machine-readable tool catalog |
 
 ### Mutation & time
 | Tool | Purpose |
@@ -70,6 +67,7 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 ### Campaign management
 | Tool | Purpose |
 |------|---------|
+| `get_current_campaign` | Active campaign name, ruleset, lock-in status |
 | `create_campaign` / `list_campaigns` / `select_campaign` | Create, list, and activate campaigns |
 | `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Fallout 2d20) |
 
@@ -84,6 +82,12 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 |------|---------|
 | `upsert_character` / `upsert_location` / `upsert_lore` | Initial seeding and major structural work |
 | `define_need_descriptor` / `get_need_descriptors` | Per-campaign shared need descriptions |
+
+### System
+| Tool | Purpose |
+|------|---------|
+| `get_help` | Built-in DM manual and copy-paste patterns |
+| `list_tools` | Full machine-readable tool catalog |
 
 **During play, strongly prefer `commit` (especially `activity` changes) over world-builder upserts.**
 

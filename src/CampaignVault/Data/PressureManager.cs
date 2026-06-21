@@ -5,16 +5,23 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
 namespace CampaignVault.Data;
 
 public interface IPressureManager
 {
-    Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay, IEnumerable<WorldPressureItem> rawPressures);
+    /// <summary>
+    /// Filters and caps the raw pressures based on cooldowns and configuration.
+    /// Note: This method mutates the campaign's PressureCooldowns state. The caller is responsible for 
+    /// calling SaveChangesAsync() on the session to persist these cooldowns.
+    /// </summary>
+    Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay, IEnumerable<WorldPressureItem> rawPressures, bool disableCooldowns = false);
 }
 
-public class PressureManager(CampaignDocumentKeys keys) : IPressureManager
+public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>? logger = null) : IPressureManager
 {
-    public async Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay, IEnumerable<WorldPressureItem> rawPressures)
+    public async Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay, IEnumerable<WorldPressureItem> rawPressures, bool disableCooldowns = false)
     {
         var pressures = rawPressures?.ToList() ?? [];
         if (pressures.Count == 0)
@@ -26,14 +33,10 @@ public class PressureManager(CampaignDocumentKeys keys) : IPressureManager
         var campaign = await session.LoadAsync<Campaign>(metaId);
         if (campaign == null)
         {
-            // Fallback for tests or broken state
-            var fallbackGroups = pressures
-                .Select(p => (Item: p, OriginalKey: $"{p.Severity}:{p.EntityId}", Escalated: false))
-                .GroupBy(x => new { x.Item.GroupingKey, x.Item.Severity, x.Escalated })
-                .OrderByDescending(g => g.Key.Severity)
-                .Take(5)
-                .ToList();
-            return FormatBatches(fallbackGroups, 9); // Fallback assumption
+            logger?.LogError("Campaign document '{CampaignName}' not found. Will throw an error since its a broken invariant.", campaignName);
+
+            throw new InvalidOperationException(
+                $"Campaign document for '{campaignName}' not found - cannot calculate pressure (looked for '{metaId}')");
         }
 
         var configId = keys.Config(campaignName);
@@ -82,22 +85,25 @@ public class PressureManager(CampaignDocumentKeys keys) : IPressureManager
 
         var cappedItems = groups.SelectMany(g => g).ToList();
 
-        // Update tracking for surfaced items
-        foreach (var tuple in cappedItems)
+        if (!disableCooldowns)
         {
-            var key = tuple.OriginalKey;
-            
-            if (campaign.PressureCooldowns.TryGetValue(key, out var existingState))
+            // Update tracking for surfaced items
+            foreach (var tuple in cappedItems)
             {
-                campaign.PressureCooldowns[key] = existingState with 
-                { 
-                    LastSurfacedDay = currentDay,
-                    SuppressionCount = existingState.SuppressionCount + 1
-                };
-            }
-            else
-            {
-                campaign.PressureCooldowns[key] = new PressureState(currentDay, 0);
+                var key = tuple.OriginalKey;
+                
+                if (campaign.PressureCooldowns.TryGetValue(key, out var existingState))
+                {
+                    campaign.PressureCooldowns[key] = existingState with 
+                    { 
+                        LastSurfacedDay = currentDay,
+                        SuppressionCount = existingState.SuppressionCount + 1
+                    };
+                }
+                else
+                {
+                    campaign.PressureCooldowns[key] = new PressureState(currentDay, 0);
+                }
             }
         }
 

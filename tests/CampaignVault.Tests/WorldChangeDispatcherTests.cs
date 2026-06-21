@@ -34,10 +34,40 @@ public class WorldChangeDispatcherTests
 
         public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
             => _apply(change, context);
+
+        public bool ExtractInvolvedEntities(
+            WorldChange change,
+            HashSet<string>? characterIds = null,
+            HashSet<string>? locationIds = null,
+            HashSet<string>? factionIds = null,
+            HashSet<string>? questIds = null,
+            HashSet<string>? itemIds = null,
+            HashSet<string>? allInvolvedIds = null)
+        {
+            if (!_shouldHandle(change)) return false;
+            
+            // For tests, simulate basic extraction
+            if (change is HpChange hp) { characterIds?.Add(hp.CharacterId); allInvolvedIds?.Add(hp.CharacterId); }
+            else if (change is StatusChange sc) { characterIds?.Add(sc.CharacterId); allInvolvedIds?.Add(sc.CharacterId); }
+            else if (change is MoodChange mc) { characterIds?.Add(mc.CharacterId); allInvolvedIds?.Add(mc.CharacterId); }
+            else if (change is EngagementRelationChange erc)
+            {
+                characterIds?.Add(erc.ActorId);
+                characterIds?.Add(erc.TargetId);
+                allInvolvedIds?.Add(erc.ActorId);
+                allInvolvedIds?.Add(erc.TargetId);
+            }
+            else if (change is EventOccurred eo && eo.Involved != null)
+            {
+                foreach (var id in eo.Involved) { characterIds?.Add(id); allInvolvedIds?.Add(id); }
+            }
+            
+            return true;
+        }
     }
 
     private static WorldChangeDispatcher CreateDispatcher(params IWorldChangeHandler[] handlers)
-        => new WorldChangeDispatcher(handlers, NullLogger<WorldChangeDispatcher>.Instance);
+        => new WorldChangeDispatcher(handlers, new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
 
     // Note: We no longer manually construct ChangeContext in most tests because
     // WorldChangeDispatcher.DispatchAsync owns context creation.

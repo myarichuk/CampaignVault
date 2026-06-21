@@ -2,7 +2,7 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data.Scenes;
 
-internal sealed class SceneFactionSummaryFactory
+public sealed class SceneFactionSummaryFactory
 {
     public List<FactionPresenceSummary> Create(
         IEnumerable<Faction> relevantFactions,

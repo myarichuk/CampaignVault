@@ -36,7 +36,8 @@ public class TravelEngagementLockTests
         var locDict = new Dictionary<string, Location> { { destination.Id, destination } };
 
         var dispatcher = new WorldChangeDispatcher(
-            new IWorldChangeHandler[] { new TravelChangeHandler() },
+            new IWorldChangeHandler[] { new TravelChangeHandler(new EncounterResolver()) },
+            new CampaignVault.Data.CampaignDocumentKeys(),
             NullLogger<WorldChangeDispatcher>.Instance
         );
 
@@ -54,7 +55,7 @@ public class TravelEngagementLockTests
             campaignName: null
         );
 
-        var handler = new TravelChangeHandler();
+        var handler = new TravelChangeHandler(new EncounterResolver());
         var change = new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2" };
 
         var result = await handler.ApplyAsync(change, context);

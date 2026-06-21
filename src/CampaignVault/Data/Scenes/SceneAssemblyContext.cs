@@ -2,7 +2,7 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data.Scenes;
 
-internal sealed class SceneAssemblyContext
+public sealed class SceneAssemblyContext
 {
     public required string RequestedLocationId { get; init; }
     public required string EffectiveCampaign { get; init; }

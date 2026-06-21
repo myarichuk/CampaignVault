@@ -20,7 +20,7 @@ public class ToolArgumentErrorsTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task SelectCampaign_MissingName_ReturnsFriendlyError()
     {
-        var result = await CreateTools().SelectCampaign(null);
+        var result = await CreateTools().SelectCampaign(null!);
 
         Assert.False(result.Success);
         Assert.Equal("InvalidArgument", result.Error);

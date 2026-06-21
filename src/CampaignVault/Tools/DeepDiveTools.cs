@@ -14,7 +14,7 @@ public class DeepDiveTools : CampaignToolBase
         CampaignRepository repository,
         CampaignDocumentKeys keys,
         ICurrentCampaignContext currentCampaign)
-        : base(repository, currentCampaign ?? new CurrentCampaignContext(), keys ?? new CampaignDocumentKeys())
+        : base(repository, currentCampaign, keys)
     {
     }
 

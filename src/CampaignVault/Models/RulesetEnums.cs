@@ -11,7 +11,8 @@ public enum RulesetSystem
 {
     Dnd5e,
     Pathfinder2e,
-    Fallout2d20
+    Fallout2d20,
+    Narrative
 }
 
 /// <summary>

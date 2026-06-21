@@ -36,7 +36,7 @@ public class CampaignRepository
             return _currentCampaign.CurrentCampaignName;
         }
 
-        return "default";
+        throw new InvalidOperationException("A campaign name must be provided explicitly or via ICurrentCampaignContext.");
     }
 
     private static bool IsVisibleInCampaign(string? entityCampaignName, string effectiveCampaign) =>
@@ -47,27 +47,25 @@ public class CampaignRepository
         cleanQuery.Contains('/', StringComparison.Ordinal) ? cleanQuery : prefix + cleanQuery;
 
     public CampaignRepository(
-        IDocumentStore store, 
+        IDocumentStore store,
         IWorldSimulationEngine simulationEngine,
         ILogger<CampaignRepository> logger,
         INpcBehaviorSynthesizer behaviorSynthesizer,
         CampaignDocumentKeys keys,
-        ICurrentCampaignContext? currentCampaign = null,
-        IEnumerable<IWorldChangeHandler>? changeHandlers = null,
-        INpcInitiativeService? initiativeService = null)
+        ICurrentCampaignContext currentCampaign,
+        ChangeHandlers.WorldChangeDispatcher changeDispatcher,
+        SceneAssembler sceneAssembler,
+        INpcInitiativeService initiativeService)
     {
         _store = store;
         _simulationEngine = simulationEngine;
         _logger = logger;
         _behaviorSynthesizer = behaviorSynthesizer;
-        _keys = keys ?? new CampaignDocumentKeys();
+        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _currentCampaign = currentCampaign;
-        _initiativeService = initiativeService ?? InitiativeServiceFactory.CreateDefault();
-        _sceneAssembler = new SceneAssembler(_behaviorSynthesizer, _initiativeService);
-
-        var handlersList = (changeHandlers ?? []).ToList();
-
-        _changeDispatcher = new(handlersList, Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance);
+        _initiativeService = initiativeService ?? throw new ArgumentNullException(nameof(initiativeService));
+        _sceneAssembler = sceneAssembler ?? throw new ArgumentNullException(nameof(sceneAssembler));
+        _changeDispatcher = changeDispatcher ?? throw new ArgumentNullException(nameof(changeDispatcher));
     }
 
 
@@ -115,131 +113,7 @@ public class CampaignRepository
             var campaign = await session.LoadAsync<Campaign>(metaId);
             if (campaign != null)
             {
-                var involvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var c in changes)
-                {
-                    switch (c)
-                    {
-                        case HpChange hp:
-                            involvedEntities.Add(hp.CharacterId);
-                            break;
-                        case StatusChange sc:
-                            involvedEntities.Add(sc.CharacterId);
-                            break;
-                        case StatusRemove src:
-                            involvedEntities.Add(src.CharacterId);
-                            break;
-                        case NeedChange nc:
-                            involvedEntities.Add(nc.CharacterId);
-                            break;
-                        case FactionReputationChange frc:
-                            involvedEntities.Add(frc.CharacterId); involvedEntities.Add(frc.FactionId);
-                            break;
-                        case LocationUpdate lu:
-                            involvedEntities.Add(lu.LocationId);
-                            break;
-                        case RumorEvolves rc:
-                            involvedEntities.Add(rc.RumorId);
-                            break;
-                        case EventOccurred { Involved: not null } ev:
-                        {
-                            foreach (var inv in ev.Involved) involvedEntities.Add(inv);
-                            break;
-                        }
-                        case ActivityChange ac:
-                            involvedEntities.Add(ac.CharacterId);
-                            break;
-                        case ScheduleChange shc:
-                            involvedEntities.Add(shc.CharacterId);
-                            break;
-                        case ItemTransfer it:
-                            involvedEntities.Add(it.ItemId); involvedEntities.Add(it.ToHolderId);
-                            break;
-                        case AttributeChange atc:
-                            involvedEntities.Add(atc.CharacterId);
-                            break;
-                        case MoodChange mc:
-                            involvedEntities.Add(mc.CharacterId);
-                            break;
-                        case RulesetAction ra:
-                        {
-                            involvedEntities.Add(ra.ActorId); 
-                            foreach (var tid in ra.TargetIds) 
-                                involvedEntities.Add(tid);
-
-                            break;
-                        }
-                        case LocationCreate lc:
-                            involvedEntities.Add(lc.LocationId);
-                            break;
-                        case CharacterCreate cc:
-                        {
-                            involvedEntities.Add(cc.CharacterId); if (cc.CurrentLocationId != null)
-                            {
-                                involvedEntities.Add(cc.CurrentLocationId);
-                            }
-
-                            break;
-                        }
-                        case ItemCreate ic:
-                        {
-                            involvedEntities.Add(ic.ItemId); 
-                            involvedEntities.Add(ic.HolderId);
-                            break;
-                        }
-                        case TravelChange tc:
-                            involvedEntities.Add(tc.CharacterId); involvedEntities.Add(tc.DestinationLocationId);
-                            break;
-                        case RestChange restC:
-                            involvedEntities.Add(restC.CharacterId); involvedEntities.Add(restC.LocationId);
-                            break;
-                        case FactionStateChange fsc:
-                            involvedEntities.Add(fsc.FactionId);
-                            break;
-                        case QuestCreate qc:
-                        {
-                            involvedEntities.Add(qc.QuestId); 
-                            if (qc.GiverId != null)
-                            {
-                                involvedEntities.Add(qc.GiverId);
-                            }
-
-                            foreach (var l in qc.RelatedLocationIds) involvedEntities.Add(l);
-                            foreach (var f in qc.RelatedFactionIds) involvedEntities.Add(f);
-
-                            break;
-                        }
-                        case QuestProgress qp:
-                        {
-                            involvedEntities.Add(qp.QuestId); 
-                            if (qp.InvolvedIds != null)
-                            {
-                                foreach (var inv in qp.InvolvedIds) involvedEntities.Add(inv);
-                            }
-
-                            break;
-                        }
-                        case FactionCreate fc:
-                            involvedEntities.Add(fc.FactionId);
-                            break;
-                        case RelationshipChange relc:
-                            involvedEntities.Add(relc.SourceId); involvedEntities.Add(relc.TargetId);
-                            break;
-                        case CharacterUpdate cu:
-                            involvedEntities.Add(cu.CharacterId);
-                            break;
-                        case SystemStatsChange ssc:
-                            involvedEntities.Add(ssc.CharacterId);
-                            break;
-                        case EngagementRelationChange erc:
-                            involvedEntities.Add(erc.ActorId);
-                            involvedEntities.Add(erc.TargetId);
-                            break;
-                        case KnowledgeUpdate kuc:
-                            involvedEntities.Add(kuc.CharacterId);
-                            break;
-                    }
-                }
+                var involvedEntities = result.InvolvedEntities;
 
                 if (involvedEntities.Count > 0)
                 {
@@ -561,17 +435,44 @@ public class CampaignRepository
     /// </summary>
     public async Task<IEnumerable<object>> UnifiedSearchAsync(IAsyncDocumentSession session, string query, string? campaignName = null)
     {
+        var effective = ResolveCampaign(campaignName);
+
+        var charsQuery = session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .Search(x => x.Name, $"*{query}*");
+
+        var loreQuery = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>()
+            .Search(x => x.Title, $"*{query}*");
+
+        var locsQuery = session.Advanced.AsyncDocumentQuery<Location, Location_Search>()
+            .Search(x => x.Name, $"*{query}*");
+
+        if (!string.IsNullOrEmpty(effective))
+        {
+            charsQuery = charsQuery.AndAlso().OpenSubclause()
+                .WhereEquals("CampaignName", string.Empty).OrElse()
+                .WhereEquals("CampaignName", (string)null).OrElse()
+                .WhereEquals("CampaignName", effective)
+                .CloseSubclause();
+
+            loreQuery = loreQuery.AndAlso().OpenSubclause()
+                .WhereEquals("CampaignName", string.Empty).OrElse()
+                .WhereEquals("CampaignName", (string)null).OrElse()
+                .WhereEquals("CampaignName", effective)
+                .CloseSubclause();
+
+            locsQuery = locsQuery.AndAlso().OpenSubclause()
+                .WhereEquals("CampaignName", string.Empty).OrElse()
+                .WhereEquals("CampaignName", (string)null).OrElse()
+                .WhereEquals("CampaignName", effective)
+                .CloseSubclause();
+        }
+
         // Await queries individually. The previous Task-capture + WhenAll + re-await pattern
         // could leave RavenDB session tracking "active async tasks" after the method returned,
         // causing "Disposing session with active async task is forbidden" on ExecuteAsync disposal.
-        var chars = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
-            .Search(x => x.Name, $"*{query}*").Take(5).ToListAsync();
-
-        var lore = await session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>()
-            .Search(x => x.Title, $"*{query}*").Take(5).ToListAsync();
-
-        var locs = await session.Advanced.AsyncDocumentQuery<Location, Location_Search>()
-            .Search(x => x.Name, $"*{query}*").Take(5).ToListAsync();
+        var chars = await charsQuery.Take(5).ToListAsync();
+        var lore = await loreQuery.Take(5).ToListAsync();
+        var locs = await locsQuery.Take(5).ToListAsync();
 
         // Critical: Locations returned to the LLM via SearchWorld can contain Metadata dictionaries
         // that hold JsonElement (from STJ inbound or legacy data). Without sanitization here,
@@ -580,14 +481,6 @@ public class CampaignRepository
         foreach (var l in locs)
         {
             SanitizeLocation(l);
-        }
-
-        var effective = ResolveCampaign(campaignName);
-        if (!string.IsNullOrEmpty(effective))
-        {
-            chars = chars.Where(c => string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective).ToList();  // loose for chars (may share)
-            lore = lore.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective).ToList();
-            locs = locs.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective).ToList();
         }
 
         var results = new List<object>();
@@ -604,6 +497,12 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
+        
+        if (!string.IsNullOrEmpty(effective))
+        {
+            q = q.WhereEquals(x => x.CampaignName, effective);
+        }
+
         if (!string.IsNullOrEmpty(query))
         {
             q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
@@ -620,11 +519,7 @@ public class CampaignRepository
                 ev.Details = SanitizeDetails(ev.Details);
             }
         }
-        if (!string.IsNullOrEmpty(effective))
-        {
-            // strict for events (no legacy global cross-camp)
-            events = events.Where(e => e.CampaignName == effective).ToList();
-        }
+
         return events;
     }
 
@@ -1134,11 +1029,11 @@ public class CampaignRepository
         var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("locations/".Length);
+            cleanQuery = cleanQuery["locations/".Length..];
         }
         else if (cleanQuery.StartsWith("locs/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("locs/".Length);
+            cleanQuery = cleanQuery["locs/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -1180,11 +1075,11 @@ public class CampaignRepository
         var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("chars/".Length);
+            cleanQuery = cleanQuery["chars/".Length..];
         }
         else if (cleanQuery.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("characters/".Length);
+            cleanQuery = cleanQuery["characters/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -1226,11 +1121,11 @@ public class CampaignRepository
         var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("items/".Length);
+            cleanQuery = cleanQuery["items/".Length..];
         }
         else if (cleanQuery.StartsWith("item/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("item/".Length);
+            cleanQuery = cleanQuery["item/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -1275,7 +1170,7 @@ public class CampaignRepository
         var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("factions/".Length);
+            cleanQuery = cleanQuery["factions/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -1320,7 +1215,7 @@ public class CampaignRepository
         var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
         {
-            cleanQuery = cleanQuery.Substring("quests/".Length);
+            cleanQuery = cleanQuery["quests/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))

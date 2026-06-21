@@ -6,6 +6,13 @@ namespace CampaignVault.Data.ChangeHandlers;
 
 public class CharacterCreateHandler : IWorldChangeHandler
 {
+    private readonly CampaignDocumentKeys _keys;
+
+    public CharacterCreateHandler(CampaignDocumentKeys keys)
+    {
+        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+    }
+
     public bool ShouldHandle(WorldChange change) => change is CharacterCreate;
 
     public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
@@ -67,7 +74,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
             if (cc.SystemStats != null)
             {
-                var existingSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, ct);
+                var existingSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
                 if (!SystemStatsMerger.TryValidateRuleset(cc.SystemStats, existingSystem, out var existingValidationError))
                 {
                     return ChangeHandlerResult.Failure(existingValidationError!);
@@ -82,7 +89,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
             return ChangeHandlerResult.Ok;
         }
 
-        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, ct);
+        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
 
         if (cc.SystemStats != null && !SystemStatsMerger.TryValidateRuleset(cc.SystemStats, activeSystem, out var validationError))
         {
@@ -127,6 +134,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
 public class ScheduleChangeHandler : IWorldChangeHandler
 {
+
     public bool ShouldHandle(WorldChange change) => change is ScheduleChange;
 
     public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
@@ -157,6 +165,13 @@ public class ScheduleChangeHandler : IWorldChangeHandler
 
 public class CharacterUpdateHandler : IWorldChangeHandler
 {
+    private readonly CampaignDocumentKeys _keys;
+
+    public CharacterUpdateHandler(CampaignDocumentKeys keys)
+    {
+        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+    }
+
     public bool ShouldHandle(WorldChange change) => change is CharacterUpdate;
 
     public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
@@ -194,7 +209,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
         if (cu.SystemStats != null)
         {
-            var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, ct);
+            var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
             if (!SystemStatsMerger.TryValidateRuleset(cu.SystemStats, activeSystem, out var validationError))
             {
                 return ChangeHandlerResult.Failure(validationError!);
@@ -212,6 +227,13 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
 public class SystemStatsChangeHandler : IWorldChangeHandler
 {
+    private readonly CampaignDocumentKeys _keys;
+
+    public SystemStatsChangeHandler(CampaignDocumentKeys keys)
+    {
+        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+    }
+
     public bool ShouldHandle(WorldChange change) => change is SystemStatsChange;
 
     public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
@@ -235,7 +257,7 @@ public class SystemStatsChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Character '{ssc.CharacterId}' not found. Cannot update system stats.");
         }
 
-        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, ct);
+        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
         if (!SystemStatsMerger.TryValidateRuleset(ssc.SystemStats, activeSystem, out var validationError))
         {
             return ChangeHandlerResult.Failure(validationError!);
@@ -252,14 +274,14 @@ public class SystemStatsChangeHandler : IWorldChangeHandler
 
 internal static class CharacterHandlerHelpers
 {
-    public static async Task<RulesetSystem> ResolveActiveSystemAsync(ChangeContext context, CancellationToken ct)
+    public static async Task<RulesetSystem> ResolveActiveSystemAsync(ChangeContext context, CampaignDocumentKeys keys, CancellationToken ct)
     {
         if (context.Session == null || string.IsNullOrEmpty(context.CampaignName))
         {
             return RulesetSystem.Dnd5e;
         }
 
-        var configId = new CampaignDocumentKeys().Config(context.CampaignName);
+        var configId = keys.Config(context.CampaignName);
         var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct);
         return config?.ActiveSystem ?? RulesetSystem.Dnd5e;
     }

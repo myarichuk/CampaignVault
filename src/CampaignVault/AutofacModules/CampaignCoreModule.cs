@@ -2,6 +2,7 @@ using Autofac;
 using CampaignVault.Data;
 using ModelContextProtocol.Server;
 using System.Reflection;
+using CampaignVault.Data.Scenes;
 
 namespace CampaignVault.AutofacModules;
 
@@ -11,6 +12,11 @@ public class CampaignCoreModule : Autofac.Module
     {
         builder.RegisterType<CampaignDocumentKeys>().SingleInstance();
         builder.RegisterType<CurrentCampaignContext>().As<ICurrentCampaignContext>().InstancePerLifetimeScope();
+        builder.RegisterType<CampaignVault.Data.ChangeHandlers.WorldChangeDispatcher>().InstancePerLifetimeScope();
+        builder.RegisterType<SceneAssembler>().InstancePerLifetimeScope();
+        builder.RegisterType<SceneNpcMerger>().InstancePerLifetimeScope();
+        builder.RegisterType<SceneFactionSummaryFactory>().InstancePerLifetimeScope();
+
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
 
         var assembly = typeof(CampaignCoreModule).Assembly;

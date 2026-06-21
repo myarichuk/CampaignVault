@@ -23,5 +23,15 @@ public class SimulationModule : Module
 
         builder.RegisterType<DefaultSimulationEngine>().As<IWorldSimulationEngine>().InstancePerLifetimeScope();
         builder.RegisterType<DefaultBehaviorSynthesizer>().As<INpcBehaviorSynthesizer>().InstancePerLifetimeScope();
+        builder.RegisterType<EncounterResolver>().InstancePerLifetimeScope();
+
+        builder.RegisterBuildCallback(ctx =>
+        {
+            var handlers = ctx.Resolve<IEnumerable<CampaignVault.Data.ChangeHandlers.IWorldChangeHandler>>();
+            if (!handlers.Any())
+            {
+                throw new System.InvalidOperationException("Startup Validation Failed: No IWorldChangeHandler instances were registered in the container.");
+            }
+        });
     }
 }

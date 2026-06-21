@@ -50,6 +50,50 @@ public class QuestCreateHandler : IWorldChangeHandler
 
         return ChangeHandlerResult.Ok;
     }
+
+    public bool ExtractInvolvedEntities(
+        WorldChange change,
+        HashSet<string>? characterIds = null,
+        HashSet<string>? locationIds = null,
+        HashSet<string>? factionIds = null,
+        HashSet<string>? questIds = null,
+        HashSet<string>? itemIds = null,
+        HashSet<string>? allInvolvedIds = null)
+    {
+        if (change is not QuestCreate qc) return false;
+
+        if (!string.IsNullOrEmpty(qc.QuestId))
+        {
+            questIds?.Add(qc.QuestId);
+            allInvolvedIds?.Add(qc.QuestId);
+        }
+
+        if (!string.IsNullOrEmpty(qc.GiverId))
+        {
+            characterIds?.Add(qc.GiverId);
+            allInvolvedIds?.Add(qc.GiverId);
+        }
+
+        if (qc.RelatedLocationIds != null)
+        {
+            foreach (var id in qc.RelatedLocationIds)
+            {
+                locationIds?.Add(id);
+                allInvolvedIds?.Add(id);
+            }
+        }
+
+        if (qc.RelatedFactionIds != null)
+        {
+            foreach (var id in qc.RelatedFactionIds)
+            {
+                factionIds?.Add(id);
+                allInvolvedIds?.Add(id);
+            }
+        }
+
+        return true;
+    }
 }
 
 public class QuestProgressHandler : IWorldChangeHandler
@@ -145,5 +189,37 @@ public class QuestProgressHandler : IWorldChangeHandler
         context.RecordMessage($"Quest progress on '{quest.Title}': Objective {indexToUpdate} is now {qp.NewState}. {qp.NarrativeNote}");
 
         return ChangeHandlerResult.Ok;
+    }
+
+    public bool ExtractInvolvedEntities(
+        WorldChange change,
+        HashSet<string>? characterIds = null,
+        HashSet<string>? locationIds = null,
+        HashSet<string>? factionIds = null,
+        HashSet<string>? questIds = null,
+        HashSet<string>? itemIds = null,
+        HashSet<string>? allInvolvedIds = null)
+    {
+        if (change is not QuestProgress qp) return false;
+
+        if (!string.IsNullOrEmpty(qp.QuestId))
+        {
+            questIds?.Add(qp.QuestId);
+            allInvolvedIds?.Add(qp.QuestId);
+        }
+
+        if (qp.InvolvedIds != null)
+        {
+            foreach (var id in qp.InvolvedIds)
+            {
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (id.StartsWith("chars/")) characterIds?.Add(id);
+                    allInvolvedIds?.Add(id);
+                }
+            }
+        }
+
+        return true;
     }
 }
