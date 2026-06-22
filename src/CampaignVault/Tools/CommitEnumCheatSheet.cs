@@ -10,7 +10,7 @@ internal static class CommitEnumCheatSheet
 **COMMIT ENUM VALUES (use these exact strings — case-sensitive):**
 - `location_create.type` → Region, Settlement, District, Building, Room, Wilderness
   - Common mistakes: City/Town → **Settlement**; Tavern/Inn/Shop → **Building**
-- `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test
+- `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt
   - Common mistake: Narrative/Roleplay → **Conversation**
   - **Conversation events MUST include `involved`: [`chars/pc`, `chars/npc`]** (every speaker). NOT `participants`.
 - `rumor.newState` → Nascent, Spreading, Peak, Fading, Resolved, Forgotten
@@ -41,7 +41,7 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 ### event (`$type: event`)
 | Field | Valid values | LLM alias hints |
 |-------|----------------|-----------------|
-| `category` | Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test | Narrative, Roleplay → **Conversation**; Scene → **Interaction** |
+| `category` | Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt | Narrative, Roleplay → **Conversation**; Scene → **Interaction** |
 | `involved` | **Required** when `category` is `Conversation` | Array of character IDs for every participant. Field name is `involved` (NOT `participants`). Auto-inferred from `engagement_relation`/`activity` in the same batch if omitted. |
 
 **Conversation commit template (copy-paste):**
@@ -93,6 +93,16 @@ Note: `quest_create.objectives[]` only needs `description` (+ optional `rewardHi
 | Field | Valid values |
 |-------|----------------|
 | `coreCategory` | Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other |
+
+### scene_interrupt_check (`$type: scene_interrupt_check`)
+| Field | Notes |
+|-------|--------|
+| `locationId` | Required. Must have `ambientCrowd` or 3+ NPCs present. |
+| `characterId` | Required. PC (or focal character) at that location. |
+| `riskModifier` | Optional -50..+50. Like `encounterRiskModifier` on travel (+25 ≈ +12.5% chance). Auto-derived from `visualTags`/appearance if omitted. |
+| `notes` | Optional flavor for the engine directive. |
+
+Cooldown: one successful interrupt per location per in-game day. Do not use during active combat or on every dialog line.
 
 ### character_create.systemStats
 | Field | Valid values |

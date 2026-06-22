@@ -12,6 +12,7 @@ namespace CampaignVault.Tools;
 public class MutationTools : CampaignToolBase
 {
     private readonly IPressureManager _pressureManager;
+    private readonly IPressureOrchestrator _pressureOrchestrator;
 
     private static readonly RateLimiter CommitRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
     {
@@ -25,10 +26,12 @@ public class MutationTools : CampaignToolBase
         CampaignRepository repository,
         ICurrentCampaignContext currentCampaign,
         CampaignDocumentKeys keys,
-        IPressureManager pressureManager)
+        IPressureManager pressureManager,
+        IPressureOrchestrator pressureOrchestrator)
         : base(repository, currentCampaign, keys)
     {
         _pressureManager = pressureManager;
+        _pressureOrchestrator = pressureOrchestrator;
     }
 
     [ToolCategory("Mutation & time")]
@@ -42,7 +45,10 @@ Use ActivityChange liberally to keep get_scene in sync with your narrative.
 
 See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
 
-Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, system_stats, knowledge_update, schedule_change, item_create, travel, rest, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
+Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, system_stats, knowledge_update, schedule_change, item_create, travel, rest, scene_interrupt_check, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
+
+**Crowd interrupt roll (`scene_interrupt_check`)**: After a tense beat in a location with `ambientCrowd`, optionally commit a single-roll crowd reaction. Supply `riskModifier` (-50..+50) like `encounterRiskModifier` on travel; omit to auto-derive from `visualTags`/appearance. On success the engine promotes ONE transient from the crowd. Cooldown: one interrupt per location per day. Example:
+[ { ""$type"": ""scene_interrupt_check"", ""locationId"": ""locations/training-hall"", ""characterId"": ""chars/valen"", ""riskModifier"": 25, ""notes"": ""Bloodied wanted face, crowd hostile"" } ]
 " + CommitEnumCheatSheet.Compact + @"
 
 === RECOMMENDED PATTERNS (copy-paste friendly) ===
@@ -206,6 +212,16 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.Timeskip });
 
             var timeDoc = await _repository.GetTimeAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+
+            var orchestratorPressures = await _pressureOrchestrator.CollectAndCapAsync(
+                PressureScope.World,
+                new PressureContext(
+                    effective,
+                    timeDoc,
+                    config,
+                    session,
+                    DaysAdvanced: days));
 
             string[]? cappedPressure = null;
             var rawPressures = result.SimulatorEvents
@@ -218,6 +234,13 @@ Basic + creating on the fly examples are also shown in the tool description and 
             {
                 cappedPressure = await _pressureManager.FilterAndCapAsync(session, effective,
                     (int)timeDoc.TotalDaysElapsed, rawPressures);
+            }
+
+            if (orchestratorPressures.Length > 0)
+            {
+                cappedPressure = cappedPressure is { Length: > 0 }
+                    ? [.. cappedPressure, .. orchestratorPressures]
+                    : orchestratorPressures;
             }
 
             return new ToolResult<AdvanceResult>(true, result,

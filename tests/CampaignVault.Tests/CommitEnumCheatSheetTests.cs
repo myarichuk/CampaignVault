@@ -22,5 +22,13 @@ public class CommitEnumCheatSheetTests
         Assert.Contains("SkillCheck", CommitEnumCheatSheet.Full);
         Assert.Contains("Attack", CommitEnumCheatSheet.Full);
         Assert.Contains("Commit Enum Values", CommitEnumCheatSheet.Full);
+        Assert.Contains("scene_interrupt_check", CommitEnumCheatSheet.Full);
+        Assert.Contains("SceneInterrupt", CommitEnumCheatSheet.Full);
+    }
+
+    [Fact]
+    public void Compact_IncludesSceneInterruptCategory()
+    {
+        Assert.Contains("SceneInterrupt", CommitEnumCheatSheet.Compact);
     }
 }
