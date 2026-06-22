@@ -1,10 +1,6 @@
-using System.IO;
 using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 using CampaignVault.Tools;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace CampaignVault.Middleware;
 

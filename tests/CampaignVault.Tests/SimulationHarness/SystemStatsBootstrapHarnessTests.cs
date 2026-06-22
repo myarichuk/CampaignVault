@@ -10,9 +10,7 @@ using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Tools;
-using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents;
-using Raven.Client.Documents.Session;
 using Xunit;
 
 namespace CampaignVault.Tests.SimulationHarness;

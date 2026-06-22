@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using CampaignVault.Models;
-using Microsoft.Extensions.Logging;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;

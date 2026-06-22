@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.Services;
 using CampaignVault.Grpc;
-using CampaignVault.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 

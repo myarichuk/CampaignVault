@@ -1,10 +1,7 @@
-using System.Collections.Generic;
 using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
-using CampaignVault.Rulesets;
 using CampaignVault.Tools;
-using Raven.Client.Documents;
 
 namespace CampaignVault.Tests;
 

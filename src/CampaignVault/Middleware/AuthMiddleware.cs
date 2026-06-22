@@ -1,25 +1,14 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 
 namespace CampaignVault.Middleware;
 
 /// <summary>
 /// Optional Bearer/X-API-Key Auth Middleware with timing-safe comparison.
 /// </summary>
-public class AuthMiddleware
+public class AuthMiddleware(RequestDelegate next, string bearerToken)
 {
-    private readonly RequestDelegate _next;
-    private readonly string _bearerToken;
-    private readonly byte[] _bearerTokenBytes;
-
-    public AuthMiddleware(RequestDelegate next, string bearerToken)
-    {
-        _next = next;
-        _bearerToken = bearerToken;
-        _bearerTokenBytes = Encoding.UTF8.GetBytes(bearerToken);
-    }
+    private readonly byte[] _bearerTokenBytes = Encoding.UTF8.GetBytes(bearerToken);
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -27,7 +16,7 @@ public class AuthMiddleware
         // Every other path (MCP at "/", gRPC services, /info) requires authentication.
         if (context.Request.Path == "/health")
         {
-            await _next(context);
+            await next(context);
             return;
         }
 
@@ -35,13 +24,13 @@ public class AuthMiddleware
 
         // Preferred: Authorization header (standard and more secure)
         if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) &&
-            TimingSafeEquals(authHeader.ToString(), $"Bearer {_bearerToken}"))
+            TimingSafeEquals(authHeader.ToString(), $"Bearer {bearerToken}"))
         {
             authorized = true;
         }
         // Alternative header (exact match)
         else if (context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyHeader) &&
-                 TimingSafeEquals(apiKeyHeader.ToString(), _bearerToken))
+                 TimingSafeEquals(apiKeyHeader.ToString(), bearerToken))
         {
             authorized = true;
         }
@@ -60,7 +49,7 @@ public class AuthMiddleware
                 queryToken = context.Request.Query["bearer"].ToString();
             }
 
-            if (TimingSafeEquals(queryToken, _bearerToken))
+            if (TimingSafeEquals(queryToken, bearerToken))
             {
                 authorized = true;
             }
@@ -73,7 +62,7 @@ public class AuthMiddleware
             return;
         }
 
-        await _next(context);
+        await next(context);
     }
 
     private bool TimingSafeEquals(string? a, string? b)
@@ -84,7 +73,7 @@ public class AuthMiddleware
         }
 
         var aBytes = Encoding.UTF8.GetBytes(a);
-        var bBytes = ReferenceEquals(b, _bearerToken) ? _bearerTokenBytes : Encoding.UTF8.GetBytes(b);
+        var bBytes = ReferenceEquals(b, bearerToken) ? _bearerTokenBytes : Encoding.UTF8.GetBytes(b);
         return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
     }
 }

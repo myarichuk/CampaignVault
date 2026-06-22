@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -11,7 +10,6 @@ using CampaignVault.Data.Pressure.Contributors;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging.Abstractions;
-using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
 using Xunit;
 

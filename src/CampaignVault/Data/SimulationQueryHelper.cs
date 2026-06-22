@@ -1,5 +1,4 @@
 using CampaignVault.Models;
-using Raven.Client.Documents.Linq;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;

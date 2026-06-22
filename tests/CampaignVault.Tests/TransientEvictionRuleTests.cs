@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
-using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;

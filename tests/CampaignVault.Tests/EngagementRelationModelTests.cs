@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text.Json;
 using CampaignVault.Models;
 using Xunit;

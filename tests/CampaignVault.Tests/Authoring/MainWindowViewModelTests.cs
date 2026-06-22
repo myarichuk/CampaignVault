@@ -1,4 +1,3 @@
-using System;
 using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.ViewModels;
 using Xunit;

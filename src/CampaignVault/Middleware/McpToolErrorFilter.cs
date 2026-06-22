@@ -2,9 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using CampaignVault.Models;
 using CampaignVault.Tools;
-using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
-using ModelContextProtocol.Server;
 
 namespace CampaignVault.Middleware;
 

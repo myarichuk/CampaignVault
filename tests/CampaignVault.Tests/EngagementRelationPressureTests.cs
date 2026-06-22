@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Pressure.Contributors;
 using CampaignVault.Models;

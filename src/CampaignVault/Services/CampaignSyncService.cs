@@ -3,7 +3,6 @@ using CampaignVault.Data;
 using CampaignVault.Grpc;
 using CampaignVault.Models;
 using Grpc.Core;
-using Raven.Client.Documents;
 
 namespace CampaignVault.Services;
 

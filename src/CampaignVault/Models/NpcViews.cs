@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace CampaignVault.Models;
 
 public class NpcContextView

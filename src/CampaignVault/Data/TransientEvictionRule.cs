@@ -1,6 +1,4 @@
 using CampaignVault.Models;
-using Microsoft.Extensions.Logging;
-using Raven.Client.Documents;
 
 namespace CampaignVault.Data;
 

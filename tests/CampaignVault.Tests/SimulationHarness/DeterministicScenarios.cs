@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
-using CampaignVault.Tools;
 using Raven.Client.Documents;
 using Xunit;
 

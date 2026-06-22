@@ -1,5 +1,4 @@
 using CampaignVault.Models;
-using Microsoft.Extensions.Logging;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data.ChangeHandlers;

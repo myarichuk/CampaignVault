@@ -3,16 +3,12 @@ using Autofac.Extensions.DependencyInjection;
 using CampaignVault.Data;
 using CampaignVault.Middleware;
 using CampaignVault.Services;
-using CampaignVault.Tools;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Protocol;
-using Raven.Client.Documents;
-using Raven.Client.Documents.Indexes;
-using Raven.Embedded;
-using JsonSanitizer = CampaignVault.Data.JsonSanitizer; // for brevity in the listener
+
+// for brevity in the listener
 
 var mcpPort = int.TryParse(Environment.GetEnvironmentVariable("MCP_PORT"), out var configuredMcpPort)
     ? configuredMcpPort

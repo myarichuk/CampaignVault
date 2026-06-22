@@ -1,5 +1,4 @@
 using CampaignVault.Models;
-using Microsoft.Extensions.Logging;
 
 namespace CampaignVault.Data;
 

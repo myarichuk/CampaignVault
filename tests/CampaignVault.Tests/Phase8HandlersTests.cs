@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
-using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
 using Xunit;
 

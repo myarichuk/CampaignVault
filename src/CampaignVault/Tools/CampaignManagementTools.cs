@@ -1,25 +1,17 @@
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using ModelContextProtocol.Server;
-using Raven.Client.Documents;
-using Raven.Client.Documents.Linq;
 
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
-public class CampaignManagementTools : CampaignToolBase
+public class CampaignManagementTools(
+    CampaignRepository repository,
+    ICurrentCampaignContext currentCampaign,
+    CampaignDocumentKeys keys)
+    : CampaignToolBase(repository, currentCampaign, keys)
 {
-    public CampaignManagementTools(
-        CampaignRepository repository,
-        ICurrentCampaignContext currentCampaign,
-        CampaignDocumentKeys keys)
-        : base(repository, currentCampaign, keys)
-    {
-    }
-
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"RULES CONFIG TOOL: Get the current campaign configuration.
