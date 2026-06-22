@@ -1,4 +1,3 @@
-using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 
@@ -87,8 +86,11 @@ public class CharacterCreateHandler : IWorldChangeHandler
                     SystemStatsMerger.CoerceToRuleset(cc.SystemStats, existingSystem));
             }
 
+            var hint = existing.KeepAlive
+                ? " For existing PCs, prefer commit with activity/character_update instead of character_create. Call get_party to confirm PCs already exist."
+                : string.Empty;
             context.RecordMessage(
-                $"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.");
+                $"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.{hint}");
             return ChangeHandlerResult.Ok;
         }
 

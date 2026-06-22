@@ -22,14 +22,6 @@ public sealed class LocationFlavorPressureContributor : IPressureContributor
 
         var loc = ctx.Scene.Location;
 
-        if (!ctx.Scene.PresentNPCs.Any() && !string.IsNullOrWhiteSpace(loc.AmbientCrowd))
-        {
-            pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, loc.Id,
-                $"This location is currently empty, but expects '{loc.AmbientCrowd}'. " +
-                "Consider spawning flavorful transient NPCs via `character_create` inside `commit`.",
-                EmptyExpectsCrowdGroupingKey));
-        }
-
         if (loc.VisualTags != null && loc.VisualTags.Any())
         {
             pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, loc.Id,

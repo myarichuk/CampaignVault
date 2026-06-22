@@ -23,7 +23,9 @@ public sealed record PressureContext(
     IReadOnlyList<QuestDeadlineInfo>? QuestDeadlines = null,
     SceneView? Scene = null,
     string? RequestedLocationId = null,
-    bool PartyPresent = false
+    bool PartyPresent = false,
+    /// <summary>When set (e.g. advance_world), enables world-scope ambient crowd refresh reminders.</summary>
+    int? DaysAdvanced = null
 );
 
 public interface IPressureContributor
