@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +7,6 @@ using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;

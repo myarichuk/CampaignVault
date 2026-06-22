@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -9,7 +8,6 @@ using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Raven.Client.Documents.Session;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -41,13 +39,16 @@ public class FakeRollService : IRollService
 
 public class Dnd5eRulesetResolverTests
 {
-    private ChangeContext CreateContext(params Character[] characters)
+    private ChangeContext CreateContext(params Character[] characters) =>
+        CreateContext(items: null, characters);
+
+    private ChangeContext CreateContext(Dictionary<string, Item>? items, params Character[] characters)
     {
         var charDict = characters.ToDictionary(c => c.Id);
         return new ChangeContext(
             sessionForTests: null,
             characters: charDict,
-            items: new Dictionary<string, Item>(),
+            items: items ?? new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
             factions: new Dictionary<string, Faction>(),
             quests: new Dictionary<string, Quest>(),
@@ -348,5 +349,89 @@ public class Dnd5eRulesetResolverTests
         var hpChange = output.Mutations.OfType<HpChange>().FirstOrDefault();
         Assert.NotNull(hpChange);
         Assert.Equal(-5, hpChange.Delta); // 10 damage * 0.5 resistance
+    }
+
+    [Fact]
+    public async Task ResolveAttack_AutoAppliesHeldWeaponProperties_ByActionName()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome
+            { Result = 18, HasCritical = false, HasComplication = false, Summary = "Rolled 18" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 9, Summary = "Rolled 9" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "chars/valen", SystemStats = new Dnd5eExtension() };
+        var target = new Character { Id = "chars/merc-1", Name = "Merc", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+        var schlag = new Item
+        {
+            Id = "items/schlag",
+            Name = "Schlag",
+            HolderId = "chars/valen",
+            CoreCategory = ItemCategory.Weapon,
+            Properties = new Dictionary<string, object>
+            {
+                ["damageDice"] = "1d10",
+                ["bonus"] = "9",
+                ["damageBonus"] = "5"
+            }
+        };
+
+        var context = CreateContext(
+            new Dictionary<string, Item> { [schlag.Id] = schlag },
+            actor,
+            target);
+
+        var action = new RulesetAction
+        {
+            ActorId = "chars/valen",
+            TargetIds = ["chars/merc-1"],
+            ActionType = RulesetActionType.Attack,
+            ActionName = "Schlag"
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Equal(9, rollService.RecordedRequests[0].Bonus);
+        Assert.Equal("1d10", rollService.RecordedRequests[1].Expression);
+        Assert.Equal(5, rollService.RecordedRequests[1].Bonus);
+        Assert.Single(output.Mutations);
+        Assert.Contains("Schlag vs Merc: Hit for", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_MultiTarget_ResolvesSeparateRollsPerTarget()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome
+            { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 6, Summary = "Rolled 6" });
+        rollService.NextRolls.Enqueue(new RollOutcome
+            { Result = 16, HasCritical = false, HasComplication = false, Summary = "Rolled 16" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 7, Summary = "Rolled 7" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "chars/valen", SystemStats = new Dnd5eExtension() };
+        var merc1 = new Character { Id = "chars/merc-1", Name = "Merc 1", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+        var merc2 = new Character { Id = "chars/merc-2", Name = "Merc 2", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+
+        var context = CreateContext(actor, merc1, merc2);
+        var action = new RulesetAction
+        {
+            ActorId = "chars/valen",
+            TargetIds = ["chars/merc-1", "chars/merc-2"],
+            ActionType = RulesetActionType.Attack,
+            ActionName = "Schlag",
+            Parameters = new Dictionary<string, string>
+            {
+                ["damageDice"] = "1d6",
+                ["attackCount"] = "2"
+            }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Equal(2, output.Mutations.Count);
+        Assert.Contains("Merc 1", output.Result.Narrative);
+        Assert.Contains("Merc 2", output.Result.Narrative);
     }
 }

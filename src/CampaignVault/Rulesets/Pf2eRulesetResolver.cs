@@ -1,7 +1,6 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
-using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
 
@@ -109,10 +108,40 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
     protected override async Task<ResolverResult> ResolveAttackAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        var targetId = action.TargetIds.FirstOrDefault();
-        if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
+        var targets = AttackTargetHelper.SelectTargets(action);
+        if (targets.Count == 0)
         {
             return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
+        }
+
+        var narratives = new List<string>();
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var result = await ResolveAttackAgainstTargetAsync(
+                action, targets[i], context, actorStats, mutations, i, ct);
+            if (!result.Success)
+            {
+                return result;
+            }
+
+            narratives.Add(result.Narrative);
+        }
+
+        return ResolverResult.Ok(string.Join(" | ", narratives));
+    }
+
+    private async Task<ResolverResult> ResolveAttackAgainstTargetAsync(
+        RulesetAction action,
+        string targetId,
+        ChangeContext context,
+        Pf2eExtension actorStats,
+        List<WorldChange> mutations,
+        int attackIndex,
+        CancellationToken ct)
+    {
+        if (!context.Characters.TryGetValue(targetId, out var target))
+        {
+            return ResolverResult.Fail("InvalidTarget", $"Error: Target '{targetId}' not found for attack.");
         }
 
         if (target.SystemStats is not Pf2eExtension targetStats)
@@ -144,6 +173,10 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 return ResolverResult.Fail("InvalidParameter", $"Error: invalid mapPenalty value '{mapStr}'.");
             }
         }
+        else if (attackIndex > 0)
+        {
+            attackBonus -= attackIndex * 5;
+        }
 
         attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
 
@@ -163,7 +196,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         if (degree == Pf2eDegreeOfSuccess.Failure || degree == Pf2eDegreeOfSuccess.CriticalFailure)
         {
-            return ResolverResult.Ok($"{action.ActionName}: Missed. ({degree}) Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
+            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. ({degree}) Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
         }
 
         var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
@@ -171,11 +204,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         if (degree == Pf2eDegreeOfSuccess.CriticalSuccess)
         {
-            // Per Pathfinder 2e CRB: "When you critically succeed at a Strike, you double the damage you deal. ... roll the damage normally, including any modifiers, bonuses, and penalties, and then you double the entire amount."
             finalDamage *= 2;
         }
 
-        // Apply damage modifiers (resistances/vulnerabilities)
         var damageType = action.DamageType ?? "Physical";
         if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
         {
@@ -184,7 +215,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
-        return ResolverResult.Ok($"{action.ActionName}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.");
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.");
     }
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)

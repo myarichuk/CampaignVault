@@ -31,6 +31,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         switch (action.ActionType)
         {
             case RulesetActionType.Attack:
+                await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct);
                 result = await ResolveAttackAsync(action, context, actorStats, mutations, ct);
                 break;
 

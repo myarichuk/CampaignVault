@@ -1,7 +1,6 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
-using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
 
@@ -83,10 +82,39 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
     protected override async Task<ResolverResult> ResolveAttackAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        var targetId = action.TargetIds.FirstOrDefault();
-        if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
+        var targets = AttackTargetHelper.SelectTargets(action);
+        if (targets.Count == 0)
         {
             return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
+        }
+
+        var narratives = new List<string>();
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var result = await ResolveAttackAgainstTargetAsync(
+                action, targets[i], context, actorStats, mutations, ct);
+            if (!result.Success)
+            {
+                return result;
+            }
+
+            narratives.Add(result.Narrative);
+        }
+
+        return ResolverResult.Ok(string.Join(" | ", narratives));
+    }
+
+    private async Task<ResolverResult> ResolveAttackAgainstTargetAsync(
+        RulesetAction action,
+        string targetId,
+        ChangeContext context,
+        Fallout2d20Extension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        if (!context.Characters.TryGetValue(targetId, out var target))
+        {
+            return ResolverResult.Fail("InvalidTarget", $"Error: Target '{targetId}' not found for attack.");
         }
 
         if (target.SystemStats is not Fallout2d20Extension targetStats)
@@ -135,7 +163,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         if (!success)
         {
-            return ResolverResult.Ok($"{action.ActionName}: Missed.{compMsg} {outcome.Summary}");
+            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed.{compMsg} {outcome.Summary}");
         }
 
         var combatDiceCount = 3;
@@ -168,7 +196,6 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var totalDamage = combatResult.Damage + damageBonusFromEffects;
         var finalDamage = Math.Max(0, totalDamage - effectiveDr);
 
-        // Apply damage modifiers (resistances/vulnerabilities) multiplier
         var modKey = targetStats.DamageModifiers.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
         if (modKey != null && targetStats.DamageModifiers.TryGetValue(modKey, out var multiplier))
         {
@@ -177,7 +204,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
-        return ResolverResult.Ok($"{action.ActionName}: Hit for {finalDamage} damage ({combatResult.Effects} Effects).{compMsg}");
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage ({combatResult.Effects} Effects).{compMsg}");
     }
 
     protected override async Task<ResolverResult> ResolveContestedCheckAsync(

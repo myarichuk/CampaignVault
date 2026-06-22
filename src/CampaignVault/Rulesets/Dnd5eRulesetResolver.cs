@@ -2,7 +2,6 @@ using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Contributors;
-using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
 
@@ -68,10 +67,39 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         List<WorldChange> mutations, 
         CancellationToken ct)
     {
-        var targetId = action.TargetIds.FirstOrDefault();
-        if (targetId == null || !context.Characters.TryGetValue(targetId, out var target))
+        var targets = AttackTargetHelper.SelectTargets(action);
+        if (targets.Count == 0)
         {
             return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
+        }
+
+        var narratives = new List<string>();
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var result = await ResolveAttackAgainstTargetAsync(
+                action, targets[i], context, actorStats, mutations, ct);
+            if (!result.Success)
+            {
+                return result;
+            }
+
+            narratives.Add(result.Narrative);
+        }
+
+        return ResolverResult.Ok(string.Join(" | ", narratives));
+    }
+
+    private async Task<ResolverResult> ResolveAttackAgainstTargetAsync(
+        RulesetAction action,
+        string targetId,
+        ChangeContext context,
+        Dnd5eExtension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        if (!context.Characters.TryGetValue(targetId, out var target))
+        {
+            return ResolverResult.Fail("InvalidTarget", $"Error: Target '{targetId}' not found for attack.");
         }
 
         if (target.SystemStats is not Dnd5eExtension targetStats)
@@ -82,7 +110,6 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var ac = targetStats.ArmorClass;
         ac = ApplyAllModifiers(targetStats, ac, "AC");
         
-        // AC override
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
         {
             ac = overrideAc;
@@ -96,7 +123,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
 
-        var damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4"; // Unarmed default
+        var damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4";
         
         var damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
@@ -112,7 +139,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
 
         var isHit = false;
-        var isCrit = attackRoll.HasCritical; // Nat 20
+        var isCrit = attackRoll.HasCritical;
 
         if (isCrit)
         {
@@ -120,7 +147,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
         else if (attackRoll.HasComplication)
         {
-            isHit = false; // Nat 1
+            isHit = false;
         }
         else if (attackRoll.Result >= ac)
         {
@@ -129,22 +156,18 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         if (!isHit)
         {
-            return ResolverResult.Ok($"{action.ActionName}: Missed. Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
+            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
         }
 
-        // Handle critical damage (double dice)
         var finalDamage = damageRoll.Result;
         var critMsg = "";
         if (isCrit)
         {
-            // Per D&D 5e PHB: "Roll all of the attack's damage dice twice and add them together. Then add any relevant modifiers as normal."
-            // Since we already rolled `damageRoll` once (which included the modifier), we roll the pure dice again and add it.
             var critDmg = await _rollService.RollAsync(new RollRequest { Tag = "critDamage", Expression = damageDice, Mechanic = DiceMechanic.Standard }, ct);
             finalDamage += critDmg.Result;
             critMsg = $" CRITICAL HIT! Added {critDmg.Result} extra damage.";
         }
 
-        // Apply damage modifiers (resistances/vulnerabilities)
         var damageType = action.DamageType ?? "Physical";
         if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
         {
@@ -157,7 +180,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Delta = -finalDamage
         });
 
-        return ResolverResult.Ok($"{action.ActionName}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}");
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}");
     }
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(
