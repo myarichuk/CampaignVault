@@ -1,15 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Models;
-using CampaignVault.Tools;
-using Microsoft.Extensions.Logging.Abstractions;
-using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;

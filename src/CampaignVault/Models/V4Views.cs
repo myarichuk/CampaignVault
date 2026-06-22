@@ -99,7 +99,11 @@ public record NpcPresenceSummary(
     SystemExtension? SystemStats = null,
     double BehavioralTension = 0,
     IReadOnlyList<InitiativeCandidate>? ActiveInitiatives = null,
-    IReadOnlyList<MemoryNode>? RelevantMemories = null)
+    IReadOnlyList<MemoryNode>? RelevantMemories = null,
+    /// <summary>
+    /// Items held by this character (weapons, gear). Use for attack narration and ruleset_action parameters.
+    /// </summary>
+    IReadOnlyList<Item>? HeldItems = null)
 {
     public NpcPresenceSummary() : this(default!, default!, default!, default!, default!, default!, default!) { }
 }

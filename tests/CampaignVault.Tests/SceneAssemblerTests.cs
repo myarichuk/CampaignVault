@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using CampaignVault.Data;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Scenes;
@@ -119,6 +118,9 @@ public class SceneAssemblerTests
         Assert.Equal(42.5, summary.BehavioralTension);
         Assert.Equal("Alice looks ready to bolt.", summary.BehavioralSummary);
         Assert.Single(summary.ActiveInitiatives!);
+        Assert.NotNull(summary.HeldItems);
+        Assert.Single(summary.HeldItems!);
+        Assert.Equal("Ring", summary.HeldItems![0].Name);
 
         initiative.Received(1).Enrich(
             Arg.Is<NpcInitiativeContext>(ctx =>

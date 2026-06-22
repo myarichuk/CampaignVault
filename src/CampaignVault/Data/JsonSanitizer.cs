@@ -167,6 +167,22 @@ public static class JsonSanitizer
                     Sanitize(it);
                 }
 
+                if (scene.PresentNPCs != null)
+                {
+                    foreach (var npc in scene.PresentNPCs)
+                    {
+                        if (npc.HeldItems == null)
+                        {
+                            continue;
+                        }
+
+                        foreach (var it in npc.HeldItems)
+                        {
+                            Sanitize(it);
+                        }
+                    }
+                }
+
                 break;
             case IEnumerable<object> seq:
                 foreach (var item in seq)
