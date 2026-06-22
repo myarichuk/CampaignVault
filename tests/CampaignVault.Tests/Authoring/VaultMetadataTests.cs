@@ -1,7 +1,8 @@
 // tests/CampaignVault.Tests/Authoring/VaultMetadataTests.cs
+
 using System.Text.Json;
-using Xunit;
 using CampaignVault.Authoring.Models;
+using Xunit;
 
 namespace CampaignVault.Tests.Authoring;
 

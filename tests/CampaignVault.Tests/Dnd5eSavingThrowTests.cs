@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NSubstitute;
-using Xunit;
 using CampaignVault.Data;
+using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.Linq;
-using CampaignVault.Data.ChangeHandlers;
+using NSubstitute;
+using Xunit;
 
 namespace CampaignVault.Tests;
 
@@ -28,7 +28,7 @@ public class Dnd5eSavingThrowTests
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: new WorldChangeDispatcher(
-                new IWorldChangeHandler[0], 
+                new IWorldChangeHandler[0],
                 new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             campaignName: null
         );
@@ -45,14 +45,14 @@ public class Dnd5eSavingThrowTests
 
         var actorId = "char_1";
         // Dexterity 10 (mod +0) + SavingThrowModifier for Dexterity (+5) = Total Bonus +5
-        var actor = new Character 
-        { 
-            Id = actorId, 
-            SystemStats = new Dnd5eExtension 
-            { 
+        var actor = new Character
+        {
+            Id = actorId,
+            SystemStats = new Dnd5eExtension
+            {
                 Dexterity = 10,
                 SavingThrowModifiers = new Dictionary<string, int> { { "Dexterity", 5 } }
-            } 
+            }
         };
         var context = CreateContext(actor);
 
@@ -67,7 +67,8 @@ public class Dnd5eSavingThrowTests
         await resolver.ResolveAsync(context, action);
 
         // Verify that the roll request had a bonus of 5
-        await mockRollService.Received(1).RollAsync(Arg.Is<RollRequest>(req => req.Bonus == 5), Arg.Any<CancellationToken>());
+        await mockRollService.Received(1)
+            .RollAsync(Arg.Is<RollRequest>(req => req.Bonus == 5), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -75,9 +76,9 @@ public class Dnd5eSavingThrowTests
     {
         var mockRollService = Substitute.For<IRollService>();
         var bonusPassed = 0;
-        
+
         mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => 
+            .Returns(callInfo =>
             {
                 var req = callInfo.Arg<RollRequest>();
                 bonusPassed = req.Bonus;
@@ -88,11 +89,11 @@ public class Dnd5eSavingThrowTests
 
         var actorId = "char_1";
         // Dexterity 10 (mod +0) + StatusEffect with 'AllSaves' (+2.5 -> floor to 2) = Total Bonus +2
-        var actor = new Character 
-        { 
-            Id = actorId, 
-            SystemStats = new Dnd5eExtension 
-            { 
+        var actor = new Character
+        {
+            Id = actorId,
+            SystemStats = new Dnd5eExtension
+            {
                 Dexterity = 10,
                 StatusEffects = new List<StatusEffect>
                 {
@@ -102,7 +103,7 @@ public class Dnd5eSavingThrowTests
                         StatModifiers = new Dictionary<string, float> { { "AllSaves", 2.0f } }
                     }
                 }
-            } 
+            }
         };
         var context = CreateContext(actor);
 
@@ -125,9 +126,9 @@ public class Dnd5eSavingThrowTests
     {
         var mockRollService = Substitute.For<IRollService>();
         var bonusPassed = 0;
-        
+
         mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => 
+            .Returns(callInfo =>
             {
                 var req = callInfo.Arg<RollRequest>();
                 bonusPassed = req.Bonus;
@@ -138,11 +139,11 @@ public class Dnd5eSavingThrowTests
 
         var actorId = "char_1";
         // Dexterity 10 (mod +0) + StatusEffect with 'AllRolls' (+2.0) = Total Bonus +2
-        var actor = new Character 
-        { 
-            Id = actorId, 
-            SystemStats = new Dnd5eExtension 
-            { 
+        var actor = new Character
+        {
+            Id = actorId,
+            SystemStats = new Dnd5eExtension
+            {
                 Dexterity = 10,
                 StatusEffects = new List<StatusEffect>
                 {
@@ -152,7 +153,7 @@ public class Dnd5eSavingThrowTests
                         StatModifiers = new Dictionary<string, float> { { "AllRolls", 2.0f } }
                     }
                 }
-            } 
+            }
         };
         var context = CreateContext(actor);
 

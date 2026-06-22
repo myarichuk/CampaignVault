@@ -1,10 +1,10 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using CampaignVault.Models;
 using CampaignVault.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace CampaignVault.Middleware;
 
@@ -14,7 +14,8 @@ namespace CampaignVault.Middleware;
 /// </summary>
 internal static partial class McpToolErrorFilter
 {
-    [GeneratedRegex(@"missing a value for the required parameter '([^']+)'", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"missing a value for the required parameter '([^']+)'",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex MissingParamRegex();
 
     public static void Register(IMcpRequestFilterBuilder filters)
@@ -37,7 +38,8 @@ internal static partial class McpToolErrorFilter
                 var toolName = request.Params?.Name ?? "unknown";
                 if (ToolCallExamples.TryGet(toolName, out _))
                 {
-                    var (summary, retryExample) = ToolCallExamples.BuildDeserializationErrorResponse(toolName, ex.Message);
+                    var (summary, retryExample) =
+                        ToolCallExamples.BuildDeserializationErrorResponse(toolName, ex.Message);
                     return ToErrorResult(summary, retryExample);
                 }
 
@@ -46,7 +48,8 @@ internal static partial class McpToolErrorFilter
         });
     }
 
-    internal static (string Summary, JsonElement? RetryExample) BuildMissingParamResponse(string toolName, string paramName)
+    internal static (string Summary, JsonElement? RetryExample) BuildMissingParamResponse(string toolName,
+        string paramName)
     {
         var guidance = (toolName, paramName) switch
         {
@@ -104,7 +107,8 @@ internal static partial class McpToolErrorFilter
             ("get_faction_context", "factionId") => "get_faction_context(\"factions/thieves-guild\")",
             ("get_quest_details", "questId") => "get_quest_details(\"quests/rats_01\")",
             ("start_combat", "locationId") => "start_combat(\"locations/tavern\", [\"characters/hero\"])",
-            ("define_need_descriptor", _) => "define_need_descriptor(\"homesickness\", \"Longing for home and family.\")",
+            ("define_need_descriptor", _) =>
+                "define_need_descriptor(\"homesickness\", \"Longing for home and family.\")",
             _ => null
         };
 
@@ -120,7 +124,8 @@ internal static partial class McpToolErrorFilter
 
     private static CallToolResult ToErrorResult(string summary, JsonElement? retryExample)
     {
-        var payload = new ToolResult<object>(false, Error: ToolErrors.InvalidArgument, Summary: summary, RetryExample: retryExample);
+        var payload = new ToolResult<object>(false, Error: ToolErrors.InvalidArgument, Summary: summary,
+            RetryExample: retryExample);
         return new CallToolResult
         {
             IsError = true,

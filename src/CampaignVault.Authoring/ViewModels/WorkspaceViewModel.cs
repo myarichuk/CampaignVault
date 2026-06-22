@@ -6,17 +6,16 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
+using CampaignVault.Authoring.Models;
+using CampaignVault.Authoring.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CampaignVault.Authoring.Services;
-using CampaignVault.Authoring.Models;
 
 namespace CampaignVault.Authoring.ViewModels;
 
 public partial class ExplorerNodeViewModel : ObservableObject
 {
-    [ObservableProperty]
-    private string _title = string.Empty;
+    [ObservableProperty] private string _title = string.Empty;
     public ObservableCollection<ExplorerNodeViewModel> Children { get; } = new();
 }
 
@@ -59,27 +58,25 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _debounceSource;
     private CampaignStateService? _stateService;
 
-    [ObservableProperty]
-    private ObservableCollection<ExplorerNodeViewModel> _categories = new();
+    [ObservableProperty] private ObservableCollection<ExplorerNodeViewModel> _categories = new();
 
-    [ObservableProperty]
-    private ExplorerNodeViewModel? _selectedNode;
+    [ObservableProperty] private ExplorerNodeViewModel? _selectedNode;
 
-    [ObservableProperty]
-    private string _currentDirectory = string.Empty;
+    [ObservableProperty] private string _currentDirectory = string.Empty;
 
-    [ObservableProperty]
-    private string _workspaceStatusMessage = "Open a campaign folder to begin.";
+    [ObservableProperty] private string _workspaceStatusMessage = "Open a campaign folder to begin.";
 
-    [ObservableProperty]
-    private bool _isLoading;
+    [ObservableProperty] private bool _isLoading;
 
     private FileSystemWatcher? _watcher;
 
     public WorkspaceDbService DbService => _dbService;
     public CampaignStateService? StateService => _stateService;
 
-    public void SetStorageProvider(IStorageProvider sp) { _storageProvider = sp; }
+    public void SetStorageProvider(IStorageProvider sp)
+    {
+        _storageProvider = sp;
+    }
 
     public async Task RefreshLocalStateAsync()
     {
@@ -95,6 +92,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         {
             _stateService.StateChanged -= OnStateChanged;
         }
+
         _stateService = stateService;
         _stateService.StateChanged += OnStateChanged;
         RefreshFilesList();
@@ -143,12 +141,15 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             try
             {
                 var campaignName = Path.GetFileName(CurrentDirectory);
-                try 
+                try
                 {
                     var metadata = await new MetadataService().LoadMetadataAsync(CurrentDirectory);
                     if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
                         campaignName = metadata.CampaignName;
-                } catch {}
+                }
+                catch
+                {
+                }
 
                 await _stateService.RefreshStateAsync(campaignName);
             }
@@ -196,7 +197,9 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                 if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
                     campaignName = metadata.CampaignName;
             }
-            catch { }
+            catch
+            {
+            }
 
             if (_stateService != null)
                 await _stateService.RefreshStateAsync(campaignName);
@@ -242,13 +245,16 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                     if (_stateService != null)
                     {
                         var campaignName = Path.GetFileName(CurrentDirectory);
-                        try 
+                        try
                         {
                             var metadata = await new MetadataService().LoadMetadataAsync(CurrentDirectory);
                             if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
                                 campaignName = metadata.CampaignName;
-                        } catch {}
-                        
+                        }
+                        catch
+                        {
+                        }
+
                         await _stateService.RefreshStateAsync(campaignName);
                     }
                 }
@@ -369,7 +375,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             }
 
             var folderEntities = entities
-                .Where(e => string.Equals(GetChildFolderName(e, parentPath, categoryKey), folderName, StringComparison.OrdinalIgnoreCase))
+                .Where(e => string.Equals(GetChildFolderName(e, parentPath, categoryKey), folderName,
+                    StringComparison.OrdinalIgnoreCase))
                 .ToList();
             SyncFolderChildren(folder, folderPath, folderEntities, categoryKey);
         }
@@ -488,10 +495,10 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             _watcher.Dispose();
             _watcher = null;
         }
+
         if (_stateService != null)
         {
             _stateService.StateChanged -= OnStateChanged;
         }
     }
 }
-

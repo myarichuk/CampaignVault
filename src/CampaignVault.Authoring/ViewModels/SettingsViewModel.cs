@@ -1,9 +1,9 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using CampaignVault.Authoring.Models;
-using CampaignVault.Authoring.Services;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using CampaignVault.Authoring.Models;
+using CampaignVault.Authoring.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace CampaignVault.Authoring.ViewModels;
 
@@ -13,53 +13,37 @@ public partial class SettingsViewModel : ObservableObject
     private readonly CampaignAuthoringSettings _settings;
     private bool _userDisconnected;
 
-    [ObservableProperty]
-    private decimal? _mcpPortValue;
+    [ObservableProperty] private decimal? _mcpPortValue;
 
-    [ObservableProperty]
-    private bool _autoStartMcp;
+    [ObservableProperty] private bool _autoStartMcp;
 
-    [ObservableProperty]
-    private string _llmProvider = "None";
+    [ObservableProperty] private string _llmProvider = "None";
 
-    [ObservableProperty]
-    private string _llmApiKey = string.Empty;
+    [ObservableProperty] private string _llmApiKey = string.Empty;
 
-    [ObservableProperty]
-    private string _llmEndpoint = string.Empty;
+    [ObservableProperty] private string _llmEndpoint = string.Empty;
 
-    [ObservableProperty]
-    private string _llmModel = string.Empty;
+    [ObservableProperty] private string _llmModel = string.Empty;
 
-    [ObservableProperty]
-    private string _grpcHost = "localhost";
+    [ObservableProperty] private string _grpcHost = "localhost";
 
-    [ObservableProperty]
-    private decimal? _grpcPortValue = 50051;
+    [ObservableProperty] private decimal? _grpcPortValue = 50051;
 
-    [ObservableProperty]
-    private string _grpcToken = string.Empty;
+    [ObservableProperty] private string _grpcToken = string.Empty;
 
-    [ObservableProperty]
-    private decimal? _vaultMcpPortValue = 5275;
+    [ObservableProperty] private decimal? _vaultMcpPortValue = 5275;
 
-    [ObservableProperty]
-    private bool _isMcpRunning;
+    [ObservableProperty] private bool _isMcpRunning;
 
-    [ObservableProperty]
-    private string _mcpStatusText = "Stopped";
+    [ObservableProperty] private string _mcpStatusText = "Stopped";
 
-    [ObservableProperty]
-    private string _mcpStatusColor = "Red";
+    [ObservableProperty] private string _mcpStatusColor = "Red";
 
-    [ObservableProperty]
-    private bool _isGrpcConnected;
+    [ObservableProperty] private bool _isGrpcConnected;
 
-    [ObservableProperty]
-    private string _grpcStatusText = "Disconnected";
+    [ObservableProperty] private string _grpcStatusText = "Disconnected";
 
-    [ObservableProperty]
-    private string _grpcStatusColor = "Red";
+    [ObservableProperty] private string _grpcStatusColor = "Red";
 
     public ObservableCollection<string> LlmProviders { get; } = new() { "None", "Ollama", "OpenAI", "Gemini" };
 
@@ -189,6 +173,7 @@ public partial class SettingsViewModel : ObservableObject
             var port = McpPortValue.HasValue ? (int)McpPortValue.Value : 8080;
             await service.StartAsync(port);
         }
+
         UpdateMcpStatus();
     }
 

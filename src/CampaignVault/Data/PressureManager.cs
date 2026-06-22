@@ -1,11 +1,10 @@
-using CampaignVault.Models;
-using Raven.Client.Documents.Session;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
+using CampaignVault.Models;
 using Microsoft.Extensions.Logging;
+using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;
 
@@ -16,12 +15,14 @@ public interface IPressureManager
     /// Note: This method mutates the campaign's PressureCooldowns state. The caller is responsible for 
     /// calling SaveChangesAsync() on the session to persist these cooldowns.
     /// </summary>
-    Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay, IEnumerable<WorldPressureItem> rawPressures, bool disableCooldowns = false);
+    Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay,
+        IEnumerable<WorldPressureItem> rawPressures, bool disableCooldowns = false);
 }
 
 public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>? logger = null) : IPressureManager
 {
-    public async Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay, IEnumerable<WorldPressureItem> rawPressures, bool disableCooldowns = false)
+    public async Task<string[]> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay,
+        IEnumerable<WorldPressureItem> rawPressures, bool disableCooldowns = false)
     {
         var pressures = rawPressures?.ToList() ?? [];
         if (pressures.Count == 0)
@@ -33,7 +34,9 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
         var campaign = await session.LoadAsync<Campaign>(metaId);
         if (campaign == null)
         {
-            logger?.LogError("Campaign document '{CampaignName}' not found. Will throw an error since its a broken invariant.", campaignName);
+            logger?.LogError(
+                "Campaign document '{CampaignName}' not found. Will throw an error since its a broken invariant.",
+                campaignName);
 
             throw new InvalidOperationException(
                 $"Campaign document for '{campaignName}' not found - cannot calculate pressure (looked for '{metaId}')");
@@ -91,11 +94,11 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
             foreach (var tuple in cappedItems)
             {
                 var key = tuple.OriginalKey;
-                
+
                 if (campaign.PressureCooldowns.TryGetValue(key, out var existingState))
                 {
-                    campaign.PressureCooldowns[key] = existingState with 
-                    { 
+                    campaign.PressureCooldowns[key] = existingState with
+                    {
                         LastSurfacedDay = currentDay,
                         SuppressionCount = existingState.SuppressionCount + 1
                     };
@@ -110,7 +113,9 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
         return FormatBatches(groups, cooldownDays * escalationCount);
     }
 
-    private string[] FormatBatches<TKey>(IEnumerable<IGrouping<TKey, (WorldPressureItem Item, string OriginalKey, bool Escalated)>> groups, int escalationDays)
+    private string[] FormatBatches<TKey>(
+        IEnumerable<IGrouping<TKey, (WorldPressureItem Item, string OriginalKey, bool Escalated)>> groups,
+        int escalationDays)
     {
         return groups.Select(g =>
         {
@@ -138,7 +143,7 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
             {
                 var keyParts = first.Item.GroupingKey.Split(':');
                 var category = keyParts.Length > 1 ? string.Join(" ", keyParts.Skip(1)) : first.Item.GroupingKey;
-                
+
                 var batchedText = string.Join(" | ", items.Select(x => x.Item.Text));
                 return $"{prefix} ({items.Count} similar issues - {category}): {batchedText}";
             }

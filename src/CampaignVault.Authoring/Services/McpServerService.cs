@@ -1,12 +1,12 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.AspNetCore;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace CampaignVault.Authoring.Services;
 
@@ -32,10 +32,7 @@ public class McpServerService
             _currentPort = port;
 
             var builder = WebApplication.CreateBuilder();
-            builder.WebHost.UseKestrel(kestrel =>
-            {
-                kestrel.ListenAnyIP(port);
-            });
+            builder.WebHost.UseKestrel(kestrel => { kestrel.ListenAnyIP(port); });
 
             // Disable noisy logs
             builder.Logging.ClearProviders();
@@ -44,35 +41,35 @@ public class McpServerService
             builder.Logging.AddFilter("System", LogLevel.Warning);
             builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
 
-        // Register MCP
-        builder.Services.AddMcpServer(options =>
-        {
-            options.ServerInfo = new ModelContextProtocol.Protocol.Implementation
-            {
-                Name = "CampaignVaultAuthoring",
-                Version = "1.0.0"
-            };
-        })
-        .WithHttpTransport()
-        .WithToolsFromAssembly();
+            // Register MCP
+            builder.Services.AddMcpServer(options =>
+                {
+                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation
+                    {
+                        Name = "CampaignVaultAuthoring",
+                        Version = "1.0.0"
+                    };
+                })
+                .WithHttpTransport()
+                .WithToolsFromAssembly();
 
-        // CORS
-        builder.Services.AddCors(cors =>
-        {
-            cors.AddDefaultPolicy(policy =>
+            // CORS
+            builder.Services.AddCors(cors =>
             {
-                policy.AllowAnyOrigin()
-                      .AllowAnyHeader()
-                      .AllowAnyMethod();
+                cors.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
             });
-        });
 
-        var app = builder.Build();
-        app.UseCors();
-        app.MapMcp("/");
+            var app = builder.Build();
+            app.UseCors();
+            app.MapMcp("/");
 
-        _host = app;
-        await _host.StartAsync();
+            _host = app;
+            await _host.StartAsync();
         }
         finally
         {

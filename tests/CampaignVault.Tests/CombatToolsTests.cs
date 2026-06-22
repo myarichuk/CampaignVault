@@ -1,12 +1,12 @@
-using CampaignVault.Data;
-using CampaignVault.Models;
-using CampaignVault.Tools;
-using CampaignVault.Rulesets;
-using Microsoft.Extensions.Logging.Abstractions;
-using Raven.Client.Documents;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using CampaignVault.Data;
+using CampaignVault.Models;
+using CampaignVault.Rulesets;
+using CampaignVault.Tools;
+using Microsoft.Extensions.Logging.Abstractions;
+using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -111,8 +111,9 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         // Start combat
         var startResult = await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
-        Assert.True(startResult.Success, $"StartCombat failed. Error: {startResult.Error}, Summary: {startResult.Summary}");
-        
+        Assert.True(startResult.Success,
+            $"StartCombat failed. Error: {startResult.Error}, Summary: {startResult.Summary}");
+
         var firstActorId = startResult.Data!.ActiveTurnId;
         var secondActorId = firstActorId == c1 ? c2 : c1;
 
@@ -127,7 +128,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         // Advance turn
         var nextResult = await tools.NextTurn(campaignName: campaign);
         Assert.True(nextResult.Success, $"NextTurn failed. Error: {nextResult.Error}, Summary: {nextResult.Summary}");
-        
+
         // It should have skipped the dead guy and wrapped around back to the first guy, OR
         // it advanced to round 2 and gave the turn to the only alive person.
         Assert.Equal(firstActorId, nextResult.Data!.ActiveTurnId);
@@ -153,7 +154,8 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         // Start combat
         var startResult = await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
-        Assert.True(startResult.Success, $"StartCombat failed. Error: {startResult.Error}, Summary: {startResult.Summary}");
+        Assert.True(startResult.Success,
+            $"StartCombat failed. Error: {startResult.Error}, Summary: {startResult.Summary}");
 
         // Kill EVERYONE
         using (var session = store.OpenAsyncSession())
@@ -192,6 +194,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(endResult.Success, $"EndCombat failed. Error: {endResult.Error}, Summary: {endResult.Summary}");
         Assert.False(endResult.Data!.IsActive);
     }
+
     [Fact]
     public async Task NextTurn_ExpiresRoundBasedStatusEffects()
     {
@@ -204,10 +207,10 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character 
-            { 
-                Id = c1, 
-                Name = "Alice", 
+            await session.StoreAsync(new Character
+            {
+                Id = c1,
+                Name = "Alice",
                 CurrentHp = 10,
                 SystemStats = new Dnd5eExtension
                 {
@@ -236,6 +239,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
             Assert.Equal("Poisoned", alice.SystemStats.StatusEffects[0].Name);
         }
     }
+
     [Fact]
     public async Task EndCombat_ClearsRoundBasedStatuses()
     {
@@ -247,10 +251,10 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character 
-            { 
-                Id = c1, 
-                Name = "Alice", 
+            await session.StoreAsync(new Character
+            {
+                Id = c1,
+                Name = "Alice",
                 CurrentHp = 10,
                 SystemStats = new Dnd5eExtension
                 {

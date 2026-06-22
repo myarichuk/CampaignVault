@@ -1,6 +1,6 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using CampaignVault.Authoring.ViewModels;
-using System.ComponentModel;
 
 namespace CampaignVault.Authoring.Views;
 

@@ -1,9 +1,10 @@
 // tests/CampaignVault.Tests/Authoring/MetadataServiceTests.cs
+
 using System.IO;
 using System.Threading.Tasks;
-using Xunit;
-using CampaignVault.Authoring.Services;
 using CampaignVault.Authoring.Models;
+using CampaignVault.Authoring.Services;
+using Xunit;
 
 namespace CampaignVault.Tests.Authoring;
 

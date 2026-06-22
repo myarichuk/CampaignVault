@@ -1,14 +1,14 @@
-using CampaignVault.Data;
-using CampaignVault.Models;
-using CampaignVault.Tools;
-using CampaignVault.Rulesets;
-using CampaignVault.Data.ChangeHandlers;
-using Raven.Client.Documents;
-using System.Threading.Tasks;
-using Xunit;
-using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using CampaignVault.Data;
+using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Models;
+using CampaignVault.Rulesets;
+using CampaignVault.Tools;
+using Raven.Client.Documents;
+using Xunit;
 
 namespace CampaignVault.Tests;
 
@@ -34,12 +34,12 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
                 diceVal = 5;
             }
 
-            return Task.FromResult(new RollOutcome 
-            { 
+            return Task.FromResult(new RollOutcome
+            {
                 Tag = request.Tag,
-                Result = diceVal + request.Bonus, 
-                HasCritical = false, 
-                HasComplication = false, 
+                Result = diceVal + request.Bonus,
+                HasCritical = false,
+                HasComplication = false,
                 Summary = "Predictable roll"
             });
         }
@@ -53,10 +53,12 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
             {
                 outcomes.Add(await RollAsync(req, ct));
             }
+
             return outcomes;
         }
 
-        public Task<FalloutCombatDiceResult> RollFalloutCombatDiceAsync(int count, System.Threading.CancellationToken ct = default)
+        public Task<FalloutCombatDiceResult> RollFalloutCombatDiceAsync(int count,
+            System.Threading.CancellationToken ct = default)
         {
             return Task.FromResult(new FalloutCombatDiceResult(0, 0, false));
         }
@@ -78,8 +80,18 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/hero", Name = "Hero", CurrentHp = 50, MaxHp = 50, SystemStats = new Dnd5eExtension { ArmorClass = 10 } });
-            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/goblin", Name = "Goblin", CurrentHp = 15, MaxHp = 15, SystemStats = new Dnd5eExtension { ArmorClass = 10 } });
+            await repo.UpsertCharacterAsync(session,
+                new Character
+                {
+                    Id = "characters/hero", Name = "Hero", CurrentHp = 50, MaxHp = 50,
+                    SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+                });
+            await repo.UpsertCharacterAsync(session,
+                new Character
+                {
+                    Id = "characters/goblin", Name = "Goblin", CurrentHp = 15, MaxHp = 15,
+                    SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+                });
             await session.SaveChangesAsync();
         }
 
@@ -93,12 +105,13 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         // 3. Commit a Ruleset Action (Hero attacks Goblin)
         var actionJson = JsonSerializer.Serialize<WorldChange[]>([
             new RulesetAction
-        {
-            ActionType = RulesetActionType.Attack,
-            ActorId = "characters/hero",
-            TargetIds = ["characters/goblin"],
-            Parameters = new Dictionary<string, string> { { "bonus", "5" }, { "damageDice", "1d8" }, { "damageBonus", "3" } }
-        }
+            {
+                ActionType = RulesetActionType.Attack,
+                ActorId = "characters/hero",
+                TargetIds = ["characters/goblin"],
+                Parameters = new Dictionary<string, string>
+                    { { "bonus", "5" }, { "damageDice", "1d8" }, { "damageBonus", "3" } }
+            }
         ]);
 
         var commitResult = await tools.Commit(actionJson, "Hero attacks Goblin", campaignName);
@@ -118,7 +131,10 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
 
         // 5. Commit another change (Goblin gets a status)
         var statusJson = JsonSerializer.Serialize<WorldChange[]>([
-            new StatusChange { CharacterId = "characters/goblin", Effect = new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 } }
+            new StatusChange
+            {
+                CharacterId = "characters/goblin", Effect = new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 }
+            }
         ]);
         await tools.Commit(statusJson, "Goblin gets stunned", campaignName);
 

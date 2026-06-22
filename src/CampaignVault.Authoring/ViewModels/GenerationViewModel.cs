@@ -1,9 +1,9 @@
 using System;
 using System.Threading.Tasks;
+using CampaignVault.Authoring.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.AI;
-using CampaignVault.Authoring.Services;
 
 namespace CampaignVault.Authoring.ViewModels;
 
@@ -11,20 +11,15 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
 {
     private readonly SettingsViewModel _settingsViewModel;
 
-    [ObservableProperty]
-    private string _userPrompt = string.Empty;
+    [ObservableProperty] private string _userPrompt = string.Empty;
 
-    [ObservableProperty]
-    private string _generationResult = string.Empty;
+    [ObservableProperty] private string _generationResult = string.Empty;
 
-    [ObservableProperty]
-    private bool _isEnabled;
+    [ObservableProperty] private bool _isEnabled;
 
-    [ObservableProperty]
-    private string _statusMessage = string.Empty;
+    [ObservableProperty] private string _statusMessage = string.Empty;
 
-    [ObservableProperty]
-    private bool _isGenerating;
+    [ObservableProperty] private bool _isGenerating;
 
     public GenerationViewModel(SettingsViewModel settingsViewModel)
     {
@@ -58,10 +53,12 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
             IsEnabled = false;
             StatusMessage = "In-app generation is disabled. Please configure your LLM provider in the Settings tab.";
         }
-        else if ((_settingsViewModel.LlmProvider == "OpenAI" || _settingsViewModel.LlmProvider == "Gemini") && string.IsNullOrWhiteSpace(_settingsViewModel.LlmApiKey))
+        else if ((_settingsViewModel.LlmProvider == "OpenAI" || _settingsViewModel.LlmProvider == "Gemini") &&
+                 string.IsNullOrWhiteSpace(_settingsViewModel.LlmApiKey))
         {
             IsEnabled = false;
-            StatusMessage = $"API Key is required for {_settingsViewModel.LlmProvider}. Please configure it in the Settings tab.";
+            StatusMessage =
+                $"API Key is required for {_settingsViewModel.LlmProvider}. Please configure it in the Settings tab.";
         }
         else
         {
@@ -108,7 +105,9 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
             }
             else if (provider == "Gemini")
             {
-                var uri = string.IsNullOrEmpty(endpoint) ? new Uri("https://generativelanguage.googleapis.com/v1beta/openai/") : new Uri(endpoint);
+                var uri = string.IsNullOrEmpty(endpoint)
+                    ? new Uri("https://generativelanguage.googleapis.com/v1beta/openai/")
+                    : new Uri(endpoint);
                 client = new OpenAI.Chat.ChatClient(
                     string.IsNullOrEmpty(model) ? "default" : model,
                     new System.ClientModel.ApiKeyCredential(apiKey),
@@ -124,7 +123,8 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
             {
                 var response = await client.GetResponseAsync(new[]
                 {
-                    new ChatMessage(ChatRole.System, "You are a TTRPG campaign writer. Generate a campaign entity markdown file with YAML frontmatter. " +
+                    new ChatMessage(ChatRole.System,
+                        "You are a TTRPG campaign writer. Generate a campaign entity markdown file with YAML frontmatter. " +
                         "The output MUST start with '---' and end with the markdown body. Do NOT wrap it in code block ticks (```). Just output the raw content."),
                     new ChatMessage(ChatRole.User, UserPrompt)
                 }, new ChatOptions

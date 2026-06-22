@@ -1,12 +1,12 @@
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using CampaignVault.Data;
 using CampaignVault.Models;
-using ModelContextProtocol.Server;
-using System.ComponentModel;
-using Raven.Client.Documents.Session;
 using CampaignVault.Rulesets;
+using ModelContextProtocol.Server;
+using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Tools;
 
@@ -19,7 +19,7 @@ public class CombatTools : CampaignToolBase
         CampaignRepository repository,
         ICurrentCampaignContext currentCampaign,
         CampaignDocumentKeys keys,
-        IRulesetModuleSelector rulesetSelector) 
+        IRulesetModuleSelector rulesetSelector)
         : base(repository, currentCampaign, keys)
     {
         _rulesetSelector = rulesetSelector;
@@ -32,9 +32,12 @@ Rolls initiative for all combatants based on the active ruleset system and estab
 
 Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""monsters/goblin1""])")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
-        [Description("The location ID where combat is happening.")] string? locationId = null,
-        [Description("List of character IDs participating in combat.")] string[]? combatantIds = null,
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description("The location ID where combat is happening.")]
+        string? locationId = null,
+        [Description("List of character IDs participating in combat.")]
+        string[]? combatantIds = null,
+        [Description("Optional campaign name. Falls back to currently selected.")]
+        string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(locationId))
         {
@@ -63,14 +66,14 @@ Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""mon
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
         {
-
             var uniqueIds = combatantIds.Distinct().ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
             var validCharacters = loadedCharacters.Values.Where(c => c != null && c.CurrentHp > 0).ToList();
 
             if (validCharacters.Count == 0)
             {
-                return new ToolResult<CombatEncounter>(false, Error: "InvalidInput", Summary: "None of the specified combatants are valid and alive.");
+                return new ToolResult<CombatEncounter>(false, Error: "InvalidInput",
+                    Summary: "None of the specified combatants are valid and alive.");
             }
 
             var config = await _repository.GetCampaignConfigAsync(session, effective);
@@ -103,7 +106,8 @@ Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""mon
 
             await session.StoreAsync(encounter, encounter.Id);
 
-            return new ToolResult<CombatEncounter>(true, encounter, $"Combat started at {locationId} with {combatants.Count} combatants.");
+            return new ToolResult<CombatEncounter>(true, encounter,
+                $"Combat started at {locationId} with {combatants.Count} combatants.");
         });
     }
 
@@ -114,8 +118,11 @@ If all combatants have acted, advances to the next round. Skips dead combatants 
 Round-based status effects naturally expire during this transition when their round duration ends.
 Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> NextTurn(
-        [Description("Optional. If provided, the command will fail if the current active turn does not match this ID. Helps prevent accidental double-advancing.")] string? expectedActiveTurnId = null,
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description(
+            "Optional. If provided, the command will fail if the current active turn does not match this ID. Helps prevent accidental double-advancing.")]
+        string? expectedActiveTurnId = null,
+        [Description("Optional campaign name. Falls back to currently selected.")]
+        string? campaignName = null)
     {
         var effective = EffectiveCampaign(campaignName);
         var combatId = _keys.CombatCurrent(effective);
@@ -125,12 +132,15 @@ Respects the currently selected campaign.")]
             var encounter = await session.LoadAsync<CombatEncounter>(combatId);
             if (encounter == null || !encounter.IsActive)
             {
-                return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter.");
+                return new ToolResult<CombatEncounter>(false, Error: "NotFound",
+                    Summary: "No active combat encounter.");
             }
 
             if (!string.IsNullOrWhiteSpace(expectedActiveTurnId) && encounter.ActiveTurnId != expectedActiveTurnId)
             {
-                return new ToolResult<CombatEncounter>(false, Error: "StateDrift", Summary: $"Expected active turn to be '{expectedActiveTurnId}' but it was '{encounter.ActiveTurnId}'. The combat state has drifted.");
+                return new ToolResult<CombatEncounter>(false, Error: "StateDrift",
+                    Summary:
+                    $"Expected active turn to be '{expectedActiveTurnId}' but it was '{encounter.ActiveTurnId}'. The combat state has drifted.");
             }
 
             var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
@@ -146,18 +156,22 @@ Respects the currently selected campaign.")]
             var expiredMessages = new List<string>();
 
             // Find next who hasn't acted and is alive
-            CombatantState? GetNextAliveUnacted() => encounter.Combatants.FirstOrDefault(c => 
-                !c.HasActedThisRound && 
-                characters.TryGetValue(c.CharacterId, out var character) && character != null && character.CurrentHp > 0);
+            CombatantState? GetNextAliveUnacted() => encounter.Combatants.FirstOrDefault(c =>
+                !c.HasActedThisRound &&
+                characters.TryGetValue(c.CharacterId, out var character) && character != null &&
+                character.CurrentHp > 0);
 
             var next = GetNextAliveUnacted();
-            
+
             if (next == null)
             {
                 // Verify if anyone is actually alive
-                if (!encounter.Combatants.Any(c => characters.TryGetValue(c.CharacterId, out var character) && character != null && character.CurrentHp > 0))
+                if (!encounter.Combatants.Any(c =>
+                        characters.TryGetValue(c.CharacterId, out var character) && character != null &&
+                        character.CurrentHp > 0))
                 {
-                     return new ToolResult<CombatEncounter>(false, Error: "CombatEnded", Summary: "No valid and alive combatants remain. Combat has ended or cannot proceed.");
+                    return new ToolResult<CombatEncounter>(false, Error: "CombatEnded",
+                        Summary: "No valid and alive combatants remain. Combat has ended or cannot proceed.");
                 }
 
                 // New round
@@ -171,7 +185,8 @@ Respects the currently selected campaign.")]
                     if (character.SystemStats?.StatusEffects != null)
                     {
                         var effects = character.SystemStats.StatusEffects;
-                        var toRemove = effects.Where(e => e.ExpiresAtRound.HasValue && e.ExpiresAtRound.Value <= encounter.Round).ToList();
+                        var toRemove = effects.Where(e =>
+                            e.ExpiresAtRound.HasValue && e.ExpiresAtRound.Value <= encounter.Round).ToList();
                         foreach (var effect in toRemove)
                         {
                             effects.Remove(effect);
@@ -200,7 +215,8 @@ Respects the currently selected campaign.")]
 Aggressively clears all round-based status effects (e.g., 'until end of combat' effects) from all combatants.
 Day-based effects remain active. Respects the currently selected campaign.")]
     public Task<ToolResult<CombatEncounter>> EndCombat(
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description("Optional campaign name. Falls back to currently selected.")]
+        string? campaignName = null)
     {
         var effective = EffectiveCampaign(campaignName);
         var combatId = _keys.CombatCurrent(effective);
@@ -210,7 +226,8 @@ Day-based effects remain active. Respects the currently selected campaign.")]
             var encounter = await session.LoadAsync<CombatEncounter>(combatId);
             if (encounter == null || !encounter.IsActive)
             {
-                return new ToolResult<CombatEncounter>(false, Error: "NotFound", Summary: "No active combat encounter to end.");
+                return new ToolResult<CombatEncounter>(false, Error: "NotFound",
+                    Summary: "No active combat encounter to end.");
             }
 
             var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();

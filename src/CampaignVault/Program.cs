@@ -1,9 +1,9 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using CampaignVault.Data;
-using CampaignVault.Tools;
 using CampaignVault.Middleware;
 using CampaignVault.Services;
+using CampaignVault.Tools;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -12,7 +12,6 @@ using ModelContextProtocol.Protocol;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Indexes;
 using Raven.Embedded;
-
 using JsonSanitizer = CampaignVault.Data.JsonSanitizer; // for brevity in the listener
 
 var mcpPort = int.TryParse(Environment.GetEnvironmentVariable("MCP_PORT"), out var configuredMcpPort)
@@ -27,24 +26,15 @@ builder.WebHost.PreferHostingUrls(false);
 builder.WebHost.ConfigureKestrel(options =>
 {
     // MCP + HTTP health/info
-    options.ListenLocalhost(mcpPort, listenOptions =>
-    {
-        listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
-    });
+    options.ListenLocalhost(mcpPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http1AndHttp2; });
 
     // Dedicated gRPC sync channel for the authoring tool — gRPC requires HTTP/2 only
-    options.ListenLocalhost(grpcPort, listenOptions =>
-    {
-        listenOptions.Protocols = HttpProtocols.Http2;
-    });
+    options.ListenLocalhost(grpcPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
 });
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole(options =>
-{
-    options.LogToStandardErrorThreshold = LogLevel.Trace;
-});
+builder.Logging.AddConsole(options => { options.LogToStandardErrorThreshold = LogLevel.Trace; });
 builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
 builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
@@ -84,17 +74,18 @@ builder.Services.AddCors(options =>
         if (string.IsNullOrWhiteSpace(corsOrigins) || corsOrigins.Trim() == "*")
         {
             policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .WithExposedHeaders("Mcp-Session-Id");
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .WithExposedHeaders("Mcp-Session-Id");
         }
         else
         {
-            var origins = corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var origins =
+                corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             policy.WithOrigins(origins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .WithExposedHeaders("Mcp-Session-Id");
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .WithExposedHeaders("Mcp-Session-Id");
         }
     });
 });
@@ -118,10 +109,7 @@ if (enableStdioTransport)
 }
 
 mcpServerBuilder
-    .WithHttpTransport(options =>
-    {
-        options.Stateless = true;
-    })
+    .WithHttpTransport(options => { options.Stateless = true; })
     .WithToolsFromAssembly()
     .WithRequestFilters(McpToolErrorFilter.Register);
 
@@ -144,9 +132,9 @@ if (!string.IsNullOrEmpty(bearerToken))
 // without a port suffix (e.g. "localhost"), which still 404s with *:port patterns.
 app.MapMcp("/").RequireLocalPort(mcpPort);
 app.MapGet("/info", () => "D&D Campaign Vault MCP Server (RavenDB) is running.")
-   .RequireLocalPort(mcpPort);
+    .RequireLocalPort(mcpPort);
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
-   .RequireLocalPort(mcpPort);
+    .RequireLocalPort(mcpPort);
 
 // Bind gRPC sync exclusively to the dedicated gRPC listener port.
 app.MapGrpcService<CampaignSyncService>().RequireLocalPort(grpcPort);
@@ -180,6 +168,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
     {
         Console.Error.WriteLine($"  - {address}");
     }
+
     Console.Error.WriteLine("--------------------------------------------------");
 });
 

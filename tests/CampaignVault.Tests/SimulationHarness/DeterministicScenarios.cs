@@ -1,11 +1,11 @@
-using CampaignVault.Data;
-using CampaignVault.Models;
-using CampaignVault.Tools;
-using Raven.Client.Documents;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using CampaignVault.Data;
+using CampaignVault.Models;
+using CampaignVault.Tools;
+using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests.SimulationHarness;
@@ -36,13 +36,18 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         // Setup: Location and NPC
         var locId = "locations/tavern-" + Guid.NewGuid();
         var npcId = "npcs/innkeeper-" + Guid.NewGuid();
-        
-        await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "The Prancing Pony", Type = LocationType.Building });
-        await repo.UpsertCharacterAsync(session, new Character 
-        { 
-            Id = npcId, 
+
+        await repo.UpsertLocationAsync(session,
+            new Location { Id = locId, Name = "The Prancing Pony", Type = LocationType.Building });
+        await repo.UpsertCharacterAsync(session, new Character
+        {
+            Id = npcId,
             Name = "Barliman Butterbur",
-            Schedule = new Schedule { DefaultLocationId = locId, Routines = [new Routine { Activity = "Serving", Condition = "Evening", LocationId = locId }] },
+            Schedule = new Schedule
+            {
+                DefaultLocationId = locId,
+                Routines = [new Routine { Activity = "Serving", Condition = "Evening", LocationId = locId }]
+            },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 50f } }
         });
         await session.SaveChangesAsync();
@@ -59,6 +64,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
 
             await Task.Delay(30);
         }
+
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)
         {
             throw new TimeoutException("Indexes did not become non-stale within 10s");
@@ -107,7 +113,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         // Final Assertion: Verify state survived and simulation applied
         var finalContext = await simulator.Interact(npcId);
         var finalTiredness = finalContext.Data!.Needs.ActiveNeeds["tiredness"];
-        
+
         // Calculation: 50 (start) - 20 (resolve) + 8 (1 day simulation at 0.8 rate) = 38
         Assert.Equal(38f, finalTiredness);
     }

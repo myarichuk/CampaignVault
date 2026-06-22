@@ -1,13 +1,13 @@
-using CampaignVault.Data;
-using CampaignVault.Models;
-using CampaignVault.Tools;
-using CampaignVault.Rulesets;
-using CampaignVault.Data.ChangeHandlers;
-using Raven.Client.Documents;
-using System.Threading.Tasks;
-using Xunit;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using CampaignVault.Data;
+using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Models;
+using CampaignVault.Rulesets;
+using CampaignVault.Tools;
+using Raven.Client.Documents;
+using Xunit;
 
 namespace CampaignVault.Tests;
 
@@ -35,7 +35,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var tools = CreateTools(context);
 
         var selectResult = await tools.SelectCampaign("brand-new-world");
-        
+
         Assert.True(selectResult.Success);
         Assert.Equal("brand-new-world", selectResult.Data);
         Assert.Equal("brand-new-world", context.CurrentCampaignName);
@@ -54,7 +54,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var tools = CreateTools(context);
 
         await tools.SelectCampaign("locked-world");
-        
+
         // Setup initial campaign config with Dnd5e
         var configResult = await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, "locked-world");
         Assert.True(configResult.Success);
@@ -75,8 +75,14 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Upsert characters with explicit campaign for scoping (no BC for legacy needed)
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10, KeepAlive = true }, "campaign-a");
-            await repo.UpsertCharacterAsync(session, new Character { Id = "characters/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10, KeepAlive = true }, "campaign-b");
+            await repo.UpsertCharacterAsync(session,
+                new Character
+                    { Id = "characters/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
+                "campaign-a");
+            await repo.UpsertCharacterAsync(session,
+                new Character
+                    { Id = "characters/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
+                "campaign-b");
             await session.SaveChangesAsync();
         }
 
@@ -112,14 +118,21 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             var cfgA = await session.LoadAsync<CampaignConfig>(new CampaignDocumentKeys().Config("campaign-a"));
-            if (cfgA != null) { cfgA.MaxPressuresPerResponse = 50; }
+            if (cfgA != null)
+            {
+                cfgA.MaxPressuresPerResponse = 50;
+            }
+
             var cfgB = await session.LoadAsync<CampaignConfig>(new CampaignDocumentKeys().Config("campaign-b"));
-            if (cfgB != null) { cfgB.MaxPressuresPerResponse = 50; }
+            if (cfgB != null)
+            {
+                cfgB.MaxPressuresPerResponse = 50;
+            }
 
             var c1 = await session.LoadAsync<Character>("characters/char-1");
-            c1.Needs.ActiveNeeds["hunger"] = 95f;  // triggers pressure for A
+            c1.Needs.ActiveNeeds["hunger"] = 95f; // triggers pressure for A
             var c2 = await session.LoadAsync<Character>("characters/char-2");
-            c2.Needs.ActiveNeeds["hunger"] = 95f;  // triggers for B
+            c2.Needs.ActiveNeeds["hunger"] = 95f; // triggers for B
             await session.SaveChangesAsync();
 
             // Verify scoping set during upsert

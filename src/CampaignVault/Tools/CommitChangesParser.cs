@@ -1,5 +1,5 @@
-using CampaignVault.Models;
 using System.Text.Json;
+using CampaignVault.Models;
 
 namespace CampaignVault.Tools;
 

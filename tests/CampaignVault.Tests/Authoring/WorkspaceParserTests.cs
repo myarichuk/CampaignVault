@@ -1,7 +1,7 @@
 using System;
-using Xunit;
 using CampaignVault.Authoring.Services;
 using CampaignVault.Models;
+using Xunit;
 
 namespace CampaignVault.Tests.Authoring;
 

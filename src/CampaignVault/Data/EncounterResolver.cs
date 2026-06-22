@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CampaignVault.Models;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Models;
 
 namespace CampaignVault.Data;
 
@@ -10,7 +10,9 @@ public class EncounterResolver
 {
     private readonly Func<double> _nextDouble;
 
-    public EncounterResolver() : this(() => Random.Shared.NextDouble()) { }
+    public EncounterResolver() : this(() => Random.Shared.NextDouble())
+    {
+    }
 
     public EncounterResolver(Func<double> nextDouble)
     {
@@ -20,15 +22,16 @@ public class EncounterResolver
     /// <summary>
     /// Evaluates an encounter roll loop for travel or resting.
     /// </summary>
-    public async Task<(bool Interrupted, int HoursPassed, List<WorldChange> Deltas, List<string> Narratives)> EvaluateAsync(
-        ChangeContext context,
-        Character character,
-        Location location,
-        int totalHours,
-        int bucketSizeHours,
-        int userModifier,
-        string contextType, // "Travel" or "Rest"
-        string? terrain = null)
+    public async Task<(bool Interrupted, int HoursPassed, List<WorldChange> Deltas, List<string> Narratives)>
+        EvaluateAsync(
+            ChangeContext context,
+            Character character,
+            Location location,
+            int totalHours,
+            int bucketSizeHours,
+            int userModifier,
+            string contextType, // "Travel" or "Rest"
+            string? terrain = null)
     {
         var deltas = new List<WorldChange>();
         var narratives = new List<string>();
@@ -67,7 +70,7 @@ public class EncounterResolver
             if (_nextDouble() < modifiedChance)
             {
                 interrupted = true;
-                
+
                 var encounterMsg = $"{contextType} interrupted after {hoursPassed} hours! An encounter has occurred.";
                 narratives.Add(encounterMsg);
 
@@ -80,8 +83,9 @@ public class EncounterResolver
 
                 // Generate seed
                 var category = RollEncounterCategory();
-                var directive = $"ENGINE DIRECTIVE: Random Encounter triggered (Category: {category}). Do not default to combat! Look at the Location's flavor, the PC's current Needs, their Attributes, and their Reputation. Generate a highly contextual NPC/situation. Make it fit the scene.";
-                
+                var directive =
+                    $"ENGINE DIRECTIVE: Random Encounter triggered (Category: {category}). Do not default to combat! Look at the Location's flavor, the PC's current Needs, their Attributes, and their Reputation. Generate a highly contextual NPC/situation. Make it fit the scene.";
+
                 if (!string.IsNullOrEmpty(location.ControllingFactionId))
                 {
                     directive += $" NOTE: This area is controlled by faction '{location.ControllingFactionId}'.";
@@ -111,7 +115,8 @@ public class EncounterResolver
         return (interrupted, hoursPassed, deltas, narratives);
     }
 
-    private double GetBaseChance(Location location, Dictionary<string, string> options, string contextType, string? terrain)
+    private double GetBaseChance(Location location, Dictionary<string, string> options, string contextType,
+        string? terrain)
     {
         var key = $"{contextType}Encounter_{location.Type}";
         if (options.TryGetValue(key, out var valStr) && double.TryParse(valStr, out var val))

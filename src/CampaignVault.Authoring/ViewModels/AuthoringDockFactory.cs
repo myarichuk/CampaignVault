@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Dock.Avalonia.Controls;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.Mvvm;
 using Dock.Model.Mvvm.Controls;
-using Dock.Avalonia.Controls;
 
 namespace CampaignVault.Authoring.ViewModels;
 
@@ -49,7 +49,8 @@ public class AuthoringDockFactory : Factory
 
     public override IRootDock CreateLayout()
     {
-        var explorerTool = new ToolViewModelWrapper("Explorer", "Campaign Explorer", _context.Workspace, canClose: false);
+        var explorerTool =
+            new ToolViewModelWrapper("Explorer", "Campaign Explorer", _context.Workspace, canClose: false);
         var generatorTool = new ToolViewModelWrapper("Generator", "AI Generator", _context.Generation);
         var syncTool = new ToolViewModelWrapper("Sync", "Sync Diffs", _context.Sync);
         var settingsTool = new ToolViewModelWrapper("Settings", "Settings", _context.Settings);

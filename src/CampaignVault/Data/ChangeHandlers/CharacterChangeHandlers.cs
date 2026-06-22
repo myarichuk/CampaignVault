@@ -1,5 +1,5 @@
-using CampaignVault.Models;
 using CampaignVault.Data;
+using CampaignVault.Models;
 using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -15,7 +15,8 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is CharacterCreate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+        CancellationToken ct = default)
     {
         var cc = (CharacterCreate)change;
         if (string.IsNullOrWhiteSpace(cc.CharacterId))
@@ -75,7 +76,8 @@ public class CharacterCreateHandler : IWorldChangeHandler
             if (cc.SystemStats != null)
             {
                 var existingSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
-                if (!SystemStatsMerger.TryValidateRuleset(cc.SystemStats, existingSystem, out var existingValidationError))
+                if (!SystemStatsMerger.TryValidateRuleset(cc.SystemStats, existingSystem,
+                        out var existingValidationError))
                 {
                     return ChangeHandlerResult.Failure(existingValidationError!);
                 }
@@ -85,13 +87,15 @@ public class CharacterCreateHandler : IWorldChangeHandler
                     SystemStatsMerger.CoerceToRuleset(cc.SystemStats, existingSystem));
             }
 
-            context.RecordMessage($"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.");
+            context.RecordMessage(
+                $"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.");
             return ChangeHandlerResult.Ok;
         }
 
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
 
-        if (cc.SystemStats != null && !SystemStatsMerger.TryValidateRuleset(cc.SystemStats, activeSystem, out var validationError))
+        if (cc.SystemStats != null &&
+            !SystemStatsMerger.TryValidateRuleset(cc.SystemStats, activeSystem, out var validationError))
         {
             return ChangeHandlerResult.Failure(validationError!);
         }
@@ -134,10 +138,10 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
 public class ScheduleChangeHandler : IWorldChangeHandler
 {
-
     public bool ShouldHandle(WorldChange change) => change is ScheduleChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+        CancellationToken ct = default)
     {
         var sc = (ScheduleChange)change;
         if (!context.Characters.TryGetValue(sc.CharacterId, out var c))
@@ -154,6 +158,7 @@ public class ScheduleChangeHandler : IWorldChangeHandler
 
                 return ChangeHandlerResult.Failure(msg);
             }
+
             context.RegisterNewCharacter(c);
         }
 
@@ -174,13 +179,15 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is CharacterUpdate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+        CancellationToken ct = default)
     {
         var cu = (CharacterUpdate)change;
         if (string.IsNullOrWhiteSpace(cu.CharacterId)) return ChangeHandlerResult.Failure("characterId is required.");
 
         var character = context.Session != null ? await context.Session.LoadAsync<Character>(cu.CharacterId, ct) : null;
-        if (character == null) return ChangeHandlerResult.Failure($"Character '{cu.CharacterId}' not found. Cannot update.");
+        if (character == null)
+            return ChangeHandlerResult.Failure($"Character '{cu.CharacterId}' not found. Cannot update.");
 
         if (cu.AppearanceOverride != null) character.CurrentAppearance = cu.AppearanceOverride;
 
@@ -188,6 +195,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         {
             character.VisualTags = character.VisualTags.Union(cu.TagsToAdd).Distinct().ToList();
         }
+
         if (cu.TagsToRemove != null)
         {
             character.VisualTags.RemoveAll(t => cu.TagsToRemove.Contains(t));
@@ -197,6 +205,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         {
             character.DistinctiveFeatures = character.DistinctiveFeatures.Union(cu.FeaturesToAdd).Distinct().ToList();
         }
+
         if (cu.FeaturesToRemove != null)
         {
             character.DistinctiveFeatures.RemoveAll(f => cu.FeaturesToRemove.Contains(f));
@@ -236,7 +245,8 @@ public class SystemStatsChangeHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is SystemStatsChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+        CancellationToken ct = default)
     {
         var ssc = (SystemStatsChange)change;
         if (string.IsNullOrWhiteSpace(ssc.CharacterId))
@@ -274,7 +284,8 @@ public class SystemStatsChangeHandler : IWorldChangeHandler
 
 internal static class CharacterHandlerHelpers
 {
-    public static async Task<RulesetSystem> ResolveActiveSystemAsync(ChangeContext context, CampaignDocumentKeys keys, CancellationToken ct)
+    public static async Task<RulesetSystem> ResolveActiveSystemAsync(ChangeContext context, CampaignDocumentKeys keys,
+        CancellationToken ct)
     {
         if (context.Session == null || string.IsNullOrEmpty(context.CampaignName))
         {
@@ -291,7 +302,8 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is KnowledgeUpdate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+        CancellationToken ct = default)
     {
         var ku = (KnowledgeUpdate)change;
         if (string.IsNullOrWhiteSpace(ku.CharacterId)) return ChangeHandlerResult.Failure("characterId is required.");
@@ -299,12 +311,14 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
 
         if (!ku.CreateMemory)
         {
-            context.RecordMessage($"Skipped memory update for '{ku.CharacterId}' topic '{ku.Topic}' (createMemory=false).");
+            context.RecordMessage(
+                $"Skipped memory update for '{ku.CharacterId}' topic '{ku.Topic}' (createMemory=false).");
             return ChangeHandlerResult.Ok;
         }
 
         var character = context.Session != null ? await context.Session.LoadAsync<Character>(ku.CharacterId, ct) : null;
-        if (character == null) return ChangeHandlerResult.Failure($"Character '{ku.CharacterId}' not found. Cannot update knowledge.");
+        if (character == null)
+            return ChangeHandlerResult.Failure($"Character '{ku.CharacterId}' not found. Cannot update knowledge.");
 
         var isNew = !character.Psychology.Memories.TryGetValue(ku.Topic, out var memory);
         if (isNew)

@@ -1,5 +1,5 @@
-using Raven.Client.Documents.Indexes;
 using CampaignVault.Models;
+using Raven.Client.Documents.Indexes;
 
 namespace CampaignVault.Data;
 
@@ -14,20 +14,20 @@ public class Quest_Search : AbstractIndexCreationTask<Quest>
     public Quest_Search()
     {
         Map = quests => from q in quests
-                        select new
-                        {
-                            q.Title,
-                            q.Category,
-                            q.GiverId,
-                            q.OverallState,
-                            q.Urgency,
-                            q.CampaignName,
-                            RelatedLocationIds = q.RelatedLocationIds,
-                            RelatedFactionIds = q.RelatedFactionIds,
-                            LastUpdatedDay = q.LastUpdatedDay,
-                            // Flatten objectives for full-text search across descriptions
-                            ObjectiveDescriptions = q.Objectives != null ? q.Objectives.Select(o => o.Description) : new string[0]
-                        };
+            select new
+            {
+                q.Title,
+                q.Category,
+                q.GiverId,
+                q.OverallState,
+                q.Urgency,
+                q.CampaignName,
+                RelatedLocationIds = q.RelatedLocationIds,
+                RelatedFactionIds = q.RelatedFactionIds,
+                LastUpdatedDay = q.LastUpdatedDay,
+                // Flatten objectives for full-text search across descriptions
+                ObjectiveDescriptions = q.Objectives != null ? q.Objectives.Select(o => o.Description) : new string[0]
+            };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
         Index(x => x.Title, FieldIndexing.Search);

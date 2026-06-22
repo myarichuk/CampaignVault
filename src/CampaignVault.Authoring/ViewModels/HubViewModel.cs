@@ -3,10 +3,10 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using CampaignVault.Authoring.Models;
+using CampaignVault.Authoring.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CampaignVault.Authoring.Services;
-using CampaignVault.Authoring.Models;
 
 namespace CampaignVault.Authoring.ViewModels;
 
@@ -15,20 +15,15 @@ public partial class HubViewModel : ViewModelBase
     private readonly CampaignHistoryService _historyService = new();
     private readonly MainWindowViewModel _mainViewModel;
 
-    [ObservableProperty]
-    private ObservableCollection<string> _recentCampaigns = new();
+    [ObservableProperty] private ObservableCollection<string> _recentCampaigns = new();
 
-    [ObservableProperty]
-    private ObservableCollection<string> _remoteCampaigns = new();
+    [ObservableProperty] private ObservableCollection<string> _remoteCampaigns = new();
 
-    [ObservableProperty]
-    private string _statusMessage = "Welcome to CampaignVault Authoring";
+    [ObservableProperty] private string _statusMessage = "Welcome to CampaignVault Authoring";
 
-    [ObservableProperty]
-    private bool _isCloudConnected;
+    [ObservableProperty] private bool _isCloudConnected;
 
-    [ObservableProperty]
-    private bool _isBusy;
+    [ObservableProperty] private bool _isBusy;
 
     public HubViewModel(MainWindowViewModel mainViewModel)
     {
@@ -50,6 +45,7 @@ public partial class HubViewModel : ViewModelBase
             {
                 RemoteCampaigns.Add(campaign);
             }
+
             IsCloudConnected = true;
             StatusMessage = $"Cloud Connected: Found {RemoteCampaigns.Count} campaigns.";
         }
@@ -124,9 +120,9 @@ public partial class HubViewModel : ViewModelBase
 
             var campaignName = Path.GetFileName(path);
             var metadataService = new MetadataService();
-            await metadataService.SaveMetadataAsync(path, new VaultMetadata 
-            { 
-                CampaignName = campaignName 
+            await metadataService.SaveMetadataAsync(path, new VaultMetadata
+            {
+                CampaignName = campaignName
             });
 
             await _mainViewModel.LoadCampaignAsync(path);
@@ -148,7 +144,7 @@ public partial class HubViewModel : ViewModelBase
         if (IsBusy) return;
         IsBusy = true;
         StatusMessage = $"Preparing to stream campaign '{campaignName}'...";
-        
+
         try
         {
             // 1. Pick folder
@@ -161,9 +157,9 @@ public partial class HubViewModel : ViewModelBase
 
             // 2. Create vault-metadata.json
             var metadataService = new MetadataService();
-            await metadataService.SaveMetadataAsync(path, new VaultMetadata 
-            { 
-                CampaignName = campaignName 
+            await metadataService.SaveMetadataAsync(path, new VaultMetadata
+            {
+                CampaignName = campaignName
             });
 
             // 3. Load the campaign into workspace
@@ -173,7 +169,7 @@ public partial class HubViewModel : ViewModelBase
             // 4. Trigger the initial sync (Pull everything)
             StatusMessage = $"Streaming '{campaignName}' contents...";
             await _mainViewModel.Sync.PopulateActualDiffsAsync();
-            
+
             if (_mainViewModel.Sync.SyncDiffs.Any())
             {
                 await _mainViewModel.Sync.SyncAllAsync();

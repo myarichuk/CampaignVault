@@ -5,8 +5,8 @@ using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Pressure.Contributors;
 using CampaignVault.Models;
-using Raven.Client.Documents.Session;
 using NSubstitute;
+using Raven.Client.Documents.Session;
 using Xunit;
 
 namespace CampaignVault.Tests;

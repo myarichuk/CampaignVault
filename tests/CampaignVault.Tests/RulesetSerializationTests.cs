@@ -1,7 +1,7 @@
-using CampaignVault.Models;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CampaignVault.Models;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -19,21 +19,21 @@ public class RulesetSerializationTests
     {
         // Arrange: Prepare JSON payload for RulesetAction
         var json = """
-        [
-          {
-            "$type": "ruleset_action",
-            "actorId": "characters/grog",
-            "targetIds": ["characters/elara-voss"],
-            "actionName": "longsword",
-            "actionType": "Attack",
-            "actionCategory": "Melee",
-            "parameters": {
-              "advantage": "true",
-              "dc": "15"
-            }
-          }
-        ]
-        """;
+                   [
+                     {
+                       "$type": "ruleset_action",
+                       "actorId": "characters/grog",
+                       "targetIds": ["characters/elara-voss"],
+                       "actionName": "longsword",
+                       "actionType": "Attack",
+                       "actionCategory": "Melee",
+                       "parameters": {
+                         "advantage": "true",
+                         "dc": "15"
+                       }
+                     }
+                   ]
+                   """;
 
         // Act: Deserialize
         var changes = JsonSerializer.Deserialize<WorldChange[]>(json, _options);
@@ -60,7 +60,8 @@ public class RulesetSerializationTests
 
         Assert.True(root.TryGetProperty("$type", out var typeProp) && typeProp.GetString() == "ruleset_action");
         Assert.True(root.TryGetProperty("actorId", out var actorProp) && actorProp.GetString() == "characters/grog");
-        Assert.True(root.TryGetProperty("actionType", out var actionTypeProp) && actionTypeProp.GetString() == "Attack");
+        Assert.True(root.TryGetProperty("actionType", out var actionTypeProp) &&
+                    actionTypeProp.GetString() == "Attack");
         Assert.True(root.TryGetProperty("actionCategory", out var categoryProp) && categoryProp.GetString() == "Melee");
     }
 
@@ -69,26 +70,26 @@ public class RulesetSerializationTests
     {
         // Arrange: Prepare JSON payload for StatusChange with StatusEffect
         var json = """
-        [
-          {
-            "$type": "status",
-            "characterId": "characters/grog",
-            "effect": {
-              "name": "Mangled Left Hand",
-              "category": "Injury",
-              "affectedPart": "LeftHand",
-              "statModifiers": {
-                "AttackRoll": -2.0,
-                "Speed": -5.0
-              },
-              "expiresAtDay": 14.5,
-              "expiresAtRound": null,
-              "recoveryHint": "Requires Medicine DC 15 check or healing spell.",
-              "appliedBy": "npcs/enemy-wizard"
-            }
-          }
-        ]
-        """;
+                   [
+                     {
+                       "$type": "status",
+                       "characterId": "characters/grog",
+                       "effect": {
+                         "name": "Mangled Left Hand",
+                         "category": "Injury",
+                         "affectedPart": "LeftHand",
+                         "statModifiers": {
+                           "AttackRoll": -2.0,
+                           "Speed": -5.0
+                         },
+                         "expiresAtDay": 14.5,
+                         "expiresAtRound": null,
+                         "recoveryHint": "Requires Medicine DC 15 check or healing spell.",
+                         "appliedBy": "npcs/enemy-wizard"
+                       }
+                     }
+                   ]
+                   """;
 
         // Act: Deserialize
         var changes = JsonSerializer.Deserialize<WorldChange[]>(json, _options);
@@ -130,14 +131,14 @@ public class RulesetSerializationTests
     {
         // Arrange
         var json = """
-        [
-          {
-            "$type": "status",
-            "characterId": "characters/grog",
-            "status": "Frightened"
-          }
-        ]
-        """;
+                   [
+                     {
+                       "$type": "status",
+                       "characterId": "characters/grog",
+                       "status": "Frightened"
+                     }
+                   ]
+                   """;
 
         // Act
         var changes = JsonSerializer.Deserialize<WorldChange[]>(json, _options);
@@ -159,14 +160,15 @@ public class RulesetSerializationTests
     public void WorldChange_Deserialization_HandlesEmptyAndValid(string json, int expectedCount)
     {
         var changes = JsonSerializer.Deserialize<WorldChange[]>(json, _options);
-        
+
         Assert.NotNull(changes);
         Assert.Equal(expectedCount, changes.Length);
     }
 
     [Theory]
     [InlineData("Not JSON")]
-    [InlineData("[{ \"$type\": \"hp_change\", \"characterId\": \"hero\", \"delta\": 5 }]")] // Wrong discriminator (should be "hp")
+    [InlineData(
+        "[{ \"$type\": \"hp_change\", \"characterId\": \"hero\", \"delta\": 5 }]")] // Wrong discriminator (should be "hp")
     [InlineData("[{ \"$type\": \"unknown_change_type\", \"someField\": \"value\" }]")] // Unknown discriminator
     [InlineData("[{ \"$type\": \"hp\", \"delta\": \"NOT_A_NUMBER\" }]")] // Type mismatch for integer
     [InlineData("{ \"$type\": \"hp\" }")] // Object instead of Array
@@ -179,23 +181,23 @@ public class RulesetSerializationTests
     public void RulesetAction_Parameters_AcceptsNumericAndBooleanValues()
     {
         var json = """
-        [
-          {
-            "$type": "ruleset_action",
-            "actorId": "characters/street_thug",
-            "targetIds": ["characters/lira-shadowveil"],
-            "actionName": "Rusty Dagger Attack",
-            "actionType": "Attack",
-            "actionCategory": "Melee",
-            "parameters": {
-              "weapon": "dagger",
-              "toHitBonus": 4,
-              "dc": 15,
-              "advantage": true
-            }
-          }
-        ]
-        """;
+                   [
+                     {
+                       "$type": "ruleset_action",
+                       "actorId": "characters/street_thug",
+                       "targetIds": ["characters/lira-shadowveil"],
+                       "actionName": "Rusty Dagger Attack",
+                       "actionType": "Attack",
+                       "actionCategory": "Melee",
+                       "parameters": {
+                         "weapon": "dagger",
+                         "toHitBonus": 4,
+                         "dc": 15,
+                         "advantage": true
+                       }
+                     }
+                   ]
+                   """;
 
         var changes = JsonSerializer.Deserialize<WorldChange[]>(json, _options);
 
@@ -241,7 +243,7 @@ public class RulesetSerializationTests
         };
 
         var json = JsonSerializer.Serialize(ext);
-        
+
         Assert.Contains("\"Fire\":0.5", json);
         Assert.Contains("\"Cold\":2", json);
         Assert.Contains("\"Poison\":0", json);

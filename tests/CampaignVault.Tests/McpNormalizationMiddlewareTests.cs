@@ -1,9 +1,9 @@
-using CampaignVault.Middleware;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging.Abstractions;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using CampaignVault.Middleware;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -14,19 +14,19 @@ public class McpNormalizationMiddlewareTests
     public async Task InvokeAsync_RehydratesBody_WhenNoRewritesNeeded()
     {
         const string body = """
-            {
-              "jsonrpc": "2.0",
-              "id": 1,
-              "method": "tools/call",
-              "params": {
-                "name": "commit",
-                "arguments": {
-                  "changes": [{ "$type": "event", "category": "Narrative", "summary": "test" }],
-                  "narrative": "Beat"
-                }
-              }
-            }
-            """;
+                            {
+                              "jsonrpc": "2.0",
+                              "id": 1,
+                              "method": "tools/call",
+                              "params": {
+                                "name": "commit",
+                                "arguments": {
+                                  "changes": [{ "$type": "event", "category": "Narrative", "summary": "test" }],
+                                  "narrative": "Beat"
+                                }
+                              }
+                            }
+                            """;
 
         var context = new DefaultHttpContext();
         context.Request.Method = "POST";

@@ -1,6 +1,7 @@
 // tests/CampaignVault.Tests/Authoring/UnifiedEntityTests.cs
-using Xunit;
+
 using CampaignVault.Authoring.Models;
+using Xunit;
 
 namespace CampaignVault.Tests.Authoring;
 

@@ -1,12 +1,12 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Xunit;
-using System.Linq;
 
 namespace CampaignVault.Tests;
 
@@ -24,22 +24,25 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
     public async Task LocationCreate_AutoLinksToParent_BothWays()
     {
         using var session = _fixture.Store.OpenAsyncSession();
-        
+
         var parent = new Location { Id = "locations/parent", Name = "Parent", Exits = [] };
         await session.StoreAsync(parent);
         await session.SaveChangesAsync();
 
         var handler = new LocationCreateHandler();
-        var change = new LocationCreate 
-        { 
-            LocationId = "locations/child", 
-            Name = "Child", 
+        var change = new LocationCreate
+        {
+            LocationId = "locations/child",
+            Name = "Child",
             ConnectedFromLocationId = "locations/parent",
             ConnectionDescription = "A sturdy oak door"
         };
 
-        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location> { { parent.Id, parent } }, new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), NullLogger.Instance,
+        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(),
+            new Dictionary<string, Location> { { parent.Id, parent } }, new Dictionary<string, Faction>(),
+            new Dictionary<string, Quest>(), NullLogger.Instance,
             [], dispatcher, null, "test-camp");
 
         var result = await handler.ApplyAsync(change, ctx);
@@ -65,7 +68,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
     public async Task CharacterCreate_InitializesHpAndSystemStats_BasedOnRuleset()
     {
         using var session = _fixture.Store.OpenAsyncSession();
-        
+
         var keys = new CampaignDocumentKeys();
         var configId = keys.Config("test-camp-hp");
         var config = new CampaignConfig { Id = configId, ActiveSystem = RulesetSystem.Dnd5e };
@@ -73,15 +76,18 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var handler = new CharacterCreateHandler(new CampaignDocumentKeys());
-        var change = new CharacterCreate 
-        { 
-            CharacterId = "characters/test-char-hp", 
+        var change = new CharacterCreate
+        {
+            CharacterId = "characters/test-char-hp",
             Name = "Grog",
             MaxHp = 25
         };
 
-        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(), new Dictionary<string, Location>(), new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), NullLogger.Instance,
+        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(),
+            new Dictionary<string, Location>(), new Dictionary<string, Faction>(), new Dictionary<string, Quest>(),
+            NullLogger.Instance,
             [], dispatcher, null, "test-camp-hp");
 
         var result = await handler.ApplyAsync(change, ctx);

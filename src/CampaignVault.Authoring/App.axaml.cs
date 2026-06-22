@@ -1,10 +1,10 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using CampaignVault.Authoring.Services;
 using CampaignVault.Authoring.ViewModels;
 using CampaignVault.Authoring.Views;
-using System;
 
 namespace CampaignVault.Authoring;
 
@@ -59,7 +59,8 @@ public partial class App : Application
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine($"Failed to restart MCP server on port {settings.McpPortValue}: {ex.Message}");
+                        Console.Error.WriteLine(
+                            $"Failed to restart MCP server on port {settings.McpPortValue}: {ex.Message}");
                     }
                 }
             };
@@ -70,6 +71,7 @@ public partial class App : Application
                 {
                     await _mcpServerService.StopAsync();
                 }
+
                 mainWindowViewModel.Workspace.Dispose();
             };
         }

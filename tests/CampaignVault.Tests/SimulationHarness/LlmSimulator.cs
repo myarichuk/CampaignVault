@@ -1,10 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Tools;
 using Raven.Client.Documents.Session;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace CampaignVault.Tests.SimulationHarness;
 
@@ -22,7 +22,7 @@ public class LlmSimulator(CampaignTools tools, IAsyncDocumentSession session)
     public NarrativePhase CurrentPhase { get; private set; } = NarrativePhase.Kickoff;
     public string? CurrentLocationId { get; set; }
     public string? TargetCharacterId { get; set; }
-    
+
     public async Task<ToolResult<WorldStateView>> Kickoff(string locationId)
     {
         CurrentLocationId = locationId;

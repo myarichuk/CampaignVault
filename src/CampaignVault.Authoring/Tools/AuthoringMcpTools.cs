@@ -1,11 +1,11 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.ComponentModel;
-using ModelContextProtocol.Server;
 using CampaignVault.Authoring.Services;
 using CampaignVault.Authoring.ViewModels;
+using ModelContextProtocol.Server;
 
 namespace CampaignVault.Authoring.Tools;
 
@@ -13,7 +13,8 @@ namespace CampaignVault.Authoring.Tools;
 public class AuthoringMcpTools
 {
     [McpServerTool(UseStructuredContent = true)]
-    [Description("Lists all campaign entities (npcs, locations, factions, quests) found in the active local workspace.")]
+    [Description(
+        "Lists all campaign entities (npcs, locations, factions, quests) found in the active local workspace.")]
     public async Task<object> ListWorkspaceEntities()
     {
         var mainVm = WorkspaceService.MainWindowViewModel;
@@ -25,7 +26,8 @@ public class AuthoringMcpTools
         var files = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
             return EnumerateEntityNodes(mainVm.Workspace.Categories)
-                .Select(f => new {
+                .Select(f => new
+                {
                     fileName = Path.GetFileName(f.Entity.RelativePath ?? ""),
                     filePath = Path.Combine(mainVm.Workspace.CurrentDirectory, f.Entity.RelativePath ?? ""),
                     relativeUrl = f.Entity.RelativePath
@@ -51,7 +53,8 @@ public class AuthoringMcpTools
     [McpServerTool(UseStructuredContent = true)]
     [Description("Reads the YAML frontmatter and markdown body of a campaign entity file.")]
     public Task<object> ReadWorkspaceEntity(
-        [Description("The absolute path or relative path to the campaign markdown file.")] string filePath)
+        [Description("The absolute path or relative path to the campaign markdown file.")]
+        string filePath)
     {
         var mainVm = WorkspaceService.MainWindowViewModel;
         var activeDir = mainVm?.Workspace.CurrentDirectory;
@@ -81,8 +84,10 @@ public class AuthoringMcpTools
     [McpServerTool(UseStructuredContent = true)]
     [Description("Writes or updates a campaign entity file with YAML frontmatter and markdown body content.")]
     public Task<object> WriteWorkspaceEntity(
-        [Description("The absolute path or relative path to the campaign markdown file.")] string filePath,
-        [Description("The full content of the file (including YAML frontmatter and markdown body).")] string content)
+        [Description("The absolute path or relative path to the campaign markdown file.")]
+        string filePath,
+        [Description("The full content of the file (including YAML frontmatter and markdown body).")]
+        string content)
     {
         var mainVm = WorkspaceService.MainWindowViewModel;
         var activeDir = mainVm?.Workspace.CurrentDirectory;

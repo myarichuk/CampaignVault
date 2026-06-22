@@ -1,9 +1,9 @@
-using CampaignVault.Data;
-using CampaignVault.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using CampaignVault.Data;
+using CampaignVault.Models;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -328,6 +328,7 @@ public class DefaultRollServiceTests
             {
                 expectedSuccesses += (d <= 2) ? 2 : 1;
             }
+
             if (d == 20)
             {
                 expectedComplication = true;

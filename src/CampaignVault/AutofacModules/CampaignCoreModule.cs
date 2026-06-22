@@ -1,8 +1,8 @@
+using System.Reflection;
 using Autofac;
 using CampaignVault.Data;
-using ModelContextProtocol.Server;
-using System.Reflection;
 using CampaignVault.Data.Scenes;
+using ModelContextProtocol.Server;
 
 namespace CampaignVault.AutofacModules;
 

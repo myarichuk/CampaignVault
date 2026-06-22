@@ -1,14 +1,14 @@
-using Raven.Client.Documents;
-using CampaignVault.Models;
-using Raven.Client.Documents.Linq;
-using Raven.Client.Documents.Queries;
-using Raven.Client.Documents.Session;
-using Raven.Client.Documents.Indexes;
-using Microsoft.Extensions.Logging;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Scenes;
+using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using Microsoft.Extensions.Logging;
+using Raven.Client.Documents;
+using Raven.Client.Documents.Indexes;
+using Raven.Client.Documents.Linq;
+using Raven.Client.Documents.Queries;
+using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;
 
@@ -36,7 +36,8 @@ public class CampaignRepository
             return _currentCampaign.CurrentCampaignName;
         }
 
-        throw new InvalidOperationException("A campaign name must be provided explicitly or via ICurrentCampaignContext.");
+        throw new InvalidOperationException(
+            "A campaign name must be provided explicitly or via ICurrentCampaignContext.");
     }
 
     private static bool IsVisibleInCampaign(string? entityCampaignName, string effectiveCampaign) =>
@@ -69,9 +70,6 @@ public class CampaignRepository
     }
 
 
-
-
-
     /// <summary>
     /// Opens an asynchronous document session with Optimistic Concurrency enabled.
     /// </summary>
@@ -92,19 +90,25 @@ public class CampaignRepository
     ///
     /// Use this for all atomic world mutations coming from tools or simulation rules.
     /// </summary>
-    public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes, string? campaignName = null)
+    public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes,
+        string? campaignName = null)
     {
         changes ??= [];
         var effective = ResolveCampaign(campaignName);
 
-        _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes for campaign {Campaign}", changes.Length, effective);
+        _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes for campaign {Campaign}", changes.Length,
+            effective);
 
         var result = await _changeDispatcher.DispatchAsync(
             session,
             changes,
             effective,
             () => GetTimeAsync(session, effective),
-            async () => { var camp = await session.LoadAsync<Campaign>(_keys.Meta(effective)); return camp?.SystemOptions ?? new(); },
+            async () =>
+            {
+                var camp = await session.LoadAsync<Campaign>(_keys.Meta(effective));
+                return camp?.SystemOptions ?? new();
+            },
             ev => LogEventAsync(session, ev));
 
         if (result.Success && changes.Length > 0)
@@ -126,7 +130,7 @@ public class CampaignRepository
                         campaign.PressureCooldowns.Remove(k);
                     }
                 }
-                
+
                 result.InvolvedEntities = involvedEntities.ToList();
             }
         }
@@ -138,7 +142,8 @@ public class CampaignRepository
     /// Fetches the synthesized state of a location, including NPCs present, visible items, local rumors, and recent events.
     /// This is the primary read operation used by the LLM when entering a new scene.
     /// </summary>
-    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId, string? campaignName = null, bool markVisited = false)
+    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId,
+        string? campaignName = null, bool markVisited = false)
     {
         var location = await session
             .Include<Location>(x => x.ParentLocationId)
@@ -219,7 +224,8 @@ public class CampaignRepository
         return targetIds;
     }
 
-    private async Task<List<Character>> LoadSceneNpcsFromIndexAsync(IAsyncDocumentSession session, IReadOnlyCollection<string> targetIds)
+    private async Task<List<Character>> LoadSceneNpcsFromIndexAsync(IAsyncDocumentSession session,
+        IReadOnlyCollection<string> targetIds)
     {
         return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
@@ -228,7 +234,8 @@ public class CampaignRepository
             .ToListAsync();
     }
 
-    private async Task<List<Character>> LoadSceneNpcsFromSimulationAsync(IAsyncDocumentSession session, IReadOnlyCollection<string> targetIds)
+    private async Task<List<Character>> LoadSceneNpcsFromSimulationAsync(IAsyncDocumentSession session,
+        IReadOnlyCollection<string> targetIds)
     {
         return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
@@ -355,7 +362,8 @@ public class CampaignRepository
     /// Fast-forwards the campaign time by the specified number of days and runs the background world simulation.
     /// Returns the updated time and narrative events generated by the simulation.
     /// </summary>
-    public async Task<AdvanceResult> AdvanceWorldAsync(IAsyncDocumentSession session, int days, TimeOfDay timeOfDay, string? campaignName = null)
+    public async Task<AdvanceResult> AdvanceWorldAsync(IAsyncDocumentSession session, int days, TimeOfDay timeOfDay,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var time = await GetTimeAsync(session, effective);
@@ -386,7 +394,8 @@ public class CampaignRepository
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
         var config = await GetCampaignConfigAsync(session, effective);
-        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective, activeFactions, activeQuests, config);
+        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective, activeFactions,
+            activeQuests, config);
 
         _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", days, time);
 
@@ -402,11 +411,11 @@ public class CampaignRepository
         foreach (var narrative in simResult.NarrativeEvents)
         {
             await LogEventAsync(session, new()
-            { 
-                Id = "events/" + Guid.NewGuid(), 
-                Summary = narrative, 
+            {
+                Id = "events/" + Guid.NewGuid(),
+                Summary = narrative,
                 Category = EventCategory.Simulation,
-                DayLogged = time.TotalDaysElapsed 
+                DayLogged = time.TotalDaysElapsed
             }, effective);
         }
 
@@ -420,8 +429,8 @@ public class CampaignRepository
 
         // WorldPressure from the engine is surfaced to the caller (AdvanceWorld tool).
         return new()
-        { 
-            NewTime = time, 
+        {
+            NewTime = time,
             SimulatorEvents = simResult.NarrativeEvents.ToList(),
             WorldPressure = simResult.WorldPressure.ToList()
         };
@@ -433,7 +442,8 @@ public class CampaignRepository
     /// Performs a parallel, fuzzy search across Characters, Lore, and Locations for the given query.
     /// Returns a mixed collection of documents matching the search string.
     /// </summary>
-    public async Task<IEnumerable<object>> UnifiedSearchAsync(IAsyncDocumentSession session, string query, string? campaignName = null)
+    public async Task<IEnumerable<object>> UnifiedSearchAsync(IAsyncDocumentSession session, string query,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
 
@@ -493,11 +503,12 @@ public class CampaignRepository
     /// <summary>
     /// Retrieves historical narrative events, optionally filtered by search query or event category.
     /// </summary>
-    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query, EventCategory? category, int limit = 10, string? campaignName = null)
+    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query,
+        EventCategory? category, int limit = 10, string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
-        
+
         if (!string.IsNullOrEmpty(effective))
         {
             q = q.WhereEquals(x => x.CampaignName, effective);
@@ -514,7 +525,9 @@ public class CampaignRepository
         }
 
         var events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
-        foreach (var ev in events) { if (ev.Details != null)
+        foreach (var ev in events)
+        {
+            if (ev.Details != null)
             {
                 ev.Details = SanitizeDetails(ev.Details);
             }
@@ -528,7 +541,8 @@ public class CampaignRepository
     /// <summary>
     /// Looks up a character by explicit document ID or performs a fuzzy search on the character's name.
     /// </summary>
-    public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier, string? campaignName = null)
+    public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier,
+        string? campaignName = null)
     {
         // campaignName accepted for API consistency / future entity namespacing or filtering.
         // Current implementation uses direct ID or name lookup (entities are caller-ID-controlled).
@@ -545,14 +559,16 @@ public class CampaignRepository
             return character;
         }
 
-        return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>().WhereEquals(x => x.Name, identifier).Fuzzy(0.4m).FirstOrDefaultAsync();
+        return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WhereEquals(x => x.Name, identifier).Fuzzy(0.4m).FirstOrDefaultAsync();
     }
 
     /// <summary>
     /// Inserts or updates a character in the database, safely mutating tracked entities to preserve concurrency.
     /// Also waits for the Character/Search index to catch up to prevent stale queries.
     /// </summary>
-    public async Task UpsertCharacterAsync(IAsyncDocumentSession session, Character character, string? campaignName = null)
+    public async Task UpsertCharacterAsync(IAsyncDocumentSession session, Character character,
+        string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(character.Id))
         {
@@ -588,7 +604,7 @@ public class CampaignRepository
             existing.SystemStats = character.SystemStats ?? new SystemExtension();
             existing.KeepAlive = character.KeepAlive;
             existing.LastUpdated = character.LastUpdated;
-            existing.CampaignName = character.CampaignName;  // ensure set/copied for scoping
+            existing.CampaignName = character.CampaignName; // ensure set/copied for scoping
         }
         else
         {
@@ -610,7 +626,12 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         var id = _keys.StateTime(effective);
         var time = await session.LoadAsync<CampaignTime>(id);
-        if (time == null) { time = new() { Id = id }; await session.StoreAsync(time, id); }
+        if (time == null)
+        {
+            time = new() { Id = id };
+            await session.StoreAsync(time, id);
+        }
+
         return time;
     }
 
@@ -638,13 +659,15 @@ public class CampaignRepository
             config = new() { Id = id };
             await session.StoreAsync(config, id);
         }
+
         return config;
     }
 
     /// <summary>
     /// Updates the configuration settings (like the active ruleset) for the specified campaign.
     /// </summary>
-    public async Task UpsertCampaignConfigAsync(IAsyncDocumentSession session, CampaignConfig config, string? campaignName = null)
+    public async Task UpsertCampaignConfigAsync(IAsyncDocumentSession session, CampaignConfig config,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var id = _keys.Config(effective);
@@ -656,7 +679,8 @@ public class CampaignRepository
     /// Returns globally defined need descriptors (populated via the DefineNeedDescriptor tool).
     /// These act as a shared dictionary that individual NPCs can reference or override via Mind.NeedDescriptors.
     /// </summary>
-    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session, string? campaignName = null)
+    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var docId = _keys.NeedDescriptors(effective);
@@ -668,7 +692,8 @@ public class CampaignRepository
     /// <summary>
     /// Sets or updates a single need descriptor for a campaign.
     /// </summary>
-    public async Task SetNeedDescriptorAsync(IAsyncDocumentSession session, string needName, string descriptor, string? campaignName = null)
+    public async Task SetNeedDescriptorAsync(IAsyncDocumentSession session, string needName, string descriptor,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var docId = _keys.NeedDescriptors(effective);
@@ -685,7 +710,7 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(@event.CampaignName))
         {
-            @event.CampaignName = effective;  // strict for events (campaign-specific per feedback)
+            @event.CampaignName = effective; // strict for events (campaign-specific per feedback)
         }
 
         if (@event.Details != null)
@@ -771,7 +796,7 @@ public class CampaignRepository
             existing.Keywords = lore.Keywords ?? [];
             existing.Category = lore.Category;
             existing.LastUpdated = lore.LastUpdated;
-            existing.CampaignName = lore.CampaignName;  // ensure set/copied for scoping
+            existing.CampaignName = lore.CampaignName; // ensure set/copied for scoping
         }
         else
         {
@@ -782,20 +807,25 @@ public class CampaignRepository
     /// <summary>
     /// Searches for Lore entries by fuzzy title/content match, or strictly by tags and category.
     /// </summary>
-    public async Task<IEnumerable<Lore>> QueryLoreAsync(IAsyncDocumentSession session, string? query, string[]? tags, string? category, int limit = 5, string? campaignName = null)
+    public async Task<IEnumerable<Lore>> QueryLoreAsync(IAsyncDocumentSession session, string? query, string[]? tags,
+        string? category, int limit = 5, string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Lore, Lore_Search>();
         if (!string.IsNullOrEmpty(query))
         {
-            q = q.OpenSubclause().WhereEquals(x => x.Title, query).Fuzzy(0.4m).OrElse().WhereEquals(x => x.Content, query).Fuzzy(0.4m).CloseSubclause();
+            q = q.OpenSubclause().WhereEquals(x => x.Title, query).Fuzzy(0.4m).OrElse()
+                .WhereEquals(x => x.Content, query).Fuzzy(0.4m).CloseSubclause();
         }
 
-        if (tags is { Length: > 0 }) { foreach (var tag in tags)
+        if (tags is { Length: > 0 })
+        {
+            foreach (var tag in tags)
             {
                 q = q.AndAlso().ContainsAny(x => x.Tags, [tag]);
             }
         }
+
         if (!string.IsNullOrEmpty(category))
         {
             q = q.AndAlso().WhereEquals(x => x.Category, category);
@@ -804,8 +834,10 @@ public class CampaignRepository
         var list = await q.Take(limit).ToListAsync();
         if (!string.IsNullOrEmpty(effective))
         {
-            list = list.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective).ToList();  // loose for lore (may share)
+            list = list.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective)
+                .ToList(); // loose for lore (may share)
         }
+
         return list;
     }
 
@@ -842,8 +874,8 @@ public class CampaignRepository
             existing.LastVisitedDay = location.LastVisitedDay;
             existing.Metadata = location.Metadata ?? [];
             existing.LastUpdated = location.LastUpdated;
-            existing.CampaignName = location.CampaignName;  // ensure set/copied for scoping
-            existing.ControllingFactionId = location.ControllingFactionId;  // Phase 7.1
+            existing.CampaignName = location.CampaignName; // ensure set/copied for scoping
+            existing.ControllingFactionId = location.ControllingFactionId; // Phase 7.1
         }
         else
         {
@@ -854,7 +886,8 @@ public class CampaignRepository
     /// <summary>
     /// Queries Locations by fuzzy name/description, or strictly by type and parent region.
     /// </summary>
-    public async Task<IEnumerable<Location>> QueryLocationsAsync(IAsyncDocumentSession session, string? query, LocationType? type = null, string? parentId = null, int limit = 10, string? campaignName = null)
+    public async Task<IEnumerable<Location>> QueryLocationsAsync(IAsyncDocumentSession session, string? query,
+        LocationType? type = null, string? parentId = null, int limit = 10, string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Location, Location_Search>();
@@ -878,9 +911,11 @@ public class CampaignRepository
         {
             SanitizeLocation(l);
         }
+
         if (!string.IsNullOrEmpty(effective))
         {
-            locations = locations.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective).ToList();  // loose for locations (may share)
+            locations = locations.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective)
+                .ToList(); // loose for locations (may share)
         }
 
         return locations;
@@ -899,7 +934,7 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(rumor.CampaignName))
         {
-            rumor.CampaignName = effective;  // strict for rumors (campaign-specific per feedback)
+            rumor.CampaignName = effective; // strict for rumors (campaign-specific per feedback)
         }
 
         rumor.LastUpdated = DateTime.UtcNow;
@@ -920,7 +955,7 @@ public class CampaignRepository
             existing.DayCreated = rumor.DayCreated;
             existing.LastStateChangeDay = rumor.LastStateChangeDay;
             existing.LastUpdated = rumor.LastUpdated;
-            existing.CampaignName = rumor.CampaignName;  // ensure for scoping (strict for rumors)
+            existing.CampaignName = rumor.CampaignName; // ensure for scoping (strict for rumors)
         }
         else
         {
@@ -931,7 +966,8 @@ public class CampaignRepository
     /// <summary>
     /// Queries active Rumors by fuzzy subject/text, or strictly by region and state.
     /// </summary>
-    public async Task<IEnumerable<Rumor>> QueryRumorsAsync(IAsyncDocumentSession session, string? query, string? regionId = null, RumorState? state = null, int limit = 5, string? campaignName = null)
+    public async Task<IEnumerable<Rumor>> QueryRumorsAsync(IAsyncDocumentSession session, string? query,
+        string? regionId = null, RumorState? state = null, int limit = 5, string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var q = session.Advanced.AsyncDocumentQuery<Rumor, Rumor_Search>();
@@ -956,6 +992,7 @@ public class CampaignRepository
             // strict for rumors (no legacy global cross-camp)
             list = list.Where(r => r.CampaignName == effective).ToList();
         }
+
         return list;
     }
 
@@ -1012,7 +1049,7 @@ public class CampaignRepository
             existing.Properties = item.Properties ?? [];
             existing.HolderId = item.HolderId;
             existing.LastUpdated = item.LastUpdated;
-            existing.CampaignName = item.CampaignName;  // ensure set/copied for scoping
+            existing.CampaignName = item.CampaignName; // ensure set/copied for scoping
             // Note: original missed copying Tags; added for completeness in hardening pass
             existing.Tags = item.Tags ?? existing.Tags ?? [];
         }
@@ -1022,7 +1059,8 @@ public class CampaignRepository
         }
     }
 
-    public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var rawQuery = nameQuery.Trim();
@@ -1065,10 +1103,12 @@ public class CampaignRepository
                 }
             }
         }
+
         return suggestions;
     }
 
-    public async Task<List<Character>> SuggestCharactersAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    public async Task<List<Character>> SuggestCharactersAsync(IAsyncDocumentSession session, string nameQuery,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var rawQuery = nameQuery.Trim();
@@ -1111,10 +1151,12 @@ public class CampaignRepository
                 }
             }
         }
+
         return suggestions;
     }
 
-    public async Task<List<Item>> SuggestItemsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    public async Task<List<Item>> SuggestItemsAsync(IAsyncDocumentSession session, string nameQuery,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var rawQuery = nameQuery.Trim();
@@ -1157,13 +1199,15 @@ public class CampaignRepository
                 }
             }
         }
+
         return suggestions;
     }
 
     /// <summary>
     /// Suggests Factions by fuzzy name match or ID prefix. Used in error messages and views.
     /// </summary>
-    public async Task<List<Faction>> SuggestFactionsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    public async Task<List<Faction>> SuggestFactionsAsync(IAsyncDocumentSession session, string nameQuery,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var rawQuery = nameQuery.Trim();
@@ -1202,13 +1246,15 @@ public class CampaignRepository
                 }
             }
         }
+
         return suggestions;
     }
 
     /// <summary>
     /// Suggests Quests by fuzzy name match or ID prefix. Used in error messages for get_quest_details and views.
     /// </summary>
-    public async Task<List<Quest>> SuggestQuestsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)
+    public async Task<List<Quest>> SuggestQuestsAsync(IAsyncDocumentSession session, string nameQuery,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var rawQuery = nameQuery.Trim();
@@ -1247,10 +1293,12 @@ public class CampaignRepository
                 }
             }
         }
+
         return suggestions;
     }
 
-    public async Task<List<Quest>> GetActiveQuestsAsync(IAsyncDocumentSession session, string? campaignName = null, int limit = 20)
+    public async Task<List<Quest>> GetActiveQuestsAsync(IAsyncDocumentSession session, string? campaignName = null,
+        int limit = 20)
     {
         var effective = ResolveCampaign(campaignName);
         var quests = await session.Query<Quest, Quest_Search>()
@@ -1259,7 +1307,8 @@ public class CampaignRepository
         return quests.Where(q => string.IsNullOrEmpty(q.CampaignName) || q.CampaignName == effective).ToList();
     }
 
-    public async Task<List<Faction>> GetActiveFactionsAsync(IAsyncDocumentSession session, string? campaignName = null, int limit = 20)
+    public async Task<List<Faction>> GetActiveFactionsAsync(IAsyncDocumentSession session, string? campaignName = null,
+        int limit = 20)
     {
         var effective = ResolveCampaign(campaignName);
         var factions = await session.Query<Faction, Faction_Search>().Take(limit).ToListAsync();
@@ -1370,7 +1419,8 @@ public class CampaignRepository
     /// Queries active quests relevant to a specific location (RelatedLocationIds overlap).
     /// Used by GetScene to surface quest summaries.
     /// </summary>
-    public async Task<List<Quest>> GetActiveQuestsForLocationAsync(IAsyncDocumentSession session, string locationId, string? campaignName = null)
+    public async Task<List<Quest>> GetActiveQuestsForLocationAsync(IAsyncDocumentSession session, string locationId,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var quests = await session.Query<Quest, Quest_Search>()
@@ -1387,7 +1437,8 @@ public class CampaignRepository
     /// Queries active factions that have territory overlapping with a given location ID.
     /// Used by GetScene to surface relevant faction context.
     /// </summary>
-    public async Task<List<Faction>> GetFactionsForLocationAsync(IAsyncDocumentSession session, string locationId, string? campaignName = null)
+    public async Task<List<Faction>> GetFactionsForLocationAsync(IAsyncDocumentSession session, string locationId,
+        string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
         var factions = await session.Query<Faction, Faction_Search>()
@@ -1419,4 +1470,3 @@ public class CampaignRepository
             oldestOpen);
     }
 }
-

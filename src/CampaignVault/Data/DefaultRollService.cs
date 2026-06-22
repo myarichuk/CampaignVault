@@ -1,5 +1,5 @@
-using CampaignVault.Models;
 using System.Text.RegularExpressions;
+using CampaignVault.Models;
 
 namespace CampaignVault.Data;
 
@@ -17,7 +17,9 @@ public sealed class DefaultRollService : IRollService
 
     private readonly Random _rng;
 
-    public DefaultRollService() : this(Random.Shared) { }
+    public DefaultRollService() : this(Random.Shared)
+    {
+    }
 
     /// <summary>Inject a seeded Random for deterministic test scenarios.</summary>
     public DefaultRollService(Random rng) => _rng = rng;
@@ -45,13 +47,13 @@ public sealed class DefaultRollService : IRollService
     {
         return req.Mechanic switch
         {
-            DiceMechanic.Standard     => EvaluateStandard(req),
-            DiceMechanic.Advantage    => EvaluateAdvantage(req, keepHigh: true),
+            DiceMechanic.Standard => EvaluateStandard(req),
+            DiceMechanic.Advantage => EvaluateAdvantage(req, keepHigh: true),
             DiceMechanic.Disadvantage => EvaluateAdvantage(req, keepHigh: false),
-            DiceMechanic.Explosive    => EvaluateExplosive(req),
-            DiceMechanic.KeepHighest  => EvaluateKeep(req, keepHigh: true),
-            DiceMechanic.KeepLowest   => EvaluateKeep(req, keepHigh: false),
-            DiceMechanic.RollUnder    => EvaluateRollUnder(req),
+            DiceMechanic.Explosive => EvaluateExplosive(req),
+            DiceMechanic.KeepHighest => EvaluateKeep(req, keepHigh: true),
+            DiceMechanic.KeepLowest => EvaluateKeep(req, keepHigh: false),
+            DiceMechanic.RollUnder => EvaluateRollUnder(req),
             DiceMechanic.SuccessCount => EvaluateSuccessCount(req),
             _ => throw new ArgumentOutOfRangeException(nameof(req.Mechanic), req.Mechanic, "Unknown DiceMechanic")
         };
@@ -70,12 +72,12 @@ public sealed class DefaultRollService : IRollService
 
         return new RollOutcome
         {
-            Tag            = req.Tag,
-            Result         = total,
+            Tag = req.Tag,
+            Result = total,
             IndividualDice = dice,
-            HasCritical    = isCrit,
+            HasCritical = isCrit,
             HasComplication = isComplication,
-            Summary        = BuildSummary(dice, flatMod, req.Bonus, total, suffix: null)
+            Summary = BuildSummary(dice, flatMod, req.Bonus, total, suffix: null)
         };
     }
 
@@ -85,10 +87,10 @@ public sealed class DefaultRollService : IRollService
     {
         var (diceCount, dieSides, flatMod) = ParseExpression(req.Expression);
         // Roll twice the pool, split in half, keep the better set
-        var first  = RollDice(diceCount, dieSides);
+        var first = RollDice(diceCount, dieSides);
         var second = RollDice(diceCount, dieSides);
 
-        var keptSet   = keepHigh
+        var keptSet = keepHigh
             ? (first.Sum() >= second.Sum() ? first : second)
             : (first.Sum() <= second.Sum() ? first : second);
         var droppedSet = ReferenceEquals(keptSet, first) ? second : first;
@@ -100,12 +102,13 @@ public sealed class DefaultRollService : IRollService
 
         return new RollOutcome
         {
-            Tag             = req.Tag,
-            Result          = total,
-            IndividualDice  = keptSet,
-            HasCritical     = isCrit,
+            Tag = req.Tag,
+            Result = total,
+            IndividualDice = keptSet,
+            HasCritical = isCrit,
             HasComplication = isComplication,
-            Summary         = $"{BuildSummary(keptSet, flatMod, req.Bonus, total, suffix: null)} ({label}: kept {keptSet.Sum()} over {droppedSet.Sum()})"
+            Summary =
+                $"{BuildSummary(keptSet, flatMod, req.Bonus, total, suffix: null)} ({label}: kept {keptSet.Sum()} over {droppedSet.Sum()})"
         };
     }
 
@@ -136,12 +139,12 @@ public sealed class DefaultRollService : IRollService
 
         return new RollOutcome
         {
-            Tag             = req.Tag,
-            Result          = total,
-            IndividualDice  = allDice,
-            HasCritical     = allDice.Any(d => d == dieSides),
+            Tag = req.Tag,
+            Result = total,
+            IndividualDice = allDice,
+            HasCritical = allDice.Any(d => d == dieSides),
             HasComplication = false,
-            Summary         = $"Explosive {BuildSummary(allDice, flatMod, req.Bonus, total, suffix: "(chained)")}"
+            Summary = $"Explosive {BuildSummary(allDice, flatMod, req.Bonus, total, suffix: "(chained)")}"
         };
     }
 
@@ -159,12 +162,13 @@ public sealed class DefaultRollService : IRollService
 
         return new RollOutcome
         {
-            Tag             = req.Tag,
-            Result          = total,
-            IndividualDice  = sorted,
-            HasCritical     = dieSides == 20 && sorted.Any(d => d == 20),
+            Tag = req.Tag,
+            Result = total,
+            IndividualDice = sorted,
+            HasCritical = dieSides == 20 && sorted.Any(d => d == 20),
             HasComplication = dieSides == 20 && sorted.Any(d => d == 1),
-            Summary         = $"Keep{(keepHigh ? "High" : "Low")} {BuildSummary(sorted, flatMod, req.Bonus, total, suffix: $"from {diceCount}d{dieSides}")}"
+            Summary =
+                $"Keep{(keepHigh ? "High" : "Low")} {BuildSummary(sorted, flatMod, req.Bonus, total, suffix: $"from {diceCount}d{dieSides}")}"
         };
     }
 
@@ -173,18 +177,20 @@ public sealed class DefaultRollService : IRollService
     private RollOutcome EvaluateRollUnder(RollRequest req)
     {
         var (diceCount, dieSides, _) = ParseExpression(req.Expression);
-        var tn = req.TargetNumber ?? throw new InvalidOperationException($"RollUnder requires TargetNumber (tag: {req.Tag})");
+        var tn = req.TargetNumber ??
+                 throw new InvalidOperationException($"RollUnder requires TargetNumber (tag: {req.Tag})");
         var dice = RollDice(diceCount, dieSides);
         var result = dice.Sum(); // for single-die, just the die; for pools the total
         var success = result <= tn;
 
         return new RollOutcome
         {
-            Tag             = req.Tag,
-            Result          = result,
-            IndividualDice  = dice,
-            IsSuccess       = success,
-            Summary         = $"RollUnder: [{string.Join(", ", dice)}] = {result} vs TN {tn} → {(success ? "Success" : "Failure")}"
+            Tag = req.Tag,
+            Result = result,
+            IndividualDice = dice,
+            IsSuccess = success,
+            Summary =
+                $"RollUnder: [{string.Join(", ", dice)}] = {result} vs TN {tn} → {(success ? "Success" : "Failure")}"
         };
     }
 
@@ -193,7 +199,8 @@ public sealed class DefaultRollService : IRollService
     private RollOutcome EvaluateSuccessCount(RollRequest req)
     {
         var (diceCount, dieSides, _) = ParseExpression(req.Expression);
-        var tn = req.TargetNumber ?? throw new InvalidOperationException($"SuccessCount requires TargetNumber (tag: {req.Tag})");
+        var tn = req.TargetNumber ??
+                 throw new InvalidOperationException($"SuccessCount requires TargetNumber (tag: {req.Tag})");
         var critThreshold = req.CriticalThreshold ?? 0;
 
         var dice = RollDice(diceCount, dieSides);
@@ -215,14 +222,15 @@ public sealed class DefaultRollService : IRollService
 
         return new RollOutcome
         {
-            Tag             = req.Tag,
-            Result          = successes,
-            IndividualDice  = dice,
-            IsSuccess       = successes > 0,
-            Successes       = successes,
-            HasCritical     = false, // crits in Fallout are handled differently (per-resolver)
+            Tag = req.Tag,
+            Result = successes,
+            IndividualDice = dice,
+            IsSuccess = successes > 0,
+            Successes = successes,
+            HasCritical = false, // crits in Fallout are handled differently (per-resolver)
             HasComplication = hasComplication,
-            Summary         = $"{successes} success(es) (pool: [{string.Join(", ", dice)}] vs TN {tn}{(critThreshold > 0 ? $", tag ≤{critThreshold}" : "")}){(hasComplication ? " ⚠ COMPLICATION" : "")}"
+            Summary =
+                $"{successes} success(es) (pool: [{string.Join(", ", dice)}] vs TN {tn}{(critThreshold > 0 ? $", tag ≤{critThreshold}" : "")}){(hasComplication ? " ⚠ COMPLICATION" : "")}"
         };
     }
 
@@ -249,7 +257,7 @@ public sealed class DefaultRollService : IRollService
                     break;
                 case 3:
                 case 4:
-                    break;                         // blank
+                    break; // blank
                 case 5:
                 case 6:
                     damage++;
@@ -283,8 +291,8 @@ public sealed class DefaultRollService : IRollService
             throw new ArgumentException($"Cannot parse dice expression: '{expr}'");
         }
 
-        var count   = m.Groups[1].Success ? int.Parse(m.Groups[1].Value) : 1;
-        var sides   = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 0;
+        var count = m.Groups[1].Success ? int.Parse(m.Groups[1].Value) : 1;
+        var sides = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 0;
         var flatMod = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0;
 
         return (count, sides, flatMod);
@@ -299,9 +307,9 @@ public sealed class DefaultRollService : IRollService
             sb.Append(flatMod > 0 ? $"+{flatMod}" : $"{flatMod}");
         }
 
-        if (bonus   != 0)
+        if (bonus != 0)
         {
-            sb.Append(bonus   > 0 ? $"+{bonus}"   : $"{bonus}");
+            sb.Append(bonus > 0 ? $"+{bonus}" : $"{bonus}");
         }
 
         sb.Append($" = {total}");

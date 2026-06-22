@@ -1,6 +1,6 @@
+using System.Text.Json.Nodes;
 using CampaignVault.Middleware;
 using CampaignVault.Tools;
-using System.Text.Json.Nodes;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -20,7 +20,8 @@ public class ToolCallExamplesTests
         var modified = ToolCallExamples.TryNormalize(tool, args, out var rewrites);
 
         Assert.True(modified);
-        Assert.Contains(args[canonicalKey]!.ToString(), value.Trim('"').Length > 0 ? args[canonicalKey]!.ToString() : value);
+        Assert.Contains(args[canonicalKey]!.ToString(),
+            value.Trim('"').Length > 0 ? args[canonicalKey]!.ToString() : value);
         Assert.False(args.ContainsKey(wrongKey));
         Assert.Contains($"{wrongKey}→{canonicalKey}", rewrites);
     }

@@ -1,15 +1,15 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Services;
 using CampaignVault.Authoring.ViewModels;
 using CampaignVault.Grpc;
 using CampaignVault.Models;
+using Grpc.Core;
 using NSubstitute;
 using Xunit;
-using Grpc.Core;
-using System.Text.Json;
 
 namespace CampaignVault.Tests.Authoring;
 
@@ -30,7 +30,7 @@ public class SyncViewModelTests : IDisposable
         _settings = new SettingsViewModel();
         _workspace = new WorkspaceViewModel();
         _campaignState = new CampaignStateService(_workspace.DbService);
-        
+
         // Manual quiet load to avoid background threads and dispatcher calls
         _workspace.CurrentDirectory = _tempDirectory;
         _workspace.DbService.InitializeDatabase(_tempDirectory);
@@ -52,7 +52,9 @@ public class SyncViewModelTests : IDisposable
                 Directory.Delete(_tempDirectory, true);
             }
         }
-        catch {}
+        catch
+        {
+        }
     }
 
     [Fact]
@@ -64,7 +66,8 @@ public class SyncViewModelTests : IDisposable
         var absolutePath = Path.Combine(_tempDirectory, relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
 
-        var localMarkdown = "---\n$type: character\nid: characters/grog\nname: Grog\ncampaignName: TestCampaign\n---\nNotes about Grog";
+        var localMarkdown =
+            "---\n$type: character\nid: characters/grog\nname: Grog\ncampaignName: TestCampaign\n---\nNotes about Grog";
         await File.WriteAllTextAsync(absolutePath, localMarkdown);
 
         _workspace.DbService.UpsertEntity(
@@ -79,12 +82,14 @@ public class SyncViewModelTests : IDisposable
 
         var remoteResponse = new EntityListResponse(); // Empty remote
         var fakeCall = CreateFakeUnaryCall(remoteResponse);
-        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
+        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(),
+                Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
             .Returns(fakeCall);
 
         var pushResponse = new PushResponse { Success = true, Message = "Pushed" };
         var fakePushCall = CreateFakeUnaryCall(pushResponse);
-        _mockClient.PushCampaignEntityAsync(Arg.Any<PushCampaignEntityRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
+        _mockClient.PushCampaignEntityAsync(Arg.Any<PushCampaignEntityRequest>(), Arg.Any<Metadata>(),
+                Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
             .Returns(fakePushCall);
 
         // 2. Act - Scan diffs
@@ -132,7 +137,8 @@ public class SyncViewModelTests : IDisposable
         });
 
         var fakeCall = CreateFakeUnaryCall(remoteResponse);
-        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
+        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(),
+                Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
             .Returns(fakeCall);
 
         // 2. Act - Scan diffs
@@ -200,7 +206,8 @@ public class SyncViewModelTests : IDisposable
         remoteResponse.Entities.Add(remoteItem);
 
         var fakeCall = CreateFakeUnaryCall(remoteResponse);
-        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
+        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(),
+                Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
             .Returns(fakeCall);
 
         var debugRecord = _workspace.DbService.GetEntity(charId);
@@ -264,7 +271,8 @@ public class SyncViewModelTests : IDisposable
         remoteResponse.Entities.Add(remoteModifiedItem);
 
         var fakeCall = CreateFakeUnaryCall(remoteResponse);
-        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
+        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(),
+                Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
             .Returns(fakeCall);
 
         // 2. Act - Scan diffs
@@ -324,12 +332,14 @@ public class SyncViewModelTests : IDisposable
         remoteResponse.Entities.Add(remoteModifiedItem);
 
         var fakeCall = CreateFakeUnaryCall(remoteResponse);
-        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
+        _mockClient.GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(),
+                Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
             .Returns(fakeCall);
 
         var pushResponse = new PushResponse { Success = true, Message = "Pushed" };
         var fakePushCall = CreateFakeUnaryCall(pushResponse);
-        _mockClient.PushCampaignEntityAsync(Arg.Any<PushCampaignEntityRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
+        _mockClient.PushCampaignEntityAsync(Arg.Any<PushCampaignEntityRequest>(), Arg.Any<Metadata>(),
+                Arg.Any<DateTime?>(), Arg.Any<System.Threading.CancellationToken>())
             .Returns(fakePushCall);
 
         // 2. Act - Scan diffs
@@ -369,7 +379,8 @@ public static class SyncViewModelTestExtensions
 {
     public static string CallPrivateComputeHash(this SyncViewModel syncVm, string text)
     {
-        var method = typeof(SyncViewModel).GetMethod("ComputeSha256Hash", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var method = typeof(SyncViewModel).GetMethod("ComputeSha256Hash",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (method == null) throw new InvalidOperationException("Could not find ComputeSha256Hash method");
         return (string)method.Invoke(syncVm, new object[] { text })!;
     }
@@ -377,8 +388,10 @@ public static class SyncViewModelTestExtensions
     public static string CallPrivateDeserializeRemoteToMarkdown(this SyncViewModel syncVm, EntityItem remote)
     {
         // Now in CampaignStateService
-        var stateService = (CampaignStateService)typeof(SyncViewModel).GetField("_campaignState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(syncVm)!;
-        var method = typeof(CampaignStateService).GetMethod("DeserializeRemoteToMarkdown", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var stateService = (CampaignStateService)typeof(SyncViewModel).GetField("_campaignState",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(syncVm)!;
+        var method = typeof(CampaignStateService).GetMethod("DeserializeRemoteToMarkdown",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (method == null) throw new InvalidOperationException("Could not find DeserializeRemoteToMarkdown method");
         return (string)method.Invoke(stateService, new object[] { remote })!;
     }

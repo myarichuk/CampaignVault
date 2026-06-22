@@ -1,5 +1,5 @@
-using Raven.Client.Documents.Indexes;
 using CampaignVault.Models;
+using Raven.Client.Documents.Indexes;
 
 namespace CampaignVault.Data;
 
@@ -8,14 +8,14 @@ public class Lore_Search : AbstractIndexCreationTask<Lore>
     public Lore_Search()
     {
         Map = lores => from lore in lores
-                       select new
-                       {
-                           lore.Title,
-                           lore.Content,
-                           lore.Tags,
-                           lore.Category,
-                           CampaignName = lore.CampaignName
-                       };
+            select new
+            {
+                lore.Title,
+                lore.Content,
+                lore.Tags,
+                lore.Category,
+                CampaignName = lore.CampaignName
+            };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
 

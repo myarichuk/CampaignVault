@@ -1,9 +1,9 @@
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using ModelContextProtocol.Server;
-using System.ComponentModel;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Linq;
 
@@ -25,7 +25,8 @@ public class CampaignManagementTools : CampaignToolBase
     [Description(@"RULES CONFIG TOOL: Get the current campaign configuration.
 Returns the ruleset and system-specific options (e.g., house rules). Respects the currently selected campaign.")]
     public Task<ToolResult<CampaignConfig>> GetConfig(
-        [Description("Optional campaign name. Falls back to the currently selected campaign (via select_campaign).")] string? campaignName = null)
+        [Description("Optional campaign name. Falls back to the currently selected campaign (via select_campaign).")]
+        string? campaignName = null)
     {
         var effective = EffectiveCampaign(campaignName);
         return ExecuteAsync(async session =>
@@ -43,9 +44,12 @@ Available Systems: Dnd5e, Pathfinder2e, Fallout2d20, Narrative
 
 Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(
-        [Description("The active TTRPG ruleset system.")] RulesetSystem activeSystem,
-        [Description("Optional dictionary of system options and house rules.")] Dictionary<string, string>? systemOptions = null,
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description("The active TTRPG ruleset system.")]
+        RulesetSystem activeSystem,
+        [Description("Optional dictionary of system options and house rules.")]
+        Dictionary<string, string>? systemOptions = null,
+        [Description("Optional campaign name. Falls back to currently selected.")]
+        string? campaignName = null)
     {
         var effective = EffectiveCampaign(campaignName);
 
@@ -58,7 +62,8 @@ Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
                 return new ToolResult<CampaignConfig>(
                     false,
                     Error: "SystemLocked",
-                    Summary: $"The ruleset for campaign '{effective}' is locked to {campaign.System}. Cannot change to {activeSystem}.");
+                    Summary:
+                    $"The ruleset for campaign '{effective}' is locked to {campaign.System}. Cannot change to {activeSystem}.");
             }
 
             var config = await _repository.GetCampaignConfigAsync(session, effective);
@@ -72,7 +77,8 @@ Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
                 campaign.IsSystemLocked = true;
             }
 
-            return new ToolResult<CampaignConfig>(true, config, $"Active ruleset for '{effective}' set to '{activeSystem}' (locked).");
+            return new ToolResult<CampaignConfig>(true, config,
+                $"Active ruleset for '{effective}' set to '{activeSystem}' (locked).");
         });
     }
 
@@ -85,9 +91,12 @@ Available Systems: Dnd5e, Pathfinder2e, Fallout2d20, Narrative
 
 Example: create_campaign(""dragonheist"", RulesetSystem.Dnd5e, ""Waterdeep: Dragon Heist"")")]
     public Task<ToolResult<Campaign>> CreateCampaign(
-        [Description("Unique name/slug for the campaign (e.g. 'dragonheist', 'curse-of-strahd').")] string name,
-        [Description("Initial ruleset system. This will be locked.")] RulesetSystem initialSystem,
-        [Description("Optional human-friendly display name.")] string? displayName = null)
+        [Description("Unique name/slug for the campaign (e.g. 'dragonheist', 'curse-of-strahd').")]
+        string name,
+        [Description("Initial ruleset system. This will be locked.")]
+        RulesetSystem initialSystem,
+        [Description("Optional human-friendly display name.")]
+        string? displayName = null)
     {
         var normalized = name.Trim().ToLowerInvariant();
 
@@ -97,15 +106,18 @@ Example: create_campaign(""dragonheist"", RulesetSystem.Dnd5e, ""Waterdeep: Drag
             var existing = await session.LoadAsync<Campaign>(campaignId);
             if (existing != null)
             {
-                return new ToolResult<Campaign>(false, Error: "AlreadyExists", Summary: $"Campaign '{normalized}' already exists.");
+                return new ToolResult<Campaign>(false, Error: "AlreadyExists",
+                    Summary: $"Campaign '{normalized}' already exists.");
             }
 
-            var campaign = await GetOrCreateCampaignMetaAsync(session, normalized, initialSystem, displayName, forceLock: true);
+            var campaign =
+                await GetOrCreateCampaignMetaAsync(session, normalized, initialSystem, displayName, forceLock: true);
 
             // Select it immediately for convenience
             _currentCampaign.SetCurrent(normalized);
 
-            return new ToolResult<Campaign>(true, campaign, $"Campaign '{normalized}' created and locked to {initialSystem}. Now selected as current.");
+            return new ToolResult<Campaign>(true, campaign,
+                $"Campaign '{normalized}' created and locked to {initialSystem}. Now selected as current.");
         });
     }
 
@@ -133,7 +145,8 @@ Most tools will use this campaign context automatically, meaning you don't need 
 
 Example: select_campaign(""dragonheist"")")]
     public Task<ToolResult<string>> SelectCampaign(
-        [Description("Name of the campaign to select.")] string campaignName)
+        [Description("Name of the campaign to select.")]
+        string campaignName)
     {
         if (string.IsNullOrWhiteSpace(campaignName))
         {
@@ -155,7 +168,7 @@ Example: select_campaign(""dragonheist"")")]
                 // Auto-create a minimal campaign entry so lock-in and per-campaign state can work
                 await GetOrCreateCampaignMetaAsync(session, normalized, RulesetSystem.Dnd5e, forceLock: false);
                 _currentCampaign.SetCurrent(normalized);
-                return new ToolResult<string>(true, normalized, 
+                return new ToolResult<string>(true, normalized,
                     $"Campaign '{normalized}' selected (new minimal campaign created with D&D 5e as default system).");
             }
 
@@ -166,7 +179,8 @@ Example: select_campaign(""dragonheist"")")]
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"CAMPAIGN DISCOVERABILITY: Returns the currently active campaign context (name, lock-in status, and active ruleset).
+    [Description(
+        @"CAMPAIGN DISCOVERABILITY: Returns the currently active campaign context (name, lock-in status, and active ruleset).
 Use this if you are unsure which campaign you are currently in or if you need to know the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.")]
     public Task<ToolResult<Campaign>> GetCurrentCampaign()
     {
@@ -177,7 +191,9 @@ Use this if you are unsure which campaign you are currently in or if you need to
             var campaign = await session.LoadAsync<Campaign>(campaignId);
             if (campaign == null)
             {
-                return new ToolResult<Campaign>(false, Error: "NotFound", Summary: $"Campaign '{effective}' meta document not found. The campaign might not be initialized yet.");
+                return new ToolResult<Campaign>(false, Error: "NotFound",
+                    Summary:
+                    $"Campaign '{effective}' meta document not found. The campaign might not be initialized yet.");
             }
 
             return new ToolResult<Campaign>(true, campaign, $"Currently selected campaign: {effective}");

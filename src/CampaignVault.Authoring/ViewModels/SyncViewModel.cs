@@ -1,40 +1,34 @@
 using System;
-using System.Security.Cryptography;
-using System.Text;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using CampaignVault.Authoring.Models;
+using CampaignVault.Authoring.Services;
 using CampaignVault.Grpc;
+using CampaignVault.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using System.Text.Json;
-using CampaignVault.Authoring.Services;
-using CampaignVault.Authoring.Models;
-using CampaignVault.Models;
 
 namespace CampaignVault.Authoring.ViewModels;
 
 public partial class SyncDiffItem : ObservableObject
 {
-    [ObservableProperty]
-    private string _filePath = string.Empty;
+    [ObservableProperty] private string _filePath = string.Empty;
 
-    [ObservableProperty]
-    private string _fileName = string.Empty;
+    [ObservableProperty] private string _fileName = string.Empty;
 
-    [ObservableProperty]
-    private string _status = "Modified"; // Modified, Added Remote, Added Local, Deleted
+    [ObservableProperty] private string _status = "Modified"; // Modified, Added Remote, Added Local, Deleted
 
-    [ObservableProperty]
-    private string _localContent = string.Empty;
+    [ObservableProperty] private string _localContent = string.Empty;
 
-    [ObservableProperty]
-    private string _remoteContent = string.Empty;
+    [ObservableProperty] private string _remoteContent = string.Empty;
 
-    [ObservableProperty]
-    private bool _isSynchronized;
-    
+    [ObservableProperty] private bool _isSynchronized;
+
     public string EntityType { get; set; } = string.Empty;
     public string EntityId { get; set; } = string.Empty;
 }
@@ -45,20 +39,15 @@ public partial class SyncViewModel : ObservableObject
     private readonly WorkspaceViewModel _workspace;
     private readonly CampaignStateService _campaignState;
 
-    [ObservableProperty]
-    private bool _isConnected;
+    [ObservableProperty] private bool _isConnected;
 
-    [ObservableProperty]
-    private string _statusMessage = "Disconnected from CampaignVault Remote.";
+    [ObservableProperty] private string _statusMessage = "Disconnected from CampaignVault Remote.";
 
-    [ObservableProperty]
-    private string _lastSyncTime = "Never";
+    [ObservableProperty] private string _lastSyncTime = "Never";
 
-    [ObservableProperty]
-    private ObservableCollection<SyncDiffItem> _syncDiffs = new();
+    [ObservableProperty] private ObservableCollection<SyncDiffItem> _syncDiffs = new();
 
-    [ObservableProperty]
-    private SyncDiffItem? _selectedDiff;
+    [ObservableProperty] private SyncDiffItem? _selectedDiff;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanPushSelected))]
@@ -69,8 +58,7 @@ public partial class SyncViewModel : ObservableObject
     [ObservableProperty]
     private System.Collections.ObjectModel.ObservableCollection<string> _availableCampaigns = new();
 
-    [ObservableProperty]
-    private string? _selectedCampaign;
+    [ObservableProperty] private string? _selectedCampaign;
 
     public Func<CampaignSync.CampaignSyncClient>? ClientFactory { get; set; }
 
@@ -99,6 +87,7 @@ public partial class SyncViewModel : ObservableObject
         {
             return ClientFactory();
         }
+
         var port = _settings.GrpcPortValue is > 0 and <= 65535
             ? (int)_settings.GrpcPortValue.Value
             : 50051;
@@ -126,8 +115,9 @@ public partial class SyncViewModel : ObservableObject
                 : System.IO.Path.GetFileName(_workspace.CurrentDirectory);
 
             SelectedCampaign = AvailableCampaigns
-                .FirstOrDefault(c => string.Equals(c, folderName, System.StringComparison.OrdinalIgnoreCase))
-                ?? AvailableCampaigns.FirstOrDefault();
+                                   .FirstOrDefault(c =>
+                                       string.Equals(c, folderName, System.StringComparison.OrdinalIgnoreCase))
+                               ?? AvailableCampaigns.FirstOrDefault();
 
             StatusMessage = AvailableCampaigns.Count > 0
                 ? $"Found {AvailableCampaigns.Count} campaign(s). Selected: {SelectedCampaign}"
@@ -143,11 +133,11 @@ public partial class SyncViewModel : ObservableObject
         }
     }
 
-    public bool CanPushSelected => !IsSyncing && SelectedDiff != null && 
-        (SelectedDiff.Status == "LocalOnly" || SelectedDiff.Status == "ModifiedLocally");
+    public bool CanPushSelected => !IsSyncing && SelectedDiff != null &&
+                                   (SelectedDiff.Status == "LocalOnly" || SelectedDiff.Status == "ModifiedLocally");
 
-    public bool CanPullSelected => !IsSyncing && SelectedDiff != null && 
-        (SelectedDiff.Status == "RemoteOnly" || SelectedDiff.Status == "ModifiedRemotely");
+    public bool CanPullSelected => !IsSyncing && SelectedDiff != null &&
+                                   (SelectedDiff.Status == "RemoteOnly" || SelectedDiff.Status == "ModifiedRemotely");
 
     public bool IsConflictSelected => SelectedDiff != null && SelectedDiff.Status == "Conflict";
 
@@ -191,9 +181,10 @@ public partial class SyncViewModel : ObservableObject
                 if (state == SyncState.Synced) continue;
 
                 string localContent = string.Empty;
-                var absolutePath = entity.RelativePath != null 
+                var absolutePath = entity.RelativePath != null
                     ? Path.Combine(_workspace.CurrentDirectory, entity.RelativePath)
-                    : Path.Combine(_workspace.CurrentDirectory, $"{entity.EntityType}s/{Path.GetFileName(entity.Id)}.md");
+                    : Path.Combine(_workspace.CurrentDirectory,
+                        $"{entity.EntityType}s/{Path.GetFileName(entity.Id)}.md");
 
                 if (entity.LocalHash != null && File.Exists(absolutePath))
                 {
@@ -269,7 +260,8 @@ public partial class SyncViewModel : ObservableObject
             }
 
             LastSyncTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            StatusMessage = $"Sync completed. Pushed: {pushedCount}, Pulled: {pulledCount}, Conflicts: {conflictCount}.";
+            StatusMessage =
+                $"Sync completed. Pushed: {pushedCount}, Pulled: {pulledCount}, Conflicts: {conflictCount}.";
             SelectedDiff = SyncDiffs.FirstOrDefault();
         }
         catch (Exception ex)
@@ -373,6 +365,7 @@ public partial class SyncViewModel : ObservableObject
         {
             Directory.CreateDirectory(directory);
         }
+
         await File.WriteAllTextAsync(diff.FilePath, diff.RemoteContent);
 
         string schemaData = "{}";
@@ -385,7 +378,9 @@ public partial class SyncViewModel : ObservableObject
             else if (diff.EntityType == "quest")
                 schemaData = JsonSerializer.Serialize(_workspace.Parser.ParseQuest(diff.RemoteContent));
         }
-        catch {}
+        catch
+        {
+        }
 
         var remoteHash = ComputeSha256Hash(diff.RemoteContent);
         var relativePath = Path.GetRelativePath(_workspace.CurrentDirectory, diff.FilePath).Replace('\\', '/');
@@ -407,8 +402,8 @@ public partial class SyncViewModel : ObservableObject
         return diff.EntityType switch
         {
             "location" => (JsonSerializer.Serialize(_workspace.Parser.ParseLocation(diff.LocalContent)), "location"),
-            "quest"    => (JsonSerializer.Serialize(_workspace.Parser.ParseQuest(diff.LocalContent)), "quest"),
-            _          => (JsonSerializer.Serialize(_workspace.Parser.ParseCharacter(diff.LocalContent)), "character")
+            "quest" => (JsonSerializer.Serialize(_workspace.Parser.ParseQuest(diff.LocalContent)), "quest"),
+            _ => (JsonSerializer.Serialize(_workspace.Parser.ParseCharacter(diff.LocalContent)), "character")
         };
     }
 
@@ -421,6 +416,7 @@ public partial class SyncViewModel : ObservableObject
         {
             sb.Append(b.ToString("x2"));
         }
+
         return sb.ToString();
     }
 }

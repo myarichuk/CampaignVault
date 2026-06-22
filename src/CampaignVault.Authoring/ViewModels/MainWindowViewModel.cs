@@ -1,13 +1,13 @@
-using Avalonia.Platform.Storage;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using System.IO;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using CampaignVault.Authoring.Services;
+using Avalonia.Platform.Storage;
 using CampaignVault.Authoring.Models;
+using CampaignVault.Authoring.Services;
 using CampaignVault.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace CampaignVault.Authoring.ViewModels;
 
@@ -17,6 +17,7 @@ public partial class MainWindowViewModel : ViewModelBase
         new YamlDotNet.Serialization.SerializerBuilder()
             .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
             .Build();
+
     public WorkspaceViewModel Workspace { get; } = new();
     public SettingsViewModel Settings { get; } = new();
     public GenerationViewModel Generation { get; }
@@ -24,8 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public HubViewModel Hub { get; }
     public CampaignStateService CampaignState { get; }
 
-    [ObservableProperty]
-    private AppStateService _applicationState = new();
+    [ObservableProperty] private AppStateService _applicationState = new();
 
     public Dock.Model.Core.IFactory Factory { get; }
     public Dock.Model.Controls.IRootDock? Layout { get; }
@@ -34,38 +34,30 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly CampaignHistoryService _historyService = new();
     private IStorageProvider? _storageProvider;
 
-    [ObservableProperty]
-    private string _editorText = string.Empty;
+    [ObservableProperty] private string _editorText = string.Empty;
 
-    [ObservableProperty]
-    private string _workspaceStatusMessage = "Open a campaign folder to begin.";
+    [ObservableProperty] private string _workspaceStatusMessage = "Open a campaign folder to begin.";
 
-    [ObservableProperty]
-    private Character? _parsedCharacter;
+    [ObservableProperty] private Character? _parsedCharacter;
 
-    [ObservableProperty]
-    private string _previewNotes = string.Empty;
+    [ObservableProperty] private string _previewNotes = string.Empty;
 
-    [ObservableProperty]
-    private string _entityTypeDisplay = "Character";
+    [ObservableProperty] private string _entityTypeDisplay = "Character";
 
-    [ObservableProperty]
-    private bool _isCharacter = true;
+    [ObservableProperty] private bool _isCharacter = true;
 
-    [ObservableProperty]
-    private string _badge1Label = string.Empty;
+    [ObservableProperty] private string _badge1Label = string.Empty;
 
-    [ObservableProperty]
-    private string _badge1Value = string.Empty;
+    [ObservableProperty] private string _badge1Value = string.Empty;
 
-    [ObservableProperty]
-    private string _badge2Label = string.Empty;
+    [ObservableProperty] private string _badge2Label = string.Empty;
 
-    [ObservableProperty]
-    private string _badge2Value = string.Empty;
+    [ObservableProperty] private string _badge2Value = string.Empty;
 
     public bool HasSelection => Workspace.SelectedNode is EntityNodeViewModel;
-    public bool HasParseError => Workspace.SelectedNode is EntityNodeViewModel && ParsedCharacter == null && !string.IsNullOrEmpty(EditorText);
+
+    public bool HasParseError => Workspace.SelectedNode is EntityNodeViewModel && ParsedCharacter == null &&
+                                 !string.IsNullOrEmpty(EditorText);
 
     public MainWindowViewModel()
     {
@@ -95,20 +87,26 @@ public partial class MainWindowViewModel : ViewModelBase
                             EntityId = entityNode.Entity.Id,
                             EntityType = entityNode.Entity.EntityType,
                             RemoteContent = entityNode.Entity.RemoteMarkdown ?? string.Empty,
-                            FilePath = Path.Combine(Workspace.CurrentDirectory, $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md"),
+                            FilePath = Path.Combine(Workspace.CurrentDirectory,
+                                $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md"),
                             FileName = entityNode.Entity.Name,
                             Status = "AddedRemotely"
                         };
-                        try 
+                        try
                         {
                             await Sync.PullSelectedCommand.ExecuteAsync(diff);
                             // Refresh the node's entity after pull
                             entityNode.Entity.LocalHash = entityNode.Entity.RemoteHash;
-                            entityNode.Entity.RelativePath = $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md";
-                        } catch {}
+                            entityNode.Entity.RelativePath =
+                                $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md";
+                        }
+                        catch
+                        {
+                        }
                     }
 
-                    var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
+                    var absolutePath = Path.Combine(Workspace.CurrentDirectory,
+                        entityNode.Entity.RelativePath ?? string.Empty);
                     LoadFileContent(absolutePath);
                     OnEditorTextChanged(EditorText);
                 }
@@ -222,23 +220,17 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    [ObservableProperty]
-    private string _formName = string.Empty;
+    [ObservableProperty] private string _formName = string.Empty;
 
-    [ObservableProperty]
-    private int _formCurrentHp;
+    [ObservableProperty] private int _formCurrentHp;
 
-    [ObservableProperty]
-    private int _formMaxHp;
+    [ObservableProperty] private int _formMaxHp;
 
-    [ObservableProperty]
-    private float _formWillpower;
+    [ObservableProperty] private float _formWillpower;
 
-    [ObservableProperty]
-    private float _formStress;
+    [ObservableProperty] private float _formStress;
 
-    [ObservableProperty]
-    private string _parseErrorMessage = string.Empty;
+    [ObservableProperty] private string _parseErrorMessage = string.Empty;
 
     private bool _isUpdatingFromForm;
 

@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NSubstitute;
-using Xunit;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Raven.Client.Documents.Session;
-using System.Linq;
+using Xunit;
 
 namespace CampaignVault.Tests;
 
@@ -27,7 +27,8 @@ public class FakeRollService : IRollService
         return Task.FromResult(NextRolls.Dequeue());
     }
 
-    public Task<IReadOnlyList<RollOutcome>> RollBatchAsync(IEnumerable<RollRequest> requests, CancellationToken ct = default)
+    public Task<IReadOnlyList<RollOutcome>> RollBatchAsync(IEnumerable<RollRequest> requests,
+        CancellationToken ct = default)
     {
         return Task.FromResult(NextBatches.Dequeue());
     }
@@ -53,7 +54,7 @@ public class Dnd5eRulesetResolverTests
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: new WorldChangeDispatcher(
-                new IWorldChangeHandler[0], 
+                new IWorldChangeHandler[0],
                 new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             campaignName: null
         );
@@ -63,7 +64,8 @@ public class Dnd5eRulesetResolverTests
     public async Task ResolveAttack_Hit_GeneratesHpChange()
     {
         var rollService = new FakeRollService();
-        rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
+        rollService.NextRolls.Enqueue(new RollOutcome
+            { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 8, Summary = "Rolled 8" });
 
         var resolver = new Dnd5eRulesetResolver(rollService);
@@ -94,7 +96,8 @@ public class Dnd5eRulesetResolverTests
     public async Task ResolveAttack_ToHitBonusAlias_AppliesAttackBonus()
     {
         var rollService = new FakeRollService();
-        rollService.NextRolls.Enqueue(new RollOutcome { Result = 12, HasCritical = false, HasComplication = false, Summary = "[8] + 4 = 12" });
+        rollService.NextRolls.Enqueue(new RollOutcome
+            { Result = 12, HasCritical = false, HasComplication = false, Summary = "[8] + 4 = 12" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 5, Summary = "Rolled 5" });
 
         var resolver = new Dnd5eRulesetResolver(rollService);
@@ -123,7 +126,8 @@ public class Dnd5eRulesetResolverTests
     public async Task ResolveAttack_Miss_GeneratesNoMutations()
     {
         var rollService = new FakeRollService();
-        rollService.NextRolls.Enqueue(new RollOutcome { Result = 12, HasCritical = false, HasComplication = false, Summary = "Rolled 12" });
+        rollService.NextRolls.Enqueue(new RollOutcome
+            { Result = 12, HasCritical = false, HasComplication = false, Summary = "Rolled 12" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 8, Summary = "Rolled 8" });
 
         var resolver = new Dnd5eRulesetResolver(rollService);
@@ -150,7 +154,8 @@ public class Dnd5eRulesetResolverTests
     public async Task ResolveAttack_CriticalHit_RollsExtraDamage()
     {
         var rollService = new FakeRollService();
-        rollService.NextRolls.Enqueue(new RollOutcome { Result = 20, HasCritical = true, HasComplication = false, Summary = "Rolled Nat 20" });
+        rollService.NextRolls.Enqueue(new RollOutcome
+            { Result = 20, HasCritical = true, HasComplication = false, Summary = "Rolled Nat 20" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 8, Summary = "Rolled 8" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 5, Summary = "Rolled 5" });
 
@@ -184,10 +189,10 @@ public class Dnd5eRulesetResolverTests
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 16, Summary = "Rolled 16" });
 
         var resolver = new Dnd5eRulesetResolver(rollService);
-        var actor = new Character 
-        { 
-            Id = "char1", 
-            SystemStats = new Dnd5eExtension { SkillModifiers = new Dictionary<string, int> { { "Stealth", 5 } } } 
+        var actor = new Character
+        {
+            Id = "char1",
+            SystemStats = new Dnd5eExtension { SkillModifiers = new Dictionary<string, int> { { "Stealth", 5 } } }
         };
 
         var context = CreateContext(actor);
@@ -232,7 +237,7 @@ public class Dnd5eRulesetResolverTests
     {
         var rollService = new FakeRollService();
         var resolver = new Dnd5eRulesetResolver(rollService);
-        
+
         // Actor is correct, but target is using a different system's extension (e.g. Pf2eExtension or base SystemExtension)
         var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension() };
         var target = new Character { Id = "char2", SystemStats = new Pf2eExtension() };
@@ -300,7 +305,8 @@ public class Dnd5eRulesetResolverTests
         var output = await resolver.ResolveAsync(context, action);
 
         Assert.True(output.Result.Success);
-        await mockRollService.Received(1).RollAsync(Arg.Is<RollRequest>(req => req.Mechanic == DiceMechanic.Advantage), Arg.Any<CancellationToken>());
+        await mockRollService.Received(1).RollAsync(Arg.Is<RollRequest>(req => req.Mechanic == DiceMechanic.Advantage),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -319,7 +325,12 @@ public class Dnd5eRulesetResolverTests
         var targetId = "char_2";
         var context = CreateContext(
             new Character { Id = actorId, SystemStats = new Dnd5eExtension() },
-            new Character { Id = targetId, SystemStats = new Dnd5eExtension { DamageModifiers = new Dictionary<string, float> { { "Fire", 0.5f } } } }
+            new Character
+            {
+                Id = targetId,
+                SystemStats = new Dnd5eExtension
+                    { DamageModifiers = new Dictionary<string, float> { { "Fire", 0.5f } } }
+            }
         );
 
         var action = new RulesetAction

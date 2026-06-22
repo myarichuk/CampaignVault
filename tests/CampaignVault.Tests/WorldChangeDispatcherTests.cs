@@ -1,12 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Raven.Client.Documents.Session;
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -23,7 +23,8 @@ public class WorldChangeDispatcherTests
         private readonly Func<WorldChange, ChangeContext, Task<ChangeHandlerResult>> _apply;
         public string Name { get; }
 
-        public TestHandler(string name, Func<WorldChange, bool> shouldHandle, Func<WorldChange, ChangeContext, Task<ChangeHandlerResult>> apply)
+        public TestHandler(string name, Func<WorldChange, bool> shouldHandle,
+            Func<WorldChange, ChangeContext, Task<ChangeHandlerResult>> apply)
         {
             Name = name;
             _shouldHandle = shouldHandle;
@@ -32,7 +33,8 @@ public class WorldChangeDispatcherTests
 
         public bool ShouldHandle(WorldChange change) => _shouldHandle(change);
 
-        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+            CancellationToken ct = default)
             => _apply(change, context);
 
         public bool ExtractInvolvedEntities(
@@ -45,11 +47,23 @@ public class WorldChangeDispatcherTests
             HashSet<string>? allInvolvedIds = null)
         {
             if (!_shouldHandle(change)) return false;
-            
+
             // For tests, simulate basic extraction
-            if (change is HpChange hp) { characterIds?.Add(hp.CharacterId); allInvolvedIds?.Add(hp.CharacterId); }
-            else if (change is StatusChange sc) { characterIds?.Add(sc.CharacterId); allInvolvedIds?.Add(sc.CharacterId); }
-            else if (change is MoodChange mc) { characterIds?.Add(mc.CharacterId); allInvolvedIds?.Add(mc.CharacterId); }
+            if (change is HpChange hp)
+            {
+                characterIds?.Add(hp.CharacterId);
+                allInvolvedIds?.Add(hp.CharacterId);
+            }
+            else if (change is StatusChange sc)
+            {
+                characterIds?.Add(sc.CharacterId);
+                allInvolvedIds?.Add(sc.CharacterId);
+            }
+            else if (change is MoodChange mc)
+            {
+                characterIds?.Add(mc.CharacterId);
+                allInvolvedIds?.Add(mc.CharacterId);
+            }
             else if (change is EngagementRelationChange erc)
             {
                 characterIds?.Add(erc.ActorId);
@@ -59,15 +73,20 @@ public class WorldChangeDispatcherTests
             }
             else if (change is EventOccurred eo && eo.Involved != null)
             {
-                foreach (var id in eo.Involved) { characterIds?.Add(id); allInvolvedIds?.Add(id); }
+                foreach (var id in eo.Involved)
+                {
+                    characterIds?.Add(id);
+                    allInvolvedIds?.Add(id);
+                }
             }
-            
+
             return true;
         }
     }
 
     private static WorldChangeDispatcher CreateDispatcher(params IWorldChangeHandler[] handlers)
-        => new WorldChangeDispatcher(handlers, new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
+        => new WorldChangeDispatcher(handlers, new CampaignVault.Data.CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
 
     // Note: We no longer manually construct ChangeContext in most tests because
     // WorldChangeDispatcher.DispatchAsync owns context creation.
@@ -266,7 +285,11 @@ public class WorldChangeDispatcherTests
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             () => Task.FromResult(new Dictionary<string, string>()),
-            e => { loggedEvents.Add(e); return Task.CompletedTask; });
+            e =>
+            {
+                loggedEvents.Add(e);
+                return Task.CompletedTask;
+            });
 
         Assert.True(result.Success);
         Assert.Single(loggedEvents);
@@ -313,7 +336,11 @@ public class WorldChangeDispatcherTests
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             () => Task.FromResult(new Dictionary<string, string>()),
-            e => { loggedEvents.Add(e); return Task.CompletedTask; });
+            e =>
+            {
+                loggedEvents.Add(e);
+                return Task.CompletedTask;
+            });
 
         Assert.True(result.Success);
         Assert.Single(loggedEvents);

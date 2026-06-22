@@ -1,9 +1,9 @@
-using Autofac;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Models;
@@ -46,10 +46,8 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
             new DefaultRelevantMemorySelector(),
             new DefaultBehavioralTensionCalculator(),
             new CampaignInitiativeSuppressionStore());
-            
-        return _fixture.CreateRepository(overrides: b => {
-            b.RegisterInstance(service).As<INpcInitiativeService>();
-        });
+
+        return _fixture.CreateRepository(overrides: b => { b.RegisterInstance(service).As<INpcInitiativeService>(); });
     }
 
     private sealed class TestSimulationEngine : IWorldSimulationEngine
@@ -291,7 +289,8 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
             {
                 Memories = new Dictionary<string, MemoryNode>
                 {
-                    ["Generic"] = new MemoryNode { Topic = "Generic", Details = "Nothing special.", Salience = 0.4, DayAcquired = 1 },
+                    ["Generic"] = new MemoryNode
+                        { Topic = "Generic", Details = "Nothing special.", Salience = 0.4, DayAcquired = 1 },
                     ["Party"] = new MemoryNode
                     {
                         Topic = "Party",

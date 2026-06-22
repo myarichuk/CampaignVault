@@ -1,14 +1,14 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
-using CampaignVault.Tools;
-using ModelContextProtocol.Server;
-using System.Threading.Tasks;
-using Xunit;
-using Microsoft.Extensions.Logging.Abstractions;
 using CampaignVault.Rulesets;
+using CampaignVault.Tools;
+using Microsoft.Extensions.Logging.Abstractions;
+using ModelContextProtocol.Server;
+using Xunit;
 
 namespace CampaignVault.Tests;
 
@@ -29,7 +29,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     {
         var tools = CreateTools();
         var changes = new WorldChange[51];
-        
+
         // Fill with dummy changes
         for (var i = 0; i < changes.Length; i++)
         {
@@ -43,12 +43,13 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Maximum allowed is 50", result.Summary);
     }
 
-    [Fact(Skip = "Static rate limit is increased to 10,000 to prevent parallel test suites from failing. Skip this boundary test.")]
+    [Fact(Skip =
+        "Static rate limit is increased to 10,000 to prevent parallel test suites from failing. Skip this boundary test.")]
     public async Task Commit_RejectsWhenRateLimitExceeded()
     {
         var tools = CreateTools();
         var change = new WorldChange[] { new HpChange { CharacterId = "dummy", Delta = -1 } };
-        
+
         var successCount = 0;
         var rejectCount = 0;
 
@@ -66,8 +67,10 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             }
         }
 
-        Assert.True(successCount <= 20, $"Should have successfully processed at most 20 requests, but got {successCount}.");
-        Assert.True(rejectCount > 0, $"Should have rejected some requests due to rate limiting, but got {rejectCount}.");
+        Assert.True(successCount <= 20,
+            $"Should have successfully processed at most 20 requests, but got {successCount}.");
+        Assert.True(rejectCount > 0,
+            $"Should have rejected some requests due to rate limiting, but got {rejectCount}.");
     }
 
     [Fact]
@@ -79,7 +82,8 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertFactionAsync(session, new Faction { Id = fid, Name = "Guild of Tests", InfluenceLevel = 10 });
+            await repo.UpsertFactionAsync(session,
+                new Faction { Id = fid, Name = "Guild of Tests", InfluenceLevel = 10 });
             await session.SaveChangesAsync();
         }
 
@@ -131,7 +135,8 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertQuestAsync(session, new Quest { Id = qid, Title = "Test Quest", OverallState = QuestState.Open });
+            await repo.UpsertQuestAsync(session,
+                new Quest { Id = qid, Title = "Test Quest", OverallState = QuestState.Open });
             await session.SaveChangesAsync();
         }
 
@@ -150,7 +155,8 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertQuestAsync(session, new Quest { Id = qid, Title = "Real Quest", OverallState = QuestState.Open });
+            await repo.UpsertQuestAsync(session,
+                new Quest { Id = qid, Title = "Real Quest", OverallState = QuestState.Open });
             await session.SaveChangesAsync();
         }
 
@@ -200,7 +206,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         }
 
         // Query by typo in Name, not ID prefix
-        var result = await tools.GetFactionContext("Silver Han"); 
+        var result = await tools.GetFactionContext("Silver Han");
         Assert.False(result.Success);
         Assert.Contains("Did you mean:", result.Summary);
         Assert.Contains("Silver Hand", result.Summary);
@@ -232,8 +238,11 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await session.StoreAsync(time);
 
             // Deadline in 2 days -> should emit a pressure in GetScene
-            await repo.UpsertQuestAsync(session, new Quest { Id = questId, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12, RelatedLocationIds =
-                [locId]
+            await repo.UpsertQuestAsync(session, new Quest
+            {
+                Id = questId, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12,
+                RelatedLocationIds =
+                    [locId]
             });
 
             await session.SaveChangesAsync();
@@ -254,10 +263,12 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.GetScene(locId);
         Assert.True(result.Success);
-        
+
         // Assert the pressure is present
         Assert.NotNull(result.WorldPressure);
-        Assert.Contains(result.WorldPressure, p => p.Contains("stuck", StringComparison.OrdinalIgnoreCase) || p.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.WorldPressure,
+            p => p.Contains("stuck", StringComparison.OrdinalIgnoreCase) ||
+                 p.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(result.WorldPressure, p => p.Contains("deadline", StringComparison.OrdinalIgnoreCase));
 
         // Assert that SuggestedCommitExamples is populated in the returned SceneView
@@ -330,9 +341,11 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.GetScene(locId);
         Assert.True(result.Success);
-        
+
         Assert.NotNull(result.WorldPressure);
-        Assert.Contains(result.WorldPressure, p => p.Contains("very low reputation", StringComparison.OrdinalIgnoreCase) && p.Contains("-60", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.WorldPressure,
+            p => p.Contains("very low reputation", StringComparison.OrdinalIgnoreCase) &&
+                 p.Contains("-60", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -352,7 +365,8 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await session.StoreAsync(time);
 
             // Deadline in 2 days
-            await repo.UpsertQuestAsync(session, new Quest { Id = qid, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12 });
+            await repo.UpsertQuestAsync(session,
+                new Quest { Id = qid, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12 });
 
             var npc = new Character
             {
@@ -382,14 +396,16 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.GetWorldState(locId);
         Assert.True(result.Success, result.Error + ": " + result.Summary);
-        
+
         var view = result.Data;
         Assert.NotNull(view);
-        
+
         Assert.NotNull(view.WorldPressure);
         Assert.Contains(view.WorldPressure, p => p.Contains("deadline", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(view.WorldPressure, p => p.Contains("stuck", StringComparison.OrdinalIgnoreCase) || p.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
-        
+        Assert.Contains(view.WorldPressure,
+            p => p.Contains("stuck", StringComparison.OrdinalIgnoreCase) ||
+                 p.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
+
         // Should also emit an example for it
         Assert.NotNull(view.SuggestedCommitExamples);
         Assert.Contains(view.SuggestedCommitExamples, ex => ex.Contains("quest_progress"));
@@ -411,15 +427,16 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await repo.UpsertCampaignConfigAsync(session, config);
 
             await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Room" });
-            
+
             var c = new Character { Id = npcId, Name = "Bob", CurrentLocationId = locId };
-            c.Psychology.Memories["Secret"] = new MemoryNode { Topic = "Secret", Details = "A secret", DayAcquired = 10, Importance = MemoryImportance.Important };
+            c.Psychology.Memories["Secret"] = new MemoryNode
+                { Topic = "Secret", Details = "A secret", DayAcquired = 10, Importance = MemoryImportance.Important };
             await repo.UpsertCharacterAsync(session, c);
-            
+
             var t = await repo.GetTimeAsync(session);
             t.TotalDaysElapsed = 51; // 51 - 10 = 41 > 40
             // t is automatically tracked by session.SaveChangesAsync()
-            
+
             await session.SaveChangesAsync();
         }
 
@@ -440,22 +457,24 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Room" });
-            
+
             var c = new Character { Id = npcId, Name = "Bob", CurrentLocationId = locId };
-            c.Psychology.Memories["Secret"] = new MemoryNode { Topic = "Secret", Details = "A secret", DayAcquired = 10, Importance = MemoryImportance.Core };
+            c.Psychology.Memories["Secret"] = new MemoryNode
+                { Topic = "Secret", Details = "A secret", DayAcquired = 10, Importance = MemoryImportance.Core };
             await repo.UpsertCharacterAsync(session, c);
-            
+
             var t = await repo.GetTimeAsync(session);
             t.TotalDaysElapsed = 100; // Even at 90 days diff, core shouldn't decay
             // t is automatically tracked by session.SaveChangesAsync()
-            
+
             await session.SaveChangesAsync();
         }
 
         var result = await tools.GetScene(locId, true);
         Assert.True(result.Success);
 
-        Assert.True(result.WorldPressure == null || !result.WorldPressure.Any(p => p.Contains("fading") && p.Contains("Secret")));
+        Assert.True(result.WorldPressure == null ||
+                    !result.WorldPressure.Any(p => p.Contains("fading") && p.Contains("Secret")));
     }
 
     [Fact]
@@ -469,10 +488,15 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Alley" });
-            
-            var f = new Faction { Id = factionId, Name = "Thieves", TerritoryLocationIds = [locId], StanceToward = new System.Collections.Generic.Dictionary<string, FactionStance> { ["party"] = FactionStance.Opportunistic } };
+
+            var f = new Faction
+            {
+                Id = factionId, Name = "Thieves", TerritoryLocationIds = [locId],
+                StanceToward = new System.Collections.Generic.Dictionary<string, FactionStance>
+                    { ["party"] = FactionStance.Opportunistic }
+            };
             await repo.UpsertFactionAsync(session, f);
-            
+
             await session.SaveChangesAsync();
         }
 
@@ -498,10 +522,11 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Id = factionId,
                 Name = "War Merchants",
                 TerritoryLocationIds = [locId],
-                EconomicDemand = new System.Collections.Generic.Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["Weapon"] = 2.0f
-                }
+                EconomicDemand =
+                    new System.Collections.Generic.Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Weapon"] = 2.0f
+                    }
             });
 
             await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Market" });
@@ -550,10 +575,11 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Id = factionId,
                 Name = "Arcane Scribes",
                 TerritoryLocationIds = [locId],
-                EconomicDemand = new System.Collections.Generic.Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["spell scrolls"] = 2.0f
-                }
+                EconomicDemand =
+                    new System.Collections.Generic.Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["spell scrolls"] = 2.0f
+                    }
             });
 
             await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Scriptorium" });
@@ -584,7 +610,8 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         var result = await tools.GetScene(locId, partyPresent: true);
         Assert.True(result.Success);
         Assert.NotNull(result.WorldPressure);
-        Assert.Contains(result.WorldPressure, p => p.Contains("desperate for 'spell scrolls'") && p.Contains("Arcane Scribes"));
+        Assert.Contains(result.WorldPressure,
+            p => p.Contains("desperate for 'spell scrolls'") && p.Contains("Arcane Scribes"));
     }
 
     private async Task WaitForCharacterAndFactionIndexesAsync()
@@ -640,6 +667,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             {
                 break;
             }
+
             await Task.Delay(100);
         }
 
@@ -724,12 +752,13 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Tool Visit Location", LastVisitedDay = 0 });
-            
+            await repo.UpsertLocationAsync(session,
+                new Location { Id = locId, Name = "Tool Visit Location", LastVisitedDay = 0 });
+
             var time = await repo.GetTimeAsync(session, null);
             time.TotalDaysElapsed = 7;
             await session.StoreAsync(time);
-            
+
             await session.SaveChangesAsync();
         }
 

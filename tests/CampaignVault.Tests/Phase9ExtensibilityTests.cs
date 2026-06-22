@@ -1,13 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Pressure.Contributors;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
-using Autofac;
-using System.Collections.Generic;
 using Raven.Client.Documents;
 using Xunit;
 
@@ -55,7 +55,8 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
             new NarrativeRulesetResolver(rollSvc)
         ]);
         var pm = new PressureManager(new CampaignDocumentKeys());
-        var orchestrator = new PressureOrchestrator(_fixture.Container.Resolve<IEnumerable<IPressureContributor>>(), pm, selector);
+        var orchestrator = new PressureOrchestrator(_fixture.Container.Resolve<IEnumerable<IPressureContributor>>(), pm,
+            selector);
 
         var worldCtx = new PressureContext("scope-test", time, config, session,
             Scene: scene, RequestedLocationId: locId);
@@ -97,7 +98,8 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
         Assert.Empty(pressures);
 
         var strictConfig = new CampaignConfig { RumorAgingPressureDays = 5 };
-        pressures = (await contributor.EvaluateAsync(new PressureContext("config-test", time, strictConfig, session, ActiveRumors: [rumor]))).ToList();
+        pressures = (await contributor.EvaluateAsync(new PressureContext("config-test", time, strictConfig, session,
+            ActiveRumors: [rumor]))).ToList();
         Assert.Single(pressures);
         Assert.Contains("Old Gossip", pressures[0].Text);
     }

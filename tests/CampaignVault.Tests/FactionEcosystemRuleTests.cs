@@ -1,10 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using Xunit;
-using System.Collections.Generic;
 
 namespace CampaignVault.Tests;
 
@@ -14,8 +14,9 @@ public class FactionEcosystemRuleTests
     public async Task ApplyAsync_HighInfluenceFaction_ExpandsTerritory_ActuallyInfluenceShift()
     {
         // Arrange
-        var rule = new FactionEcosystemRule(() => 0.0, max => max == 3 ? 2 : 0); // 0.0 forces action (0.0 < chanceToAct), 2 forces Influence shift
-        
+        var rule = new FactionEcosystemRule(() => 0.0,
+            max => max == 3 ? 2 : 0); // 0.0 forces action (0.0 < chanceToAct), 2 forces Influence shift
+
         var context = new SimulationContext(
             new CampaignTime { TotalDaysElapsed = 30 },
             new List<Rumor>(),
@@ -45,8 +46,8 @@ public class FactionEcosystemRuleTests
     {
         // Arrange
         // Force random to action 0 (Conflict)
-        var rule = new FactionEcosystemRule(() => 0.0, _ => 0); 
-        
+        var rule = new FactionEcosystemRule(() => 0.0, _ => 0);
+
         var context = new SimulationContext(
             new CampaignTime { TotalDaysElapsed = 30 },
             new List<Rumor>(),
@@ -56,18 +57,18 @@ public class FactionEcosystemRuleTests
             "test-camp",
             new List<Faction>
             {
-                new Faction 
-                { 
-                    Id = "factions/1", 
-                    Name = "Faction 1", 
+                new Faction
+                {
+                    Id = "factions/1",
+                    Name = "Faction 1",
                     InfluenceLevel = 100,
                     StanceToward = new Dictionary<string, FactionStance> { { "factions/2", FactionStance.Hostile } },
                     Metadata = new Dictionary<string, string> { { "Domains", "urban" } }
                 },
-                new Faction 
-                { 
-                    Id = "factions/2", 
-                    Name = "Faction 2", 
+                new Faction
+                {
+                    Id = "factions/2",
+                    Name = "Faction 2",
                     InfluenceLevel = 50,
                     Metadata = new Dictionary<string, string> { { "Domains", "urban" } }
                 }
@@ -93,8 +94,8 @@ public class FactionEcosystemRuleTests
     {
         // Arrange
         // Forcing action but 0.8 random makes non-overlapping domains fail (since 0.8 > 0.7)
-        var rule = new FactionEcosystemRule(() => 0.8, _ => 0); 
-        
+        var rule = new FactionEcosystemRule(() => 0.8, _ => 0);
+
         var context = new SimulationContext(
             new CampaignTime { TotalDaysElapsed = 30 },
             new List<Rumor>(),
@@ -104,17 +105,17 @@ public class FactionEcosystemRuleTests
             "test-camp",
             new List<Faction>
             {
-                new Faction 
-                { 
-                    Id = "factions/1", 
-                    Name = "City Guard", 
+                new Faction
+                {
+                    Id = "factions/1",
+                    Name = "City Guard",
                     InfluenceLevel = 100, // Will act because 0.8 < 1.0
                     Metadata = new Dictionary<string, string> { { "Domains", "urban" } }
                 },
-                new Faction 
-                { 
-                    Id = "factions/2", 
-                    Name = "Mountain Orcs", 
+                new Faction
+                {
+                    Id = "factions/2",
+                    Name = "Mountain Orcs",
                     InfluenceLevel = 100,
                     Metadata = new Dictionary<string, string> { { "Domains", "mountains, wilderness" } }
                 }
@@ -129,27 +130,30 @@ public class FactionEcosystemRuleTests
         // They should skip interaction because domains don't overlap and Random (0.8) >= 0.7
         Assert.Empty(result.Deltas);
     }
+
     [Fact]
     public async Task ApplyAsync_HostileStance_IncreasesEconomicDemand()
     {
         // Arrange
         var rule = new FactionEcosystemRule(() => 0.0, _ => 0); // Force Conflict
-        
-        var faction1 = new Faction 
-        { 
-            Id = "factions/1", 
-            Name = "Faction 1", 
+
+        var faction1 = new Faction
+        {
+            Id = "factions/1",
+            Name = "Faction 1",
             InfluenceLevel = 100,
-            EconomicDemand = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase) { ["Weapon"] = 1.0f, ["Armor"] = 1.0f }
+            EconomicDemand = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
+                { ["Weapon"] = 1.0f, ["Armor"] = 1.0f }
         };
-        var faction2 = new Faction 
-        { 
-            Id = "factions/2", 
-            Name = "Faction 2", 
+        var faction2 = new Faction
+        {
+            Id = "factions/2",
+            Name = "Faction 2",
             InfluenceLevel = 50,
-            EconomicDemand = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase) { ["Weapon"] = 1.0f, ["Armor"] = 1.0f }
+            EconomicDemand = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
+                { ["Weapon"] = 1.0f, ["Armor"] = 1.0f }
         };
-        
+
         var context = new SimulationContext(
             new CampaignTime { TotalDaysElapsed = 30 },
             new List<Rumor>(),

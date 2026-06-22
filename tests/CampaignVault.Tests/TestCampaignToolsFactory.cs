@@ -1,10 +1,10 @@
+using System.Collections.Generic;
 using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Rulesets;
 using CampaignVault.Tools;
 using Raven.Client.Documents;
-using System.Collections.Generic;
 
 namespace CampaignVault.Tests;
 
@@ -20,16 +20,18 @@ internal static class TestCampaignToolsFactory
         IWorldSimulationEngine? simulationEngine = null)
     {
         var currentCampaign = context ?? new CurrentCampaignContext();
-        var repo = repository ?? fixture.CreateRepository(engineOverride: simulationEngine, overrides: b => {
+        var repo = repository ?? fixture.CreateRepository(engineOverride: simulationEngine, overrides: b =>
+        {
             if (rollService != null) b.RegisterInstance(rollService).As<IRollService>();
             b.RegisterInstance(currentCampaign).As<ICurrentCampaignContext>();
         });
-        
-        var scope = fixture.Container.BeginLifetimeScope(b => {
+
+        var scope = fixture.Container.BeginLifetimeScope(b =>
+        {
             if (rollService != null) b.RegisterInstance(rollService).As<IRollService>();
             b.RegisterInstance(currentCampaign).As<ICurrentCampaignContext>();
             b.RegisterInstance(repo).As<CampaignRepository>();
-            
+
             if (orchestrator != null) b.RegisterInstance(orchestrator).As<IPressureOrchestrator>();
             if (pressureManager != null) b.RegisterInstance(pressureManager).As<IPressureManager>();
         });

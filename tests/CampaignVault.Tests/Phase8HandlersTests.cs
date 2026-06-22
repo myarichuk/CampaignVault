@@ -1,12 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -79,7 +79,11 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     public async Task ItemUpdate_PatchesFieldsCorrectly()
     {
         using var session = _fixture.Store.OpenAsyncSession();
-        var item = new Item { Id = "items/1", Name = "Sword", Tags = ["sharp"], DistinctiveFeatures = ["rusty"], Properties = new Dictionary<string, object> { ["weight"] = 5 } };
+        var item = new Item
+        {
+            Id = "items/1", Name = "Sword", Tags = ["sharp"], DistinctiveFeatures = ["rusty"],
+            Properties = new Dictionary<string, object> { ["weight"] = 5 }
+        };
         await session.StoreAsync(item);
         await session.SaveChangesAsync();
 
@@ -101,7 +105,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(update, ctx);
 
         Assert.True(result.Success);
-        
+
         var loaded = await session.LoadAsync<Item>("items/1");
         Assert.Equal("Glows blue", loaded.CurrentState);
         Assert.Contains("glowing", loaded.Tags);
@@ -136,7 +140,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(update, ctx);
 
         Assert.True(result.Success);
-        
+
         var loaded = await session.LoadAsync<Character>("chars/1");
         Assert.Equal("Muddy and tired", loaded.CurrentAppearance);
         Assert.Contains("muddy", loaded.VisualTags);
@@ -188,7 +192,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(update, ctx);
 
         Assert.True(result.Success);
-        
+
         var loaded = await session.LoadAsync<Character>("chars/bob");
         Assert.True(loaded.Psychology.Memories.ContainsKey("The Rusty Tavern"));
         var mem = loaded.Psychology.Memories["The Rusty Tavern"];
@@ -225,7 +229,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(update, ctx);
 
         Assert.True(result.Success);
-        
+
         var loaded = await session.LoadAsync<Character>("chars/alice");
         var mem = loaded.Psychology.Memories["Mayor Bob"];
         Assert.Equal("Actually a thief!", mem.Details);
@@ -366,7 +370,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     public async Task LocationState_PatchesFieldsCorrectly()
     {
         using var session = _fixture.Store.OpenAsyncSession();
-        var l = new Location { Id = "locations/1", Name = "Tavern", VisualTags = ["clean"], DistinctiveFeatures = ["sign"] };
+        var l = new Location
+            { Id = "locations/1", Name = "Tavern", VisualTags = ["clean"], DistinctiveFeatures = ["sign"] };
         await session.StoreAsync(l);
         await session.SaveChangesAsync();
 
@@ -386,7 +391,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(update, ctx);
 
         Assert.True(result.Success);
-        
+
         var loaded = await session.LoadAsync<Location>("locations/1");
         Assert.Equal("On fire!", loaded.CurrentState);
         Assert.Contains("smoky", loaded.VisualTags);

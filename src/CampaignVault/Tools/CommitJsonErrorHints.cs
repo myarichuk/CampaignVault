@@ -1,6 +1,6 @@
-using CampaignVault.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using CampaignVault.Models;
 
 namespace CampaignVault.Tools;
 
@@ -227,8 +227,10 @@ internal static partial class CommitJsonErrorHints
         return (enumType.Name, badValue.Trim()) switch
         {
             ("LocationType", "City" or "city" or "Town" or "town") => nameof(LocationType.Settlement),
-            ("LocationType", "Tavern" or "tavern" or "Inn" or "inn" or "Shop" or "shop") => nameof(LocationType.Building),
-            ("EventCategory", "Narrative" or "narrative" or "Roleplay" or "roleplay") => nameof(EventCategory.Conversation),
+            ("LocationType", "Tavern" or "tavern" or "Inn" or "inn" or "Shop" or "shop") => nameof(
+                LocationType.Building),
+            ("EventCategory", "Narrative" or "narrative" or "Roleplay" or "roleplay") => nameof(EventCategory
+                .Conversation),
             ("EventCategory", "Scene" or "scene") => nameof(EventCategory.Interaction),
             _ => null,
         };
