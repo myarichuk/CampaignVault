@@ -1,12 +1,8 @@
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using ModelContextProtocol.Server;
-using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Tools;
 
@@ -30,7 +26,7 @@ public class CombatTools : CampaignToolBase
     [Description(@"COMBAT TOOL: Starts a new combat encounter at the specified location.
 Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Respects the currently selected campaign.
 
-Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""monsters/goblin1""])")]
+Parameter name is combatantIds (not combatants). Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""monsters/goblin1""])")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
         [Description("The location ID where combat is happening.")]
         string? locationId = null,
@@ -60,7 +56,7 @@ Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""mon
             return Task.FromResult(new ToolResult<CombatEncounter>(
                 false,
                 Error: "InvalidInput",
-                Summary: "Cannot start combat with zero combatants."));
+                Summary: "Cannot start combat with zero combatants. Pass combatantIds (not combatants) — an array of character IDs, e.g. [\"chars/valen\", \"chars/guard\"]."));
         }
 
         var effective = EffectiveCampaign(campaignName);

@@ -27,6 +27,25 @@ public class ToolCallExamplesTests
     }
 
     [Fact]
+    public void TryNormalize_StartCombat_RewritesCombatantsToCombatantIds()
+    {
+        var args = new JsonObject
+        {
+            ["locationId"] = "locations/harluaa/training-hall",
+            ["combatants"] = new JsonArray { "chars/valen", "chars/harluaa-training-sergeant" },
+        };
+
+        var modified = ToolCallExamples.TryNormalize("start_combat", args, out var rewrites);
+
+        Assert.True(modified);
+        Assert.Contains("combatants→combatantIds", rewrites);
+        Assert.True(args.ContainsKey("combatantIds"));
+        Assert.False(args.ContainsKey("combatants"));
+        Assert.Equal("chars/valen", args["combatantIds"]![0]!.GetValue<string>());
+        Assert.Equal("chars/harluaa-training-sergeant", args["combatantIds"]![1]!.GetValue<string>());
+    }
+
+    [Fact]
     public void TryNormalize_Commit_RewritesEventParticipantsToInvolved()
     {
         var args = new JsonObject

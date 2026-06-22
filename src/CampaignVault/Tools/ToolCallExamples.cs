@@ -298,6 +298,22 @@ internal static class ToolCallExamples
                     }
                     """)!.AsObject(),
             },
+            ["start_combat"] = new ToolCallExample
+            {
+                ToolName = "start_combat",
+                Synonyms = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["locationId"] = ["locId", "location_id", "loc_id", "location"],
+                    ["combatantIds"] = ["combatants", "combatant_ids", "participantIds", "participants"],
+                },
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "locationId": "locations/tavern",
+                      "combatantIds": ["chars/pc1", "chars/guard-captain"]
+                    }
+                    """)!.AsObject(),
+            },
             ["select_campaign"] = new ToolCallExample
             {
                 ToolName = "select_campaign",
@@ -317,7 +333,9 @@ internal static class ToolCallExamples
                     ["narrative"] = ["summary", "description", "narration"],
                 },
                 DeserializationHint =
-                    "Conversation events MUST include 'involved' with every participant's character ID (NOT 'participants'). Example: \"involved\": [\"chars/valen\", \"chars/innkeeper\"].",
+                    "Conversation events MUST include 'involved' with every participant's character ID (NOT 'participants'). "
+                    + "Crowd interrupt: $type scene_interrupt_check with locationId, characterId, optional riskModifier (-50..+50). "
+                    + "Example: \"involved\": [\"chars/valen\", \"chars/innkeeper\"].",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
