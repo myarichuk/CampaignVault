@@ -41,6 +41,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(EngagementRelationChange), "engagement_relation")]
 [JsonDerivedType(typeof(SpatialRelationChange), "spatial_relation")]
 [JsonDerivedType(typeof(SpatialPositionChange), "spatial_position")]
+[JsonDerivedType(typeof(SceneInterruptCheck), "scene_interrupt_check")]
 public abstract class WorldChange;
 
 /// <summary>
@@ -68,6 +69,29 @@ public class RestChange : WorldChange
     [Description("Narrative description of how the character rests.")]
     [JsonPropertyName("narrativeNote")]
     public string? NarrativeNote { get; set; }
+}
+
+/// <summary>
+/// Optional single-roll check for whether someone from the ambient crowd interrupts the scene.
+/// LLM calls this after tense beats in crowded locations — not on every line of dialog.
+/// </summary>
+public class SceneInterruptCheck : WorldChange
+{
+    [Description("ID of the location where the scene beat occurred.")]
+    [JsonPropertyName("locationId")]
+    public string LocationId { get; set; } = default!;
+
+    [Description("ID of the character whose vulnerability/flavor drives the check (usually the PC).")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("Abstract modifier from -50 to +50 representing crowd reaction risk, like encounterRiskModifier on travel. Positive = PC looks vulnerable/provocative (bloodied, wanted, insulted a guard). Negative = PC looks safe (well_armed, escorted). If omitted, engine auto-derives from visualTags/appearance/equipment.")]
+    [JsonPropertyName("riskModifier")]
+    public int? RiskModifier { get; set; }
+
+    [Description("Optional free-text flavor for the engine directive (e.g. 'Bloodied wanted face, Schlag drawn, crowd already hostile').")]
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
 }
 
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
@@ -148,7 +172,7 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("summary")]
     public string Summary { get; set; } = default!;
 
-    [Description("Classification of the event. Use 'Unresolved' for dangling plot hooks the party should follow up on. Other good values: 'Combat', 'Conversation', 'Discovery', 'Arrival', 'Betrayal'.")]
+    [Description("Classification of the event. Use 'Unresolved' for dangling plot hooks the party should follow up on. Other good values: 'Combat', 'Conversation', 'Discovery', 'Arrival', 'Betrayal', 'SceneInterrupt' (engine-emitted crowd interrupts).")]
     [JsonPropertyName("category")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EventCategory Category { get; set; } = EventCategory.Unresolved;
@@ -383,7 +407,9 @@ public class ActivityChange : WorldChange
 ///   "difficulty"    – success count threshold for Fallout 2d20 (default "1")
 ///   "targetPart"    – BodyPart enum string for hit-location targeting (Fallout 2d20)
 ///   "advantage"     – "true"/"false" for D&amp;D 5e
-///   "item"          – item document ID for UseItem actions
+///   "item"          – item document ID for UseItem actions (alias: weaponItemId, weapon)
+///   "weaponItemId"  – held weapon item ID; properties merge into attack if parameters omitted
+///   "attackCount"   – max separate attack rolls (multi-target / repeating weapons); defaults to targetIds.Count when multiple targets listed
 ///   "initiativeSkill" – skill name overriding default initiative (PF2e)
 ///   "targetSkill"   – skill name for the target side of a ContestedCheck
 /// </summary>
@@ -922,7 +948,7 @@ public class CharacterUpdate : WorldChange
     [JsonPropertyName("appearanceOverride")]
     public string? AppearanceOverride { get; set; }
 
-    [Description("Temporary visual tags to add (e.g. 'muddy', 'disheveled').")]
+    [Description("Temporary visual tags to add. Engine scores these for crowd vulnerability pressure: risky tags include bloody, disheveled, wanted, unarmed, armor_damaged; protective tags include well_armed, escorted, uniform.")]
     [JsonPropertyName("tagsToAdd")]
     public List<string>? TagsToAdd { get; set; }
 

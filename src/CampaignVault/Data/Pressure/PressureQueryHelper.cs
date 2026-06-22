@@ -131,4 +131,28 @@ internal static class PressureQueryHelper
             .Take(limit)
             .ToListAsync(ct);
     }
+
+    public static async Task<bool> HasSceneInterruptTodayAsync(
+        IAsyncDocumentSession session,
+        string? campaignName,
+        string locationId,
+        int currentDay,
+        CancellationToken ct = default)
+    {
+        var query = session.Advanced.AsyncDocumentQuery<Event, Event_Search>()
+            .WhereEquals(x => x.Category, EventCategory.SceneInterrupt)
+            .AndAlso()
+            .WhereEquals(x => x.DayLogged, currentDay);
+
+        if (!string.IsNullOrWhiteSpace(campaignName))
+        {
+            query = query.AndAlso().WhereEquals(x => x.CampaignName, campaignName);
+        }
+
+        var events = await query.Take(20).ToListAsync(ct);
+
+        return events.Any(e =>
+            e.Involved != null
+            && e.Involved.Contains(locationId, StringComparer.OrdinalIgnoreCase));
+    }
 }

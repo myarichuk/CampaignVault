@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
@@ -18,7 +16,8 @@ public enum EventCategory
     Simulation,
     Interaction,
     Test,
-    Travel
+    Travel,
+    SceneInterrupt
 }
 
 public class Event

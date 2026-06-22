@@ -156,6 +156,52 @@ public class EncounterResolverTests
         Assert.True(result.Interrupted);
     }
 
+    [Fact]
+    public async Task EvaluateSceneInterruptAsync_TriggersOnLowRoll()
+    {
+        var resolver = new EncounterResolver(() => 0.0);
+        var ctx = CreateContext();
+        var character = new Character
+        {
+            Id = "chars/valen",
+            Name = "Valen",
+            VisualTags = ["bloody", "wanted"],
+            CurrentAppearance = "Covered in blood"
+        };
+        var location = new Location
+        {
+            Id = "locations/hall",
+            Name = "Training Hall",
+            Type = LocationType.Building,
+            AmbientCrowd = "25 mercenaries"
+        };
+
+        var result = await resolver.EvaluateSceneInterruptAsync(ctx, character, location, 25, 10, "Crowd tense");
+
+        Assert.True(result.Interrupted);
+        var ev = result.Deltas.OfType<EventOccurred>().FirstOrDefault();
+        Assert.NotNull(ev);
+        Assert.Equal(EventCategory.SceneInterrupt, ev!.Category);
+        var created = result.Deltas.OfType<CharacterCreate>().FirstOrDefault();
+        Assert.NotNull(created);
+        Assert.Contains("ambient crowd", created!.Notes, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Crowd:", created.Notes, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task EvaluateSceneInterruptAsync_NoInterruptOnHighRoll()
+    {
+        var resolver = new EncounterResolver(() => 0.99);
+        var ctx = CreateContext();
+        var character = new Character { Id = "chars/valen" };
+        var location = new Location { Id = "locations/hall", Type = LocationType.Room };
+
+        var result = await resolver.EvaluateSceneInterruptAsync(ctx, character, location, 0);
+
+        Assert.False(result.Interrupted);
+        Assert.Empty(result.Deltas);
+    }
+
     [Theory]
     [InlineData(0.25, "Danger / Threat")]
     [InlineData(0.60, "Social / Neutral")]

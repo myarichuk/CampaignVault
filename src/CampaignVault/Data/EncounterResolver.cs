@@ -1,7 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data;
@@ -115,6 +113,103 @@ public class EncounterResolver
         return (interrupted, hoursPassed, deltas, narratives);
     }
 
+    /// <summary>
+    /// Single-roll crowd interrupt check for in-scene beats (Phase B).
+    /// </summary>
+    public async Task<(bool Interrupted, List<WorldChange> Deltas, List<string> Narratives)>
+        EvaluateSceneInterruptAsync(
+            ChangeContext context,
+            Character character,
+            Location location,
+            int riskModifier,
+            int contextModifier = 0,
+            string? notes = null)
+    {
+        var deltas = new List<WorldChange>();
+        var narratives = new List<string>();
+        var options = await context.GetSystemOptionsAsync();
+
+        var baseChance = GetBaseChance(location, options, "Scene", null);
+
+        if (!string.IsNullOrWhiteSpace(location.AmbientCrowd)
+            && AmbientCrowdHeuristics.IsCrowdDenseEnough(location.AmbientCrowd))
+        {
+            baseChance += 0.03;
+        }
+
+        if (!string.IsNullOrEmpty(location.ControllingFactionId))
+        {
+            baseChance -= 0.02;
+        }
+
+        baseChance += location.DangerModifier * 0.005;
+        var modifiedChance = baseChance + ((riskModifier + contextModifier) * 0.005);
+        modifiedChance = Math.Clamp(modifiedChance, 0.01, 0.75);
+
+        if (_nextDouble() >= modifiedChance)
+        {
+            narratives.Add("No crowd interrupt triggered this beat.");
+            return (false, deltas, narratives);
+        }
+
+        var category = RollEncounterCategory();
+        var directive =
+            $"ENGINE DIRECTIVE: Scene interrupt from ambient crowd (Category: {category}). "
+            + "Promote ONE figure from the crowd — pickpocket, zealot, drunk, merc, witness, etc. "
+            + "Do not spawn the whole crowd or start full combat unless the party escalates. "
+            + "Tie behavior to location flavor and the PC's visual tags/appearance.";
+
+        if (!string.IsNullOrWhiteSpace(location.AmbientCrowd))
+        {
+            directive += $" Crowd: '{location.AmbientCrowd}'.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(notes))
+        {
+            directive += $" Beat notes: {notes}.";
+        }
+
+        if (character.VisualTags.Count > 0)
+        {
+            directive += $" PC tags: {string.Join(", ", character.VisualTags)}.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(character.CurrentAppearance))
+        {
+            directive += $" PC appearance: {character.CurrentAppearance}.";
+        }
+
+        var interruptMsg =
+            $"Someone from the crowd at {location.Name} interrupts the scene ({category}).";
+        narratives.Add(interruptMsg);
+
+        deltas.Add(new EventOccurred
+        {
+            Category = EventCategory.SceneInterrupt,
+            Summary = interruptMsg,
+            Involved = [character.Id, location.Id]
+        });
+
+        var transientId = $"chars/crowd_interrupt_{Guid.NewGuid().ToString("N")[..6]}";
+        deltas.Add(new CharacterCreate
+        {
+            CharacterId = transientId,
+            Name = "Figure from the Crowd",
+            CurrentLocationId = location.Id,
+            KeepAlive = false,
+            CurrentActivity = "Stepping out of the crowd...",
+            Notes = directive
+        });
+
+        deltas.Add(new ActivityChange
+        {
+            CharacterId = character.Id,
+            NewActivity = "Reacting to someone stepping out of the crowd."
+        });
+
+        return (true, deltas, narratives);
+    }
+
     private double GetBaseChance(Location location, Dictionary<string, string> options, string contextType,
         string? terrain)
     {
@@ -141,6 +236,17 @@ public class EncounterResolver
             {
                 return 0.25;
             }
+        }
+
+        if (contextType == "Scene")
+        {
+            return location.Type switch
+            {
+                LocationType.Room or LocationType.Building => 0.08,
+                LocationType.Settlement or LocationType.District => 0.10,
+                LocationType.Wilderness or LocationType.Region => 0.06,
+                _ => 0.05
+            };
         }
 
         // Defaults if not in SystemOptions and no terrain match
