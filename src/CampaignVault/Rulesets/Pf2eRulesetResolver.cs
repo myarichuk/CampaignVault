@@ -1,6 +1,7 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Rulesets;
 
@@ -15,13 +16,18 @@ public enum Pf2eDegreeOfSuccess
 public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 {
     private readonly IRollService _rollService;
+    private readonly ICharacterBootstrapPipeline _bootstrap;
 
     public Pf2eRulesetResolver(IRollService rollService)
     {
         _rollService = rollService;
+        var hpStep = new Pf2eDeriveHitPointsStep();
+        _bootstrap = new CharacterBootstrapPipeline([hpStep, new Pf2eDeriveDefenseStep()], [hpStep]);
     }
 
     public override RulesetSystem System => RulesetSystem.Pathfinder2e;
+
+    public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
 
     private int GetSkillOrAbilityBonus(Pf2eExtension stats, string name)
     {

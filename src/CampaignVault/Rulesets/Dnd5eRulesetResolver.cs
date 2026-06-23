@@ -1,6 +1,7 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
+using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Rulesets.Contributors;
 
 namespace CampaignVault.Rulesets;
@@ -8,13 +9,27 @@ namespace CampaignVault.Rulesets;
 public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 {
     private readonly IRollService _rollService;
+    private readonly ICharacterBootstrapPipeline _bootstrap;
 
     public Dnd5eRulesetResolver(IRollService rollService)
     {
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
+        var hpStep = new Dnd5eDeriveHitPointsStep(_rollService);
+        var profStep = new Dnd5eDeriveProficiencyStep();
+        var passiveStep = new Dnd5eDerivePassivePerceptionStep();
+        _bootstrap = new CharacterBootstrapPipeline(
+        [
+            hpStep,
+            new Dnd5eDeriveDefenseStep(),
+            profStep,
+            passiveStep,
+        ],
+        [hpStep, profStep, passiveStep]);
     }
 
     public override RulesetSystem System => RulesetSystem.Dnd5e;
+
+    public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
 
     public override IEnumerable<IRulesetPressureContributor> PressureContributors =>
         [new Dnd5eExhaustionPressureContributor()];

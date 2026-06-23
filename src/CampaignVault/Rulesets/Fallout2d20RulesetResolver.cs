@@ -1,19 +1,27 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Rulesets;
 
 public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extension>
 {
     private readonly IRollService _rollService;
+    private readonly ICharacterBootstrapPipeline _bootstrap;
 
     public Fallout2d20RulesetResolver(IRollService rollService)
     {
         _rollService = rollService;
+        var hpStep = new FalloutDeriveHitPointsStep();
+        _bootstrap = new CharacterBootstrapPipeline(
+            [hpStep, new FalloutDeriveDefenseStep()],
+            [hpStep]);
     }
 
     public override RulesetSystem System => RulesetSystem.Fallout2d20;
+
+    public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
 
 
     private int GetAttributeValue(Fallout2d20Extension stats, string name)

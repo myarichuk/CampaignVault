@@ -48,18 +48,42 @@ public static class SystemStatsCompleteness
         {
             RulesetSystem.Dnd5e =>
                 $$"""
-                [ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "$system": "dnd5e", "armorClass": 15, "dexterity": 14, "strength": 8, "skillModifiers": { "Stealth": 6, "Perception": 2 }, "savingThrowModifiers": { "Dexterity": 2 } } } ]
+                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "keepAlive": true, "classLevel": "Human Fighter 2", "systemStats": { "$system": "dnd5e", "hitDie": "d10", "level": 2, "constitution": 14, "dexterity": 14, "skillModifiers": { "Athletics": 5, "Perception": 2 } } } ]
                 """,
             RulesetSystem.Pathfinder2e =>
                 $$"""
-                [ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "$system": "pf2e", "armorClass": 16, "dexterityMod": 2, "wisdomMod": 1, "skillModifiers": { "Perception": 7, "Athletics": 5 }, "savingThrowModifiers": { "Fortitude": 6, "Reflex": 7, "Will": 4 } } } ]
+                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "keepAlive": true, "classLevel": "Human Fighter 2", "systemStats": { "$system": "pf2e", "classHpPerLevel": 10, "ancestryHp": 8, "level": 2, "constitutionMod": 2, "dexterityMod": 2, "skillModifiers": { "Perception": 7, "Athletics": 5 } } } ]
                 """,
             RulesetSystem.Fallout2d20 =>
                 $$"""
-                [ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "$system": "fallout2d20", "agility": 7, "perception": 6, "endurance": 5, "defense": 1, "skills": { "SmallGuns": 2, "Sneak": 1 }, "tagSkills": ["SmallGuns"], "damageResistance": { "Physical": 0 } } } ]
+                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "fallout2d20", "endurance": 6, "luck": 5, "level": 2, "agility": 7, "perception": 6, "skills": { "SmallGuns": 2 }, "tagSkills": ["SmallGuns"] } } ]
                 """,
             _ =>
                 $$"""[ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "attributes": { "attackBonus": 4 } } } ]"""
+        };
+    }
+
+    public static string BuildStatBlockExampleCommit(Character character, RulesetSystem activeSystem)
+    {
+        var id = character.Id;
+        var name = character.Name;
+
+        return activeSystem switch
+        {
+            RulesetSystem.Dnd5e =>
+                $$"""
+                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "dnd5e", "statBlockHp": 7, "armorClass": 15, "dexterity": 14, "strength": 8, "skillModifiers": { "Stealth": 6, "Perception": 2 } } } ]
+                """,
+            RulesetSystem.Pathfinder2e =>
+                $$"""
+                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "pf2e", "statBlockHp": 20, "armorClass": 16, "dexterityMod": 2, "skillModifiers": { "Perception": 7 } } } ]
+                """,
+            RulesetSystem.Fallout2d20 =>
+                $$"""
+                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "fallout2d20", "statBlockHp": 10, "endurance": 5, "agility": 7, "skills": { "SmallGuns": 2 } } } ]
+                """,
+            _ =>
+                BuildExampleCommit(character, activeSystem)
         };
     }
 

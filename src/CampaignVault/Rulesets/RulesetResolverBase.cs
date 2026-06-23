@@ -1,5 +1,6 @@
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Rulesets;
 
@@ -8,6 +9,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
     public abstract RulesetSystem System { get; }
     public IActionResolution Actions => this;
     public ICombatRuleset Combat => this;
+    public virtual ICharacterBootstrapPipeline Bootstrap => NullCharacterBootstrapPipeline.Instance;
     public virtual IEnumerable<IRulesetPressureContributor> PressureContributors => [];
 
     public async Task<ResolverOutput> ResolveAsync(

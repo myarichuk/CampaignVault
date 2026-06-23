@@ -1,6 +1,7 @@
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
+using CampaignVault.Rulesets.Bootstrap;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
@@ -48,5 +49,6 @@ public interface IRulesetModule
     RulesetSystem System { get; }
     IActionResolution Actions { get; }
     ICombatRuleset Combat { get; }
+    ICharacterBootstrapPipeline Bootstrap { get; }
     IEnumerable<IRulesetPressureContributor> PressureContributors { get; }
 }

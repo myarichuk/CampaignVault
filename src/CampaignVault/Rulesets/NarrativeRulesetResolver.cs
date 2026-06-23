@@ -1,6 +1,7 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
+using CampaignVault.Rulesets.Bootstrap;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
@@ -19,6 +20,8 @@ public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, IComb
     public IActionResolution Actions => this;
 
     public ICombatRuleset Combat => this;
+
+    public ICharacterBootstrapPipeline Bootstrap => NullCharacterBootstrapPipeline.Instance;
 
     public IEnumerable<IRulesetPressureContributor> PressureContributors => [];
 
