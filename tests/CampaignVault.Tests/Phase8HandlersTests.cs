@@ -124,7 +124,9 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
 
         var ctx = CreateContext(session);
 
-        var handler = new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys());
+        var handler = new CharacterUpdateHandler(
+            new CampaignVault.Data.CampaignDocumentKeys(),
+            BootstrapTestHelper.CreateOrchestrator());
         var update = new CharacterUpdate
         {
             CharacterId = "chars/1",
@@ -156,7 +158,9 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var ctx = CreateContext(session);
-        var handler = new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys());
+        var handler = new CharacterUpdateHandler(
+            new CampaignVault.Data.CampaignDocumentKeys(),
+            BootstrapTestHelper.CreateOrchestrator());
         var result = await handler.ApplyAsync(new CharacterUpdate
         {
             CharacterId = "chars/giver",

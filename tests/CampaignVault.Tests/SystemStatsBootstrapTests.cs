@@ -67,7 +67,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         await StoreDnd5eConfigAsync(session, "bootstrap-create");
 
-        var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys());
+        var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
         var change = new CharacterCreate
         {
             CharacterId = "chars/elara-voss",
@@ -119,7 +119,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(existing);
         await session.SaveChangesAsync();
 
-        var handler = new SystemStatsChangeHandler(new CampaignVault.Data.CampaignDocumentKeys());
+        var handler = new SystemStatsChangeHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
         var change = new SystemStatsChange
         {
             CharacterId = "chars/goblin-1",
@@ -148,7 +148,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         await StoreDnd5eConfigAsync(session, "bootstrap-mismatch");
 
-        var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys());
+        var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
         var change = new CharacterCreate
         {
             CharacterId = "chars/bad-stats",
@@ -263,7 +263,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
             p.Severity == PressureSeverity.EngineWarning
             && p.EntityId == "chars/unbootstrapped"
             && p.Text.Contains("systemStats")
-            && p.Text.Contains("system_stats"));
+            && p.Text.Contains("hitDie"));
     }
 
     private static async Task StoreDnd5eConfigAsync(IAsyncDocumentSession session, string campaign)

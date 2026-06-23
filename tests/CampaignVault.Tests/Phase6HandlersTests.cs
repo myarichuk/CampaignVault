@@ -73,7 +73,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(config);
         await session.SaveChangesAsync();
 
-        var handler = new CharacterCreateHandler(new CampaignDocumentKeys());
+        var handler = new CharacterCreateHandler(new CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
         var change = new CharacterCreate
         {
             CharacterId = "characters/test-char-hp",

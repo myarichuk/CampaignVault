@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json.Nodes;
 using CampaignVault.Middleware;
 using CampaignVault.Tools;
@@ -74,6 +75,51 @@ public class ToolCallExamplesTests
     }
 
     [Fact]
+    public void TryNormalize_UpsertCharacter_RenamesLegacyCKey()
+    {
+        var args = new JsonObject
+        {
+            ["c"] = new JsonObject
+            {
+                ["id"] = "chars/kergil",
+                ["name"] = "Kergil",
+                ["maxHp"] = 112,
+            },
+        };
+
+        var modified = ToolCallExamples.TryNormalize("upsert_character", args, out var rewrites);
+
+        Assert.True(modified);
+        Assert.True(args.ContainsKey("character"));
+        Assert.False(args.ContainsKey("c"));
+        Assert.Contains("c→character", rewrites);
+        Assert.Equal("chars/kergil", args["character"]!["id"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void TryNormalize_UpsertCharacter_WrapsFlattenedPayload()
+    {
+        var args = new JsonObject
+        {
+            ["id"] = "chars/kergil",
+            ["name"] = "Kergil",
+            ["maxHp"] = 112,
+            ["systemStats"] = new JsonObject
+            {
+                ["$system"] = "dnd5e",
+                ["armorClass"] = 15,
+            },
+        };
+
+        var modified = ToolCallExamples.TryNormalize("upsert_character", args, out var rewrites);
+
+        Assert.True(modified);
+        Assert.True(args.ContainsKey("character"));
+        Assert.Equal("chars/kergil", args["character"]!["id"]!.GetValue<string>());
+        Assert.Contains("flattened→character", rewrites);
+    }
+
+    [Fact]
     public void TryNormalize_UpsertLocation_RenamesLegacyLKey()
     {
         var args = new JsonObject
@@ -116,6 +162,7 @@ public class ToolCallExamplesTests
     [InlineData("get_npc_context", "characterId")]
     [InlineData("get_scene", "locationId")]
     [InlineData("commit", "changes")]
+    [InlineData("upsert_character", "character")]
     [InlineData("upsert_location", "location")]
     public void BuildMissingParamResponse_IncludesRetryExample(string tool, string param)
     {
@@ -137,6 +184,20 @@ public class ToolCallExamplesTests
         Assert.Contains("Building", summary);
         Assert.Contains("Wilderness", summary);
         Assert.NotNull(retryExample);
+    }
+
+    [Fact]
+    public void BuildDeserializationErrorResponse_ForUpsertCharacter_MentionsNumericAttributes()
+    {
+        var (summary, retryExample) = ToolCallExamples.BuildDeserializationErrorResponse(
+            "upsert_character",
+            "The JSON value could not be converted to System.Single. Path: $.systemStats.attributes.hitDie");
+
+        Assert.Contains("numbers only", summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("hitDie", summary);
+        Assert.Contains("notes", summary);
+        Assert.NotNull(retryExample);
+        Assert.Equal("upsert_character", retryExample!.Value.GetProperty("params").GetProperty("name").GetString());
     }
 
     [Theory]
