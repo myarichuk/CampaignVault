@@ -26,8 +26,7 @@ public class DeepDiveTools : CampaignToolBase
         [Description("Optional campaign name. Falls back to currently selected.")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var faction = await _repository.GetFactionAsync(session, factionId, effective);
             if (faction == null)
@@ -55,8 +54,7 @@ public class DeepDiveTools : CampaignToolBase
         [Description("Optional campaign name. Falls back to currently selected.")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var quest = await _repository.GetQuestAsync(session, questId, effective);
             if (quest == null)

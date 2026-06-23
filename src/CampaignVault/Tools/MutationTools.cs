@@ -115,7 +115,13 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 toolName: "commit");
         }
 
-        var effective = EffectiveCampaign(campaignName);
+        if (!TryGetEffectiveCampaign(campaignName, out var effective))
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(
+                false,
+                Error: ToolErrors.NoCampaignSelected,
+                Summary: NoCampaignSelectedSummary));
+        }
 
         if (changes.Length > 50)
         {
@@ -184,6 +190,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         return Commit(json, narrative, campaignName);
     }
 
+
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
@@ -204,8 +211,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 Summary: "Cannot advance a negative number of days."));
         }
 
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var result = await _repository.AdvanceWorldAsync(session, days, timeOfDay, effective);
             await _repository.LogEventAsync(session,
@@ -221,7 +227,8 @@ Basic + creating on the fly examples are also shown in the tool description and 
                     timeDoc,
                     config,
                     session,
-                    DaysAdvanced: days));
+                    DaysAdvanced: days,
+                    DisableCooldowns: true));
 
             string[]? cappedPressure = null;
             var rawPressures = result.SimulatorEvents
@@ -233,7 +240,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
             if (rawPressures.Count > 0)
             {
                 cappedPressure = await _pressureManager.FilterAndCapAsync(session, effective,
-                    (int)timeDoc.TotalDaysElapsed, rawPressures);
+                    (int)timeDoc.TotalDaysElapsed, rawPressures, disableCooldowns: true);
             }
 
             if (orchestratorPressures.Length > 0)

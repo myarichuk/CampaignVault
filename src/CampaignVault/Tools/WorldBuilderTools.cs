@@ -36,8 +36,7 @@ This is the best opportunity to create deep, simulatable NPCs.")]
         [Description("Optional campaign name (for future per-campaign scoping of entities).")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async s =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             await _repository.UpsertCharacterAsync(s, character, effective);
             return new ToolResult<Character>(true, character, $"Character upserted (campaign context: {effective}).");
@@ -55,8 +54,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         [Description("Optional campaign name (for future per-campaign scoping of entities).")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async s =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             await _repository.UpsertLocationAsync(s, location, effective);
             return new ToolResult<Location>(true, location, $"Location upserted (campaign context: {effective}).");
@@ -73,8 +71,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         [Description("Optional campaign name (for future per-campaign scoping of entities).")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async s =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             await _repository.UpsertLoreAsync(s, lore, effective);
             return new ToolResult<Lore>(true, lore, $"Lore upserted (campaign context: {effective}).");
@@ -94,8 +91,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
                 Summary: "needName and descriptor are required."));
         }
 
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             await _repository.SetNeedDescriptorAsync(session, needName, descriptor, effective);
             return new ToolResult<string>(true, $"Descriptor for '{needName}' stored for campaign '{effective}'.",
@@ -110,8 +106,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
         [Description("Optional campaign name. Falls back to currently selected.")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var descriptors = await _repository.GetGlobalNeedDescriptorsAsync(session, effective);
             return new ToolResult<Dictionary<string, string>>(true, descriptors,

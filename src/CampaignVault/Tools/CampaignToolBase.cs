@@ -21,12 +21,57 @@ public abstract class CampaignToolBase
         _keys = keys;
     }
 
+    protected const string NoCampaignSelectedSummary =
+        "No campaign selected for this MCP session. Call select_campaign first, or pass campaignName explicitly. " +
+        "When MCP_STATELESS=1, Mcp-Session-Id is unavailable and campaignName is required on every tool call.";
+
     protected string EffectiveCampaign(string? explicitName)
     {
         if (!string.IsNullOrWhiteSpace(explicitName))
-            return explicitName;
+        {
+            return explicitName.Trim().ToLowerInvariant();
+        }
 
-        return string.IsNullOrWhiteSpace(_currentCampaign.CurrentCampaignName) ? throw new InvalidOperationException("CurrentCampaignName should not be null or empty") : _currentCampaign.CurrentCampaignName;
+        if (!_currentCampaign.HasSelection)
+        {
+            throw new CampaignNotSelectedException();
+        }
+
+        return _currentCampaign.CurrentCampaignName;
+    }
+
+    protected bool TryGetEffectiveCampaign(string? explicitName, out string effective)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitName))
+        {
+            effective = explicitName.Trim().ToLowerInvariant();
+            return true;
+        }
+
+        if (!_currentCampaign.HasSelection)
+        {
+            effective = string.Empty;
+            return false;
+        }
+
+        effective = _currentCampaign.CurrentCampaignName;
+        return true;
+    }
+
+    protected Task<ToolResult<T>> ExecuteForCampaignAsync<T>(
+        string? campaignName,
+        Func<string, IAsyncDocumentSession, Task<ToolResult<T>>> action,
+        bool saveChanges = true)
+    {
+        if (!TryGetEffectiveCampaign(campaignName, out var effective))
+        {
+            return Task.FromResult(new ToolResult<T>(
+                false,
+                Error: ToolErrors.NoCampaignSelected,
+                Summary: NoCampaignSelectedSummary));
+        }
+
+        return ExecuteAsync(session => action(effective, session), saveChanges);
     }
 
     protected async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
@@ -43,6 +88,10 @@ public abstract class CampaignToolBase
             try
             {
                 result = await action(session);
+            }
+            catch (CampaignNotSelectedException ex)
+            {
+                return new ToolResult<T>(false, Error: ToolErrors.NoCampaignSelected, Summary: ex.Message);
             }
             catch (ConcurrencyException)
             {

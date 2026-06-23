@@ -11,9 +11,16 @@ namespace CampaignVault.Data;
 public interface ICurrentCampaignContext
 {
     /// <summary>
-    /// The name of the currently selected campaign. Never null.
+    /// The name of the currently selected campaign. Returns <see cref="CampaignSelectionStore.UnselectedSentinel"/>
+    /// when nothing has been selected yet.
     /// </summary>
     string CurrentCampaignName { get; }
+
+    /// <summary>
+    /// Whether <see cref="select_campaign"/> (or <see cref="create_campaign"/>) has established a campaign
+    /// for this context's session key.
+    /// </summary>
+    bool HasSelection { get; }
 
     /// <summary>
     /// Changes the current campaign for subsequent operations in this context.
@@ -22,21 +29,21 @@ public interface ICurrentCampaignContext
 }
 
 /// <summary>
-/// Per-scope in-memory implementation of <see cref="ICurrentCampaignContext"/>.
+/// In-memory implementation of <see cref="ICurrentCampaignContext"/> for tests and direct injection.
 /// </summary>
 public sealed class CurrentCampaignContext : ICurrentCampaignContext
 {
-    private string _current = DefaultCampaign;
-
-    private const string DefaultCampaign = "default";
+    private string _current = CampaignSelectionStore.UnselectedSentinel;
 
     public string CurrentCampaignName => _current;
+
+    public bool HasSelection => !string.IsNullOrEmpty(_current);
 
     public void SetCurrent(string campaignName)
     {
         if (string.IsNullOrWhiteSpace(campaignName))
         {
-            campaignName = DefaultCampaign;
+            campaignName = CampaignSelectionStore.UnselectedSentinel;
         }
 
         _current = campaignName.Trim().ToLowerInvariant();

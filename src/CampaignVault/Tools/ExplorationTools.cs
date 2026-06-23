@@ -41,10 +41,9 @@ public class ExplorationTools : CampaignToolBase
         [Description("The current ID of the location where the party is (string type). Optional. If not provided, you should determine the party's location from recent history or start them at a default location, then call 'get_scene' to load the location's details.")] string? partyLocationId = null,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
         // We now save changes on reads because FilterAndCapAsync needs to persist PressureCooldowns.
         // The underlying repository methods are safe (e.g., GetSceneAsync only marks visited if explicitly requested).
-        return ExecuteAsync(async session => {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var time = await _repository.GetTimeAsync(session, effective);
             
             // Widen rumor search for kickoff
@@ -151,8 +150,7 @@ public class ExplorationTools : CampaignToolBase
         [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session => {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: partyPresent);
             var time = await _repository.GetTimeAsync(session, effective);
             var config = await _repository.GetCampaignConfigAsync(session, effective);
@@ -205,8 +203,7 @@ public class ExplorationTools : CampaignToolBase
                 toolName: "get_npc_context");
         }
 
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session => {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var npc = await _repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null)
             {
@@ -295,8 +292,7 @@ public class ExplorationTools : CampaignToolBase
     public Task<ToolResult<List<Character>>> GetParty(
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session => {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var party = await session.Query<Character>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
                 .Where(c => (string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective) && c.KeepAlive)
@@ -313,9 +309,8 @@ public class ExplorationTools : CampaignToolBase
         string query,
         [Description("Optional campaign name. Falls back to currently selected (for future namespacing).")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
         // Pure read + the previous parallel query pattern was a major source of "active async tasks on dispose".
-        return ExecuteAsync(async session => {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var results = await _repository.UnifiedSearchAsync(session, query, effective);
             return new ToolResult<IEnumerable<object>>(true, results, $"Found {results.Count()} matches (campaign: {effective}).");
         }, saveChanges: false);
@@ -329,8 +324,7 @@ public class ExplorationTools : CampaignToolBase
         int limit = 5,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session => {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var results = await _repository.QueryEventsAsync(session, query, null, limit, effective);
             return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events (campaign: {effective}).");
         }, saveChanges: false);
@@ -343,8 +337,7 @@ public class ExplorationTools : CampaignToolBase
         string characterId,
         [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var npc = await _repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null)

@@ -59,8 +59,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
                 Summary: "Cannot start combat with zero combatants. Pass combatantIds (not combatants) — an array of character IDs, e.g. [\"chars/valen\", \"chars/guard\"]."));
         }
 
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var uniqueIds = combatantIds.Distinct().ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
@@ -120,11 +119,9 @@ Respects the currently selected campaign.")]
         [Description("Optional campaign name. Falls back to currently selected.")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        var combatId = _keys.CombatCurrent(effective);
-
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
+            var combatId = _keys.CombatCurrent(effective);
             var encounter = await session.LoadAsync<CombatEncounter>(combatId);
             if (encounter == null || !encounter.IsActive)
             {
@@ -214,11 +211,9 @@ Day-based effects remain active. Respects the currently selected campaign.")]
         [Description("Optional campaign name. Falls back to currently selected.")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        var combatId = _keys.CombatCurrent(effective);
-
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
+            var combatId = _keys.CombatCurrent(effective);
             var encounter = await session.LoadAsync<CombatEncounter>(combatId);
             if (encounter == null || !encounter.IsActive)
             {

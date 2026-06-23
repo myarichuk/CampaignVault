@@ -8,4 +8,5 @@ internal static class ToolErrors
     public const string RateLimitExceeded = "RateLimitExceeded";
     public const string BadRequest = "BadRequest";
     public const string InvalidArgument = "InvalidArgument";
+    public const string NoCampaignSelected = "NoCampaignSelected";
 }

@@ -20,8 +20,7 @@ Returns the ruleset and system-specific options (e.g., house rules). Respects th
         [Description("Optional campaign name. Falls back to the currently selected campaign (via select_campaign).")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var config = await _repository.GetCampaignConfigAsync(session, effective);
             return new ToolResult<CampaignConfig>(true, config, $"Campaign configuration retrieved for '{effective}'.");
@@ -43,9 +42,7 @@ Example: set_active_system(RulesetSystem.Pf2e, { ""mapEnabled"": ""true"" })")]
         [Description("Optional campaign name. Falls back to currently selected.")]
         string? campaignName = null)
     {
-        var effective = EffectiveCampaign(campaignName);
-
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var campaign = await GetOrCreateCampaignMetaAsync(session, effective, activeSystem, forceLock: false);
 
@@ -173,10 +170,39 @@ Example: select_campaign(""dragonheist"")")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
         @"CAMPAIGN DISCOVERABILITY: Returns the currently active campaign context (name, lock-in status, and active ruleset).
-Use this if you are unsure which campaign you are currently in or if you need to know the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.")]
-    public Task<ToolResult<Campaign>> GetCurrentCampaign()
+Use this if you are unsure which campaign you are currently in or if you need to know the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.
+Pass campaignName explicitly when MCP_STATELESS=1 or when select_campaign was called in a prior request without a session.")]
+    public Task<ToolResult<Campaign>> GetCurrentCampaign(
+        [Description("Optional campaign name. Falls back to the currently selected campaign (via select_campaign).")]
+        string? campaignName = null)
     {
-        var effective = EffectiveCampaign(null);
+        if (!string.IsNullOrWhiteSpace(campaignName))
+        {
+            var explicitName = campaignName.Trim().ToLowerInvariant();
+            return ExecuteAsync(async session =>
+            {
+                var campaignId = _keys.Meta(explicitName);
+                var campaign = await session.LoadAsync<Campaign>(campaignId);
+                if (campaign == null)
+                {
+                    return new ToolResult<Campaign>(false, Error: "NotFound",
+                        Summary:
+                        $"Campaign '{explicitName}' meta document not found. The campaign might not be initialized yet.");
+                }
+
+                return new ToolResult<Campaign>(true, campaign, $"Campaign context for '{explicitName}'.");
+            }, saveChanges: false);
+        }
+
+        if (!_currentCampaign.HasSelection)
+        {
+            return Task.FromResult(new ToolResult<Campaign>(
+                false,
+                Error: ToolErrors.NoCampaignSelected,
+                Summary: NoCampaignSelectedSummary));
+        }
+
+        var effective = _currentCampaign.CurrentCampaignName;
         return ExecuteAsync(async session =>
         {
             var campaignId = _keys.Meta(effective);

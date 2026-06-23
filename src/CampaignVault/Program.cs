@@ -90,6 +90,13 @@ var enableStdioTransport = string.Equals(
     "1",
     StringComparison.OrdinalIgnoreCase);
 
+var mcpStateless = string.Equals(
+    Environment.GetEnvironmentVariable("MCP_STATELESS"),
+    "1",
+    StringComparison.OrdinalIgnoreCase);
+
+builder.Services.AddHttpContextAccessor();
+
 var mcpServerBuilder = builder.Services.AddMcpServer(options =>
 {
     options.ServerInfo = new Implementation
@@ -105,7 +112,7 @@ if (enableStdioTransport)
 }
 
 mcpServerBuilder
-    .WithHttpTransport(options => { options.Stateless = true; })
+    .WithHttpTransport(options => { options.Stateless = mcpStateless; })
     .WithToolsFromAssembly()
     .WithRequestFilters(McpToolErrorFilter.Register);
 
@@ -157,6 +164,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
     Console.Error.WriteLine($"MCP Version: 0.2.0");
     Console.Error.WriteLine($"Database Path: {dbPathSetting}");
     Console.Error.WriteLine($"Auth Enabled: {authEnabled}");
+    Console.Error.WriteLine($"MCP Stateless: {mcpStateless}");
     Console.Error.WriteLine($"MCP / HTTP:  http://localhost:{mcpPort}");
     Console.Error.WriteLine($"gRPC Sync:   http://localhost:{grpcPort}");
     Console.Error.WriteLine("Listening on:");

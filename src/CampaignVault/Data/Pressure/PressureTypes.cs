@@ -25,7 +25,8 @@ public sealed record PressureContext(
     string? RequestedLocationId = null,
     bool PartyPresent = false,
     /// <summary>When set (e.g. advance_world), enables world-scope ambient crowd refresh reminders.</summary>
-    int? DaysAdvanced = null
+    int? DaysAdvanced = null,
+    bool DisableCooldowns = false
 );
 
 public interface IPressureContributor

@@ -46,6 +46,21 @@ public class RavenDBFixture : IDisposable
         }
 
         Store = EmbeddedServer.Instance.GetDocumentStore("TestDB");
+        Store.OnBeforeStore += (sender, args) =>
+        {
+            if (args.Entity != null)
+            {
+                var prop = args.Entity.GetType().GetProperty("CampaignName", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (prop != null && prop.PropertyType == typeof(string))
+                {
+                    var val = prop.GetValue(args.Entity) as string;
+                    if (!string.IsNullOrWhiteSpace(val))
+                    {
+                        prop.SetValue(args.Entity, val.Trim().ToLowerInvariant());
+                    }
+                }
+            }
+        };
         Store.Initialize();
         Raven.Client.Documents.Indexes.IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, Store);
         WaitForStaticIndexes(Store);
@@ -60,6 +75,12 @@ public class RavenDBFixture : IDisposable
         builder.RegisterInstance(Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance)
             .As<ILogger<CampaignRepository>>();
         builder.RegisterType<TestNoOpSimulationEngine>().As<IWorldSimulationEngine>().InstancePerLifetimeScope();
+        
+        // Override the web session campaign context with the in-memory context for tests
+        var defaultCampaignContext = new CurrentCampaignContext();
+        defaultCampaignContext.SetCurrent("default");
+        builder.RegisterInstance(defaultCampaignContext).As<ICurrentCampaignContext>().SingleInstance();
+
         Container = builder.Build();
     }
 
@@ -131,6 +152,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     {
         var repo = _fixture.CreateRepository();
         Assert.NotNull(repo);
+        var field = typeof(CampaignRepository).GetField("_currentCampaign", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var currentCampaign = field.GetValue(repo) as ICurrentCampaignContext;
+        Assert.NotNull(currentCampaign);
+        Assert.Equal(typeof(CurrentCampaignContext), currentCampaign.GetType());
     }
 
     [Fact]

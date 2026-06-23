@@ -16,7 +16,7 @@ internal static class TestCampaignToolsFactory
         CampaignRepository? repository = null,
         IWorldSimulationEngine? simulationEngine = null)
     {
-        var currentCampaign = context ?? new CurrentCampaignContext();
+        var currentCampaign = context ?? fixture.Container.Resolve<ICurrentCampaignContext>();
         var repo = repository ?? fixture.CreateRepository(engineOverride: simulationEngine, overrides: b =>
         {
             if (rollService != null) b.RegisterInstance(rollService).As<IRollService>();

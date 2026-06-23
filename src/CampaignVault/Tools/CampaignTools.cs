@@ -101,7 +101,8 @@ public class CampaignTools(
 
     public Task<ToolResult<List<Campaign>>> ListCampaigns() => management.ListCampaigns();
     public Task<ToolResult<string>> SelectCampaign(string name) => management.SelectCampaign(name);
-    public Task<ToolResult<Campaign>> GetCurrentCampaign() => management.GetCurrentCampaign();
+    public Task<ToolResult<Campaign>> GetCurrentCampaign(string? campaignName = null) =>
+        management.GetCurrentCampaign(campaignName);
 
     // --- Meta ---
     public Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(string? category = null) =>

@@ -47,6 +47,7 @@ public sealed class PressureOrchestrator : IPressureOrchestrator
             ctx.Session,
             ctx.CampaignName,
             (int)ctx.Time.TotalDaysElapsed,
-            merged.Values);
+            merged.Values,
+            ctx.DisableCooldowns);
     }
 }

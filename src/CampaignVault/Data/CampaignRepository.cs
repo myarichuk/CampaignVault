@@ -22,16 +22,15 @@ public class CampaignRepository
     {
         if (!string.IsNullOrWhiteSpace(campaignName))
         {
-            return campaignName;
+            return campaignName.Trim().ToLowerInvariant();
         }
 
-        if (!string.IsNullOrWhiteSpace(_currentCampaign?.CurrentCampaignName))
+        if (_currentCampaign?.HasSelection == true)
         {
             return _currentCampaign.CurrentCampaignName;
         }
 
-        throw new InvalidOperationException(
-            "A campaign name must be provided explicitly or via ICurrentCampaignContext.");
+        return "default";
     }
 
     private static bool IsVisibleInCampaign(string? entityCampaignName, string effectiveCampaign) =>
@@ -63,10 +62,7 @@ public class CampaignRepository
         _changeDispatcher = changeDispatcher ?? throw new ArgumentNullException(nameof(changeDispatcher));
     }
 
-
     /// <summary>
-    /// Opens an asynchronous document session with Optimistic Concurrency enabled.
-    /// </summary>
     public IAsyncDocumentSession OpenSession()
     {
         var session = _store.OpenAsyncSession();
@@ -1418,11 +1414,12 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var quests = await session.Query<Quest, Quest_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
             .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
             .Take(20).ToListAsync();
 
         return quests
-            .Where(q => (string.IsNullOrEmpty(q.CampaignName) || q.CampaignName == effective)
+            .Where(q => IsVisibleInCampaign(q.CampaignName, effective)
                         && q.RelatedLocationIds.Contains(locationId))
             .ToList();
     }
@@ -1436,10 +1433,11 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var factions = await session.Query<Faction, Faction_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
             .Take(50).ToListAsync();
 
         return factions
-            .Where(f => (string.IsNullOrEmpty(f.CampaignName) || f.CampaignName == effective)
+            .Where(f => IsVisibleInCampaign(f.CampaignName, effective)
                         && (f.ControllingTerritory == locationId || f.TerritoryLocationIds.Contains(locationId)))
             .ToList();
     }

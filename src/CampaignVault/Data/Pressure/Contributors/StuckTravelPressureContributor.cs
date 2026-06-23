@@ -13,6 +13,7 @@ public sealed class StuckTravelPressureContributor : IPressureContributor
     {
         var pressures = new List<WorldPressureItem>();
 
+
         if (ctx.Scene?.PresentNPCs != null)
         {
             foreach (var npc in ctx.Scene.PresentNPCs)
