@@ -220,6 +220,13 @@ public class SystemExtension
     public float? Movement { get; set; }
 
     /// <summary>
+    /// Authoritative HP from a creature stat block (Monster Manual, bestiary, etc.).
+    /// Skips formula derivation; PCs should omit this and omit maxHp on create. Mutually redundant with maxHp on character_create.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("statBlockHp")]
+    public int? StatBlockHp { get; set; }
+
+    /// <summary>
     /// Open-ended custom narrative attributes (e.g. "corruption", "reputation", "fear", "honor", "debt_pressure").
     /// Also used by ruleset extensions for combat stats not covered by the named fields above.
     /// </summary>

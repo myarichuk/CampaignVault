@@ -38,11 +38,11 @@ public sealed class CharacterDistressPressureContributor : IPressureContributor
                     PressureSeverity.EngineWarning,
                     c.Id,
                     $"[ENGINE] {c.Name} has no MaxHp set (created with 0 or omitted). "
-                    + $"This MUST be fixed immediately. Example commit: "
-                    + $"[ {{ \"$type\": \"character_create\", \"characterId\": \"{c.Id}\", \"name\": \"{c.Name}\", \"maxHp\": <VALUE>, \"currentHp\": <VALUE> }} ] "
-                    + "or patch via character_create on existing ID. "
-                    + "D&D 5e PCs: max hit die + CON mod (Fighter=d10, Wizard=d6, Cleric=d8, etc.). "
-                    + "NPCs/creatures: use the stat block value or infer a narratively appropriate number.",
+                    + $"PCs: omit maxHp and supply bootstrap fields — engine derives HP. Example: "
+                    + $"[ {{ \"$type\": \"character_create\", \"characterId\": \"{c.Id}\", \"name\": \"{c.Name}\", \"keepAlive\": true, "
+                    + $"\"classLevel\": \"Human Fighter 1\", \"systemStats\": {{ \"$system\": \"dnd5e\", \"hitDie\": \"d10\", \"level\": 1, \"constitution\": 14 }} }} ] "
+                    + "Creature stat blocks: set systemStats.statBlockHp or maxHp (e.g. Goblin statBlockHp: 7). "
+                    + "Optional currentHp alone for wounded state at create.",
                     UninitializedHpGroupingKey));
                 continue; // skip dying/dead check; HP is simply not set yet
             }

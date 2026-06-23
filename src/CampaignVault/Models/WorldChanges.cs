@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Models;
 
@@ -25,6 +26,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(LocationCreate), "location_create")]
 [JsonDerivedType(typeof(LocationUpdate), "location_update")]
 [JsonDerivedType(typeof(CharacterCreate), "character_create")]
+[JsonDerivedType(typeof(LevelUpChange), "level_up")]
 [JsonDerivedType(typeof(ScheduleChange), "schedule_change")]
 [JsonDerivedType(typeof(ItemCreate), "item_create")]
 [JsonDerivedType(typeof(TravelChange), "travel")]
@@ -615,27 +617,25 @@ public class CharacterCreate : WorldChange
     public PsychologyProfile? Psychology { get; set; }
 
     [Description("""
-        The maximum hit points of the character.
-        REQUIRED for KeepAlive=true characters — the engine will emit an ENGINE WARNING until this is supplied.
-        For D&D 5e PCs: max hit die + CON modifier at level 1 (e.g. Fighter → d10+CON, Wizard → d6+CON).
-        For 5e NPCs/creatures: use the value from the stat block (e.g. 'Goblin' = 7 HP, 'Troll' = 84 HP).
-        For homebrew: infer from the stat block you create, or use a narratively appropriate value.
-        If omitted, stored as 0 and treated as 'not yet initialized'.
+        Maximum hit points. PCs should OMIT this — the bootstrap pipeline derives HP from systemStats + classLevel.
+        Creature stat blocks: set maxHp here OR systemStats.statBlockHp (preferred for clarity). Both skip formula derivation.
+        If omitted, engine derives when possible; otherwise emits ENGINE WARNING until bootstrapped.
         """)]
     [JsonPropertyName("maxHp")]
     public int? MaxHp { get; set; }
 
-    [Description("The current hit points of the character. If omitted, defaults to maxHp (full health at creation).")]
+    [Description("Current hit points. If omitted at create, defaults to derived or explicit maxHp. Set alone for wounded state (maxHp still derived).")]
     [JsonPropertyName("currentHp")]
     public int? CurrentHp { get; set; }
 
     [Description("""
         Ruleset-specific combat and skill stats. REQUIRED for combatants (KeepAlive or maxHp > 0) — engine emits ENGINE WARNING until bootstrapped.
         Include the $system discriminator matching the active campaign ruleset: dnd5e, pf2e, or fallout2d20.
-        D&D 5e: armorClass, ability scores, skillModifiers, savingThrowModifiers.
-        PF2e: armorClass, ability mods (*Mod fields), skillModifiers (include Perception), savingThrowModifiers.
-        Fallout 2d20: SPECIAL attributes, defense, skills, tagSkills, damageResistance.
-        Infer from stat blocks / class+level for PCs. Example goblin (5e): { "$system": "dnd5e", "armorClass": 15, "dexterity": 14, "skillModifiers": { "Stealth": 6 } }.
+        PC bootstrap (omit maxHp) — engine derives HP, AC, proficiency, etc.:
+        - dnd5e: hitDie (e.g. "d12"), level, constitution, optional hpMode (average|rolled)
+        - pf2e: classHpPerLevel, ancestryHp, level, constitutionMod
+        - fallout2d20: endurance, luck, level, optional hpPerLevel (defaults to endurance)
+        Creature stat blocks: statBlockHp on systemStats (or maxHp on this change). Explicit HP skips formula only; AC/proficiency still derive.
         """)]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
@@ -643,6 +643,29 @@ public class CharacterCreate : WorldChange
     [Description("Optional class and level string (e.g. 'Human Fighter 2') to help infer stats when bootstrapping.")]
     [JsonPropertyName("classLevel")]
     public string? ClassLevel { get; set; }
+}
+
+/// <summary>
+/// Increase a character's level and apply ruleset-specific HP gains.
+/// </summary>
+public class LevelUpChange : WorldChange
+{
+    [Description("ID of the character gaining levels (e.g. 'chars/kergil').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("How many levels to gain (default 1).")]
+    [JsonPropertyName("levelsGained")]
+    public int LevelsGained { get; set; } = 1;
+
+    [Description("Override HP derivation mode for this level gain (5e only: average or rolled).")]
+    [JsonPropertyName("hpMode")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public HitPointDerivationMode? HpMode { get; set; }
+
+    [Description("If true, also increase currentHp by the same amount as MaxHp gain (full heal on level). Default false.")]
+    [JsonPropertyName("healToMatch")]
+    public bool HealToMatch { get; set; }
 }
 
 /// <summary>

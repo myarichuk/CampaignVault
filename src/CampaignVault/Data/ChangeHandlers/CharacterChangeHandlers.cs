@@ -1,15 +1,18 @@
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
 public class CharacterCreateHandler : IWorldChangeHandler
 {
     private readonly CampaignDocumentKeys _keys;
+    private readonly CharacterBootstrapOrchestrator _bootstrap;
 
-    public CharacterCreateHandler(CampaignDocumentKeys keys)
+    public CharacterCreateHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+        _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
     }
 
     public bool ShouldHandle(WorldChange change) => change is CharacterCreate;
@@ -86,6 +89,11 @@ public class CharacterCreateHandler : IWorldChangeHandler
                     SystemStatsMerger.CoerceToRuleset(cc.SystemStats, existingSystem));
             }
 
+            var activeSystemForExisting =
+                await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
+            await ApplyBootstrapAsync(existing, activeSystemForExisting, cc.MaxHp, cc.CurrentHp, null,
+                BootstrapTrigger.Create, context, ct);
+
             var hint = existing.KeepAlive
                 ? " For existing PCs, prefer commit with activity/character_update instead of character_create. Call get_party to confirm PCs already exist."
                 : string.Empty;
@@ -131,8 +139,115 @@ public class CharacterCreateHandler : IWorldChangeHandler
             newChar.CampaignName = context.CampaignName;
         }
 
+        await ApplyBootstrapAsync(newChar, activeSystem, cc.MaxHp, cc.CurrentHp, null, BootstrapTrigger.Create, context, ct);
+
         await context.Session!.StoreAsync(newChar, ct);
         context.RegisterNewCharacter(newChar);
+
+        return ChangeHandlerResult.Ok;
+    }
+
+    private Task ApplyBootstrapAsync(
+        Character character,
+        RulesetSystem activeSystem,
+        int? explicitMaxHp,
+        int? explicitCurrentHp,
+        HitPointDerivationMode? hpMode,
+        BootstrapTrigger trigger,
+        ChangeContext context,
+        CancellationToken ct) =>
+        CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
+            _bootstrap, character, activeSystem, explicitMaxHp, explicitCurrentHp, trigger, context, hpMode, ct);
+
+    internal static void RecordBootstrapReport(ChangeContext context, BootstrapReport report)
+    {
+        foreach (var message in report.Messages)
+        {
+            context.RecordMessage(message);
+        }
+
+        foreach (var hint in report.LlmHints)
+        {
+            context.RecordMessage($"[BOOTSTRAP HINT] {hint}");
+        }
+    }
+}
+
+public class LevelUpChangeHandler : IWorldChangeHandler
+{
+    private readonly CampaignDocumentKeys _keys;
+    private readonly CharacterBootstrapOrchestrator _bootstrap;
+
+    public LevelUpChangeHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap)
+    {
+        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+        _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
+    }
+
+    public bool ShouldHandle(WorldChange change) => change is LevelUpChange;
+
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+        CancellationToken ct = default)
+    {
+        var levelUp = (LevelUpChange)change;
+        if (string.IsNullOrWhiteSpace(levelUp.CharacterId))
+        {
+            return ChangeHandlerResult.Failure("characterId is required.");
+        }
+
+        if (levelUp.LevelsGained <= 0)
+        {
+            return ChangeHandlerResult.Failure("levelsGained must be positive.");
+        }
+
+        if (!context.Characters.TryGetValue(levelUp.CharacterId, out var character))
+        {
+            character = context.Session != null
+                ? await context.Session.LoadAsync<Character>(levelUp.CharacterId, ct)
+                : null;
+            if (character == null)
+            {
+                return ChangeHandlerResult.Failure($"Character '{levelUp.CharacterId}' not found.");
+            }
+
+            context.RegisterNewCharacter(character);
+        }
+
+        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
+        var previousMax = character.MaxHp;
+        var report = await _bootstrap.ApplyLevelGainAsync(new BootstrapContext
+        {
+            Character = character,
+            ActiveSystem = activeSystem,
+            LevelsGained = levelUp.LevelsGained,
+            HpModeOverride = levelUp.HpMode,
+            Trigger = BootstrapTrigger.LevelUp,
+            Session = context.Session,
+            CampaignName = context.CampaignName,
+        }, ct);
+
+        CharacterCreateHandler.RecordBootstrapReport(context, report);
+
+        var hpStepRan = report.Steps.Any(s => s.StepName.Contains("hit_points", StringComparison.Ordinal));
+        if (character.SystemStats?.StatBlockHp is > 0 && !hpStepRan)
+        {
+            context.RecordMessage(
+                $"Warning: level_up for '{levelUp.CharacterId}' skipped formula HP gain because systemStats.statBlockHp "
+                + $"({character.SystemStats.StatBlockHp}) is set. Remove statBlockHp for leveled PCs, or patch maxHp manually.");
+        }
+
+        if (report.Steps.Count == 0)
+        {
+            context.RecordMessage(
+                $"Warning: level_up for '{levelUp.CharacterId}' applied no ruleset changes. "
+                + "Ensure systemStats has bootstrap fields (5e: hitDie/level/constitution; pf2e: classHpPerLevel/ancestryHp/level; "
+                + "fallout2d20: endurance/luck/level) and the campaign active ruleset supports level_up.");
+        }
+
+        if (levelUp.HealToMatch && character.MaxHp > previousMax)
+        {
+            character.CurrentHp += character.MaxHp - previousMax;
+        }
 
         return ChangeHandlerResult.Ok;
     }
@@ -173,10 +288,12 @@ public class ScheduleChangeHandler : IWorldChangeHandler
 public class CharacterUpdateHandler : IWorldChangeHandler
 {
     private readonly CampaignDocumentKeys _keys;
+    private readonly CharacterBootstrapOrchestrator _bootstrap;
 
-    public CharacterUpdateHandler(CampaignDocumentKeys keys)
+    public CharacterUpdateHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+        _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
     }
 
     public bool ShouldHandle(WorldChange change) => change is CharacterUpdate;
@@ -229,6 +346,9 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             character.SystemStats = SystemStatsMerger.Merge(
                 character.SystemStats ?? SystemStatsMerger.CreateDefault(activeSystem),
                 SystemStatsMerger.CoerceToRuleset(cu.SystemStats, activeSystem));
+
+            await CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
+                _bootstrap, character, activeSystem, null, null, BootstrapTrigger.SystemStatsPatch, context, ct: ct);
         }
 
         context.RecordMessage($"Updated character '{cu.CharacterId}'.");
@@ -239,10 +359,12 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 public class SystemStatsChangeHandler : IWorldChangeHandler
 {
     private readonly CampaignDocumentKeys _keys;
+    private readonly CharacterBootstrapOrchestrator _bootstrap;
 
-    public SystemStatsChangeHandler(CampaignDocumentKeys keys)
+    public SystemStatsChangeHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+        _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
     }
 
     public bool ShouldHandle(WorldChange change) => change is SystemStatsChange;
@@ -278,6 +400,9 @@ public class SystemStatsChangeHandler : IWorldChangeHandler
         character.SystemStats = SystemStatsMerger.Merge(
             character.SystemStats ?? SystemStatsMerger.CreateDefault(activeSystem),
             SystemStatsMerger.CoerceToRuleset(ssc.SystemStats, activeSystem));
+
+        await CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
+            _bootstrap, character, activeSystem, null, null, BootstrapTrigger.SystemStatsPatch, context, ct: ct);
 
         context.RecordMessage($"Updated system stats for '{ssc.CharacterId}'.");
         return ChangeHandlerResult.Ok;

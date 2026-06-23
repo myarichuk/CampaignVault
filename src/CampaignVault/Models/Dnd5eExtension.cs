@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Models;
 
@@ -38,6 +39,19 @@ public class Dnd5eExtension : SystemExtension
     /// </summary>
     [JsonPropertyName("savingThrowModifiers")]
     public Dictionary<string, int> SavingThrowModifiers { get; set; } = [];
+
+    /// <summary>Hit die expression for HP derivation (e.g. "d12"). Used when maxHp is omitted on create.</summary>
+    [JsonPropertyName("hitDie")]
+    public string? HitDie { get; set; }
+
+    /// <summary>Character level for HP/proficiency derivation. Parsed from classLevel when omitted.</summary>
+    [JsonPropertyName("level")]
+    public int? Level { get; set; }
+
+    /// <summary>Whether to average or roll per-level HP gains when bootstrapping.</summary>
+    [JsonPropertyName("hpMode")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public HitPointDerivationMode? HpMode { get; set; }
 
     public int GetAbilityModifier(int score)
     {

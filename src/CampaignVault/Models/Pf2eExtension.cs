@@ -31,4 +31,13 @@ public class Pf2eExtension : SystemExtension
     
     [JsonPropertyName("savingThrowModifiers")]
     public Dictionary<string, int> SavingThrowModifiers { get; set; } = [];
+
+    [JsonPropertyName("classHpPerLevel")]
+    public int? ClassHpPerLevel { get; set; }
+
+    [JsonPropertyName("ancestryHp")]
+    public int? AncestryHp { get; set; }
+
+    [JsonPropertyName("level")]
+    public int? Level { get; set; }
 }

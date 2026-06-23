@@ -42,4 +42,11 @@ public class Fallout2d20Extension : SystemExtension
     
     [JsonPropertyName("thirstRateMultiplier")]
     public float ThirstRateMultiplier { get; set; } = 1.0f;
+
+    [JsonPropertyName("level")]
+    public int? Level { get; set; }
+
+    /// <summary>HP gained per level after L1. Defaults to Endurance when bootstrapping.</summary>
+    [JsonPropertyName("hpPerLevel")]
+    public int? HpPerLevel { get; set; }
 }
