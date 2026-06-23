@@ -17,6 +17,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 - **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in). World entities are campaign-tagged and filtered at query time; characters/locations with no `CampaignName` may still appear across campaigns (shared-universe design).
 - **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20, Narrative), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
 - **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
+- **Character Bootstrap Pipeline**: Per-ruleset HP/defense/proficiency derivation when PCs omit `maxHp` on create/upsert; `level_up` for incremental gains. Put `hitDie`/`level` on typed `systemStats` (not `attributes`). Creature stat blocks use `statBlockHp` or `maxHp` (HP formula only — AC/proficiency still derive).
 
 ## Core Tool Surface
 

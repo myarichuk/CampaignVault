@@ -58,11 +58,11 @@ Typical write flow: `commit` → `WorldChangeDispatcher` → handler(s) per chan
 
 ## World-Change Dispatch
 
-`commit` accepts a polymorphic `WorldChange[]` (30 `$type` discriminators in `WorldChanges.cs`, including legacy `spatial_relation`). Each change is routed to exactly one `IWorldChangeHandler` via `ShouldHandle`.
+`commit` accepts a polymorphic `WorldChange[]` (33 `$type` discriminators in `WorldChanges.cs`, including legacy `spatial_relation` and `level_up`). Each change is routed to exactly one `IWorldChangeHandler` via `ShouldHandle`.
 
 Registered handlers (via DI in `Program.cs`):
 
-- Combat / stats: `HpChangeHandler`, `AttributeChangeHandler`, `StatusChangeHandler`, `RulesetActionHandler`
+- Combat / stats: `HpChangeHandler`, `AttributeChangeHandler`, `StatusChangeHandler`, `RulesetActionHandler`, `LevelUpChangeHandler`, `SystemStatsChangeHandler`
 - Inventory: `ItemTransferHandler`, `ItemCreateHandler`, `ItemUpdateHandler`
 - Narrative: `EventOccurredHandler`, `RumorEvolvesHandler`, `RelationshipChangeHandler`, `MoodChangeHandler`, `ActivityChangeHandler`
 - NPC mind: `NeedChangeHandler`, `KnowledgeUpdateHandler`, `ScheduleChangeHandler`
@@ -164,6 +164,7 @@ Implemented and registered at startup:
 | `IActionResolution` | Resolves `ruleset_action` commits (attacks, saves, skill checks) |
 | `ICombatRuleset` | Rolls initiative for `start_combat` |
 | `IRulesetPressureContributor` | System-specific read-side pressures |
+| `ICharacterBootstrapPipeline` | Per-ruleset HP/defense/proficiency derivation at create, upsert, and level-up |
 
 | Implementation | System | Notable mechanics |
 |----------------|--------|-------------------|
@@ -172,6 +173,16 @@ Implemented and registered at startup:
 | `Fallout2d20RulesetResolver` | Fallout 2d20 | d20 dice pools, target numbers, opposed pool contested checks |
 
 `RulesetModuleSelector` validates that every `RulesetSystem` enum value has a registered module at startup. `DefaultRollService` provides deterministic dice evaluation.
+
+### Character bootstrap pipeline
+
+`CharacterBootstrapOrchestrator` runs each ruleset's ordered `ICharacterBootstrapPipeline` when:
+
+- `character_create` / `upsert_character` omits `maxHp` (or `maxHp <= 0`)
+- `system_stats` patch leaves `maxHp <= 0`
+- `level_up` commits incremental HP gains
+
+PCs omit `maxHp`; the pipeline derives HP from typed `systemStats` fields. Creature stat blocks use `maxHp` or `systemStats.statBlockHp` — these skip HP formula only; defense/proficiency steps still run. Steps live under `Rulesets/Bootstrap/`. Defense steps emit `[BOOTSTRAP HINT]` messages with copy-paste `item_create` armor JSON when worn armor is missing.
 
 Combat flow: `start_combat` rolls initiative once per combatant, sorts turn order, stores `CombatEncounter` at the campaign key. `next_turn` advances turns and expires round-based status effects. HP and status mutations during combat go through `commit`, not the turn tools. `get_scene` returns `ActiveCombat` when combat is active at that location.
 
