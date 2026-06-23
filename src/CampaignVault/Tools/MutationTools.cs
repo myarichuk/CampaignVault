@@ -45,7 +45,7 @@ Use ActivityChange liberally to keep get_scene in sync with your narrative.
 
 See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
 
-Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, system_stats, knowledge_update, schedule_change, item_create, travel, rest, scene_interrupt_check, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
+Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, system_stats, level_up, knowledge_update, schedule_change, item_create, travel, rest, scene_interrupt_check, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
 
 **Crowd interrupt roll (`scene_interrupt_check`)**: After a tense beat in a location with `ambientCrowd`, optionally commit a single-roll crowd reaction. Supply `riskModifier` (-50..+50) like `encounterRiskModifier` on travel; omit to auto-derive from `visualTags`/appearance. On success the engine promotes ONE transient from the crowd. Cooldown: one interrupt per location per day. Example:
 [ { ""$type"": ""scene_interrupt_check"", ""locationId"": ""locations/training-hall"", ""characterId"": ""chars/valen"", ""riskModifier"": 25, ""notes"": ""Bloodied wanted face, crowd hostile"" } ]

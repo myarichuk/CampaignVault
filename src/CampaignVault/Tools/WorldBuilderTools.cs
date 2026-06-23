@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Bootstrap;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -8,12 +10,16 @@ namespace CampaignVault.Tools;
 [McpServerToolType]
 public class WorldBuilderTools : CampaignToolBase
 {
+    private readonly CharacterBootstrapOrchestrator _bootstrap;
+
     public WorldBuilderTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
-        ICurrentCampaignContext currentCampaign)
+        ICurrentCampaignContext currentCampaign,
+        CharacterBootstrapOrchestrator bootstrap)
         : base(repository, currentCampaign, keys)
     {
+        _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
     }
 
     [ToolCategory("World builder")]
@@ -23,13 +29,17 @@ public class WorldBuilderTools : CampaignToolBase
 Use this to seed or update full NPC records, including rich psychological data.
 
 STRONGLY encouraged to populate:
-- Mind.Wants, Mind.Fears, Mind.Knows
-- Detailed backstory in Notes
+- psychology.wants, psychology.fears, psychology.memories
+- Detailed backstory in notes
 - Schedule + Routines + StateModifiers
-- Mind.NeedDescriptors (human-readable explanations for any custom needs)
-- Equipment via Items (set HolderId to the character)
+- needs.needDescriptors (human-readable explanations for any custom needs)
+- Equipment via item_create in commit (set holderId to the character)
 
-This is the best opportunity to create deep, simulatable NPCs.")]
+HP bootstrap: omit maxHp for PCs — engine derives from typed systemStats (hitDie, level, constitution, etc.).
+Creature stat blocks: set maxHp OR systemStats.statBlockHp (not both needed). currentHp alone sets wounded state.
+Put hitDie on dnd5e systemStats root (NOT in attributes). Class flavor goes in notes.
+
+During play, prefer commit (character_create, level_up, activity) over repeated upserts.")]
     public Task<ToolResult<Character>> UpsertCharacter(
         [Description("The full Character object to create or replace. Strongly typed.")]
         Character character,
@@ -38,8 +48,29 @@ This is the best opportunity to create deep, simulatable NPCs.")]
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
+            var config = await s.LoadAsync<CampaignConfig>(_keys.Config(effective));
+            var activeSystem = config?.ActiveSystem ?? RulesetSystem.Dnd5e;
+            var hp = BootstrapHpResolver.Resolve(character, null,
+                character.CurrentHp > 0 ? character.CurrentHp : null);
+            var report = await _bootstrap.ApplyCreationAsync(new BootstrapContext
+            {
+                Character = character,
+                ActiveSystem = activeSystem,
+                ExplicitMaxHp = hp.ExplicitMaxHp,
+                ExplicitCurrentHp = hp.ExplicitCurrentHp,
+                Trigger = BootstrapTrigger.Upsert,
+                Session = s,
+                CampaignName = effective,
+            });
+
+            var extras = report.Messages
+                .Concat(report.LlmHints.Select(h => $"[BOOTSTRAP HINT] {h}"))
+                .ToList();
             await _repository.UpsertCharacterAsync(s, character, effective);
-            return new ToolResult<Character>(true, character, $"Character upserted (campaign context: {effective}).");
+            var summary = extras.Count > 0
+                ? $"Character upserted (campaign: {effective}). {string.Join(" ", extras)}"
+                : $"Character upserted (campaign context: {effective}).";
+            return new ToolResult<Character>(true, character, summary);
         });
     }
 

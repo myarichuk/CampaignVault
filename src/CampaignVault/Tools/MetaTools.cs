@@ -259,8 +259,17 @@ After Beat 4: `get_world_state` will show the quest as resolved, both factions a
 
 **Character Combat Bootstrap — required for all combatants (KeepAlive OR maxHp > 0):**
 The engine emits ENGINE WARNING until BOTH are set:
-1. **HP**: `maxHp` (+ optional `currentHp`)
+1. **HP**: `maxHp` (+ optional `currentHp`) — or omit `maxHp` and let the ruleset bootstrap pipeline derive it
 2. **systemStats**: ruleset-specific combat stats via `systemStats` on `character_create` or `system_stats` patch
+
+**Auto-bootstrap (omit maxHp for PCs):** Pipeline runs at `character_create`, `upsert_character`, `system_stats` patch, and `level_up`. PCs: omit `maxHp` — supply typed bootstrap fields. Creature stat blocks: `systemStats.statBlockHp` or `maxHp` (skips HP formula only; AC/proficiency still derive). `currentHp` alone = wounded at create.
+
+**Typed bootstrap fields (NOT in `attributes` — numbers only there):**
+- **5e**: `hitDie` (e.g. ""d12""), `level`, `constitution`, `hpMode` (`average` | `rolled`), `classLevel` fallback
+- **PF2e**: `classHpPerLevel`, `ancestryHp`, `level`, `constitutionMod`
+- **Fallout**: `endurance`, `luck`, `level`, optional `hpPerLevel` (defaults to endurance)
+
+5e also derives `armorClass` (unarmored 10 + DEX), `attributes.proficiencyBonus`, `attributes.passivePerception`, and emits `[BOOTSTRAP HINT]` with `item_create` armor JSON when no worn armor is detected.
 
 D&D 5e reference (level 1, max hit die + CON modifier):
 - Fighter / Paladin / Ranger: d10 → 10 + CON mod
@@ -272,14 +281,20 @@ D&D 5e reference (level 1, max hit die + CON modifier):
 For NPCs/creatures: use the stat block value (e.g. Goblin = 7 HP, AC 15, DEX 14).
 Infer from class+level for PCs. Pure flavor transients (no HP, not KeepAlive) skip this.
 
-Full 5e bootstrap at create:
-{ ""$type"": ""character_create"", ""characterId"": ""chars/goblin-scout"", ""name"": ""Goblin Scout"", ""maxHp"": 7, ""currentHp"": 7, ""classLevel"": ""Goblin 1"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 15, ""dexterity"": 14, ""strength"": 8, ""skillModifiers"": { ""Stealth"": 6, ""Perception"": 2 }, ""savingThrowModifiers"": { ""Dexterity"": 2 } } }
+5e auto-bootstrap (no maxHp — engine derives HP, AC, proficiency):
+{ ""$type"": ""character_create"", ""characterId"": ""chars/kergil"", ""name"": ""Kergil"", ""keepAlive"": true, ""classLevel"": ""Human Barbarian 10"", ""systemStats"": { ""$system"": ""dnd5e"", ""hitDie"": ""d12"", ""level"": 10, ""constitution"": 16, ""hpMode"": ""average"", ""dexterity"": 14, ""skillModifiers"": { ""Athletics"": 9, ""Perception"": 5 } } }
 
-PF2e bootstrap:
-{ ""$type"": ""character_create"", ""characterId"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""maxHp"": 32, ""currentHp"": 32, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""armorClass"": 19, ""strengthMod"": 4, ""dexterityMod"": 2, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 }, ""savingThrowModifiers"": { ""Fortitude"": 9, ""Reflex"": 7, ""Will"": 6 } } }
+5e creature stat block (statBlockHp — HP formula skipped, AC still bootstrapped if omitted):
+{ ""$type"": ""character_create"", ""characterId"": ""chars/goblin-scout"", ""name"": ""Goblin Scout"", ""classLevel"": ""Goblin 1"", ""systemStats"": { ""$system"": ""dnd5e"", ""statBlockHp"": 7, ""dexterity"": 14, ""strength"": 8, ""skillModifiers"": { ""Stealth"": 6, ""Perception"": 2 }, ""savingThrowModifiers"": { ""Dexterity"": 2 } } }
 
-Fallout 2d20 bootstrap:
-{ ""$type"": ""character_create"", ""characterId"": ""chars/raider"", ""name"": ""Raider"", ""maxHp"": 10, ""currentHp"": 10, ""systemStats"": { ""$system"": ""fallout2d20"", ""agility"": 7, ""perception"": 6, ""endurance"": 5, ""defense"": 1, ""skills"": { ""SmallGuns"": 2 }, ""tagSkills"": [""SmallGuns""] } }
+Level up (5e HP gain; optional `healToMatch` to bump currentHp):
+{ ""$type"": ""level_up"", ""characterId"": ""chars/kergil"", ""levelsGained"": 1, ""hpMode"": ""rolled"", ""healToMatch"": false }
+
+PF2e auto-bootstrap:
+{ ""$type"": ""character_create"", ""characterId"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""classHpPerLevel"": 10, ""ancestryHp"": 8, ""level"": 2, ""constitutionMod"": 2, ""armorClass"": 19, ""strengthMod"": 4, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 } } }
+
+Fallout auto-bootstrap:
+{ ""$type"": ""character_create"", ""characterId"": ""chars/raider"", ""name"": ""Raider"", ""systemStats"": { ""$system"": ""fallout2d20"", ""endurance"": 6, ""luck"": 5, ""level"": 3, ""agility"": 7, ""perception"": 6, ""skills"": { ""SmallGuns"": 2 }, ""tagSkills"": [""SmallGuns""] } }
 
 Patch stats on existing character:
 { ""$type"": ""system_stats"", ""characterId"": ""chars/campaign-thorin"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 16, ""strength"": 16, ""skillModifiers"": { ""Athletics"": 5 } } }

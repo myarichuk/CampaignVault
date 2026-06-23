@@ -23,6 +23,8 @@ internal static class CommitEnumCheatSheet
 - `knowledge_update.valence` → Positive, Negative, Neutral, Traumatic
 - `engagement_relation.category` → Physical, Social, Medical, Attention, Proximity
 - `engagement_relation.restrictionLevel` → None, Soft, Hard
+- `level_up.levelsGained` → positive integer (default 1); `hpMode` (5e) → average, rolled
+- PCs: omit `maxHp` on create — use `systemStats.hitDie`/`level`/`constitution`; creatures use `statBlockHp` or `maxHp`
 
 Full enum tables: call `get_help` → section **Commit Enum Values**.
 """;
@@ -104,10 +106,24 @@ Note: `quest_create.objectives[]` only needs `description` (+ optional `rewardHi
 
 Cooldown: one successful interrupt per location per in-game day. Do not use during active combat or on every dialog line.
 
-### character_create.systemStats
+### character_create.systemStats / system_stats
 | Field | Valid values |
 |-------|----------------|
 | `$system` | Dnd5e, Pathfinder2e, Fallout2d20 |
+| `hpMode` (5e) | average, rolled |
+| `hitDie` (5e) | String on extension root — e.g. `"d12"` (NOT in `attributes`) |
+| `level` | Integer on extension root |
+| `classHpPerLevel`, `ancestryHp` (PF2e) | Integers for HP derivation |
+| `endurance`, `luck`, `hpPerLevel` (Fallout) | Integers for HP derivation |
+| `statBlockHp` (all systems) | Authoritative creature HP; skips formula. PCs should omit. |
+
+### level_up (`$type: level_up`)
+| Field | Valid values / notes |
+|-------|----------------------|
+| `characterId` | Required character ID |
+| `levelsGained` | Positive integer (default 1) |
+| `hpMode` (5e) | average, rolled — override for this level gain |
+| `healToMatch` | Boolean — if true, increase `currentHp` by the same amount as `maxHp` gain |
 
 """;
 }

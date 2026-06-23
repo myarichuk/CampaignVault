@@ -31,17 +31,17 @@ internal static partial class McpToolErrorFilter
                 var (summary, retryExample) = BuildMissingParamResponse(toolName, paramName);
                 return ToErrorResult(summary, retryExample);
             }
-            catch (JsonException ex)
+            catch (Exception ex) when (TryUnwrapJsonException(ex, out var jsonEx))
             {
                 var toolName = request.Params?.Name ?? "unknown";
                 if (ToolCallExamples.TryGet(toolName, out _))
                 {
                     var (summary, retryExample) =
-                        ToolCallExamples.BuildDeserializationErrorResponse(toolName, ex.Message);
+                        ToolCallExamples.BuildDeserializationErrorResponse(toolName, jsonEx.Message);
                     return ToErrorResult(summary, retryExample);
                 }
 
-                return ToErrorResult($"Invalid arguments for '{toolName}': {ex.Message}", null);
+                return ToErrorResult($"Invalid arguments for '{toolName}': {jsonEx.Message}", null);
             }
         });
     }
@@ -78,7 +78,7 @@ internal static partial class McpToolErrorFilter
             ("start_combat", "combatantIds") =>
                 "Pass an array of character IDs participating in combat.",
             ("upsert_character", "character") =>
-                "Pass the full Character object (use flattened fields if your client wraps objects).",
+                "Pass the full Character object (legacy key 'c' is accepted). systemStats.attributes is numeric-only; put class flavor in notes.",
             ("upsert_location", "location") =>
                 "Pass the full Location object. Location.type must be Region, Settlement, District, Building, Room, or Wilderness.",
             ("upsert_lore", "lore") =>
@@ -119,6 +119,21 @@ internal static partial class McpToolErrorFilter
 
     internal static string BuildMissingParamMessage(string toolName, string paramName) =>
         BuildMissingParamResponse(toolName, paramName).Summary;
+
+    internal static bool TryUnwrapJsonException(Exception ex, out JsonException jsonException)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            if (current is JsonException jsonEx)
+            {
+                jsonException = jsonEx;
+                return true;
+            }
+        }
+
+        jsonException = null!;
+        return false;
+    }
 
     private static CallToolResult ToErrorResult(string summary, JsonElement? retryExample)
     {

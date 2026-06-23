@@ -369,6 +369,44 @@ internal static class ToolCallExamples
                     }
                     """)!.AsObject(),
             },
+            ["upsert_character"] = new ToolCallExample
+            {
+                ToolName = "upsert_character",
+                WrapperKey = "character",
+                LegacyWrapperKey = "c",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = obj =>
+                    obj.ContainsKey("id") || obj.ContainsKey("name") || obj.ContainsKey("systemStats")
+                    || obj.ContainsKey("psychology") || obj.ContainsKey("maxHp"),
+                DeserializationHint =
+                    "systemStats.attributes accepts numbers only — no strings or booleans (e.g. attributes.hitDie: \"d12\" fails). "
+                    + "Put hitDie on the dnd5e extension root (systemStats.hitDie), not in attributes. "
+                    + "Omit maxHp to auto-derive HP from hitDie/level/constitution; explicit maxHp always wins. "
+                    + "During play prefer commit with character_create.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "character": {
+                        "id": "chars/kergil",
+                        "name": "Kergil",
+                        "keepAlive": true,
+                        "classLevel": "Human Barbarian 10",
+                        "notes": "Unarmored Defense active. Rage +3 damage.",
+                        "systemStats": {
+                          "$system": "dnd5e",
+                          "hitDie": "d12",
+                          "level": 10,
+                          "constitution": 16,
+                          "hpMode": "average",
+                          "dexterity": 14,
+                          "strength": 18,
+                          "skillModifiers": { "Athletics": 9, "Perception": 5 },
+                          "attributes": { "rageDamage": 3 }
+                        }
+                      }
+                    }
+                    """)!.AsObject(),
+            },
             ["upsert_location"] = new ToolCallExample
             {
                 ToolName = "upsert_location",
