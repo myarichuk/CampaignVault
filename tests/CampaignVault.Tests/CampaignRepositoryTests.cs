@@ -78,7 +78,7 @@ public class RavenDBFixture : IDisposable
         
         // Override the web session campaign context with the in-memory context for tests
         var defaultCampaignContext = new CurrentCampaignContext();
-        defaultCampaignContext.SetCurrent("default");
+        defaultCampaignContext.SetCurrent("test-campaign");
         builder.RegisterInstance(defaultCampaignContext).As<ICurrentCampaignContext>().SingleInstance();
 
         Container = builder.Build();
@@ -309,7 +309,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var time = await repo.GetTimeAsync(session);
         var config = await repo.GetCampaignConfigAsync(session);
         var contributor = new CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor();
-        var ctx = new CampaignVault.Data.Pressure.PressureContext("default", time, config, session);
+        var ctx = new CampaignVault.Data.Pressure.PressureContext("test-campaign", time, config, session);
         var allPressures = (await contributor.EvaluateAsync(ctx)).ToList();
         var pressures = allPressures.Where(p => p.EntityId == id).ToList();
 
@@ -1418,10 +1418,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
-        // 1. Check direct repository default behavior
+        // 1. Check repository uses the selected test campaign context
         var config = await repo.GetCampaignConfigAsync(session);
         Assert.NotNull(config);
-        Assert.Equal("campaigns/default/config", config.Id);
+        Assert.Equal("campaigns/test-campaign/config", config.Id);
         Assert.Equal(RulesetSystem.Dnd5e, config.ActiveSystem);
         Assert.Empty(config.SystemOptions);
 
@@ -2405,7 +2405,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         var locId = "locations/combat-loc-" + Guid.NewGuid();
         var keys = new CampaignDocumentKeys();
-        var combatDocId = keys.CombatCurrent("default");
+        var combatDocId = keys.CombatCurrent("test-campaign");
 
         // Case 1: Combat is active and at the correct location
         using (var session = _store.OpenAsyncSession())
@@ -2424,7 +2424,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            var scene = await repo.GetSceneAsync(session, locId, "default");
+            var scene = await repo.GetSceneAsync(session, locId, "test-campaign");
             Assert.NotNull(scene.ActiveCombat);
             Assert.Equal(3, scene.ActiveCombat.Round);
         }
@@ -2439,7 +2439,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            var scene = await repo.GetSceneAsync(session, locId, "default");
+            var scene = await repo.GetSceneAsync(session, locId, "test-campaign");
             Assert.Null(scene.ActiveCombat);
         }
 

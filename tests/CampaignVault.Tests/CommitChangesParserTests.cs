@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CampaignVault.Models;
 using CampaignVault.Tools;
 using Xunit;
 
@@ -70,6 +71,53 @@ public class CommitChangesParserTests
         Assert.True(ok, error);
         Assert.NotNull(parsed);
         Assert.Equal(7, parsed!.Length);
+    }
+
+    [Fact]
+    public void TryParse_ItemCreate_DeserializesStringCoreCategory()
+    {
+        const string payload = """
+                               [
+                                 {
+                                   "$type": "item_create",
+                                   "itemId": "items/greataxe",
+                                   "name": "Greataxe",
+                                   "description": "A heavy two-handed axe.",
+                                   "holderId": "characters/kergil",
+                                   "coreCategory": "Weapon"
+                                 }
+                               ]
+                               """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.True(ok, error);
+        Assert.NotNull(parsed);
+        var itemCreate = Assert.IsType<ItemCreate>(parsed![0]);
+        Assert.Equal(ItemCategory.Weapon, itemCreate.CoreCategory);
+    }
+
+    [Fact]
+    public void TryParse_ItemUpdate_DeserializesStringCoreCategory()
+    {
+        const string payload = """
+                               [
+                                 {
+                                   "$type": "item_update",
+                                   "itemId": "items/greataxe",
+                                   "coreCategory": "Armor"
+                                 }
+                               ]
+                               """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.True(ok, error);
+        Assert.NotNull(parsed);
+        var itemUpdate = Assert.IsType<ItemUpdate>(parsed![0]);
+        Assert.Equal(ItemCategory.Armor, itemUpdate.CoreCategory);
     }
 
     [Fact]

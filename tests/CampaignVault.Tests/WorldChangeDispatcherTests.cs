@@ -348,4 +348,33 @@ public class WorldChangeDispatcherTests
         Assert.Contains("chars/lirael-goldvein", loggedEvents[0].Involved);
         Assert.Contains(result.Summary, s => s.Contains("Auto-inferred involved"));
     }
+
+    [Fact]
+    public async Task DispatchMutationAsync_TracksInvolvedEntities_ForPressureCooldown()
+    {
+        var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) =>
+        {
+            ctx.RecordMessage("HP handled by child dispatch");
+            return Task.FromResult(ChangeHandlerResult.Ok);
+        });
+
+        var dispatcher = CreateDispatcher(hpHandler);
+        var context = new ChangeContext(
+            null!,
+            new Dictionary<string, Character>(),
+            new Dictionary<string, Item>(),
+            new Dictionary<string, Location>(),
+            new Dictionary<string, Faction>(),
+            new Dictionary<string, Quest>(),
+            NullLogger<WorldChangeDispatcher>.Instance,
+            new List<string>(),
+            dispatcher,
+            null,
+            "test_campaign");
+
+        var targetId = "chars/goblin-42";
+        await dispatcher.DispatchMutationAsync(context, new HpChange { CharacterId = targetId, Delta = -3 });
+
+        Assert.Contains(targetId, context.InvolvedEntities);
+    }
 }

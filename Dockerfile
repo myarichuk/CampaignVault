@@ -23,6 +23,10 @@ RUN apt-get update && apt-get install -y libicu-dev && rm -rf /var/lib/apt/lists
 # Create data directory for RavenDB persistence
 RUN mkdir -p /app/data
 ENV CAMPAIGN_DB_PATH=/app/data/campaign.db
+ENV MCP_PORT=8080
+ENV MCP_BIND_ANY=1
+ENV MCP_HOSTING_PROFILE=remote
+ENV MCP_STATELESS=1
 
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "CampaignVault.dll", "--urls", "http://0.0.0.0:8080"]
+ENTRYPOINT ["dotnet", "CampaignVault.dll"]

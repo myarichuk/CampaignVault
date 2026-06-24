@@ -26,6 +26,33 @@ internal static class ToolCatalog
             .ToList();
     }
 
+    /// <summary>
+    /// Markdown tool index grouped by category — single source for get_help and list_tools alignment.
+    /// </summary>
+    public static string FormatHelpIndex()
+    {
+        var groups = CachedEntries.Value
+            .GroupBy(e => e.Category, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+
+        var builder = new StringBuilder();
+        foreach (var group in groups)
+        {
+            builder.AppendLine($"### {group.Key}");
+            builder.AppendLine("| Tool | Purpose |");
+            builder.AppendLine("|------|---------|");
+            foreach (var entry in group.OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                var description = entry.Description.Replace("|", "\\|", StringComparison.Ordinal);
+                builder.AppendLine($"| `{entry.Name}` | {description} |");
+            }
+
+            builder.AppendLine();
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
     private static IReadOnlyList<ToolCatalogEntry> BuildEntries()
     {
         return Assembly.GetExecutingAssembly()

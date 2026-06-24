@@ -1,6 +1,7 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using CampaignVault.Data;
+using CampaignVault.Hosting;
 using CampaignVault.Middleware;
 using CampaignVault.Services;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -19,13 +20,27 @@ var grpcPort = int.TryParse(Environment.GetEnvironmentVariable("GRPC_PORT"), out
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.PreferHostingUrls(false);
+
+var hostingProfile = HostingProfile.Resolve();
+
+var bindAny = string.Equals(
+    Environment.GetEnvironmentVariable("MCP_BIND_ANY"),
+    "1",
+    StringComparison.OrdinalIgnoreCase) || !builder.Environment.IsDevelopment();
+
 builder.WebHost.ConfigureKestrel(options =>
 {
     // MCP + HTTP health/info
-    options.ListenLocalhost(mcpPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http1AndHttp2; });
-
-    // Dedicated gRPC sync channel for the authoring tool — gRPC requires HTTP/2 only
-    options.ListenLocalhost(grpcPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
+    if (bindAny)
+    {
+        options.ListenAnyIP(mcpPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http1AndHttp2; });
+        options.ListenAnyIP(grpcPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
+    }
+    else
+    {
+        options.ListenLocalhost(mcpPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http1AndHttp2; });
+        options.ListenLocalhost(grpcPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
+    }
 });
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
@@ -164,7 +179,9 @@ app.Lifetime.ApplicationStarted.Register(() =>
     Console.Error.WriteLine($"MCP Version: 0.2.0");
     Console.Error.WriteLine($"Database Path: {dbPathSetting}");
     Console.Error.WriteLine($"Auth Enabled: {authEnabled}");
+    Console.Error.WriteLine($"MCP Hosting Profile: {hostingProfile}");
     Console.Error.WriteLine($"MCP Stateless: {mcpStateless}");
+    Console.Error.WriteLine($"MCP Bind: {(bindAny ? "0.0.0.0" : "localhost")}:{mcpPort}");
     Console.Error.WriteLine($"MCP / HTTP:  http://localhost:{mcpPort}");
     Console.Error.WriteLine($"gRPC Sync:   http://localhost:{grpcPort}");
     Console.Error.WriteLine("Listening on:");

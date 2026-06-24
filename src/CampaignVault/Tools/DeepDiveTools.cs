@@ -19,11 +19,11 @@ public class DeepDiveTools : CampaignToolBase
     [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "DEEP DIVE TOOL: Returns the full Faction document (stances, influence, territory, leaders, metadata, DM notes) for a known faction ID. Use this (instead of guessing from get_scene summaries) when you need to roleplay faction reactions, declare war, expand territory, or check player rep impact. Campaign-scoped.")]
+        "DEEP DIVE TOOL: Returns the full Faction document (stances, influence, territory, leaders, metadata). Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<Faction>> GetFactionContext(
         [Description("Exact faction ID e.g. 'factions/thieves-guild' (use fuzzy search or get_scene first if unsure).")]
         string factionId,
-        [Description("Optional campaign name. Falls back to currently selected.")]
+        [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
@@ -47,11 +47,11 @@ public class DeepDiveTools : CampaignToolBase
     [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "DEEP DIVE TOOL: Returns the full Quest document (all objectives with states, deadlines, rewards, giver, related locations/factions, DM notes, urgency). Use when get_scene shows an ActiveQuestSummary and you need to advance/fail specific objectives or check stakes. Supports per-objective deadlines from Phase 7.3.")]
+        "DEEP DIVE TOOL: Returns the full Quest document (objectives, deadlines, rewards, giver). Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<Quest>> GetQuestDetails(
         [Description("Exact quest ID e.g. 'quests/rats_01'.")]
         string questId,
-        [Description("Optional campaign name. Falls back to currently selected.")]
+        [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>

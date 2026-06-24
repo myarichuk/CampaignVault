@@ -22,14 +22,17 @@ public abstract class CampaignToolBase
     }
 
     protected const string NoCampaignSelectedSummary =
-        "No campaign selected for this MCP session. Call select_campaign first, or pass campaignName explicitly. " +
-        "When MCP_STATELESS=1, Mcp-Session-Id is unavailable and campaignName is required on every tool call.";
+        "No campaign selected for this MCP session. Call select_campaign (requires Mcp-Session-Id or MCP_SESSION_ID), " +
+        "or pass campaignName explicitly on every tool call. When MCP_STATELESS=1, use campaignName on each call.";
+
+    protected static string NoSessionSummary =>
+        CampaignSessionRequiredException.Guidance;
 
     protected string EffectiveCampaign(string? explicitName)
     {
-        if (!string.IsNullOrWhiteSpace(explicitName))
+        if (CampaignSlug.TryCanonicalize(explicitName, out var slug))
         {
-            return explicitName.Trim().ToLowerInvariant();
+            return slug;
         }
 
         if (!_currentCampaign.HasSelection)
@@ -42,9 +45,8 @@ public abstract class CampaignToolBase
 
     protected bool TryGetEffectiveCampaign(string? explicitName, out string effective)
     {
-        if (!string.IsNullOrWhiteSpace(explicitName))
+        if (CampaignSlug.TryCanonicalize(explicitName, out effective))
         {
-            effective = explicitName.Trim().ToLowerInvariant();
             return true;
         }
 
@@ -92,6 +94,10 @@ public abstract class CampaignToolBase
             catch (CampaignNotSelectedException ex)
             {
                 return new ToolResult<T>(false, Error: ToolErrors.NoCampaignSelected, Summary: ex.Message);
+            }
+            catch (CampaignSessionRequiredException ex)
+            {
+                return new ToolResult<T>(false, Error: ToolErrors.SessionRequired, Summary: ex.Message);
             }
             catch (ConcurrencyException)
             {

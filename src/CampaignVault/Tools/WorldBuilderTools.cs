@@ -43,7 +43,7 @@ During play, prefer commit (character_create, level_up, activity) over repeated 
     public Task<ToolResult<Character>> UpsertCharacter(
         [Description("The full Character object to create or replace. Strongly typed.")]
         Character character,
-        [Description("Optional campaign name (for future per-campaign scoping of entities).")]
+        [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
@@ -76,13 +76,15 @@ During play, prefer commit (character_create, level_up, activity) over repeated 
 
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"WORLD BUILDER TOOL: Register a new location on the world map. For first-time setup only.
+    [Description(@"WORLD BUILDER TOOL: Create or overwrite a location on the world map.
 
-Define hierarchical locations with exits, parent relationships, and rich metadata.")]
+Use for seeding new areas or replacing/updating full location documents — exits, parent links, ambientCrowd, pointsOfInterest, descriptions, and hierarchy. Repeated calls overwrite the stored location (upsert semantics).
+
+During play, prefer commit (location_create, location_update) for incremental changes; use upsert_location for bulk world-building or full replacements.")]
     public Task<ToolResult<Location>> UpsertLocation(
         [Description("The full Location object to create or replace. Strongly typed.")]
         Location location,
-        [Description("Optional campaign name (for future per-campaign scoping of entities).")]
+        [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
@@ -99,7 +101,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     public Task<ToolResult<Lore>> UpsertLore(
         [Description("The full Lore object to create or replace. Strongly typed.")]
         Lore lore,
-        [Description("Optional campaign name (for future per-campaign scoping of entities).")]
+        [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
@@ -113,8 +115,10 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     [McpServerTool]
     [Description(
         "WORLD BUILDER TOOL: Define or update a descriptor for a need type for the current/selected campaign. Automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list defined ones for the campaign. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
-    public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor,
-        string? campaignName = null)
+    public Task<ToolResult<string>> DefineNeedDescriptor(
+        string needName,
+        string descriptor,
+        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))
         {
@@ -134,7 +138,7 @@ Define hierarchical locations with exits, parent relationships, and rich metadat
     [McpServerTool(UseStructuredContent = true)]
     [Description("DISCOVERABILITY TOOL: Lists all defined need descriptors for the current (or specified) campaign.")]
     public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(
-        [Description("Optional campaign name. Falls back to currently selected.")]
+        [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>

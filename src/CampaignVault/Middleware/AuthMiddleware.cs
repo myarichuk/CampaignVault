@@ -35,24 +35,10 @@ public class AuthMiddleware(RequestDelegate next, string bearerToken)
             authorized = true;
         }
         // Query string fallback (for clients like Grok Web custom connectors that cannot set custom headers)
-        // SECURITY NOTE: Query parameters are logged in many places. Only use this when header-based auth is not possible.
-        else
+        // SECURITY NOTE: Query parameters are logged in many places. Only use ?token= when header-based auth is not possible.
+        else if (TimingSafeEquals(context.Request.Query["token"].ToString(), bearerToken))
         {
-            var queryToken = context.Request.Query["token"].ToString();
-            if (string.IsNullOrEmpty(queryToken))
-            {
-                queryToken = context.Request.Query["auth"].ToString();
-            }
-
-            if (string.IsNullOrEmpty(queryToken))
-            {
-                queryToken = context.Request.Query["bearer"].ToString();
-            }
-
-            if (TimingSafeEquals(queryToken, bearerToken))
-            {
-                authorized = true;
-            }
+            authorized = true;
         }
 
         if (!authorized)

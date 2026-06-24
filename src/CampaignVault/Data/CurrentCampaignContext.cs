@@ -4,9 +4,9 @@ namespace CampaignVault.Data;
 /// Provides the currently selected campaign for the active DI lifetime scope
 /// (typically one MCP HTTP request in stateless hosting).
 ///
-/// <see cref="select_campaign"/> sets this value for subsequent tool calls in the same scope.
-/// Most campaign-aware tools fall back to this context when no explicit campaignName
-/// is passed. Pass <c>campaignName</c> explicitly when clients cannot rely on scope-local state.
+/// <see cref="select_campaign"/> sets this value for the active MCP session (via <see cref="CampaignSelectionStore"/>).
+/// Most campaign-aware tools use this context when no explicit <c>campaignName</c> is passed.
+/// Pass <c>campaignName</c> explicitly when no <c>Mcp-Session-Id</c> / <c>MCP_SESSION_ID</c> is available.
 /// </summary>
 public interface ICurrentCampaignContext
 {
@@ -46,6 +46,6 @@ public sealed class CurrentCampaignContext : ICurrentCampaignContext
             campaignName = CampaignSelectionStore.UnselectedSentinel;
         }
 
-        _current = campaignName.Trim().ToLowerInvariant();
+        _current = CampaignSlug.Canonicalize(campaignName);
     }
 }

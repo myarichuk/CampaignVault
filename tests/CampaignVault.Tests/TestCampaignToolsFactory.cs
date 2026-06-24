@@ -9,6 +9,22 @@ internal static class TestCampaignToolsFactory
 {
     public static CampaignTools Create(
         RavenDBFixture fixture,
+        CampaignSelectionStore selectionStore,
+        string sessionId,
+        IPressureOrchestrator? orchestrator = null,
+        IPressureManager? pressureManager = null,
+        IRollService? rollService = null,
+        CampaignRepository? repository = null,
+        IWorldSimulationEngine? simulationEngine = null)
+    {
+        var context = new SessionKeyedCurrentCampaignContext(
+            selectionStore,
+            new FixedMcpSessionAccessor(sessionId));
+        return Create(fixture, context, orchestrator, pressureManager, rollService, repository, simulationEngine);
+    }
+
+    public static CampaignTools Create(
+        RavenDBFixture fixture,
         ICurrentCampaignContext? context = null,
         IPressureOrchestrator? orchestrator = null,
         IPressureManager? pressureManager = null,
@@ -41,5 +57,10 @@ internal static class TestCampaignToolsFactory
             scope.Resolve<CombatTools>(),
             scope.Resolve<CampaignManagementTools>(),
             scope.Resolve<MetaTools>());
+    }
+
+    private sealed class FixedMcpSessionAccessor(string sessionId) : IMcpSessionAccessor
+    {
+        public string? SessionId { get; } = sessionId;
     }
 }

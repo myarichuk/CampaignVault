@@ -63,7 +63,7 @@ internal static class PressureQueryHelper
             .ToListAsync(ct);
 
         return indexed.Concat(shareable)
-            .Where(c => c.KeepAlive || c.MaxHp > 0)
+            .Where(c => c.KeepAlive || c.MaxHp > 0 || c.IsPc || c.IsPartyCompanion)
             .DistinctBy(c => c.Id)
             .Take(limit)
             .ToList();

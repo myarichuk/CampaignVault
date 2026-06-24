@@ -1,3 +1,4 @@
+using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
@@ -19,7 +20,22 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
     {
         if (!context.Characters.TryGetValue(action.ActorId, out var actor))
         {
-            return new ResolverOutput { Result = ResolverResult.Fail("ActorNotFound", $"Error: Actor '{action.ActorId}' not found.") };
+            return new ResolverOutput
+            {
+                Result = ResolverResult.Fail("ActorNotFound",
+                    $"Error: Actor '{action.ActorId}' not found or not visible in campaign '{context.CampaignName}'.")
+            };
+        }
+
+        if (!string.IsNullOrEmpty(context.CampaignName)
+            && !CampaignEntityVisibility.IsVisibleInCampaign(actor.CampaignName, context.CampaignName))
+        {
+            CampaignEntityVisibility.TryGetInvisibilityReason(actor, context.CampaignName, out var reason);
+            return new ResolverOutput
+            {
+                Result = ResolverResult.Fail("InvalidInput",
+                    $"Error: Actor '{action.ActorId}' is not available in campaign '{context.CampaignName}'. {reason}")
+            };
         }
 
         if (actor.SystemStats is not TStats actorStats)

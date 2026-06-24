@@ -258,6 +258,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = "chars/level-up-pc",
             Name = "Level Up PC",
+            IsPc = true,
+            CampaignName = "level-up-heal",
             MaxHp = 12,
             CurrentHp = 8,
             ClassLevel = "Human Fighter 1",
@@ -303,6 +305,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = "chars/narrative-npc",
             Name = "Oracle",
+            IsPc = true,
+            CampaignName = "level-up-noop",
             MaxHp = 10,
             SystemStats = new Dnd5eExtension(),
         };
@@ -440,6 +444,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = "chars/goblin-boss",
             Name = "Goblin Boss",
+            IsPc = true,
+            CampaignName = "level-up-statblock",
             MaxHp = 21,
             CurrentHp = 21,
             SystemStats = new Dnd5eExtension

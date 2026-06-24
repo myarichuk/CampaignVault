@@ -32,7 +32,7 @@ public sealed class IncompleteSystemStatsPressureContributor : IPressureContribu
                 PressureSeverity.EngineWarning,
                 character.Id,
                 $"[ENGINE] {character.Name} has uninitialized systemStats ({missingSummary}). "
-                + $"Combatants (KeepAlive or maxHp > 0) MUST have ruleset stats bootstrapped. "
+                + $"Combatants (isPc, isPartyCompanion, KeepAlive, or maxHp > 0) MUST have ruleset stats bootstrapped. "
                 + $"PCs: omit maxHp — commit bootstrap fields (hitDie, level, constitution, etc.) and the engine derives HP/AC. "
                 + $"Creature stat blocks: use systemStats.statBlockHp or maxHp. Example PC bootstrap for {activeSystem}: "
                 + SystemStatsCompleteness.BuildExampleCommit(character, activeSystem)

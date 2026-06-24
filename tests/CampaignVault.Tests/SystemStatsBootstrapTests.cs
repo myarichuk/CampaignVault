@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -67,11 +68,13 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         await StoreDnd5eConfigAsync(session, "bootstrap-create");
 
+        var characterId = "chars/elara-voss-" + Guid.NewGuid().ToString("N")[..8];
         var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
         var change = new CharacterCreate
         {
-            CharacterId = "chars/elara-voss",
+            CharacterId = characterId,
             Name = "Elara Voss",
+            IsPc = true,
             KeepAlive = true,
             MaxHp = 18,
             ClassLevel = "Human Fighter 2",
@@ -90,7 +93,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
 
         await session.SaveChangesAsync();
 
-        var character = await session.LoadAsync<Character>("chars/elara-voss");
+        var character = await session.LoadAsync<Character>(characterId);
         var stats = Assert.IsType<Dnd5eExtension>(character!.SystemStats);
         Assert.Equal(16, stats.ArmorClass);
         Assert.Equal(16, stats.Strength);

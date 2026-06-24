@@ -219,7 +219,7 @@ public class SceneAssemblerTests
 
         var combat = new CombatEncounter
         {
-            Id = "combat/current",
+            Id = "campaigns/camp-a/combat/current",
             LocationId = "locations/inn",
             IsActive = true
         };

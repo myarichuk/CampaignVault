@@ -6,7 +6,7 @@ namespace CampaignVault.Models;
 /// First-class Campaign document. Replaces the implicit single "campaign" assumption.
 /// Stored as "campaigns/{Name}/meta" (or similar namespaced key).
 /// Each campaign has its own locked ruleset system, options, time, combat, etc.
-/// This enables future multi-campaign support while providing "lock in" for the campaign type today.
+/// Each RavenDB instance hosts multiple campaigns; singletons (time, combat, config) are namespaced per slug.
 /// </summary>
 public class Campaign
 {

@@ -20,9 +20,9 @@ public class CampaignRepository
 
     private string ResolveCampaign(string? campaignName)
     {
-        if (!string.IsNullOrWhiteSpace(campaignName))
+        if (CampaignSlug.TryCanonicalize(campaignName, out var explicitSlug))
         {
-            return campaignName.Trim().ToLowerInvariant();
+            return explicitSlug;
         }
 
         if (_currentCampaign?.HasSelection == true)
@@ -30,12 +30,11 @@ public class CampaignRepository
             return _currentCampaign.CurrentCampaignName;
         }
 
-        return "default";
+        throw new CampaignNotSelectedException();
     }
 
     private static bool IsVisibleInCampaign(string? entityCampaignName, string effectiveCampaign) =>
-        string.IsNullOrEmpty(entityCampaignName)
-        || string.Equals(entityCampaignName, effectiveCampaign, StringComparison.OrdinalIgnoreCase);
+        CampaignEntityVisibility.IsVisibleInCampaign(entityCampaignName, effectiveCampaign);
 
     private static string BuildCanonicalIdPrefix(string cleanQuery, string prefix) =>
         cleanQuery.Contains('/', StringComparison.Ordinal) ? cleanQuery : prefix + cleanQuery;
@@ -135,16 +134,15 @@ public class CampaignRepository
     public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId,
         string? campaignName = null, bool markVisited = false)
     {
+        var effective = ResolveCampaign(campaignName);
         var location = await session
             .Include<Location>(x => x.ParentLocationId)
             .LoadAsync<Location>(locationId);
 
-        if (location == null)
+        if (location == null || !IsVisibleInCampaign(location.CampaignName, effective))
         {
             return _sceneAssembler.CreateUnanchoredScene(locationId);
         }
-
-        var effective = ResolveCampaign(campaignName);
         var sceneContext = await LoadSceneAssemblyContextAsync(session, location, locationId, effective, markVisited);
         return _sceneAssembler.Assemble(sceneContext);
     }
@@ -536,21 +534,22 @@ public class CampaignRepository
     {
         // campaignName accepted for API consistency / future entity namespacing or filtering.
         // Current implementation uses direct ID or name lookup (entities are caller-ID-controlled).
-        _ = ResolveCampaign(campaignName);
+        var effective = ResolveCampaign(campaignName);
         var character = await session.LoadAsync<Character>(identifier);
         if (character != null)
         {
-            return character;
+            return IsVisibleInCampaign(character.CampaignName, effective) ? character : null;
         }
 
         character = await session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
-        if (character != null)
+        if (character != null && IsVisibleInCampaign(character.CampaignName, effective))
         {
             return character;
         }
 
-        return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+        var fuzzy = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .WhereEquals(x => x.Name, identifier).Fuzzy(0.4m).FirstOrDefaultAsync();
+        return fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective) ? fuzzy : null;
     }
 
     /// <summary>
@@ -569,6 +568,12 @@ public class CampaignRepository
         if (string.IsNullOrEmpty(character.CampaignName))
         {
             character.CampaignName = effective;
+        }
+
+        if (!CharacterPartyRules.TryValidate(character.IsPc, character.IsPartyCompanion, character.CampaignName,
+                out var partyError))
+        {
+            throw new ArgumentException(partyError);
         }
 
         character.LastUpdated = DateTime.UtcNow;
@@ -593,6 +598,8 @@ public class CampaignRepository
             existing.Needs = character.Needs ?? new NeedsProfile();
             existing.SystemStats = character.SystemStats ?? new SystemExtension();
             existing.KeepAlive = character.KeepAlive;
+            existing.IsPc = character.IsPc;
+            existing.IsPartyCompanion = character.IsPartyCompanion;
             existing.LastUpdated = character.LastUpdated;
             existing.CampaignName = character.CampaignName; // ensure set/copied for scoping
         }

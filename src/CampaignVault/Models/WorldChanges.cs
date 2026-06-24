@@ -608,6 +608,14 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("keepAlive")]
     public bool KeepAlive { get; set; }
 
+    [Description("True for human player characters. Requires campaign context; mutually exclusive with isPartyCompanion.")]
+    [JsonPropertyName("isPc")]
+    public bool IsPc { get; set; }
+
+    [Description("True for NPC companions on the party roster. Requires campaign context; mutually exclusive with isPc.")]
+    [JsonPropertyName("isPartyCompanion")]
+    public bool IsPartyCompanion { get; set; }
+
     [Description("Assigning a schedule makes the character persistent and able to simulate.")]
     [JsonPropertyName("schedule")]
     public Schedule? Schedule { get; set; }
@@ -709,6 +717,7 @@ public class ItemCreate : WorldChange
 
     [Description("Structural item category (Weapon, Armor, Clothing, etc.). Defaults to Other.")]
     [JsonPropertyName("coreCategory")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public ItemCategory? CoreCategory { get; set; }
 
     [Description("Key-value attributes for mechanics (e.g., {'value': '5', 'material': 'silver'}).")]
@@ -934,6 +943,7 @@ public class ItemUpdate : WorldChange
 
     [Description("Optional new structural category (Weapon, Armor, Clothing, etc.).")]
     [JsonPropertyName("coreCategory")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public ItemCategory? CoreCategory { get; set; }
 
     [Description("Temporary tags to add to the item (e.g. 'muddy', 'wet').")]
@@ -990,6 +1000,14 @@ public class CharacterUpdate : WorldChange
     [Description("Set to true to protect this character from transient eviction (use on quest givers and important NPCs).")]
     [JsonPropertyName("keepAlive")]
     public bool? KeepAlive { get; set; }
+
+    [Description("Set true to mark as a human PC, or false to clear. Requires campaign-tagged character.")]
+    [JsonPropertyName("isPc")]
+    public bool? IsPc { get; set; }
+
+    [Description("Set true to mark as an NPC party companion, or false to clear. Requires campaign-tagged character.")]
+    [JsonPropertyName("isPartyCompanion")]
+    public bool? IsPartyCompanion { get; set; }
 
     [Description("Partial ruleset stats merge. Same shape as character_create.systemStats.")]
     [JsonPropertyName("systemStats")]

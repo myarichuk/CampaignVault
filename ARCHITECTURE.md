@@ -37,17 +37,32 @@ Queries apply one of two filters:
 
 | Filter | Entities | Rule |
 |--------|----------|------|
-| **Loose** | Characters, locations, items, lore, factions, quests, rumors (most read paths) | Include entities where `CampaignName` matches the active campaign **or** is null/empty (shared-universe / legacy shareables) |
-| **Strict** | Events | Include only entities where `CampaignName` exactly matches the active campaign |
+| **Loose** | Characters, locations, items, lore, factions, quests (most read paths) | Include entities where `CampaignName` matches the active campaign **or** is null/empty (shared-universe canon) |
+| **Strict** | Events, rumors | Include only entities where `CampaignName` exactly matches the active campaign |
 
-**Practical implication:** campaign singletons (time, combat, config) are isolated, but two campaigns can still see the same character or location if they share an ID or the entity has no `CampaignName`. Events are always campaign-private. Callers should use distinct IDs per campaign when strict separation is required.
+**Practical implication:** campaign singletons (time, combat, config) are isolated per slug. Entities with no `CampaignName` (e.g. shared NPCs like Bob the assassin) are visible in every campaign. Campaign-owned entities should use slug-prefixed IDs and are tagged on create. Events and rumors are always campaign-private.
 
-`ICurrentCampaignContext` is a process-wide singleton (not `AsyncLocal`) so `select_campaign` survives across stateless MCP HTTP requests.
+### Campaign session selection
+
+`select_campaign` stores the active slug in `CampaignSelectionStore`, keyed by MCP session ID. There is **no process-wide fallback**.
+
+| Session identity | Source |
+|------------------|--------|
+| HTTP (stateful) | `Mcp-Session-Id` header |
+| stdio / local CLI | `MCP_SESSION_ID` environment variable |
+| Stateless HTTP | No sticky selection — callers pass `campaignName` on every tool |
+
+`ICurrentCampaignContext` is implemented by `SessionKeyedCurrentCampaignContext` (per DI lifetime scope) backed by the singleton `CampaignSelectionStore`.
+
+Slugs are canonicalized via `CampaignSlug.Canonicalize` (lowercase, hyphens) everywhere: selection, document keys (`CampaignDocumentKeys`), and entity tagging.
+
+`CampaignSelectionStore` prunes idle session bindings after `CAMPAIGN_SELECTION_TTL_HOURS` (default 2). Each access to `GetCurrent` or `SetCurrent` refreshes the session's idle clock.
 
 ## MCP Hosting & Request Flow
 
-- **Transports:** HTTP (stateless) and stdio, registered in `Program.cs` via `ModelContextProtocol.AspNetCore`.
-- **Tool surface:** `CampaignTools` — all `[McpServerTool]` methods.
+- **Transports:** HTTP (stateful or `MCP_STATELESS=1`) and stdio (`MCP_STDIO=1`), registered in `Program.cs`.
+- **Profiles:** `MCP_HOSTING_PROFILE=local|remote` (see `HostingProfile.cs`); both use session-keyed selection.
+- **Tool surface:** Domain `*Tools` classes (`ExplorationTools`, `MutationTools`, etc.) — `CampaignTools` is a test facade only.
 - **Auth:** optional `BEARER_TOKEN` env var → `AuthMiddleware` (timing-safe compare; `/` and `/health` exempt).
 - **CORS:** `CORS_ALLOWED_ORIGINS` env var (`*` or comma-separated origins).
 - **Concurrency:** `CampaignTools.ExecuteAsync` retries on RavenDB `ConcurrencyException` (state drift).
@@ -171,6 +186,7 @@ Implemented and registered at startup:
 | `Dnd5eRulesetResolver` | D&D 5e | Advantage/disadvantage, saving throws, contested checks, grapple → engagement mutations, exhaustion pressure |
 | `Pf2eRulesetResolver` | Pathfinder 2e | Four degrees of success, Athletics vs Fortitude DC grapple |
 | `Fallout2d20RulesetResolver` | Fallout 2d20 | d20 dice pools, target numbers, opposed pool contested checks |
+| `NarrativeRulesetResolver` | Narrative | Oracle-style d100 rolls for skill/combat checks when mechanical rulesets are disabled; no HP math |
 
 `RulesetModuleSelector` validates that every `RulesetSystem` enum value has a registered module at startup. `DefaultRollService` provides deterministic dice evaluation.
 
@@ -206,7 +222,7 @@ RavenDB static indexes (`Character_Search`, `Location_Search`, `Lore_Search`, `E
 
 | Area | Path |
 |------|------|
-| MCP tools | `src/CampaignVault/Tools/CampaignTools.cs` |
+| MCP tools | `src/CampaignVault/Tools/*Tools.cs` (domain classes; `CampaignTools.cs` is test facade) |
 | Repository | `src/CampaignVault/Data/CampaignRepository.cs` |
 | World changes | `src/CampaignVault/Models/WorldChanges.cs` |
 | Engagement / spatial models | `src/CampaignVault/Models/EngagementRelationMetadata.cs`, `SpatialDistanceBand.cs` |

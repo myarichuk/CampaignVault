@@ -37,7 +37,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     {
         var campaign = "harness-dnd5e-" + Guid.NewGuid().ToString("N")[..8];
         var tools = CreateHarnessTools(campaign);
-        await tools.SelectCampaign(campaign);
+        await tools.SelectCampaign(campaign, confirmCreate: true);
         await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, campaign);
 
         var locId = $"locations/forest-road-{Guid.NewGuid():N}";
@@ -75,7 +75,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     {
         var campaign = "harness-pf2e-" + Guid.NewGuid().ToString("N")[..8];
         var tools = CreateHarnessTools(campaign);
-        await tools.SelectCampaign(campaign);
+        await tools.SelectCampaign(campaign, confirmCreate: true);
         await tools.SetActiveSystem(RulesetSystem.Pathfinder2e, null, campaign);
 
         var locId = $"locations/canopy-trail-{Guid.NewGuid():N}";
@@ -113,7 +113,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     {
         var campaign = "harness-fallout-" + Guid.NewGuid().ToString("N")[..8];
         var tools = CreateHarnessTools(campaign);
-        await tools.SelectCampaign(campaign);
+        await tools.SelectCampaign(campaign, confirmCreate: true);
         await tools.SetActiveSystem(RulesetSystem.Fallout2d20, null, campaign);
 
         var locId = $"locations/highway-ruins-{Guid.NewGuid():N}";

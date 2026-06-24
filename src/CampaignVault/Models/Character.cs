@@ -26,6 +26,18 @@ public class Character
     /// Use for player characters (PCs) and major named NPCs without fixed routines.
     /// </summary>
     public bool KeepAlive { get; set; } = false;
+
+    /// <summary>
+    /// Human-controlled player character for this campaign. Requires <see cref="CampaignName"/>.
+    /// Mutually exclusive with <see cref="IsPartyCompanion"/>.
+    /// </summary>
+    public bool IsPc { get; set; }
+
+    /// <summary>
+    /// NPC companion on the active party roster (animal, hireling, etc.). Requires <see cref="CampaignName"/>.
+    /// Mutually exclusive with <see cref="IsPc"/>.
+    /// </summary>
+    public bool IsPartyCompanion { get; set; }
     
     public Schedule? Schedule { get; set; }
 

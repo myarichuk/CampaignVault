@@ -29,7 +29,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     {
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
-        await tools.SelectCampaign("pressure-cap-test-" + Guid.NewGuid());
+        var campaignName = "pressure-cap-test-" + Guid.NewGuid().ToString("N")[..8];
+        var selectResult = await tools.SelectCampaign(campaignName, confirmCreate: true);
+        Assert.True(selectResult.Success, selectResult.Summary);
         var repo = _fixture.CreateRepository();
 
         var locId = "locations/test-room-" + Guid.NewGuid();
@@ -37,7 +39,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             // Create a campaign config with cap = 1
-            await session.StoreAsync(new CampaignConfig { Id = new CampaignDocumentKeys().Config(context.CurrentCampaignName), MaxPressuresPerResponse = 1 });
+            await session.StoreAsync(new CampaignConfig { Id = new CampaignDocumentKeys().Config(campaignName), MaxPressuresPerResponse = 1 });
             
             // Create a location with multiple issues
             var loc = new Location
@@ -48,13 +50,13 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 // missing parent reverse link -> handled in getscene if parent exists, let's just use empty room
                 // empty room expects crowd -> 1 pressure
                 AmbientCrowd = "Should be a crowd here",
-                CampaignName = context.CurrentCampaignName
+                CampaignName = campaignName
             };
             await session.StoreAsync(loc);
             
             // Missing parent
             loc.ParentLocationId = "locations/parent-" + Guid.NewGuid();
-            var parent = new Location { Id = loc.ParentLocationId, Name = "Parent", CampaignName = context.CurrentCampaignName };
+            var parent = new Location { Id = loc.ParentLocationId, Name = "Parent", CampaignName = campaignName };
             // Parent doesn't link back -> 1 pressure
             await session.StoreAsync(parent);
             
@@ -83,7 +85,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         // Add another case for FilterAndCapAsync being NOP if below threshold
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
-        await tools.SelectCampaign("pressure-nop-test-" + Guid.NewGuid());
+        var campaignName = "pressure-nop-test-" + Guid.NewGuid().ToString("N")[..8];
+        var selectResult = await tools.SelectCampaign(campaignName, confirmCreate: true);
+        Assert.True(selectResult.Success, selectResult.Summary);
 
         var locId = "locations/test-nop-" + Guid.NewGuid();
 
@@ -94,7 +98,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 Id = locId,
                 Name = "NOP Room",
                 Type = LocationType.Room, // No exits -> 1 pressure
-                CampaignName = context.CurrentCampaignName
+                CampaignName = campaignName
             };
             await session.StoreAsync(loc);
             await session.SaveChangesAsync();
@@ -119,7 +123,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     {
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
-        await tools.SelectCampaign("pressure-clear-test-" + Guid.NewGuid());
+        var campaignName = "pressure-clear-test-" + Guid.NewGuid().ToString("N")[..8];
+        var selectResult = await tools.SelectCampaign(campaignName, confirmCreate: true);
+        Assert.True(selectResult.Success, selectResult.Summary);
 
         var locId = "locations/test-clear-" + Guid.NewGuid();
 
@@ -130,10 +136,10 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 Id = locId,
                 Name = "Clear Room",
                 Type = LocationType.Room, // No exits -> 1 pressure
-                CampaignName = context.CurrentCampaignName
+                CampaignName = campaignName
             };
             await session.StoreAsync(loc);
-            await session.StoreAsync(new Campaign { Name = context.CurrentCampaignName, Id = new CampaignDocumentKeys().Meta(context.CurrentCampaignName) });
+            await session.StoreAsync(new Campaign { Name = campaignName, Id = new CampaignDocumentKeys().Meta(campaignName) });
             await session.SaveChangesAsync();
         }
 
@@ -164,8 +170,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     {
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
-        var campaignName = "pressure-batch-test-" + Guid.NewGuid();
-        await tools.SelectCampaign(campaignName);
+        var campaignName = "pressure-batch-test-" + Guid.NewGuid().ToString("N")[..8];
+        var selectResult = await tools.SelectCampaign(campaignName, confirmCreate: true);
+        Assert.True(selectResult.Success, selectResult.Summary);
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {

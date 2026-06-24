@@ -1,3 +1,4 @@
+using CampaignVault.Data;
 using CampaignVault.Models;
 using Raven.Client.Documents.Session;
 
@@ -111,8 +112,16 @@ public sealed class WorldChangeDispatcher
 
         if (session != null)
         {
-            characters = (await session.LoadAsync<Character>(characterIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!);
-            items = (await session.LoadAsync<Item>(itemIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!);
+            characters = (await session.LoadAsync<Character>(characterIds))
+                .Where(kv => kv.Value != null)
+                .Where(kv => string.IsNullOrEmpty(effectiveCampaign)
+                             || CampaignEntityVisibility.IsVisibleInCampaign(kv.Value!.CampaignName, effectiveCampaign))
+                .ToDictionary(kv => kv.Key, kv => kv.Value!);
+            items = (await session.LoadAsync<Item>(itemIds))
+                .Where(kv => kv.Value != null)
+                .Where(kv => string.IsNullOrEmpty(effectiveCampaign)
+                             || CampaignEntityVisibility.IsVisibleInCampaign(kv.Value!.CampaignName, effectiveCampaign))
+                .ToDictionary(kv => kv.Key, kv => kv.Value!);
 
             // Phase 7.3 / Travel: preload the traveler's *origin* CurrentLocationId (in addition to the explicit Destination).
             // This allows TravelChangeHandler to resolve LocationExit metadata (TravelCostHours, Terrain) via the
@@ -127,12 +136,24 @@ public sealed class WorldChangeDispatcher
                 }
             }
 
-            locations = (await session.LoadAsync<Location>(locationIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!);
+            locations = (await session.LoadAsync<Location>(locationIds))
+                .Where(kv => kv.Value != null)
+                .Where(kv => string.IsNullOrEmpty(effectiveCampaign)
+                             || CampaignEntityVisibility.IsVisibleInCampaign(kv.Value!.CampaignName, effectiveCampaign))
+                .ToDictionary(kv => kv.Key, kv => kv.Value!);
             factions = factionIds.Count > 0
-                ? (await session.LoadAsync<Faction>(factionIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!)
+                ? (await session.LoadAsync<Faction>(factionIds))
+                    .Where(kv => kv.Value != null)
+                    .Where(kv => string.IsNullOrEmpty(effectiveCampaign)
+                                 || CampaignEntityVisibility.IsVisibleInCampaign(kv.Value!.CampaignName, effectiveCampaign))
+                    .ToDictionary(kv => kv.Key, kv => kv.Value!)
                 : new Dictionary<string, Faction>();
             quests = questIds.Count > 0
-                ? (await session.LoadAsync<Quest>(questIds)).Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!)
+                ? (await session.LoadAsync<Quest>(questIds))
+                    .Where(kv => kv.Value != null)
+                    .Where(kv => string.IsNullOrEmpty(effectiveCampaign)
+                                 || CampaignEntityVisibility.IsVisibleInCampaign(kv.Value!.CampaignName, effectiveCampaign))
+                    .ToDictionary(kv => kv.Key, kv => kv.Value!)
                 : new Dictionary<string, Quest>();
 
             // Preload combat encounter to ensure optimistic concurrency protection against racing StartCombat/NextTurn calls.
@@ -262,11 +283,12 @@ public sealed class WorldChangeDispatcher
             return;
         }
 
-        ExtractInvolvedIds(mutation, null, null, null, null, null, parentContext.InvolvedEntities);
+        TrackInvolvedEntities(mutation, parentContext);
 
         try
         {
             var result = await chosen.ApplyAsync(mutation, parentContext, ct);
+            TrackInvolvedEntities(mutation, parentContext);
             if (result.Message is not null)
             {
                 parentContext.RecordMessage(result.Message);
@@ -281,6 +303,11 @@ public sealed class WorldChangeDispatcher
             _logger.LogError(ex, "Error processing child mutation of type {ChangeType}", mutation?.GetType().Name);
             parentContext.RecordFailure();
         }
+    }
+
+    private void TrackInvolvedEntities(WorldChange change, ChangeContext context)
+    {
+        ExtractInvolvedIds(change, null, null, null, null, null, context.InvolvedEntities);
     }
 
     private void ExtractInvolvedIds(

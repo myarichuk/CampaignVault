@@ -12,7 +12,7 @@ public class CampaignCoreModule : Autofac.Module
     {
         builder.RegisterType<CampaignDocumentKeys>().SingleInstance();
         builder.RegisterType<CampaignSelectionStore>().SingleInstance();
-        builder.RegisterType<HttpMcpSessionAccessor>().As<IMcpSessionAccessor>().InstancePerLifetimeScope();
+        builder.RegisterType<McpSessionAccessor>().As<IMcpSessionAccessor>().InstancePerLifetimeScope();
         builder.RegisterType<SessionKeyedCurrentCampaignContext>().As<ICurrentCampaignContext>().InstancePerLifetimeScope();
         builder.RegisterType<CampaignVault.Data.ChangeHandlers.WorldChangeDispatcher>().InstancePerLifetimeScope();
         builder.RegisterType<SceneAssembler>().InstancePerLifetimeScope();

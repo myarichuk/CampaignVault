@@ -36,10 +36,10 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("KICKOFF TOOL: Call this at the start of every session to get the time, active rumors, recent history, and current party location in one view. Respects the currently selected campaign (via select_campaign). partyLocationId is optional — omit it if you do not know the party's current location and derive it from recent history instead.")]
+    [Description("KICKOFF TOOL: Call at session start for time, active rumors, recent history, and party location. Uses the campaign selected for this MCP session (select_campaign) unless campaignName is passed. partyLocationId is optional — omit if unknown and derive from recent history.")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
         [Description("The current ID of the location where the party is (string type). Optional. If not provided, you should determine the party's location from recent history or start them at a default location, then call 'get_scene' to load the location's details.")] string? partyLocationId = null,
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         // We now save changes on reads because FilterAndCapAsync needs to persist PressureCooldowns.
         // The underlying repository methods are safe (e.g., GetSceneAsync only marks visited if explicitly requested).
@@ -144,11 +144,11 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("EXPLORATION TOOL: Call this whenever entering a new room, building, or region. Returns the location description, present NPCs (with behavioral summaries), visible items, and local rumors. Respects the currently selected campaign.\nSet 'partyPresent=true' ONLY if the party is physically entering or spending time here. Leave false if just looking around for pressures to prevent messing up the simulation's character eviction logic.")]
+    [Description("EXPLORATION TOOL: Call when entering a room, building, or region. Returns location, NPCs, items, rumors, ActiveCombat, pressures. Uses session-selected campaign unless campaignName is passed.\nSet partyPresent=true ONLY when the party is physically entering or spending time here.")]
     public Task<ToolResult<SceneView>> GetScene(
         [Description("The unique ID of the location.")] string locationId,
         [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false,
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: partyPresent);
@@ -190,10 +190,10 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychological state. Returns their relationships, goals, fears, knowledge, and current emotional mood. Respects the currently selected campaign for need descriptors etc.")]
+    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychology — relationships, goals, fears, knowledge, mood, initiative signals. Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<NpcContextView>> GetNpcContext(
         string? characterId = null,
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(characterId))
         {
@@ -288,26 +288,29 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("PARTY TOOL: Retrieve all player characters (PCs) and major KeepAlive characters in the campaign. Returns their current HP, Max HP, location, activity, and key stats/attributes.")]
+    [Description("PARTY TOOL: Returns the active party roster — characters with isPc or isPartyCompanion for this campaign slug. Shared canon NPCs (e.g. Bob) are excluded. Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<List<Character>>> GetParty(
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var party = await session.Query<Character>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
-                .Where(c => (string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective) && c.KeepAlive)
+                .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
 
-            return new ToolResult<List<Character>>(true, party, $"Retrieved {party.Count} party/KeepAlive characters (campaign: {effective}).");
+            var pcCount = party.Count(c => c.IsPc);
+            var companionCount = party.Count - pcCount;
+            return new ToolResult<List<Character>>(true, party,
+                $"Retrieved {party.Count} party member(s) ({pcCount} PC(s), {companionCount} companion(s)) for campaign '{effective}'.");
         });
     }
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("UNIFIED SEARCH: Search across Lore, Characters, Locations, and Items in one shot. Use this when searching for anything by name or keyword. (Campaign context is recorded for future per-campaign scoping.)")]
+    [Description("UNIFIED SEARCH: Keyword search across lore, characters, and locations (campaign-scoped plus shared-universe entities with no CampaignName). Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<IEnumerable<object>>> SearchWorld(
         string query,
-        [Description("Optional campaign name. Falls back to currently selected (for future namespacing).")] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         // Pure read + the previous parallel query pattern was a major source of "active async tasks on dispose".
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
@@ -318,11 +321,11 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("HISTORY RECALL: Semantic search over past events. Use this to remember 'what happened last time we were here' or recall specific plot points.")]
+    [Description("HISTORY RECALL: Keyword search over past events for the active campaign slug. Use to remember prior sessions or plot points.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
         string query, 
         int limit = 5,
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var results = await _repository.QueryEventsAsync(session, query, null, limit, effective);
@@ -332,10 +335,10 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("DISCOVERABILITY TOOL: Returns all known needs for an NPC along with their current values and any descriptors. Use this to understand what psychological or physical drives an NPC has before roleplaying or making changes. The needs system is open — you are encouraged to invent new narrative-appropriate needs.")]
+    [Description("DISCOVERABILITY TOOL: Returns an NPC's needs, values, and merged descriptors (campaign + per-NPC). Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(
         string characterId,
-        [Description("Optional campaign name. Falls back to currently selected.")] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {

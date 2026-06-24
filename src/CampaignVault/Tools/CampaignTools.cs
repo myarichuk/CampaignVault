@@ -100,8 +100,9 @@ public class CampaignTools(
         management.CreateCampaign(name, system, displayName);
 
     public Task<ToolResult<List<Campaign>>> ListCampaigns() => management.ListCampaigns();
-    public Task<ToolResult<string>> SelectCampaign(string name) => management.SelectCampaign(name);
-    public Task<ToolResult<Campaign>> GetCurrentCampaign(string? campaignName = null) =>
+    public Task<ToolResult<SelectCampaignResult>> SelectCampaign(string name, bool confirmCreate = false) =>
+        management.SelectCampaign(name, confirmCreate);
+    public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(string? campaignName = null) =>
         management.GetCurrentCampaign(campaignName);
 
     // --- Meta ---

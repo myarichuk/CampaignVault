@@ -64,6 +64,8 @@ public sealed class SceneNpcPresenceFactory
                 BehavioralSummary: _behaviorSynthesizer.GenerateSummary(npc, context.Time, context.RecentSceneEvents),
                 Notes: npc.Notes,
                 KeepAlive: npc.KeepAlive,
+                IsPc: npc.IsPc,
+                IsPartyCompanion: npc.IsPartyCompanion,
                 CurrentAppearance: npc.CurrentAppearance,
                 VisualTags: npc.VisualTags,
                 DistinctiveFeatures: npc.DistinctiveFeatures,

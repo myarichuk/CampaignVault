@@ -9,4 +9,7 @@ internal static class ToolErrors
     public const string BadRequest = "BadRequest";
     public const string InvalidArgument = "InvalidArgument";
     public const string NoCampaignSelected = "NoCampaignSelected";
+    public const string SessionRequired = "SessionRequired";
+    public const string SlugAmbiguous = "SlugAmbiguous";
+    public const string SlugNotFound = "SlugNotFound";
 }

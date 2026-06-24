@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -71,7 +72,10 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task Combat_RulesetAction_EndToEnd_Flow()
     {
-        var campaignName = "e2e-combat-test";
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var campaignName = $"e2e-combat-{suffix}";
+        var heroId = $"chars/e2e-hero-{suffix}";
+        var goblinId = $"chars/e2e-goblin-{suffix}";
         var tools = CreateTools(campaignName);
         var repo = _fixture.CreateRepository();
 
@@ -80,15 +84,15 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
             await repo.UpsertCharacterAsync(session,
                 new Character
                 {
-                    Id = "characters/hero", Name = "Hero", CurrentHp = 50, MaxHp = 50,
+                    Id = heroId, Name = "Hero", CurrentHp = 50, MaxHp = 50,
                     SystemStats = new Dnd5eExtension { ArmorClass = 10 }
-                });
+                }, campaignName);
             await repo.UpsertCharacterAsync(session,
                 new Character
                 {
-                    Id = "characters/goblin", Name = "Goblin", CurrentHp = 15, MaxHp = 15,
+                    Id = goblinId, Name = "Goblin", CurrentHp = 15, MaxHp = 15,
                     SystemStats = new Dnd5eExtension { ArmorClass = 10 }
-                });
+                }, campaignName);
             await session.SaveChangesAsync();
         }
 
@@ -96,16 +100,16 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, campaignName);
 
         // 2. Start Combat
-        var startResult = await tools.StartCombat("loc-1", ["characters/hero", "characters/goblin"], campaignName);
-        Assert.True(startResult.Success);
+        var startResult = await tools.StartCombat("loc-1", [heroId, goblinId], campaignName);
+        Assert.True(startResult.Success, $"StartCombat failed: {startResult.Error} — {startResult.Summary}");
 
         // 3. Commit a Ruleset Action (Hero attacks Goblin)
         var actionJson = JsonSerializer.Serialize<WorldChange[]>([
             new RulesetAction
             {
                 ActionType = RulesetActionType.Attack,
-                ActorId = "characters/hero",
-                TargetIds = ["characters/goblin"],
+                ActorId = heroId,
+                TargetIds = [goblinId],
                 Parameters = new Dictionary<string, string>
                     { { "bonus", "5" }, { "damageDice", "1d8" }, { "damageBonus", "3" } }
             }
@@ -117,7 +121,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         // Verify the attack dealt damage
         using (var session = _store.OpenAsyncSession())
         {
-            var goblin = await repo.GetCharacterAsync(session, "characters/goblin", null);
+            var goblin = await repo.GetCharacterAsync(session, goblinId, campaignName);
             Assert.NotNull(goblin);
             Assert.True(goblin.CurrentHp < 15); // Damage was applied
         }
@@ -130,7 +134,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         var statusJson = JsonSerializer.Serialize<WorldChange[]>([
             new StatusChange
             {
-                CharacterId = "characters/goblin", Effect = new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 }
+                CharacterId = goblinId, Effect = new StatusEffect { Name = "Stunned", ExpiresAtRound = 1 }
             }
         ]);
         await tools.Commit(statusJson, "Goblin gets stunned", campaignName);

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
@@ -26,22 +27,38 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task SelectCampaign_CreatesMinimalCampaignIfNonExistent()
+    public async Task SelectCampaign_WithoutConfirmCreate_DoesNotAutoCreateUnknownSlug()
     {
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
+        var slug = "brand-new-world-" + Guid.NewGuid().ToString("N")[..8];
 
-        var selectResult = await tools.SelectCampaign("brand-new-world");
+        var selectResult = await tools.SelectCampaign(slug);
+
+        Assert.False(selectResult.Success);
+        Assert.Equal(ToolErrors.SlugNotFound, selectResult.Error);
+        Assert.False(context.HasSelection);
+    }
+
+    [Fact]
+    public async Task SelectCampaign_WithConfirmCreate_CreatesMinimalCampaign()
+    {
+        var context = new CurrentCampaignContext();
+        var tools = CreateTools(context);
+        var slug = "brand-new-world-" + Guid.NewGuid().ToString("N")[..8];
+
+        var selectResult = await tools.SelectCampaign(slug, confirmCreate: true);
 
         Assert.True(selectResult.Success);
-        Assert.Equal("brand-new-world", selectResult.Data);
-        Assert.Equal("brand-new-world", context.CurrentCampaignName);
-        Assert.Contains("new minimal campaign created", selectResult.Summary);
+        Assert.NotNull(selectResult.Data);
+        Assert.Equal(slug, selectResult.Data!.Slug);
+        Assert.Equal(CampaignEntryHint.NewCampaign, selectResult.Data.Posture!.EntryHint);
+        Assert.Equal(slug, context.CurrentCampaignName);
 
         var currentResult = await tools.GetCurrentCampaign();
         Assert.True(currentResult.Success);
         Assert.NotNull(currentResult.Data);
-        Assert.Equal("brand-new-world", currentResult.Data.Name);
+        Assert.Equal(slug, currentResult.Data!.Campaign.Name);
     }
 
     [Fact]
@@ -50,7 +67,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
 
-        await tools.SelectCampaign("locked-world");
+        await tools.SelectCampaign("locked-world", confirmCreate: true);
 
         // Setup initial campaign config with Dnd5e
         var configResult = await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, "locked-world");
@@ -84,12 +101,12 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         }
 
         // Setup Campaign A (D&D 5e)
-        await tools.SelectCampaign("campaign-a");
+        await tools.SelectCampaign("campaign-a", confirmCreate: true);
         await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, "campaign-a");
         await tools.StartCombat("loc-1", ["characters/char-1"], "campaign-a");
 
         // Setup Campaign B (Pathfinder 2e)
-        await tools.SelectCampaign("campaign-b");
+        await tools.SelectCampaign("campaign-b", confirmCreate: true);
         await tools.SetActiveSystem(RulesetSystem.Pathfinder2e, null, "campaign-b");
         await tools.StartCombat("loc-2", ["characters/char-2"], "campaign-b");
 
@@ -190,5 +207,29 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
             // B should remain untouched by A's advance
             Assert.Equal(50f, c2After.Needs.ActiveNeeds["tiredness"]);
         }
+    }
+
+    [Fact]
+    public async Task SelectCampaign_TwoMcpSessions_KeepIndependentSelections()
+    {
+        var store = new CampaignSelectionStore();
+        var toolsA = TestCampaignToolsFactory.Create(_fixture, store, "mcp-session-alpha");
+        var toolsB = TestCampaignToolsFactory.Create(_fixture, store, "mcp-session-beta");
+        var slugA = "session-a-" + Guid.NewGuid().ToString("N")[..8];
+        var slugB = "session-b-" + Guid.NewGuid().ToString("N")[..8];
+
+        var selectA = await toolsA.SelectCampaign(slugA, confirmCreate: true);
+        var selectB = await toolsB.SelectCampaign(slugB, confirmCreate: true);
+
+        Assert.True(selectA.Success);
+        Assert.True(selectB.Success);
+
+        var currentA = await toolsA.GetCurrentCampaign();
+        var currentB = await toolsB.GetCurrentCampaign();
+
+        Assert.True(currentA.Success);
+        Assert.True(currentB.Success);
+        Assert.Equal(slugA, currentA.Data!.Campaign.Name);
+        Assert.Equal(slugB, currentB.Data!.Campaign.Name);
     }
 }

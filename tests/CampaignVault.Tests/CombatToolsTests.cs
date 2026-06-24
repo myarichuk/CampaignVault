@@ -67,6 +67,53 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task StartCombat_RejectsCombatantFromOtherCampaign()
+    {
+        var store = _store;
+        var tools = CreateTools();
+        var foreignId = "char_foreign_" + Guid.NewGuid();
+        var campaign = "camp_" + Guid.NewGuid();
+
+        using (var session = store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character
+            {
+                Id = foreignId,
+                Name = "Foreign Enemy",
+                CampaignName = "other-campaign",
+                CurrentHp = 10
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.StartCombat("loc1", [foreignId], campaignName: campaign);
+
+        Assert.False(result.Success);
+        Assert.Equal("InvalidInput", result.Error);
+        Assert.Contains("not available in campaign", result.Summary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task StartCombat_AllowsCanonCombatantWithoutCampaignName()
+    {
+        var store = _store;
+        var tools = CreateTools();
+        var canonId = "chars/bob_" + Guid.NewGuid();
+        var campaign = "camp_" + Guid.NewGuid();
+
+        using (var session = store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character { Id = canonId, Name = "Bob", CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.StartCombat("loc1", [canonId], campaignName: campaign);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.Single(result.Data!.Combatants);
+    }
+
+    [Fact]
     public async Task StartCombat_DeadCharacters_FiltersOutAndMayFail()
     {
         var store = _store;

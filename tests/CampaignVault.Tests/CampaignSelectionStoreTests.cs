@@ -1,3 +1,4 @@
+using System;
 using CampaignVault.Data;
 using Xunit;
 
@@ -21,15 +22,30 @@ public class CampaignSelectionStoreTests
     }
 
     [Fact]
-    public void NullSessionId_UsesProcessFallback()
+    public void NoSessionId_HasNoSelection()
     {
         var store = new CampaignSelectionStore();
 
-        store.SetCurrent(null, "shared-campaign");
+        Assert.False(store.HasSelection(null));
+        Assert.Equal(CampaignSelectionStore.UnselectedSentinel, store.GetCurrent(null));
+    }
 
-        Assert.True(store.HasSelection(null));
-        Assert.Equal("shared-campaign", store.GetCurrent(null));
-        Assert.Equal("shared-campaign", store.GetCurrent("   "));
+    [Fact]
+    public void SetCurrent_WithoutSession_Throws()
+    {
+        var store = new CampaignSelectionStore();
+
+        Assert.Throws<CampaignSessionRequiredException>(() => store.SetCurrent(null, "shared-campaign"));
+    }
+
+    [Fact]
+    public void SetCurrent_CanonicalizesCampaignSlug()
+    {
+        var store = new CampaignSelectionStore();
+
+        store.SetCurrent("session-a", "Dragon Heist");
+
+        Assert.Equal("dragon-heist", store.GetCurrent("session-a"));
     }
 
     [Fact]
@@ -51,8 +67,33 @@ public class CampaignSelectionStoreTests
         Assert.True(contextB.HasSelection);
     }
 
+    [Fact]
+    public void PruneExpired_RemovesIdleSessionAfterConfiguredTimeout()
+    {
+        var time = new SteppedTimeProvider(DateTimeOffset.UtcNow);
+        var store = new CampaignSelectionStore(time, TimeSpan.FromHours(1));
+
+        store.SetCurrent("session-a", "alpha");
+        time.Advance(TimeSpan.FromHours(2));
+
+        store.SetCurrent("session-b", "beta");
+
+        Assert.False(store.HasSelection("session-a"));
+        Assert.True(store.HasSelection("session-b"));
+        Assert.Equal("beta", store.GetCurrent("session-b"));
+    }
+
     private sealed class FixedMcpSessionAccessor(string sessionId) : IMcpSessionAccessor
     {
         public string? SessionId { get; } = sessionId;
+    }
+
+    private sealed class SteppedTimeProvider(DateTimeOffset start) : TimeProvider
+    {
+        private DateTimeOffset _now = start;
+
+        public void Advance(TimeSpan delta) => _now = _now.Add(delta);
+
+        public override DateTimeOffset GetUtcNow() => _now;
     }
 }

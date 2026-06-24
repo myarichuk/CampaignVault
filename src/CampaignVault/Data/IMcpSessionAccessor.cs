@@ -6,8 +6,8 @@ namespace CampaignVault.Data;
 public interface IMcpSessionAccessor
 {
     /// <summary>
-    /// The <c>Mcp-Session-Id</c> header value, or <see langword="null"/> when not in an HTTP context
-    /// or when the server runs in stateless MCP mode (which disables session IDs).
+    /// The <c>Mcp-Session-Id</c> HTTP header, the <c>MCP_SESSION_ID</c> environment variable,
+    /// or <see langword="null"/> when neither is available (e.g. stateless HTTP without a configured session).
     /// </summary>
     string? SessionId { get; }
 }

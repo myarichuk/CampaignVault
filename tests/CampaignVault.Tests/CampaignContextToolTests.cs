@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using CampaignVault.Data;
+using CampaignVault.Models;
 using CampaignVault.Tools;
 using Xunit;
 
@@ -31,13 +32,14 @@ public class CampaignContextToolTests : IClassFixture<RavenDBFixture>
     {
         var tools = TestCampaignToolsFactory.Create(_fixture, new CurrentCampaignContext());
 
-        await tools.SelectCampaign("explicit-context-test");
+        await tools.SelectCampaign("explicit-context-test", confirmCreate: true);
 
         var result = await tools.GetCurrentCampaign("explicit-context-test");
 
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
-        Assert.Equal("explicit-context-test", result.Data.Name);
+        Assert.Equal("explicit-context-test", result.Data.Campaign.Name);
+        Assert.Equal(CampaignEntryHint.AddPc, result.Data.Posture.EntryHint);
     }
 
     [Fact]

@@ -22,11 +22,11 @@ public sealed class LocationIntegrityPressureContributor : IPressureContributor
 
         if (ctx.PartyPresent)
         {
-            var anyPartyMemberPresent = ctx.Scene.PresentNPCs.Any(c => c.KeepAlive);
+            var anyPartyMemberPresent = ctx.Scene.PresentNPCs.Any(c => c.IsPc || c.IsPartyCompanion);
             if (!anyPartyMemberPresent)
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, loc.Id,
-                    $"You narrated the party exploring '{loc.Id}', but the engine shows NO main characters (KeepAlive) present here! " +
+                    $"You narrated the party exploring '{loc.Id}', but the engine shows NO party members (isPc / isPartyCompanion) present here! " +
                     "Did you forget to commit their travel? Use the `commit` tool with a `travel` or `location_update` change immediately:\n" +
                     "[ { \"$type\": \"travel\", \"characterId\": \"...\", \"destinationLocationId\": \"" + loc.Id + "\", \"narrative\": \"They arrive at the location.\" } ]",
                     MissingTravelCommitGroupingKey));

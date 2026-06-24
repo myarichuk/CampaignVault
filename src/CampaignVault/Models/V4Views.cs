@@ -88,6 +88,8 @@ public record NpcPresenceSummary(
     string? BehavioralSummary = null,
     string? Notes = null,
     bool KeepAlive = false,
+    bool IsPc = false,
+    bool IsPartyCompanion = false,
     string? CurrentAppearance = null,
     List<string>? VisualTags = null,
     List<string>? DistinctiveFeatures = null,

@@ -1,8 +1,10 @@
+using Autofac;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
+using CampaignVault.Tools;
 using Raven.Client.Documents;
 using Xunit;
 
@@ -22,10 +24,21 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         new Character_Search().Execute(_store);
     }
 
+    private (CampaignTools Tools, CampaignRepository Repo, CurrentCampaignContext Context) CreateScenarioHarness(
+        IWorldSimulationEngine? simulationEngine = null)
+    {
+        var context = new CurrentCampaignContext();
+        var repo = _fixture.CreateRepository(
+            engineOverride: simulationEngine,
+            overrides: b => b.RegisterInstance(context).As<ICurrentCampaignContext>());
+        var tools = TestCampaignToolsFactory.Create(_fixture, context, repository: repo);
+        return (tools, repo, context);
+    }
+
     [Fact]
     public async Task GetScene_EmptyFlavorVacuum_ProducesNarrativePrompt()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         using (var session = _store.OpenAsyncSession())
         {
             var loc = new Location
@@ -34,14 +47,14 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 Name = "Empty Room",
                 Description = "A completely bare room.",
                 Type = LocationType.Room,
-                CampaignName = "default"
+                CampaignName = "test-campaign"
             };
-            await repo.UpsertLocationAsync(session, loc, "default");
+            await repo.UpsertLocationAsync(session, loc, "test-campaign");
             await session.SaveChangesAsync();
 
-            var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+    
 
-            var result = await tools.GetScene(loc.Id, partyPresent: true, campaignName: "default");
+            var result = await tools.GetScene(loc.Id, partyPresent: true, campaignName: "test-campaign");
 
             Assert.True(result.Success);
             var pressures = result.WorldPressure;
@@ -53,9 +66,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_MisspelledLocation_ProvidesSuggestions()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -89,22 +102,23 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task Commit_MisspelledCharacter_ProvidesSuggestions()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("CharacterLenientTest");
+
+        const string campaignSlug = "characterlenienttest";
+        await tools.SelectCampaign(campaignSlug, confirmCreate: true);
 
         using (var session = _store.OpenAsyncSession())
         {
             await session.StoreAsync(new Campaign
-                { Id = keys.Meta("CharacterLenientTest"), Name = "CharacterLenientTest" });
+                { Id = keys.Meta(campaignSlug), Name = campaignSlug });
 
             var character = new Character
             {
                 Id = "chars/drizzzt",
                 Name = "Drizzt Do'Urden",
-                CampaignName = "CharacterLenientTest",
+                CampaignName = campaignSlug,
                 CurrentHp = 10,
                 MaxHp = 10
             };
@@ -122,7 +136,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             new HpChange { CharacterId = "chars/drizz", Delta = -5 }
         };
 
-        var result = await tools.Commit(changes, "Attack hits");
+        var result = await tools.Commit(changes, "Attack hits", campaignSlug);
 
         Assert.False(result.Success);
         Assert.Contains("Did you mean: chars/drizzzt (Drizzt Do'Urden)?", result.Error);
@@ -131,11 +145,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Forgets_To_Arrive_Produces_TravelInterruptedPressure_And_Resolves_On_Commit()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("TravelLazinessTest");
+
+        await tools.SelectCampaign("TravelLazinessTest", confirmCreate: true);
 
         var charId = "chars/traveler-1";
         var destLocId = "locations/destination-1";
@@ -220,11 +234,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Ignores_Faction_Influence_Shift_Produces_PresencePressure()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("FactionInfluenceTest");
+
+        await tools.SelectCampaign("FactionInfluenceTest", confirmCreate: true);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -297,11 +311,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Ignores_Faction_War_Produces_ReputationPressure()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("FactionWarTest");
+
+        await tools.SelectCampaign("FactionWarTest", confirmCreate: true);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -380,11 +394,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Leaves_Quest_Stale_Produces_DeadlinePressure_And_Resolves()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("QuestStaleTest");
+
+        await tools.SelectCampaign("QuestStaleTest", confirmCreate: true);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -460,11 +474,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 .Instance);
         var simEngine = new DefaultSimulationEngine([evictionRule],
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultSimulationEngine>.Instance);
-        var repo = _fixture.CreateRepository(engineOverride: simEngine);
+        var (tools, repo, _) = CreateScenarioHarness(simEngine);
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo, simulationEngine: simEngine);
 
-        await tools.SelectCampaign("QuestGiverEvictionTest");
+        await tools.SelectCampaign("QuestGiverEvictionTest", confirmCreate: true);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -565,30 +578,32 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_PartyPresentWithoutTravel_ProducesMissingTravelCommit_And_Resolves_On_Commit()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("MissingTravelTest");
 
-        var pcId = "chars/pc1";
+        const string campaignSlug = "missing-travel-test";
+        await tools.SelectCampaign(campaignSlug);
+
+        var pcId = "chars/pc1-" + Guid.NewGuid().ToString("N")[..8];
         var destId = "locations/dest-missing-travel";
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = keys.Meta("MissingTravelTest"), Name = "MissingTravelTest" });
+            await session.StoreAsync(new Campaign { Id = keys.Meta(campaignSlug), Name = campaignSlug });
             await session.StoreAsync(new Location
             {
-                Id = "locations/start-mt", Name = "Start", CampaignName = "MissingTravelTest",
+                Id = "locations/start-mt", Name = "Start", CampaignName = campaignSlug,
                 Type = LocationType.Settlement
             });
             await session.StoreAsync(new Location
-                { Id = destId, Name = "Far Town", CampaignName = "MissingTravelTest", Type = LocationType.Settlement });
+                { Id = destId, Name = "Far Town", CampaignName = campaignSlug, Type = LocationType.Settlement });
             await session.StoreAsync(new Character
             {
                 Id = pcId,
                 Name = "Hero",
-                CampaignName = "MissingTravelTest",
+                CampaignName = campaignSlug,
+                IsPc = true,
                 KeepAlive = true,
                 CurrentLocationId = "locations/start-mt"
             });
@@ -598,11 +613,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         }
 
         // LLM narrates arrival but forgets travel commit — party still at start
-        var sceneResult = await tools.GetScene(destId, partyPresent: true, "MissingTravelTest");
+        var sceneResult = await tools.GetScene(destId, partyPresent: true, campaignSlug);
         Assert.True(sceneResult.Success);
         Assert.NotNull(sceneResult.WorldPressure);
         Assert.Contains(sceneResult.WorldPressure,
-            p => p.Contains("NO main characters") || p.Contains("forget to commit their travel"));
+            p => p.Contains("NO party members") || p.Contains("forget to commit their travel"));
 
         var fix = await tools.Commit([
             new TravelChange
@@ -610,7 +625,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 CharacterId = pcId, DestinationLocationId = destId, Narrative = "Arrived at Far Town",
                 EncounterRiskModifier = -100
             }
-        ], "Party travels to Far Town", "MissingTravelTest");
+        ], "Party travels to Far Town", campaignSlug);
         Assert.True(fix.Success, fix.Error);
 
         using (var s = _store.OpenAsyncSession())
@@ -621,7 +636,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 .AnyAsync();
         }
 
-        var finalScene = await tools.GetScene(destId, partyPresent: true, "MissingTravelTest");
+        var finalScene = await tools.GetScene(destId, partyPresent: true, campaignSlug);
         if (finalScene.WorldPressure != null)
         {
             Assert.DoesNotContain(finalScene.WorldPressure, p => p.Contains("forget to commit their travel"));
@@ -631,11 +646,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_TransientQuestGiver_ProducesKeepAlivePressure_And_Resolves_On_CharacterUpdate()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("TransientGiverPressureTest");
+
+        await tools.SelectCampaign("TransientGiverPressureTest", confirmCreate: true);
 
         var giverId = "chars/quest_giver_pressure";
         var locId = "locations/giver-town";
@@ -687,11 +702,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task QuestProgress_ClearsStaleQuestPressureCooldown()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("QuestCooldownTest");
+
+        await tools.SelectCampaign("QuestCooldownTest", confirmCreate: true);
         var questId = "quests/cooldown_q";
         var locId = "locations/cooldown-town";
 
@@ -742,11 +757,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_QuestStaleness_UsesOldestOpenObjective_NotLastQuestTouch()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("ObjectiveStaleTest");
+
+        await tools.SelectCampaign("ObjectiveStaleTest", confirmCreate: true);
         var locId = "locations/obj-stale-town";
 
         using (var session = _store.OpenAsyncSession())
@@ -784,11 +799,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_QuestStaleness_ProducesNarrativePrompt_And_Resolves_On_Commit()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("QuestStalenessTest");
+
+        await tools.SelectCampaign("QuestStalenessTest", confirmCreate: true);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -845,9 +860,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetHelp_ContainsPhase7Examples()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var rollSvc = new DefaultRollService();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+
 
         var result = await tools.GetHelp();
         Assert.True(result.Success);
@@ -860,9 +875,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetHelp_ContainsPhase8SandboxExamples()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var rollSvc = new DefaultRollService();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+
 
         var result = await tools.GetHelp();
         Assert.True(result.Success);
@@ -874,12 +889,12 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_UsesItemUpdate_And_CharacterUpdate_For_VisualState()
     {
-        var repo = _fixture.CreateRepository();
+        var (tools, repo, _) = CreateScenarioHarness();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
 
-        await tools.SelectCampaign("VisualStateTest");
+
+        await tools.SelectCampaign("VisualStateTest", confirmCreate: true);
 
         using (var session = _store.OpenAsyncSession())
         {

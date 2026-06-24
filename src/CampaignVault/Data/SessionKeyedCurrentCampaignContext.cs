@@ -1,8 +1,8 @@
 namespace CampaignVault.Data;
 
 /// <summary>
-/// Resolves the current campaign from the MCP session ID (when present) via <see cref="CampaignSelectionStore"/>.
-/// Falls back to a single process-wide slot when no session ID is available (stdio transport, tests).
+/// Resolves the current campaign from the MCP session ID via <see cref="CampaignSelectionStore"/>.
+/// Requires a session ID (HTTP header or MCP_SESSION_ID); there is no process-wide fallback.
 /// </summary>
 public sealed class SessionKeyedCurrentCampaignContext(
     CampaignSelectionStore store,

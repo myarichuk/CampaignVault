@@ -52,11 +52,11 @@ internal static partial class McpToolErrorFilter
         var guidance = (toolName, paramName) switch
         {
             ("select_campaign", "campaignName") =>
-                "Call list_campaigns first, then pass campaignName as a slug.",
+                "Call list_campaigns first, then pass a campaign slug (e.g. dragon-heist). Requires Mcp-Session-Id or MCP_SESSION_ID to persist selection; otherwise pass campaignName on every subsequent tool call.",
             ("create_campaign", "name") =>
-                "Provide a unique campaign slug.",
+                "Provide a unique campaign slug (spaces become hyphens). Requires Mcp-Session-Id or MCP_SESSION_ID to auto-select after create.",
             ("create_campaign", "initialSystem") =>
-                "Use a RulesetSystem value such as Dnd5e, Pf2e, or Fallout2d20.",
+                "Use a RulesetSystem value: Dnd5e, Pathfinder2e, Fallout2d20, or Narrative.",
             ("commit", "changes") =>
                 "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
             ("commit", "narrative") =>
@@ -86,7 +86,7 @@ internal static partial class McpToolErrorFilter
             ("define_need_descriptor", "needName") or ("define_need_descriptor", "descriptor") =>
                 "Both needName and descriptor are required.",
             ("set_active_system", "activeSystem") =>
-                "Use a RulesetSystem value such as Dnd5e, Pf2e, or Fallout2d20.",
+                "Use a RulesetSystem value: Dnd5e, Pathfinder2e, Fallout2d20, or Narrative.",
             _ =>
                 $"Call list_tools or get_help for the expected argument names and examples."
         };
@@ -98,8 +98,8 @@ internal static partial class McpToolErrorFilter
 
         var legacyExample = (toolName, paramName) switch
         {
-            ("select_campaign", "campaignName") => "select_campaign(\"dragonheist\")",
-            ("create_campaign", "name") => "create_campaign(name: \"dragonheist\", initialSystem: \"Dnd5e\")",
+            ("select_campaign", "campaignName") => "select_campaign(\"dragon-heist\")",
+            ("create_campaign", "name") => "create_campaign(name: \"dragon-heist\", initialSystem: \"Dnd5e\")",
             ("get_scene", "locationId") => "get_scene(\"locations/tavern\")",
             ("get_npc_context", "characterId") => "get_npc_context(\"characters/innkeeper\")",
             ("get_faction_context", "factionId") => "get_faction_context(\"factions/thieves-guild\")",

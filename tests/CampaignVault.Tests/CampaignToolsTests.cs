@@ -629,7 +629,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task GetParty_ReturnsOnlyKeepAliveCharacters_ForCampaign()
+    public async Task GetParty_ReturnsOnlyPartyFlaggedCharacters_ForCampaign()
     {
         var repo = _fixture.CreateRepository();
         var tools = CreateTools();
@@ -644,14 +644,22 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             {
                 Id = "characters/pc-1-" + Guid.NewGuid(),
                 Name = "PC Hero",
+                IsPc = true,
                 KeepAlive = true
+            }, campaignName);
+
+            await repo.UpsertCharacterAsync(session, new Character
+            {
+                Id = "characters/companion-1-" + Guid.NewGuid(),
+                Name = "Wolf Companion",
+                IsPartyCompanion = true
             }, campaignName);
 
             await repo.UpsertCharacterAsync(session, new Character
             {
                 Id = "characters/npc-1-" + Guid.NewGuid(),
                 Name = "Transient Bard",
-                KeepAlive = false
+                KeepAlive = true
             }, campaignName);
 
             await session.SaveChangesAsync();
@@ -672,8 +680,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         var result = await tools.GetParty(campaignName);
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
-        Assert.Single(result.Data!);
-        Assert.Equal("PC Hero", result.Data![0].Name);
+        Assert.Equal(2, result.Data!.Count);
+        Assert.Contains(result.Data, c => c.Name == "PC Hero" && c.IsPc);
+        Assert.Contains(result.Data, c => c.Name == "Wolf Companion" && c.IsPartyCompanion);
     }
 
     [Fact]
@@ -736,6 +745,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         Assert.True(result.Success);
         Assert.Contains("Quickstart for Models", result.Data);
+        Assert.Contains("Campaign session & slug scoping", result.Data);
+        Assert.Contains("Mcp-Session-Id", result.Data);
+        Assert.Contains("MCP_SESSION_ID", result.Data);
         Assert.Contains("Tool Index by Category", result.Data);
         Assert.Contains("`list_tools`", result.Data);
         Assert.Contains("get_quest_details", result.Data);

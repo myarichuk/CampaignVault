@@ -7,9 +7,9 @@ namespace CampaignVault.Data;
 /// singletons are now namespaced under <c>campaigns/{name}/...</c>.
 /// 
 /// This service is the single source of truth for key construction. It enables:
-/// - Clean multi-campaign support in the future
-/// - "Lock in" of campaign type (each campaign has its own config + combat state)
-/// - Easy migration / tooling around namespaced data
+/// - Per-campaign namespacing of singletons (meta, config, time, combat)
+/// - Ruleset lock-in per campaign (each slug has its own config + combat state)
+/// - Consistent ID construction for repository, tools, and handlers
 /// 
 /// All repository methods, tools, and handlers should eventually route ID construction
 /// through this service instead of hardcoding strings like "campaign/config" or "combat/current".
@@ -49,24 +49,7 @@ public sealed class CampaignDocumentKeys
     /// Replaces the old hardcoded "config/need-descriptors".
     /// </summary>
     public string NeedDescriptors(string campaignName) =>
-        $"campaigns/{Normalize(campaignName)}/config/need-descriptors";
+        $"campaigns/{CampaignSlug.Canonicalize(campaignName)}/config/need-descriptors";
 
-    /// <summary>
-    /// Normalizes a campaign name into a safe, lowercase, hyphenated slug for use in document IDs.
-    /// </summary>
-    private static string Normalize(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentNullException(name);
-        }
-
-        // Very lightweight normalization — real validation can live in the create/select tools later.
-        // Note: *very* inefficient, refactor at first opportunity 
-        return name.Trim().ToLowerInvariant()
-                   .Replace(' ', '-')
-                   .Replace('_', '-')
-                   .Replace('/', '-')
-                   .Replace('\\', '-');
-    }
+    private static string Normalize(string name) => CampaignSlug.Canonicalize(name);
 }

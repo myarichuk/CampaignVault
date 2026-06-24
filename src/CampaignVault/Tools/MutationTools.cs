@@ -38,14 +38,15 @@ public class MutationTools : CampaignToolBase
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
     [Description(
         @"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world.
-Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action, and the open-world creates/updates). 
-Use ActivityChange liberally to keep get_scene in sync with your narrative. 
+Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action, and the open-world creates/updates).
+Uses session-selected campaign unless campaignName is passed (see get_help → Campaign session & slug scoping).
+Use ActivityChange liberally to keep get_scene in sync with your narrative.
 
 **When you see ENGINE WARNING or NARRATIVE PROMPT in any get_scene / get_world_state / advance_world response, your immediate follow-up should be a commit using the exact ready JSON example provided (the primary laziness mitigation).**
 
 See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
 
-Supported types for $type: hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, location_create, location_update, character_create, character_update, system_stats, level_up, knowledge_update, schedule_change, item_create, travel, rest, scene_interrupt_check, faction_create, faction_reputation, faction_state, quest_create, quest_progress.
+" + CommitTypesReference.SupportedTypesBullet + @"
 
 **Crowd interrupt roll (`scene_interrupt_check`)**: After a tense beat in a location with `ambientCrowd`, optionally commit a single-roll crowd reaction. Supply `riskModifier` (-50..+50) like `encounterRiskModifier` on travel; omit to auto-derive from `visualTags`/appearance. On success the engine promotes ONE transient from the crowd. Cooldown: one interrupt per location per day. Example:
 [ { ""$type"": ""scene_interrupt_check"", ""locationId"": ""locations/training-hall"", ""characterId"": ""chars/valen"", ""riskModifier"": 25, ""notes"": ""Bloodied wanted face, crowd hostile"" } ]
@@ -53,14 +54,7 @@ Supported types for $type: hp, item, item_update, status, statusremove, event, r
 
 === RECOMMENDED PATTERNS (copy-paste friendly) ===
 
-**Conversation (REQUIRED: `involved` with every speaker — NOT `participants`):**
-[
-  { ""$type"": ""event"", ""category"": ""Conversation"", ""summary"": ""Valen asked Lirael about missing caravans on the Gold Road."", ""involved"": [""chars/valen"", ""chars/lirael-goldvein""] },
-  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/valen"", ""targetId"": ""chars/lirael-goldvein"", ""category"": ""Social"", ""verb"": ""discussing the disappearances with"", ""bidirectional"": true },
-  { ""$type"": ""activity"", ""characterId"": ""chars/valen"", ""newActivity"": ""Listening intently at the bar"" },
-  { ""$type"": ""activity"", ""characterId"": ""chars/lirael-goldvein"", ""newActivity"": ""Sharing guarded information over the bar"" },
-  { ""$type"": ""knowledge_update"", ""characterId"": ""chars/valen"", ""topic"": ""Caravan Disappearances on the Gold Road"", ""details"": ""Three caravans vanished without trace near Whispering Pass."", ""source"": ""Heard"", ""valence"": ""Negative"", ""urgency"": ""High"", ""importance"": ""Important"" }
-]
+" + CommitHelpExamples.ConversationSection + @"
 
 (See get_help for the full expanded list including the tavern creation + promotion flow, one-way link fixes, ambient/PoI flavor without bloat, etc.)
 
@@ -70,7 +64,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         JsonElement? changes = null,
         [Description("Narrative summary of what happened (for the log and world pressure).")]
         string? narrative = null,
-        [Description("Optional campaign name. Falls back to currently selected campaign.")]
+        [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
         if (!CommitChangesParser.TryParse(changes, out var parsedChanges, out var parseError))
@@ -194,7 +188,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "TIME PASSAGE: Call this for travel, long rests, or downtime. Fast-forwards the world clock and runs background simulations (rumor decay, NPC needs). Returns narrative updates on what changed while the party was away. Respects the currently selected campaign.")]
+        "TIME PASSAGE: Call for travel, long rests, or downtime. Fast-forwards the world clock and runs simulation rules. Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
         [Description("Number of days to skip.")]
         int days,
@@ -202,7 +196,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
         TimeOfDay timeOfDay,
         [Description("Summary of the rest or travel activity.")]
         string narrative,
-        [Description("Optional campaign name. Falls back to currently selected.")]
+        [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
         if (days < 0)
@@ -214,10 +208,25 @@ Basic + creating on the fly examples are also shown in the tool description and 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var result = await _repository.AdvanceWorldAsync(session, days, timeOfDay, effective);
-            await _repository.LogEventAsync(session,
-                new Event { Id = "events/" + Guid.NewGuid(), Summary = narrative, Category = EventCategory.Timeskip });
 
-            var timeDoc = await _repository.GetTimeAsync(session, effective);
+            var partyIds = await session.Query<Character>()
+                .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
+                .Select(c => c.Id)
+                .ToListAsync();
+
+            await _repository.LogEventAsync(session,
+                new Event
+                {
+                    Id = "events/" + Guid.NewGuid(),
+                    CampaignName = effective,
+                    Summary = narrative,
+                    Category = EventCategory.Timeskip,
+                    DayLogged = (int)result.NewTime.TotalDaysElapsed,
+                    Involved = partyIds
+                },
+                effective);
+
+            var timeDoc = result.NewTime;
             var config = await _repository.GetCampaignConfigAsync(session, effective);
 
             var orchestratorPressures = await _pressureOrchestrator.CollectAndCapAsync(

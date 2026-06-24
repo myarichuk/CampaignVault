@@ -29,6 +29,11 @@ public class CharacterCreateHandler : IWorldChangeHandler
         var existing = context.Session != null ? await context.Session.LoadAsync<Character>(cc.CharacterId, ct) : null;
         if (existing != null)
         {
+            if (!string.IsNullOrEmpty(context.CampaignName)
+                && CampaignEntityVisibility.TryGetInvisibilityReason(existing, context.CampaignName, out var hidden))
+            {
+                return ChangeHandlerResult.Failure(hidden);
+            }
             existing.Name = cc.Name ?? existing.Name;
             if (cc.Notes != null)
             {
@@ -48,6 +53,20 @@ public class CharacterCreateHandler : IWorldChangeHandler
             if (cc.KeepAlive)
             {
                 existing.KeepAlive = cc.KeepAlive;
+            }
+
+            if (cc.IsPc || cc.IsPartyCompanion || existing.IsPc || existing.IsPartyCompanion)
+            {
+                var mergedIsPc = cc.IsPc || existing.IsPc;
+                var mergedCompanion = cc.IsPartyCompanion || existing.IsPartyCompanion;
+                if (!CharacterPartyRules.TryValidate(mergedIsPc, mergedCompanion, existing.CampaignName ?? context.CampaignName,
+                        out var partyError))
+                {
+                    return ChangeHandlerResult.Failure(partyError!);
+                }
+
+                existing.IsPc = mergedIsPc;
+                existing.IsPartyCompanion = mergedCompanion;
             }
 
             if (cc.Schedule != null)
@@ -126,6 +145,8 @@ public class CharacterCreateHandler : IWorldChangeHandler
             CurrentLocationId = cc.CurrentLocationId,
             CurrentActivity = cc.CurrentActivity,
             KeepAlive = cc.KeepAlive,
+            IsPc = cc.IsPc,
+            IsPartyCompanion = cc.IsPartyCompanion,
             Schedule = cc.Schedule,
             Psychology = cc.Psychology ?? new PsychologyProfile(),
             ClassLevel = cc.ClassLevel,
@@ -137,6 +158,12 @@ public class CharacterCreateHandler : IWorldChangeHandler
         if (string.IsNullOrEmpty(newChar.CampaignName))
         {
             newChar.CampaignName = context.CampaignName;
+        }
+
+        if (!CharacterPartyRules.TryValidate(newChar.IsPc, newChar.IsPartyCompanion, newChar.CampaignName,
+                out var createPartyError))
+        {
+            return ChangeHandlerResult.Failure(createPartyError!);
         }
 
         await ApplyBootstrapAsync(newChar, activeSystem, cc.MaxHp, cc.CurrentHp, null, BootstrapTrigger.Create, context, ct);
@@ -213,6 +240,18 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             context.RegisterNewCharacter(character);
         }
 
+        if (!string.IsNullOrEmpty(context.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
+        {
+            return ChangeHandlerResult.Failure(hidden);
+        }
+
+        if (!character.IsPc)
+        {
+            return ChangeHandlerResult.Failure(
+                $"level_up applies only to player characters (isPc: true). '{levelUp.CharacterId}' is not a PC.");
+        }
+
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
         var previousMax = character.MaxHp;
         var report = await _bootstrap.ApplyLevelGainAsync(new BootstrapContext
@@ -279,6 +318,12 @@ public class ScheduleChangeHandler : IWorldChangeHandler
             context.RegisterNewCharacter(c);
         }
 
+        if (!string.IsNullOrEmpty(context.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(c, context.CampaignName, out var hidden))
+        {
+            return ChangeHandlerResult.Failure(hidden);
+        }
+
         c.Schedule = sc.Schedule;
 
         return ChangeHandlerResult.Ok;
@@ -308,6 +353,12 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         if (character == null)
             return ChangeHandlerResult.Failure($"Character '{cu.CharacterId}' not found. Cannot update.");
 
+        if (!string.IsNullOrEmpty(context.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
+        {
+            return ChangeHandlerResult.Failure(hidden);
+        }
+
         if (cu.AppearanceOverride != null) character.CurrentAppearance = cu.AppearanceOverride;
 
         if (cu.TagsToAdd != null)
@@ -333,6 +384,28 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         if (cu.KeepAlive.HasValue)
         {
             character.KeepAlive = cu.KeepAlive.Value;
+        }
+
+        if (cu.IsPc.HasValue || cu.IsPartyCompanion.HasValue)
+        {
+            var newIsPc = cu.IsPc ?? character.IsPc;
+            var newIsCompanion = cu.IsPartyCompanion ?? character.IsPartyCompanion;
+            if (cu.IsPc == true)
+            {
+                newIsCompanion = false;
+            }
+            else if (cu.IsPartyCompanion == true)
+            {
+                newIsPc = false;
+            }
+
+            if (!CharacterPartyRules.TryValidate(newIsPc, newIsCompanion, character.CampaignName, out var partyError))
+            {
+                return ChangeHandlerResult.Failure(partyError!);
+            }
+
+            character.IsPc = newIsPc;
+            character.IsPartyCompanion = newIsCompanion;
         }
 
         if (cu.SystemStats != null)
@@ -391,6 +464,12 @@ public class SystemStatsChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Character '{ssc.CharacterId}' not found. Cannot update system stats.");
         }
 
+        if (!string.IsNullOrEmpty(context.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
+        {
+            return ChangeHandlerResult.Failure(hidden);
+        }
+
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
         if (!SystemStatsMerger.TryValidateRuleset(ssc.SystemStats, activeSystem, out var validationError))
         {
@@ -446,6 +525,12 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         var character = context.Session != null ? await context.Session.LoadAsync<Character>(ku.CharacterId, ct) : null;
         if (character == null)
             return ChangeHandlerResult.Failure($"Character '{ku.CharacterId}' not found. Cannot update knowledge.");
+
+        if (!string.IsNullOrEmpty(context.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
+        {
+            return ChangeHandlerResult.Failure(hidden);
+        }
 
         var isNew = !character.Psychology.Memories.TryGetValue(ku.Topic, out var memory);
         if (isNew)

@@ -14,7 +14,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 ## Recent Updates
 - **Engagement Relations & Spatial Positioning**: Pairwise scene anchors (`engagement_relation`: category + freeform verb) vs. relative placement (`spatial_position`: distance band, bearing, zone). Category defaults control travel blocks and scene pressure; ruleset resolvers auto-establish/clear grapple engagements on contested maneuver checks. See `get_help` and `ARCHITECTURE.md`.
-- **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in). World entities are campaign-tagged and filtered at query time; characters/locations with no `CampaignName` may still appear across campaigns (shared-universe design).
+- **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in). Campaign selection is **session-keyed** (`Mcp-Session-Id` or `MCP_SESSION_ID`). Shared-universe canon (no `CampaignName`) appears in every campaign; campaign-owned entities are slug-tagged.
 - **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20, Narrative), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
 - **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
 - **Character Bootstrap Pipeline**: Per-ruleset HP/defense/proficiency derivation when PCs omit `maxHp` on create/upsert; `level_up` for incremental gains. Put `hitDie`/`level` on typed `systemStats` (not `attributes`). Creature stat blocks use `statBlockHp` or `maxHp` (HP formula only — AC/proficiency still derive).
@@ -151,7 +151,7 @@ The server checks for a valid token in the following order:
    ```
    https://your-app.example.com/?token=your-secure-token-here
    ```
-   Also accepts `?auth=...` and `?bearer=...` as aliases.
+
 
    **Security warning**: Passing the token in the query string is significantly less secure than using headers. Query parameters are frequently logged by servers, reverse proxies, CDNs, load balancers, and analytics tools. They can also leak through browser history, shared links, or the `Referer` header. Only use this method when your client cannot set custom headers (e.g. Grok Web custom connectors as of version 4.3).
 
@@ -181,6 +181,26 @@ See the Deployment section for how to set `BEARER_TOKEN` on Fly.io.
 | `CAMPAIGN_DB_PATH` | RavenDB data directory | `{AppBase}/RavenData` (Fly.io: `/app/data/campaign.db` via `fly.toml`) |
 | `BEARER_TOKEN` | Optional auth token (env only) | unset = no auth |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins, or `*` | `*` (allow any) |
+| `MCP_PORT` | HTTP MCP + health listener port | `5275` (Fly: `8080`) |
+| `MCP_BIND_ANY` | Bind `0.0.0.0` instead of `localhost` | `1` in Docker/Fly; `0` in local Development |
+| `MCP_HOSTING_PROFILE` | `local` or `remote` (docs/defaults hint) | `local`; `remote` when `MCP_STATELESS=1` |
+| `MCP_STATELESS` | Stateless MCP HTTP (no session header) | unset = stateful HTTP |
+| `MCP_SESSION_ID` | Session key for stdio/local CLI when HTTP headers are unavailable | unset |
+| `CAMPAIGN_SELECTION_TTL_HOURS` | Idle hours before an MCP session's `select_campaign` binding is pruned from memory | `2` |
+| `MCP_STDIO` | Enable stdio MCP transport | unset |
+| `GRPC_PORT` | gRPC sync port for authoring UI | `50051` |
+
+### Campaign session scoping
+
+Campaign selection is stored **per MCP session** (never process-wide). Identify the session via:
+
+1. **`Mcp-Session-Id` HTTP header** (stateful HTTP clients), or
+2. **`MCP_SESSION_ID` environment variable** (stdio / local CLI), or
+3. **`campaignName` on every tool call** when no session is available (`MCP_STATELESS=1`).
+
+Call `select_campaign` after establishing a session, or pass `campaignName` explicitly on each tool invocation.
+
+Selections are pruned after `CAMPAIGN_SELECTION_TTL_HOURS` (default 2) of inactivity on that session key.
 
 ## Development
 
@@ -191,7 +211,8 @@ See `ARCHITECTURE.md` for the full system design. Key code locations:
 - **Simulation** — `DefaultSimulationEngine` + rules: `ScheduleEvaluationRule`, `NeedsAccumulationRule`, `RumorDecayRule`, `StatusExpiryRule`, `MemorySalienceDecayRule`, `NeedConflictRule`, `FactionEcosystemRule`, `QuestStalenessRule`, `RelationalRearmRule`, `TransientEvictionRule`
 - **Pressure** — `src/CampaignVault/Data/Pressure/` (orchestrator + contributors)
 - **Rulesets** — `src/CampaignVault/Rulesets/` (D&D 5e, PF2e, Fallout 2d20, Narrative resolvers + `DefaultRollService`)
-- **Tools** — `src/CampaignVault/Tools/CampaignTools.cs`
+- **MCP tools** — `src/CampaignVault/Tools/*Tools.cs` (domain classes; `CampaignTools.cs` is a test-only facade)
+- **Authoring UI** — connects via gRPC on `GRPC_PORT`; for play/testing against a local MCP server, set `MCP_SESSION_ID` (stdio) or pass `campaignName` on each tool call
 - **Tests** — `tests/CampaignVault.Tests/`
 
 ## Client Compatibility Notes (as of latest testing)
