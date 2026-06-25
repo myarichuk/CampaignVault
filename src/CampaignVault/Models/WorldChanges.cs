@@ -17,6 +17,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(StatusRemove), "statusremove")]
 [JsonDerivedType(typeof(EventOccurred), "event")]
 [JsonDerivedType(typeof(RumorEvolves), "rumor")]
+[JsonDerivedType(typeof(RumorCreate), "rumor_create")]
 [JsonDerivedType(typeof(RelationshipChange), "relationship")]
 [JsonDerivedType(typeof(NeedChange), "need")]
 [JsonDerivedType(typeof(AttributeChange), "attribute")]
@@ -209,17 +210,22 @@ public class RumorEvolves : WorldChange
     public string? NewText { get; set; }
 }
 
+/// <summary>Seed a new rumor. State starts at Nascent; advance via <see cref="RumorEvolves"/> ($type rumor).</summary>
 public class RumorCreate : WorldChange
 {
+    [Description("Unique rumor ID (e.g. 'rumors/nightshade-gang'). Namespace with campaign slug when campaign-specific.")]
     [JsonPropertyName("rumorId")]
     public string RumorId { get; set; } = default!;
 
+    [Description("Short topic label (e.g. 'Nightshade Gang').")]
     [JsonPropertyName("subject")]
     public string Subject { get; set; } = default!;
 
+    [Description("Initial rumor text heard by the party or world.")]
     [JsonPropertyName("text")]
     public string Text { get; set; } = default!;
 
+    [Description("Optional location IDs this rumor is tied to. First ID becomes RegionLocationId; omit for global.")]
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
 }
@@ -414,51 +420,56 @@ public class ActivityChange : WorldChange
 ///   "attackCount"   – max separate attack rolls (multi-target / repeating weapons); defaults to targetIds.Count when multiple targets listed
 ///   "initiativeSkill" – skill name overriding default initiative (PF2e)
 ///   "targetSkill"   – skill name for the target side of a ContestedCheck
+///   "resolution"    – spell routing: attack, save, check, utility, heal (alias: spellResolution)
+///   "save"          – saving throw ability for save-based spells (5e/PF2e) or saveAttribute (Fallout)
+///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)
+///   "healDice"      – healing expression for heal/recovery spells (e.g. "1d8")
+///   "healBonus"     – flat healing bonus
+///   "healAmount"    – flat HP restored (Fallout stimpak-style items)
+///   "spellAttackBonus" – override spell attack roll bonus (optional if caster has systemStats.spellAttackBonus)
+///   "spellResolution" – alias for resolution
+///   "bonusDice"     – extra d20s in Fallout pools (Luck/AP); useLuck adds +1 (does not spend luckPoints)
+///   "rangeModifier" – added to Fallout attack difficulty
+///   "cover"         – added to Fallout attack difficulty
+/// Multiclass/spellcasting bootstrap lives on systemStats (character_create), NOT here: classLevels, spellcastingAbility, spellSaveDc.
 /// </summary>
 public class RulesetAction : WorldChange
 {
-    /// <summary>ID of the acting character (attacker, skill user, healer, etc.).</summary>
+    [Description("ID of the acting character (attacker, caster, skill user, or item user).")]
     [JsonPropertyName("actorId")]
     public string ActorId { get; set; } = default!;
 
-    /// <summary>
-    /// IDs of target characters. Empty for self-only actions.
-    /// Multiple targets for AoE spells or group checks.
-    /// </summary>
+    [Description("Target character IDs. Required for attack/save/heal spells. List ALL AoE targets in one commit. Omit for non-combat utility/check spells.")]
     [JsonPropertyName("targetIds")]
     public List<string> TargetIds { get; set; } = [];
 
-    /// <summary>
-    /// Free-text name of the action. Weapon name, spell name, or skill name.
-    /// Examples: "longsword", "Fireball", "Athletics", "SmallGuns", "TreatWounds".
-    /// NOT an enum — the space is intentionally open-ended.
-    /// </summary>
+    [Description("Free-text action label: weapon name, spell name, or skill (e.g. longsword, Fireball, Detect Magic). Attacks: match heldItems for auto weapon merge.")]
     [JsonPropertyName("actionName")]
     public string ActionName { get; set; } = default!;
 
-    /// <summary>What kind of action this is. Must be one of the RulesetActionType enum values.</summary>
+    [Description("Attack, Spell, SkillCheck, SavingThrow (single actor save), ContestedCheck, OpposedCheck (alias of ContestedCheck), UseItem, or Recovery.")]
     [JsonPropertyName("actionType")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RulesetActionType ActionType { get; set; }
 
-    /// <summary>Broad category of the action. Must be one of the ActionCategory enum values.</summary>
+    [Description("Melee, Ranged, Spell, Maneuver, Social, or Survival. Spell recommended for magic; Social/Survival hints non-combat utility.")]
     [JsonPropertyName("actionCategory")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ActionCategory ActionCategory { get; set; }
 
-    /// <summary>D&D-style advantage state for this specific action.</summary>
+    [Description("5e only: None, Advantage, or Disadvantage for this roll.")]
     [JsonPropertyName("advantageState")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public AdvantageState AdvantageState { get; set; } = AdvantageState.None;
 
-    /// <summary>Narrative damage type (e.g. "Fire", "Slashing", "Radiation").</summary>
+    [Description("Damage type for resistance math (e.g. Fire, Slashing, Radiation).")]
     [JsonPropertyName("damageType")]
     public string? DamageType { get; set; }
 
-    /// <summary>
-    /// Resolver-specific overrides as string key-value pairs.
-    /// See class-level summary for the documented parameter keys.
-    /// </summary>
+    [Description(
+        "Resolver hints. Spell: resolution (attack|save|check|utility|heal), dc, save, damageDice, halfOnSave (5e default true), healDice. "
+        + "5e/PF2e: bonus, damageBonus, ac, mapPenalty. Fallout: difficulty/dc, attribute, skill, pool, rangeModifier, cover, targetPart, healAmount. "
+        + "Engine auto-applies hp deltas from ruleset_action — do not duplicate with separate hp commits.")]
     [JsonPropertyName("parameters")]
     [JsonConverter(typeof(FlexibleStringDictionaryConverter))]
     public Dictionary<string, string> Parameters { get; set; } = [];
@@ -674,6 +685,10 @@ public class LevelUpChange : WorldChange
     [Description("If true, also increase currentHp by the same amount as MaxHp gain (full heal on level). Default false.")]
     [JsonPropertyName("healToMatch")]
     public bool HealToMatch { get; set; }
+
+    [Description("For multiclass PCs: which class gained the level (e.g. 'Wizard', 'Fighter'). Determines hit die for HP gain.")]
+    [JsonPropertyName("classGained")]
+    public string? ClassGained { get; set; }
 }
 
 /// <summary>
