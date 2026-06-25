@@ -18,12 +18,12 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         RulesetAction action, 
         CancellationToken ct = default)
     {
-        if (!context.Characters.TryGetValue(action.ActorId, out var actor))
+        if (!context.Characters.TryGetValue(action.CharacterId, out var actor))
         {
             return new ResolverOutput
             {
                 Result = ResolverResult.Fail("ActorNotFound",
-                    $"Error: Actor '{action.ActorId}' not found or not visible in campaign '{context.CampaignName}'.")
+                    $"Error: Character '{action.CharacterId}' not found or not visible in campaign '{context.CampaignName}'.")
             };
         }
 
@@ -34,7 +34,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
             return new ResolverOutput
             {
                 Result = ResolverResult.Fail("InvalidInput",
-                    $"Error: Actor '{action.ActorId}' is not available in campaign '{context.CampaignName}'. {reason}")
+                    $"Error: Character '{action.CharacterId}' is not available in campaign '{context.CampaignName}'. {reason}")
             };
         }
 
@@ -180,7 +180,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         List<WorldChange> mutations,
         CancellationToken ct)
     {
-        var targets = action.TargetIds.Count > 0 ? action.TargetIds : [action.ActorId];
+        var targets = action.TargetIds.Count > 0 ? action.TargetIds : [action.CharacterId];
         if (!TryGetParameter(action.Parameters, out var healDice, "healDice", "damageDice"))
         {
             healDice = "1d4";

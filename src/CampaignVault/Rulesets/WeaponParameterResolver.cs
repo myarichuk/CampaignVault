@@ -62,7 +62,7 @@ internal static class WeaponParameterResolver
             }
         }
 
-        var heldWeapons = await GetHeldWeaponsAsync(context, action.ActorId, ct);
+        var heldWeapons = await GetHeldWeaponsAsync(context, action.CharacterId, ct);
         if (heldWeapons.Count == 0)
         {
             return null;

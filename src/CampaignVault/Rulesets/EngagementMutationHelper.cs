@@ -17,11 +17,11 @@ public static class EngagementMutationHelper
         || (TryGetParameter(action.Parameters, "escape", out var escape)
             && (escape.Equals("true", StringComparison.OrdinalIgnoreCase) || escape == "1"));
 
-    public static void ApplyGrappleSuccess(string actorId, string targetId, List<WorldChange> mutations)
+    public static void ApplyGrappleSuccess(string characterId, string targetId, List<WorldChange> mutations)
     {
         mutations.Add(new EngagementRelationChange
         {
-            ActorId = actorId,
+            CharacterId = characterId,
             TargetId = targetId,
             Category = EngagementCategory.Physical,
             Verb = GrapplingVerb,
@@ -33,10 +33,9 @@ public static class EngagementMutationHelper
     {
         mutations.Add(new EngagementRelationChange
         {
-            ActorId = escapedId,
+            CharacterId = escapedId,
             TargetId = grapplerId,
             Verb = null,
-            RelationType = null,
             Bidirectional = true
         });
     }

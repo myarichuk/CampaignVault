@@ -209,12 +209,12 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         if (isGrapple && actorWins)
         {
-            EngagementMutationHelper.ApplyGrappleSuccess(action.ActorId, targetId, mutations);
+            EngagementMutationHelper.ApplyGrappleSuccess(action.CharacterId, targetId, mutations);
             resultStr += " Target is now grappled.";
         }
         else if (isEscape && actorWins)
         {
-            EngagementMutationHelper.ApplyGrappleEscape(action.ActorId, targetId, mutations);
+            EngagementMutationHelper.ApplyGrappleEscape(action.CharacterId, targetId, mutations);
             resultStr += " Actor breaks free of the grapple.";
         }
 
@@ -260,7 +260,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             damage = combatResult.Damage;
             if (damage > 0)
             {
-                mutations.Add(new HpChange { CharacterId = action.ActorId, Delta = -damage });
+                mutations.Add(new HpChange { CharacterId = action.CharacterId, Delta = -damage });
             }
         }
 
@@ -377,7 +377,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         List<WorldChange> mutations,
         CancellationToken ct)
     {
-        var targets = action.TargetIds.Count > 0 ? action.TargetIds : [action.ActorId];
+        var targets = action.TargetIds.Count > 0 ? action.TargetIds : [action.CharacterId];
         var healAmount = 0;
 
         if (action.Parameters.TryGetValue("healAmount", out var healStr) && int.TryParse(healStr, out var flatHeal))

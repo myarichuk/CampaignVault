@@ -280,12 +280,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         if (isGrapple && actorWins)
         {
-            EngagementMutationHelper.ApplyGrappleSuccess(action.ActorId, targetId, mutations);
+            EngagementMutationHelper.ApplyGrappleSuccess(action.CharacterId, targetId, mutations);
             resultStr += " Target is now grappled.";
         }
         else if (isEscape && actorWins)
         {
-            EngagementMutationHelper.ApplyGrappleEscape(action.ActorId, targetId, mutations);
+            EngagementMutationHelper.ApplyGrappleEscape(action.CharacterId, targetId, mutations);
             resultStr += " Actor breaks free of the grapple.";
         }
 
@@ -322,7 +322,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var resultStr = isSuccess ? "Success" : "Failure";
         
         var damageApplied = await TryApplySaveDamageAsync(
-            action, action.ActorId, isSuccess, mutations, _rollService, ct);
+            action, action.CharacterId, isSuccess, mutations, _rollService, ct);
         var damageMsg = damageApplied > 0
             ? $" Took {damageApplied} damage."
             : string.Empty;

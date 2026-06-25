@@ -290,7 +290,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
             if (success)
             {
-                EngagementMutationHelper.ApplyGrappleSuccess(action.ActorId, targetId, mutations);
+                EngagementMutationHelper.ApplyGrappleSuccess(action.CharacterId, targetId, mutations);
             }
 
             var resultSuffix = success ? " Target is now grabbed." : string.Empty;
@@ -320,7 +320,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
             if (success)
             {
-                EngagementMutationHelper.ApplyGrappleEscape(action.ActorId, targetId, mutations);
+                EngagementMutationHelper.ApplyGrappleEscape(action.CharacterId, targetId, mutations);
             }
 
             var resultSuffix = success ? " Actor breaks free." : string.Empty;
@@ -360,7 +360,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         
         var degree = CalculateDegreeOfSuccess(outcome, dc);
         
-        var damage = await TryApplyPf2eSaveDamageAsync(action, action.ActorId, degree, mutations, ct);
+        var damage = await TryApplyPf2eSaveDamageAsync(action, action.CharacterId, degree, mutations, ct);
         var damageMsg = damage > 0 ? $" Took {damage} damage." : string.Empty;
         return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}");
     }

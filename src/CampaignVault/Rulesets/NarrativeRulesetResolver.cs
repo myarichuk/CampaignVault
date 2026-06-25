@@ -47,7 +47,7 @@ public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, IComb
         {
             case 1:
                 narrative = "No, And... The action fails spectacularly, causing a new complication.";
-                mutations.Add(new NeedChange { CharacterId = action.ActorId, Need = "stress", Delta = 20f });
+                mutations.Add(new NeedChange { CharacterId = action.CharacterId, Need = "stress", Delta = 20f });
                 break;
             case 2:
                 narrative = "No. The action simply fails without further complication.";
@@ -57,7 +57,7 @@ public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, IComb
                 break;
             case 4:
                 narrative = "Yes, But... The action succeeds, but at a cost or with a complication.";
-                mutations.Add(new NeedChange { CharacterId = action.ActorId, Need = "stress", Delta = 10f });
+                mutations.Add(new NeedChange { CharacterId = action.CharacterId, Need = "stress", Delta = 10f });
                 break;
             case 5:
                 narrative = "Yes. The action succeeds cleanly.";
@@ -86,7 +86,7 @@ public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, IComb
         {
             if (success)
             {
-                var targets = action.TargetIds != null && action.TargetIds.Count > 0 ? action.TargetIds : new List<string> { action.ActorId };
+                var targets = action.TargetIds != null && action.TargetIds.Count > 0 ? action.TargetIds : new List<string> { action.CharacterId };
                 foreach (var targetId in targets)
                 {
                     mutations.Add(new HpChange { CharacterId = targetId, Delta = 1 });
