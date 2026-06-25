@@ -10,10 +10,10 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
     {
         var src = (EngagementRelationChange)change;
 
-        if (!context.Characters.TryGetValue(src.ActorId, out var actor))
+        if (!context.Characters.TryGetValue(src.CharacterId, out var actor))
         {
-            actor = context.Session != null ? await context.Session.LoadAsync<Character>(src.ActorId, ct) : null;
-            if (actor == null) return ChangeHandlerResult.Failure($"Actor {src.ActorId} not found.");
+            actor = context.Session != null ? await context.Session.LoadAsync<Character>(src.CharacterId, ct) : null;
+            if (actor == null) return ChangeHandlerResult.Failure($"Character {src.CharacterId} not found.");
             context.RegisterNewCharacter(actor);
         }
 
@@ -29,18 +29,18 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
         actor.SystemStats.EngagementRelations ??= new List<EngagementRelation>();
         target.SystemStats.EngagementRelations ??= new List<EngagementRelation>();
 
-        if (EngagementRelationHelpers.IsClearRequest(src.Verb, src.RelationType))
+        if (EngagementRelationHelpers.IsClearRequest(src.Verb))
         {
             actor.SystemStats.EngagementRelations.RemoveAll(r => r.TargetId == src.TargetId);
             if (src.Bidirectional)
             {
-                target.SystemStats.EngagementRelations.RemoveAll(r => r.TargetId == src.ActorId);
+                target.SystemStats.EngagementRelations.RemoveAll(r => r.TargetId == src.CharacterId);
             }
-            context.RecordMessage($"EngagementRelation removed between {src.ActorId} and {src.TargetId}.");
+            context.RecordMessage($"EngagementRelation removed between {src.CharacterId} and {src.TargetId}.");
         }
         else
         {
-            var verb = EngagementRelationHelpers.ResolveVerb(src.Verb, src.RelationType)!;
+            var verb = EngagementRelationHelpers.ResolveVerb(src.Verb)!;
             var category = src.Category ?? EngagementRelationCatalog.InferCategory(verb);
             var relation = new EngagementRelation
             {
@@ -57,17 +57,17 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
             {
                 var inverseVerb = EngagementRelationCatalog.GetInverseVerb(category, verb);
                 var inverseCategory = EngagementRelationCatalog.InferCategory(inverseVerb);
-                target.SystemStats.EngagementRelations.RemoveAll(r => r.TargetId == src.ActorId);
+                target.SystemStats.EngagementRelations.RemoveAll(r => r.TargetId == src.CharacterId);
                 target.SystemStats.EngagementRelations.Add(new EngagementRelation
                 {
-                    TargetId = src.ActorId,
+                    TargetId = src.CharacterId,
                     Category = inverseCategory,
                     Verb = inverseVerb,
                     RestrictionLevel = src.RestrictionLevel
                 });
             }
 
-            context.RecordMessage($"EngagementRelation established: {src.ActorId} is {verb} ({category}) with {src.TargetId}.");
+            context.RecordMessage($"EngagementRelation established: {src.CharacterId} is {verb} ({category}) with {src.TargetId}.");
         }
 
         return ChangeHandlerResult.Ok;

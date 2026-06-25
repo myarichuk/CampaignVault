@@ -66,10 +66,10 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
     {
         if (change is not RulesetAction ra) return false;
 
-        if (!string.IsNullOrEmpty(ra.ActorId))
+        if (!string.IsNullOrEmpty(ra.CharacterId))
         {
-            characterIds?.Add(ra.ActorId);
-            allInvolvedIds?.Add(ra.ActorId);
+            characterIds?.Add(ra.CharacterId);
+            allInvolvedIds?.Add(ra.CharacterId);
         }
 
         if (ra.TargetIds != null)

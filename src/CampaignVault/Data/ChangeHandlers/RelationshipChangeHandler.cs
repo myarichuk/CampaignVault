@@ -13,13 +13,13 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
     {
         var rel = (RelationshipChange)change;
 
-        if (!context.Characters.TryGetValue(rel.SourceId, out var source))
+        if (!context.Characters.TryGetValue(rel.CharacterId, out var source))
         {
-            source = context.Session != null ? await context.Session.LoadAsync<Character>(rel.SourceId, ct) : null;
+            source = context.Session != null ? await context.Session.LoadAsync<Character>(rel.CharacterId, ct) : null;
             if (source == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(rel.SourceId);
-                var msg = $"Character {rel.SourceId} not found.";
+                var hints = await context.SuggestCharacterMatchAsync(rel.CharacterId);
+                var msg = $"Character {rel.CharacterId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
@@ -38,7 +38,7 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
         var currentVal = source.Social.Relationships.GetValueOrDefault(rel.TargetId, 0);
         source.Social.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
 
-        context.RecordMessage($"Relationship from {rel.SourceId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
+        context.RecordMessage($"Relationship from {rel.CharacterId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
 
         return ChangeHandlerResult.Ok;
     }

@@ -50,21 +50,21 @@ internal static class ConversationInvolvedResolver
             switch (change)
             {
                 case EngagementRelationChange er:
-                    AddIfPresent(ids, er.ActorId);
+                    AddIfPresent(ids, er.CharacterId);
                     AddIfPresent(ids, er.TargetId);
                     break;
                 case ActivityChange ac:
                     AddIfPresent(ids, ac.CharacterId);
                     break;
                 case RelationshipChange rc:
-                    AddIfPresent(ids, rc.SourceId);
+                    AddIfPresent(ids, rc.CharacterId);
                     AddIfPresent(ids, rc.TargetId);
                     break;
                 case KnowledgeUpdate ku:
                     AddIfPresent(ids, ku.CharacterId);
                     break;
                 case RulesetAction ra:
-                    AddIfPresent(ids, ra.ActorId);
+                    AddIfPresent(ids, ra.CharacterId);
                     if (ra.TargetIds != null)
                     {
                         foreach (var targetId in ra.TargetIds)
