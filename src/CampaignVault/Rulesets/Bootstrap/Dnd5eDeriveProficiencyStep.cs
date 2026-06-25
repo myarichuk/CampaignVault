@@ -18,7 +18,12 @@ public sealed class Dnd5eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
     private static BootstrapStepResult? ApplyProficiency(BootstrapContext context)
     {
         var stats = (Dnd5eExtension)context.Character.SystemStats;
-        if (!Dnd5eClassProfileResolver.TryResolve(context.Character.ClassLevel, stats.HitDie, stats.Level, out var level,
+        if (!Dnd5eClassProfileResolver.TryResolve(
+                context.Character.ClassLevel,
+                stats.HitDie,
+                stats.Level,
+                stats.ClassLevels,
+                out var level,
                 out _))
         {
             if (stats.Level is null or < 1)

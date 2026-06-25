@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 using CampaignVault.Rulesets.Bootstrap;
 
@@ -52,6 +53,22 @@ public class Dnd5eExtension : SystemExtension
     [JsonPropertyName("hpMode")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public HitPointDerivationMode? HpMode { get; set; }
+
+    [Description("Multiclass levels on systemStats. Example: [{ class: Fighter, level: 5 }, { class: Wizard, level: 5 }]. Prefer over parsing classLevel string.")]
+    [JsonPropertyName("classLevels")]
+    public List<ClassLevelEntry> ClassLevels { get; set; } = [];
+
+    [Description("Primary spellcasting ability: Intelligence, Wisdom, or Charisma. Inferred from classLevels when omitted.")]
+    [JsonPropertyName("spellcastingAbility")]
+    public string? SpellcastingAbility { get; set; }
+
+    [Description("Spell save DC override. Omit to auto-derive (8 + proficiency + spellcasting ability mod) at bootstrap.")]
+    [JsonPropertyName("spellSaveDc")]
+    public int? SpellSaveDc { get; set; }
+
+    [Description("Spell attack bonus override. Omit to auto-derive (proficiency + spellcasting ability mod) at bootstrap.")]
+    [JsonPropertyName("spellAttackBonus")]
+    public int? SpellAttackBonus { get; set; }
 
     public int GetAbilityModifier(int score)
     {

@@ -14,12 +14,15 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService) : IBootst
     public async Task<BootstrapStepResult?> ApplyAsync(BootstrapContext context, CancellationToken ct = default)
     {
         var stats = (Dnd5eExtension)context.Character.SystemStats;
-        if (!TryGetInputs(stats, context, out var level, out var dieSides, out var conMod, out var mode))
+        if (!TryGetInputs(stats, context, out var classLevels, out var level, out var dieSides, out var conMod, out var mode))
         {
             return null;
         }
 
-        var (maxHp, detail) = await ComputeMaxHpAsync(level, dieSides, conMod, mode, ct);
+        var (maxHp, detail) = classLevels.Count > 1
+            ? await ComputeMulticlassMaxHpAsync(classLevels, conMod, mode, ct)
+            : await ComputeMaxHpAsync(level, dieSides, conMod, mode, ct);
+
         context.Character.MaxHp = maxHp;
         context.Character.CurrentHp = context.ExplicitCurrentHp ?? maxHp;
 
@@ -47,9 +50,22 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService) : IBootst
             return null;
         }
 
-        if (!TryGetInputs(stats, context, out var level, out var dieSides, out var conMod, out var mode))
+        if (!TryGetInputs(stats, context, out var classLevels, out var level, out var dieSides, out var conMod, out var mode))
         {
             return null;
+        }
+
+        if (context.LevelsGained > 0
+            && !string.IsNullOrWhiteSpace(context.ClassGained)
+            && Dnd5eClassProfileResolver.TryResolveHitDie(context.ClassGained, out var gainedDie))
+        {
+            dieSides = gainedDie;
+        }
+        else if (classLevels.Count > 0)
+        {
+            dieSides = Dnd5eClassProfileResolver.TryResolveHitDie(classLevels[^1].Class, out var lastDie)
+                ? lastDie
+                : dieSides;
         }
 
         var gain = await ComputeLevelGainAsync(dieSides, conMod, mode, ct);
@@ -68,6 +84,7 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService) : IBootst
     private bool TryGetInputs(
         Dnd5eExtension stats,
         BootstrapContext context,
+        out IReadOnlyList<ClassLevelEntry> classLevels,
         out int level,
         out int dieSides,
         out int conMod,
@@ -76,8 +93,14 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService) : IBootst
         level = stats.Level ?? 1;
         conMod = stats.GetAbilityModifier(stats.Constitution);
         mode = context.HpModeOverride ?? stats.HpMode ?? HitPointDerivationMode.Average;
+        classLevels = Dnd5eClassProfileResolver.ParseClassLevels(context.Character.ClassLevel, stats.ClassLevels);
 
-        if (Dnd5eClassProfileResolver.TryResolve(context.Character.ClassLevel, stats.HitDie, stats.Level, out level,
+        if (Dnd5eClassProfileResolver.TryResolve(
+                context.Character.ClassLevel,
+                stats.HitDie,
+                stats.Level,
+                classLevels,
+                out level,
                 out dieSides))
         {
             return level >= 1;
@@ -85,6 +108,43 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService) : IBootst
 
         dieSides = 0;
         return false;
+    }
+
+    private async Task<(int MaxHp, string Detail)> ComputeMulticlassMaxHpAsync(
+        IReadOnlyList<ClassLevelEntry> classLevels,
+        int conMod,
+        HitPointDerivationMode mode,
+        CancellationToken ct)
+    {
+        var total = 0;
+        var isFirstLevelEver = true;
+        var details = new List<string>();
+
+        foreach (var entry in classLevels)
+        {
+            if (!Dnd5eClassProfileResolver.TryResolveHitDie(entry.Class, out var dieSides))
+            {
+                continue;
+            }
+
+            for (var classLevel = 1; classLevel <= entry.Level; classLevel++)
+            {
+                if (isFirstLevelEver && classLevel == 1)
+                {
+                    total += dieSides + conMod;
+                    details.Add($"{entry.Class} L1 max d{dieSides}");
+                    isFirstLevelEver = false;
+                }
+                else
+                {
+                    var gain = await ComputeLevelGainAsync(dieSides, conMod, mode, ct);
+                    total += gain;
+                    details.Add($"{entry.Class} L{classLevel} +{gain}");
+                }
+            }
+        }
+
+        return (Math.Max(1, total), $"multiclass [{string.Join(", ", details)}]");
     }
 
     private async Task<(int MaxHp, string Detail)> ComputeMaxHpAsync(

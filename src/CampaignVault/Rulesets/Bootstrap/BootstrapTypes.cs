@@ -27,6 +27,8 @@ public sealed class BootstrapContext
     public int? ExplicitMaxHp { get; init; }
     public int? ExplicitCurrentHp { get; init; }
     public int LevelsGained { get; init; } = 1;
+    /// <summary>When leveling up a multiclass PC, the class that gained the level (e.g. "Wizard").</summary>
+    public string? ClassGained { get; init; }
     public HitPointDerivationMode? HpModeOverride { get; init; }
     public IAsyncDocumentSession? Session { get; init; }
     public string? CampaignName { get; init; }

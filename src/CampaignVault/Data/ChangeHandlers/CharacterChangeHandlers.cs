@@ -259,6 +259,7 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             Character = character,
             ActiveSystem = activeSystem,
             LevelsGained = levelUp.LevelsGained,
+            ClassGained = levelUp.ClassGained,
             HpModeOverride = levelUp.HpMode,
             Trigger = BootstrapTrigger.LevelUp,
             Session = context.Session,

@@ -54,7 +54,10 @@ public sealed class CharacterBootstrapOrchestrator(IRulesetModuleSelector rulese
             }
         }
 
-        BootstrapClassLevelHelper.SyncClassLevelFromStats(context.Character);
+        BootstrapClassLevelHelper.SyncClassLevelFromStats(
+            context.Character,
+            context.ClassGained,
+            context.LevelsGained);
 
         return new BootstrapReport { Steps = results };
     }
@@ -68,6 +71,7 @@ public sealed class CharacterBootstrapOrchestrator(IRulesetModuleSelector rulese
             ExplicitMaxHp = hp.ExplicitMaxHp,
             ExplicitCurrentHp = hp.ExplicitCurrentHp,
             LevelsGained = context.LevelsGained,
+            ClassGained = context.ClassGained,
             HpModeOverride = context.HpModeOverride,
             Session = context.Session,
             CampaignName = context.CampaignName,
