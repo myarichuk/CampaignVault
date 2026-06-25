@@ -19,7 +19,7 @@ public sealed class PressureOrchestrator : IPressureOrchestrator
         _rulesetSelector = rulesetSelector ?? throw new ArgumentNullException(nameof(rulesetSelector));
     }
 
-    public async Task<string[]> CollectAndCapAsync(PressureScope scope, PressureContext ctx, CancellationToken ct = default)
+    public async Task<List<WorldPressureItem>> CollectAndCapAsync(PressureScope scope, PressureContext ctx, CancellationToken ct = default)
     {
         var merged = new Dictionary<string, WorldPressureItem>(StringComparer.Ordinal);
 

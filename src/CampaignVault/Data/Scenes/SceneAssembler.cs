@@ -1,3 +1,4 @@
+using System;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Models;
 
@@ -32,6 +33,7 @@ public sealed class SceneAssembler
                 Type = LocationType.Room,
                 Exits = [],
                 PointsOfInterest = [],
+                PointOfInterestDetails = new(StringComparer.OrdinalIgnoreCase),
                 AmbientCrowd = null,
                 LastVisitedDay = null
             },

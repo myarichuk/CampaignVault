@@ -30,6 +30,12 @@ public class SceneView
     public IEnumerable<FactionPresenceSummary>? RelevantFactions { get; set; }
     public string? LastKnownTravel { get; set; }
     public IEnumerable<string>? SuggestedCommitExamples { get; set; }
+
+    /// <summary>
+    /// Rich pressure items including Severity and optional SuggestedCommitJson for structured clients.
+    /// The parallel ToolResult.WorldPressure contains the human-prefixed display strings (with JSONs appended).
+    /// </summary>
+    public List<WorldPressureItem> WorldPressureItems { get; set; } = [];
 }
 
 /// <summary>

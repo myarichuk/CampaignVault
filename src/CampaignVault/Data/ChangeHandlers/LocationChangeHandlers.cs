@@ -45,6 +45,45 @@ public class LocationCreateHandler : IWorldChangeHandler
                 newLoc.PointsOfInterest = lc.PointsOfInterest;
             }
 
+            if (!string.IsNullOrWhiteSpace(lc.RemovePointOfInterest))
+            {
+                newLoc.PointsOfInterest.RemoveAll(p => string.Equals(p, lc.RemovePointOfInterest, StringComparison.OrdinalIgnoreCase));
+                if (newLoc.PointOfInterestDetails != null)
+                {
+                    var toRemove = newLoc.PointOfInterestDetails.Keys
+                        .Where(k => string.Equals(k, lc.RemovePointOfInterest, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    foreach (var k in toRemove) newLoc.PointOfInterestDetails.Remove(k);
+                }
+            }
+
+            if (lc.PointOfInterestDetails != null)
+            {
+                newLoc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in lc.PointOfInterestDetails)
+                {
+                    if (!newLoc.PointsOfInterest.Contains(kv.Key))
+                        newLoc.PointsOfInterest.Add(kv.Key);
+                    newLoc.PointOfInterestDetails[kv.Key] = kv.Value;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(lc.MaterializePointOfInterest))
+            {
+                var poiName = lc.MaterializePointOfInterest;
+                if (!newLoc.PointsOfInterest.Contains(poiName))
+                {
+                    newLoc.PointsOfInterest.Add(poiName);
+                }
+                if (!string.IsNullOrWhiteSpace(lc.PoiDetails))
+                {
+                    newLoc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);
+                    var key = newLoc.PointOfInterestDetails.Keys
+                        .FirstOrDefault(k => string.Equals(k, poiName, StringComparison.OrdinalIgnoreCase)) ?? poiName;
+                    newLoc.PointOfInterestDetails[key] = lc.PoiDetails!;
+                }
+            }
+
             if (lc.AmbientCrowd != null)
             {
                 newLoc.AmbientCrowd = lc.AmbientCrowd;
@@ -67,6 +106,9 @@ public class LocationCreateHandler : IWorldChangeHandler
                 Type = lc.Type,
                 ParentLocationId = parentId,
                 PointsOfInterest = lc.PointsOfInterest ?? [],
+                PointOfInterestDetails = lc.PointOfInterestDetails != null 
+                    ? new Dictionary<string, string>(lc.PointOfInterestDetails, StringComparer.OrdinalIgnoreCase)
+                    : new(StringComparer.OrdinalIgnoreCase),
                 AmbientCrowd = lc.AmbientCrowd,
                 Exits = lc.Exits ?? [],
                 DangerModifier = Math.Clamp(lc.DangerModifier, -50, 50)
@@ -75,6 +117,45 @@ public class LocationCreateHandler : IWorldChangeHandler
             if (string.IsNullOrEmpty(newLoc.CampaignName))
             {
                 newLoc.CampaignName = context.CampaignName;
+            }
+
+            if (lc.PointOfInterestDetails != null)
+            {
+                newLoc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in lc.PointOfInterestDetails)
+                {
+                    if (!newLoc.PointsOfInterest.Contains(kv.Key))
+                        newLoc.PointsOfInterest.Add(kv.Key);
+                    newLoc.PointOfInterestDetails[kv.Key] = kv.Value;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(lc.RemovePointOfInterest))
+            {
+                newLoc.PointsOfInterest.RemoveAll(p => string.Equals(p, lc.RemovePointOfInterest, StringComparison.OrdinalIgnoreCase));
+                if (newLoc.PointOfInterestDetails != null)
+                {
+                    var toRemove = newLoc.PointOfInterestDetails.Keys
+                        .Where(k => string.Equals(k, lc.RemovePointOfInterest, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    foreach (var k in toRemove) newLoc.PointOfInterestDetails.Remove(k);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(lc.MaterializePointOfInterest))
+            {
+                var poiName = lc.MaterializePointOfInterest;
+                if (!newLoc.PointsOfInterest.Contains(poiName))
+                {
+                    newLoc.PointsOfInterest.Add(poiName);
+                }
+                if (!string.IsNullOrWhiteSpace(lc.PoiDetails))
+                {
+                    newLoc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);
+                    var key = newLoc.PointOfInterestDetails.Keys
+                        .FirstOrDefault(k => string.Equals(k, poiName, StringComparison.OrdinalIgnoreCase)) ?? poiName;
+                    newLoc.PointOfInterestDetails[key] = lc.PoiDetails!;
+                }
             }
         }
 
@@ -182,6 +263,37 @@ public class LocationUpdateHandler : IWorldChangeHandler
                 loc.PointsOfInterest.Add(lu.AddPointOfInterest);
             }
         }
+
+        if (!string.IsNullOrWhiteSpace(lu.RemovePointOfInterest))
+        {
+            loc.PointsOfInterest.RemoveAll(p => string.Equals(p, lu.RemovePointOfInterest, StringComparison.OrdinalIgnoreCase));
+            if (loc.PointOfInterestDetails != null)
+            {
+                var keysToRemove = loc.PointOfInterestDetails.Keys
+                    .Where(k => string.Equals(k, lu.RemovePointOfInterest, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                foreach (var k in keysToRemove)
+                    loc.PointOfInterestDetails.Remove(k);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
+        {
+            var poiName = lu.MaterializePointOfInterest;
+            if (!loc.PointsOfInterest.Contains(poiName))
+            {
+                loc.PointsOfInterest.Add(poiName);
+            }
+            if (!string.IsNullOrWhiteSpace(lu.PoiDetails))
+            {
+                loc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);
+                // Case-insensitive key handling for convenience
+                var existingKey = loc.PointOfInterestDetails.Keys
+                    .FirstOrDefault(k => string.Equals(k, poiName, StringComparison.OrdinalIgnoreCase));
+                var key = existingKey ?? poiName;
+                loc.PointOfInterestDetails[key] = lu.PoiDetails!;
+            }
+        }
         
         if (lu.NewState != null)
         {
@@ -212,6 +324,20 @@ public class LocationUpdateHandler : IWorldChangeHandler
         if (lu.FeaturesToRemove != null)
         {
             loc.DistinctiveFeatures.RemoveAll(f => lu.FeaturesToRemove.Contains(f));
+        }
+
+        if (lu.PointOfInterestDetails != null)
+        {
+            loc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in lu.PointOfInterestDetails)
+            {
+                var poiName = kv.Key;
+                if (!loc.PointsOfInterest.Contains(poiName))
+                {
+                    loc.PointsOfInterest.Add(poiName);
+                }
+                loc.PointOfInterestDetails[poiName] = kv.Value;  // last write wins for the key
+            }
         }
         
         return ChangeHandlerResult.Ok;

@@ -35,8 +35,14 @@ public class WorldStateView
     public string? LastKnownTravel { get; set; }
     public IEnumerable<string>? SuggestedCommitExamples { get; set; }
 
+    /// <summary>
+    /// Rich pressure items (with optional SuggestedCommitJson). Preferred for structuredContent consumers.
+    /// The string WorldPressure contains the formatted display form (including any suggested JSON inline).
+    /// </summary>
+    public IEnumerable<WorldPressureItem> WorldPressureItems { get; set; } = [];
+
     public WorldStateView() { }
-    public WorldStateView(CampaignTime time, IEnumerable<RumorSummary> rumors, IEnumerable<Event> events, LocationSummary? location = null, IEnumerable<string>? pressure = null, IEnumerable<ActiveQuestSummary>? activeQuests = null, IEnumerable<FactionPresenceSummary>? relevantFactions = null, string? lastKnownTravel = null, IEnumerable<string>? suggestedCommitExamples = null)
+    public WorldStateView(CampaignTime time, IEnumerable<RumorSummary> rumors, IEnumerable<Event> events, LocationSummary? location = null, IEnumerable<string>? pressure = null, IEnumerable<ActiveQuestSummary>? activeQuests = null, IEnumerable<FactionPresenceSummary>? relevantFactions = null, string? lastKnownTravel = null, IEnumerable<string>? suggestedCommitExamples = null, IEnumerable<WorldPressureItem>? pressureItems = null)
     {
         Time = time;
         ActiveRumors = rumors;
@@ -47,5 +53,6 @@ public class WorldStateView
         RelevantFactions = relevantFactions ?? [];
         LastKnownTravel = lastKnownTravel;
         SuggestedCommitExamples = suggestedCommitExamples ?? [];
+        WorldPressureItems = pressureItems ?? [];
     }
 }

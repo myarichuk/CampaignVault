@@ -268,7 +268,7 @@ public class EngagementRelationChange : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EngagementCategory? Category { get; set; }
 
-    [Description("Freeform verb (e.g. 'grappling', 'ranting at', 'stitching'). Use null/empty with relationType null to remove.")]
+    [Description("Freeform verb (e.g. 'grappling', 'ranting at', 'stitching'). Omit or set to null/empty to remove/clear the relation.")]
     [JsonPropertyName("verb")]
     public string? Verb { get; set; }
 
@@ -277,7 +277,7 @@ public class EngagementRelationChange : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EngagementRestrictionLevel? RestrictionLevel { get; set; }
 
-    [Description("Whether to automatically establish the inverse relationship on the target (e.g., if actor Grapples target, target becomes GrappledBy actor).")]
+    [Description("Whether to automatically establish the inverse relationship on the target (e.g., if the character grapples the target, the target becomes grappled-by the character).")]
     [JsonPropertyName("bidirectional")]
     public bool Bidirectional { get; set; } = true;
 }
@@ -506,6 +506,22 @@ public class LocationCreate : WorldChange
     [JsonPropertyName("pointsOfInterest")]
     public List<string> PointsOfInterest { get; set; } = [];
 
+    [Description("Optional richer details for specific PoIs (keyed by the PoI string). Use when seeding known details about examinable things.")]
+    [JsonPropertyName("pointOfInterestDetails")]
+    public Dictionary<string, string> PointOfInterestDetails { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    [Description("(Optional on create) Materialize a PoI with details at creation time.")]
+    [JsonPropertyName("materializePointOfInterest")]
+    public string? MaterializePointOfInterest { get; set; }
+
+    [Description("(Optional) Remove a PoI when creating/updating via location_create.")]
+    [JsonPropertyName("removePointOfInterest")]
+    public string? RemovePointOfInterest { get; set; }
+
+    [Description("(Optional) Details to attach when materializing on create.")]
+    [JsonPropertyName("poiDetails")]
+    public string? PoiDetails { get; set; }
+
     [Description("Hint for the expected crowd when empty (e.g., '2-3 rats and the occasional drunk').")]
     [JsonPropertyName("ambientCrowd")]
     public string? AmbientCrowd { get; set; }
@@ -537,9 +553,25 @@ public class LocationUpdate : WorldChange
     [JsonPropertyName("removeExitTarget")]
     public string? RemoveExitTarget { get; set; }
 
-    [Description("Append a new Point of Interest string.")]
+    [Description("Append a new Point of Interest string (light flavor). Can be paired with pointOfInterestDetails map to add with initial details.")]
     [JsonPropertyName("addPointOfInterest")]
     public string? AddPointOfInterest { get; set; }
+
+    [Description("Remove a Point of Interest entirely (e.g. the board was burned down, poster ripped and taken). Also removes any associated details.")]
+    [JsonPropertyName("removePointOfInterest")]
+    public string? RemovePointOfInterest { get; set; }
+
+    [Description("Name of a Point of Interest (existing or new) to give/update persistent details. Use with poiDetails. Re-applying to an existing PoI updates its state (e.g. after ripping a poster or setting it on fire).")]
+    [JsonPropertyName("materializePointOfInterest")]
+    public string? MaterializePointOfInterest { get; set; }
+
+    [Description("The persistent details, description, or current state for the PoI. When used with materializePointOfInterest or in the map, this records what the PoI is like now.")]
+    [JsonPropertyName("poiDetails")]
+    public string? PoiDetails { get; set; }
+
+    [Description("Map of PoI name → current details. Can add, update, or replace details for multiple PoIs. Keys not already in PointsOfInterest will be added.")]
+    [JsonPropertyName("pointOfInterestDetails")]
+    public Dictionary<string, string>? PointOfInterestDetails { get; set; }
 
     [Description("Set or clear the ambient crowd. Use empty string to clear.")]
     [JsonPropertyName("ambientCrowd")]

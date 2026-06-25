@@ -35,6 +35,14 @@ Slugs are canonicalized (spaces to hyphens, lower). Shared canon (no CampaignNam
 
 **Party roster:** Tag human PCs with `isPc: true` and NPC companions with `isPartyCompanion: true` (mutually exclusive; both require a campaign slug). `get_party` returns only those flagged characters for the active campaign — not ambient `keepAlive` NPCs. Combat accepts canon entities (no `CampaignName`) plus campaign-tagged combatants; it rejects entities tagged for a different slug.
 
+## MCP argument normalization (limited)
+The server performs a *minimal* set of transparent rewrites on incoming tool arguments before binding (via McpNormalizationMiddleware + ToolCallExamples):
+- Certain legacy wrapper keys for upsert_* tools (e.g. `l` → `location`).
+- Stringified `changes` array → parsed array for the `commit` tool.
+- A few synonym aliases for common mis-namings on secondary params.
+
+**Do not rely on these.** Always use the exact documented parameter names, `$type` discriminators, and `characterId`/`targetId` etc. Normalization exists only as a convenience net and produces debug logs. When in doubt, copy examples directly from `get_help`, `commit` description, or the pressure `Suggested commit` blocks.
+
 ## Tool Index by Category
 
 {{TOOL_INDEX}}
@@ -125,6 +133,18 @@ Item + transfer patterns, status with modifiers, ruleset_action (see below), etc
 - **Flavor without bloat**: When narrating a crowded tavern, a bustling market, rats in a cellar, or ""a bard playing a lute in the corner"", **do not** immediately `character_create` 20 people. Instead:
   - On initial `location_create` or via `location_update`: populate `pointsOfInterest` (light list of strings returned in get_scene) and/or `ambientCrowd` (string hint, e.g. ""8-15 rough sailors and dockworkers"").
   - The engine surfaces `NARRATIVE PROMPT` pressures when ambientCrowd expects people but few/no NPCs are anchored, or when a recent beat sounds like someone stepping out of the crowd (drunk approaches, spear-bearer, witness) without a `chars/...` id. **Promote only that individual** via `character_create` — not the whole crowd. After `advance_world`, refresh `ambientCrowd` via `location_update` if the mood should have shifted.
+- **Points of Interest — add / modify details / remove**: `pointsOfInterest` are lightweight strings. The LLM decides when interaction (reading, spell effect, combat damage, deliberate act like ripping a poster or torching the board) makes one worth persisting or changing. Supported via `location_update`:
+  - `addPointOfInterest` (light string; pair with `pointOfInterestDetails` map to add with details)
+  - `materializePointOfInterest` + `poiDetails` (creates or **updates** current state of a PoI)
+  - `pointOfInterestDetails` (map for multiple)
+  - `removePointOfInterest` (e.g. board burned, poster stolen)
+  Example - PC rips a poster or the board is set on fire:
+  [
+    { ""$type"": ""location_update"", ""locationId"": ""locations/the-tavern"", ""materializePointOfInterest"": ""A notice board with wanted posters and job postings"", ""poiDetails"": ""Board is scorched; Grim the Hook poster has been ripped off and lies crumpled on the floor."" },
+    { ""$type"": ""location_update"", ""locationId"": ""..."", ""addPointOfInterest"": ""Crumpled wanted poster on the floor"" }
+  ]
+  Details are visible in future get_scene. You control the evolution.
+- **PoI / location state decay over time**: After combat, vandalism, or other changes, record the mayhem using `addPointOfInterest`/`materializePointOfInterest` or location `featuresToAdd` + `CurrentState`. On `advance_world` + later `get_scene`, the engine surfaces suggestions to evolve or clean up the state (owners tidy up after a few days, scorch marks get painted over, temporary marks fade). Use `location_update` to reflect cleanup in progress the next day or back to normal after several days. The LLM narrates the rate of decay realistically.
 - **Crowd vulnerability (visual tags + interrupt roll)**: When narration establishes how a PC looks (bloodied, wanted, disheveled, unarmed), persist it via `character_update` with `appearanceOverride` and `tagsToAdd` (e.g. `[""bloody"", ""wanted"", ""disheveled""]`). In crowded or opportunistic-faction scenes, `get_scene` scores these tags and may nudge a crowd reaction. **Optional roll**: after a tense beat (not every dialog line), commit `scene_interrupt_check` with `riskModifier` (-50..+50, like `encounterRiskModifier` on travel) — omit `riskModifier` to auto-derive from tags. On success the engine promotes ONE transient from `ambientCrowd`; cooldown is one interrupt per location per day. Protective tags (`well_armed`, `escorted`, `uniform`) reduce the score.
 - **Transients auto-GC**: Any character created (or moved via activity) with `schedule: null` AND `keepAlive: false` is transient. When the party leaves the area (get_scene on another loc + `advance_world` days later) and `LastVisitedDay` on the loc is old (>1 day), the `TransientEvictionRule` emits `ActivityChange` deltas that clear `CurrentLocationId`. The doc stays (cheap) for possible later promotion by ID or narrative callback. Use `keepAlive: true` for PCs, companions, or ""favorite"" flavor you want to keep without a full schedule.
 - **Auto-Linking prevents soft-locks**: Always supply `connectedFromLocationId` + `connectionDescription` on `location_create`. Engine appends forward + reverse exits (and sets parent). If you forget, next get_scene on the child will give ENGINE WARNING + exact `location_update` JSON to add the missing exit.

@@ -18,4 +18,20 @@ internal static class CommitHelpExamples
     internal const string ConversationSection = """
 **Conversation (REQUIRED: `involved` with every speaker — NOT `participants`):**
 """ + ConversationBatch;
+
+    internal const string PoiMaterializeBatch = """
+[
+  { "$type": "event", "category": "Discovery", "summary": "Kergil read the notice board near the door.", "involved": ["chars/kergil", "locations/drunken-kraken"] },
+  { "$type": "activity", "characterId": "chars/kergil", "newActivity": "Examining the notice board" },
+  { "$type": "location_update", "locationId": "locations/drunken-kraken", "materializePointOfInterest": "A notice board with wanted posters and job postings", "poiDetails": "Wanted poster for Grim 'the Hook' Tallow; caravan guard job to Neverwinter; handwritten note about two missing wagons and a Voss contact." },
+  { "$type": "knowledge_update", "characterId": "chars/kergil", "topic": "Drunken Kraken notice board", "details": "Specific postings: Grim the Hook (50gp alive), caravan run, missing wagons and Lirael Voss.", "importance": "Important" }
+]
+""";
+
+    internal const string PoiMaterializeSection = """
+**Add / materialize / update / remove Points of Interest (LLM decides when something matters):**
+Use `addPointOfInterest`, `materializePointOfInterest`+`poiDetails` (also re-use to *change* state), the map, and `removePointOfInterest`.
+Examples: ripping a poster, setting the board on fire, brawl breaking furniture.
+After time passes (`advance_world`), update or remove PoI details to reflect cleanup/repair.
+""" + PoiMaterializeBatch;
 }

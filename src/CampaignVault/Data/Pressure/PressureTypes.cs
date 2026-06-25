@@ -38,5 +38,5 @@ public interface IPressureContributor
 
 public interface IPressureOrchestrator
 {
-    Task<string[]> CollectAndCapAsync(PressureScope scope, PressureContext ctx, CancellationToken ct = default);
+    Task<List<WorldPressureItem>> CollectAndCapAsync(PressureScope scope, PressureContext ctx, CancellationToken ct = default);
 }

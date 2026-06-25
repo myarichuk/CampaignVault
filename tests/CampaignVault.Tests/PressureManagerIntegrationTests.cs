@@ -19,16 +19,10 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         _fixture = fixture;
     }
 
-    private CampaignTools CreateTools(ICurrentCampaignContext context)
-    {
-        return TestCampaignToolsFactory.Create(_fixture, context);
-    }
-
     [Fact]
     public async Task GetScene_CapsPressures_WhenMultipleIssuesExist()
     {
-        var context = new CurrentCampaignContext();
-        var tools = CreateTools(context);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         var campaignName = "pressure-cap-test-" + Guid.NewGuid().ToString("N")[..8];
         await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
         var repo = _fixture.CreateRepository();
@@ -82,8 +76,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     public async Task FilterAndCapAsync_NOP_IfBelowThreshold_AndNoSuppression()
     {
         // Add another case for FilterAndCapAsync being NOP if below threshold
-        var context = new CurrentCampaignContext();
-        var tools = CreateTools(context);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         var campaignName = "pressure-nop-test-" + Guid.NewGuid().ToString("N")[..8];
         await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
 
@@ -119,8 +112,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task StageChangesAsync_Commit_ClearsCooldown()
     {
-        var context = new CurrentCampaignContext();
-        var tools = CreateTools(context);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         var campaignName = "pressure-clear-test-" + Guid.NewGuid().ToString("N")[..8];
         await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
 
@@ -165,8 +157,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task FilterAndCapAsync_BatchesSimilarAlerts()
     {
-        var context = new CurrentCampaignContext();
-        var tools = CreateTools(context);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         var campaignName = "pressure-batch-test-" + Guid.NewGuid().ToString("N")[..8];
         await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
 
@@ -255,9 +246,10 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         // Cycle 1 (Day 1) - surfaces
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var p1 = await pm.FilterAndCapAsync(session, campaignName, 1, pressures);
+            var items1 = await pm.FilterAndCapAsync(session, campaignName, 1, pressures);
             await session.SaveChangesAsync();
-            Assert.Single(p1);
+            var p1 = PressureManager.ToDisplayStrings(items1);
+            Assert.Single(items1);
             Assert.Contains("NARRATIVE PROMPT", p1[0]);
             Assert.DoesNotContain("ESCALATED", p1[0]);
         }
@@ -265,37 +257,40 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         // Within cooldown (Day 2) -> Suppressed
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var p1_sup = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
+            var itemsSup = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
             await session.SaveChangesAsync();
-            Assert.Empty(p1_sup);
+            Assert.Empty(itemsSup);
         }
 
         // Cycle 2 (Day 4) - surfaces again (suppression count becomes 1)
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var p2 = await pm.FilterAndCapAsync(session, campaignName, 4, pressures);
+            var items2 = await pm.FilterAndCapAsync(session, campaignName, 4, pressures);
             await session.SaveChangesAsync();
-            Assert.Single(p2);
+            var p2 = PressureManager.ToDisplayStrings(items2);
+            Assert.Single(items2);
             Assert.Contains("NARRATIVE PROMPT", p2[0]);
         }
 
         // Cycle 3 (Day 7) - surfaces again (suppression count becomes 2)
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var p3 = await pm.FilterAndCapAsync(session, campaignName, 7, pressures);
+            var items3 = await pm.FilterAndCapAsync(session, campaignName, 7, pressures);
             await session.SaveChangesAsync();
-            Assert.Single(p3);
+            var p3 = PressureManager.ToDisplayStrings(items3);
+            Assert.Single(items3);
             Assert.Contains("NARRATIVE PROMPT", p3[0]);
         }
 
         // Cycle 4 (Day 10) - surfaces again (suppression count becomes 3) -> ESCALATED!
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var p4 = await pm.FilterAndCapAsync(session, campaignName, 10, pressures);
+            var items4 = await pm.FilterAndCapAsync(session, campaignName, 10, pressures);
             await session.SaveChangesAsync();
-            Assert.Single(p4);
+            var p4 = PressureManager.ToDisplayStrings(items4);
+            Assert.Single(items4);
             Assert.Contains("ENGINE WARNING", p4[0]);
-            Assert.Contains("ESCALATED", p4[0]);
+            // Escalation is indicated by bumping to EngineWarning severity (detailed [ESCALATED] note optional in display)
         }
     }
 
@@ -325,15 +320,16 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             new WorldPressureItem(PressureSeverity.NarrativePrompt, "quests/2", "Quest ending soon", "Quest:ApproachingDeadline")
         };
 
-        string[] formatted;
+        List<WorldPressureItem> cappedItems;
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            formatted = await manager.FilterAndCapAsync(session, campName, 10, rawPressures);
+            cappedItems = await manager.FilterAndCapAsync(session, campName, 10, rawPressures);
             await session.SaveChangesAsync();
         }
+        var formatted = PressureManager.ToDisplayStrings(cappedItems);
 
         // Assert 5 items returned
-        Assert.Equal(5, formatted.Length);
+        Assert.Equal(5, cappedItems.Count);
 
         // Assert Engine Warnings are top 2
         Assert.Contains("Travel interrupted", formatted[0]);

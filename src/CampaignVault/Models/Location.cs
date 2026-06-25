@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CampaignVault.Models;
 
 public class Location
@@ -15,6 +17,16 @@ public class Location
     public List<LocationExit> Exits { get; set; } = [];
     
     public List<string> PointsOfInterest { get; set; } = [];
+    
+    /// <summary>
+    /// Richer details for PointsOfInterest that have been examined or otherwise materialized.
+    /// Keys match (case-insensitive) entries from PointsOfInterest. Values are the persistent,
+    /// recallable description/content discovered through interaction/examination.
+    /// This turns lightweight PoI strings into anchored world knowledge (analogous to
+    /// promoting an ambient NPC via character_create).
+    /// </summary>
+    [JsonPropertyName("pointOfInterestDetails")]
+    public Dictionary<string, string> PointOfInterestDetails { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     
     public string? AmbientCrowd { get; set; }
     
