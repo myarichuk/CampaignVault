@@ -11,9 +11,6 @@ public class CampaignCoreModule : Autofac.Module
     protected override void Load(ContainerBuilder builder)
     {
         builder.RegisterType<CampaignDocumentKeys>().SingleInstance();
-        builder.RegisterType<CampaignSelectionStore>().SingleInstance();
-        builder.RegisterType<McpSessionAccessor>().As<IMcpSessionAccessor>().InstancePerLifetimeScope();
-        builder.RegisterType<SessionKeyedCurrentCampaignContext>().As<ICurrentCampaignContext>().InstancePerLifetimeScope();
         builder.RegisterType<CampaignVault.Data.ChangeHandlers.WorldChangeDispatcher>().InstancePerLifetimeScope();
         builder.RegisterType<SceneAssembler>().InstancePerLifetimeScope();
         builder.RegisterType<SceneNpcMerger>().InstancePerLifetimeScope();

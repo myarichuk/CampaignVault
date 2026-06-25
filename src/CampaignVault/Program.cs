@@ -1,7 +1,6 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using CampaignVault.Data;
-using CampaignVault.Hosting;
 using CampaignVault.Middleware;
 using CampaignVault.Services;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -20,8 +19,6 @@ var grpcPort = int.TryParse(Environment.GetEnvironmentVariable("GRPC_PORT"), out
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.PreferHostingUrls(false);
-
-var hostingProfile = HostingProfile.Resolve();
 
 var bindAny = string.Equals(
     Environment.GetEnvironmentVariable("MCP_BIND_ANY"),
@@ -86,8 +83,7 @@ builder.Services.AddCors(options =>
         {
             policy.AllowAnyOrigin()
                 .AllowAnyHeader()
-                .AllowAnyMethod()
-                .WithExposedHeaders("Mcp-Session-Id");
+                .AllowAnyMethod();
         }
         else
         {
@@ -95,8 +91,7 @@ builder.Services.AddCors(options =>
                 corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             policy.WithOrigins(origins)
                 .AllowAnyHeader()
-                .AllowAnyMethod()
-                .WithExposedHeaders("Mcp-Session-Id");
+                .AllowAnyMethod();
         }
     });
 });
@@ -104,13 +99,6 @@ var enableStdioTransport = string.Equals(
     Environment.GetEnvironmentVariable("MCP_STDIO"),
     "1",
     StringComparison.OrdinalIgnoreCase);
-
-var mcpStateless = string.Equals(
-    Environment.GetEnvironmentVariable("MCP_STATELESS"),
-    "1",
-    StringComparison.OrdinalIgnoreCase);
-
-builder.Services.AddHttpContextAccessor();
 
 var mcpServerBuilder = builder.Services.AddMcpServer(options =>
 {
@@ -127,7 +115,7 @@ if (enableStdioTransport)
 }
 
 mcpServerBuilder
-    .WithHttpTransport(options => { options.Stateless = mcpStateless; })
+    .WithHttpTransport(options => { options.Stateless = true; })
     .WithToolsFromAssembly()
     .WithRequestFilters(McpToolErrorFilter.Register);
 
@@ -179,8 +167,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
     Console.Error.WriteLine($"MCP Version: 0.2.0");
     Console.Error.WriteLine($"Database Path: {dbPathSetting}");
     Console.Error.WriteLine($"Auth Enabled: {authEnabled}");
-    Console.Error.WriteLine($"MCP Hosting Profile: {hostingProfile}");
-    Console.Error.WriteLine($"MCP Stateless: {mcpStateless}");
+    Console.Error.WriteLine("MCP HTTP: stateless");
     Console.Error.WriteLine($"MCP Bind: {(bindAny ? "0.0.0.0" : "localhost")}:{mcpPort}");
     Console.Error.WriteLine($"MCP / HTTP:  http://localhost:{mcpPort}");
     Console.Error.WriteLine($"gRPC Sync:   http://localhost:{grpcPort}");

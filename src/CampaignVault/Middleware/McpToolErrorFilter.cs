@@ -51,10 +51,8 @@ internal static partial class McpToolErrorFilter
     {
         var guidance = (toolName, paramName) switch
         {
-            ("select_campaign", "campaignName") =>
-                "Call list_campaigns first, then pass a campaign slug (e.g. dragon-heist). Requires Mcp-Session-Id or MCP_SESSION_ID to persist selection; otherwise pass campaignName on every subsequent tool call.",
             ("create_campaign", "name") =>
-                "Provide a unique campaign slug (spaces become hyphens). Requires Mcp-Session-Id or MCP_SESSION_ID to auto-select after create.",
+                "Provide a unique campaign slug (spaces become hyphens). Pass campaignName on subsequent tool calls.",
             ("create_campaign", "initialSystem") =>
                 "Use a RulesetSystem value: Dnd5e, Pathfinder2e, Fallout2d20, or Narrative.",
             ("commit", "changes") =>
@@ -87,6 +85,8 @@ internal static partial class McpToolErrorFilter
                 "Both needName and descriptor are required.",
             ("set_active_system", "activeSystem") =>
                 "Use a RulesetSystem value: Dnd5e, Pathfinder2e, Fallout2d20, or Narrative.",
+            ("get_current_campaign", "campaignName") =>
+                "Pass the campaign slug (e.g. dragon-heist). Call list_campaigns to discover slugs.",
             _ =>
                 $"Call list_tools or get_help for the expected argument names and examples."
         };
@@ -98,7 +98,6 @@ internal static partial class McpToolErrorFilter
 
         var legacyExample = (toolName, paramName) switch
         {
-            ("select_campaign", "campaignName") => "select_campaign(\"dragon-heist\")",
             ("create_campaign", "name") => "create_campaign(name: \"dragon-heist\", initialSystem: \"Dnd5e\")",
             ("get_scene", "locationId") => "get_scene(\"locations/tavern\")",
             ("get_npc_context", "characterId") => "get_npc_context(\"characters/innkeeper\")",

@@ -2,16 +2,14 @@ using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using ModelContextProtocol.Server;
-using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
 public class CampaignManagementTools(
     CampaignRepository repository,
-    ICurrentCampaignContext currentCampaign,
     CampaignDocumentKeys keys)
-    : CampaignToolBase(repository, currentCampaign, keys)
+    : CampaignToolBase(repository, keys)
 {
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
@@ -37,10 +35,10 @@ Example: set_active_system(RulesetSystem.Pathfinder2e, { ""mapEnabled"": ""true"
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(
         [Description("The active TTRPG ruleset system.")]
         RulesetSystem activeSystem,
-        [Description("Optional dictionary of system options and house rules.")]
-        Dictionary<string, string>? systemOptions = null,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
-        string? campaignName = null)
+        string campaignName,
+        [Description("Optional dictionary of system options and house rules.")]
+        Dictionary<string, string>? systemOptions = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
@@ -74,7 +72,7 @@ Example: set_active_system(RulesetSystem.Pathfinder2e, { ""mapEnabled"": ""true"
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"CAMPAIGN TOOL: Creates a new campaign with a slug and initial ruleset (locked immediately).
-Selects the new campaign for this MCP session when Mcp-Session-Id or MCP_SESSION_ID is available; otherwise pass campaignName on subsequent calls.
+Pass campaignName on subsequent calls.
 Slugs are canonicalized ('Dragon Heist' → dragon-heist).
 Available Systems: Dnd5e, Pathfinder2e, Fallout2d20, Narrative
 
@@ -133,40 +131,10 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("REMOVED: Use explicit campaignName on every tool call. This tool no longer exists.")]
-    public Task<ToolResult<SelectCampaignResult>> SelectCampaign(
-        [Description(ToolParameterDescriptions.CampaignSlugRequired)]
-        string campaignName,
-        [Description("Deprecated.")]
-        bool confirmCreate = false)
-    {
-        if (string.IsNullOrWhiteSpace(campaignName))
-        {
-            return ToolArgumentErrors.Missing<SelectCampaignResult>(
-                "campaignName",
-                "Call list_campaigns first, then pass campaignName as a slug.",
-                toolName: "select_campaign");
-        }
-
-        if (!CampaignSlug.TryCanonicalize(campaignName, out var normalized))
-        {
-            return Task.FromResult(new ToolResult<SelectCampaignResult>(false,
-                Error: ToolErrors.InvalidArgument,
-                Summary: "Provide a valid, non-empty campaign slug."));
-        }
-
-        return Task.FromResult(new ToolResult<SelectCampaignResult>(
-            false,
-            Error: "Removed",
-            Summary: "select_campaign has been removed. Pass campaignName explicitly on every tool call."));
-    }
-
-    [ToolCategory("Campaign management")]
-    [McpServerTool(UseStructuredContent = true)]
     [Description(
-        @"CAMPAIGN DISCOVERABILITY: Returns the currently active campaign context (meta + posture: party roster, entry hint, last event).
-Use this if you are unsure which campaign you are currently in or if you need to know the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.
-Pass campaignName explicitly when MCP_STATELESS=1 or when no Mcp-Session-Id / MCP_SESSION_ID is available.")]
+        @"CAMPAIGN DISCOVERABILITY: Returns campaign context (meta + posture: party roster, entry hint, last event).
+Use this if you need the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.
+Requires campaignName.")]
     public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
@@ -190,43 +158,5 @@ Pass campaignName explicitly when MCP_STATELESS=1 or when no Mcp-Session-Id / MC
                 new CampaignContextView(campaign, posture),
                 $"Campaign context for '{explicitName}' ({posture.EntryHint}).");
         }, saveChanges: false);
-    }
-
-    private async Task<IReadOnlyList<CampaignSuggestion>> BuildSuggestionsAsync(
-        IAsyncDocumentSession session,
-        string requestedSlug,
-        IReadOnlyList<Campaign> campaigns)
-    {
-        var baseSuggestions = CampaignSlugMatcher.FindSuggestions(
-            requestedSlug,
-            campaigns,
-            c => new CampaignSuggestion(
-                c.Name,
-                string.IsNullOrWhiteSpace(c.DisplayName) ? c.Name : c.DisplayName,
-                c.System,
-                0,
-                null));
-
-        if (baseSuggestions.Count == 0)
-        {
-            return baseSuggestions;
-        }
-
-        var enriched = new List<CampaignSuggestion>(baseSuggestions.Count);
-        foreach (var suggestion in baseSuggestions)
-        {
-            var pcCount = await session.Query<Character>()
-                .Where(c => c.CampaignName == suggestion.Slug && c.IsPc)
-                .CountAsync();
-
-            var events = await _repository.QueryEventsAsync(session, null, null, 1, suggestion.Slug);
-            enriched.Add(suggestion with
-            {
-                PcCount = pcCount,
-                LastEventSummary = events.FirstOrDefault()?.Summary
-            });
-        }
-
-        return enriched;
     }
 }

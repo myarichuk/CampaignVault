@@ -239,6 +239,7 @@ public class CampaignStateService
                     ParentLocationId = l.ParentLocationId,
                     Exits = l.Exits,
                     PointsOfInterest = l.PointsOfInterest,
+                    PointOfInterestDetails = l.PointOfInterestDetails,
                     AmbientCrowd = l.AmbientCrowd,
                     LastVisitedDay = l.LastVisitedDay,
                     Metadata = l.Metadata,

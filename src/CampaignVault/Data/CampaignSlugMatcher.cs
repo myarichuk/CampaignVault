@@ -3,7 +3,7 @@ using CampaignVault.Models;
 namespace CampaignVault.Data;
 
 /// <summary>
-/// Fuzzy slug matching for <c>select_campaign</c> suggestion gate (Option C).
+/// Fuzzy slug matching for campaign slug suggestions.
 /// </summary>
 public static class CampaignSlugMatcher
 {

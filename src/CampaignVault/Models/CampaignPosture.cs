@@ -30,9 +30,4 @@ public record CampaignSuggestion(
     int PcCount,
     string? LastEventSummary);
 
-public record SelectCampaignResult(
-    string Slug,
-    CampaignPosture? Posture = null,
-    IReadOnlyList<CampaignSuggestion>? Suggestions = null);
-
 public record CampaignContextView(Campaign Campaign, CampaignPosture Posture);

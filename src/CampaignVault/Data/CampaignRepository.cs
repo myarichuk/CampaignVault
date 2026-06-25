@@ -14,7 +14,6 @@ public class CampaignRepository
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
     private readonly WorldChangeDispatcher _changeDispatcher;
     private readonly CampaignDocumentKeys _keys;
-    private readonly ICurrentCampaignContext? _currentCampaign;
     private readonly INpcInitiativeService _initiativeService;
     private readonly SceneAssembler _sceneAssembler;
 
@@ -23,11 +22,6 @@ public class CampaignRepository
         if (CampaignSlug.TryCanonicalize(campaignName, out var explicitSlug))
         {
             return explicitSlug;
-        }
-
-        if (_currentCampaign?.HasSelection == true)
-        {
-            return _currentCampaign.CurrentCampaignName;
         }
 
         throw new CampaignNotSelectedException();
@@ -45,7 +39,6 @@ public class CampaignRepository
         ILogger<CampaignRepository> logger,
         INpcBehaviorSynthesizer behaviorSynthesizer,
         CampaignDocumentKeys keys,
-        ICurrentCampaignContext currentCampaign,
         ChangeHandlers.WorldChangeDispatcher changeDispatcher,
         SceneAssembler sceneAssembler,
         INpcInitiativeService initiativeService)
@@ -55,7 +48,6 @@ public class CampaignRepository
         _logger = logger;
         _behaviorSynthesizer = behaviorSynthesizer;
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
-        _currentCampaign = currentCampaign;
         _initiativeService = initiativeService ?? throw new ArgumentNullException(nameof(initiativeService));
         _sceneAssembler = sceneAssembler ?? throw new ArgumentNullException(nameof(sceneAssembler));
         _changeDispatcher = changeDispatcher ?? throw new ArgumentNullException(nameof(changeDispatcher));
@@ -867,6 +859,9 @@ public class CampaignRepository
             existing.ParentLocationId = location.ParentLocationId;
             existing.Exits = location.Exits ?? [];
             existing.PointsOfInterest = location.PointsOfInterest ?? [];
+            existing.PointOfInterestDetails = location.PointOfInterestDetails != null 
+                ? new Dictionary<string, string>(location.PointOfInterestDetails, StringComparer.OrdinalIgnoreCase)
+                : new(StringComparer.OrdinalIgnoreCase);
             existing.AmbientCrowd = location.AmbientCrowd;
             existing.LastVisitedDay = location.LastVisitedDay;
             existing.Metadata = location.Metadata ?? [];

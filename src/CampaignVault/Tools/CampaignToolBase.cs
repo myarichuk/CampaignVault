@@ -8,41 +8,20 @@ namespace CampaignVault.Tools;
 public abstract class CampaignToolBase
 {
     protected readonly CampaignRepository _repository;
-    protected readonly ICurrentCampaignContext _currentCampaign;
     protected readonly CampaignDocumentKeys _keys;
 
     protected CampaignToolBase(
         CampaignRepository repository,
-        ICurrentCampaignContext currentCampaign,
         CampaignDocumentKeys keys)
     {
         _repository = repository;
-        _currentCampaign = currentCampaign;
         _keys = keys;
     }
 
     protected const string NoCampaignSelectedSummary =
         "campaignName is required on every tool call (e.g. 'dragon-heist').";
 
-    protected static string NoSessionSummary =>
-        "MCP session context not available.";
-
-    protected string EffectiveCampaign(string? explicitName)
-    {
-        if (CampaignSlug.TryCanonicalize(explicitName, out var slug))
-        {
-            return slug;
-        }
-
-        if (!_currentCampaign.HasSelection)
-        {
-            throw new CampaignNotSelectedException();
-        }
-
-        return _currentCampaign.CurrentCampaignName;
-    }
-
-    protected bool TryGetEffectiveCampaign(string? explicitName, out string effective)
+    protected static bool TryGetEffectiveCampaign(string? explicitName, out string effective)
     {
         if (CampaignSlug.TryCanonicalize(explicitName, out effective))
         {
@@ -87,10 +66,6 @@ public abstract class CampaignToolBase
             catch (CampaignNotSelectedException ex)
             {
                 return new ToolResult<T>(false, Error: ToolErrors.NoCampaignSelected, Summary: ex.Message);
-            }
-            catch (CampaignSessionRequiredException ex)
-            {
-                return new ToolResult<T>(false, Error: ToolErrors.SessionRequired, Summary: ex.Message);
             }
             catch (ConcurrencyException)
             {
