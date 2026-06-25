@@ -185,7 +185,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 var charId = $"characters/batch-test-{i}";
                 var c = new Character
                 {
-                    Id = charId,
+                    Id = "test-char",
                     Name = $"Batch Char {i}",
                     CurrentHp = 10,
                     MaxHp = 10,

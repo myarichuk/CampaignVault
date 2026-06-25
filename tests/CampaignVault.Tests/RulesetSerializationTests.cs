@@ -44,7 +44,7 @@ public class RulesetSerializationTests
         Assert.IsType<RulesetAction>(changes[0]);
 
         var action = (RulesetAction)changes[0];
-        Assert.Equal("characters/grog", action.ActorId);
+        Assert.Equal("characters/grog", action.CharacterId);
         Assert.Single(action.TargetIds);
         Assert.Equal("characters/elara-voss", action.TargetIds[0]);
         Assert.Equal("longsword", action.ActionName);

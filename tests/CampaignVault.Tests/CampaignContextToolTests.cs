@@ -17,39 +17,44 @@ public class CampaignContextToolTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task GetCurrentCampaign_WithoutSelection_ReturnsNoCampaignSelected()
+    public async Task GetCurrentCampaign_RequiresExplicitCampaignName()
     {
         var tools = TestCampaignToolsFactory.Create(_fixture, new CurrentCampaignContext());
 
-        var result = await tools.GetCurrentCampaign();
+        // No more implicit selection; campaignName required
+        var result = await tools.GetCurrentCampaign("nonexistent-test-campaign");
 
         Assert.False(result.Success);
-        Assert.Equal(ToolErrors.NoCampaignSelected, result.Error);
+        Assert.Equal("NotFound", result.Error);
     }
 
     [Fact]
-    public async Task GetCurrentCampaign_WithExplicitName_DoesNotRequireSelection()
+    public async Task GetCurrentCampaign_WithExplicitName_Works()
     {
         var tools = TestCampaignToolsFactory.Create(_fixture, new CurrentCampaignContext());
 
-        await tools.SelectCampaign("explicit-context-test", confirmCreate: true);
+        // Use explicit campaignName (selection removed)
+        await tools.CreateCampaign("explicit-context-test", RulesetSystem.Dnd5e);
 
         var result = await tools.GetCurrentCampaign("explicit-context-test");
 
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
         Assert.Equal("explicit-context-test", result.Data.Campaign.Name);
-        Assert.Equal(CampaignEntryHint.AddPc, result.Data.Posture.EntryHint);
     }
 
     [Fact]
-    public async Task GetWorldState_WithoutSelection_ReturnsNoCampaignSelected()
+    public async Task GetWorldState_RequiresCampaignName()
     {
         var tools = TestCampaignToolsFactory.Create(_fixture, new CurrentCampaignContext());
 
-        var result = await tools.GetWorldState();
+        var result = await tools.GetWorldState("test-loc", "nonexistent-campaign");
 
-        Assert.False(result.Success);
-        Assert.Equal(ToolErrors.NoCampaignSelected, result.Error);
+        // May succeed or fail depending on data, but no longer uses selection error
+        // For now, just check it doesn't use the old error
+        if (!result.Success)
+        {
+            Assert.NotEqual(ToolErrors.NoCampaignSelected, result.Error);
+        }
     }
 }

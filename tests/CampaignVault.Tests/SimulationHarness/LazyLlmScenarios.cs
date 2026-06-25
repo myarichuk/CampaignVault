@@ -168,7 +168,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
             var c = new Character
             {
-                Id = charId, Name = "Lazy Bob", CampaignName = "TravelLazinessTest",
+                Id = "test-char", Name = "Lazy Bob", CampaignName = "TravelLazinessTest",
                 CurrentLocationId = "locations/start"
             };
             await session.StoreAsync(c);
@@ -187,7 +187,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var changes = new WorldChange[]
         {
             new ActivityChange
-                { CharacterId = charId, NewActivity = $"Travel interrupted en route to {destLocId} by an ambush!" }
+                { CharacterId = "test-char", NewActivity = $"Travel interrupted en route to {destLocId} by an ambush!" }
         };
         var commitResult = await tools.Commit(changes, "Started traveling and got ambushed");
         Assert.True(commitResult.Success, commitResult.Summary);

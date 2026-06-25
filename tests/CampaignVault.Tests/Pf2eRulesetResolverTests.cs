@@ -42,13 +42,13 @@ public class Pf2eRulesetResolverTests
 
         var resolver = new Pf2eRulesetResolver(mockRollService);
 
-        var actorId = "char_1";
-        var actor = new Character { Id = actorId, SystemStats = new Pf2eExtension() };
+        var CharacterId = "char_1";
+        var actor = new Character { Id = "test-char", SystemStats = new Pf2eExtension() };
         var context = CreateContext(actor);
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "test-char",
             ActionType = RulesetActionType.SavingThrow,
             ActionName = "Reflex Save",
             Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }
@@ -69,17 +69,17 @@ public class Pf2eRulesetResolverTests
 
         var resolver = new Pf2eRulesetResolver(mockRollService);
 
-        var actorId = "char_1";
+        var CharacterId = "char_1";
         var targetId = "char_2";
         
-        var actor = new Character { Id = actorId, SystemStats = new Pf2eExtension() };
+        var actor = new Character { Id = "test-char", SystemStats = new Pf2eExtension() };
         var target = new Character { Id = targetId, SystemStats = new Pf2eExtension { ArmorClass = 10 } };
         
         var context = CreateContext(actor, target);
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "test-char",
             TargetIds = [targetId],
             ActionType = RulesetActionType.Attack,
             ActionName = "Fist",

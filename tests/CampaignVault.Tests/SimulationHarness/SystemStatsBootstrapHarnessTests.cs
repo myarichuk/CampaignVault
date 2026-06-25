@@ -50,7 +50,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         await RunCombatLoopAsync(tools, campaign, locId, pcId, enemyId,
             attack: new RulesetAction
             {
-                ActorId = pcId,
+                CharacterId = pcId,
                 TargetIds = [enemyId],
                 ActionType = RulesetActionType.Attack,
                 ActionName = "Longsword",
@@ -88,7 +88,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         await RunCombatLoopAsync(tools, campaign, locId, pcId, enemyId,
             attack: new RulesetAction
             {
-                ActorId = pcId,
+                CharacterId = pcId,
                 TargetIds = [enemyId],
                 ActionType = RulesetActionType.Attack,
                 ActionName = "Longsword Strike",
@@ -126,7 +126,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         await RunCombatLoopAsync(tools, campaign, locId, pcId, enemyId,
             attack: new RulesetAction
             {
-                ActorId = pcId,
+                CharacterId = pcId,
                 TargetIds = [enemyId],
                 ActionType = RulesetActionType.Attack,
                 ActionName = "10mm Pistol",

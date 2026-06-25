@@ -48,7 +48,7 @@ public class EngagementRelationModelTests
               "Name": "Bram",
               "SystemStats": {
                 "spatialRelations": [
-                  { "targetId": "characters/elara", "relationType": "Grappling" }
+                  { "targetId": "characters/elara", "verb": "Grappling" }
                 ]
               }
             }

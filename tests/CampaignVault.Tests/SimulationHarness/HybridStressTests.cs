@@ -73,7 +73,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
             // Random Relationship Change
             changes.Add(new RelationshipChange
             {
-                SourceId = targetId,
+                CharacterId = targetId,
                 TargetId = npcs[_rng.Next(npcs.Count)],
                 Delta = _rng.Next(-50, 50),
                 Reason = "Random fuzz interaction"

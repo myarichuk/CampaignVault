@@ -42,13 +42,13 @@ public class Fallout2d20RulesetResolverTests
 
         var resolver = new Fallout2d20RulesetResolver(mockRollService);
 
-        var actorId = "char_1";
-        var actor = new Character { Id = actorId, SystemStats = new Fallout2d20Extension { Endurance = 8 } };
+        var CharacterId = "char_1";
+        var actor = new Character { Id = "test-char", SystemStats = new Fallout2d20Extension { Endurance = 8 } };
         var context = CreateContext(actor);
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "test-char",
             ActionType = RulesetActionType.SavingThrow,
             ActionName = "Poison Save",
             Parameters = new Dictionary<string, string> { { "difficulty", "1" }, { "attribute", "Endurance" } }
@@ -73,10 +73,10 @@ public class Fallout2d20RulesetResolverTests
 
         var resolver = new Fallout2d20RulesetResolver(mockRollService);
 
-        var actorId = "char_1";
+        var CharacterId = "char_1";
         var targetId = "char_2";
         
-        var actor = new Character { Id = actorId, SystemStats = new Fallout2d20Extension() };
+        var actor = new Character { Id = "test-char", SystemStats = new Fallout2d20Extension() };
         var target = new Character { Id = targetId, SystemStats = new Fallout2d20Extension 
         { 
             Defense = 1, 
@@ -87,7 +87,7 @@ public class Fallout2d20RulesetResolverTests
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "test-char",
             TargetIds = [targetId],
             ActionType = RulesetActionType.Attack,
             ActionName = "Combat Knife",

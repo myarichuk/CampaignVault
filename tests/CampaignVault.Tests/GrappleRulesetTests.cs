@@ -42,7 +42,7 @@ public class GrappleRulesetTests
 
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.ContestedCheck,
             ActionCategory = ActionCategory.Maneuver,

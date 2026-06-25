@@ -243,7 +243,7 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
         var charId = "chars/deep";
         await session.StoreAsync(new Character
         {
-            Id = charId,
+            Id = "test-char",
             Name = "Deep NPC",
             CampaignName = "context-tension",
             Psychology = new PsychologyProfile

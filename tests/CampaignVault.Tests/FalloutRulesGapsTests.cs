@@ -50,7 +50,7 @@ public class FalloutRulesGapsTests
 
         var action = new RulesetAction
         {
-            ActorId = "actor",
+            CharacterId = "actor",
             TargetIds = ["target"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Hunting Rifle",
@@ -86,7 +86,7 @@ public class FalloutRulesGapsTests
 
         var action = new RulesetAction
         {
-            ActorId = "actor",
+            CharacterId = "actor",
             ActionType = RulesetActionType.Spell,
             ActionName = "Fabricate Chem",
             Parameters = new Dictionary<string, string>
@@ -114,7 +114,7 @@ public class FalloutRulesGapsTests
 
         var action = new RulesetAction
         {
-            ActorId = "actor",
+            CharacterId = "actor",
             TargetIds = ["ally"],
             ActionType = RulesetActionType.UseItem,
             ActionName = "Stimpak",
@@ -148,7 +148,7 @@ public class FalloutRulesGapsTests
 
         var action = new RulesetAction
         {
-            ActorId = "actor",
+            CharacterId = "actor",
             TargetIds = ["target"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Called Shot",

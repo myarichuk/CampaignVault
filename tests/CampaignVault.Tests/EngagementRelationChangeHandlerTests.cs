@@ -37,7 +37,7 @@ public class EngagementRelationChangeHandlerTests
 
         var change = new EngagementRelationChange
         {
-            ActorId = "char_1",
+            CharacterId = "char_1",
             TargetId = "char_2",
             Category = EngagementCategory.Physical,
             Verb = "Grappling",
@@ -67,7 +67,7 @@ public class EngagementRelationChangeHandlerTests
 
         var change = new EngagementRelationChange
         {
-            ActorId = "char_1",
+            CharacterId = "char_1",
             TargetId = "char_2",
             Category = EngagementCategory.Social,
             Verb = "ranting at",
@@ -93,10 +93,10 @@ public class EngagementRelationChangeHandlerTests
 
         var change = new EngagementRelationChange
         {
-            ActorId = "char_1",
+            CharacterId = "char_1",
             TargetId = "char_2",
             Verb = null,
-            RelationType = null,
+            // removed RelationType =  null,
             Bidirectional = true
         };
 
@@ -116,7 +116,7 @@ public class EngagementRelationChangeHandlerTests
 
         var change = new EngagementRelationChange
         {
-            ActorId = "char_1",
+            CharacterId = "char_1",
             TargetId = "char_2",
             Category = EngagementCategory.Attention,
             Verb = "watching",

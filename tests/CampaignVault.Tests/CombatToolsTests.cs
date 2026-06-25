@@ -157,13 +157,13 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(startResult.Success,
             $"StartCombat failed. Error: {startResult.Error}, Summary: {startResult.Summary}");
 
-        var firstActorId = startResult.Data!.ActiveTurnId;
-        var secondActorId = firstActorId == c1 ? c2 : c1;
+        var firstCharacterId = startResult.Data!.ActiveTurnId;
+        var secondCharacterId = firstCharacterId == c1 ? c2 : c1;
 
         // Kill the second actor
         using (var session = store.OpenAsyncSession())
         {
-            var char2 = await session.LoadAsync<Character>(secondActorId);
+            var char2 = await session.LoadAsync<Character>(secondCharacterId);
             char2.CurrentHp = 0;
             await session.SaveChangesAsync();
         }
@@ -174,7 +174,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         // It should have skipped the dead guy and wrapped around back to the first guy, OR
         // it advanced to round 2 and gave the turn to the only alive person.
-        Assert.Equal(firstActorId, nextResult.Data!.ActiveTurnId);
+        Assert.Equal(firstCharacterId, nextResult.Data!.ActiveTurnId);
         Assert.Equal(2, nextResult.Data.Round);
     }
 

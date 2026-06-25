@@ -27,38 +27,30 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task SelectCampaign_WithoutConfirmCreate_DoesNotAutoCreateUnknownSlug()
+    public async Task CreateCampaign_Works_WithExplicitName()
     {
-        var context = new CurrentCampaignContext();
-        var tools = CreateTools(context);
+        var tools = CreateTools();
         var slug = "brand-new-world-" + Guid.NewGuid().ToString("N")[..8];
 
-        var selectResult = await tools.SelectCampaign(slug);
+        var createResult = await tools.CreateCampaign(slug, RulesetSystem.Dnd5e);
 
-        Assert.False(selectResult.Success);
-        Assert.Equal(ToolErrors.SlugNotFound, selectResult.Error);
-        Assert.False(context.HasSelection);
+        Assert.True(createResult.Success);
+        Assert.NotNull(createResult.Data);
+        Assert.Equal(slug, createResult.Data.Name);
     }
 
     [Fact]
-    public async Task SelectCampaign_WithConfirmCreate_CreatesMinimalCampaign()
+    public async Task CreateCampaign_ThenGetCurrent_Works()
     {
-        var context = new CurrentCampaignContext();
-        var tools = CreateTools(context);
+        var tools = CreateTools();
         var slug = "brand-new-world-" + Guid.NewGuid().ToString("N")[..8];
 
-        var selectResult = await tools.SelectCampaign(slug, confirmCreate: true);
+        await tools.CreateCampaign(slug, RulesetSystem.Dnd5e);
 
-        Assert.True(selectResult.Success);
-        Assert.NotNull(selectResult.Data);
-        Assert.Equal(slug, selectResult.Data!.Slug);
-        Assert.Equal(CampaignEntryHint.NewCampaign, selectResult.Data.Posture!.EntryHint);
-        Assert.Equal(slug, context.CurrentCampaignName);
-
-        var currentResult = await tools.GetCurrentCampaign();
+        var currentResult = await tools.GetCurrentCampaign(slug);
         Assert.True(currentResult.Success);
         Assert.NotNull(currentResult.Data);
-        Assert.Equal(slug, currentResult.Data!.Campaign.Name);
+        Assert.Equal(slug, currentResult.Data.Campaign.Name);
     }
 
     [Fact]
@@ -224,8 +216,8 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.True(selectA.Success);
         Assert.True(selectB.Success);
 
-        var currentA = await toolsA.GetCurrentCampaign();
-        var currentB = await toolsB.GetCurrentCampaign();
+        var currentA = await toolsA.GetCurrentCampaign("campaign-a");
+        var currentB = await toolsB.GetCurrentCampaign("campaign-b");
 
         Assert.True(currentA.Success);
         Assert.True(currentB.Success);

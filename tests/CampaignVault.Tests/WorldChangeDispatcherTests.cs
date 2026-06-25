@@ -66,9 +66,9 @@ public class WorldChangeDispatcherTests
             }
             else if (change is EngagementRelationChange erc)
             {
-                characterIds?.Add(erc.ActorId);
+                characterIds?.Add(erc.CharacterId);
                 characterIds?.Add(erc.TargetId);
-                allInvolvedIds?.Add(erc.ActorId);
+                allInvolvedIds?.Add(erc.CharacterId);
                 allInvolvedIds?.Add(erc.TargetId);
             }
             else if (change is EventOccurred eo && eo.Involved != null)
@@ -326,7 +326,7 @@ public class WorldChangeDispatcherTests
                 },
                 new EngagementRelationChange
                 {
-                    ActorId = "chars/valen",
+                    CharacterId = "chars/valen",
                     TargetId = "chars/lirael-goldvein",
                     Category = EngagementCategory.Social,
                     Verb = "discussing the disappearances with",

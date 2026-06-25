@@ -42,11 +42,11 @@ public class Dnd5eSavingThrowTests
 
         var resolver = new Dnd5eRulesetResolver(mockRollService);
 
-        var actorId = "char_1";
+        const string charId = "char_1";
         // Dexterity 10 (mod +0) + SavingThrowModifier for Dexterity (+5) = Total Bonus +5
         var actor = new Character
         {
-            Id = actorId,
+            Id = "char_1",
             SystemStats = new Dnd5eExtension
             {
                 Dexterity = 10,
@@ -57,7 +57,7 @@ public class Dnd5eSavingThrowTests
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "char_1",
             ActionType = RulesetActionType.SavingThrow,
             ActionName = "Dexterity Save",
             Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }
@@ -86,11 +86,11 @@ public class Dnd5eSavingThrowTests
 
         var resolver = new Dnd5eRulesetResolver(mockRollService);
 
-        var actorId = "char_1";
+        var CharacterId = "char_1";
         // Dexterity 10 (mod +0) + StatusEffect with 'AllSaves' (+2.5 -> floor to 2) = Total Bonus +2
         var actor = new Character
         {
-            Id = actorId,
+            Id = "char_1",
             SystemStats = new Dnd5eExtension
             {
                 Dexterity = 10,
@@ -108,7 +108,7 @@ public class Dnd5eSavingThrowTests
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "char_1",
             ActionType = RulesetActionType.SavingThrow,
             ActionName = "Dexterity Save",
             Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }
@@ -136,11 +136,11 @@ public class Dnd5eSavingThrowTests
 
         var resolver = new Dnd5eRulesetResolver(mockRollService);
 
-        var actorId = "char_1";
+        var CharacterId = "char_1";
         // Dexterity 10 (mod +0) + StatusEffect with 'AllRolls' (+2.0) = Total Bonus +2
         var actor = new Character
         {
-            Id = actorId,
+            Id = "char_1",
             SystemStats = new Dnd5eExtension
             {
                 Dexterity = 10,
@@ -158,7 +158,7 @@ public class Dnd5eSavingThrowTests
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "char_1",
             ActionType = RulesetActionType.SavingThrow,
             ActionName = "Dexterity Save",
             Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }

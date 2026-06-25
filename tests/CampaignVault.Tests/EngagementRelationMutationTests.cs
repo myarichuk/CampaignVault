@@ -11,7 +11,7 @@ public class EngagementRelationMutationTests
     {
         var change = new EngagementRelationChange
         {
-            ActorId = "characters/bard",
+            CharacterId = "characters/bard",
             TargetId = "characters/archivist",
             Category = EngagementCategory.Social,
             Verb = "leaning in toward",
@@ -23,7 +23,7 @@ public class EngagementRelationMutationTests
 
         Assert.NotNull(deserialized);
         var relChange = Assert.IsType<EngagementRelationChange>(deserialized);
-        Assert.Equal("characters/bard", relChange.ActorId);
+        Assert.Equal("characters/bard", relChange.CharacterId);
         Assert.Equal("characters/archivist", relChange.TargetId);
         Assert.Equal(EngagementCategory.Social, relChange.Category);
         Assert.Equal("leaning in toward", relChange.Verb);
@@ -39,7 +39,7 @@ public class EngagementRelationMutationTests
               "$type": "spatial_relation",
               "actorId": "characters/bard",
               "targetId": "characters/archivist",
-              "relationType": "LeaningIn",
+              "verb": "LeaningIn",
               "bidirectional": true
             }
             """;
@@ -48,6 +48,6 @@ public class EngagementRelationMutationTests
 
         Assert.NotNull(deserialized);
         var relChange = Assert.IsAssignableFrom<EngagementRelationChange>(deserialized);
-        Assert.Equal("LeaningIn", relChange.RelationType);
+        Assert.Equal("LeaningIn", relChange.Verb);
     }
 }

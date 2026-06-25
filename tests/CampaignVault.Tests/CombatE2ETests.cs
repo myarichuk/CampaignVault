@@ -108,7 +108,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
             new RulesetAction
             {
                 ActionType = RulesetActionType.Attack,
-                ActorId = heroId,
+                CharacterId = heroId,
                 TargetIds = [goblinId],
                 Parameters = new Dictionary<string, string>
                     { { "bonus", "5" }, { "damageDice", "1d8" }, { "damageBonus", "3" } }

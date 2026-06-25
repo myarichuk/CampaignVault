@@ -68,7 +68,7 @@ public class Dnd5eSpellResolutionTests
 
         var action = new RulesetAction
         {
-            ActorId = "caster",
+            CharacterId = "caster",
             TargetIds = ["target"],
             ActionType = RulesetActionType.Spell,
             ActionCategory = ActionCategory.Spell,
@@ -111,7 +111,7 @@ public class Dnd5eSpellResolutionTests
 
         var action = new RulesetAction
         {
-            ActorId = "caster",
+            CharacterId = "caster",
             ActionType = RulesetActionType.Spell,
             ActionCategory = ActionCategory.Spell,
             ActionName = "Detect Magic",
@@ -168,7 +168,7 @@ public class Dnd5eSpellResolutionTests
 
         var action = new RulesetAction
         {
-            ActorId = "caster",
+            CharacterId = "caster",
             TargetIds = ["target"],
             ActionType = RulesetActionType.Spell,
             ActionName = "Fire Bolt",

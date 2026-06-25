@@ -55,7 +55,7 @@ public class NarrativeRulesetResolverTests
             ActionType = RulesetActionType.SkillCheck,
             ActionCategory = ActionCategory.Social,
             ActionName = "Persuade",
-            ActorId = _actor.Id
+            CharacterId = _actor.Id
         };
 
         var chars = new Dictionary<string, Character> { { _actor.Id, _actor } };
@@ -89,7 +89,7 @@ public class NarrativeRulesetResolverTests
             ActionType = RulesetActionType.Attack,
             ActionCategory = ActionCategory.Melee,
             ActionName = "Strike",
-            ActorId = _actor.Id,
+            CharacterId = _actor.Id,
             TargetIds = [ _target.Id ]
         };
 

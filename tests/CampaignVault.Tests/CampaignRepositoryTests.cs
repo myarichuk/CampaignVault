@@ -674,7 +674,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
 
         var charId = "npcs/sanitize-npc-" + Guid.NewGuid();
-        await repo.UpsertCharacterAsync(session, new Character { Id = charId, Name = "Sanitize NPC" });
+        await repo.UpsertCharacterAsync(session, new Character { Id = "test-char", Name = "Sanitize NPC" });
 
         var eventId = "events/npc-involved-" + Guid.NewGuid();
         var json = JsonSerializer.Serialize(new { secret = 42, tags = new[] { "test" } });
@@ -734,7 +734,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var charId = "npcs/legacy-test-" + Guid.NewGuid();
         var character = new Character
         {
-            Id = charId,
+            Id = "test-char",
             Name = "Legacy Hygiene NPC",
             Social = new SocialProfile { Relationships = new Dictionary<string, int>() },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 5f } }
@@ -746,7 +746,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.StageChangesAsync(session, [
             new RelationshipChange
             {
-                SourceId = charId,
+                CharacterId = "test-char",
                 TargetId = "target-1",
                 Delta = +10,
                 Reason = "Test V4 only path"
@@ -1438,7 +1438,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // 3. Test through CampaignTools
         var tools = TestCampaignToolsFactory.Create(_fixture);
 
-        var getResult = await tools.GetConfig();
+        var getResult = await tools.GetConfig("test-campaign");
         Assert.True(getResult.Success);
         Assert.NotNull(getResult.Data);
         Assert.Equal(RulesetSystem.Pathfinder2e, getResult.Data.ActiveSystem);
@@ -1732,7 +1732,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = charId,
+                Id = "test-char",
                 Name = "Bob",
                 CurrentActivity = null,
                 Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
@@ -1802,7 +1802,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = charId,
+                Id = "test-char",
                 Name = "Hero",
                 Social = new SocialProfile
                 {
@@ -1917,7 +1917,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         var traveler = new Character
         {
-            Id = charId,
+            Id = "test-char",
             Name = "Traveling PC",
             CurrentLocationId = originId,
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 5f } }
@@ -1946,7 +1946,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // === Success path: no override, low risk modifier (never interrupts), exit provides 16h ===
         var successTravel = new TravelChange
         {
-            CharacterId = charId,
+            CharacterId = "test-char",
             DestinationLocationId = destId,
             Narrative = "Hiked the forest path",
             TravelCostHoursOverride = null, // rely on exit metadata
@@ -2228,7 +2228,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = charId,
+                Id = "test-char",
                 Name = "Merged NPC",
                 CurrentLocationId = locId,
                 Schedule = new Schedule
@@ -2367,7 +2367,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = charId,
+                Id = "test-char",
                 Name = "Desc NPC",
                 CurrentLocationId = locId,
                 Schedule = new Schedule { DefaultLocationId = locId },
@@ -2503,7 +2503,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             // NPC has reputation with Faction A
             var npc = new Character
             {
-                Id = charId,
+                Id = "test-char",
                 Name = "Rep NPC",
                 CurrentLocationId = locId,
                 Social = new SocialProfile

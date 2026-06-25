@@ -77,7 +77,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor, target);
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Longsword",
@@ -109,7 +109,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor, target);
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Dagger",
@@ -139,7 +139,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor, target);
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Longsword"
@@ -168,7 +168,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor, target);
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Longsword",
@@ -199,7 +199,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor);
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             ActionType = RulesetActionType.SkillCheck,
             ActionName = "Sneak",
             Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "15" }
@@ -222,7 +222,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor, target);
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack,
             Parameters = new Dictionary<string, string> { ["bonus"] = "not_a_number" }
@@ -246,7 +246,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor, target);
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack
         };
@@ -270,7 +270,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor, target);
         var action = new RulesetAction
         {
-            ActorId = "char1",
+            CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.ContestedCheck,
             ActionName = "Grapple"
@@ -290,13 +290,13 @@ public class Dnd5eRulesetResolverTests
 
         var resolver = new Dnd5eRulesetResolver(mockRollService);
 
-        var actorId = "char_1";
-        var actor = new Character { Id = actorId, SystemStats = new Dnd5eExtension { Dexterity = 14 } };
+        var CharacterId = "char_1";
+        var actor = new Character { Id = "test-char", SystemStats = new Dnd5eExtension { Dexterity = 14 } };
         var context = CreateContext(actor);
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "test-char",
             ActionType = RulesetActionType.SavingThrow,
             ActionName = "Dexterity Save",
             AdvantageState = AdvantageState.Advantage,
@@ -322,10 +322,10 @@ public class Dnd5eRulesetResolverTests
 
         var resolver = new Dnd5eRulesetResolver(mockRollService);
 
-        var actorId = "char_1";
+        var CharacterId = "char_1";
         var targetId = "char_2";
         var context = CreateContext(
-            new Character { Id = actorId, SystemStats = new Dnd5eExtension() },
+            new Character { Id = "test-char", SystemStats = new Dnd5eExtension() },
             new Character
             {
                 Id = targetId,
@@ -336,7 +336,7 @@ public class Dnd5eRulesetResolverTests
 
         var action = new RulesetAction
         {
-            ActorId = actorId,
+            CharacterId = "test-char",
             TargetIds = [targetId],
             ActionType = RulesetActionType.Attack,
             ActionName = "Fire Bolt",
@@ -383,7 +383,7 @@ public class Dnd5eRulesetResolverTests
 
         var action = new RulesetAction
         {
-            ActorId = "chars/valen",
+            CharacterId = "chars/valen",
             TargetIds = ["chars/merc-1"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Schlag"
@@ -417,7 +417,7 @@ public class Dnd5eRulesetResolverTests
         var context = CreateContext(actor, merc1, merc2);
         var action = new RulesetAction
         {
-            ActorId = "chars/valen",
+            CharacterId = "chars/valen",
             TargetIds = ["chars/merc-1", "chars/merc-2"],
             ActionType = RulesetActionType.Attack,
             ActionName = "Schlag",
