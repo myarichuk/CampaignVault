@@ -88,7 +88,7 @@ internal static class ToolCatalog
         return colonIndex >= 0 ? firstLine[(colonIndex + 1)..].Trim() : firstLine.Trim();
     }
 
-    private static string ToSnakeCase(string name)
+    public static string ToSnakeCase(string name)
     {
         if (string.IsNullOrEmpty(name))
         {

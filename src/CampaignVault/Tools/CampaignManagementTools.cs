@@ -159,10 +159,9 @@ Example: select_campaign(""dragon-heist"")")]
 
         if (!CampaignSlug.TryCanonicalize(campaignName, out var normalized))
         {
-            return ToolArgumentErrors.Missing<SelectCampaignResult>(
-                "campaignName",
-                "Provide a non-empty campaign slug.",
-                toolName: "select_campaign");
+            return Task.FromResult(new ToolResult<SelectCampaignResult>(false,
+                Error: ToolErrors.InvalidArgument,
+                Summary: "Provide a valid, non-empty campaign slug."));
         }
 
         return ExecuteAsync(async session =>

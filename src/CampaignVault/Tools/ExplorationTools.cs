@@ -192,7 +192,7 @@ public class ExplorationTools : CampaignToolBase
     [McpServerTool(UseStructuredContent = true)]
     [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychology — relationships, goals, fears, knowledge, mood, initiative signals. Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<NpcContextView>> GetNpcContext(
-        string? characterId = null,
+        [Description("The unique ID of the character.")] string characterId,
         [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(characterId))
@@ -283,7 +283,7 @@ public class ExplorationTools : CampaignToolBase
                 context,
                 $"Psychological context for {npc.Name} retrieved (campaign: {effective}).",
                 WorldPressure: initiativePressure is { Length: > 0 } ? initiativePressure : null);
-        });
+        }, saveChanges: false);
     }
 
     [ToolCategory("Session & exploration")]
@@ -302,20 +302,20 @@ public class ExplorationTools : CampaignToolBase
             var companionCount = party.Count - pcCount;
             return new ToolResult<List<Character>>(true, party,
                 $"Retrieved {party.Count} party member(s) ({pcCount} PC(s), {companionCount} companion(s)) for campaign '{effective}'.");
-        });
+        }, saveChanges: false);
     }
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("UNIFIED SEARCH: Keyword search across lore, characters, and locations (campaign-scoped plus shared-universe entities with no CampaignName). Uses session-selected campaign unless campaignName is passed.")]
-    public Task<ToolResult<IEnumerable<object>>> SearchWorld(
-        string query,
+    public Task<ToolResult<UnifiedSearchResult>> SearchWorld(
+        [Description("The keyword or phrase to search for.")] string query,
         [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         // Pure read + the previous parallel query pattern was a major source of "active async tasks on dispose".
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var results = await _repository.UnifiedSearchAsync(session, query, effective);
-            return new ToolResult<IEnumerable<object>>(true, results, $"Found {results.Count()} matches (campaign: {effective}).");
+            return new ToolResult<UnifiedSearchResult>(true, new UnifiedSearchResult(results), $"Found {results.Count()} matches (campaign: {effective}).");
         }, saveChanges: false);
     }
 
@@ -323,8 +323,8 @@ public class ExplorationTools : CampaignToolBase
     [McpServerTool(UseStructuredContent = true)]
     [Description("HISTORY RECALL: Keyword search over past events for the active campaign slug. Use to remember prior sessions or plot points.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
-        string query, 
-        int limit = 5,
+        [Description("The keyword or phrase to search for in historical events.")] string query, 
+        [Description("Maximum number of events to return.")] int limit = 5,
         [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
@@ -337,7 +337,7 @@ public class ExplorationTools : CampaignToolBase
     [McpServerTool(UseStructuredContent = true)]
     [Description("DISCOVERABILITY TOOL: Returns an NPC's needs, values, and merged descriptors (campaign + per-NPC). Uses session-selected campaign unless campaignName is passed.")]
     public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(
-        string characterId,
+        [Description("The unique ID of the character.")] string characterId,
         [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
@@ -370,3 +370,5 @@ public class ExplorationTools : CampaignToolBase
         }, saveChanges: false);
     }
 }
+
+public record UnifiedSearchResult(System.Collections.Generic.IEnumerable<object> Matches);

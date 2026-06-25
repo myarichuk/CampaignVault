@@ -19,10 +19,8 @@ public class McpServerTests
         var result = await tools.ListWorkspaceEntities();
         Assert.NotNull(result);
 
-        // Access via dynamic cast
-        dynamic dynResult = result;
-        Assert.Equal(false, dynResult.success);
-        Assert.Equal("No workspace directory loaded.", dynResult.error);
+        Assert.False(result.success);
+        Assert.Equal("No workspace directory loaded.", result.error);
     }
 
     [Fact]
@@ -44,16 +42,14 @@ public class McpServerTests
             var testContent = "---\n$type: character\n---\n# Test";
             var writeResult = await tools.WriteWorkspaceEntity(testFilePath, testContent);
 
-            dynamic dynWrite = writeResult;
-            Assert.Equal(true, dynWrite.success);
+            Assert.True(writeResult.success);
             Assert.True(File.Exists(testFilePath));
 
             // Read
             var readResult = await tools.ReadWorkspaceEntity(testFilePath);
-            dynamic dynRead = readResult;
 
-            Assert.Equal(true, dynRead.success);
-            Assert.Equal(testContent, dynRead.content);
+            Assert.True(readResult.success);
+            Assert.Equal(testContent, readResult.content);
         }
         finally
         {

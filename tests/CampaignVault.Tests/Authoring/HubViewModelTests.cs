@@ -14,8 +14,18 @@ public class HubViewModelTests
 
         Assert.False(hubVM.IsBusy);
         
+        bool wasBusy = false;
+        hubVM.PropertyChanged += (s, e) => 
+        {
+            if (e.PropertyName == nameof(hubVM.IsBusy) && hubVM.IsBusy)
+            {
+                wasBusy = true;
+            }
+        };
+
         await hubVM.RefreshCloudCommand.ExecuteAsync(null);
         
+        Assert.True(wasBusy);
         Assert.False(hubVM.IsBusy);
     }
 }

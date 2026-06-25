@@ -29,9 +29,9 @@ Rolls initiative for all combatants based on the active ruleset system and estab
 Parameter name is combatantIds (not combatants). Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""monsters/goblin1""])")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
         [Description("The location ID where combat is happening.")]
-        string? locationId = null,
+        string locationId,
         [Description("List of character IDs participating in combat.")]
-        string[]? combatantIds = null,
+        string[] combatantIds,
         [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {

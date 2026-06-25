@@ -21,9 +21,5 @@ public class CampaignCoreModule : Autofac.Module
 
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
 
-        var assembly = typeof(CampaignCoreModule).Assembly;
-        builder.RegisterAssemblyTypes(assembly)
-            .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
-            .InstancePerLifetimeScope();
     }
 }

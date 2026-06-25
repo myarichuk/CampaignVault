@@ -112,12 +112,12 @@ During play, prefer commit (location_create, location_update) for incremental ch
     }
 
     [ToolCategory("World builder")]
-    [McpServerTool]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Define or update a descriptor for a need type for the current/selected campaign. Automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list defined ones for the campaign. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
     public Task<ToolResult<string>> DefineNeedDescriptor(
-        string needName,
-        string descriptor,
+        [Description("The name of the need (e.g., 'homesickness').")] string needName,
+        [Description("The description of the need and its effects.")] string descriptor,
         [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))

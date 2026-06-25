@@ -20,7 +20,7 @@ public class PathDisplayConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return Avalonia.AvaloniaProperty.UnsetValue;
     }
 }
 
@@ -49,7 +49,7 @@ public class SyncStateDisplayConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return Avalonia.AvaloniaProperty.UnsetValue;
     }
 }
 
@@ -78,7 +78,7 @@ public class StatusColorConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return Avalonia.AvaloniaProperty.UnsetValue;
     }
 }
 
@@ -97,7 +97,7 @@ public class SyncButtonTextConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return Avalonia.AvaloniaProperty.UnsetValue;
     }
 }
 
@@ -112,6 +112,6 @@ public class EnumToBoolConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return Avalonia.AvaloniaProperty.UnsetValue;
     }
 }

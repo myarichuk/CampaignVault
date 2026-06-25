@@ -176,7 +176,7 @@ internal static class McpDescriptorBuilder
             .SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
             .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
             .Select(m => new ToolDescriptor(
-                ToSnakeCase(m.Name),
+                ToolCatalog.ToSnakeCase(m.Name),
                 m.GetCustomAttribute<DescriptionAttribute>()?.Description ?? string.Empty,
                 m.GetParameters().Select(BuildParameter).ToList()))
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase);
@@ -185,7 +185,8 @@ internal static class McpDescriptorBuilder
     {
         var type = parameter.ParameterType;
         var underlying = Nullable.GetUnderlyingType(type);
-        var isNullable = underlying != null || !type.IsValueType || type == typeof(string);
+        var nullabilityInfo = new NullabilityInfoContext().Create(parameter);
+        var isNullable = underlying != null || nullabilityInfo.WriteState == NullabilityState.Nullable;
         var effective = underlying ?? type;
         var hasDefault = parameter.HasDefaultValue;
         var defaultValue = hasDefault ? parameter.DefaultValue : null;
@@ -212,10 +213,9 @@ internal static class McpDescriptorBuilder
 
         var isRequired = kind switch
         {
-            ParameterKind.NullableString => false,
-            ParameterKind.Untyped => false,
             _ when hasDefault => false,
-            _ when isNullable && effective == typeof(string) => false,
+            _ when isNullable => false,
+            ParameterKind.Untyped => false,
             _ => true,
         };
 
@@ -229,34 +229,6 @@ internal static class McpDescriptorBuilder
             enumValues);
     }
 
-    private static string ToSnakeCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-        {
-            return name;
-        }
-
-        var builder = new StringBuilder();
-        for (var i = 0; i < name.Length; i++)
-        {
-            var c = name[i];
-            if (char.IsUpper(c))
-            {
-                if (i > 0)
-                {
-                    builder.Append('_');
-                }
-
-                builder.Append(char.ToLowerInvariant(c));
-            }
-            else
-            {
-                builder.Append(c);
-            }
-        }
-
-        return builder.ToString();
-    }
 
     private sealed record ToolDescriptor(string Name, string Description, IReadOnlyList<ToolParameterDescriptor> Parameters);
 

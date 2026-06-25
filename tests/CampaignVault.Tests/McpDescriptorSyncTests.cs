@@ -43,9 +43,10 @@ public class McpDescriptorSyncTests
                 ? McpDescriptorBuilder.MergePreservingNestedSchemas(onDisk, generatedJson)
                 : generatedJson;
 
-            Assert.True(
-                JsonSemanticEquals(onDisk, expected),
-                $"MCP descriptor out of sync for '{name}'. Regenerate with: dotnet test --filter RegenerateMcpDescriptors");
+            if (!JsonSemanticEquals(onDisk, expected))
+            {
+                Assert.Fail($"MCP descriptor out of sync for '{name}'.\n\nExpected (memory):\n{expected}\n\nActual (disk):\n{onDisk}\n\nRegenerate with: dotnet test --filter RegenerateMcpDescriptors");
+            }
         }
     }
 
@@ -70,6 +71,8 @@ public class McpDescriptorSyncTests
 
     private static bool JsonSemanticEquals(string left, string right)
     {
+        left = left.Replace("\r\n", "\n");
+        right = right.Replace("\r\n", "\n");
         var leftNode = JsonSerializer.SerializeToNode(JsonDocument.Parse(left).RootElement);
         var rightNode = JsonSerializer.SerializeToNode(JsonDocument.Parse(right).RootElement);
         return JsonSerializer.Serialize(leftNode) == JsonSerializer.Serialize(rightNode);

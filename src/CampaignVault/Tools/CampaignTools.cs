@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading.Tasks;
 using CampaignVault.Models;
 
 namespace CampaignVault.Tools;
@@ -26,13 +28,13 @@ public class CampaignTools(
     public Task<ToolResult<SceneView>> GetScene(string locationId, bool partyPresent = false,
         string? campaignName = null) => exploration.GetScene(locationId, partyPresent, campaignName);
 
-    public Task<ToolResult<NpcContextView>> GetNpcContext(string? characterId = null, string? campaignName = null) =>
+    public Task<ToolResult<NpcContextView>> GetNpcContext(string characterId, string? campaignName = null) =>
         exploration.GetNpcContext(characterId, campaignName);
 
     public Task<ToolResult<List<Character>>> GetParty(string? campaignName = null) =>
         exploration.GetParty(campaignName);
 
-    public Task<ToolResult<IEnumerable<object>>> SearchWorld(string query, string? campaignName = null) =>
+    public Task<ToolResult<UnifiedSearchResult>> SearchWorld(string query, string? campaignName = null) =>
         exploration.SearchWorld(query, campaignName);
 
     public Task<ToolResult<IEnumerable<Event>>>

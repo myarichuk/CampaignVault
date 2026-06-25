@@ -448,19 +448,19 @@ public class CampaignRepository
         {
             charsQuery = charsQuery.AndAlso().OpenSubclause()
                 .WhereEquals("CampaignName", string.Empty).OrElse()
-                .WhereEquals("CampaignName", (string)null).OrElse()
+                .WhereEquals("CampaignName", (string?)null).OrElse()
                 .WhereEquals("CampaignName", effective)
                 .CloseSubclause();
 
             loreQuery = loreQuery.AndAlso().OpenSubclause()
                 .WhereEquals("CampaignName", string.Empty).OrElse()
-                .WhereEquals("CampaignName", (string)null).OrElse()
+                .WhereEquals("CampaignName", (string?)null).OrElse()
                 .WhereEquals("CampaignName", effective)
                 .CloseSubclause();
 
             locsQuery = locsQuery.AndAlso().OpenSubclause()
                 .WhereEquals("CampaignName", string.Empty).OrElse()
-                .WhereEquals("CampaignName", (string)null).OrElse()
+                .WhereEquals("CampaignName", (string?)null).OrElse()
                 .WhereEquals("CampaignName", effective)
                 .CloseSubclause();
         }

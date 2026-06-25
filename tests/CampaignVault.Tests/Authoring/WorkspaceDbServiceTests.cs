@@ -21,6 +21,7 @@ public class WorkspaceDbServiceTests : IDisposable
     {
         try
         {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(_tempDirectory))
             {
                 Directory.Delete(_tempDirectory, true);

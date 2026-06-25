@@ -9,18 +9,20 @@ using ModelContextProtocol.Server;
 
 namespace CampaignVault.Authoring.Tools;
 
+public record AuthoringToolResult(bool success, string? error = null, object? files = null, string? content = null, string? path = null);
+
 [McpServerToolType]
 public class AuthoringMcpTools
 {
     [McpServerTool(UseStructuredContent = true)]
     [Description(
         "Lists all campaign entities (npcs, locations, factions, quests) found in the active local workspace.")]
-    public async Task<object> ListWorkspaceEntities()
+    public async Task<AuthoringToolResult> ListWorkspaceEntities()
     {
         var mainVm = WorkspaceService.MainWindowViewModel;
         if (mainVm == null || string.IsNullOrEmpty(mainVm.Workspace.CurrentDirectory))
         {
-            return new { success = false, error = "No workspace directory loaded." };
+            return new AuthoringToolResult(success: false, error: "No workspace directory loaded.");
         }
 
         var files = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -34,7 +36,7 @@ public class AuthoringMcpTools
                 }).ToList();
         });
 
-        return new { success = true, files };
+        return new AuthoringToolResult(success: true, files: files);
     }
 
     private static System.Collections.Generic.IEnumerable<EntityNodeViewModel> EnumerateEntityNodes(
@@ -52,7 +54,7 @@ public class AuthoringMcpTools
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("Reads the YAML frontmatter and markdown body of a campaign entity file.")]
-    public Task<object> ReadWorkspaceEntity(
+    public Task<AuthoringToolResult> ReadWorkspaceEntity(
         [Description("The absolute path or relative path to the campaign markdown file.")]
         string filePath)
     {
@@ -67,23 +69,23 @@ public class AuthoringMcpTools
 
         if (!File.Exists(fullPath))
         {
-            return Task.FromResult<object>(new { success = false, error = $"File not found: {filePath}" });
+            return Task.FromResult(new AuthoringToolResult(success: false, error: $"File not found: {filePath}"));
         }
 
         try
         {
             var content = File.ReadAllText(fullPath);
-            return Task.FromResult<object>(new { success = true, content });
+            return Task.FromResult(new AuthoringToolResult(success: true, content: content));
         }
         catch (Exception ex)
         {
-            return Task.FromResult<object>(new { success = false, error = ex.Message });
+            return Task.FromResult(new AuthoringToolResult(success: false, error: ex.Message));
         }
     }
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("Writes or updates a campaign entity file with YAML frontmatter and markdown body content.")]
-    public Task<object> WriteWorkspaceEntity(
+    public Task<AuthoringToolResult> WriteWorkspaceEntity(
         [Description("The absolute path or relative path to the campaign markdown file.")]
         string filePath,
         [Description("The full content of the file (including YAML frontmatter and markdown body).")]
@@ -110,18 +112,18 @@ public class AuthoringMcpTools
 
             // FileSystemWatcher will automatically handle the refresh.
 
-            return Task.FromResult<object>(new { success = true });
+            return Task.FromResult(new AuthoringToolResult(success: true));
         }
         catch (Exception ex)
         {
-            return Task.FromResult<object>(new { success = false, error = ex.Message });
+            return Task.FromResult(new AuthoringToolResult(success: false, error: ex.Message));
         }
     }
 
     [McpServerTool(UseStructuredContent = true)]
     [Description("Triggers a campaign synchronization with the remote CampaignVault database via gRPC (Stub).")]
-    public Task<object> TriggerVaultSync()
+    public Task<AuthoringToolResult> TriggerVaultSync()
     {
-        return Task.FromResult<object>(new { success = true, message = "Sync triggered successfully (stub)." });
+        return Task.FromResult(new AuthoringToolResult(success: true, content: "Sync triggered successfully (stub)."));
     }
 }
