@@ -65,6 +65,19 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
                 result = await ResolveSavingThrowAsync(action, context, actorStats, mutations, ct);
                 break;
 
+            case RulesetActionType.Spell:
+                result = await ResolveSpellAsync(action, context, actorStats, mutations, ct);
+                break;
+
+            case RulesetActionType.OpposedCheck:
+                result = await ResolveContestedCheckAsync(action, context, actorStats, mutations, ct);
+                break;
+
+            case RulesetActionType.Recovery:
+            case RulesetActionType.UseItem:
+                result = await ResolveRecoveryAsync(action, context, actorStats, mutations, ct);
+                break;
+
             default:
                 result = ResolverResult.Fail("NotImplemented", $"{System}: Action type {action.ActionType} not yet fully implemented.");
                 break;
@@ -104,6 +117,127 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         TStats actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct);
+
+    protected virtual async Task<ResolverResult> ResolveSpellAsync(
+        RulesetAction action,
+        ChangeContext context,
+        TStats actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        var mode = SpellResolutionHelper.InferMode(action);
+
+        switch (mode)
+        {
+            case SpellResolutionMode.Attack:
+                return await ResolveAttackAsync(action, context, actorStats, mutations, ct);
+
+            case SpellResolutionMode.Save:
+                return await ResolveSpellSaveAsync(action, context, actorStats, mutations, ct);
+
+            case SpellResolutionMode.Check:
+                return await ResolveSkillCheckAsync(action, context, actorStats, mutations, ct);
+
+            case SpellResolutionMode.Heal:
+                return await ResolveSpellHealAsync(action, context, actorStats, mutations, ct);
+
+            case SpellResolutionMode.Utility:
+            default:
+                return await ResolveSpellUtilityAsync(action, context, actorStats, mutations, ct);
+        }
+    }
+
+    protected virtual Task<ResolverResult> ResolveSpellSaveAsync(
+        RulesetAction action,
+        ChangeContext context,
+        TStats actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct) =>
+        Task.FromResult(ResolverResult.Fail(
+            "NotImplemented",
+            $"{System}: Spell save resolution requires a ruleset-specific implementation."));
+
+    protected virtual async Task<ResolverResult> ResolveSpellUtilityAsync(
+        RulesetAction action,
+        ChangeContext context,
+        TStats actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        if (action.Parameters.ContainsKey("dc"))
+        {
+            return await ResolveSkillCheckAsync(action, context, actorStats, mutations, ct);
+        }
+
+        return ResolverResult.Ok(
+            $"{action.ActionName}: Non-combat utility spell — no DC supplied. Narrate the outcome; commit status/effects separately if needed.");
+    }
+
+    protected virtual async Task<ResolverResult> ResolveSpellHealAsync(
+        RulesetAction action,
+        ChangeContext context,
+        TStats actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        var targets = action.TargetIds.Count > 0 ? action.TargetIds : [action.ActorId];
+        if (!TryGetParameter(action.Parameters, out var healDice, "healDice", "damageDice"))
+        {
+            healDice = "1d4";
+        }
+
+        var healBonus = 0;
+        if (action.Parameters.TryGetValue("healBonus", out var hb) && !int.TryParse(hb, out healBonus))
+        {
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid healBonus value '{hb}'.");
+        }
+
+        var narratives = new List<string>();
+        foreach (var targetId in targets)
+        {
+            if (!context.Characters.TryGetValue(targetId, out var target))
+            {
+                return ResolverResult.Fail("InvalidTarget", $"Error: Target '{targetId}' not found for healing spell.");
+            }
+
+            var healRoll = await RollHealAmountAsync(healDice, healBonus, ct);
+            mutations.Add(new HpChange { CharacterId = targetId, Delta = healRoll });
+            narratives.Add($"{action.ActionName} heals {target.Name} for {healRoll} HP.");
+        }
+
+        return ResolverResult.Ok(string.Join(" | ", narratives));
+    }
+
+    protected virtual async Task<ResolverResult> ResolveRecoveryAsync(
+        RulesetAction action,
+        ChangeContext context,
+        TStats actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        action.ActionCategory = action.ActionCategory == default ? ActionCategory.Survival : action.ActionCategory;
+        return await ResolveSpellHealAsync(action, context, actorStats, mutations, ct);
+    }
+
+    protected virtual async Task<int> RollHealAmountAsync(string healDice, int healBonus, CancellationToken ct)
+    {
+        var rollService = GetRollService();
+        if (rollService is null)
+        {
+            return Math.Max(1, healBonus);
+        }
+
+        var outcome = await rollService.RollAsync(new RollRequest
+        {
+            Tag = "heal",
+            Expression = healDice,
+            Bonus = healBonus,
+            Mechanic = DiceMechanic.Standard,
+        }, ct);
+        return Math.Max(0, outcome.Result);
+    }
+
+    protected virtual IRollService? GetRollService() => null;
 
     /// <summary>
     /// Session-based initiative roll for direct tool use. 

@@ -29,6 +29,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
     public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
 
+    protected override IRollService? GetRollService() => _rollService;
+
     private int GetSkillOrAbilityBonus(Pf2eExtension stats, string name)
     {
         var matchedKey = stats.SkillModifiers.Keys.FirstOrDefault(k => string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
@@ -358,7 +360,126 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         
         var degree = CalculateDegreeOfSuccess(outcome, dc);
         
-        return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
+        var damage = await TryApplyPf2eSaveDamageAsync(action, action.ActorId, degree, mutations, ct);
+        var damageMsg = damage > 0 ? $" Took {damage} damage." : string.Empty;
+        return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}");
+    }
+
+    protected override async Task<ResolverResult> ResolveSpellSaveAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Pf2eExtension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        var targets = AttackTargetHelper.SelectTargets(action);
+        if (targets.Count == 0)
+        {
+            return ResolverResult.Fail("InvalidTarget", "Error: Spell save requires at least one target in targetIds.");
+        }
+
+        if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
+        {
+            return ResolverResult.Fail("InvalidParameter", "Error: Spell save requires a 'dc' parameter.");
+        }
+
+        var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Reflex";
+        var narratives = new List<string>();
+
+        foreach (var targetId in targets)
+        {
+            if (!context.Characters.TryGetValue(targetId, out var target))
+            {
+                return ResolverResult.Fail("InvalidTarget", $"Error: Target '{targetId}' not found for spell save.");
+            }
+
+            if (target.SystemStats is not Pf2eExtension targetStats)
+            {
+                return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
+            }
+
+            var bonus = GetSavingThrowBonus(targetStats, saveName);
+            bonus = ApplyAllModifiers(targetStats, bonus, "SavingThrow", saveName);
+
+            var outcome = await _rollService.RollAsync(new RollRequest
+            {
+                Tag = "spell-save",
+                Expression = "1d20",
+                Bonus = bonus,
+                Mechanic = DiceMechanic.Standard,
+            }, ct);
+
+            var degree = CalculateDegreeOfSuccess(outcome, dc);
+            var damage = await TryApplyPf2eSaveDamageAsync(action, targetId, degree, mutations, ct);
+            narratives.Add(
+                $"{action.ActionName} vs {target.Name}: {degree} ({saveName} {outcome.Result} vs DC {dc})"
+                + (damage > 0 ? $" — {damage} damage." : "."));
+        }
+
+        return ResolverResult.Ok(string.Join(" | ", narratives));
+    }
+
+    protected override async Task<ResolverResult> ResolveSpellUtilityAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Pf2eExtension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        if (!action.Parameters.ContainsKey("dc"))
+        {
+            return ResolverResult.Ok(
+                $"{action.ActionName}: Non-combat spell (detect aura, prestidigitation, message). Narrate effect; commit status or knowledge_update if the world changes.");
+        }
+
+        var skillName = action.Parameters.TryGetValue("skill", out var skill) ? skill : "Arcana";
+        action.Parameters["skill"] = skillName;
+        return await ResolveSkillCheckAsync(action, context, actorStats, mutations, ct);
+    }
+
+    private async Task<int> TryApplyPf2eSaveDamageAsync(
+        RulesetAction action,
+        string targetId,
+        Pf2eDegreeOfSuccess degree,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        if (!action.Parameters.TryGetValue("damageDice", out var damageDice))
+        {
+            return 0;
+        }
+
+        var damageBonus = 0;
+        if (action.Parameters.TryGetValue("damageBonus", out var db))
+        {
+            int.TryParse(db, out damageBonus);
+        }
+
+        var damageRoll = await _rollService.RollAsync(new RollRequest
+        {
+            Tag = "spell-damage",
+            Expression = damageDice,
+            Bonus = damageBonus,
+            Mechanic = DiceMechanic.Standard,
+        }, ct);
+
+        var damage = degree switch
+        {
+            Pf2eDegreeOfSuccess.CriticalFailure => damageRoll.Result * 2,
+            Pf2eDegreeOfSuccess.Failure => damageRoll.Result,
+            Pf2eDegreeOfSuccess.Success => action.Parameters.TryGetValue("halfOnSave", out var halfStr)
+                                             && (halfStr == "false" || halfStr == "0")
+                ? damageRoll.Result
+                : (int)Math.Floor(damageRoll.Result / 2.0),
+            _ => 0,
+        };
+
+        if (damage > 0)
+        {
+            mutations.Add(new HpChange { CharacterId = targetId, Delta = -damage });
+        }
+
+        return damage;
     }
 
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)

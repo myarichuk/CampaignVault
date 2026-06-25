@@ -23,23 +23,14 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
     public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
 
+    protected override IRollService? GetRollService() => _rollService;
 
-    private int GetAttributeValue(Fallout2d20Extension stats, string name)
-    {
-        return name.ToLower() switch
-        {
-            "strength" => stats.Strength,
-            "perception" => stats.Perception,
-            "endurance" => stats.Endurance,
-            "charisma" => stats.Charisma,
-            "intelligence" => stats.Intelligence,
-            "agility" => stats.Agility,
-            "luck" => stats.Luck,
-            _ => 5
-        };
-    }
-
-    protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveSkillCheckAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Fallout2d20Extension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
     {
         var difficulty = 1;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
@@ -47,48 +38,28 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
         }
 
-        // Lower difficulty is better for the actor. Positive "SkillCheck" modifiers are good.
-        // Fallout is TN based, so modifiers add to the TN, but if there's a difficulty modifier we could apply it here.
-        // Let's modify the TN instead.
-        
         var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
         var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
-        
-        var attrVal = GetAttributeValue(actorStats, attribute);
-        var skillKey = actorStats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase));
-        var skillVal = skillKey != null && actorStats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
-        var targetNumber = attrVal + skillVal;
-        
-        targetNumber = ApplyAllModifiers(actorStats, targetNumber, "SkillCheck", skill, attribute);
-        
-        var isTagged = actorStats.TagSkills.Contains(skill);
-        int? critThreshold = isTagged ? skillVal : null;
-        
-        var poolSize = 2;
-        if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
-        {
-            return ResolverResult.Fail("InvalidParameter", $"Error: invalid pool value '{p}'.");
-        }
 
-        var request = new RollRequest
-        {
-            Tag = "skill",
-            Expression = $"{poolSize}d20",
-            Mechanic = DiceMechanic.SuccessCount,
-            TargetNumber = targetNumber,
-            CriticalThreshold = critThreshold
-        };
+        var request = FalloutPoolHelper.BuildPoolRequest(
+            actorStats, attribute, skill, action.Parameters, "skill", ApplyAllModifiers, "SkillCheck", skill, attribute);
 
         var outcome = await _rollService.RollAsync(request, ct);
-        
+
         var success = outcome.Successes >= difficulty;
         var apGenerated = Math.Max(0, outcome.Successes - difficulty);
         var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
-        
-        return ResolverResult.Ok($"{action.ActionName} ({attribute}+{skill} TN {targetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
+
+        return ResolverResult.Ok(
+            $"{action.ActionName} ({attribute}+{skill} TN {request.TargetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
     }
 
-    protected override async Task<ResolverResult> ResolveAttackAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveAttackAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Fallout2d20Extension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
     {
         var targets = AttackTargetHelper.SelectTargets(action);
         if (targets.Count == 0)
@@ -130,40 +101,12 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         }
 
-        var defense = targetStats.Defense;
-        defense = ApplyAllModifiers(targetStats, defense, "Defense");
-        
-        var difficulty = defense;
-        if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
-        {
-            return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
-        }
-
         var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
         var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
-        
-        var attrVal = GetAttributeValue(actorStats, attribute);
-        var skillKey = actorStats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase));
-        var skillVal = skillKey != null && actorStats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
-        var targetNumber = attrVal + skillVal;
-        
-        targetNumber = ApplyAllModifiers(actorStats, targetNumber, "AttackRoll", skill, attribute);
-        var isTagged = actorStats.TagSkills.Contains(skill);
-        
-        var poolSize = 2;
-        if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
-        {
-            return ResolverResult.Fail("InvalidParameter", $"Error: invalid pool value '{p}'.");
-        }
+        var difficulty = FalloutPoolHelper.ResolveAttackDifficulty(targetStats, action.Parameters, ApplyAllModifiers);
 
-        var request = new RollRequest
-        {
-            Tag = "attack",
-            Expression = $"{poolSize}d20",
-            Mechanic = DiceMechanic.SuccessCount,
-            TargetNumber = targetNumber,
-            CriticalThreshold = isTagged ? skillVal : null
-        };
+        var request = FalloutPoolHelper.BuildPoolRequest(
+            actorStats, attribute, skill, action.Parameters, "attack", ApplyAllModifiers, "AttackRoll", skill, attribute);
 
         var outcome = await _rollService.RollAsync(request, ct);
         var success = outcome.Successes >= difficulty;
@@ -171,7 +114,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         if (!success)
         {
-            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed.{compMsg} {outcome.Summary}");
+            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed (need {difficulty} successes).{compMsg} {outcome.Summary}");
         }
 
         var combatDiceCount = 3;
@@ -182,12 +125,13 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         combatDiceCount = ApplyAllModifiers(actorStats, combatDiceCount, "DamageRoll");
         var damageType = action.DamageType ?? (action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical");
+        var targetPart = action.Parameters.TryGetValue("targetPart", out var part) ? part : null;
 
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);
 
         var isVicious = action.Parameters.TryGetValue("vicious", out var vicStr) &&
-                         (vicStr == "true" || vicStr == "1" || (bool.TryParse(vicStr, out var vb) && vb));
-        
+                        (vicStr == "true" || vicStr == "1" || (bool.TryParse(vicStr, out var vb) && vb));
+
         var piercingRating = 0;
         if (action.Parameters.TryGetValue("piercing", out var pierceStr))
         {
@@ -199,7 +143,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         var drKey = targetStats.DamageResistance.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
         var dr = drKey != null && targetStats.DamageResistance.TryGetValue(drKey, out var res) ? res : 0;
-        
+
         var effectiveDr = Math.Max(0, dr - ignoredDr);
         var totalDamage = combatResult.Damage + damageBonusFromEffects;
         var finalDamage = Math.Max(0, totalDamage - effectiveDr);
@@ -212,7 +156,9 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
-        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage ({combatResult.Effects} Effects).{compMsg}");
+        var locationMsg = targetPart is not null ? $" Location: {targetPart}." : string.Empty;
+        return ResolverResult.Ok(
+            $"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage ({combatResult.Effects} Effects).{locationMsg}{compMsg}");
     }
 
     protected override async Task<ResolverResult> ResolveContestedCheckAsync(
@@ -250,8 +196,13 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             ? targetSk
             : actorSkill;
 
-        var actorOutcome = await RollOpposedPoolAsync(actorStats, actorAttribute, actorSkill, action, "actor", ct);
-        var targetOutcome = await RollOpposedPoolAsync(targetStats, targetAttribute, targetSkill, action, "target", ct);
+        var actorRequest = FalloutPoolHelper.BuildPoolRequest(
+            actorStats, actorAttribute, actorSkill, action.Parameters, "actor", ApplyAllModifiers, "SkillCheck", actorSkill, actorAttribute);
+        var targetRequest = FalloutPoolHelper.BuildPoolRequest(
+            targetStats, targetAttribute, targetSkill, action.Parameters, "target", ApplyAllModifiers, "SkillCheck", targetSkill, targetAttribute);
+
+        var actorOutcome = await _rollService.RollAsync(actorRequest, ct);
+        var targetOutcome = await _rollService.RollAsync(targetRequest, ct);
 
         var actorWins = actorOutcome.Successes > targetOutcome.Successes;
         var resultStr = actorWins ? "Actor Wins" : "Target Wins";
@@ -271,39 +222,12 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             $"{action.ActionName}: {resultStr}. Actor {actorOutcome.Successes} successes ({actorAttribute}+{actorSkill}), Target {targetOutcome.Successes} successes ({targetAttribute}+{targetSkill}). {actorOutcome.Summary} vs {targetOutcome.Summary}");
     }
 
-    private async Task<RollOutcome> RollOpposedPoolAsync(
-        Fallout2d20Extension stats,
-        string attribute,
-        string skill,
+    protected override async Task<ResolverResult> ResolveSavingThrowAsync(
         RulesetAction action,
-        string tag,
+        ChangeContext context,
+        Fallout2d20Extension actorStats,
+        List<WorldChange> mutations,
         CancellationToken ct)
-    {
-        var attrVal = GetAttributeValue(stats, attribute);
-        var skillKey = stats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase));
-        var skillVal = skillKey != null && stats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
-        var targetNumber = attrVal + skillVal;
-        targetNumber = ApplyAllModifiers(stats, targetNumber, "SkillCheck", skill, attribute);
-
-        var isTagged = stats.TagSkills.Contains(skill);
-        var poolSize = 2;
-        var poolKey = tag == "actor" ? "pool" : "targetPool";
-        if (action.Parameters.TryGetValue(poolKey, out var poolStr) && !int.TryParse(poolStr, out poolSize))
-        {
-            throw new InvalidOperationException($"Error: invalid {poolKey} value '{poolStr}'.");
-        }
-
-        return await _rollService.RollAsync(new RollRequest
-        {
-            Tag = tag,
-            Expression = $"{poolSize}d20",
-            Mechanic = DiceMechanic.SuccessCount,
-            TargetNumber = targetNumber,
-            CriticalThreshold = isTagged ? skillVal : null
-        }, ct);
-    }
-
-    protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Fallout2d20Extension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         var difficulty = 1;
         if (action.Parameters.TryGetValue("difficulty", out var diffStr) && !int.TryParse(diffStr, out difficulty))
@@ -311,51 +235,214 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
         }
 
-        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Endurance";
-        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : null;
-        
-        var attrVal = GetAttributeValue(actorStats, attribute);
-        var skillKey = skill != null ? actorStats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase)) : null;
-        var skillVal = skillKey != null && actorStats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
-        var targetNumber = attrVal + skillVal;
-        
-        var tags = new List<string> { "SavingThrow", attribute };
-        if (skill != null) tags.Add(skill);
-        targetNumber = ApplyAllModifiers(actorStats, targetNumber, tags.ToArray());
-        
-        var isTagged = skill != null && actorStats.TagSkills.Contains(skill);
-        int? critThreshold = isTagged ? skillVal : null;
-        
-        var poolSize = 2;
-        if (action.Parameters.TryGetValue("pool", out var p) && !int.TryParse(p, out poolSize))
+        if (action.Parameters.TryGetValue("dc", out var dcStr) && int.TryParse(dcStr, out var dc))
         {
-            return ResolverResult.Fail("InvalidParameter", $"Error: invalid pool value '{p}'.");
+            difficulty = dc;
         }
 
-        var request = new RollRequest
-        {
-            Tag = "save",
-            Expression = $"{poolSize}d20",
-            Mechanic = DiceMechanic.SuccessCount,
-            TargetNumber = targetNumber,
-            CriticalThreshold = critThreshold
-        };
+        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Endurance";
+        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : null;
+
+        var request = skill is not null
+            ? FalloutPoolHelper.BuildPoolRequest(actorStats, attribute, skill, action.Parameters, "save", ApplyAllModifiers, "SavingThrow", skill, attribute)
+            : BuildAttributeOnlyPool(actorStats, attribute, action.Parameters, "save");
 
         var outcome = await _rollService.RollAsync(request, ct);
-        
+
         var success = outcome.Successes >= difficulty;
         var apGenerated = Math.Max(0, outcome.Successes - difficulty);
         var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
-        
-        return ResolverResult.Ok($"{action.ActionName} ({attribute}{(skill != null ? "+" + skill : "")} TN {targetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
+
+        var damage = 0;
+        if (!success && action.Parameters.TryGetValue("damageDice", out var damageDiceStr) && int.TryParse(damageDiceStr, out var diceCount))
+        {
+            var combatResult = await _rollService.RollFalloutCombatDiceAsync(diceCount, ct);
+            damage = combatResult.Damage;
+            if (damage > 0)
+            {
+                mutations.Add(new HpChange { CharacterId = action.ActorId, Delta = -damage });
+            }
+        }
+
+        var damageMsg = damage > 0 ? $" Took {damage} damage." : string.Empty;
+        return ResolverResult.Ok(
+            $"{action.ActionName} ({attribute}{(skill != null ? "+" + skill : "")} TN {request.TargetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{damageMsg}{compMsg} {outcome.Summary}");
     }
+
+    protected override async Task<ResolverResult> ResolveSpellSaveAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Fallout2d20Extension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        var targets = AttackTargetHelper.SelectTargets(action);
+        if (targets.Count == 0)
+        {
+            return ResolverResult.Fail("InvalidTarget", "Error: Explosive/radiation effect requires targetIds.");
+        }
+
+        var difficulty = 1;
+        if (action.Parameters.TryGetValue("difficulty", out var diffStr) && int.TryParse(diffStr, out var explicitDifficulty))
+        {
+            difficulty = explicitDifficulty;
+        }
+        else if (action.Parameters.TryGetValue("dc", out var dcStr) && int.TryParse(dcStr, out var dc))
+        {
+            difficulty = dc;
+        }
+
+        var attribute = action.Parameters.TryGetValue("saveAttribute", out var saveAttr)
+            ? saveAttr
+            : action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Endurance";
+        var skill = action.Parameters.TryGetValue("saveSkill", out var saveSkill)
+            ? saveSkill
+            : action.Parameters.TryGetValue("skill", out var sk) ? sk : null;
+
+        var damageDice = 3;
+        if (action.Parameters.TryGetValue("damageDice", out var dd) && int.TryParse(dd, out var parsedDice))
+        {
+            damageDice = parsedDice;
+        }
+
+        var narratives = new List<string>();
+        foreach (var targetId in targets)
+        {
+            if (!context.Characters.TryGetValue(targetId, out var target))
+            {
+                return ResolverResult.Fail("InvalidTarget", $"Error: Target '{targetId}' not found.");
+            }
+
+            if (target.SystemStats is not Fallout2d20Extension targetStats)
+            {
+                return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats.");
+            }
+
+            var request = skill is not null
+                ? FalloutPoolHelper.BuildPoolRequest(targetStats, attribute, skill, action.Parameters, "spell-save", ApplyAllModifiers, "SavingThrow", skill, attribute)
+                : BuildAttributeOnlyPool(targetStats, attribute, action.Parameters, "spell-save");
+
+            var outcome = await _rollService.RollAsync(request, ct);
+            var success = outcome.Successes >= difficulty;
+            var damage = 0;
+
+            if (!success)
+            {
+                var combatResult = await _rollService.RollFalloutCombatDiceAsync(damageDice, ct);
+                damage = combatResult.Damage;
+                if (damage > 0)
+                {
+                    mutations.Add(new HpChange { CharacterId = targetId, Delta = -damage });
+                }
+            }
+
+            narratives.Add(
+                $"{action.ActionName} vs {target.Name}: {(success ? "Resisted" : "Failed")} ({outcome.Successes} vs difficulty {difficulty})"
+                + (damage > 0 ? $" — {damage} damage." : "."));
+        }
+
+        return ResolverResult.Ok(string.Join(" | ", narratives));
+    }
+
+    protected override async Task<ResolverResult> ResolveSpellUtilityAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Fallout2d20Extension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        if (!action.Parameters.ContainsKey("difficulty") && !action.Parameters.ContainsKey("dc"))
+        {
+            return ResolverResult.Ok(
+                $"{action.ActionName}: Weird science / exploration action outside combat. Narrate fabrication, hacking, or chem effects; commit item or status changes separately.");
+        }
+
+        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Intelligence";
+        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "Science";
+        action.Parameters.TryAdd("attribute", attribute);
+        action.Parameters.TryAdd("skill", skill);
+
+        if (action.Parameters.TryGetValue("dc", out var dcStr) && int.TryParse(dcStr, out var dc))
+        {
+            action.Parameters["difficulty"] = dc.ToString();
+        }
+
+        return await ResolveSkillCheckAsync(action, context, actorStats, mutations, ct);
+    }
+
+    protected override async Task<ResolverResult> ResolveRecoveryAsync(
+        RulesetAction action,
+        ChangeContext context,
+        Fallout2d20Extension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        var targets = action.TargetIds.Count > 0 ? action.TargetIds : [action.ActorId];
+        var healAmount = 0;
+
+        if (action.Parameters.TryGetValue("healAmount", out var healStr) && int.TryParse(healStr, out var flatHeal))
+        {
+            healAmount = flatHeal;
+        }
+        else if (action.Parameters.TryGetValue("healDice", out var healDiceStr) && int.TryParse(healDiceStr, out var diceCount))
+        {
+            var combatResult = await _rollService.RollFalloutCombatDiceAsync(diceCount, ct);
+            healAmount = Math.Max(1, combatResult.Damage);
+        }
+        else
+        {
+            healAmount = 4;
+        }
+
+        foreach (var targetId in targets)
+        {
+            if (!context.Characters.TryGetValue(targetId, out var target))
+            {
+                return ResolverResult.Fail("InvalidTarget", $"Error: Target '{targetId}' not found for recovery.");
+            }
+
+            mutations.Add(new HpChange { CharacterId = targetId, Delta = healAmount });
+        }
+
+        return ResolverResult.Ok($"{action.ActionName}: Restored {healAmount} HP to {targets.Count} target(s).");
+    }
+
+    private RollRequest BuildAttributeOnlyPool(
+        Fallout2d20Extension stats,
+        string attribute,
+        IReadOnlyDictionary<string, string> parameters,
+        string tag)
+    {
+        var poolSize = FalloutPoolHelper.ResolvePoolSize(stats, parameters, tag == "target" ? "targetPool" : "pool");
+        var targetNumber = ApplyAllModifiers(stats, GetAttributeValue(stats, attribute), "SavingThrow", attribute);
+        return new RollRequest
+        {
+            Tag = tag,
+            Expression = $"{poolSize}d20",
+            Mechanic = DiceMechanic.SuccessCount,
+            TargetNumber = targetNumber,
+        };
+    }
+
+    private static int GetAttributeValue(Fallout2d20Extension stats, string name) =>
+        name.ToLowerInvariant() switch
+        {
+            "strength" => stats.Strength,
+            "perception" => stats.Perception,
+            "endurance" => stats.Endurance,
+            "charisma" => stats.Charisma,
+            "intelligence" => stats.Intelligence,
+            "agility" => stats.Agility,
+            "luck" => stats.Luck,
+            _ => 5,
+        };
 
     public override Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Fallout2d20Extension ?? new Fallout2d20Extension();
         var initiative = stats.Perception + stats.Agility;
         initiative = ApplyAllModifiers(stats, initiative, "Initiative");
-        
+
         return Task.FromResult((float)initiative);
     }
 }
