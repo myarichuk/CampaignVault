@@ -146,7 +146,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
                     Id = "events/" + Guid.NewGuid(), CampaignName = effective, Summary = narrative,
                     Category = EventCategory.SceneCommit, Involved = result.InvolvedEntities
                 }, effective);
-            var msg = $"World updated with {changes.Length} changes.";
+            var msg = $"World updated with {changes.Length} changes. Full result in structuredContent.";
             return new ToolResult<CommitResult>(true, result, msg);
         });
     }

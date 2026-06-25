@@ -553,7 +553,7 @@ internal static class ToolCallExamples
                         },
                         {
                           "$type": "engagement_relation",
-                          "actorId": "chars/valen",
+                          "characterId": "chars/valen",
                           "targetId": "chars/innkeeper",
                           "category": "Social",
                           "verb": "talking with",

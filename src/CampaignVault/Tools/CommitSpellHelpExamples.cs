@@ -40,7 +40,7 @@ internal static class CommitSpellHelpExamples
 [
   {
     "$type": "ruleset_action",
-    "actorId": "chars/wizard",
+    "characterId": "chars/wizard",
     "targetIds": ["chars/goblin-1", "chars/goblin-2", "chars/goblin-3"],
     "actionType": "Spell",
     "actionCategory": "Spell",
@@ -61,7 +61,7 @@ internal static class CommitSpellHelpExamples
 [
   {
     "$type": "ruleset_action",
-    "actorId": "chars/wizard",
+    "characterId": "chars/wizard",
     "actionType": "Spell",
     "actionCategory": "Spell",
     "actionName": "Detect Magic",
@@ -78,7 +78,7 @@ internal static class CommitSpellHelpExamples
 [
   {
     "$type": "ruleset_action",
-    "actorId": "chars/cleric",
+    "characterId": "chars/cleric",
     "targetIds": ["chars/fighter"],
     "actionType": "Spell",
     "actionCategory": "Spell",
@@ -96,7 +96,7 @@ internal static class CommitSpellHelpExamples
 [
   {
     "$type": "ruleset_action",
-    "actorId": "chars/wizard",
+    "characterId": "chars/wizard",
     "targetIds": ["chars/bandit"],
     "actionType": "Spell",
     "actionCategory": "Spell",
@@ -114,7 +114,7 @@ internal static class CommitSpellHelpExamples
 [
   {
     "$type": "ruleset_action",
-    "actorId": "chars/raider",
+    "characterId": "chars/raider",
     "targetIds": ["chars/pc1", "chars/pc2"],
     "actionType": "Spell",
     "actionCategory": "Spell",
@@ -133,7 +133,7 @@ internal static class CommitSpellHelpExamples
 [
   {
     "$type": "ruleset_action",
-    "actorId": "chars/pc1",
+    "characterId": "chars/pc1",
     "targetIds": ["chars/pc1"],
     "actionType": "UseItem",
     "actionName": "Stimpak",

@@ -32,13 +32,16 @@ public sealed class LocationHallucinationPressureContributor : IPressureContribu
         }
         else
         {
+            var suggested = "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
+                "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
+                "\"connectionDescription\": \"...\"\n  }\n]";
             pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, locationId,
                 $"You requested '{locationId}' but it does not exist in the database! " +
-                "You are hallucinating. Use the `commit` tool immediately:\n" +
-                "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
-                "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
-                "\"connectionDescription\": \"...\"\n  }\n]",
-                GroupingKey));
+                "You are hallucinating. Use the `commit` tool immediately:\n" + suggested,
+                GroupingKey)
+            {
+                SuggestedCommitJson = suggested
+            });
         }
 
         return pressures;

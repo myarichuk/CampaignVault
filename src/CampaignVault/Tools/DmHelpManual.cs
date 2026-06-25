@@ -11,28 +11,23 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 
 ## Quickstart for Models
 1. **Call `get_help`** (this document) and **`list_tools`** if search-based discovery only showed a subset.
-2. **Establish campaign context** (see **Campaign session & slug scoping** below): `list_campaigns` → `create_campaign` or `select_campaign`, or pass `campaignName` on every call when stateless.
-3. **Call `get_current_campaign`** to confirm slug, ruleset, and lock-in.
+2. **Establish campaign context**: `list_campaigns` → `create_campaign` (if needed), then pass `campaignName` on every tool call.
+3. **Call `get_current_campaign(campaignName)`** to confirm slug, ruleset, and lock-in.
 4. **Call `get_world_state`** at session start to sync time, rumors, events, and **WorldPressure**.
 5. **Call `get_scene`** whenever the party enters a location. Action any `ENGINE WARNING` / `NARRATIVE PROMPT` immediately.
 6. **Call `commit`** at the end of every meaningful beat (combat, conversation, discovery, persistence).
 7. **Call `advance_world`** for travel, rests, or downtime skips.
 
-## Campaign session & slug scoping
+## Campaign slug scoping
 
-Campaign selection is stored **per MCP session** (never process-wide). Identify the session via:
-
-| Transport | Session identity |
-|-----------|------------------|
-| Stateful HTTP | `Mcp-Session-Id` response/request header |
-| stdio / local CLI | `MCP_SESSION_ID` environment variable |
-| Stateless HTTP (`MCP_STATELESS=1`) | No sticky session — pass **`campaignName` on every tool call** |
+`campaignName` (e.g. "dragon-heist") is **required** on every campaign-scoped tool call. There is no per-session selection or "current campaign" magic.
 
 **Workflow:**
 1. `list_campaigns` to discover existing slugs.
-2. `select_campaign(""dragon-heist"")` to bind that slug to your MCP session (requires session identity above). Typos return fuzzy suggestions — use `confirmCreate=true` only when intentionally creating a new minimal campaign.
-3. Subsequent tools in the **same session** may omit `campaignName`.
-4. Or skip `select_campaign` and pass `campaignName: ""dragon-heist""` on each tool call (required for stateless clients).
+2. `create_campaign(name: "dragon-heist", initialSystem: "Dnd5e")` if new.
+3. Pass `campaignName: "dragon-heist"` explicitly on every call to `get_scene`, `commit`, etc.
+
+Slugs are canonicalized (spaces to hyphens, lower). Shared canon (no CampaignName on entities) is visible across campaigns.
 
 **Slug rules:** Names are canonicalized — `""Dragon Heist""` → `dragon-heist`. Same slug = same campaign singletons (time, combat, config) and campaign-tagged entities.
 
@@ -97,7 +92,7 @@ Later promote a transient (so it survives GC and participates in AdvanceWorld):
   { ""$type"": ""schedule_change"", ""characterId"": ""chars/cloaked_figure"", ""schedule"": { ""defaultLocationId"": ""locations/market_square"", ""routines"": [ { ""condition"": ""Any"", ""locationId"": ""locations/market_square"", ""activity"": ""Haggling"", ""probability"": 0.8 } ] } }
 ]
 
-**Engagements & Spatial Positions:** pairwise state (`engagement_relation`) vs. relative placement (`spatial_position`). Different field names: `actorId` vs `characterId`.
+**Engagements & Spatial Positions:** pairwise state (`engagement_relation`) vs. relative placement (`spatial_position`). Both now use `characterId` + `targetId` (or `targetIds`).
 
 Categories for `engagement_relation`: `Physical`, `Social`, `Medical`, `Attention`, `Proximity`. Use a freeform `verb` (e.g. ""grappling"", ""ranting at"", ""stitching""). Omit `restrictionLevel` to use category defaults — Physical/Medical = Hard (blocks `travel` + scene pressure), Social = Soft (pressure only), Attention/Proximity = None (informational). Override with `restrictionLevel` when a beat must hard-lock travel (e.g. farewell embrace).
 
@@ -106,17 +101,17 @@ Categories for `engagement_relation`: `Physical`, `Social`, `Medical`, `Attentio
 Tavern example (drunk five paces from the party, ranting):
 [
   { ""$type"": ""spatial_position"", ""characterId"": ""chars/drunk"", ""targetId"": ""chars/pc"", ""distanceBand"": ""Near"", ""zone"": ""bar"" },
-  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/drunk"", ""targetId"": ""chars/pc"", ""category"": ""Social"", ""verb"": ""ranting at"", ""bidirectional"": true }
+  { ""$type"": ""engagement_relation"", ""characterId"": ""chars/drunk"", ""targetId"": ""chars/pc"", ""category"": ""Social"", ""verb"": ""ranting at"", ""bidirectional"": true }
 ]
 
 Farewell embrace (hard-lock until resolved — override Social default):
 [
-  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/mother"", ""targetId"": ""chars/son"", ""category"": ""Social"", ""verb"": ""embracing"", ""restrictionLevel"": ""Hard"", ""bidirectional"": true }
+  { ""$type"": ""engagement_relation"", ""characterId"": ""chars/mother"", ""targetId"": ""chars/son"", ""category"": ""Social"", ""verb"": ""embracing"", ""restrictionLevel"": ""Hard"", ""bidirectional"": true }
 ]
 
 Clear when the beat ends (`verb` or `distanceBand` null):
 [
-  { ""$type"": ""engagement_relation"", ""actorId"": ""chars/mother"", ""targetId"": ""chars/son"", ""verb"": null, ""bidirectional"": true },
+  { ""$type"": ""engagement_relation"", ""characterId"": ""chars/mother"", ""targetId"": ""chars/son"", ""verb"": null, ""bidirectional"": true },
   { ""$type"": ""spatial_position"", ""characterId"": ""chars/drunk"", ""targetId"": ""chars/pc"", ""distanceBand"": null }
 ]
 
@@ -298,7 +293,7 @@ Use `ruleset_action` inside `commit` for attacks, spells, skills, grapples, and 
 ```json
 {
   ""$type"": ""ruleset_action"",
-  ""actorId"": ""chars/valen"",
+  ""characterId"": ""chars/valen"",
   ""targetIds"": [""chars/merc-1"", ""chars/merc-2"", ""chars/merc-3"", ""chars/harluaa-training-sergeant""],
   ""actionType"": ""Attack"",
   ""actionName"": ""Schlag"",
@@ -313,7 +308,7 @@ Melee attack example:
 [
   {
     ""$type"": ""ruleset_action"",
-    ""actorId"": ""chars/fighter"",
+    ""characterId"": ""chars/fighter"",
     ""targetIds"": [""chars/goblin""],
     ""actionType"": ""Attack"",
     ""actionName"": ""longsword"",

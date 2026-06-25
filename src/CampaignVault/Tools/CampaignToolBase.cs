@@ -22,11 +22,10 @@ public abstract class CampaignToolBase
     }
 
     protected const string NoCampaignSelectedSummary =
-        "No campaign selected for this MCP session. Call select_campaign (requires Mcp-Session-Id or MCP_SESSION_ID), " +
-        "or pass campaignName explicitly on every tool call. When MCP_STATELESS=1, use campaignName on each call.";
+        "campaignName is required on every tool call (e.g. 'dragon-heist').";
 
     protected static string NoSessionSummary =>
-        CampaignSessionRequiredException.Guidance;
+        "MCP session context not available.";
 
     protected string EffectiveCampaign(string? explicitName)
     {
@@ -50,18 +49,12 @@ public abstract class CampaignToolBase
             return true;
         }
 
-        if (!_currentCampaign.HasSelection)
-        {
-            effective = string.Empty;
-            return false;
-        }
-
-        effective = _currentCampaign.CurrentCampaignName;
-        return true;
+        effective = string.Empty;
+        return false;
     }
 
     protected Task<ToolResult<T>> ExecuteForCampaignAsync<T>(
-        string? campaignName,
+        string campaignName,
         Func<string, IAsyncDocumentSession, Task<ToolResult<T>>> action,
         bool saveChanges = true)
     {

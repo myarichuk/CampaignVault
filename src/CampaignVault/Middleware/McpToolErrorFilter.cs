@@ -139,10 +139,11 @@ internal static partial class McpToolErrorFilter
     {
         var payload = new ToolResult<object>(false, Error: ToolErrors.InvalidArgument, Summary: summary,
             RetryExample: retryExample);
+        var text = $"Error: {summary}. Full details in structuredContent.";
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = summary }],
+            Content = [new TextContentBlock { Text = text }],
             StructuredContent = JsonSerializer.SerializeToElement(payload),
         };
     }

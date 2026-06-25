@@ -91,7 +91,7 @@ public class CampaignTools(
     public Task<ToolResult<CombatEncounter>> EndCombat(string? campaignName = null) => combat.EndCombat(campaignName);
 
     // --- Campaign Management ---
-    public Task<ToolResult<CampaignConfig>> GetConfig(string? campaignName = null) =>
+    public Task<ToolResult<CampaignConfig>> GetConfig(string campaignName) =>
         management.GetConfig(campaignName);
 
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(RulesetSystem activeSystem,
@@ -104,7 +104,7 @@ public class CampaignTools(
     public Task<ToolResult<List<Campaign>>> ListCampaigns() => management.ListCampaigns();
     public Task<ToolResult<SelectCampaignResult>> SelectCampaign(string name, bool confirmCreate = false) =>
         management.SelectCampaign(name, confirmCreate);
-    public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(string? campaignName = null) =>
+    public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(string campaignName) =>
         management.GetCurrentCampaign(campaignName);
 
     // --- Meta ---

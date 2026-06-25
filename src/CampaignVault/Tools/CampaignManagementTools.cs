@@ -15,10 +15,10 @@ public class CampaignManagementTools(
 {
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"RULES CONFIG TOOL: Get campaign configuration (ruleset and house-rule options). Uses session-selected campaign unless campaignName is passed.")]
+    [Description(@"RULES CONFIG TOOL: Get campaign configuration (ruleset and house-rule options).")]
     public Task<ToolResult<CampaignConfig>> GetConfig(
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
@@ -39,7 +39,7 @@ Example: set_active_system(RulesetSystem.Pathfinder2e, { ""mapEnabled"": ""true"
         RulesetSystem activeSystem,
         [Description("Optional dictionary of system options and house rules.")]
         Dictionary<string, string>? systemOptions = null,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string? campaignName = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
@@ -110,17 +110,15 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
             var campaign =
                 await GetOrCreateCampaignMetaAsync(session, normalized, initialSystem, displayName, forceLock: true);
 
-            _currentCampaign.SetCurrent(normalized);
-
             return new ToolResult<Campaign>(true, campaign,
-                $"Campaign '{normalized}' created and locked to {initialSystem}. Now selected as current.");
+                $"Campaign '{normalized}' created and locked to {initialSystem}. Pass campaignName='{normalized}' on subsequent calls.");
         });
     }
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"CAMPAIGN TOOL: Lists all existing campaigns (campaigns/*/meta documents only).
-Useful for discovering existing worlds before calling select_campaign.")]
+Useful for discovering existing worlds. Pass the slug as campaignName on subsequent calls.")]
     public Task<ToolResult<List<Campaign>>> ListCampaigns()
     {
         return ExecuteAsync(async session =>
@@ -135,18 +133,11 @@ Useful for discovering existing worlds before calling select_campaign.")]
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"CAMPAIGN TOOL: Selects a campaign as the current one for this MCP session.
-Requires Mcp-Session-Id (HTTP) or MCP_SESSION_ID (stdio/local). Subsequent tool calls in the same session may omit campaignName.
-When MCP_STATELESS=1 or no session is available, pass campaignName on every tool call instead.
-
-If the slug does not exist exactly, returns fuzzy suggestions (did you mean sword-coast?) without selecting.
-Pass confirmCreate=true only when intentionally creating a new minimal campaign (prefer create_campaign for full setup).
-
-Example: select_campaign(""dragon-heist"")")]
+    [Description("REMOVED: Use explicit campaignName on every tool call. This tool no longer exists.")]
     public Task<ToolResult<SelectCampaignResult>> SelectCampaign(
         [Description(ToolParameterDescriptions.CampaignSlugRequired)]
         string campaignName,
-        [Description("When true and no exact/fuzzy match exists, creates a minimal D&D 5e campaign and selects it.")]
+        [Description("Deprecated.")]
         bool confirmCreate = false)
     {
         if (string.IsNullOrWhiteSpace(campaignName))
@@ -164,57 +155,10 @@ Example: select_campaign(""dragon-heist"")")]
                 Summary: "Provide a valid, non-empty campaign slug."));
         }
 
-        return ExecuteAsync(async session =>
-        {
-            var campaignId = _keys.Meta(normalized);
-            var existing = await session.LoadAsync<Campaign>(campaignId);
-
-            if (existing != null)
-            {
-                _currentCampaign.SetCurrent(normalized);
-                var posture = await CampaignPostureBuilder.BuildAsync(session, _repository, _keys, normalized,
-                    isNewCampaign: false);
-                return new ToolResult<SelectCampaignResult>(
-                    true,
-                    new SelectCampaignResult(normalized, posture),
-                    $"Campaign '{normalized}' is now selected ({posture.EntryHint}).");
-            }
-
-            var allCampaigns = await session.Query<Campaign>()
-                .Where(c => c.Id.StartsWith("campaigns/") && c.Id.EndsWith("/meta"))
-                .ToListAsync();
-
-            var suggestions = await BuildSuggestionsAsync(session, normalized, allCampaigns);
-            if (suggestions.Count > 0)
-            {
-                var names = string.Join(", ", suggestions.Select(s => $"'{s.Slug}'"));
-                return new ToolResult<SelectCampaignResult>(
-                    false,
-                    new SelectCampaignResult(normalized, Suggestions: suggestions),
-                    Error: ToolErrors.SlugAmbiguous,
-                    Summary:
-                    $"No exact match for '{normalized}'. Did you mean: {names}? Call select_campaign again with the exact slug.");
-            }
-
-            if (!confirmCreate)
-            {
-                return new ToolResult<SelectCampaignResult>(
-                    false,
-                    new SelectCampaignResult(normalized),
-                    Error: ToolErrors.SlugNotFound,
-                    Summary:
-                    $"Campaign '{normalized}' not found. Call list_campaigns, pick an existing slug, use create_campaign for a new world, or pass confirmCreate=true to create a minimal campaign.");
-            }
-
-            await GetOrCreateCampaignMetaAsync(session, normalized, RulesetSystem.Dnd5e, forceLock: false);
-            _currentCampaign.SetCurrent(normalized);
-            var newPosture = await CampaignPostureBuilder.BuildAsync(session, _repository, _keys, normalized,
-                isNewCampaign: true);
-            return new ToolResult<SelectCampaignResult>(
-                true,
-                new SelectCampaignResult(normalized, newPosture),
-                $"Campaign '{normalized}' created (minimal, D&D 5e default) and selected ({newPosture.EntryHint}).");
-        });
+        return Task.FromResult(new ToolResult<SelectCampaignResult>(
+            false,
+            Error: "Removed",
+            Summary: "select_campaign has been removed. Pass campaignName explicitly on every tool call."));
     }
 
     [ToolCategory("Campaign management")]
@@ -224,58 +168,27 @@ Example: select_campaign(""dragon-heist"")")]
 Use this if you are unsure which campaign you are currently in or if you need to know the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.
 Pass campaignName explicitly when MCP_STATELESS=1 or when no Mcp-Session-Id / MCP_SESSION_ID is available.")]
     public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
-        if (!string.IsNullOrWhiteSpace(campaignName))
-        {
-            var explicitName = CampaignSlug.Canonicalize(campaignName);
-            return ExecuteAsync(async session =>
-            {
-                var campaignId = _keys.Meta(explicitName);
-                var campaign = await session.LoadAsync<Campaign>(campaignId);
-                if (campaign == null)
-                {
-                    return new ToolResult<CampaignContextView>(false, Error: "NotFound",
-                        Summary:
-                        $"Campaign '{explicitName}' meta document not found. The campaign might not be initialized yet.");
-                }
-
-                var posture = await CampaignPostureBuilder.BuildAsync(session, _repository, _keys, explicitName,
-                    isNewCampaign: false);
-                return new ToolResult<CampaignContextView>(
-                    true,
-                    new CampaignContextView(campaign, posture),
-                    $"Campaign context for '{explicitName}' ({posture.EntryHint}).");
-            }, saveChanges: false);
-        }
-
-        if (!_currentCampaign.HasSelection)
-        {
-            return Task.FromResult(new ToolResult<CampaignContextView>(
-                false,
-                Error: ToolErrors.NoCampaignSelected,
-                Summary: NoCampaignSelectedSummary));
-        }
-
-        var effective = _currentCampaign.CurrentCampaignName;
+        var explicitName = CampaignSlug.Canonicalize(campaignName);
         return ExecuteAsync(async session =>
         {
-            var campaignId = _keys.Meta(effective);
+            var campaignId = _keys.Meta(explicitName);
             var campaign = await session.LoadAsync<Campaign>(campaignId);
             if (campaign == null)
             {
                 return new ToolResult<CampaignContextView>(false, Error: "NotFound",
                     Summary:
-                    $"Campaign '{effective}' meta document not found. The campaign might not be initialized yet.");
+                    $"Campaign '{explicitName}' meta document not found. The campaign might not be initialized yet.");
             }
 
-            var posture = await CampaignPostureBuilder.BuildAsync(session, _repository, _keys, effective,
+            var posture = await CampaignPostureBuilder.BuildAsync(session, _repository, _keys, explicitName,
                 isNewCampaign: false);
             return new ToolResult<CampaignContextView>(
                 true,
                 new CampaignContextView(campaign, posture),
-                $"Currently selected campaign: {effective} ({posture.EntryHint}).");
+                $"Campaign context for '{explicitName}' ({posture.EntryHint}).");
         }, saveChanges: false);
     }
 
