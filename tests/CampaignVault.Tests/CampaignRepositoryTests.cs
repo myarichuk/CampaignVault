@@ -82,6 +82,7 @@ public class RavenDBFixture : IDisposable
         builder.RegisterInstance(defaultCampaignContext).As<ICurrentCampaignContext>().SingleInstance();
 
         Container = builder.Build();
+        TestCampaignDefaults.EnsureExistsAsync(this).GetAwaiter().GetResult();
     }
 
     public CampaignRepository CreateRepository(IWorldSimulationEngine? engineOverride = null,
@@ -196,27 +197,24 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task Commit_Updates_HP_Delta_Atomically()
     {
         var repo = _fixture.CreateRepository();
+        var id = "npcs/gimli-" + Guid.NewGuid();
         using (var session = _store.OpenAsyncSession())
         {
-            var id = "npcs/gimli-" + Guid.NewGuid();
             await repo.UpsertCharacterAsync(session,
-                new Character { Id = id, Name = "Gimli", CurrentHp = 30, MaxHp = 100 });
+                new Character { Id = id, Name = "Gimli HP Test", CurrentHp = 30, MaxHp = 100 });
             await session.SaveChangesAsync();
         }
 
         using (var session = _store.OpenAsyncSession())
         {
-            var id = (await session.Query<Character>().FirstAsync(x => x.Name == "Gimli")).Id;
             await repo.StageChangesAsync(session, [new HpChange { CharacterId = id, Delta = -5 }]);
             await session.SaveChangesAsync();
         }
 
         using (var session = _store.OpenAsyncSession())
         {
-            var result =
-                await session.LoadAsync<Character>((await session.Query<Character>().FirstAsync(x => x.Name == "Gimli"))
-                    .Id);
-            Assert.Equal(25, result.CurrentHp);
+            var result = await session.LoadAsync<Character>(id);
+            Assert.Equal(25, result!.CurrentHp);
         }
     }
 
@@ -674,7 +672,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
 
         var charId = "npcs/sanitize-npc-" + Guid.NewGuid();
-        await repo.UpsertCharacterAsync(session, new Character { Id = "test-char", Name = "Sanitize NPC" });
+        await repo.UpsertCharacterAsync(session, new Character { Id = charId, Name = "Sanitize NPC" });
 
         var eventId = "events/npc-involved-" + Guid.NewGuid();
         var json = JsonSerializer.Serialize(new { secret = 42, tags = new[] { "test" } });
@@ -734,7 +732,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var charId = "npcs/legacy-test-" + Guid.NewGuid();
         var character = new Character
         {
-            Id = "test-char",
+            Id = charId,
             Name = "Legacy Hygiene NPC",
             Social = new SocialProfile { Relationships = new Dictionary<string, int>() },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 5f } }
@@ -746,7 +744,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.StageChangesAsync(session, [
             new RelationshipChange
             {
-                CharacterId = "test-char",
+                CharacterId = charId,
                 TargetId = "target-1",
                 Delta = +10,
                 Reason = "Test V4 only path"
@@ -1444,18 +1442,19 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Equal(RulesetSystem.Pathfinder2e, getResult.Data.ActiveSystem);
         Assert.Equal("true", getResult.Data.SystemOptions["mapEnabled"]);
 
-        // 4. Test SetActiveSystem through CampaignTools
+        // 4. Locked campaigns reject ruleset changes; options can still be updated on the active system
         var setOptions = new Dictionary<string, string> { { "difficulty", "2" } };
-        var setResult = await tools.SetActiveSystem(RulesetSystem.Fallout2d20, setOptions);
-        Assert.True(setResult.Success);
-        Assert.NotNull(setResult.Data);
-        Assert.Equal(RulesetSystem.Fallout2d20, setResult.Data.ActiveSystem);
-        Assert.Equal("2", setResult.Data.SystemOptions["difficulty"]);
+        var lockedResult = await tools.SetActiveSystem(RulesetSystem.Fallout2d20, setOptions);
+        Assert.False(lockedResult.Success);
+        Assert.Equal("SystemLocked", lockedResult.Error);
 
-        // Verify it was persisted to DB
+        var optionsResult = await tools.SetActiveSystem(RulesetSystem.Dnd5e, setOptions);
+        Assert.True(optionsResult.Success);
+        Assert.Equal("2", optionsResult.Data!.SystemOptions["difficulty"]);
+
         using var session2 = _store.OpenAsyncSession();
-        var dbConfig = await repo.GetCampaignConfigAsync(session2);
-        Assert.Equal(RulesetSystem.Fallout2d20, dbConfig.ActiveSystem);
+        var dbConfig = await repo.GetCampaignConfigAsync(session2, TestCampaignDefaults.Slug);
+        Assert.Equal(RulesetSystem.Dnd5e, dbConfig.ActiveSystem);
         Assert.Equal("2", dbConfig.SystemOptions["difficulty"]);
     }
 
@@ -1732,7 +1731,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "Bob",
                 CurrentActivity = null,
                 Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
@@ -1802,7 +1801,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "Hero",
                 Social = new SocialProfile
                 {
@@ -1917,7 +1916,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         var traveler = new Character
         {
-            Id = "test-char",
+            Id = charId,
             Name = "Traveling PC",
             CurrentLocationId = originId,
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 5f } }
@@ -1946,7 +1945,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // === Success path: no override, low risk modifier (never interrupts), exit provides 16h ===
         var successTravel = new TravelChange
         {
-            CharacterId = "test-char",
+            CharacterId = charId,
             DestinationLocationId = destId,
             Narrative = "Hiked the forest path",
             TravelCostHoursOverride = null, // rely on exit metadata
@@ -2228,7 +2227,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "Merged NPC",
                 CurrentLocationId = locId,
                 Schedule = new Schedule
@@ -2367,7 +2366,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "Desc NPC",
                 CurrentLocationId = locId,
                 Schedule = new Schedule { DefaultLocationId = locId },

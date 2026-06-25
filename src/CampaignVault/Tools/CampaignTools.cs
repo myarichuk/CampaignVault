@@ -20,83 +20,104 @@ public class CampaignTools(
     CampaignManagementTools management,
     MetaTools meta)
 {
+    /// <summary>Default slug when tests omit campaignName on this legacy facade (not used by MCP server tools).</summary>
+    public const string TestDefaultCampaignSlug = "test-campaign";
+
+    private static string ResolveCampaign(string? campaignName) =>
+        string.IsNullOrWhiteSpace(campaignName) ? TestDefaultCampaignSlug : campaignName;
+
     // --- Exploration ---
     public Task<ToolResult<WorldStateView>>
-        GetWorldState(string? partyLocationId = null, string? campaignName = null) =>
-        exploration.GetWorldState(partyLocationId, campaignName);
+        GetWorldState(string? partyLocationId = null, string? campaignName = TestDefaultCampaignSlug) =>
+        exploration.GetWorldState(partyLocationId, ResolveCampaign(campaignName));
 
     public Task<ToolResult<SceneView>> GetScene(string locationId, bool partyPresent = false,
-        string? campaignName = null) => exploration.GetScene(locationId, partyPresent, campaignName);
+        string? campaignName = TestDefaultCampaignSlug) =>
+        exploration.GetScene(locationId, partyPresent, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<NpcContextView>> GetNpcContext(string characterId, string? campaignName = null) =>
-        exploration.GetNpcContext(characterId, campaignName);
+    public Task<ToolResult<NpcContextView>> GetNpcContext(string characterId,
+        string? campaignName = TestDefaultCampaignSlug) =>
+        exploration.GetNpcContext(characterId, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<List<Character>>> GetParty(string? campaignName = null) =>
-        exploration.GetParty(campaignName);
+    public Task<ToolResult<List<Character>>> GetParty(string? campaignName = TestDefaultCampaignSlug) =>
+        exploration.GetParty(ResolveCampaign(campaignName));
 
-    public Task<ToolResult<UnifiedSearchResult>> SearchWorld(string query, string? campaignName = null) =>
-        exploration.SearchWorld(query, campaignName);
+    public Task<ToolResult<UnifiedSearchResult>> SearchWorld(string query,
+        string? campaignName = TestDefaultCampaignSlug) =>
+        exploration.SearchWorld(query, ResolveCampaign(campaignName));
 
     public Task<ToolResult<IEnumerable<Event>>>
-        RecallHistory(string query, int limit = 5, string? campaignName = null) =>
-        exploration.RecallHistory(query, limit, campaignName);
+        RecallHistory(string query, int limit = 5, string? campaignName = TestDefaultCampaignSlug) =>
+        exploration.RecallHistory(query, limit, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(string characterId, string? campaignName = null) =>
-        exploration.GetNpcNeeds(characterId, campaignName);
+    public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(string characterId,
+        string? campaignName = TestDefaultCampaignSlug) =>
+        exploration.GetNpcNeeds(characterId, ResolveCampaign(campaignName));
 
     // --- Mutation ---
     public Task<ToolResult<CommitResult>> Commit(JsonElement? changes = null, string? narrative = null,
-        string? campaignName = null) => mutation.Commit(changes, narrative, campaignName);
+        string? campaignName = TestDefaultCampaignSlug) =>
+        mutation.Commit(changes, narrative, ResolveCampaign(campaignName));
 
     public Task<ToolResult<CommitResult>> Commit(WorldChange[]? changes, string? narrative = null,
-        string? campaignName = null) => mutation.Commit(changes, narrative, campaignName);
+        string? campaignName = TestDefaultCampaignSlug) =>
+        mutation.Commit(changes, narrative, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative, string? campaignName = null) =>
-        mutation.Commit(changesJson, narrative, campaignName);
+    public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative,
+        string? campaignName = TestDefaultCampaignSlug) =>
+        mutation.Commit(changesJson, narrative, ResolveCampaign(campaignName));
 
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(int days, TimeOfDay timeOfDay, string narrative,
-        string? campaignName = null) => mutation.AdvanceWorld(days, timeOfDay, narrative, campaignName);
+        string? campaignName = TestDefaultCampaignSlug) =>
+        mutation.AdvanceWorld(days, timeOfDay, narrative, ResolveCampaign(campaignName));
 
     // --- Deep Dives ---
-    public Task<ToolResult<Faction>> GetFactionContext(string factionId, string? campaignName = null) =>
-        deepDive.GetFactionContext(factionId, campaignName);
+    public Task<ToolResult<Faction>> GetFactionContext(string factionId,
+        string? campaignName = TestDefaultCampaignSlug) =>
+        deepDive.GetFactionContext(factionId, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<Quest>> GetQuestDetails(string questId, string? campaignName = null) =>
-        deepDive.GetQuestDetails(questId, campaignName);
+    public Task<ToolResult<Quest>> GetQuestDetails(string questId, string? campaignName = TestDefaultCampaignSlug) =>
+        deepDive.GetQuestDetails(questId, ResolveCampaign(campaignName));
 
     // --- World Builder ---
-    public Task<ToolResult<Character>> UpsertCharacter(Character character, string? campaignName = null) =>
-        worldBuilder.UpsertCharacter(character, campaignName);
+    public Task<ToolResult<Character>> UpsertCharacter(Character character,
+        string? campaignName = TestDefaultCampaignSlug) =>
+        worldBuilder.UpsertCharacter(character, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<Location>> UpsertLocation(Location location, string? campaignName = null) =>
-        worldBuilder.UpsertLocation(location, campaignName);
+    public Task<ToolResult<Location>> UpsertLocation(Location location,
+        string? campaignName = TestDefaultCampaignSlug) =>
+        worldBuilder.UpsertLocation(location, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<Lore>> UpsertLore(Lore lore, string? campaignName = null) =>
-        worldBuilder.UpsertLore(lore, campaignName);
+    public Task<ToolResult<Lore>> UpsertLore(Lore lore, string? campaignName = TestDefaultCampaignSlug) =>
+        worldBuilder.UpsertLore(lore, ResolveCampaign(campaignName));
 
     public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor,
-        string? campaignName = null) => worldBuilder.DefineNeedDescriptor(needName, descriptor, campaignName);
+        string? campaignName = TestDefaultCampaignSlug) =>
+        worldBuilder.DefineNeedDescriptor(needName, descriptor, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(string? campaignName = null) =>
-        worldBuilder.GetNeedDescriptors(campaignName);
+    public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(
+        string? campaignName = TestDefaultCampaignSlug) =>
+        worldBuilder.GetNeedDescriptors(ResolveCampaign(campaignName));
 
     // --- Combat ---
     public Task<ToolResult<CombatEncounter>> StartCombat(string locationId, string[] participantIds,
-        string? campaignName = null) => combat.StartCombat(locationId, participantIds, campaignName);
+        string? campaignName = TestDefaultCampaignSlug) =>
+        combat.StartCombat(locationId, participantIds, ResolveCampaign(campaignName));
 
     public Task<ToolResult<CombatEncounter>>
-        NextTurn(string? expectedActiveTurnId = null, string? campaignName = null) =>
-        combat.NextTurn(expectedActiveTurnId, campaignName);
+        NextTurn(string? expectedActiveTurnId = null, string? campaignName = TestDefaultCampaignSlug) =>
+        combat.NextTurn(expectedActiveTurnId, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<CombatEncounter>> EndCombat(string? campaignName = null) => combat.EndCombat(campaignName);
+    public Task<ToolResult<CombatEncounter>> EndCombat(string? campaignName = TestDefaultCampaignSlug) =>
+        combat.EndCombat(ResolveCampaign(campaignName));
 
     // --- Campaign Management ---
     public Task<ToolResult<CampaignConfig>> GetConfig(string campaignName) =>
         management.GetConfig(campaignName);
 
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(RulesetSystem activeSystem,
-        Dictionary<string, string>? systemOptions = null, string? campaignName = null) =>
-        management.SetActiveSystem(activeSystem, systemOptions, campaignName);
+        Dictionary<string, string>? systemOptions = null, string? campaignName = TestDefaultCampaignSlug) =>
+        management.SetActiveSystem(activeSystem, systemOptions, ResolveCampaign(campaignName));
 
     public Task<ToolResult<Campaign>> CreateCampaign(string name, RulesetSystem system, string? displayName = null) =>
         management.CreateCampaign(name, system, displayName);
