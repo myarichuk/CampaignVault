@@ -20,12 +20,12 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 
 ## Campaign slug scoping
 
-`campaignName` (e.g. "dragon-heist") is **required** on every campaign-scoped tool call. There is no per-session selection or "current campaign" magic.
+`campaignName` (e.g. ""dragon-heist"") is **required** on every campaign-scoped tool call. There is no per-session selection or ""current campaign"" magic.
 
 **Workflow:**
 1. `list_campaigns` to discover existing slugs.
-2. `create_campaign(name: "dragon-heist", initialSystem: "Dnd5e")` if new.
-3. Pass `campaignName: "dragon-heist"` explicitly on every call to `get_scene`, `commit`, etc.
+2. `create_campaign(name: ""dragon-heist"", initialSystem: ""Dnd5e"")` if new.
+3. Pass `campaignName: ""dragon-heist""` explicitly on every call to `get_scene`, `commit`, etc.
 
 Slugs are canonicalized (spaces to hyphens, lower). Shared canon (no CampaignName on entities) is visible across campaigns.
 
@@ -272,7 +272,7 @@ Use `ruleset_action` inside `commit` for attacks, spells, skills, grapples, and 
 " + CommitRumorHelpExamples.RoutingGuide + @"
 
 - **$type**: `""ruleset_action""`
-- **actorId**: Acting character.
+- **characterId**: Acting character.
 - **targetIds**: Targets (required for attack/save/heal; optional for non-combat `check`/`utility`).
 - **actionType**: `""Attack""`, `""Spell""`, `""SkillCheck""` (non-magic skills), `""SavingThrow""`, `""ContestedCheck""`, `""OpposedCheck""` (alias), `""UseItem""`, `""Recovery""`.
 - **actionName**: Freeform (`""longsword""`, `""Fireball""`, `""Detect Magic""`). Attacks: match `heldItems` name for auto weapon merge.
