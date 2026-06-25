@@ -511,16 +511,6 @@ internal static class ToolCallExamples
                     }
                     """)!.AsObject(),
             },
-            ["select_campaign"] = new ToolCallExample
-            {
-                ToolName = "select_campaign",
-                ArgumentsTemplate = JsonNode.Parse(
-                    """
-                    {
-                      "campaignName": "storm-coast"
-                    }
-                    """)!.AsObject(),
-            },
             ["commit"] = new ToolCallExample
             {
                 ToolName = "commit",

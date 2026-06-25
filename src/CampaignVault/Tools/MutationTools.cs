@@ -24,11 +24,10 @@ public class MutationTools : CampaignToolBase
 
     public MutationTools(
         CampaignRepository repository,
-        ICurrentCampaignContext currentCampaign,
         CampaignDocumentKeys keys,
         IPressureManager pressureManager,
         IPressureOrchestrator pressureOrchestrator)
-        : base(repository, currentCampaign, keys)
+        : base(repository, keys)
     {
         _pressureManager = pressureManager;
         _pressureOrchestrator = pressureOrchestrator;
@@ -39,7 +38,7 @@ public class MutationTools : CampaignToolBase
     [Description(
         @"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world.
 Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action, and the open-world creates/updates).
-Uses session-selected campaign unless campaignName is passed (see get_help → Campaign session & slug scoping).
+Requires campaignName (see get_help → Campaign slug scoping).
 Use ActivityChange liberally to keep get_scene in sync with your narrative.
 
 **When you see ENGINE WARNING or NARRATIVE PROMPT in any get_scene / get_world_state / advance_world response, your immediate follow-up should be a commit using the exact ready JSON example provided (the primary laziness mitigation).**
@@ -56,16 +55,18 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
 
 " + CommitHelpExamples.ConversationSection + @"
 
-(See get_help for the full expanded list including the tavern creation + promotion flow, one-way link fixes, ambient/PoI flavor without bloat, etc.)
+" + CommitHelpExamples.PoiMaterializeSection + @"
+
+(See get_help for the full expanded list including the tavern creation + promotion flow, one-way link fixes, ambient/PoI flavor without bloat, PoI add/materialize/modify/remove + time decay, etc.)
 
 Basic + creating on the fly examples are also shown in the tool description and get_help.")]
     public Task<ToolResult<CommitResult>> Commit(
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName,
         [Description("Array of world changes. Each item must be a JSON object with a '$type' discriminator.")]
-        JsonElement? changes = null,
+        JsonElement? changes,
         [Description("Narrative summary of what happened (for the log and world pressure).")]
-        string? narrative = null,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        string? narrative)
     {
         if (!CommitChangesParser.TryParse(changes, out var parsedChanges, out var parseError))
         {
@@ -181,14 +182,14 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 RetryExample: retryExample));
         }
 
-        return Commit(json, narrative, campaignName);
+        return Commit(campaignName ?? string.Empty, json, narrative);
     }
 
 
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "TIME PASSAGE: Call for travel, long rests, or downtime. Fast-forwards the world clock and runs simulation rules. Uses session-selected campaign unless campaignName is passed.")]
+        "TIME PASSAGE: Call for travel, long rests, or downtime. Fast-forwards the world clock and runs simulation rules. Requires campaignName.")]
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
         [Description("Number of days to skip.")]
         int days,
@@ -196,8 +197,8 @@ Basic + creating on the fly examples are also shown in the tool description and 
         TimeOfDay timeOfDay,
         [Description("Summary of the rest or travel activity.")]
         string narrative,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         if (days <= 0)
         {
@@ -239,29 +240,28 @@ Basic + creating on the fly examples are also shown in the tool description and 
                     DaysAdvanced: days,
                     DisableCooldowns: true));
 
-            string[]? cappedPressure = null;
             var rawPressures = result.SimulatorEvents
                 .Select(e => new WorldPressureItem(PressureSeverity.Simulation, "Simulation", e,
                     WorldPressureItem.SimulationEventGroupingKey))
                 .Concat(result.WorldPressure)
+                .Concat(orchestratorPressures)
                 .ToList();
 
+            List<WorldPressureItem> allPressureItems = [];
             if (rawPressures.Count > 0)
             {
-                cappedPressure = await _pressureManager.FilterAndCapAsync(session, effective,
+                allPressureItems = await _pressureManager.FilterAndCapAsync(session, effective,
                     (int)timeDoc.TotalDaysElapsed, rawPressures, disableCooldowns: true);
             }
 
-            if (orchestratorPressures.Length > 0)
-            {
-                cappedPressure = cappedPressure is { Length: > 0 }
-                    ? [.. cappedPressure, .. orchestratorPressures]
-                    : orchestratorPressures;
-            }
+            var cappedPressure = allPressureItems.Count > 0 ? PressureManager.ToDisplayStrings(allPressureItems) : null;
+
+            // Ensure AdvanceResult carries the rich items
+            result.WorldPressure = allPressureItems;
 
             return new ToolResult<AdvanceResult>(true, result,
-                $"Advanced {days} days. {result.SimulatorEvents.Count} events and {result.WorldPressure.Count} structured pressures generated.",
-                WorldPressure: cappedPressure != null && cappedPressure.Length > 0 ? cappedPressure : null);
+                $"Advanced {days} days. {result.SimulatorEvents.Count} events and {allPressureItems.Count} structured pressures generated.",
+                WorldPressure: cappedPressure);
         });
     }
 }

@@ -13,10 +13,9 @@ public class CombatTools : CampaignToolBase
 
     public CombatTools(
         CampaignRepository repository,
-        ICurrentCampaignContext currentCampaign,
         CampaignDocumentKeys keys,
         IRulesetModuleSelector rulesetSelector)
-        : base(repository, currentCampaign, keys)
+        : base(repository, keys)
     {
         _rulesetSelector = rulesetSelector;
     }
@@ -24,7 +23,7 @@ public class CombatTools : CampaignToolBase
     [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"COMBAT TOOL: Starts a new combat encounter at the specified location.
-Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Uses session-selected campaign unless campaignName is passed.
+Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Requires campaignName.
 
 Parameter name is combatantIds (not combatants). Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""monsters/goblin1""])")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
@@ -32,8 +31,8 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
         string locationId,
         [Description("List of character IDs participating in combat.")]
         string[] combatantIds,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         if (string.IsNullOrWhiteSpace(locationId))
         {
@@ -132,13 +131,13 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
     [Description(@"COMBAT TOOL: Advances the turn order to the next combatant.
 If all combatants have acted, advances to the next round. Skips dead combatants (HP <= 0).
 Round-based status effects naturally expire during this transition when their round duration ends.
-Uses session-selected campaign unless campaignName is passed.")]
+Requires campaignName.")]
     public Task<ToolResult<CombatEncounter>> NextTurn(
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName,
         [Description(
             "Optional. If provided, the command will fail if the current active turn does not match this ID. Helps prevent accidental double-advancing.")]
-        string? expectedActiveTurnId = null,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        string? expectedActiveTurnId = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
@@ -227,10 +226,10 @@ Uses session-selected campaign unless campaignName is passed.")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"COMBAT TOOL: Ends the current active combat encounter and wraps up the state.
 Aggressively clears all round-based status effects (e.g., 'until end of combat' effects) from all combatants.
-Day-based effects remain active. Uses session-selected campaign unless campaignName is passed.")]
+Day-based effects remain active. Requires campaignName.")]
     public Task<ToolResult<CombatEncounter>> EndCombat(
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {

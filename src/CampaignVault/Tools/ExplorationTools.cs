@@ -23,10 +23,9 @@ public class ExplorationTools : CampaignToolBase
         INpcBehaviorSynthesizer behaviorSynthesizer,
         IRulesetModuleSelector rulesetSelector,
         CampaignDocumentKeys keys,
-        ICurrentCampaignContext currentCampaign,
         IPressureManager pressureManager,
         IPressureOrchestrator pressureOrchestrator)
-        : base(repository, currentCampaign, keys)
+        : base(repository, keys)
     {
         _behaviorSynthesizer = behaviorSynthesizer;
         _rulesetSelector = rulesetSelector;
@@ -36,10 +35,10 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("KICKOFF TOOL: Call at session start for time, active rumors, recent history, and party location. Uses the campaign selected for this MCP session (select_campaign) unless campaignName is passed. partyLocationId is optional — omit if unknown and derive from recent history.")]
+    [Description("KICKOFF TOOL: Call at session start for time, active rumors, recent history, and party location. Requires campaignName. partyLocationId is optional — omit if unknown and derive from recent history.")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
-        [Description("The current ID of the location where the party is (string type). Optional. If not provided, you should determine the party's location from recent history or start them at a default location, then call 'get_scene' to load the location's details.")] string? partyLocationId = null,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
+        [Description("The current ID of the location where the party is (string type). Optional. If not provided, you should determine the party's location from recent history or start them at a default location, then call 'get_scene' to load the location's details.")] string? partyLocationId = null)
     {
         // We now save changes on reads because FilterAndCapAsync needs to persist PressureCooldowns.
         // The underlying repository methods are safe (e.g., GetSceneAsync only marks visited if explicitly requested).
@@ -70,7 +69,8 @@ public class ExplorationTools : CampaignToolBase
                 RecentEvents: events.ToList(),
                 QuestDeadlines: worldActiveQuests.Select(q => new QuestDeadlineInfo(q.Id, q.Title, q.DeadlineDay)).ToList());
 
-            var finalPressures = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.World, pressureCtx);
+            var pressureItems = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.World, pressureCtx);
+            var finalPressures = PressureManager.ToDisplayStrings(pressureItems);
 
             var stuck = await session.Query<Character>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
@@ -81,17 +81,24 @@ public class ExplorationTools : CampaignToolBase
                 .ToListAsync();
             
             var suggestedExamples = new List<string>();
-            var questPressureTriggered = finalPressures.Any(p => p.Contains("Quest", StringComparison.OrdinalIgnoreCase) || p.Contains("deadline", StringComparison.OrdinalIgnoreCase));
+            var questPressureTriggered = pressureItems.Any(p => p.Text.Contains("Quest", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("deadline", StringComparison.OrdinalIgnoreCase));
             if (questPressureTriggered && worldActiveQuests.Any())
             {
                 var q = worldActiveQuests.First();
                 suggestedExamples.Add($"[ {{ \"$type\": \"quest_progress\", \"questId\": \"{q.Id}\", \"objectiveIndex\": 0, \"newState\": \"Complete\", \"narrativeNote\": \"We completed the objective.\" }} ]");
             }
             var stuckChar = stuck.FirstOrDefault();
-            if (stuckChar != null && finalPressures.Any(p => p.Contains("Travel", StringComparison.OrdinalIgnoreCase) || p.Contains("stuck", StringComparison.OrdinalIgnoreCase) || p.Contains("interrupted", StringComparison.OrdinalIgnoreCase)))
+            if (stuckChar != null && pressureItems.Any(p => p.Text.Contains("Travel", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("stuck", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("interrupted", StringComparison.OrdinalIgnoreCase)))
             {
                 suggestedExamples.Add($"[ {{ \"$type\": \"activity\", \"characterId\": \"{stuckChar.Id}\", \"newActivity\": \"Resolved the ambush and continued\", \"updateLocation\": false }}, {{ \"$type\": \"travel\", \"characterId\": \"{stuckChar.Id}\", \"destinationLocationId\": \"locations/actual-dest\", \"encounterRiskModifier\": -30 }} ]");
             }
+
+            // Harvest SuggestedCommitJson from pressures into structured suggested list
+            suggestedExamples.AddRange(
+                pressureItems
+                    .Where(p => !string.IsNullOrWhiteSpace(p.SuggestedCommitJson))
+                    .Select(p => p.SuggestedCommitJson!)
+                    .Distinct());
 
             var worldActiveFactions = await _repository.GetActiveFactionsAsync(session, effective, 10);
             
@@ -129,6 +136,7 @@ public class ExplorationTools : CampaignToolBase
                 travelEvent?.Summary,
                 suggestedExamples
             );
+            view.WorldPressureItems = pressureItems;
             var summary = $"Authoritative world state retrieved for session start (campaign: {effective}).";
             if (string.IsNullOrEmpty(partyLocationId))
             {
@@ -144,11 +152,11 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("EXPLORATION TOOL: Call when entering a room, building, or region. Returns location, NPCs, items, rumors, ActiveCombat, pressures. Uses session-selected campaign unless campaignName is passed.\nSet partyPresent=true ONLY when the party is physically entering or spending time here.")]
+    [Description("EXPLORATION TOOL: Call when entering a room, building, or region. Returns location, NPCs, items, rumors, ActiveCombat, pressures. Requires campaignName.\nSet partyPresent=true ONLY when the party is physically entering or spending time here.")]
     public Task<ToolResult<SceneView>> GetScene(
         [Description("The unique ID of the location.")] string locationId,
-        [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
+        [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: partyPresent);
@@ -165,22 +173,31 @@ public class ExplorationTools : CampaignToolBase
                 RequestedLocationId: locationId,
                 PartyPresent: partyPresent);
 
-            var finalPressures = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.Scene, pressureCtx);
+            var pressureItems = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.Scene, pressureCtx);
+            var finalPressures = PressureManager.ToDisplayStrings(pressureItems);
 
             var suggestedExamples = new List<string>();
-            var questPressureTriggered = finalPressures.Any(p => p.Contains("Quest", StringComparison.OrdinalIgnoreCase) || p.Contains("deadline", StringComparison.OrdinalIgnoreCase));
+            var questPressureTriggered = pressureItems.Any(p => p.Text.Contains("Quest", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("deadline", StringComparison.OrdinalIgnoreCase));
             if (questPressureTriggered && scene.ActiveQuests != null && scene.ActiveQuests.Any())
             {
                 var q = scene.ActiveQuests.First();
                 suggestedExamples.Add($"[ {{ \"$type\": \"quest_progress\", \"questId\": \"{q.QuestId}\", \"objectiveIndex\": 0, \"newState\": \"Complete\", \"narrativeNote\": \"We completed the objective.\" }} ]");
             }
             var stuckChar = scene.PresentNPCs?.FirstOrDefault(c => c.CurrentActivity != null && c.CurrentActivity.Contains("interrupted en route", StringComparison.OrdinalIgnoreCase));
-            if (stuckChar != null && finalPressures.Any(p => p.Contains("Travel", StringComparison.OrdinalIgnoreCase) || p.Contains("stuck", StringComparison.OrdinalIgnoreCase) || p.Contains("interrupted", StringComparison.OrdinalIgnoreCase)))
+            if (stuckChar != null && pressureItems.Any(p => p.Text.Contains("Travel", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("stuck", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("interrupted", StringComparison.OrdinalIgnoreCase)))
             {
                 suggestedExamples.Add($"[ {{ \"$type\": \"activity\", \"characterId\": \"{stuckChar.Id}\", \"newActivity\": \"Resolved the ambush and continued\", \"updateLocation\": false }}, {{ \"$type\": \"travel\", \"characterId\": \"{stuckChar.Id}\", \"destinationLocationId\": \"locations/actual-dest\", \"encounterRiskModifier\": -30 }} ]");
             }
 
+            // Harvest SuggestedCommitJson from pressures
+            suggestedExamples.AddRange(
+                pressureItems
+                    .Where(p => !string.IsNullOrWhiteSpace(p.SuggestedCommitJson))
+                    .Select(p => p.SuggestedCommitJson!)
+                    .Distinct());
+
             scene.SuggestedCommitExamples = suggestedExamples;
+            scene.WorldPressureItems = pressureItems;
 
             return new ToolResult<SceneView>(true, scene, 
                 $"Scene details for {locationId} (campaign: {effective}) retrieved.",
@@ -190,10 +207,10 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychology — relationships, goals, fears, knowledge, mood, initiative signals. Uses session-selected campaign unless campaignName is passed.")]
+    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychology — relationships, goals, fears, knowledge, mood, initiative signals. Requires campaignName.")]
     public Task<ToolResult<NpcContextView>> GetNpcContext(
         [Description("The unique ID of the character.")] string characterId,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         if (string.IsNullOrWhiteSpace(characterId))
         {
@@ -252,13 +269,15 @@ public class ExplorationTools : CampaignToolBase
                     $"{npc.Name} — {i.FramingPrompt}",
                     UrgentGroupingKey))
                 .ToList();
+            List<WorldPressureItem> initiativeItems = [];
             if (urgentInitiatives.Count > 0)
             {
-                initiativePressure = await _pressureManager.FilterAndCapAsync(
+                initiativeItems = await _pressureManager.FilterAndCapAsync(
                     session,
                     effective,
                     (int)time.TotalDaysElapsed,
                     urgentInitiatives);
+                initiativePressure = PressureManager.ToDisplayStrings(initiativeItems);
             }
 
             var context = new NpcContextView
@@ -288,9 +307,9 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("PARTY TOOL: Returns the active party roster — characters with isPc or isPartyCompanion for this campaign slug. Shared canon NPCs (e.g. Bob) are excluded. Uses session-selected campaign unless campaignName is passed.")]
+    [Description("PARTY TOOL: Returns the active party roster — characters with isPc or isPartyCompanion for this campaign slug. Shared canon NPCs (e.g. Bob) are excluded. Requires campaignName.")]
     public Task<ToolResult<List<Character>>> GetParty(
-        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var party = await session.Query<Character>()
@@ -307,10 +326,10 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("UNIFIED SEARCH: Keyword search across lore, characters, and locations (campaign-scoped plus shared-universe entities with no CampaignName). Uses session-selected campaign unless campaignName is passed.")]
+    [Description("UNIFIED SEARCH: Keyword search across lore, characters, and locations (campaign-scoped plus shared-universe entities with no CampaignName). Requires campaignName.")]
     public Task<ToolResult<UnifiedSearchResult>> SearchWorld(
         [Description("The keyword or phrase to search for.")] string query,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         // Pure read + the previous parallel query pattern was a major source of "active async tasks on dispose".
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
@@ -323,9 +342,9 @@ public class ExplorationTools : CampaignToolBase
     [McpServerTool(UseStructuredContent = true)]
     [Description("HISTORY RECALL: Keyword search over past events for the active campaign slug. Use to remember prior sessions or plot points.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
-        [Description("The keyword or phrase to search for in historical events.")] string query, 
-        [Description("Maximum number of events to return.")] int limit = 5,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
+        [Description("The keyword or phrase to search for in historical events.")] string query,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
+        [Description("Maximum number of events to return.")] int limit = 5)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var results = await _repository.QueryEventsAsync(session, query, null, limit, effective);
@@ -335,10 +354,10 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("DISCOVERABILITY TOOL: Returns an NPC's needs, values, and merged descriptors (campaign + per-NPC). Uses session-selected campaign unless campaignName is passed.")]
+    [Description("DISCOVERABILITY TOOL: Returns an NPC's needs, values, and merged descriptors (campaign + per-NPC). Requires campaignName.")]
     public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(
         [Description("The unique ID of the character.")] string characterId,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {

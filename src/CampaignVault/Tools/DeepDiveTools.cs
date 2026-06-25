@@ -10,21 +10,20 @@ public class DeepDiveTools : CampaignToolBase
 {
     public DeepDiveTools(
         CampaignRepository repository,
-        CampaignDocumentKeys keys,
-        ICurrentCampaignContext currentCampaign)
-        : base(repository, currentCampaign, keys)
+        CampaignDocumentKeys keys)
+        : base(repository, keys)
     {
     }
 
     [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "DEEP DIVE TOOL: Returns the full Faction document (stances, influence, territory, leaders, metadata). Uses session-selected campaign unless campaignName is passed.")]
+        "DEEP DIVE TOOL: Returns the full Faction document (stances, influence, territory, leaders, metadata). Requires campaignName.")]
     public Task<ToolResult<Faction>> GetFactionContext(
         [Description("Exact faction ID e.g. 'factions/thieves-guild' (use fuzzy search or get_scene first if unsure).")]
         string factionId,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
@@ -47,12 +46,12 @@ public class DeepDiveTools : CampaignToolBase
     [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "DEEP DIVE TOOL: Returns the full Quest document (objectives, deadlines, rewards, giver). Uses session-selected campaign unless campaignName is passed.")]
+        "DEEP DIVE TOOL: Returns the full Quest document (objectives, deadlines, rewards, giver). Requires campaignName.")]
     public Task<ToolResult<Quest>> GetQuestDetails(
         [Description("Exact quest ID e.g. 'quests/rats_01'.")]
         string questId,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {

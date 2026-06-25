@@ -29,11 +29,11 @@ public class CampaignTools(
     // --- Exploration ---
     public Task<ToolResult<WorldStateView>>
         GetWorldState(string? partyLocationId = null, string? campaignName = TestDefaultCampaignSlug) =>
-        exploration.GetWorldState(partyLocationId, ResolveCampaign(campaignName));
+        exploration.GetWorldState(ResolveCampaign(campaignName), partyLocationId);
 
     public Task<ToolResult<SceneView>> GetScene(string locationId, bool partyPresent = false,
         string? campaignName = TestDefaultCampaignSlug) =>
-        exploration.GetScene(locationId, partyPresent, ResolveCampaign(campaignName));
+        exploration.GetScene(locationId, ResolveCampaign(campaignName), partyPresent);
 
     public Task<ToolResult<NpcContextView>> GetNpcContext(string characterId,
         string? campaignName = TestDefaultCampaignSlug) =>
@@ -48,7 +48,7 @@ public class CampaignTools(
 
     public Task<ToolResult<IEnumerable<Event>>>
         RecallHistory(string query, int limit = 5, string? campaignName = TestDefaultCampaignSlug) =>
-        exploration.RecallHistory(query, limit, ResolveCampaign(campaignName));
+        exploration.RecallHistory(query, ResolveCampaign(campaignName), limit);
 
     public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(string characterId,
         string? campaignName = TestDefaultCampaignSlug) =>
@@ -57,7 +57,7 @@ public class CampaignTools(
     // --- Mutation ---
     public Task<ToolResult<CommitResult>> Commit(JsonElement? changes = null, string? narrative = null,
         string? campaignName = TestDefaultCampaignSlug) =>
-        mutation.Commit(changes, narrative, ResolveCampaign(campaignName));
+        mutation.Commit(ResolveCampaign(campaignName), changes, narrative);
 
     public Task<ToolResult<CommitResult>> Commit(WorldChange[]? changes, string? narrative = null,
         string? campaignName = TestDefaultCampaignSlug) =>
@@ -106,7 +106,7 @@ public class CampaignTools(
 
     public Task<ToolResult<CombatEncounter>>
         NextTurn(string? expectedActiveTurnId = null, string? campaignName = TestDefaultCampaignSlug) =>
-        combat.NextTurn(expectedActiveTurnId, ResolveCampaign(campaignName));
+        combat.NextTurn(ResolveCampaign(campaignName), expectedActiveTurnId);
 
     public Task<ToolResult<CombatEncounter>> EndCombat(string? campaignName = TestDefaultCampaignSlug) =>
         combat.EndCombat(ResolveCampaign(campaignName));
@@ -117,14 +117,12 @@ public class CampaignTools(
 
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(RulesetSystem activeSystem,
         Dictionary<string, string>? systemOptions = null, string? campaignName = TestDefaultCampaignSlug) =>
-        management.SetActiveSystem(activeSystem, systemOptions, ResolveCampaign(campaignName));
+        management.SetActiveSystem(activeSystem, ResolveCampaign(campaignName), systemOptions);
 
     public Task<ToolResult<Campaign>> CreateCampaign(string name, RulesetSystem system, string? displayName = null) =>
         management.CreateCampaign(name, system, displayName);
 
     public Task<ToolResult<List<Campaign>>> ListCampaigns() => management.ListCampaigns();
-    public Task<ToolResult<SelectCampaignResult>> SelectCampaign(string name, bool confirmCreate = false) =>
-        management.SelectCampaign(name, confirmCreate);
     public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(string campaignName) =>
         management.GetCurrentCampaign(campaignName);
 

@@ -22,7 +22,7 @@ public class MetaTools
 
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST. Returns the canonical DM manual with quickstart, MCP session/campaign scoping, tool index, copy-paste commit patterns, ruleset_actions, StatusEffects, and WorldPressure handling. Use list_tools for the full machine-readable catalog.")]
+    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST. Returns the canonical DM manual with quickstart, explicit campaignName scoping (stateless MCP — no session selection), tool index, copy-paste commit patterns, ruleset_actions, StatusEffects, and WorldPressure handling. Use list_tools for the full machine-readable catalog.")]
     public Task<ToolResult<string>> GetHelp()
     {
         var manual = DmHelpManual.Body

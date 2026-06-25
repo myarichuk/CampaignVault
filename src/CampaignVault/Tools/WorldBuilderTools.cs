@@ -15,9 +15,8 @@ public class WorldBuilderTools : CampaignToolBase
     public WorldBuilderTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
-        ICurrentCampaignContext currentCampaign,
         CharacterBootstrapOrchestrator bootstrap)
-        : base(repository, currentCampaign, keys)
+        : base(repository, keys)
     {
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
     }
@@ -43,8 +42,8 @@ During play, prefer commit (character_create, level_up, activity) over repeated 
     public Task<ToolResult<Character>> UpsertCharacter(
         [Description("The full Character object to create or replace. Strongly typed.")]
         Character character,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
@@ -84,8 +83,8 @@ During play, prefer commit (location_create, location_update) for incremental ch
     public Task<ToolResult<Location>> UpsertLocation(
         [Description("The full Location object to create or replace. Strongly typed.")]
         Location location,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
@@ -101,8 +100,8 @@ During play, prefer commit (location_create, location_update) for incremental ch
     public Task<ToolResult<Lore>> UpsertLore(
         [Description("The full Lore object to create or replace. Strongly typed.")]
         Lore lore,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
@@ -114,11 +113,11 @@ During play, prefer commit (location_create, location_update) for incremental ch
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "WORLD BUILDER TOOL: Define or update a descriptor for a need type for the current/selected campaign. Automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list defined ones for the campaign. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
+        "WORLD BUILDER TOOL: Define or update a descriptor for a need type for a campaign slug. Automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list defined ones for the campaign. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
     public Task<ToolResult<string>> DefineNeedDescriptor(
         [Description("The name of the need (e.g., 'homesickness').")] string needName,
         [Description("The description of the need and its effects.")] string descriptor,
-        [Description(ToolParameterDescriptions.CampaignNameOptional)] string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))
         {
@@ -136,10 +135,10 @@ During play, prefer commit (location_create, location_update) for incremental ch
 
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("DISCOVERABILITY TOOL: Lists all defined need descriptors for the current (or specified) campaign.")]
+    [Description("DISCOVERABILITY TOOL: Lists all defined need descriptors for the given campaign slug.")]
     public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(
-        [Description(ToolParameterDescriptions.CampaignNameOptional)]
-        string? campaignName = null)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
