@@ -23,7 +23,7 @@ public class LlmSimulator(CampaignTools tools, IAsyncDocumentSession session)
     public async Task<ToolResult<WorldStateView>> Kickoff(string locationId)
     {
         CurrentLocationId = locationId;
-        var result = await tools.GetWorldState(locationId);
+        var result = await tools.GetWorldState(locationId, TestCampaignDefaults.Slug);
         CurrentPhase = NarrativePhase.Exploration;
         return result;
     }
@@ -31,7 +31,7 @@ public class LlmSimulator(CampaignTools tools, IAsyncDocumentSession session)
     public async Task<ToolResult<SceneView>> Explore(string locationId)
     {
         CurrentLocationId = locationId;
-        var result = await tools.GetScene(locationId);
+        var result = await tools.GetScene(locationId, campaignName: TestCampaignDefaults.Slug);
         CurrentPhase = NarrativePhase.Roleplay;
         return result;
     }
@@ -39,21 +39,21 @@ public class LlmSimulator(CampaignTools tools, IAsyncDocumentSession session)
     public async Task<ToolResult<NpcContextView>> Interact(string characterId)
     {
         TargetCharacterId = characterId;
-        var result = await tools.GetNpcContext(characterId);
+        var result = await tools.GetNpcContext(characterId, TestCampaignDefaults.Slug);
         CurrentPhase = NarrativePhase.Resolution;
         return result;
     }
 
     public async Task<ToolResult<CommitResult>> Resolve(WorldChange[] changes, string narrative)
     {
-        var result = await tools.Commit(changes, narrative);
+        var result = await tools.Commit(changes, narrative, TestCampaignDefaults.Slug);
         CurrentPhase = NarrativePhase.Downtime;
         return result;
     }
 
     public async Task<ToolResult<AdvanceResult>> Rest(int days, TimeOfDay timeOfDay, string narrative)
     {
-        var result = await tools.AdvanceWorld(days, timeOfDay, narrative);
+        var result = await tools.AdvanceWorld(days, timeOfDay, narrative, TestCampaignDefaults.Slug);
         CurrentPhase = NarrativePhase.Exploration; // Cycle back to exploration
         return result;
     }

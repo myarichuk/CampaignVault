@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json.Serialization;
+using CampaignVault.Models;
 using CampaignVault.Tools;
 using ModelContextProtocol.Server;
 using Xunit;
@@ -69,5 +72,71 @@ public class McpToolMetadataTests
         }
 
         Assert.True(allPassed, "One or more MCP tools have invalid metadata. See test output for details.");
+    }
+
+    [Fact]
+    public void WorldChanges_UseCanonicalIdNames_NoLegacyActorOrRelationType()
+    {
+        var assembly = typeof(WorldChange).Assembly;
+        var worldChangeTypes = assembly.GetTypes()
+            .Where(t => typeof(WorldChange).IsAssignableFrom(t) && !t.IsAbstract)
+            .ToList();
+
+        var forbidden = new[] { "ActorId", "SourceId", "actorId", "sourceId", "relationType", "RelationType" };
+        var badTypes = new List<string>();
+
+        foreach (var t in worldChangeTypes)
+        {
+            var props = t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            foreach (var p in props)
+            {
+                if (forbidden.Contains(p.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    badTypes.Add($"{t.Name}.{p.Name}");
+                }
+                var jpn = p.GetCustomAttribute<JsonPropertyNameAttribute>();
+                if (jpn != null && forbidden.Contains(jpn.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    badTypes.Add($"{t.Name}.{p.Name} (json:{jpn.Name})");
+                }
+            }
+        }
+
+        Assert.Empty(badTypes);
+    }
+
+    [Fact]
+    public void McpCampaignTools_RequireExplicitCampaignName_NoOptionals()
+    {
+        var assembly = typeof(CampaignToolBase).Assembly;
+        var toolTypes = assembly.GetTypes()
+            .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
+            .ToList();
+
+        var violations = new List<string>();
+
+        foreach (var type in toolTypes)
+        {
+            var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
+                .ToList();
+
+            foreach (var method in methods)
+            {
+                foreach (var param in method.GetParameters())
+                {
+                    if (string.Equals(param.Name, "campaignName", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (param.HasDefaultValue)
+                        {
+                            violations.Add($"{type.Name}.{method.Name} has optional/defaulted campaignName");
+                        }
+                        // Nullable ref annotation does not change the runtime ParameterType (still string), so HasDefaultValue + name is the practical guard
+                    }
+                }
+            }
+        }
+
+        Assert.Empty(violations);
     }
 }

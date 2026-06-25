@@ -62,12 +62,8 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         }
     }
 
-    private CampaignTools CreateTools(string campaignName)
-    {
-        var context = new CurrentCampaignContext();
-        context.SetCurrent(campaignName);
-        return TestCampaignToolsFactory.Create(_fixture, context, rollService: new PredictableRollService());
-    }
+    private CampaignTools CreateTools() =>
+        TestCampaignToolsFactory.Create(_fixture, rollService: new PredictableRollService());
 
     [Fact]
     public async Task Combat_RulesetAction_EndToEnd_Flow()
@@ -76,7 +72,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         var campaignName = $"e2e-combat-{suffix}";
         var heroId = $"chars/e2e-hero-{suffix}";
         var goblinId = $"chars/e2e-goblin-{suffix}";
-        var tools = CreateTools(campaignName);
+        var tools = CreateTools();
         var repo = _fixture.CreateRepository();
 
         using (var session = _store.OpenAsyncSession())

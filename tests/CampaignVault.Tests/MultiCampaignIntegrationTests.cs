@@ -21,10 +21,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         _fixture = fixture;
     }
 
-    private CampaignTools CreateTools(CurrentCampaignContext? currentCampaignContext = null)
-    {
-        return TestCampaignToolsFactory.Create(_fixture, currentCampaignContext);
-    }
+    private CampaignTools CreateTools() => TestCampaignToolsFactory.Create(_fixture);
 
     [Fact]
     public async Task CreateCampaign_Works_WithExplicitName()
@@ -56,8 +53,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LockIn_RejectionPath_PreventsRulesetChange()
     {
-        var context = new CurrentCampaignContext();
-        var tools = CreateTools(context);
+        var tools = CreateTools();
 
         await TestCampaignDefaults.EnsureExistsAsync(tools, "locked-world");
 
@@ -74,8 +70,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task IndependentCampaigns_MaintainSeparateConfigsAndCombat()
     {
-        var context = new CurrentCampaignContext();
-        var tools = CreateTools(context);
+        var tools = CreateTools();
         var repo = _fixture.CreateRepository();
 
         // Upsert characters with explicit campaign for scoping (no BC for legacy needed)
@@ -200,9 +195,8 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task TwoMcpSessions_UseExplicitCampaignName_Independently()
     {
-        var store = new CampaignSelectionStore();
-        var toolsA = TestCampaignToolsFactory.Create(_fixture, store, "mcp-session-alpha");
-        var toolsB = TestCampaignToolsFactory.Create(_fixture, store, "mcp-session-beta");
+        var toolsA = TestCampaignToolsFactory.Create(_fixture);
+        var toolsB = TestCampaignToolsFactory.Create(_fixture);
         var slugA = "session-a-" + Guid.NewGuid().ToString("N")[..8];
         var slugB = "session-b-" + Guid.NewGuid().ToString("N")[..8];
 

@@ -235,9 +235,7 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
     public async Task GetNpcContext_IncludesTensionBreakdown()
     {
         await SeedCampaignAsync("context-tension");
-        var campaignContext = new CurrentCampaignContext();
-        campaignContext.SetCurrent("context-tension");
-        var tools = TestCampaignToolsFactory.Create(_fixture, campaignContext);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         using var session = _fixture.Store.OpenAsyncSession();
 
         var charId = "chars/deep";

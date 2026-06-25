@@ -24,21 +24,18 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         new Character_Search().Execute(_store);
     }
 
-    private (CampaignTools Tools, CampaignRepository Repo, CurrentCampaignContext Context) CreateScenarioHarness(
+    private (CampaignTools Tools, CampaignRepository Repo) CreateScenarioHarness(
         IWorldSimulationEngine? simulationEngine = null)
     {
-        var context = new CurrentCampaignContext();
-        var repo = _fixture.CreateRepository(
-            engineOverride: simulationEngine,
-            overrides: b => b.RegisterInstance(context).As<ICurrentCampaignContext>());
-        var tools = TestCampaignToolsFactory.Create(_fixture, context, repository: repo);
-        return (tools, repo, context);
+        var repo = _fixture.CreateRepository(engineOverride: simulationEngine);
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        return (tools, repo);
     }
 
     [Fact]
     public async Task GetScene_EmptyFlavorVacuum_ProducesNarrativePrompt()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         using (var session = _store.OpenAsyncSession())
         {
             var loc = new Location
@@ -66,7 +63,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_MisspelledLocation_ProvidesSuggestions()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -102,7 +99,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task Commit_MisspelledCharacter_ProvidesSuggestions()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -145,7 +142,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Forgets_To_Arrive_Produces_TravelInterruptedPressure_And_Resolves_On_Commit()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -234,7 +231,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Ignores_Faction_Influence_Shift_Produces_PresencePressure()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -308,7 +305,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Ignores_Faction_War_Produces_ReputationPressure()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -391,7 +388,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_Leaves_Quest_Stale_Produces_DeadlinePressure_And_Resolves()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -471,7 +468,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 .Instance);
         var simEngine = new DefaultSimulationEngine([evictionRule],
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultSimulationEngine>.Instance);
-        var (tools, repo, _) = CreateScenarioHarness(simEngine);
+        var (tools, repo) = CreateScenarioHarness(simEngine);
         var keys = new CampaignDocumentKeys();
 
         await TestCampaignDefaults.EnsureExistsAsync(tools, "QuestGiverEvictionTest");
@@ -575,7 +572,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_PartyPresentWithoutTravel_ProducesMissingTravelCommit_And_Resolves_On_Commit()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -643,7 +640,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_TransientQuestGiver_ProducesKeepAlivePressure_And_Resolves_On_CharacterUpdate()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -699,7 +696,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task QuestProgress_ClearsStaleQuestPressureCooldown()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -754,7 +751,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_QuestStaleness_UsesOldestOpenObjective_NotLastQuestTouch()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -796,7 +793,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetScene_QuestStaleness_ProducesNarrativePrompt_And_Resolves_On_Commit()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var keys = new CampaignDocumentKeys();
 
 
@@ -857,7 +854,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetHelp_ContainsPhase7Examples()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var rollSvc = new DefaultRollService();
 
 
@@ -872,7 +869,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetHelp_ContainsPhase8SandboxExamples()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var rollSvc = new DefaultRollService();
 
 
@@ -886,7 +883,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task LLM_UsesItemUpdate_And_CharacterUpdate_For_VisualState()
     {
-        var (tools, repo, _) = CreateScenarioHarness();
+        var (tools, repo) = CreateScenarioHarness();
         var rollSvc = new DefaultRollService();
         var keys = new CampaignDocumentKeys();
 

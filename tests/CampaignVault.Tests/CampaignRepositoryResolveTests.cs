@@ -18,10 +18,7 @@ public class CampaignRepositoryResolveTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetCampaignConfig_WithoutSelectionOrName_Throws()
     {
-        var repo = _fixture.CreateRepository(overrides: b =>
-        {
-            b.RegisterInstance(new CurrentCampaignContext()).As<ICurrentCampaignContext>();
-        });
+        var repo = _fixture.CreateRepository();
 
         using var session = _fixture.Store.OpenAsyncSession();
 

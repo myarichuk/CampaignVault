@@ -37,7 +37,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         var npcId = "npcs/innkeeper-" + Guid.NewGuid();
 
         await repo.UpsertLocationAsync(session,
-            new Location { Id = locId, Name = "The Prancing Pony", Type = LocationType.Building });
+            new Location { Id = locId, Name = "The Prancing Pony", Type = LocationType.Building }, TestCampaignDefaults.Slug);
         await repo.UpsertCharacterAsync(session, new Character
         {
             Id = npcId,
@@ -48,7 +48,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
                 Routines = [new Routine { Activity = "Serving", Condition = "Evening", LocationId = locId }]
             },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 50f } }
-        });
+        }, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         // Wait for indexes (with timeout to prevent CI hangs)
@@ -81,7 +81,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
 
         // 2. Explore — use direct repo call on this session for reliable presence check after simulation
         // (tool path opens new sessions; direct call is more deterministic in tests)
-        var directScene = await repo.GetSceneAsync(session, locId);
+        var directScene = await repo.GetSceneAsync(session, locId, TestCampaignDefaults.Slug);
         Assert.Contains(directScene.PresentNPCs, n => n.Id == npcId);
 
         var scene = await simulator.Explore(locId);

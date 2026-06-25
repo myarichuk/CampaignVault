@@ -36,7 +36,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     public async Task Scenario_Dnd5e_PressureThenBootstrapThenCombat()
     {
         var campaign = "harness-dnd5e-" + Guid.NewGuid().ToString("N")[..8];
-        var tools = CreateHarnessTools(campaign);
+        var tools = CreateHarnessTools();
         await TestCampaignDefaults.EnsureExistsAsync(tools, campaign);
         await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, campaign);
 
@@ -74,7 +74,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     public async Task Scenario_Pf2e_PressureThenBootstrapThenCombat()
     {
         var campaign = "harness-pf2e-" + Guid.NewGuid().ToString("N")[..8];
-        var tools = CreateHarnessTools(campaign);
+        var tools = CreateHarnessTools();
         await TestCampaignDefaults.EnsureExistsAsync(tools, campaign, RulesetSystem.Pathfinder2e);
 
         var locId = $"locations/canopy-trail-{Guid.NewGuid():N}";
@@ -111,7 +111,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     public async Task Scenario_Fallout2d20_PressureThenBootstrapThenCombat()
     {
         var campaign = "harness-fallout-" + Guid.NewGuid().ToString("N")[..8];
-        var tools = CreateHarnessTools(campaign);
+        var tools = CreateHarnessTools();
         await TestCampaignDefaults.EnsureExistsAsync(tools, campaign, RulesetSystem.Fallout2d20);
 
         var locId = $"locations/highway-ruins-{Guid.NewGuid():N}";
@@ -380,17 +380,12 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         throw new TimeoutException($"Timed out waiting for combatants to index: {string.Join(", ", characterIds)}");
     }
 
-    private CampaignTools CreateHarnessTools(string campaign)
-    {
-        var context = new CurrentCampaignContext();
-        context.SetCurrent(campaign);
-        return TestCampaignToolsFactory.Create(_fixture, context, rollService: new HarnessPredictableRollService());
-    }
+    private CampaignTools CreateHarnessTools() =>
+        TestCampaignToolsFactory.Create(_fixture, rollService: new HarnessPredictableRollService());
 
     private static IWorldChangeHandler[] BuildProductionHandlers(
         IRulesetModuleSelector selector,
-        CampaignDocumentKeys keys,
-        ICurrentCampaignContext context) =>
+        CampaignDocumentKeys keys) =>
     [
         new HpChangeHandler(),
         new ItemTransferHandler(),

@@ -1,5 +1,4 @@
 using System.Threading.Tasks;
-using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Tools;
 using Xunit;
@@ -19,9 +18,8 @@ public class CampaignContextToolTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetCurrentCampaign_RequiresExplicitCampaignName()
     {
-        var tools = TestCampaignToolsFactory.Create(_fixture, new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
-        // No more implicit selection; campaignName required
         var result = await tools.GetCurrentCampaign("nonexistent-test-campaign");
 
         Assert.False(result.Success);
@@ -31,9 +29,8 @@ public class CampaignContextToolTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetCurrentCampaign_WithExplicitName_Works()
     {
-        var tools = TestCampaignToolsFactory.Create(_fixture, new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
-        // Use explicit campaignName (selection removed)
         await tools.CreateCampaign("explicit-context-test", RulesetSystem.Dnd5e);
 
         var result = await tools.GetCurrentCampaign("explicit-context-test");
@@ -46,12 +43,10 @@ public class CampaignContextToolTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task GetWorldState_RequiresCampaignName()
     {
-        var tools = TestCampaignToolsFactory.Create(_fixture, new CurrentCampaignContext());
+        var tools = TestCampaignToolsFactory.Create(_fixture);
 
         var result = await tools.GetWorldState("test-loc", "nonexistent-campaign");
 
-        // May succeed or fail depending on data, but no longer uses selection error
-        // For now, just check it doesn't use the old error
         if (!result.Success)
         {
             Assert.NotEqual(ToolErrors.NoCampaignSelected, result.Error);

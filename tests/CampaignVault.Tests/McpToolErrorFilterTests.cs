@@ -8,7 +8,7 @@ namespace CampaignVault.Tests;
 public class McpToolErrorFilterTests
 {
     [Theory]
-    [InlineData("select_campaign", "campaignName", "list_campaigns")]
+    [InlineData("get_current_campaign", "campaignName", "campaign slug")]
     [InlineData("commit", "changes", "get_help")]
     [InlineData("get_scene", "locationId", "search_world")]
     [InlineData("upsert_character", "character", "numeric-only")]

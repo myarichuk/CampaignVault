@@ -45,12 +45,12 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
                 Schedule = new Schedule { DefaultLocationId = regionId },
                 Social = new SocialProfile(),
                 Needs = new NeedsProfile()
-            });
+            }, TestCampaignDefaults.Slug);
             npcs.Add(id);
         }
 
         await repo.UpsertLocationAsync(session,
-            new Location { Id = regionId, Name = "Fuzz Test Ground", Type = LocationType.Region });
+            new Location { Id = regionId, Name = "Fuzz Test Ground", Type = LocationType.Region }, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         // RUN LOOP
