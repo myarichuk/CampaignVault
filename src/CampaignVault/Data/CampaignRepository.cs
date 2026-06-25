@@ -98,7 +98,7 @@ public class CampaignRepository
                 var camp = await session.LoadAsync<Campaign>(_keys.Meta(effective));
                 return camp?.SystemOptions ?? new();
             },
-            ev => LogEventAsync(session, ev));
+            ev => LogEventAsync(session, ev, effective));
 
         if (result.Success && changes.Length > 0)
         {
