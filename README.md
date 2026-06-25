@@ -14,7 +14,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 ## Recent Updates
 - **Engagement Relations & Spatial Positioning**: Pairwise scene anchors (`engagement_relation`: category + freeform verb) vs. relative placement (`spatial_position`: distance band, bearing, zone). Category defaults control travel blocks and scene pressure; ruleset resolvers auto-establish/clear grapple engagements on contested maneuver checks. See `get_help` and `ARCHITECTURE.md`.
-- **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `select_campaign`, `create_campaign`, and `set_active_system` (with system lock-in). Campaign selection is **session-keyed** (`Mcp-Session-Id` or `MCP_SESSION_ID`). Shared-universe canon (no `CampaignName`) appears in every campaign; campaign-owned entities are slug-tagged.
+- **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `create_campaign`, `list_campaigns`, and `set_active_system` (with system lock-in). Every campaign-scoped tool requires an explicit **`campaignName`** slug — the MCP HTTP transport is stateless (no session selection). Shared-universe canon (no `CampaignName`) appears in every campaign; campaign-owned entities are slug-tagged.
 - **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20, Narrative), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
 - **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
 - **Character Bootstrap Pipeline**: Per-ruleset HP/defense/proficiency derivation when PCs omit `maxHp` on create/upsert; `level_up` for incremental gains. Put `hitDie`/`level` on typed `systemStats` (not `attributes`). Creature stat blocks use `statBlockHp` or `maxHp` (HP formula only — AC/proficiency still derive).
@@ -25,7 +25,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 | Tool | Purpose |
 |------|---------|
-| `get_current_campaign` | Active campaign name, ruleset, lock-in status |
+| `get_current_campaign` | Campaign context for a slug: ruleset, lock-in, party posture |
 | `get_world_state` | Session kickoff: time, rumors, recent events, pressures (`Data.WorldPressure`) |
 | `get_scene` | Location, NPCs, items, rumors, `ActiveCombat`, `SystemStats`, pressures (`ToolResult.WorldPressure`) |
 | `get_npc_context` | Deep NPC psychology, memories, initiative signals |
@@ -53,7 +53,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 | Tool | Purpose |
 |------|---------|
-| `create_campaign` / `list_campaigns` / `select_campaign` | Create, list, and activate campaigns |
+| `create_campaign` / `list_campaigns` | Create and list campaigns (pass slug as `campaignName` on all other tools) |
 
 ### Deep dives
 
@@ -183,24 +183,12 @@ See the Deployment section for how to set `BEARER_TOKEN` on Fly.io.
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins, or `*` | `*` (allow any) |
 | `MCP_PORT` | HTTP MCP + health listener port | `5275` (Fly: `8080`) |
 | `MCP_BIND_ANY` | Bind `0.0.0.0` instead of `localhost` | `1` in Docker/Fly; `0` in local Development |
-| `MCP_HOSTING_PROFILE` | `local` or `remote` (docs/defaults hint) | `local`; `remote` when `MCP_STATELESS=1` |
-| `MCP_STATELESS` | Stateless MCP HTTP (no session header) | unset = stateful HTTP |
-| `MCP_SESSION_ID` | Session key for stdio/local CLI when HTTP headers are unavailable | unset |
-| `CAMPAIGN_SELECTION_TTL_HOURS` | Idle hours before an MCP session's `select_campaign` binding is pruned from memory | `2` |
 | `MCP_STDIO` | Enable stdio MCP transport | unset |
 | `GRPC_PORT` | gRPC sync port for authoring UI | `50051` |
 
-### Campaign session scoping
+### Campaign scoping
 
-Campaign selection is stored **per MCP session** (never process-wide). Identify the session via:
-
-1. **`Mcp-Session-Id` HTTP header** (stateful HTTP clients), or
-2. **`MCP_SESSION_ID` environment variable** (stdio / local CLI), or
-3. **`campaignName` on every tool call** when no session is available (`MCP_STATELESS=1`).
-
-Call `select_campaign` after establishing a session, or pass `campaignName` explicitly on each tool invocation.
-
-Selections are pruned after `CAMPAIGN_SELECTION_TTL_HOURS` (default 2) of inactivity on that session key.
+Pass **`campaignName`** (campaign slug) on every campaign-scoped tool call. There is no per-session or process-wide campaign selection.
 
 ## Development
 
@@ -212,7 +200,7 @@ See `ARCHITECTURE.md` for the full system design. Key code locations:
 - **Pressure** — `src/CampaignVault/Data/Pressure/` (orchestrator + contributors)
 - **Rulesets** — `src/CampaignVault/Rulesets/` (D&D 5e, PF2e, Fallout 2d20, Narrative resolvers + `DefaultRollService`)
 - **MCP tools** — `src/CampaignVault/Tools/*Tools.cs` (domain classes; `CampaignTools.cs` is a test-only facade)
-- **Authoring UI** — connects via gRPC on `GRPC_PORT`; for play/testing against a local MCP server, set `MCP_SESSION_ID` (stdio) or pass `campaignName` on each tool call
+- **Authoring UI** — connects via gRPC on `GRPC_PORT`; for play/testing against a local MCP server, pass `campaignName` on each tool call
 - **Tests** — `tests/CampaignVault.Tests/`
 
 ## Client Compatibility Notes (as of latest testing)

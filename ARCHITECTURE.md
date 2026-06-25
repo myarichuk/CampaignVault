@@ -42,26 +42,15 @@ Queries apply one of two filters:
 
 **Practical implication:** campaign singletons (time, combat, config) are isolated per slug. Entities with no `CampaignName` (e.g. shared NPCs like Bob the assassin) are visible in every campaign. Campaign-owned entities should use slug-prefixed IDs and are tagged on create. Events and rumors are always campaign-private.
 
-### Campaign session selection
+### Campaign scoping
 
-`select_campaign` stores the active slug in `CampaignSelectionStore`, keyed by MCP session ID. There is **no process-wide fallback**.
+Every campaign-scoped MCP tool requires an explicit **`campaignName`** slug. There is no session-based campaign selection.
 
-| Session identity | Source |
-|------------------|--------|
-| HTTP (stateful) | `Mcp-Session-Id` header |
-| stdio / local CLI | `MCP_SESSION_ID` environment variable |
-| Stateless HTTP | No sticky selection — callers pass `campaignName` on every tool |
-
-`ICurrentCampaignContext` is implemented by `SessionKeyedCurrentCampaignContext` (per DI lifetime scope) backed by the singleton `CampaignSelectionStore`.
-
-Slugs are canonicalized via `CampaignSlug.Canonicalize` (lowercase, hyphens) everywhere: selection, document keys (`CampaignDocumentKeys`), and entity tagging.
-
-`CampaignSelectionStore` prunes idle session bindings after `CAMPAIGN_SELECTION_TTL_HOURS` (default 2). Each access to `GetCurrent` or `SetCurrent` refreshes the session's idle clock.
+Slugs are canonicalized via `CampaignSlug.Canonicalize` (lowercase, hyphens) everywhere: document keys (`CampaignDocumentKeys`), and entity tagging.
 
 ## MCP Hosting & Request Flow
 
-- **Transports:** HTTP (stateful or `MCP_STATELESS=1`) and stdio (`MCP_STDIO=1`), registered in `Program.cs`.
-- **Profiles:** `MCP_HOSTING_PROFILE=local|remote` (see `HostingProfile.cs`); both use session-keyed selection.
+- **Transports:** HTTP (stateless) and stdio (`MCP_STDIO=1`), registered in `Program.cs`.
 - **Tool surface:** Domain `*Tools` classes (`ExplorationTools`, `MutationTools`, etc.) — `CampaignTools` is a test facade only.
 - **Auth:** optional `BEARER_TOKEN` env var → `AuthMiddleware` (timing-safe compare; `/` and `/health` exempt).
 - **CORS:** `CORS_ALLOWED_ORIGINS` env var (`*` or comma-separated origins).
