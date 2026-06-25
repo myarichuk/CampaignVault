@@ -32,22 +32,18 @@ public class EngagementRelationMutationTests
     }
 
     [Fact]
-    public void LegacySpatialRelationChange_DeserializesAsEngagementRelationChange()
+    public void LegacySpatialRelationChange_IsNoLongerSupported()
     {
         const string json = """
             {
               "$type": "spatial_relation",
-              "actorId": "characters/bard",
+              "characterId": "characters/bard",
               "targetId": "characters/archivist",
               "verb": "LeaningIn",
               "bidirectional": true
             }
             """;
 
-        var deserialized = JsonSerializer.Deserialize<WorldChange>(json);
-
-        Assert.NotNull(deserialized);
-        var relChange = Assert.IsAssignableFrom<EngagementRelationChange>(deserialized);
-        Assert.Equal("LeaningIn", relChange.Verb);
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<WorldChange>(json));
     }
 }

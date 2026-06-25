@@ -61,7 +61,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         var charId = "chars/on-duty";
         await session.StoreAsync(new Character
         {
-            Id = "test-char",
+            Id = charId,
             Name = "Barkeep",
             CampaignName = campaign,
             CurrentActivity = "tending bar",

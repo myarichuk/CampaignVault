@@ -22,7 +22,7 @@ public class RulesetSerializationTests
                    [
                      {
                        "$type": "ruleset_action",
-                       "actorId": "characters/grog",
+                       "characterId": "characters/grog",
                        "targetIds": ["characters/elara-voss"],
                        "actionName": "longsword",
                        "actionType": "Attack",
@@ -59,7 +59,8 @@ public class RulesetSerializationTests
         var root = doc.RootElement;
 
         Assert.True(root.TryGetProperty("$type", out var typeProp) && typeProp.GetString() == "ruleset_action");
-        Assert.True(root.TryGetProperty("actorId", out var actorProp) && actorProp.GetString() == "characters/grog");
+        Assert.True(root.TryGetProperty("characterId", out var actorProp) &&
+                    actorProp.GetString() == "characters/grog");
         Assert.True(root.TryGetProperty("actionType", out var actionTypeProp) &&
                     actionTypeProp.GetString() == "Attack");
         Assert.True(root.TryGetProperty("actionCategory", out var categoryProp) && categoryProp.GetString() == "Melee");

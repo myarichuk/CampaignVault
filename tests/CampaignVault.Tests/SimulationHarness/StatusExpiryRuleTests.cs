@@ -28,7 +28,7 @@ public class StatusExpiryRuleTests : IClassFixture<RavenDBFixture>
 
         var character = new Character
         {
-            Id = "test-char",
+            Id = charId,
             Name = "Bob",
             SystemStats = new Dnd5eExtension
             {

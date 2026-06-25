@@ -21,10 +21,9 @@ public class SelectCampaignFuzzyTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task SelectCampaign_FuzzyMatch_ReturnsSuggestionsWithoutSelecting()
+    public async Task SelectCampaign_ReturnsRemoved_ForAnySlug()
     {
-        var context = new CurrentCampaignContext();
-        var tools = TestCampaignToolsFactory.Create(_fixture, context);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         var keys = new CampaignDocumentKeys();
         var slug = "sword-coast-" + Guid.NewGuid().ToString("N")[..6];
 
@@ -45,31 +44,23 @@ public class SelectCampaignFuzzyTests : IClassFixture<RavenDBFixture>
         var result = await tools.SelectCampaign(typo);
 
         Assert.False(result.Success);
-        Assert.Equal(ToolErrors.SlugAmbiguous, result.Error);
-        Assert.NotNull(result.Data?.Suggestions);
-        Assert.Contains(result.Data!.Suggestions!, s => s.Slug == slug);
-        Assert.False(context.HasSelection);
+        Assert.Equal("Removed", result.Error);
+        Assert.Contains("select_campaign has been removed", result.Summary);
     }
 
     [Fact]
-    public async Task SelectCampaign_ExactMatch_ReturnsPostureAndSelects()
+    public async Task CreateCampaign_ThenGetCurrentCampaign_ReturnsPosture()
     {
-        var context = new CurrentCampaignContext();
-        var tools = TestCampaignToolsFactory.Create(_fixture, context);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
         var keys = new CampaignDocumentKeys();
         var slug = "dragon-heist-" + Guid.NewGuid().ToString("N")[..6];
         var repo = _fixture.CreateRepository();
 
+        var createResult = await tools.CreateCampaign(slug, RulesetSystem.Dnd5e, "Dragon Heist");
+        Assert.True(createResult.Success, createResult.Summary);
+
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign
-            {
-                Id = keys.Meta(slug),
-                Name = slug,
-                DisplayName = "Dragon Heist",
-                System = RulesetSystem.Dnd5e,
-                IsSystemLocked = true,
-            });
             await repo.UpsertCharacterAsync(session, new Character
             {
                 Id = "chars/pc-" + Guid.NewGuid().ToString("N")[..6],
@@ -79,13 +70,12 @@ public class SelectCampaignFuzzyTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        var result = await tools.SelectCampaign(slug);
+        var result = await tools.GetCurrentCampaign(slug);
 
         Assert.True(result.Success);
-        Assert.Equal(slug, result.Data!.Slug);
+        Assert.Equal(slug, result.Data!.Campaign.Name);
         Assert.NotNull(result.Data.Posture);
         Assert.Single(result.Data.Posture!.Pcs);
         Assert.Equal(CampaignEntryHint.AddCompanion, result.Data.Posture.EntryHint);
-        Assert.Equal(slug, context.CurrentCampaignName);
     }
 }

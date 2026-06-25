@@ -107,7 +107,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
 
         const string campaignSlug = "characterlenienttest";
-        await tools.SelectCampaign(campaignSlug, confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignSlug);
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -149,7 +149,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("TravelLazinessTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "TravelLazinessTest");
 
         var charId = "chars/traveler-1";
         var destLocId = "locations/destination-1";
@@ -168,7 +168,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
             var c = new Character
             {
-                Id = "test-char", Name = "Lazy Bob", CampaignName = "TravelLazinessTest",
+                Id = charId, Name = "Lazy Bob", CampaignName = "TravelLazinessTest",
                 CurrentLocationId = "locations/start"
             };
             await session.StoreAsync(c);
@@ -187,9 +187,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var changes = new WorldChange[]
         {
             new ActivityChange
-                { CharacterId = "test-char", NewActivity = $"Travel interrupted en route to {destLocId} by an ambush!" }
+                { CharacterId = charId, NewActivity = $"Travel interrupted en route to {destLocId} by an ambush!" }
         };
-        var commitResult = await tools.Commit(changes, "Started traveling and got ambushed");
+        var commitResult = await tools.Commit(changes, "Started traveling and got ambushed", "TravelLazinessTest");
         Assert.True(commitResult.Success, commitResult.Summary);
 
         // 2. Advance time (simulating a full day passing without arriving)
@@ -220,7 +220,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         Assert.IsType<ActivityChange>(correctedChanges[0]);
         Assert.IsType<TravelChange>(correctedChanges[1]);
 
-        var fixCommitResult = await tools.Commit(correctedChanges, "Arriving after the ambush");
+        var fixCommitResult = await tools.Commit(correctedChanges, "Arriving after the ambush", "TravelLazinessTest");
         Assert.True(fixCommitResult.Success, fixCommitResult.Error);
 
         // 5. Verify the pressure clears
@@ -238,13 +238,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("FactionInfluenceTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "FactionInfluenceTest");
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign
-                { Id = keys.Meta("FactionInfluenceTest"), Name = "FactionInfluenceTest" });
-
             var loc = new Location
             {
                 Id = "locations/town_01", Name = "Town", CampaignName = "FactionInfluenceTest",
@@ -290,7 +287,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             }
         };
         var commitResult = await tools.Commit(changes, "Adding rumor for faction influence", "FactionInfluenceTest");
-        Assert.True(commitResult.Success, commitResult.Error);
+        Assert.True(commitResult.Success, commitResult.Summary ?? commitResult.Error);
 
         using (var s = _store.OpenAsyncSession())
         {
@@ -315,7 +312,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("FactionWarTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "FactionWarTest");
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -398,7 +395,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("QuestStaleTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "QuestStaleTest");
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -477,7 +474,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var (tools, repo, _) = CreateScenarioHarness(simEngine);
         var keys = new CampaignDocumentKeys();
 
-        await tools.SelectCampaign("QuestGiverEvictionTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "QuestGiverEvictionTest");
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -583,7 +580,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
 
         const string campaignSlug = "missing-travel-test";
-        await tools.SelectCampaign(campaignSlug);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignSlug);
 
         var pcId = "chars/pc1-" + Guid.NewGuid().ToString("N")[..8];
         var destId = "locations/dest-missing-travel";
@@ -650,7 +647,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("TransientGiverPressureTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "TransientGiverPressureTest");
 
         var giverId = "chars/quest_giver_pressure";
         var locId = "locations/giver-town";
@@ -706,7 +703,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("QuestCooldownTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "QuestCooldownTest");
         var questId = "quests/cooldown_q";
         var locId = "locations/cooldown-town";
 
@@ -761,7 +758,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("ObjectiveStaleTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "ObjectiveStaleTest");
         var locId = "locations/obj-stale-town";
 
         using (var session = _store.OpenAsyncSession())
@@ -803,7 +800,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("QuestStalenessTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "QuestStalenessTest");
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -847,7 +844,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         {
             new QuestProgress { QuestId = "quests/stale_quest", ObjectiveIndex = 0, NewState = QuestState.InProgress }
         };
-        var commitResult = await tools.Commit(changes, "Made progress on stale quest");
+        var commitResult = await tools.Commit(changes, "Made progress on stale quest", "QuestStalenessTest");
         Assert.True(commitResult.Success, commitResult.Error);
 
         var finalSceneResult = await tools.GetScene("locations/town_01", true, "QuestStalenessTest");
@@ -894,7 +891,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
 
 
-        await tools.SelectCampaign("VisualStateTest", confirmCreate: true);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, "VisualStateTest");
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -937,7 +934,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             new ItemUpdate
                 { ItemId = "items/sword", NewState = "Dull", TagsToAdd = ["rusty"], FeaturesToAdd = ["Leather wrap"] }
         };
-        var commitResult = await tools.Commit(changes, "Bob fell in mud");
+        var commitResult = await tools.Commit(changes, "Bob fell in mud", "VisualStateTest");
         Assert.True(commitResult.Success, commitResult.Error);
 
         var sceneResult = await tools.GetScene("locations/tavern_01", true, "VisualStateTest");

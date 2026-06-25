@@ -30,8 +30,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
         var campaignName = "pressure-cap-test-" + Guid.NewGuid().ToString("N")[..8];
-        var selectResult = await tools.SelectCampaign(campaignName, confirmCreate: true);
-        Assert.True(selectResult.Success, selectResult.Summary);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
         var repo = _fixture.CreateRepository();
 
         var locId = "locations/test-room-" + Guid.NewGuid();
@@ -68,7 +67,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         // 2. Broken reverse link (Engine Warning)
         // 3. Expected crowd missing (Narrative Prompt)
         
-        var result = await tools.GetScene(locId);
+        var result = await tools.GetScene(locId, campaignName: campaignName);
         Assert.True(result.Success);
         
         // Config cap is 1, so we should only get 1 pressure!
@@ -86,8 +85,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
         var campaignName = "pressure-nop-test-" + Guid.NewGuid().ToString("N")[..8];
-        var selectResult = await tools.SelectCampaign(campaignName, confirmCreate: true);
-        Assert.True(selectResult.Success, selectResult.Summary);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
 
         var locId = "locations/test-nop-" + Guid.NewGuid();
 
@@ -105,7 +103,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         }
 
         // Config max defaults to 5. We have 2 pressures.
-        var result1 = await tools.GetScene(locId);
+        var result1 = await tools.GetScene(locId, campaignName: campaignName);
         Assert.True(result1.Success);
         Assert.NotNull(result1.WorldPressure);
         Assert.True(result1.WorldPressure.Length >= 2); // It was processed but not truncated.
@@ -113,7 +111,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         // It should be stored in tracking for cooldown.
         // Wait, if it's stored in tracking, then on Day 1 it's surfaced.
         // If we call GetScene again on the same day, it should be SUPPRESSED.
-        var result2 = await tools.GetScene(locId);
+        var result2 = await tools.GetScene(locId, campaignName: campaignName);
         Assert.True(result2.Success);
         Assert.Null(result2.WorldPressure); // Suppressed!
     }
@@ -124,8 +122,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
         var campaignName = "pressure-clear-test-" + Guid.NewGuid().ToString("N")[..8];
-        var selectResult = await tools.SelectCampaign(campaignName, confirmCreate: true);
-        Assert.True(selectResult.Success, selectResult.Summary);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
 
         var locId = "locations/test-clear-" + Guid.NewGuid();
 
@@ -144,23 +141,23 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         }
 
         // 1. Initial read -> Surface pressure
-        var result1 = await tools.GetScene(locId);
+        var result1 = await tools.GetScene(locId, campaignName: campaignName);
         Assert.NotNull(result1.WorldPressure);
         Assert.True(result1.WorldPressure.Length >= 2);
 
         // 2. Second read -> Suppressed
-        var result2 = await tools.GetScene(locId);
+        var result2 = await tools.GetScene(locId, campaignName: campaignName);
         Assert.Null(result2.WorldPressure);
 
         // 3. Commit a fix!
         var commitRes = await tools.Commit([
             new LocationUpdate { LocationId = locId, Name = "Fixed Room", Description = "Added via commit" }
-        ], "Fixed room");
+        ], "Fixed room", campaignName);
         Assert.True(commitRes.Success);
 
         // 4. Third read -> The tracking should have been cleared, so if the pressure is still there, it surfaces again.
         // (Our LocationUpdate didn't fix the lack of exits, so the pressure still exists)
-        var result3 = await tools.GetScene(locId);
+        var result3 = await tools.GetScene(locId, campaignName: campaignName);
         Assert.NotNull(result3.WorldPressure);
         Assert.True(result3.WorldPressure.Length >= 2);
     }
@@ -171,8 +168,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         var context = new CurrentCampaignContext();
         var tools = CreateTools(context);
         var campaignName = "pressure-batch-test-" + Guid.NewGuid().ToString("N")[..8];
-        var selectResult = await tools.SelectCampaign(campaignName, confirmCreate: true);
-        Assert.True(selectResult.Success, selectResult.Summary);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
@@ -185,7 +181,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 var charId = $"characters/batch-test-{i}";
                 var c = new Character
                 {
-                    Id = "test-char",
+                    Id = charId,
                     Name = $"Batch Char {i}",
                     CurrentHp = 10,
                     MaxHp = 10,

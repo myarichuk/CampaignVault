@@ -224,7 +224,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Road" });
             var npc = new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "Stuck Hero",
                 CurrentActivity = "Travel interrupted en route to the capital by goblins",
                 Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
@@ -308,7 +308,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
             await repo.UpsertCharacterAsync(session, new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "Rep Tester",
                 CurrentLocationId = locId,
                 KeepAlive = true,
@@ -368,7 +368,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
             var npc = new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "Stuck Hero",
                 CurrentActivity = "Travel interrupted en route to the capital by goblins",
                 Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
@@ -531,7 +531,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
             await repo.UpsertCharacterAsync(session, new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "PC",
                 CurrentLocationId = locId,
                 KeepAlive = true
@@ -542,7 +542,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Id = "items/test-sword-" + Guid.NewGuid(),
                 Name = "Longsword",
                 Description = "A sword",
-                HolderId = "test-char",
+                HolderId = charId,
                 CoreCategory = ItemCategory.Weapon
             });
 
@@ -584,7 +584,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
             await repo.UpsertCharacterAsync(session, new Character
             {
-                Id = "test-char",
+                Id = charId,
                 Name = "PC",
                 CurrentLocationId = locId,
                 KeepAlive = true
@@ -595,7 +595,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Id = "items/test-scroll-" + Guid.NewGuid(),
                 Name = "Scroll",
                 Description = "A scroll",
-                HolderId = "test-char",
+                HolderId = charId,
                 CoreCategory = ItemCategory.Document,
                 Tags = ["Spell Scrolls"]
             });
@@ -745,9 +745,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         Assert.True(result.Success);
         Assert.Contains("Quickstart for Models", result.Data);
-        Assert.Contains("Campaign session & slug scoping", result.Data);
-        Assert.Contains("Mcp-Session-Id", result.Data);
-        Assert.Contains("MCP_SESSION_ID", result.Data);
+        Assert.Contains("Campaign slug scoping", result.Data);
+        Assert.Contains("campaignName", result.Data);
+        Assert.Contains("list_campaigns", result.Data);
         Assert.Contains("Tool Index by Category", result.Data);
         Assert.Contains("`list_tools`", result.Data);
         Assert.Contains("get_quest_details", result.Data);

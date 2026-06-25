@@ -120,7 +120,7 @@ public class SyncViewModelTests : IDisposable
         var charId = "characters/grog";
         var character = new Character
         {
-            Id = "test-char",
+            Id = "characters/grog",
             Name = "Grog",
             CampaignName = "TestCampaign",
             Notes = "Remote Grog notes"
@@ -130,7 +130,7 @@ public class SyncViewModelTests : IDisposable
         var remoteResponse = new EntityListResponse();
         remoteResponse.Entities.Add(new EntityItem
         {
-            Id = "test-char",
+            Id = "characters/grog",
             Type = "character",
             Content = jsonContent
         });
@@ -178,13 +178,13 @@ public class SyncViewModelTests : IDisposable
 
         var character = new Character
         {
-            Id = "test-char",
+            Id = "characters/grog",
             Name = "Grog",
             CampaignName = "TestCampaign",
             Notes = "Synced Grog"
         };
         var jsonContent = JsonSerializer.Serialize(character);
-        var remoteItem = new EntityItem { Id = "test-char", Type = "character", Content = jsonContent };
+        var remoteItem = new EntityItem { Id = "characters/grog", Type = "character", Content = jsonContent };
         var syncedMarkdown = _syncViewModel.CallPrivateDeserializeRemoteToMarkdown(remoteItem);
         var syncedHash = _syncViewModel.CallPrivateComputeHash(syncedMarkdown);
 
@@ -234,13 +234,13 @@ public class SyncViewModelTests : IDisposable
 
         var characterSynced = new Character
         {
-            Id = "test-char",
+            Id = "characters/grog",
             Name = "Grog",
             CampaignName = "TestCampaign",
             Notes = "Synced Grog"
         };
         var syncedJson = JsonSerializer.Serialize(characterSynced);
-        var remoteSyncedItem = new EntityItem { Id = "test-char", Type = "character", Content = syncedJson };
+        var remoteSyncedItem = new EntityItem { Id = "characters/grog", Type = "character", Content = syncedJson };
         var syncedMarkdown = _syncViewModel.CallPrivateDeserializeRemoteToMarkdown(remoteSyncedItem);
         var syncedHash = _syncViewModel.CallPrivateComputeHash(syncedMarkdown);
 
@@ -258,13 +258,13 @@ public class SyncViewModelTests : IDisposable
 
         var characterModified = new Character
         {
-            Id = "test-char",
+            Id = "characters/grog",
             Name = "Grog",
             CampaignName = "TestCampaign",
             Notes = "Modified Remote Grog" // Remote is modified
         };
         var modifiedJson = JsonSerializer.Serialize(characterModified);
-        var remoteModifiedItem = new EntityItem { Id = "test-char", Type = "character", Content = modifiedJson };
+        var remoteModifiedItem = new EntityItem { Id = "characters/grog", Type = "character", Content = modifiedJson };
 
         var remoteResponse = new EntityListResponse();
         remoteResponse.Entities.Add(remoteModifiedItem);
@@ -294,13 +294,13 @@ public class SyncViewModelTests : IDisposable
 
         var characterSynced = new Character
         {
-            Id = "test-char",
+            Id = "characters/grog",
             Name = "Grog",
             CampaignName = "TestCampaign",
             Notes = "Synced Grog"
         };
         var syncedJson = JsonSerializer.Serialize(characterSynced);
-        var remoteSyncedItem = new EntityItem { Id = "test-char", Type = "character", Content = syncedJson };
+        var remoteSyncedItem = new EntityItem { Id = "characters/grog", Type = "character", Content = syncedJson };
         var syncedMarkdown = _syncViewModel.CallPrivateDeserializeRemoteToMarkdown(remoteSyncedItem);
         var syncedHash = _syncViewModel.CallPrivateComputeHash(syncedMarkdown);
 
@@ -319,13 +319,13 @@ public class SyncViewModelTests : IDisposable
 
         var characterRemoteModified = new Character
         {
-            Id = "test-char",
+            Id = "characters/grog",
             Name = "Grog",
             CampaignName = "TestCampaign",
             Notes = "Remote Modified Grog"
         };
         var remoteModifiedJson = JsonSerializer.Serialize(characterRemoteModified);
-        var remoteModifiedItem = new EntityItem { Id = "test-char", Type = "character", Content = remoteModifiedJson };
+        var remoteModifiedItem = new EntityItem { Id = "characters/grog", Type = "character", Content = remoteModifiedJson };
 
         var remoteResponse = new EntityListResponse();
         remoteResponse.Entities.Add(remoteModifiedItem);
