@@ -19,6 +19,9 @@ public record WorldPressureItem(
 {
     public WorldPressureItem() : this(default!, default!, default!, default!) { }
 
+    /// <summary>Optional machine-readable commit example(s) for the LLM to use.</summary>
+    public string? SuggestedCommitJson { get; init; }
+
     public const string RumorsGroupingKey = "Simulation:Rumors";
     public const string SimulationEventGroupingKey = "Simulation:Event";
 }

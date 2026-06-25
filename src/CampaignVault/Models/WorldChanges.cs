@@ -42,7 +42,6 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(SystemStatsChange), "system_stats")]
 [JsonDerivedType(typeof(KnowledgeUpdate), "knowledge_update")]
 [JsonDerivedType(typeof(EngagementRelationChange), "engagement_relation")]
-[JsonDerivedType(typeof(SpatialRelationChange), "spatial_relation")]
 [JsonDerivedType(typeof(SpatialPositionChange), "spatial_position")]
 [JsonDerivedType(typeof(SceneInterruptCheck), "scene_interrupt_check")]
 public abstract class WorldChange;
@@ -233,9 +232,9 @@ public class RumorCreate : WorldChange
 /// <summary>Apply a numeric delta to the relationship score between two characters. Range is typically -100 to +100.</summary>
 public class RelationshipChange : WorldChange
 {
-    [Description("ID of the source character whose opinion of the target is changing (e.g. 'characters/elara-voss').")]
-    [JsonPropertyName("sourceId")]
-    public string SourceId { get; set; } = default!;
+    [Description("ID of the character whose opinion of the target is changing (e.g. 'characters/elara-voss').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
 
     [Description("ID of the target character being evaluated (e.g. 'characters/bram-ironarm').")]
     [JsonPropertyName("targetId")]
@@ -257,8 +256,8 @@ public class RelationshipChange : WorldChange
 public class EngagementRelationChange : WorldChange
 {
     [Description("ID of the character initiating or anchoring the relation (e.g. 'characters/bard').")]
-    [JsonPropertyName("actorId")]
-    public string ActorId { get; set; } = default!;
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
 
     [Description("ID of the target character or object (e.g. 'characters/archivist').")]
     [JsonPropertyName("targetId")]
@@ -278,17 +277,10 @@ public class EngagementRelationChange : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EngagementRestrictionLevel? RestrictionLevel { get; set; }
 
-    [Description("Legacy alias for verb. Prefer verb + category.")]
-    [JsonPropertyName("relationType")]
-    public string? RelationType { get; set; }
-
     [Description("Whether to automatically establish the inverse relationship on the target (e.g., if actor Grapples target, target becomes GrappledBy actor).")]
     [JsonPropertyName("bidirectional")]
     public bool Bidirectional { get; set; } = true;
 }
-
-/// <summary>Legacy world-change discriminator; use <see cref="EngagementRelationChange"/> with <c>engagement_relation</c>.</summary>
-public sealed class SpatialRelationChange : EngagementRelationChange;
 
 /// <summary>
 /// Establish, update, or remove relative zone/distance positioning for a character.
@@ -436,8 +428,8 @@ public class ActivityChange : WorldChange
 public class RulesetAction : WorldChange
 {
     [Description("ID of the acting character (attacker, caster, skill user, or item user).")]
-    [JsonPropertyName("actorId")]
-    public string ActorId { get; set; } = default!;
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
 
     [Description("Target character IDs. Required for attack/save/heal spells. List ALL AoE targets in one commit. Omit for non-combat utility/check spells.")]
     [JsonPropertyName("targetIds")]
