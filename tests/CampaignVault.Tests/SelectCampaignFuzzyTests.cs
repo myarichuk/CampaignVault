@@ -37,6 +37,7 @@ public class SelectCampaignFuzzyTests : IClassFixture<RavenDBFixture>
                 DisplayName = "Sword Coast",
                 System = RulesetSystem.Dnd5e,
             });
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
             await session.SaveChangesAsync();
         }
 

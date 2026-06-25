@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CampaignVault.Models;
@@ -71,6 +72,30 @@ public class CommitChangesParserTests
         Assert.True(ok, error);
         Assert.NotNull(parsed);
         Assert.Equal(7, parsed!.Length);
+    }
+
+    [Fact]
+    public void TryParse_RumorCreate_Deserializes()
+    {
+        const string payload = """
+                               [
+                                 {
+                                   "$type": "rumor_create",
+                                   "rumorId": "rumors/nightshade-gang",
+                                   "subject": "Nightshade Gang",
+                                   "text": "Pirates raided three barges."
+                                 }
+                               ]
+                               """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.True(ok, error);
+        var rumorCreate = Assert.IsType<RumorCreate>(parsed!.Single());
+        Assert.Equal("rumors/nightshade-gang", rumorCreate.RumorId);
+        Assert.Equal("Nightshade Gang", rumorCreate.Subject);
+        Assert.Equal("Pirates raided three barges.", rumorCreate.Text);
     }
 
     [Fact]

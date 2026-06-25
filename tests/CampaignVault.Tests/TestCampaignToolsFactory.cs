@@ -1,3 +1,4 @@
+using System.Reflection;
 using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
@@ -47,6 +48,10 @@ internal static class TestCampaignToolsFactory
 
             if (orchestrator != null) b.RegisterInstance(orchestrator).As<IPressureOrchestrator>();
             if (pressureManager != null) b.RegisterInstance(pressureManager).As<IPressureManager>();
+
+            b.RegisterAssemblyTypes(typeof(ExplorationTools).Assembly)
+                .Where(t => t.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolTypeAttribute>() != null)
+                .InstancePerLifetimeScope();
         });
 
         return new CampaignTools(

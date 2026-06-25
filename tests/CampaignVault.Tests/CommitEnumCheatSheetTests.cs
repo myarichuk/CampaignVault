@@ -31,4 +31,11 @@ public class CommitEnumCheatSheetTests
     {
         Assert.Contains("SceneInterrupt", CommitEnumCheatSheet.Compact);
     }
+
+    [Fact]
+    public void Compact_IncludesRumorCreate_AndOmitsMeta()
+    {
+        Assert.Contains("rumor_create", CommitEnumCheatSheet.Compact);
+        Assert.DoesNotContain(", Meta", CommitEnumCheatSheet.Compact);
+    }
 }

@@ -153,7 +153,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         Assert.NotNull(repo);
         var field = typeof(CampaignRepository).GetField("_currentCampaign", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var currentCampaign = field.GetValue(repo) as ICurrentCampaignContext;
+        var currentCampaign = field!.GetValue(repo) as ICurrentCampaignContext;
         Assert.NotNull(currentCampaign);
         Assert.Equal(typeof(CurrentCampaignContext), currentCampaign.GetType());
     }
@@ -795,7 +795,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var result = await tools.SearchWorld("Regression Search Target");
 
         Assert.True(result.Success, result.Summary);
-        Assert.NotEmpty(result.Data!);
+        Assert.NotEmpty(result.Data!.Matches);
     }
 
     [Fact]

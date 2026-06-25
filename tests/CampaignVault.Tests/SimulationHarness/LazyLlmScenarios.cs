@@ -139,7 +139,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var result = await tools.Commit(changes, "Attack hits", campaignSlug);
 
         Assert.False(result.Success);
-        Assert.Contains("Did you mean: chars/drizzzt (Drizzt Do'Urden)?", result.Error);
+        Assert.Contains("Did you mean: chars/drizzzt (Drizzt Do'Urden)?", result.Summary);
     }
 
     [Fact]

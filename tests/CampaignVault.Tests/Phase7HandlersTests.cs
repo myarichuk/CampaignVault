@@ -137,7 +137,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             DestinationLocationId = dest.Id,
             Narrative = "Walked there",
             TravelCostHoursOverride = null, // No override -> should lookup from exit
-            EncounterRiskModifier = -100 // Prevent random encounters during this test
+            EncounterRiskModifier = -10000 // Prevent random encounters during this test
         };
 
         var result = await handler.ApplyAsync(change, ctx);

@@ -47,6 +47,37 @@ public class ToolCallExamplesTests
     }
 
     [Fact]
+    public void TryNormalize_Commit_RewritesSpellParameterAliases()
+    {
+        var args = new JsonObject
+        {
+            ["changes"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["$type"] = "ruleset_action",
+                    ["actorId"] = "chars/wizard",
+                    ["actionType"] = "Spell",
+                    ["actionName"] = "Fireball",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["spellResolution"] = "save",
+                        ["half_on_save"] = "true",
+                    },
+                },
+            },
+        };
+
+        var modified = ToolCallExamples.TryNormalize("commit", args, out var rewrites);
+
+        Assert.True(modified);
+        Assert.Contains("ruleset_action.spellResolution→resolution", rewrites);
+        var parameters = args["changes"]![0]!["parameters"]!.AsObject();
+        Assert.Equal("save", parameters["resolution"]!.GetValue<string>());
+        Assert.Equal("true", parameters["halfOnSave"]!.GetValue<string>());
+    }
+
+    [Fact]
     public void TryNormalize_Commit_RewritesEventParticipantsToInvolved()
     {
         var args = new JsonObject

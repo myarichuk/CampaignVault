@@ -210,6 +210,27 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public void CommitParser_RumorCreate_DeserializesRumorCreateType()
+    {
+        const string payload = """
+                               [
+                                 {
+                                   "$type": "rumor_create",
+                                   "rumorId": "rumors/parser-test",
+                                   "subject": "Parser Test",
+                                   "text": "Created via commit parser."
+                                 }
+                               ]
+                               """;
+
+        using var doc = System.Text.Json.JsonDocument.Parse(payload);
+        var ok = CampaignVault.Tools.CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.True(ok, error);
+        Assert.IsType<RumorCreate>(parsed![0]);
+    }
+
+    [Fact]
     public async Task RumorCreateAndEvolves_Workflow()
     {
         using var session = _fixture.Store.OpenAsyncSession();
