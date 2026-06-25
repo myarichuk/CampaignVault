@@ -162,7 +162,7 @@ When the party resolves a rumor about a rebel smuggler by betraying them to the 
   { ""$type"": ""quest_progress"", ""questId"": ""quests/betray-smuggler"", ""objectiveIndex"": 0, ""newState"": ""Complete"", ""narrativeNote"": ""Handed the rebel smuggler over to the City Watch."" },
   { ""$type"": ""faction_reputation"", ""factionId"": ""factions/city-watch"", ""characterId"": ""chars/pc1"", ""delta"": 15 },
   { ""$type"": ""faction_reputation"", ""factionId"": ""factions/rebels"", ""characterId"": ""chars/pc1"", ""delta"": -20 },
-  { ""$type"": ""rumor"", ""subject"": ""smuggling"", ""newText"": ""The smuggler who supplied the rebels was caught and jailed."", ""newState"": ""Resolved"" },
+  { ""$type"": ""rumor"", ""rumorId"": ""rumors/smuggling"", ""newState"": ""Resolved"", ""newText"": ""The smuggler who supplied the rebels was caught and jailed."" },
   { ""$type"": ""character_update"", ""characterId"": ""chars/smuggler-npc"", ""keepAlive"": true },
   { ""$type"": ""activity"", ""characterId"": ""chars/smuggler-npc"", ""newLocationId"": ""locations/city-jail"", ""newActivity"": ""Imprisoned behind iron bars"" },
   { ""$type"": ""event"", ""category"": ""Betrayal"", ""summary"": ""Party betrayed the rebel smuggler at the city gate; smuggler is now locked up."", ""involved"": [""chars/pc1"", ""chars/smuggler-npc"", ""factions/city-watch""] }
@@ -176,9 +176,9 @@ A complete arc — from seeded rumor through investigation, faction reaction, an
 **Beat 1 — Seed the thread (tavern, session start):**
 Bram the barkeep mentions the Nightshade gang has been raiding river barges. Commit the rumor and the quest hook, and flag Bram as the quest giver:
 [
-  { ""$type"": ""rumor"", ""subject"": ""Nightshade Gang"", ""newText"": ""Nightshade pirates have raided three barges on the Ashford River this month — cargo vanishing, crews turning up dead."", ""newState"": ""Active"", ""sourceCharacterId"": ""chars/bram-the-barkeep"" },
-  { ""$type"": ""quest_create"", ""questId"": ""quests/stop-nightshade"", ""title"": ""Cut Out the Nightshade"", ""description"": ""The river merchants are desperate. Find and disrupt the Nightshade Gang's operations on the Ashford."", ""objectives"": [ { ""description"": ""Locate the Nightshade hideout"", ""state"": ""Active"" }, { ""description"": ""Destroy or scatter the gang"", ""state"": ""Pending"" }, { ""description"": ""Report back to the River Merchants' Guild"", ""state"": ""Pending"" } ], ""deadlineDays"": 14 },
-  { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Bram Ironarm told the party about the Nightshade Gang's river raids. Quest: Cut Out the Nightshade accepted."" }
+  { ""$type"": ""rumor_create"", ""rumorId"": ""rumors/nightshade-gang"", ""subject"": ""Nightshade Gang"", ""text"": ""Nightshade pirates have raided three barges on the Ashford River this month — cargo vanishing, crews turning up dead."" },
+  { ""$type"": ""quest_create"", ""questId"": ""quests/stop-nightshade"", ""title"": ""Cut Out the Nightshade"", ""giverId"": ""chars/bram-the-barkeep"", ""dmNotes"": ""River merchants desperate; disrupt Nightshade operations on the Ashford."", ""objectives"": [ { ""description"": ""Locate the Nightshade hideout"" }, { ""description"": ""Destroy or scatter the gang"" }, { ""description"": ""Report back to the River Merchants' Guild"" } ], ""deadlineDay"": 14 },
+  { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Bram Ironarm told the party about the Nightshade Gang's river raids. Quest: Cut Out the Nightshade accepted."", ""involved"": [""chars/pc1"", ""chars/bram-the-barkeep""] }
 ]
 
 **Beat 2 — Investigation (party scouting the docks):**
@@ -193,12 +193,12 @@ Party discovers the gang uses a hidden canal warehouse. Create the location, adv
 **Beat 3 — Confrontation + faction ripple (the gang is broken):**
 Party raids the warehouse, kills the gang leader, frees hostages. Faction standing shifts:
 [
-  { ""$type"": ""hp"", ""characterId"": ""chars/nightshade-boss"", ""delta"": -99, ""sourceCharacterId"": ""chars/pc1"" },
+  { ""$type"": ""hp"", ""characterId"": ""chars/nightshade-boss"", ""delta"": -99 },
   { ""$type"": ""quest_progress"", ""questId"": ""quests/stop-nightshade"", ""objectiveIndex"": 1, ""newState"": ""Complete"", ""narrativeNote"": ""Gang leader slain; surviving members fled or surrendered."" },
   { ""$type"": ""faction_state"", ""factionId"": ""factions/nightshade-gang"", ""influenceDelta"": -30, ""narrative"": ""Leadership killed in the warehouse raid. Gang scattered."" },
   { ""$type"": ""faction_reputation"", ""factionId"": ""factions/river-merchants-guild"", ""characterId"": ""chars/pc1"", ""delta"": 20 },
   { ""$type"": ""faction_reputation"", ""factionId"": ""factions/city-watch"", ""characterId"": ""chars/pc1"", ""delta"": 8 },
-  { ""$type"": ""rumor"", ""subject"": ""Nightshade Gang"", ""newText"": ""The Nightshade pirates were smashed by a band of adventurers at their own hideout. The river may be safe again."", ""newState"": ""Resolved"" },
+  { ""$type"": ""rumor"", ""rumorId"": ""rumors/nightshade-gang"", ""newState"": ""Resolved"", ""newText"": ""The Nightshade pirates were smashed by a band of adventurers at their own hideout. The river may be safe again."" },
   { ""$type"": ""event"", ""category"": ""Combat"", ""summary"": ""Party raided the Nightshade warehouse. Boss killed, gang scattered. River Merchants Guild grateful."" }
 ]
 
@@ -207,7 +207,7 @@ Party reports back. Quest closes, territory adjusts, maybe a new rumor seeds:
 [
   { ""$type"": ""quest_progress"", ""questId"": ""quests/stop-nightshade"", ""objectiveIndex"": 2, ""newState"": ""Complete"", ""narrativeNote"": ""Party reported to the River Merchants Guild. Reward collected."" },
   { ""$type"": ""faction_state"", ""factionId"": ""factions/river-merchants-guild"", ""influenceDelta"": 10, ""narrative"": ""Guild influence rising now the river route is open; trade caravans resuming."" },
-  { ""$type"": ""rumor"", ""subject"": ""Ashford River"", ""newText"": ""Merchants are saying the Ashford route is profitable again. Caravans are reforming for the first time in weeks."", ""newState"": ""Active"" },
+  { ""$type"": ""rumor_create"", ""rumorId"": ""rumors/ashford-river-trade"", ""subject"": ""Ashford River"", ""text"": ""Merchants are saying the Ashford route is profitable again. Caravans are reforming for the first time in weeks."" },
   { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Quest complete. River Merchants Guild paid the reward. Trade caravans reforming on the Ashford."", ""involved"": [""chars/pc1"", ""factions/river-merchants-guild""] }
 ]
 
@@ -221,11 +221,17 @@ The engine emits ENGINE WARNING until BOTH are set:
 **Auto-bootstrap (omit maxHp for PCs):** Pipeline runs at `character_create`, `upsert_character`, `system_stats` patch, and `level_up`. PCs: omit `maxHp` — supply typed bootstrap fields. Creature stat blocks: `systemStats.statBlockHp` or `maxHp` (skips HP formula only; AC/proficiency still derive). `currentHp` alone = wounded at create.
 
 **Typed bootstrap fields (NOT in `attributes` — numbers only there):**
-- **5e**: `hitDie` (e.g. ""d12""), `level`, `constitution`, `hpMode` (`average` | `rolled`), `classLevel` fallback
+- **5e**: `hitDie` (e.g. ""d12""), `level`, `constitution`, `hpMode` (`average` | `rolled`), `classLevel` fallback; **multiclass**: `classLevels` array; **casters**: `spellcastingAbility`, optional `spellSaveDc`/`spellAttackBonus`
 - **PF2e**: `classHpPerLevel`, `ancestryHp`, `level`, `constitutionMod`
 - **Fallout**: `endurance`, `luck`, `level`, optional `hpPerLevel` (defaults to endurance)
 
-5e also derives `armorClass` (unarmored 10 + DEX), `attributes.proficiencyBonus`, `attributes.passivePerception`, and emits `[BOOTSTRAP HINT]` with `item_create` armor JSON when no worn armor is detected.
+5e also derives `armorClass` (unarmored 10 + DEX), `attributes.proficiencyBonus`, `attributes.passivePerception`, `spellSaveDc`/`spellAttackBonus` for casters, and emits `[BOOTSTRAP HINT]` with `item_create` armor JSON when no worn armor is detected.
+
+5e multiclass (prefer structured `classLevels` on systemStats):
+" + CommitSpellHelpExamples.MulticlassBootstrap + @"
+
+Multiclass level-up (specify which class gained a level):
+" + CommitSpellHelpExamples.MulticlassLevelUp + @"
 
 D&D 5e reference (level 1, max hit die + CON modifier):
 - Fighter / Paladin / Ranger: d10 → 10 + CON mod
@@ -243,7 +249,7 @@ Infer from class+level for PCs. Pure flavor transients (no HP, not KeepAlive) sk
 5e creature stat block (statBlockHp — HP formula skipped, AC still bootstrapped if omitted):
 { ""$type"": ""character_create"", ""characterId"": ""chars/goblin-scout"", ""name"": ""Goblin Scout"", ""classLevel"": ""Goblin 1"", ""systemStats"": { ""$system"": ""dnd5e"", ""statBlockHp"": 7, ""dexterity"": 14, ""strength"": 8, ""skillModifiers"": { ""Stealth"": 6, ""Perception"": 2 }, ""savingThrowModifiers"": { ""Dexterity"": 2 } } }
 
-Level up (5e HP gain; optional `healToMatch` to bump currentHp):
+Level up (5e HP gain; optional `healToMatch`; multiclass PCs add `classGained`):
 { ""$type"": ""level_up"", ""characterId"": ""chars/kergil"", ""levelsGained"": 1, ""hpMode"": ""rolled"", ""healToMatch"": false }
 
 PF2e auto-bootstrap:
@@ -265,29 +271,28 @@ You (the LLM) author narrative state; the engine scores a fixed set of **visualT
 - Read these fields from `SceneView` and interpret them naturally. If a goblin has the ""wet"" tag, you inherently know lightning magic should be more effective. If the PC is ""disheveled"", the noble faction should react poorly.
 - Factions have dynamic `EconomicDemand`. If a faction is desperate for an item the party is carrying (e.g. ""spell scrolls""), `get_scene` will pressure you to narrate merchants offering a premium or thieves attempting to steal them. Fulfill this naturally during roleplay!
 
-## Ruleset Actions (Combat & Skill Checks)
-Use `ruleset_action` inside a `commit` to roll dice and resolve attacks or skill checks via the active ruleset. The engine rolls, does the math, and returns the result (including degrees of success).
+## Ruleset Actions (Combat, Spells & Skill Checks)
+Use `ruleset_action` inside `commit` for attacks, spells, skills, grapples, and item use. The engine rolls and returns results — narrate from the response. **The engine auto-applies `hp` deltas from ruleset_action — do not also commit separate `hp` for the same hit.** **After any spell, commit `status` separately for concentration/charm/etc. Engine does not track spell slots.**
+
+" + CommitRumorHelpExamples.RoutingGuide + @"
+
 - **$type**: `""ruleset_action""`
-- **actorId**: The character performing the action.
-- **targetIds**: Array of target character IDs (one per shot/target for attacks; for repeating weapons, list multiple IDs and set `attackCount` or weapon `rateOfFire`).
-- **actionType**: `""Attack""`, `""Spell""`, `""SkillCheck""`, `""SavingThrow""`, `""ContestedCheck""`, `""UseItem""`, `""Recovery""`.
-- **actionName**: Freeform text (e.g. `""longsword""`, `""Athletics""`, `""Fireball""`). For attacks, match the weapon name from the actor's `heldItems` in `get_scene` — the engine auto-merges item `properties` (damageDice, bonus, attackCount) when the name matches.
-- **parameters**: Dictionary of overrides and hints for the resolver:
-  - `""dc""`: Difficulty Class for skill checks or saves (5e/PF2e).
-  - `""bonus""`: Attack roll bonus.
-  - `""damageDice""`: Damage expression (e.g. `""1d8""` or `""3""` for Fallout).
-  - `""damageBonus""`: Flat damage bonus.
-  - `""ac""`: Override target AC.
-  - `""mapPenalty""`: Multiple Attack Penalty for PF2e (e.g. `""5""` or `""10""`).
-  - `""difficulty""`: Success count threshold for Fallout 2d20 (default 1).
-  - `""attribute""`: Attribute to use for Fallout 2d20 (e.g. `""Agility""`).
-  - `""skill""`: Skill to use for Fallout 2d20 (e.g. `""SmallGuns""`).
-  - `""pool""`: Number of d20s to roll for Fallout 2d20 (default 2).
-  - `""vicious""`: `""true""` to add effects symbols to damage bonus in Fallout.
-  - `""piercing""`: Piercing rating for Fallout DR calculation.
-  - `""attackCount""`: Cap how many targets receive separate attack rolls (repeating weapons). Defaults to all listed targetIds when multiple are provided.
-  - `""weaponItemId""`: Explicit weapon item ID (optional if actionName matches heldItems).
-- **advantageState**: `""Advantage""`, `""Disadvantage""`, or `""None""` (currently natively supports 5e; PF2e Fortune effects must be handled manually or by adjusting `""bonus""`).
+- **actorId**: Acting character.
+- **targetIds**: Targets (required for attack/save/heal; optional for non-combat `check`/`utility`).
+- **actionType**: `""Attack""`, `""Spell""`, `""SkillCheck""` (non-magic skills), `""SavingThrow""`, `""ContestedCheck""`, `""OpposedCheck""` (alias), `""UseItem""`, `""Recovery""`.
+- **actionName**: Freeform (`""longsword""`, `""Fireball""`, `""Detect Magic""`). Attacks: match `heldItems` name for auto weapon merge.
+- **actionCategory**: `""Spell""` for magic; `""Social""`/`""Survival""` nudges utility inference when `resolution` omitted.
+
+**SavingThrow vs Spell:** `SavingThrow` = **actor** rolls one save. `Spell` + `parameters.resolution: ""save""` = **each target** rolls in **one commit** (Fireball). Never Fireball as six separate SavingThrows.
+
+" + CommitSpellHelpExamples.RoutingGuide + @"
+
+**Common parameters:**
+- **All**: `resolution` (Spell: attack|save|check|utility|heal), `dc`, `skill`, `save`, `halfOnSave` (5e default true), `healDice`/`healBonus`/`healAmount`
+- **5e/PF2e**: `bonus`/`toHitBonus`, `damageDice`, `damageBonus`, `ac`, `mapPenalty` (PF2e), `spellAttackBonus` (override)
+- **Fallout**: `difficulty` or `dc`, `attribute`, `skill`, `pool`, `bonusDice`, `useLuck` (+1 die, no auto luck spend), `rangeModifier`, `cover`, `targetPart`, `damageDice` (combat dice count), `vicious`, `piercing`, `saveAttribute`, `saveSkill`
+
+- **advantageState**: `""Advantage""`, `""Disadvantage""`, `""None""` (5e native).
 
 **Multi-shot into a crowd:** AmbientCrowd mercs are not combatants until `character_create`d. Spawn 2–5 hostile transients with HP/systemStats, then one `ruleset_action` with multiple `targetIds` (and optional `attackCount` from the weapon). Example spray with Schlag (attackCount 3):
 ```json
@@ -303,7 +308,7 @@ Use `ruleset_action` inside a `commit` to roll dice and resolve attacks or skill
 
 **Existing PCs:** `upsert_character` creates the full PC document (`isPc: true`). During play use `activity` + `travel` to move PCs — do NOT `character_create` them again (the engine merges but warns). Call `get_party` first to list `isPc` / `isPartyCompanion` roster members.
 
-Example:
+Melee attack example:
 ```json
 [
   {
@@ -312,15 +317,12 @@ Example:
     ""targetIds"": [""chars/goblin""],
     ""actionType"": ""Attack"",
     ""actionName"": ""longsword"",
-    ""parameters"": {
-      ""bonus"": ""7"",
-      ""damageDice"": ""1d8"",
-      ""damageBonus"": ""4"",
-      ""mapPenalty"": ""0""
-    }
+    ""parameters"": { ""bonus"": ""7"", ""damageDice"": ""1d8"", ""damageBonus"": ""4"" }
   }
 ]
 ```
+
+" + CommitSpellHelpExamples.HelpSection + @"
 
 ## Status Effects & Stat Modifiers
 Use `status` inside `commit` to add effects, including mechanical modifiers.

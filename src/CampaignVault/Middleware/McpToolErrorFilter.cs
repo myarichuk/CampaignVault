@@ -120,7 +120,7 @@ internal static partial class McpToolErrorFilter
     internal static string BuildMissingParamMessage(string toolName, string paramName) =>
         BuildMissingParamResponse(toolName, paramName).Summary;
 
-    internal static bool TryUnwrapJsonException(Exception ex, out JsonException jsonException)
+    internal static bool TryUnwrapJsonException(Exception ex, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out JsonException? jsonException)
     {
         for (var current = ex; current is not null; current = current.InnerException)
         {
@@ -131,7 +131,7 @@ internal static partial class McpToolErrorFilter
             }
         }
 
-        jsonException = null!;
+        jsonException = null;
         return false;
     }
 

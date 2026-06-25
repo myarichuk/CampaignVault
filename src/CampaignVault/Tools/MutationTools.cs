@@ -136,8 +136,8 @@ Basic + creating on the fly examples are also shown in the tool description and 
             if (!result.Success)
             {
                 var errorMsg = string.Join("\n", result.Summary);
-                return new ToolResult<CommitResult>(false, result, Summary: "Commit failed due to validation errors.",
-                    Error: errorMsg);
+                return new ToolResult<CommitResult>(false, result, Summary: errorMsg,
+                    Error: "ValidationError");
             }
 
             await _repository.LogEventAsync(session,
@@ -199,10 +199,10 @@ Basic + creating on the fly examples are also shown in the tool description and 
         [Description(ToolParameterDescriptions.CampaignNameOptional)]
         string? campaignName = null)
     {
-        if (days < 0)
+        if (days <= 0)
         {
             return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "BadRequest",
-                Summary: "Cannot advance a negative number of days."));
+                Summary: "Cannot advance zero or a negative number of days."));
         }
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>

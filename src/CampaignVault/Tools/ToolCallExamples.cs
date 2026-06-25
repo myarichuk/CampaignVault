@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace CampaignVault.Tools;
 
@@ -133,6 +134,36 @@ internal static class ToolCallExamples
                 continue;
             }
 
+            if (string.Equals(changeType, "ruleset_action", StringComparison.OrdinalIgnoreCase))
+            {
+                if (NormalizeRulesetActionParameters(changeObj, applied))
+                {
+                    modified = true;
+                }
+
+                continue;
+            }
+
+            if (changeType is "rumor" or "rumor_create")
+            {
+                if (NormalizeRumorChange(changeObj, applied))
+                {
+                    modified = true;
+                }
+
+                continue;
+            }
+
+            if (string.Equals(changeType, "quest_create", StringComparison.OrdinalIgnoreCase))
+            {
+                if (NormalizeQuestCreate(changeObj, applied))
+                {
+                    modified = true;
+                }
+
+                continue;
+            }
+
             if (!string.Equals(changeType, "event", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
@@ -157,6 +188,172 @@ internal static class ToolCallExamples
         }
 
         return modified;
+    }
+
+    private static bool NormalizeRulesetActionParameters(JsonObject changeObj, List<string> applied)
+    {
+        if (!changeObj.TryGetPropertyValue("parameters", out var paramsNode) || paramsNode is not JsonObject parameters)
+        {
+            return false;
+        }
+
+        var modified = false;
+        foreach (var (canonical, aliases) in new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["resolution"] = ["spellResolution", "spell_resolution", "mode"],
+            ["toHitBonus"] = ["to_hit_bonus", "attackBonus", "attack_bonus"],
+            ["halfOnSave"] = ["half_on_save", "halfDamageOnSave"],
+            ["healDice"] = ["heal_dice"],
+            ["healBonus"] = ["heal_bonus"],
+            ["healAmount"] = ["heal_amount"],
+            ["spellAttackBonus"] = ["spell_attack_bonus"],
+            ["saveAttribute"] = ["save_attribute"],
+            ["saveSkill"] = ["save_skill"],
+            ["rangeModifier"] = ["range_modifier"],
+            ["bonusDice"] = ["bonus_dice", "luckDice"],
+            ["targetPart"] = ["target_part", "hitLocation"],
+        })
+        {
+            if (parameters.ContainsKey(canonical))
+            {
+                continue;
+            }
+
+            foreach (var alias in aliases)
+            {
+                if (!parameters.ContainsKey(alias))
+                {
+                    continue;
+                }
+
+                parameters[canonical] = JsonNode.Parse(parameters[alias]!.ToJsonString());
+                parameters.Remove(alias);
+                applied.Add($"ruleset_action.{alias}→{canonical}");
+                modified = true;
+                break;
+            }
+        }
+
+        if (parameters.ContainsKey("difficulty") && !parameters.ContainsKey("dc")
+            && changeObj.TryGetPropertyValue("actionType", out var actionTypeNode)
+            && actionTypeNode is JsonValue actionTypeValue
+            && string.Equals(actionTypeValue.GetValue<string>(), "Spell", StringComparison.OrdinalIgnoreCase))
+        {
+            parameters["dc"] = JsonNode.Parse(parameters["difficulty"]!.ToJsonString());
+            applied.Add("ruleset_action.difficulty→dc");
+            modified = true;
+        }
+
+        return modified;
+    }
+
+    private static bool NormalizeRumorChange(JsonObject changeObj, List<string> applied)
+    {
+        var modified = false;
+
+        if (changeObj.Remove("sourceCharacterId"))
+        {
+            applied.Add("rumor.removed sourceCharacterId");
+            modified = true;
+        }
+
+        if (!changeObj.ContainsKey("rumorId")
+            && changeObj.TryGetPropertyValue("subject", out var subjectNode)
+            && subjectNode is JsonValue subjectValue
+            && subjectValue.GetValue<string>() is { } subject
+            && !string.IsNullOrWhiteSpace(subject))
+        {
+            changeObj["rumorId"] = SlugifyRumorId(subject);
+            applied.Add("rumor.subject→rumorId");
+            modified = true;
+        }
+
+        if (changeObj.TryGetPropertyValue("newState", out var newStateNode)
+            && newStateNode is JsonValue newStateValue
+            && string.Equals(newStateValue.GetValue<string>(), "Active", StringComparison.OrdinalIgnoreCase))
+        {
+            changeObj.Remove("newState");
+            applied.Add("rumor.newState(Active)→removed");
+            modified = true;
+        }
+
+        var looksLikeCreate = changeObj.ContainsKey("text")
+            || (changeObj.ContainsKey("newText") && !changeObj.ContainsKey("newState"));
+
+        if (changeObj.ContainsKey("newText") && !changeObj.ContainsKey("text"))
+        {
+            if (looksLikeCreate)
+            {
+                changeObj["text"] = changeObj["newText"]!.DeepClone();
+                changeObj.Remove("newText");
+                applied.Add("rumor.newText→text");
+                modified = true;
+            }
+        }
+
+        if (looksLikeCreate
+            || (changeObj.ContainsKey("subject") && changeObj.ContainsKey("text") && !changeObj.ContainsKey("newState")))
+        {
+            if (!string.Equals(changeObj["$type"]?.GetValue<string>(), "rumor_create", StringComparison.OrdinalIgnoreCase))
+            {
+                changeObj["$type"] = "rumor_create";
+                applied.Add("rumor→rumor_create");
+                modified = true;
+            }
+
+            if (changeObj.ContainsKey("subject") && changeObj.ContainsKey("newState"))
+            {
+                changeObj.Remove("newState");
+                applied.Add("rumor.removed newState on create");
+                modified = true;
+            }
+        }
+        else if (changeObj.ContainsKey("subject") && changeObj.ContainsKey("newState"))
+        {
+            changeObj.Remove("subject");
+            applied.Add("rumor.removed subject (evolve)");
+            modified = true;
+        }
+
+        return modified;
+    }
+
+    private static bool NormalizeQuestCreate(JsonObject changeObj, List<string> applied)
+    {
+        var modified = false;
+
+        if (changeObj.ContainsKey("deadlineDays") && !changeObj.ContainsKey("deadlineDay"))
+        {
+            changeObj["deadlineDay"] = JsonNode.Parse(changeObj["deadlineDays"]!.ToJsonString());
+            changeObj.Remove("deadlineDays");
+            applied.Add("quest_create.deadlineDays→deadlineDay");
+            modified = true;
+        }
+
+        if (changeObj.TryGetPropertyValue("objectives", out var objectivesNode) && objectivesNode is JsonArray objectives)
+        {
+            foreach (var objective in objectives)
+            {
+                if (objective is not JsonObject objectiveObj)
+                {
+                    continue;
+                }
+
+                if (objectiveObj.Remove("state"))
+                {
+                    applied.Add("quest_create.objectives.removed state");
+                    modified = true;
+                }
+            }
+        }
+
+        return modified;
+    }
+
+    private static string SlugifyRumorId(string subject)
+    {
+        var slug = Regex.Replace(subject.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        return string.IsNullOrEmpty(slug) ? "rumors/unnamed" : $"rumors/{slug}";
     }
 
     private static bool TryGetChangeType(JsonObject changeObj, out string changeType)
@@ -271,7 +468,7 @@ internal static class ToolCallExamples
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
-                      "characterId": "characters/innkeeper"
+                      "characterId": "chars/innkeeper"
                     }
                     """)!.AsObject(),
             },
@@ -282,7 +479,7 @@ internal static class ToolCallExamples
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
-                      "characterId": "characters/innkeeper"
+                      "characterId": "chars/innkeeper"
                     }
                     """)!.AsObject(),
             },
@@ -335,7 +532,15 @@ internal static class ToolCallExamples
                 DeserializationHint =
                     "Conversation events MUST include 'involved' with every participant's character ID (NOT 'participants'). "
                     + "Crowd interrupt: $type scene_interrupt_check with locationId, characterId, optional riskModifier (-50..+50). "
-                    + "Example: \"involved\": [\"chars/valen\", \"chars/innkeeper\"].",
+                    + "SPELLS: use actionType Spell + parameters.resolution (attack|save|check|utility|heal). "
+                    + "AoE saves: ONE ruleset_action with all targetIds — NOT per-target SavingThrow. "
+                    + "Fireball pattern: resolution save, dc, save, damageDice, halfOnSave true. "
+                    + "Detect Magic: resolution check, dc, skill — no targetIds. "
+                    + "5e casters: bootstrap spellcastingAbility on systemStats; omit dc/bonus if spellSaveDc/spellAttackBonus derived. "
+                    + "Fallout: dc aliases difficulty; Stimpak = UseItem + healAmount. "
+                    + "RUMORS: seed with $type rumor_create (rumorId, subject, text); evolve with $type rumor (rumorId, newState). "
+                    + "Engine auto-applies hp from ruleset_action — no duplicate hp commits. "
+                    + "See get_help → Ruleset Actions for copy-paste JSON.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
@@ -382,6 +587,7 @@ internal static class ToolCallExamples
                     "systemStats.attributes accepts numbers only — no strings or booleans (e.g. attributes.hitDie: \"d12\" fails). "
                     + "Put hitDie on the dnd5e extension root (systemStats.hitDie), not in attributes. "
                     + "Omit maxHp to auto-derive HP from hitDie/level/constitution; explicit maxHp always wins. "
+                    + "Multiclass: systemStats.classLevels array. Casters: spellcastingAbility (derives spellSaveDc/spellAttackBonus). "
                     + "During play prefer commit with character_create.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """

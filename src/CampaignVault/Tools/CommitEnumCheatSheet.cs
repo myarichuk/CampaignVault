@@ -13,12 +13,20 @@ internal static class CommitEnumCheatSheet
 - `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt
   - Common mistake: Narrative/Roleplay → **Conversation**
   - **Conversation events MUST include `involved`: [`chars/pc`, `chars/npc`]** (every speaker). NOT `participants`.
-- `rumor.newState` → Nascent, Spreading, Peak, Fading, Resolved, Forgotten
+- `rumor_create` → seed rumor: `rumorId`, `subject`, `text` (starts Nascent). NOT `newState: Active`
+- `rumor` (evolve) → `rumorId`, `newState`: Nascent, Spreading, Peak, Fading, Resolved, Forgotten
 - `quest_progress.newState` / quest overall → Open, InProgress, Complete, Failed, Skipped
 - `quest_create.urgency` → Low, Normal, Urgent, Critical
-- `ruleset_action.actionType` → Attack, Spell, SkillCheck, ContestedCheck, OpposedCheck, UseItem, Recovery, SavingThrow, Meta
+- `ruleset_action.actionType` → Attack, Spell, SkillCheck, ContestedCheck, OpposedCheck (alias), UseItem, Recovery, SavingThrow
+- `ruleset_action.parameters.resolution` (Spell) → attack, save, check, utility, heal
+- `ruleset_action.parameters.save` → 5e: Strength/Dexterity/Constitution/Intelligence/Wisdom/Charisma; PF2e: Fortitude/Reflex/Will
+- `ruleset_action.parameters.halfOnSave` → true/false (5e save spells default true)
+- `SavingThrow` = actor resists; `Spell`+`resolution:save` = all targetIds roll in ONE commit (NOT per-target SavingThrow)
+- `SkillCheck` = non-magic skills; `Spell`+`resolution:check` = magic (Detect Magic). Engine auto-applies hp — no duplicate `hp` commits
 - `ruleset_action.advantageState` → None, Advantage, Disadvantage
 - `ruleset_action.actionCategory` → Melee, Ranged, Spell, Maneuver, Social, Survival
+- `systemStats.classLevels` (5e multiclass) → [{ "class": "Fighter", "level": 5 }, { "class": "Wizard", "level": 5 }]
+- `level_up.classGained` (5e multiclass) → e.g. "Wizard" — which class gained the level
 - `knowledge_update.source` → Witnessed, Heard, Told, Experienced, Trauma, Conditioned
 - `knowledge_update.valence` → Positive, Negative, Neutral, Traumatic
 - `engagement_relation.category` → Physical, Social, Medical, Attention, Proximity
@@ -49,10 +57,22 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 **Conversation commit template (copy-paste):**
 { "$type": "event", "category": "Conversation", "summary": "Valen asked Lirael about the missing caravans.", "involved": ["chars/valen", "chars/lirael-goldvein"] }
 
-### rumor (`$type: rumor`)
+### rumor_create (`$type: rumor_create`)
+| Field | Notes |
+|-------|--------|
+| `rumorId` | Required. e.g. `rumors/nightshade-gang` |
+| `subject` | Short topic label |
+| `text` | Initial rumor body (NOT `newText`) |
+| `relatedLocationIds` | Optional location ties |
+
+State always starts **Nascent**. Do not pass `newState: Active`.
+
+### rumor (`$type: rumor` — evolve existing)
 | Field | Valid values |
 |-------|----------------|
+| `rumorId` | Required — must already exist |
 | `newState` | Nascent, Spreading, Peak, Fading, Resolved, Forgotten |
+| `newText` | Optional updated text |
 
 ### quest_create / quest_progress
 | Field | Valid values |
@@ -66,10 +86,18 @@ Note: `quest_create.objectives[]` only needs `description` (+ optional `rewardHi
 ### ruleset_action
 | Field | Valid values |
 |-------|----------------|
-| `actionType` | Attack, Spell, SkillCheck, ContestedCheck, OpposedCheck, UseItem, Recovery, SavingThrow, Meta |
+| `actionType` | Attack, Spell, SkillCheck, ContestedCheck, OpposedCheck (alias), UseItem, Recovery, SavingThrow |
 | `actionCategory` | Melee, Ranged, Spell, Maneuver, Social, Survival |
 | `advantageState` | None, Advantage, Disadvantage |
+| `parameters.resolution` (Spell) | attack, save, check, utility, heal — **set explicitly** |
+| `parameters.save` | 5e abilities; PF2e Fortitude/Reflex/Will; Fallout: use `saveAttribute` + optional `saveSkill` |
+| `parameters.halfOnSave` | true/false — 5e defaults **true** (half damage on successful save) |
+| `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) or Stimpak-style items (Fallout flat `healAmount`) |
+| `parameters.spellAttackBonus` / `dc` | Optional if caster has bootstrapped `spellAttackBonus` / `spellSaveDc` on systemStats |
 | `parameters.targetPart` (Fallout) | Head, Neck, Torso, LeftArm, RightArm, LeftHand, RightHand, LeftLeg, RightLeg, LeftFoot, RightFoot |
+| `parameters.bonusDice` / `useLuck` (Fallout) | Extra d20s in pool; `useLuck` adds +1 die (does not auto-spend luckPoints) |
+| `parameters.rangeModifier` / `cover` (Fallout) | Added to attack difficulty (defense + modifiers) |
+| `parameters.dc` (Fallout) | Alias for `difficulty` on saves/explosives |
 
 ### knowledge_update
 | Field | Valid values |
@@ -112,7 +140,10 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 | `$system` | Dnd5e, Pathfinder2e, Fallout2d20 |
 | `hpMode` (5e) | average, rolled |
 | `hitDie` (5e) | String on extension root — e.g. `"d12"` (NOT in `attributes`) |
-| `level` | Integer on extension root |
+| `level` | Integer on extension root (total character level) |
+| `classLevels` (5e multiclass) | `[{ "class": "Fighter", "level": 5 }, { "class": "Wizard", "level": 5 }]` on systemStats |
+| `spellcastingAbility` (5e) | Intelligence, Wisdom, or Charisma — derives spell DC/attack at bootstrap |
+| `spellSaveDc` / `spellAttackBonus` (5e) | Optional overrides; omit to auto-derive from level + ability |
 | `classHpPerLevel`, `ancestryHp` (PF2e) | Integers for HP derivation |
 | `endurance`, `luck`, `hpPerLevel` (Fallout) | Integers for HP derivation |
 | `statBlockHp` (all systems) | Authoritative creature HP; skips formula. PCs should omit. |
@@ -124,6 +155,7 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 | `levelsGained` | Positive integer (default 1) |
 | `hpMode` (5e) | average, rolled — override for this level gain |
 | `healToMatch` | Boolean — if true, increase `currentHp` by the same amount as `maxHp` gain |
+| `classGained` (5e multiclass) | Which class gained the level (e.g. `"Wizard"`) — sets hit die for HP gain |
 
 """;
 }

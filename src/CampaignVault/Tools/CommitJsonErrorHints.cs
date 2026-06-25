@@ -77,9 +77,9 @@ internal static partial class CommitJsonErrorHints
         return lookup;
     }
 
-    private static bool TryResolveEnumFromPath(string? path, JsonElement? source, out Type enumType)
+    private static bool TryResolveEnumFromPath(string? path, JsonElement? source, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Type? enumType)
     {
-        enumType = null!;
+        enumType = null;
         if (string.IsNullOrWhiteSpace(path))
         {
             return false;
@@ -102,7 +102,16 @@ internal static partial class CommitJsonErrorHints
 
         if (path.EndsWith(".newState", StringComparison.OrdinalIgnoreCase))
         {
-            enumType = typeof(RumorState);
+            if (source is { } rootNode
+                && TryReadChangeTypeAtPath(rootNode, path, out var ct)
+                && string.Equals(ct, "quest_progress", StringComparison.OrdinalIgnoreCase))
+            {
+                enumType = typeof(QuestState);
+            }
+            else
+            {
+                enumType = typeof(RumorState);
+            }
             return true;
         }
 
@@ -151,20 +160,22 @@ internal static partial class CommitJsonErrorHints
         return false;
     }
 
-    private static bool TryResolveEnumType(string typeName, out Type enumType)
+    private static bool TryResolveEnumType(string typeName, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Type? enumType)
     {
-        if (EnumTypesByName.TryGetValue(typeName, out enumType!))
+        if (EnumTypesByName.TryGetValue(typeName, out var typeValue))
         {
+            enumType = typeValue;
             return true;
         }
 
         var shortName = typeName.Split('.').LastOrDefault();
-        if (shortName is not null && EnumTypesByName.TryGetValue(shortName, out enumType!))
+        if (shortName is not null && EnumTypesByName.TryGetValue(shortName, out typeValue))
         {
+            enumType = typeValue;
             return true;
         }
 
-        enumType = null!;
+        enumType = null;
         return false;
     }
 
@@ -232,6 +243,8 @@ internal static partial class CommitJsonErrorHints
             ("EventCategory", "Narrative" or "narrative" or "Roleplay" or "roleplay") => nameof(EventCategory
                 .Conversation),
             ("EventCategory", "Scene" or "scene") => nameof(EventCategory.Interaction),
+            ("RumorState", "Active" or "active") => nameof(RumorState.Nascent),
+            ("RulesetActionType", "Meta" or "meta") => nameof(RulesetActionType.SkillCheck),
             _ => null,
         };
     }
