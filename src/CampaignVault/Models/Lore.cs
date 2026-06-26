@@ -4,6 +4,8 @@ public class Lore
 {
     public string Id { get; set; } = default!;
     
+    public float[]? SemanticVector { get; set; }
+    
     public string Title { get; set; } = default!;
     
     public string Content { get; set; } = default!;

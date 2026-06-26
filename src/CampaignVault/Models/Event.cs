@@ -24,6 +24,8 @@ public class Event
 {
     public string Id { get; set; } = default!;
     
+    public float[]? SemanticVector { get; set; }
+    
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
     public int DayLogged { get; set; }

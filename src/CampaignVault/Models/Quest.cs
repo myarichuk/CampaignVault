@@ -3,6 +3,7 @@ namespace CampaignVault.Models;
 public class Quest
 {
     public string Id { get; set; } = default!;
+    public float[]? SemanticVector { get; set; }
     public string Title { get; set; } = default!;
     public string? GiverId { get; set; }
     public List<QuestObjective> Objectives { get; set; } = [];

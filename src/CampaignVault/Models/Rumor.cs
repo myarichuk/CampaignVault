@@ -4,6 +4,8 @@ public class Rumor
 {
     public string Id { get; set; } = default!;
     
+    public float[]? SemanticVector { get; set; }
+    
     public string RegionLocationId { get; set; } = default!;
     
     public string Subject { get; set; } = default!;
