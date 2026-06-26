@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
 
-public class Location
+public class Location : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
     

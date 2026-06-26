@@ -20,7 +20,7 @@ public enum EventCategory
     SceneInterrupt
 }
 
-public class Event
+public class Event : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
     

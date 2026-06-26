@@ -1,6 +1,6 @@
 namespace CampaignVault.Models;
 
-public class Faction
+public class Faction : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
     public float[]? SemanticVector { get; set; }

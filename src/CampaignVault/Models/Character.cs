@@ -1,6 +1,6 @@
 namespace CampaignVault.Models;
 
-public class Character
+public class Character : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
     

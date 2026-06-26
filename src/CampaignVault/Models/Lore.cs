@@ -1,6 +1,6 @@
 namespace CampaignVault.Models;
 
-public class Lore
+public class Lore : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
     
