@@ -61,7 +61,10 @@ public class CampaignRepository
     {
         if (entity is IHasSemanticVector semanticEntity) {
             string textToEmbed = BuildEmbeddingText(semanticEntity);
-            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+            if (!string.IsNullOrWhiteSpace(textToEmbed))
+            {
+                semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+            }
         }
     }
 
@@ -1086,8 +1089,6 @@ public class CampaignRepository
             existing.LastUpdated = item.LastUpdated;
             existing.CampaignName = item.CampaignName;
             existing.SemanticVector = item.SemanticVector; // ensure set/copied for scoping
-            // Note: original missed copying Tags; added for completeness in hardening pass
-            existing.Tags = item.Tags ?? existing.Tags ?? [];
         }
         else
         {

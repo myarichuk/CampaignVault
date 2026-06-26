@@ -12,14 +12,17 @@ internal static class AuthoringMcpSessionHelper
     public const string NoVaultError =
         "No campaign vault is open. Open or create a vault in the authoring app first.";
 
-    public static CampaignVaultSession? TestSessionOverride { get; set; }
+    internal static Func<IWorkspaceState?> WorkspaceStateProvider { get; set; } = 
+        () => App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
+
+    internal static void ResetWorkspaceStateProvider() => 
+        WorkspaceStateProvider = () => App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
 
     public static CampaignVaultSession? TryGetOpenSession(out AuthoringToolResult? errorResult)
     {
         errorResult = null;
-        if (TestSessionOverride != null) return TestSessionOverride;
 
-        var session = (App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState)?.Session;
+        var session = WorkspaceStateProvider()?.Session;
         if (session is not { IsOpen: true })
         {
             errorResult = new AuthoringToolResult(success: false, error: NoVaultError);
@@ -31,8 +34,8 @@ internal static class AuthoringMcpSessionHelper
 
     public static void EnsureSyncConfigured(CampaignVaultSession session)
     {
-        var mainVm = App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
-        if (mainVm != null)
+        var mainVm = WorkspaceStateProvider();
+        if (mainVm?.Sync != null)
         {
             mainVm.Sync.ConfigureSessionSync();
             return;
@@ -93,5 +96,5 @@ internal static class AuthoringMcpSessionHelper
     }
 
     public static void RefreshUiIfAvailable() =>
-        (App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState)?.RefreshAll();
+        WorkspaceStateProvider()?.RefreshAll();
 }
