@@ -2,6 +2,7 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Scenes;
 using CampaignVault.Models;
+using CampaignVault.Services;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;
@@ -16,6 +17,7 @@ public class CampaignRepository
     private readonly CampaignDocumentKeys _keys;
     private readonly INpcInitiativeService _initiativeService;
     private readonly SceneAssembler _sceneAssembler;
+    private readonly ILocalEmbeddingService _embeddingService;
 
     private string ResolveCampaign(string? campaignName)
     {
@@ -41,7 +43,8 @@ public class CampaignRepository
         CampaignDocumentKeys keys,
         ChangeHandlers.WorldChangeDispatcher changeDispatcher,
         SceneAssembler sceneAssembler,
-        INpcInitiativeService initiativeService)
+        INpcInitiativeService initiativeService,
+        ILocalEmbeddingService embeddingService)
     {
         _store = store;
         _simulationEngine = simulationEngine;
@@ -51,6 +54,23 @@ public class CampaignRepository
         _initiativeService = initiativeService ?? throw new ArgumentNullException(nameof(initiativeService));
         _sceneAssembler = sceneAssembler ?? throw new ArgumentNullException(nameof(sceneAssembler));
         _changeDispatcher = changeDispatcher ?? throw new ArgumentNullException(nameof(changeDispatcher));
+        _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
+    }
+
+    private string BuildEmbeddingText(IHasSemanticVector entity)
+    {
+        return entity switch
+        {
+            Character c => $"{c.Name}\n{c.Notes}",
+            Lore l => $"{l.Title}\n{l.Content}",
+            Location loc => $"{loc.Name}\n{loc.Description}",
+            Rumor r => $"{r.Subject}\n{r.CurrentText}",
+            Item i => $"{i.Name}\n{i.Description}",
+            Faction f => $"{f.Name}\n{f.Description}",
+            Quest q => $"{q.Title}\n{q.DmNotes}",
+            Event e => e.Summary,
+            _ => string.Empty
+        };
     }
 
     /// <summary>
@@ -570,6 +590,11 @@ public class CampaignRepository
 
         character.LastUpdated = DateTime.UtcNow;
 
+        if (character is IHasSemanticVector semanticEntity) {
+            string textToEmbed = BuildEmbeddingText(semanticEntity);
+            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+        }
+
         var existing = await session.LoadAsync<Character>(character.Id);
         if (existing != null)
         {
@@ -593,7 +618,8 @@ public class CampaignRepository
             existing.IsPc = character.IsPc;
             existing.IsPartyCompanion = character.IsPartyCompanion;
             existing.LastUpdated = character.LastUpdated;
-            existing.CampaignName = character.CampaignName; // ensure set/copied for scoping
+            existing.CampaignName = character.CampaignName;
+            existing.SemanticVector = character.SemanticVector; // ensure set/copied for scoping
         }
         else
         {
@@ -776,6 +802,11 @@ public class CampaignRepository
 
         lore.LastUpdated = DateTime.UtcNow;
 
+        if (lore is IHasSemanticVector semanticEntity) {
+            string textToEmbed = BuildEmbeddingText(semanticEntity);
+            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+        }
+
         var existing = await session.LoadAsync<Lore>(lore.Id);
         if (existing != null)
         {
@@ -785,7 +816,8 @@ public class CampaignRepository
             existing.Keywords = lore.Keywords ?? [];
             existing.Category = lore.Category;
             existing.LastUpdated = lore.LastUpdated;
-            existing.CampaignName = lore.CampaignName; // ensure set/copied for scoping
+            existing.CampaignName = lore.CampaignName;
+            existing.SemanticVector = lore.SemanticVector; // ensure set/copied for scoping
         }
         else
         {
@@ -849,6 +881,11 @@ public class CampaignRepository
         SanitizeLocation(location);
         location.LastUpdated = DateTime.UtcNow;
 
+        if (location is IHasSemanticVector semanticEntity) {
+            string textToEmbed = BuildEmbeddingText(semanticEntity);
+            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+        }
+
         var existing = await session.LoadAsync<Location>(location.Id);
         if (existing != null)
         {
@@ -866,7 +903,8 @@ public class CampaignRepository
             existing.LastVisitedDay = location.LastVisitedDay;
             existing.Metadata = location.Metadata ?? [];
             existing.LastUpdated = location.LastUpdated;
-            existing.CampaignName = location.CampaignName; // ensure set/copied for scoping
+            existing.CampaignName = location.CampaignName;
+            existing.SemanticVector = location.SemanticVector; // ensure set/copied for scoping
             existing.ControllingFactionId = location.ControllingFactionId; // Phase 7.1
         }
         else
@@ -937,6 +975,11 @@ public class CampaignRepository
             rumor.LastStateChangeDay = t.TotalDaysElapsed;
         }
 
+        if (rumor is IHasSemanticVector semanticEntity) {
+            string textToEmbed = BuildEmbeddingText(semanticEntity);
+            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+        }
+
         var existing = await session.LoadAsync<Rumor>(rumor.Id);
         if (existing != null)
         {
@@ -947,7 +990,8 @@ public class CampaignRepository
             existing.DayCreated = rumor.DayCreated;
             existing.LastStateChangeDay = rumor.LastStateChangeDay;
             existing.LastUpdated = rumor.LastUpdated;
-            existing.CampaignName = rumor.CampaignName; // ensure for scoping (strict for rumors)
+            existing.CampaignName = rumor.CampaignName;
+            existing.SemanticVector = rumor.SemanticVector; // ensure for scoping (strict for rumors)
         }
         else
         {
@@ -1033,6 +1077,11 @@ public class CampaignRepository
         SanitizeItem(item);
         item.LastUpdated = DateTime.UtcNow;
 
+        if (item is IHasSemanticVector semanticEntity) {
+            string textToEmbed = BuildEmbeddingText(semanticEntity);
+            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+        }
+
         var existing = await session.LoadAsync<Item>(item.Id);
         if (existing != null)
         {
@@ -1041,9 +1090,11 @@ public class CampaignRepository
             existing.Properties = item.Properties ?? [];
             existing.HolderId = item.HolderId;
             existing.LastUpdated = item.LastUpdated;
-            existing.CampaignName = item.CampaignName; // ensure set/copied for scoping
+            existing.CampaignName = item.CampaignName;
+            existing.SemanticVector = item.SemanticVector; // ensure set/copied for scoping
             // Note: original missed copying Tags; added for completeness in hardening pass
             existing.Tags = item.Tags ?? existing.Tags ?? [];
+            existing.SemanticVector = item.SemanticVector;
         }
         else
         {
@@ -1335,6 +1386,11 @@ public class CampaignRepository
 
         faction.LastUpdated = DateTime.UtcNow;
 
+        if (faction is IHasSemanticVector semanticEntity) {
+            string textToEmbed = BuildEmbeddingText(semanticEntity);
+            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+        }
+
         var existing = await session.LoadAsync<Faction>(faction.Id);
         if (existing != null)
         {
@@ -1349,6 +1405,7 @@ public class CampaignRepository
             existing.Metadata = faction.Metadata ?? [];
             existing.LastUpdated = faction.LastUpdated;
             existing.CampaignName = faction.CampaignName;
+            existing.SemanticVector = faction.SemanticVector;
         }
         else
         {
@@ -1384,6 +1441,11 @@ public class CampaignRepository
 
         quest.LastUpdated = DateTime.UtcNow;
 
+        if (quest is IHasSemanticVector semanticEntity) {
+            string textToEmbed = BuildEmbeddingText(semanticEntity);
+            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+        }
+
         var existing = await session.LoadAsync<Quest>(quest.Id);
         if (existing != null)
         {
@@ -1400,6 +1462,7 @@ public class CampaignRepository
             existing.LastUpdatedDay = quest.LastUpdatedDay;
             existing.LastUpdated = quest.LastUpdated;
             existing.CampaignName = quest.CampaignName;
+            existing.SemanticVector = quest.SemanticVector;
         }
         else
         {

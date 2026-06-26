@@ -24,6 +24,12 @@ public sealed class TestNoOpSimulationEngine : IWorldSimulationEngine
         => Task.FromResult(new SimulationResult([], [], []));
 }
 
+public sealed class TestFakeEmbeddingService : CampaignVault.Services.ILocalEmbeddingService
+{
+    public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
+        => Task.FromResult(new float[] { 0.1f, 0.2f, 0.3f });
+}
+
 public class RavenDBFixture : IDisposable
 {
     public IDocumentStore Store { get; }
@@ -75,6 +81,7 @@ public class RavenDBFixture : IDisposable
         builder.RegisterInstance(Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance)
             .As<ILogger<CampaignRepository>>();
         builder.RegisterType<TestNoOpSimulationEngine>().As<IWorldSimulationEngine>().InstancePerLifetimeScope();
+        builder.RegisterType<TestFakeEmbeddingService>().As<CampaignVault.Services.ILocalEmbeddingService>().InstancePerLifetimeScope();
         
         Container = builder.Build();
         TestCampaignDefaults.EnsureExistsAsync(this).GetAwaiter().GetResult();

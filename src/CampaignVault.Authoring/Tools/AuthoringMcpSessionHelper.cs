@@ -12,9 +12,13 @@ internal static class AuthoringMcpSessionHelper
     public const string NoVaultError =
         "No campaign vault is open. Open or create a vault in the authoring app first.";
 
+    public static CampaignVaultSession? TestSessionOverride { get; set; }
+
     public static CampaignVaultSession? TryGetOpenSession(out AuthoringToolResult? errorResult)
     {
         errorResult = null;
+        if (TestSessionOverride != null) return TestSessionOverride;
+
         var session = (App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState)?.Session;
         if (session is not { IsOpen: true })
         {

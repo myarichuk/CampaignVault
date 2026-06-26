@@ -26,8 +26,7 @@ public class McpServerTests : IDisposable
 
     public void Dispose()
     {
-        WorkspaceService.VaultSession = null;
-        WorkspaceService.MainWindowViewModel = null;
+        AuthoringMcpSessionHelper.TestSessionOverride = null;
         _session.Dispose();
         TryDeleteDirectory(_tempDirectory);
     }
@@ -35,7 +34,7 @@ public class McpServerTests : IDisposable
     [Fact]
     public async Task ListWorkspaceEntities_NoVault_ReturnsError()
     {
-        WorkspaceService.VaultSession = null;
+        AuthoringMcpSessionHelper.TestSessionOverride = null;
         var tools = new AuthoringMcpTools();
 
         var result = await tools.ListWorkspaceEntities();
@@ -98,7 +97,7 @@ public class McpServerTests : IDisposable
             .Returns(call);
 
         _session.ConfigureVaultSync(() => mockClient);
-        WorkspaceService.VaultSession = _session;
+        AuthoringMcpSessionHelper.TestSessionOverride = _session;
 
         var tools = new AuthoringMcpTools();
         var result = await tools.FetchVault();
@@ -114,7 +113,7 @@ public class McpServerTests : IDisposable
     [Fact]
     public async Task PushToVault_NoVault_ReturnsError()
     {
-        WorkspaceService.VaultSession = null;
+        AuthoringMcpSessionHelper.TestSessionOverride = null;
         var tools = new AuthoringMcpTools();
 
         var result = await tools.PushToVault();
@@ -126,7 +125,7 @@ public class McpServerTests : IDisposable
     private async Task OpenVaultAsync()
     {
         await _session.CreateAsync(_tempDirectory, "mcp-test");
-        WorkspaceService.VaultSession = _session;
+        AuthoringMcpSessionHelper.TestSessionOverride = _session;
     }
 
     private static AsyncUnaryCall<TResponse> CreateFakeUnaryCall<TResponse>(TResponse response) =>

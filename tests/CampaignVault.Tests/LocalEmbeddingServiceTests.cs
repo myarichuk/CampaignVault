@@ -1,6 +1,6 @@
+using System.Threading.Tasks;
 using CampaignVault.Services;
 using Xunit;
-using FluentAssertions;
 
 namespace CampaignVault.Tests;
 
@@ -16,7 +16,7 @@ public class LocalEmbeddingServiceTests
         var result = await service.GenerateEmbeddingAsync("test");
 
         // Assert
-        result.Should().NotBeNull();
-        result.Length.Should().Be(384);
+        Assert.NotNull(result);
+        Assert.Equal(384, result.Length);
     }
 }
