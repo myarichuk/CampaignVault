@@ -57,6 +57,14 @@ public class CampaignRepository
         _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
     }
 
+    private async Task EnrichSemanticVectorAsync(object entity)
+    {
+        if (entity is IHasSemanticVector semanticEntity) {
+            string textToEmbed = BuildEmbeddingText(semanticEntity);
+            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+        }
+    }
+
     private string BuildEmbeddingText(IHasSemanticVector entity)
     {
         return entity switch
@@ -590,10 +598,7 @@ public class CampaignRepository
 
         character.LastUpdated = DateTime.UtcNow;
 
-        if (character is IHasSemanticVector semanticEntity) {
-            string textToEmbed = BuildEmbeddingText(semanticEntity);
-            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-        }
+        await EnrichSemanticVectorAsync(character);
 
         var existing = await session.LoadAsync<Character>(character.Id);
         if (existing != null)
@@ -733,6 +738,7 @@ public class CampaignRepository
             @event.Details = SanitizeDetails(@event.Details);
         }
 
+        await EnrichSemanticVectorAsync(@event);
         await session.StoreAsync(@event);
     }
 
@@ -802,10 +808,7 @@ public class CampaignRepository
 
         lore.LastUpdated = DateTime.UtcNow;
 
-        if (lore is IHasSemanticVector semanticEntity) {
-            string textToEmbed = BuildEmbeddingText(semanticEntity);
-            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-        }
+        await EnrichSemanticVectorAsync(lore);
 
         var existing = await session.LoadAsync<Lore>(lore.Id);
         if (existing != null)
@@ -881,10 +884,7 @@ public class CampaignRepository
         SanitizeLocation(location);
         location.LastUpdated = DateTime.UtcNow;
 
-        if (location is IHasSemanticVector semanticEntity) {
-            string textToEmbed = BuildEmbeddingText(semanticEntity);
-            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-        }
+        await EnrichSemanticVectorAsync(location);
 
         var existing = await session.LoadAsync<Location>(location.Id);
         if (existing != null)
@@ -975,10 +975,7 @@ public class CampaignRepository
             rumor.LastStateChangeDay = t.TotalDaysElapsed;
         }
 
-        if (rumor is IHasSemanticVector semanticEntity) {
-            string textToEmbed = BuildEmbeddingText(semanticEntity);
-            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-        }
+        await EnrichSemanticVectorAsync(rumor);
 
         var existing = await session.LoadAsync<Rumor>(rumor.Id);
         if (existing != null)
@@ -1077,10 +1074,7 @@ public class CampaignRepository
         SanitizeItem(item);
         item.LastUpdated = DateTime.UtcNow;
 
-        if (item is IHasSemanticVector semanticEntity) {
-            string textToEmbed = BuildEmbeddingText(semanticEntity);
-            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-        }
+        await EnrichSemanticVectorAsync(item);
 
         var existing = await session.LoadAsync<Item>(item.Id);
         if (existing != null)
@@ -1094,7 +1088,6 @@ public class CampaignRepository
             existing.SemanticVector = item.SemanticVector; // ensure set/copied for scoping
             // Note: original missed copying Tags; added for completeness in hardening pass
             existing.Tags = item.Tags ?? existing.Tags ?? [];
-            existing.SemanticVector = item.SemanticVector;
         }
         else
         {
@@ -1386,10 +1379,7 @@ public class CampaignRepository
 
         faction.LastUpdated = DateTime.UtcNow;
 
-        if (faction is IHasSemanticVector semanticEntity) {
-            string textToEmbed = BuildEmbeddingText(semanticEntity);
-            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-        }
+        await EnrichSemanticVectorAsync(faction);
 
         var existing = await session.LoadAsync<Faction>(faction.Id);
         if (existing != null)
@@ -1441,10 +1431,7 @@ public class CampaignRepository
 
         quest.LastUpdated = DateTime.UtcNow;
 
-        if (quest is IHasSemanticVector semanticEntity) {
-            string textToEmbed = BuildEmbeddingText(semanticEntity);
-            semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-        }
+        await EnrichSemanticVectorAsync(quest);
 
         var existing = await session.LoadAsync<Quest>(quest.Id);
         if (existing != null)

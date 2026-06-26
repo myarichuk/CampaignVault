@@ -1637,6 +1637,22 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task UpsertCharacter_Assigns_Semantic_Vector()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var id = "npcs/semantic-test-" + Guid.NewGuid();
+
+        var character = new Character { Id = id, Name = "Semantic NPC", Notes = "Some lore notes" };
+        await repo.UpsertCharacterAsync(session, character, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var dbChar = await session.LoadAsync<Character>(id);
+        Assert.NotNull(dbChar.SemanticVector);
+        Assert.NotEmpty(dbChar.SemanticVector);
+    }
+
+    [Fact]
     public async Task UpsertCharacter_Preserves_KeepAlive()
     {
         var repo = _fixture.CreateRepository();
