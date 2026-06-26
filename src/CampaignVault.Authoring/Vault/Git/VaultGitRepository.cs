@@ -71,7 +71,7 @@ public sealed class VaultGitRepository : IDisposable
         if (_repository!.Lookup<Commit>(commitSha) is null)
             throw new VaultException($"Commit '{commitSha}' was not found in the repository.");
 
-        var refs = _repository.Refs
+        var refs = _repository!.Refs
                    ?? throw new InvalidOperationException("The git repository has no reference collection.");
 
         if (refs[VaultPaths.SyncedRefName] is { } existing)
@@ -184,7 +184,7 @@ public sealed class VaultGitRepository : IDisposable
         if (fromCommit.Sha == toCommit.Sha)
             return [];
 
-        var changes = _repository.Diff.Compare<TreeChanges>(fromCommit.Tree, toCommit.Tree);
+        var changes = _repository!.Diff.Compare<TreeChanges>(fromCommit.Tree, toCommit.Tree);
         return changes
             .Select(c => c.Status == ChangeKind.Deleted ? c.OldPath : c.Path)
             .Where(p => !string.IsNullOrWhiteSpace(p) && VaultPaths.IsEntityRelativePath(p))
