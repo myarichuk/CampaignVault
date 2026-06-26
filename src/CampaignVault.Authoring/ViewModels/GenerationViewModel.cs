@@ -151,7 +151,7 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
     {
         if (string.IsNullOrEmpty(GenerationResult)) return;
 
-        var mainVm = WorkspaceService.MainWindowViewModel;
+        var mainVm = App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
         if (mainVm == null) return;
 
         if (mainVm.Workspace.SelectedNode is EntityNodeViewModel)

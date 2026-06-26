@@ -100,21 +100,33 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         RefreshFilesList();
     }
 
+    public Func<Task<string?>>? RequestEntityTypeAsync { get; set; }
+
     [RelayCommand]
-    private async Task CreateNewEntityAsync()
+    private async Task CreateNewEntityAsync(string? entityType = null)
     {
+        if (string.IsNullOrEmpty(entityType) && RequestEntityTypeAsync != null)
+        {
+            entityType = await RequestEntityTypeAsync();
+        }
+
+        if (string.IsNullOrEmpty(entityType))
+        {
+            return;
+        }
+
         // Delegate to main VM which owns the session and editor selection
-        var main = Services.WorkspaceService.MainWindowViewModel;
+        var main = App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
         if (main != null)
         {
-            await main.CreateNewEntityCommand.ExecuteAsync(null);
+            await main.CreateNewEntityCommand.ExecuteAsync(entityType);
         }
     }
 
     [RelayCommand]
     private async Task DeleteSelectedEntityAsync()
     {
-        var main = Services.WorkspaceService.MainWindowViewModel;
+        var main = App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
         if (main != null)
         {
             await main.DeleteSelectedEntityCommand.ExecuteAsync(null);
@@ -224,7 +236,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                     if (found != null)
                     {
                         SelectedNode = found;
-                        Services.WorkspaceService.MainWindowViewModel?.ReloadActiveFileContent();
+                        (App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState)?.ReloadActiveFileContent();
                     }
                 }
             }

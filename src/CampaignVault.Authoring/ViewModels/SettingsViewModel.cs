@@ -78,6 +78,9 @@ public partial class SettingsViewModel : ObservableObject
         _ = CheckConnectionAsync();
     }
 
+    private IWorkspaceState? GetWorkspaceState() => 
+        App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
+
     private async Task CheckConnectionAsync()
     {
         if (_userDisconnected)
@@ -95,12 +98,12 @@ public partial class SettingsViewModel : ObservableObject
             GrpcStatusText = message;
             GrpcStatusColor = "Green";
 
-            var mainVm = WorkspaceService.MainWindowViewModel;
+            var mainVm = GetWorkspaceState();
             if (mainVm?.Session.IsOpen == true)
             {
                 mainVm.Sync.ConfigureSessionSync();
                 mainVm.Sync.UpdateSummary();
-                mainVm.UpdateStatusBar();
+                if (mainVm is MainWindowViewModel m) m.UpdateStatusBar();
             }
         }
         else
@@ -118,14 +121,14 @@ public partial class SettingsViewModel : ObservableObject
         GrpcStatusText = statusMessage ?? "Disconnected";
         GrpcStatusColor = "Red";
 
-        var mainVm = WorkspaceService.MainWindowViewModel;
-        if (mainVm?.Session.IsOpen == true)
-            mainVm.UpdateStatusBar();
+        var mainVm = GetWorkspaceState();
+        if (mainVm?.Session.IsOpen == true && mainVm is MainWindowViewModel m)
+            m.UpdateStatusBar();
     }
 
     public void UpdateMcpStatus()
     {
-        IsMcpRunning = WorkspaceService.McpServerService?.IsRunning ?? false;
+        IsMcpRunning = GetWorkspaceState()?.McpServerService?.IsRunning ?? false;
         McpStatusText = IsMcpRunning ? $"Running (Port {McpPortValue})" : "Stopped";
         McpStatusColor = IsMcpRunning ? "Green" : "Red";
     }
@@ -133,16 +136,17 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task ToggleMcpServerAsync()
     {
-        var service = WorkspaceService.McpServerService;
-        if (service == null)
+        var mainVm = GetWorkspaceState();
+        var service = mainVm?.McpServerService;
+        if (service == null && mainVm != null)
         {
             service = new McpServerService();
-            WorkspaceService.McpServerService = service;
+            mainVm.McpServerService = service;
         }
 
-        if (service.IsRunning)
+        if (service != null && service.IsRunning)
             await service.StopAsync();
-        else
+        else if (service != null)
         {
             var port = McpPortValue.HasValue ? (int)McpPortValue.Value : 8080;
             await service.StartAsync(port);
@@ -182,6 +186,6 @@ public partial class SettingsViewModel : ObservableObject
 
         _settingsService.SaveSettings(_settings);
 
-        WorkspaceService.MainWindowViewModel?.Sync.ConfigureSessionSync();
+        GetWorkspaceState()?.Sync.ConfigureSessionSync();
     }
 }

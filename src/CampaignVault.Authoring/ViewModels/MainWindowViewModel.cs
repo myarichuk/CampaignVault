@@ -13,7 +13,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace CampaignVault.Authoring.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
 {
     private static readonly YamlDotNet.Serialization.ISerializer _yamlSerializer =
         new YamlDotNet.Serialization.SerializerBuilder()
@@ -33,6 +33,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public Dock.Model.Core.IFactory Factory { get; }
     public Dock.Model.Controls.IRootDock? Layout { get; }
+
+    public McpServerService? McpServerService { get; set; }
 
     private readonly WorkspaceParser _parser = new();
     private readonly CampaignHistoryService _historyService = new();
@@ -152,7 +154,6 @@ public partial class MainWindowViewModel : ViewModelBase
         Workspace.BindSession(null);
         Sync.Bind(null);
         SourceControl.Bind(null);
-        Services.WorkspaceService.VaultSession = null;
         ApplicationState.CurrentState = AppState.Idle;
         WorkspaceStatusMessage = "Returned to Campaign Hub.";
         UpdateStatusBar();
@@ -172,7 +173,6 @@ public partial class MainWindowViewModel : ViewModelBase
             Workspace.BindSession(Session);
             Sync.Bind(Session, RefreshAll);
             SourceControl.Bind(Session, RefreshAll);
-            Services.WorkspaceService.VaultSession = Session;
 
             ApplicationState.CurrentState = AppState.Editor;
             WorkspaceStatusMessage = $"Vault: {path}";

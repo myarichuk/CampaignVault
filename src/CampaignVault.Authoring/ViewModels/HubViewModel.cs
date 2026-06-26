@@ -124,7 +124,6 @@ public partial class HubViewModel : ViewModelBase
             _mainViewModel.Workspace.BindSession(_mainViewModel.Session);
             _mainViewModel.Sync.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
             _mainViewModel.SourceControl.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
-            WorkspaceService.VaultSession = _mainViewModel.Session;
 
             _mainViewModel.ApplicationState.CurrentState = AppState.Editor;
             _mainViewModel.WorkspaceStatusMessage = $"Vault: {path}";
@@ -164,7 +163,6 @@ public partial class HubViewModel : ViewModelBase
             _mainViewModel.Workspace.BindSession(_mainViewModel.Session);
             _mainViewModel.Sync.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
             _mainViewModel.SourceControl.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
-            WorkspaceService.VaultSession = _mainViewModel.Session;
             _mainViewModel.ApplicationState.CurrentState = AppState.Editor;
 
             StatusMessage = $"Fetching '{campaignName}'...";

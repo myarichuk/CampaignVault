@@ -15,7 +15,7 @@ internal static class AuthoringMcpSessionHelper
     public static CampaignVaultSession? TryGetOpenSession(out AuthoringToolResult? errorResult)
     {
         errorResult = null;
-        var session = WorkspaceService.VaultSession;
+        var session = (App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState)?.Session;
         if (session is not { IsOpen: true })
         {
             errorResult = new AuthoringToolResult(success: false, error: NoVaultError);
@@ -27,7 +27,7 @@ internal static class AuthoringMcpSessionHelper
 
     public static void EnsureSyncConfigured(CampaignVaultSession session)
     {
-        var mainVm = WorkspaceService.MainWindowViewModel;
+        var mainVm = App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
         if (mainVm != null)
         {
             mainVm.Sync.ConfigureSessionSync();
@@ -89,5 +89,5 @@ internal static class AuthoringMcpSessionHelper
     }
 
     public static void RefreshUiIfAvailable() =>
-        WorkspaceService.MainWindowViewModel?.RefreshAll();
+        (App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState)?.RefreshAll();
 }

@@ -5,11 +5,15 @@ using Avalonia.Markup.Xaml;
 using CampaignVault.Authoring.Services;
 using CampaignVault.Authoring.ViewModels;
 using CampaignVault.Authoring.Views;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CampaignVault.Authoring;
 
 public partial class App : Application
 {
+    public new static App? Current => (App?)Application.Current;
+    public IServiceProvider? Services { get; private set; }
+
     private McpServerService? _mcpServerService;
 
     public override void Initialize()
@@ -22,7 +26,10 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var mainWindowViewModel = new MainWindowViewModel();
-            WorkspaceService.MainWindowViewModel = mainWindowViewModel;
+            
+            var services = new ServiceCollection();
+            services.AddSingleton<IWorkspaceState>(mainWindowViewModel);
+            Services = services.BuildServiceProvider();
 
             desktop.MainWindow = new MainWindow
             {
@@ -34,7 +41,7 @@ public partial class App : Application
             if (settings.AutoStartMcp == true && settings.McpPortValue.HasValue)
             {
                 _mcpServerService = new McpServerService();
-                WorkspaceService.McpServerService = _mcpServerService;
+                mainWindowViewModel.McpServerService = _mcpServerService;
                 try
                 {
                     await _mcpServerService.StartAsync((int)settings.McpPortValue.Value);
@@ -52,7 +59,7 @@ public partial class App : Application
                 if (e.PropertyName == nameof(settings.McpPortValue) && settings.McpPortValue.HasValue)
                 {
                     _mcpServerService ??= new McpServerService();
-                    WorkspaceService.McpServerService = _mcpServerService;
+                    mainWindowViewModel.McpServerService = _mcpServerService;
                     try
                     {
                         await _mcpServerService.StartAsync((int)settings.McpPortValue.Value);
@@ -65,15 +72,24 @@ public partial class App : Application
                 }
             };
 
-            desktop.Exit += async (s, e) =>
+            bool isShuttingDown = false;
+            desktop.MainWindow.Closing += async (s, e) =>
             {
-                if (_mcpServerService != null)
+                if (!isShuttingDown)
                 {
-                    await _mcpServerService.StopAsync();
-                }
+                    e.Cancel = true;
+                    isShuttingDown = true;
 
-                await mainWindowViewModel.Session.CloseAsync();
-                mainWindowViewModel.Workspace.Dispose();
+                    if (_mcpServerService != null)
+                    {
+                        await _mcpServerService.StopAsync();
+                    }
+
+                    await mainWindowViewModel.Session.CloseAsync();
+                    mainWindowViewModel.Workspace.Dispose();
+
+                    desktop.MainWindow.Close();
+                }
             };
         }
 
