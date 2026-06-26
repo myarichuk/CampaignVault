@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CampaignVault.Authoring.Views.CreateEntityDialog"
+        Title="Create New Entity"
+        Width="300" Height="150"
+        WindowStartupLocation="CenterOwner"
+        Background="#1C1C24" Foreground="#E4E4EB">
+    <StackPanel Margin="20" Spacing="15">
+        <TextBlock Text="Select Entity Type:" />
+        <ComboBox Name="EntityTypeComboBox" HorizontalAlignment="Stretch">
+            <ComboBoxItem Content="Character" />
+            <ComboBoxItem Content="Location" />
+            <ComboBoxItem Content="Quest" />
+            <ComboBoxItem Content="Item" />
+            <ComboBoxItem Content="Faction" />
+            <ComboBoxItem Content="Lore" />
+            <ComboBoxItem Content="Event" />
+        </ComboBox>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Cancel" Click="Cancel_Click" />
+            <Button Content="Create" Click="Create_Click" Background="#2563EB" Foreground="White" />
+        </StackPanel>
+    </StackPanel>
+</Window>

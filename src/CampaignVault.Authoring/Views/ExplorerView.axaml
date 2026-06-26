@@ -2,11 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:CampaignVault.Authoring.ViewModels"
              x:Class="CampaignVault.Authoring.Views.ExplorerView"
-             x:DataType="vm:WorkspaceViewModel">
+             x:DataType="vm:WorkspaceViewModel"
+             x:Name="ExplorerRoot">
     <Grid RowDefinitions="Auto, *">
         <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto" Margin="5,0,0,8">
             <TextBlock Grid.Column="0" Text="Campaign Explorer" FontSize="13" FontWeight="Bold" Foreground="#A0A0AB" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Command="{Binding CreateNewEntityCommand}" ToolTip.Tip="Create new entity (character by default)"
+            <Button Grid.Column="1" Command="{Binding CreateNewEntityCommand}" ToolTip.Tip="Create new entity"
                     Background="Transparent" BorderThickness="0" Padding="4" Margin="0,0,4,0">
                 <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="14" Height="14" Foreground="#10B981" />
             </Button>
@@ -29,6 +30,11 @@
             <TreeView.DataTemplates>
                 <TreeDataTemplate DataType="vm:CategoryNodeViewModel" ItemsSource="{Binding Children}">
                     <StackPanel Orientation="Horizontal" Spacing="4">
+                        <StackPanel.ContextMenu>
+                            <ContextMenu x:CompileBindings="False">
+                                <MenuItem Header="Create New Entity..." Command="{Binding #ExplorerRoot.DataContext.CreateNewEntityCommand}" />
+                            </ContextMenu>
+                        </StackPanel.ContextMenu>
                         <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
                                   Width="14" Height="14" Foreground="#71717A" />
                         <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#A0A0AB" FontSize="12" />
@@ -36,6 +42,11 @@
                 </TreeDataTemplate>
                 <TreeDataTemplate DataType="vm:FolderNodeViewModel" ItemsSource="{Binding Children}">
                     <StackPanel Orientation="Horizontal" Spacing="4">
+                        <StackPanel.ContextMenu>
+                            <ContextMenu x:CompileBindings="False">
+                                <MenuItem Header="Create New Entity..." Command="{Binding #ExplorerRoot.DataContext.CreateNewEntityCommand}" />
+                            </ContextMenu>
+                        </StackPanel.ContextMenu>
                         <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
                                   Width="14" Height="14" Foreground="#52525B" />
                         <TextBlock Text="{Binding Title}" Foreground="#A0A0AB" FontSize="11" />
@@ -43,6 +54,11 @@
                 </TreeDataTemplate>
                 <DataTemplate DataType="vm:EntityNodeViewModel">
                     <Grid ColumnDefinitions="*, Auto" Height="24">
+                        <Grid.ContextMenu>
+                            <ContextMenu x:CompileBindings="False">
+                                <MenuItem Header="Delete Entity" Command="{Binding #ExplorerRoot.DataContext.DeleteSelectedEntityCommand}" />
+                            </ContextMenu>
+                        </Grid.ContextMenu>
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                             <Panel Width="12" Height="12">
                                 <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z"
