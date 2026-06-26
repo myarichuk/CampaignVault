@@ -11,6 +11,9 @@ service CampaignSync {
 
     // Sync Push: Push an entity to a specific campaign
     rpc PushCampaignEntity (PushCampaignEntityRequest) returns (PushResponse);
+
+    // Sync Push: Remove an entity from a specific campaign
+    rpc DeleteCampaignEntity (DeleteCampaignEntityRequest) returns (PushResponse);
 }
 
 message EmptyRequest {}
@@ -43,6 +46,12 @@ message PushCampaignEntityRequest {
     string id = 2;
     string type = 3;
     string content = 4; // Serialized JSON document
+}
+
+message DeleteCampaignEntityRequest {
+    string campaignName = 1;
+    string id = 2;
+    string type = 3;
 }
 
 message PushResponse {

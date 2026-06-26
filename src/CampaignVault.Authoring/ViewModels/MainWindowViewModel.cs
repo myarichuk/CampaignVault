@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Vault;
+using CampaignVault.Authoring.Vault.Sync;
 using CampaignVault.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,12 +20,14 @@ public partial class MainWindowViewModel : ViewModelBase
             .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
             .Build();
 
+    public CampaignVaultSession Session { get; } = new();
+
     public WorkspaceViewModel Workspace { get; } = new();
     public SettingsViewModel Settings { get; } = new();
     public GenerationViewModel Generation { get; }
     public SyncViewModel Sync { get; }
+    public SourceControlViewModel SourceControl { get; } = new();
     public HubViewModel Hub { get; }
-    public CampaignStateService CampaignState { get; }
 
     [ObservableProperty] private AppStateService _applicationState = new();
 
@@ -36,7 +40,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] private string _editorText = string.Empty;
 
-    [ObservableProperty] private string _workspaceStatusMessage = "Open a campaign folder to begin.";
+    [ObservableProperty] private string _workspaceStatusMessage = "Open a campaign vault to begin.";
 
     [ObservableProperty] private Character? _parsedCharacter;
 
@@ -54,6 +58,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] private string _badge2Value = string.Empty;
 
+    [ObservableProperty] private string _statusBarGit = "—";
+
+    [ObservableProperty] private string _statusBarSync = "Vault: not open";
+
+    [ObservableProperty] private string _statusBarConnection = "offline";
+
+    [ObservableProperty] private bool _showStatusBanner;
+
+    [ObservableProperty] private string _statusBannerMessage = string.Empty;
+
     public bool HasSelection => Workspace.SelectedNode is EntityNodeViewModel;
 
     public bool HasParseError => Workspace.SelectedNode is EntityNodeViewModel && ParsedCharacter == null &&
@@ -61,16 +75,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        CampaignState = new CampaignStateService(Workspace.DbService);
-        Sync = new SyncViewModel(Settings, Workspace, CampaignState);
+        Sync = new SyncViewModel(Settings);
         Generation = new GenerationViewModel(Settings);
         Hub = new HubViewModel(this);
-        CampaignState.SetClientFactory(() => Sync.CreateClient());
 
-        Workspace.SetStateService(CampaignState);
-
-        // Subscribe to selection changes
-        Workspace.PropertyChanged += async (s, e) =>
+        Workspace.PropertyChanged += async (_, e) =>
         {
             if (e.PropertyName == nameof(Workspace.SelectedNode))
             {
@@ -79,36 +88,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
                 if (Workspace.SelectedNode is EntityNodeViewModel entityNode)
                 {
-                    if (entityNode.Entity.CalculatedState == SyncState.RemoteOnly)
+                    try
                     {
-                        // Auto-pull
-                        var diff = new SyncDiffItem
-                        {
-                            EntityId = entityNode.Entity.Id,
-                            EntityType = entityNode.Entity.EntityType,
-                            RemoteContent = entityNode.Entity.RemoteMarkdown ?? string.Empty,
-                            FilePath = Path.Combine(Workspace.CurrentDirectory,
-                                $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md"),
-                            FileName = entityNode.Entity.Name,
-                            Status = "AddedRemotely"
-                        };
-                        try
-                        {
-                            await Sync.PullSelectedCommand.ExecuteAsync(diff);
-                            // Refresh the node's entity after pull
-                            entityNode.Entity.LocalHash = entityNode.Entity.RemoteHash;
-                            entityNode.Entity.RelativePath =
-                                $"{entityNode.Entity.EntityType}s/{entityNode.Entity.Id}.md";
-                        }
-                        catch
-                        {
-                        }
+                        var content = await Session.ReadFileAsync(entityNode.Entity.RelativePath);
+                        EditorText = content;
+                        OnEditorTextChanged(EditorText);
                     }
-
-                    var absolutePath = Path.Combine(Workspace.CurrentDirectory,
-                        entityNode.Entity.RelativePath ?? string.Empty);
-                    LoadFileContent(absolutePath);
-                    OnEditorTextChanged(EditorText);
+                    catch
+                    {
+                        EditorText = string.Empty;
+                    }
                 }
             }
         };
@@ -116,22 +105,10 @@ public partial class MainWindowViewModel : ViewModelBase
         Factory = new AuthoringDockFactory(this);
         Layout = Factory.CreateLayout();
         if (Layout != null)
-        {
             Factory.InitLayout(Layout);
-        }
-
-#if DEBUG
-        // For dev testing, auto-load a dummy path or local path if it exists
-        var testPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestCampaign");
-        if (!Directory.Exists(testPath)) Directory.CreateDirectory(testPath);
-        // LoadCampaign(testPath); // Skip auto-load to show Hub by default
-#endif
     }
 
-    public void SetStorageProvider(IStorageProvider storageProvider)
-    {
-        _storageProvider = storageProvider;
-    }
+    public void SetStorageProvider(IStorageProvider storageProvider) => _storageProvider = storageProvider;
 
     public async Task<string?> PickFolderAsync()
     {
@@ -143,7 +120,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         var folders = await _storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select Campaign Workspace Folder",
+            Title = "Select Campaign Vault Folder",
             AllowMultiple = false
         });
 
@@ -169,55 +146,256 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void BackToHub()
+    private async Task BackToHub()
     {
+        await Session.CloseAsync();
+        Workspace.BindSession(null);
+        Sync.Bind(null);
+        SourceControl.Bind(null);
+        Services.WorkspaceService.VaultSession = null;
         ApplicationState.CurrentState = AppState.Idle;
         WorkspaceStatusMessage = "Returned to Campaign Hub.";
+        UpdateStatusBar();
     }
 
     [RelayCommand]
     public async Task LoadCampaignAsync(string path)
     {
-        _historyService.Add(path);
-        Hub.LoadRecentCampaigns();
-        WorkspaceStatusMessage = $"Loading workspace: {path}";
-        ApplicationState.CurrentState = AppState.Editor;
-        await Workspace.LoadDirectoryAsync(path);
-        WorkspaceStatusMessage = $"Workspace: {path}";
-        Sync.StatusMessage = "Workspace loaded. Connect gRPC sync to compare with CampaignVault.";
+        WorkspaceStatusMessage = $"Opening vault: {path}";
+        try
+        {
+            await Session.OpenAsync(path);
+            _historyService.Add(path);
+            Hub.LoadRecentCampaigns();
+
+            Sync.ConfigureSessionSync();
+            Workspace.BindSession(Session);
+            Sync.Bind(Session, RefreshAll);
+            SourceControl.Bind(Session, RefreshAll);
+            Services.WorkspaceService.VaultSession = Session;
+
+            ApplicationState.CurrentState = AppState.Editor;
+            WorkspaceStatusMessage = $"Vault: {path}";
+            Sync.StatusMessage = "Vault open. Fetch to compare with Campaign Vault.";
+            RefreshAll();
+        }
+        catch (VaultException ex)
+        {
+            WorkspaceStatusMessage = ex.Message;
+            ShowStatusBanner = true;
+            StatusBannerMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            WorkspaceStatusMessage = $"Failed to open vault: {ex.Message}";
+            ShowStatusBanner = true;
+            StatusBannerMessage = ex.Message;
+        }
     }
 
-    public void LoadCampaign(string path)
+    public void RefreshAll()
     {
-        _ = LoadCampaignAsync(path);
+        Workspace.RefreshFilesList();
+        SourceControl.RefreshStatus();
+        Sync.UpdateSummary();
+        UpdateStatusBar();
+    }
+
+    public void UpdateStatusBar()
+    {
+        if (!Session.IsOpen)
+        {
+            StatusBarGit = "—";
+            StatusBarSync = "Vault: not open";
+            StatusBarConnection = "offline";
+            return;
+        }
+
+        var head = Session.HeadCommitSha;
+        StatusBarGit = head != null && head.Length > 7 ? head[..7] : head ?? "—";
+
+        var summary = Session.GetSyncSummary();
+        StatusBarSync = $"{summary.AheadCount} ahead · {summary.BehindCount} behind · {summary.ConflictCount} conflicts";
+
+        StatusBarConnection = summary.Connection.State switch
+        {
+            VaultConnectionState.Online => "online",
+            VaultConnectionState.Offline => "offline",
+            VaultConnectionState.Error => "error",
+            _ => "unknown"
+        };
+
+        // Only banner for hard errors / corrupt cache. Plain "offline" is valid for local authoring.
+        if (summary.RemoteCacheCorrupt || summary.Connection.State == VaultConnectionState.Error)
+        {
+            ShowStatusBanner = true;
+            StatusBannerMessage = summary.RemoteCacheCorrupt
+                ? "Remote cache is corrupt. Fetch again from the Vault Sync pane."
+                : summary.Connection.Message ?? $"Vault {StatusBarConnection}";
+        }
+        else
+        {
+            ShowStatusBanner = false;
+            StatusBannerMessage = string.Empty;
+        }
     }
 
     public void ReloadActiveFileContent()
     {
-        if (Workspace.SelectedNode is EntityNodeViewModel entityNode)
-        {
-            var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
-            LoadFileContent(absolutePath);
-        }
-    }
+        if (Workspace.SelectedNode is not EntityNodeViewModel entityNode)
+            return;
 
-    private void LoadFileContent(string path)
-    {
-        if (File.Exists(path))
+        if (!Session.IsOpen)
+            return;
+
+        try
         {
-            EditorText = File.ReadAllText(path);
+            EditorText = Session.ReadFileAsync(entityNode.Entity.RelativePath).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            EditorText = string.Empty;
         }
     }
 
     [RelayCommand]
     private async Task SaveActiveFileAsync()
     {
-        if (Workspace.SelectedNode is EntityNodeViewModel entityNode)
+        if (Workspace.SelectedNode is not EntityNodeViewModel entityNode || !Session.IsOpen)
+            return;
+
+        await Session.WriteFileAsync(entityNode.Entity.RelativePath, EditorText);
+        RefreshAll();
+        Sync.StatusMessage = $"Saved {entityNode.Title} at {DateTime.Now:HH:mm:ss}";
+    }
+
+    [RelayCommand]
+    private async Task DeleteSelectedEntityAsync()
+    {
+        if (Workspace.SelectedNode is not EntityNodeViewModel entityNode || !Session.IsOpen)
+            return;
+
+        var rel = entityNode.Entity.RelativePath;
+        try
         {
-            var absolutePath = Path.Combine(Workspace.CurrentDirectory, entityNode.Entity.RelativePath ?? string.Empty);
-            await File.WriteAllTextAsync(absolutePath, EditorText);
-            Sync.StatusMessage = $"Saved {entityNode.Title} locally at {DateTime.Now:HH:mm:ss}";
+            var absolute = Path.Combine(Session.VaultPath!, rel.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(absolute))
+                File.Delete(absolute);
+
+            // Clear selection and refresh
+            Workspace.SelectedNode = null;
+            EditorText = string.Empty;
+            RefreshAll();
+            Sync.StatusMessage = $"Deleted {rel}. Commit the change to record it.";
         }
+        catch (Exception ex)
+        {
+            WorkspaceStatusMessage = $"Delete failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task CreateNewEntityAsync(string? entityType = null)
+    {
+        if (!Session.IsOpen)
+        {
+            WorkspaceStatusMessage = "Open a vault before creating entities.";
+            return;
+        }
+
+        var type = (entityType ?? "character").ToLowerInvariant();
+        if (!IsSupportedEntityType(type))
+        {
+            type = "character";
+        }
+
+        var folder = GetFolderForType(type);
+        var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var slug = $"new-{type}-{ts}";
+        var relative = $"{folder}/{slug}.md";
+
+        var skeleton = BuildSkeleton(type, slug, $"New {char.ToUpper(type[0]) + type[1..]}");
+        try
+        {
+            await Session.WriteFileAsync(relative, skeleton);
+            RefreshAll();
+
+            // Select the new entity
+            var found = FindEntityNodeByPath(Workspace.Categories, relative);
+            if (found != null)
+            {
+                Workspace.SelectedNode = found;
+            }
+
+            WorkspaceStatusMessage = $"Created {relative}. Edit and Save (or Commit).";
+            Sync.StatusMessage = $"New {type} ready for editing.";
+        }
+        catch (Exception ex)
+        {
+            WorkspaceStatusMessage = $"Failed to create: {ex.Message}";
+        }
+    }
+
+    [RelayCommand] private Task CreateNewCharacterAsync() => CreateNewEntityAsync("character");
+    [RelayCommand] private Task CreateNewLocationAsync() => CreateNewEntityAsync("location");
+    [RelayCommand] private Task CreateNewQuestAsync() => CreateNewEntityAsync("quest");
+    [RelayCommand] private Task CreateNewItemAsync() => CreateNewEntityAsync("item");
+
+    private static bool IsSupportedEntityType(string t) =>
+        t is "character" or "location" or "quest" or "faction" or "lore" or "rumor" or "event" or "item";
+
+    private static string GetFolderForType(string t) => t switch
+    {
+        "character" => "characters",
+        "location" => "locations",
+        "quest" => "quests",
+        "faction" => "factions",
+        "lore" => "lore",
+        "rumor" => "rumors",
+        "event" => "events",
+        "item" => "items",
+        _ => "characters"
+    };
+
+    private static string BuildSkeleton(string type, string id, string name)
+    {
+        var front = type switch
+        {
+            "character" => $"id: {id}\nname: {name}\ncurrentHp: 10\nmaxHp: 10",
+            "location" => $"id: {id}\nname: {name}\ntype: Building\ndangerModifier: 0",
+            "quest" => $"id: {id}\ntitle: {name}\noverallState: Open\nurgency: Normal",
+            "faction" => $"id: {id}\nname: {name}\ninfluenceLevel: 1",
+            "lore" => $"id: {id}\ntitle: {name}\ncategory: General",
+            "rumor" => $"id: {id}\nsubject: {name}\nstate: Nascent\ntruthValue: Unknown\ndayCreated: 0",
+            "event" => $"id: {id}\ncategory: Discovery\ndayLogged: 0",
+            "item" => $"id: {id}\nname: {name}\ncoreCategory: Other\nholderId: \"\"",
+            _ => $"id: {id}\nname: {name}"
+        };
+        var bodyHint = type switch
+        {
+            "character" => "Notes and description here.",
+            "location" => "Description of the location.",
+            "quest" => "DM notes for the quest.",
+            "faction" => "Description of the faction.",
+            "lore" => "Lore content.",
+            "rumor" => "Current rumor text.",
+            "event" => "Event summary.",
+            "item" => "Item description and details.",
+            _ => ""
+        };
+        return $"---\n{front}\n---\n\n{bodyHint}\n";
+    }
+
+    private static EntityNodeViewModel? FindEntityNodeByPath(System.Collections.Generic.IEnumerable<ExplorerNodeViewModel> nodes, string relativePath)
+    {
+        foreach (var node in nodes)
+        {
+            if (node is EntityNodeViewModel en && string.Equals(en.Entity.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase))
+                return en;
+            var nested = FindEntityNodeByPath(node.Children, relativePath);
+            if (nested != null) return nested;
+        }
+        return null;
     }
 
     [ObservableProperty] private string _formName = string.Empty;
@@ -248,10 +426,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 PreviewNotes = string.Empty;
                 EntityTypeDisplay = "Unknown";
                 IsCharacter = false;
-                Badge1Label = string.Empty;
-                Badge1Value = string.Empty;
-                Badge2Label = string.Empty;
-                Badge2Value = string.Empty;
+                Badge1Label = Badge1Value = Badge2Label = Badge2Value = string.Empty;
                 OnPropertyChanged(nameof(HasParseError));
                 return;
             }
@@ -261,12 +436,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (type == "location")
             {
                 var loc = _parser.ParseLocation(value);
-                ParsedCharacter = new Character
-                {
-                    Id = loc.Id,
-                    Name = loc.Name,
-                    Notes = loc.Description
-                };
+                ParsedCharacter = new Character { Id = loc.Id, Name = loc.Name, Notes = loc.Description };
                 PreviewNotes = loc.Description ?? string.Empty;
                 EntityTypeDisplay = "Location";
                 IsCharacter = false;
@@ -278,12 +448,7 @@ public partial class MainWindowViewModel : ViewModelBase
             else if (type == "quest")
             {
                 var quest = _parser.ParseQuest(value);
-                ParsedCharacter = new Character
-                {
-                    Id = quest.Id,
-                    Name = quest.Title,
-                    Notes = quest.DmNotes
-                };
+                ParsedCharacter = new Character { Id = quest.Id, Name = quest.Title, Notes = quest.DmNotes };
                 PreviewNotes = quest.DmNotes ?? string.Empty;
                 EntityTypeDisplay = "Quest";
                 IsCharacter = false;
@@ -292,22 +457,73 @@ public partial class MainWindowViewModel : ViewModelBase
                 Badge2Label = "Urgency:";
                 Badge2Value = quest.Urgency.ToString();
             }
+            else if (type == "faction")
+            {
+                var f = _parser.ParseFaction(value);
+                ParsedCharacter = new Character { Id = f.Id, Name = f.Name, Notes = f.Description };
+                PreviewNotes = f.Description ?? string.Empty;
+                EntityTypeDisplay = "Faction";
+                IsCharacter = false;
+                Badge1Label = "Influence:";
+                Badge1Value = f.InfluenceLevel.ToString();
+                Badge2Label = Badge2Value = string.Empty;
+            }
+            else if (type == "lore")
+            {
+                var l = _parser.ParseLore(value);
+                ParsedCharacter = new Character { Id = l.Id, Name = l.Title, Notes = l.Content };
+                PreviewNotes = l.Content ?? string.Empty;
+                EntityTypeDisplay = "Lore";
+                IsCharacter = false;
+                Badge1Label = "Category:";
+                Badge1Value = l.Category ?? "";
+                Badge2Label = Badge2Value = string.Empty;
+            }
+            else if (type == "rumor")
+            {
+                var r = _parser.ParseRumor(value);
+                ParsedCharacter = new Character { Id = r.Id, Name = r.Subject, Notes = r.CurrentText };
+                PreviewNotes = r.CurrentText ?? string.Empty;
+                EntityTypeDisplay = "Rumor";
+                IsCharacter = false;
+                Badge1Label = "State:";
+                Badge1Value = r.State.ToString();
+                Badge2Label = "Truth:";
+                Badge2Value = r.TruthValue.ToString();
+            }
+            else if (type == "event")
+            {
+                var e = _parser.ParseEvent(value);
+                ParsedCharacter = new Character { Id = e.Id, Name = e.Category.ToString(), Notes = e.Summary };
+                PreviewNotes = e.Summary ?? string.Empty;
+                EntityTypeDisplay = "Event";
+                IsCharacter = false;
+                Badge1Label = "Day:";
+                Badge1Value = e.DayLogged.ToString();
+                Badge2Label = Badge2Value = string.Empty;
+            }
+            else if (type == "item")
+            {
+                var it = _parser.ParseItem(value);
+                ParsedCharacter = new Character { Id = it.Id, Name = it.Name, Notes = it.Description };
+                PreviewNotes = it.Description ?? string.Empty;
+                EntityTypeDisplay = "Item";
+                IsCharacter = false;
+                Badge1Label = "Category:";
+                Badge1Value = it.CoreCategory.ToString();
+                Badge2Label = "Holder:";
+                Badge2Value = it.HolderId ?? "";
+            }
             else
             {
+                // character or unknown -> character form + preview
                 var character = _parser.ParseCharacter(value);
                 ParsedCharacter = character;
                 PreviewNotes = character.Notes ?? string.Empty;
                 EntityTypeDisplay = "Character";
                 IsCharacter = true;
-                Badge1Label = string.Empty;
-                Badge1Value = string.Empty;
-                Badge2Label = string.Empty;
-                Badge2Value = string.Empty;
+                Badge1Label = Badge1Value = Badge2Label = Badge2Value = string.Empty;
 
-                // Set backing fields directly (not properties) to avoid triggering
-                // SyncFormToEditor() → EditorText change → re-entrant loop.
-                // The backing field assignment + manual OnPropertyChanged mirrors what
-                // the source-generated setter does but skips the partial OnXxxChanged callback.
                 _formName = character.Name ?? string.Empty;
                 OnPropertyChanged(nameof(FormName));
                 _formCurrentHp = character.CurrentHp;
@@ -325,14 +541,10 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            // Fail gracefully while user is typing incomplete frontmatter
             ParsedCharacter = null;
             PreviewNotes = value;
             IsCharacter = false;
-            Badge1Label = string.Empty;
-            Badge1Value = string.Empty;
-            Badge2Label = string.Empty;
-            Badge2Value = string.Empty;
+            Badge1Label = Badge1Value = Badge2Label = Badge2Value = string.Empty;
             ParseErrorMessage = ex.ToString();
         }
         finally
@@ -362,7 +574,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ParsedCharacter.SystemStats == null) ParsedCharacter.SystemStats = new SystemExtension();
         ParsedCharacter.SystemStats.Willpower = FormWillpower;
         ParsedCharacter.SystemStats.Stress = FormStress;
-        ParsedCharacter.Notes = null; // Notes are serialized outside the frontmatter
+        ParsedCharacter.Notes = null;
 
         var yaml = _yamlSerializer.Serialize(ParsedCharacter);
         EditorText = $"---\n{yaml}---\n\n{PreviewNotes}".ReplaceLineEndings("\n");

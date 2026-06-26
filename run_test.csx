@@ -1,26 +1,35 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.ViewModels;
+using CampaignVault.Authoring.Vault;
 
-var settings = new SettingsViewModel();
+var session = new CampaignVaultSession();
 var workspace = new WorkspaceViewModel();
-var state = new CampaignVault.Authoring.Services.CampaignStateService(workspace.DbService);
-workspace.SetStateService(state);
 
 var tempDir = Path.Combine(Path.GetTempPath(), "test_campaign_UI_test");
-Directory.CreateDirectory(tempDir);
-Directory.CreateDirectory(Path.Combine(tempDir, "characters"));
-File.WriteAllText(Path.Combine(tempDir, "characters", "test.md"), "---\n$type: character\nid: characters/test\nname: Test\n---\nHello");
+if (Directory.Exists(tempDir))
+    Directory.Delete(tempDir, true);
 
-workspace.LoadDirectory(tempDir);
+await session.CreateAsync(tempDir, "test-campaign");
 
-Task.Delay(2000).Wait();
+var entityPath = Path.Combine(tempDir, "characters", "test.md");
+Directory.CreateDirectory(Path.GetDirectoryName(entityPath)!);
+await File.WriteAllTextAsync(entityPath, "---\nid: characters/test\nname: Test\n---\nHello");
+
+workspace.BindSession(session);
+workspace.RefreshFilesList();
+
+await Task.Delay(500);
 
 Console.WriteLine("Categories count: " + workspace.Categories.Count);
-foreach (var c in workspace.Categories) {
+foreach (var c in workspace.Categories)
+{
     Console.WriteLine("Category: " + c.Title + " - Children: " + c.Children.Count);
-    foreach (var child in c.Children) {
+    foreach (var child in c.Children)
         Console.WriteLine("  - " + child.Title);
-    }
 }
+
+session.Dispose();
+workspace.Dispose();

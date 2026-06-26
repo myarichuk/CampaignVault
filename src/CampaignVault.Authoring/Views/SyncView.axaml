@@ -3,123 +3,100 @@
              xmlns:vm="using:CampaignVault.Authoring.ViewModels"
              x:Class="CampaignVault.Authoring.Views.SyncView"
              x:DataType="vm:SyncViewModel">
-    <Grid ColumnDefinitions="300, *">
-        <!-- Progress Bar at the top -->
-        <ProgressBar Grid.Row="0" Grid.ColumnSpan="2" 
-                     IsIndeterminate="True" 
-                     IsVisible="{Binding IsSyncing}" 
-                     HorizontalAlignment="Stretch" 
-                     Height="4" VerticalAlignment="Top"
+    <Grid RowDefinitions="Auto, Auto, *" ColumnDefinitions="300, *">
+        <ProgressBar Grid.Row="0" Grid.ColumnSpan="2"
+                     IsIndeterminate="True"
+                     IsVisible="{Binding IsBusy}"
+                     HorizontalAlignment="Stretch"
+                     Height="4"
                      Foreground="#10B981" />
 
-        <!-- Left Column: Diff Tree -->
-        <Border Grid.Column="0" BorderBrush="#2D2D3A" BorderThickness="0,0,1,0" Background="#1C1C24" Padding="8" IsEnabled="{Binding !IsSyncing}">
-            <Grid RowDefinitions="Auto, *, Auto">
-                <!-- Campaign Selector -->
-                <Grid Grid.Row="0" RowDefinitions="Auto, Auto, Auto" Margin="0,0,0,10">
-                    <TextBlock Grid.Row="0" Text="Campaign" FontSize="11" FontWeight="Bold" Foreground="#71717A" Margin="4,0,0,4"/>
-                    <ComboBox Grid.Row="1" ItemsSource="{Binding AvailableCampaigns}"
-                              SelectedItem="{Binding SelectedCampaign}"
-                              HorizontalAlignment="Stretch"
-                              PlaceholderText="(none selected)"
-                              Margin="0,0,0,6" />
-                    <Button Grid.Row="2" Content="↻ Fetch Campaigns"
-                            Command="{Binding FetchCampaignsCommand}"
-                            IsEnabled="{Binding IsConnected}"
-                            Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            FontSize="11" Padding="6,5" />
-                </Grid>
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#3F1D1D" Padding="10,6"
+                IsVisible="{Binding ShowConnectionBanner}">
+            <TextBlock Text="{Binding ConnectionBanner}" FontSize="11" Foreground="#FCA5A5" TextWrapping="Wrap" />
+        </Border>
 
-                <ListBox Grid.Row="1" ItemsSource="{Binding SyncDiffs}" 
-                         SelectedItem="{Binding SelectedDiff}"
+        <Border Grid.Row="2" Grid.Column="0" BorderBrush="#2D2D3A" BorderThickness="0,0,1,0" Background="#1C1C24" Padding="8" IsEnabled="{Binding !IsBusy}">
+            <Grid RowDefinitions="Auto, Auto, *, Auto">
+                <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,10">
+                    <TextBlock Text="Vault Sync" FontSize="11" FontWeight="Bold" Foreground="#71717A" />
+                    <TextBlock FontSize="10" Foreground="#A0A0AB">
+                        <Run Text="{Binding AheadCount}" />
+                        <Run Text=" ahead · " />
+                        <Run Text="{Binding BehindCount}" />
+                        <Run Text=" behind · " />
+                        <Run Text="{Binding ConflictCount}" />
+                        <Run Text=" conflicts" />
+                    </TextBlock>
+                    <Button Content="↻ Fetch" Command="{Binding FetchCommand}"
+                            Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
+                            HorizontalAlignment="Stretch" FontSize="11" Padding="6,5" />
+                </StackPanel>
+
+                <ListBox Grid.Row="2" ItemsSource="{Binding SyncPlans}"
+                         SelectedItem="{Binding SelectedPlan}"
                          Background="Transparent" BorderThickness="0">
                     <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:SyncDiffItem">
+                        <DataTemplate x:DataType="vm:VaultSyncPlanItem">
                             <Grid ColumnDefinitions="*, Auto" Height="36">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Bold" />
-                                    <TextBlock Text="{Binding FilePath}" FontSize="10" Foreground="#71717A" />
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Bold" />
+                                    <TextBlock Text="{Binding Plan.EntityId}" FontSize="10" Foreground="#71717A" />
                                 </StackPanel>
                                 <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="4" Padding="6,2" Margin="5,0,0,0"
-                                        Background="{Binding Status, Converter={x:Static vm:StatusColorConverter.Instance}}">
-                                    <TextBlock Text="{Binding Status}" FontSize="9" FontWeight="Bold" Foreground="White" />
+                                        Background="{Binding Plan.State, Converter={x:Static vm:VaultSyncStateColorConverter.Instance}}">
+                                    <TextBlock Text="{Binding Plan.State, Converter={x:Static vm:VaultSyncStateDisplayConverter.Instance}}"
+                                               FontSize="9" FontWeight="Bold" Foreground="White" />
                                 </Border>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <StackPanel Grid.Row="2" Spacing="8" Margin="0,10,0,0">
+                <StackPanel Grid.Row="3" Spacing="8" Margin="0,10,0,0">
                     <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="#A0A0AB" TextWrapping="Wrap" Margin="5,0,5,5" />
-                    <Button Content="Sync All (Non-Conflicting)" 
-                            Command="{Binding SyncAllCommand}"
-                            IsEnabled="{Binding IsConnected}"
-                            Background="#10B981"
-                            Foreground="White"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            Padding="12,10" />
+                    <Button Content="Push All" Command="{Binding PushAllCommand}"
+                            Background="#10B981" Foreground="White"
+                            HorizontalAlignment="Stretch" Padding="12,8" />
+                    <Button Content="Pull All" Command="{Binding PullAllCommand}"
+                            Background="#3B82F6" Foreground="White"
+                            HorizontalAlignment="Stretch" Padding="12,8" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Right Column: Diff Visualizer -->
-        <Grid Grid.Column="1" RowDefinitions="Auto, *" Margin="15" IsVisible="{Binding SelectedDiff, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <!-- Diff Headers -->
+        <Grid Grid.Row="2" Grid.Column="1" RowDefinitions="Auto, *" Margin="15"
+              IsVisible="{Binding SelectedPlan, Converter={x:Static ObjectConverters.IsNotNull}}">
             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="{Binding SelectedDiff.FileName}" FontSize="18" FontWeight="Bold" />
-                    <TextBlock Text="{Binding SelectedDiff.FilePath, StringFormat='Path: \{0\}'}" FontSize="11" Foreground="#71717A" />
+                    <TextBlock Text="{Binding SelectedPlan.DisplayName}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{Binding SelectedPlan.Plan.EntityId, StringFormat='ID: \{0\}'}" FontSize="11" Foreground="#71717A" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                    <!-- Push Button -->
-                    <Button Content="Push (Local -> Remote)" 
-                            Command="{Binding PushSelectedCommand}"
-                            IsEnabled="{Binding CanPushSelected}"
-                            IsVisible="{Binding !IsConflictSelected}"
-                            Background="#10B981"
-                            Foreground="White"
-                            Padding="12,8" />
-                    <!-- Pull Button -->
-                    <Button Content="Pull (Remote -> Local)" 
-                            Command="{Binding PullSelectedCommand}"
-                            IsEnabled="{Binding CanPullSelected}"
-                            IsVisible="{Binding !IsConflictSelected}"
-                            Background="#3B82F6"
-                            Foreground="White"
-                            Padding="12,8" />
-                    <!-- Conflict Resolution Keep Local -->
-                    <Button Content="Keep Local (Push)" 
-                            Command="{Binding ResolveKeepLocalCommand}"
+                    <Button Content="Push" Command="{Binding PushSelectedCommand}"
+                            IsEnabled="{Binding CanPushSelected}" IsVisible="{Binding !IsConflictSelected}"
+                            Background="#10B981" Foreground="White" Padding="12,8" />
+                    <Button Content="Pull" Command="{Binding PullSelectedCommand}"
+                            IsEnabled="{Binding CanPullSelected}" IsVisible="{Binding !IsConflictSelected}"
+                            Background="#3B82F6" Foreground="White" Padding="12,8" />
+                    <Button Content="Keep Local" Command="{Binding ResolveKeepLocalCommand}"
                             IsVisible="{Binding IsConflictSelected}"
-                            Background="#D97706"
-                            Foreground="White"
-                            Padding="12,8" />
-                    <!-- Conflict Resolution Keep Remote -->
-                    <Button Content="Keep Remote (Pull)" 
-                            Command="{Binding ResolveKeepRemoteCommand}"
+                            Background="#D97706" Foreground="White" Padding="12,8" />
+                    <Button Content="Keep Vault" Command="{Binding ResolveKeepVaultCommand}"
                             IsVisible="{Binding IsConflictSelected}"
-                            Background="#EF4444"
-                            Foreground="White"
-                            Padding="12,8" />
+                            Background="#EF4444" Foreground="White" Padding="12,8" />
                 </StackPanel>
             </Grid>
 
-            <!-- Content Panels -->
             <Grid Grid.Row="1" ColumnDefinitions="*, *">
-                <!-- Local Content -->
                 <Grid Grid.Column="0" RowDefinitions="Auto, *" Margin="0,0,8,0">
-                    <TextBlock Grid.Row="0" Text="Local Changes" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,5" />
-                    <TextBox Grid.Row="1" Text="{Binding SelectedDiff.LocalContent}" IsReadOnly="True" 
+                    <TextBlock Grid.Row="0" Text="Local" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,5" />
+                    <TextBox Grid.Row="1" Text="{Binding SelectedPlan.LocalContent}" IsReadOnly="True"
                              FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
                 </Grid>
-
-                <!-- Remote Content -->
                 <Grid Grid.Column="1" RowDefinitions="Auto, *" Margin="8,0,0,0">
-                    <TextBlock Grid.Row="0" Text="Remote Database Content" FontSize="12" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,5" />
-                    <TextBox Grid.Row="1" Text="{Binding SelectedDiff.RemoteContent}" IsReadOnly="True" 
+                    <TextBlock Grid.Row="0" Text="Remote (cache)" FontSize="12" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,5" />
+                    <TextBox Grid.Row="1" Text="{Binding SelectedPlan.RemoteContent}" IsReadOnly="True"
                              FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
                 </Grid>
             </Grid>

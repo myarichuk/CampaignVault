@@ -42,17 +42,16 @@ public class AuthoringDockFactory : Factory
     private IDocumentDock? _documentDock;
     private IDockable? _explorerTool;
 
-    public AuthoringDockFactory(MainWindowViewModel context)
-    {
-        _context = context;
-    }
+    public AuthoringDockFactory(MainWindowViewModel context) => _context = context;
 
     public override IRootDock CreateLayout()
     {
         var explorerTool =
             new ToolViewModelWrapper("Explorer", "Campaign Explorer", _context.Workspace, canClose: false);
+        var sourceControlTool =
+            new ToolViewModelWrapper("SourceControl", "Source Control", _context.SourceControl, canClose: false);
         var generatorTool = new ToolViewModelWrapper("Generator", "AI Generator", _context.Generation);
-        var syncTool = new ToolViewModelWrapper("Sync", "Sync Diffs", _context.Sync);
+        var syncTool = new ToolViewModelWrapper("Sync", "Vault Sync", _context.Sync);
         var settingsTool = new ToolViewModelWrapper("Settings", "Settings", _context.Settings);
         var editorDocument = new DocumentViewModelWrapper("Editor", "Workspace Editor", _context, canClose: false);
 
@@ -75,7 +74,7 @@ public class AuthoringDockFactory : Factory
             Alignment = Alignment.Left,
             GripMode = GripMode.Visible,
             ActiveDockable = explorerTool,
-            VisibleDockables = CreateList<IDockable>(explorerTool)
+            VisibleDockables = CreateList<IDockable>(explorerTool, sourceControlTool)
         };
 
         var rightDock = new ToolDock
@@ -92,7 +91,7 @@ public class AuthoringDockFactory : Factory
         var bottomDock = new ToolDock
         {
             Id = "BottomPane",
-            Title = "Sync",
+            Title = "Vault Sync",
             Proportion = 0.25,
             Alignment = Alignment.Bottom,
             GripMode = GripMode.Visible,
@@ -146,6 +145,7 @@ public class AuthoringDockFactory : Factory
         ContextLocator = new Dictionary<string, Func<object?>>
         {
             ["Explorer"] = () => _context.Workspace,
+            ["SourceControl"] = () => _context.SourceControl,
             ["Generator"] = () => _context.Generation,
             ["Sync"] = () => _context.Sync,
             ["Settings"] = () => _context.Settings,

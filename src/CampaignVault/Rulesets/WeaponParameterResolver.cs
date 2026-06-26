@@ -126,20 +126,20 @@ internal static class WeaponParameterResolver
 
     private static async Task<List<Item>> GetHeldWeaponsAsync(
         ChangeContext context,
-        string actorId,
-        CancellationToken ct)
+        string characterId,
+        CancellationToken ct = default)
     {
         var weapons = context.Items.Values
-            .Where(i => i.HolderId.Equals(actorId, StringComparison.OrdinalIgnoreCase)
+            .Where(i => i.HolderId.Equals(characterId, StringComparison.OrdinalIgnoreCase)
                         && i.CoreCategory == ItemCategory.Weapon)
             .ToList();
 
-        if (weapons.Count > 0 || context.Session == null || string.IsNullOrWhiteSpace(actorId))
+        if (weapons.Count > 0 || context.Session == null || string.IsNullOrWhiteSpace(characterId))
         {
             return weapons;
         }
 
-        var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(context.Session, actorId, ct: ct);
+        var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(context.Session, characterId, ct: ct);
         return held.Where(i => i.CoreCategory == ItemCategory.Weapon).ToList();
     }
 

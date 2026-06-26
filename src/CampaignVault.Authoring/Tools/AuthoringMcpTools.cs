@@ -3,127 +3,228 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using CampaignVault.Authoring.Services;
-using CampaignVault.Authoring.ViewModels;
+using CampaignVault.Authoring.Vault;
+using CampaignVault.Authoring.Vault.Sync;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Authoring.Tools;
 
-public record AuthoringToolResult(bool success, string? error = null, object? files = null, string? content = null, string? path = null);
+public record AuthoringToolResult(
+    bool success,
+    string? error = null,
+    object? files = null,
+    string? content = null,
+    string? path = null,
+    object? summary = null);
 
 [McpServerToolType]
 public class AuthoringMcpTools
 {
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "Lists all campaign entities (npcs, locations, factions, quests) found in the active local workspace.")]
-    public async Task<AuthoringToolResult> ListWorkspaceEntities()
+        "Lists all campaign entities in the open vault (characters, locations, quests, factions, lore, rumors, events).")]
+    public Task<AuthoringToolResult> ListWorkspaceEntities()
     {
-        var mainVm = WorkspaceService.MainWindowViewModel;
-        if (mainVm == null || string.IsNullOrEmpty(mainVm.Workspace.CurrentDirectory))
-        {
-            return new AuthoringToolResult(success: false, error: "No workspace directory loaded.");
-        }
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return Task.FromResult(error!);
 
-        var files = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            return EnumerateEntityNodes(mainVm.Workspace.Categories)
-                .Select(f => new
+        var syncPlans = session.GetEntitySyncPlans()
+            .ToDictionary(p => p.EntityId, StringComparer.OrdinalIgnoreCase);
+
+        var entities = session.ScanEntities()
+            .Select(e =>
+            {
+                syncPlans.TryGetValue(e.Id, out var plan);
+                return new
                 {
-                    fileName = Path.GetFileName(f.Entity.RelativePath ?? ""),
-                    filePath = Path.Combine(mainVm.Workspace.CurrentDirectory, f.Entity.RelativePath ?? ""),
-                    relativeUrl = f.Entity.RelativePath
-                }).ToList();
-        });
+                    id = e.Id,
+                    entityType = e.EntityType,
+                    relativePath = e.RelativePath,
+                    displayName = VaultEntityDisplay.GetDisplayName(e, session.VaultPath),
+                    syncState = (plan?.State ?? VaultSyncState.LocalOnly).ToString(),
+                    hasValidFrontmatter = e.HasValidFrontmatter,
+                    parseError = e.ParseError
+                };
+            })
+            .ToList();
 
-        return new AuthoringToolResult(success: true, files: files);
-    }
-
-    private static System.Collections.Generic.IEnumerable<EntityNodeViewModel> EnumerateEntityNodes(
-        System.Collections.Generic.IEnumerable<ExplorerNodeViewModel> nodes)
-    {
-        foreach (var node in nodes)
-        {
-            if (node is EntityNodeViewModel entityNode)
-                yield return entityNode;
-
-            foreach (var child in EnumerateEntityNodes(node.Children))
-                yield return child;
-        }
+        return Task.FromResult(new AuthoringToolResult(success: true, files: entities));
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("Reads the YAML frontmatter and markdown body of a campaign entity file.")]
-    public Task<AuthoringToolResult> ReadWorkspaceEntity(
-        [Description("The absolute path or relative path to the campaign markdown file.")]
+    [Description(
+        "Reads a campaign entity markdown file from the open vault. Accepts a vault-relative path (e.g. characters/grog.md) or absolute path inside the vault.")]
+    public async Task<AuthoringToolResult> ReadWorkspaceEntity(
+        [Description("Vault-relative or absolute path to the entity markdown file.")]
         string filePath)
     {
-        var mainVm = WorkspaceService.MainWindowViewModel;
-        var activeDir = mainVm?.Workspace.CurrentDirectory;
-
-        var fullPath = filePath;
-        if (!Path.IsPathRooted(filePath) && !string.IsNullOrEmpty(activeDir))
-        {
-            fullPath = Path.Combine(activeDir, filePath);
-        }
-
-        if (!File.Exists(fullPath))
-        {
-            return Task.FromResult(new AuthoringToolResult(success: false, error: $"File not found: {filePath}"));
-        }
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
 
         try
         {
-            var content = File.ReadAllText(fullPath);
-            return Task.FromResult(new AuthoringToolResult(success: true, content: content));
+            var relativePath = AuthoringMcpSessionHelper.ResolveEntityRelativePath(session, filePath);
+            var content = await session.ReadFileAsync(relativePath);
+            return new AuthoringToolResult(success: true, content: content, path: relativePath);
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
         }
         catch (Exception ex)
         {
-            return Task.FromResult(new AuthoringToolResult(success: false, error: ex.Message));
+            return new AuthoringToolResult(success: false, error: ex.Message);
         }
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("Writes or updates a campaign entity file with YAML frontmatter and markdown body content.")]
-    public Task<AuthoringToolResult> WriteWorkspaceEntity(
-        [Description("The absolute path or relative path to the campaign markdown file.")]
+    [Description(
+        "Writes or updates a campaign entity markdown file in the open vault. Accepts a vault-relative path or absolute path inside the vault.")]
+    public async Task<AuthoringToolResult> WriteWorkspaceEntity(
+        [Description("Vault-relative or absolute path to the entity markdown file.")]
         string filePath,
-        [Description("The full content of the file (including YAML frontmatter and markdown body).")]
+        [Description("Full file content including YAML frontmatter and markdown body.")]
         string content)
     {
-        var mainVm = WorkspaceService.MainWindowViewModel;
-        var activeDir = mainVm?.Workspace.CurrentDirectory;
-
-        var fullPath = filePath;
-        if (!Path.IsPathRooted(filePath) && !string.IsNullOrEmpty(activeDir))
-        {
-            fullPath = Path.Combine(activeDir, filePath);
-        }
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
 
         try
         {
-            var directory = Path.GetDirectoryName(fullPath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            File.WriteAllText(fullPath, content);
-
-            // FileSystemWatcher will automatically handle the refresh.
-
-            return Task.FromResult(new AuthoringToolResult(success: true));
+            var relativePath = AuthoringMcpSessionHelper.ResolveEntityRelativePath(session, filePath);
+            await session.WriteFileAsync(relativePath, content);
+            AuthoringMcpSessionHelper.RefreshUiIfAvailable();
+            return new AuthoringToolResult(success: true, path: relativePath);
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
         }
         catch (Exception ex)
         {
-            return Task.FromResult(new AuthoringToolResult(success: false, error: ex.Message));
+            return new AuthoringToolResult(success: false, error: ex.Message);
         }
     }
 
     [McpServerTool(UseStructuredContent = true)]
-    [Description("Triggers a campaign synchronization with the remote CampaignVault database via gRPC (Stub).")]
-    public Task<AuthoringToolResult> TriggerVaultSync()
+    [Description(
+        "Deletes a campaign entity markdown file from the open vault. Accepts a vault-relative path or absolute path inside the vault. This removes the local file; commit to persist the deletion in git.")]
+    public async Task<AuthoringToolResult> DeleteWorkspaceEntity(
+        [Description("Vault-relative or absolute path to the entity markdown file to delete.")]
+        string filePath)
     {
-        return Task.FromResult(new AuthoringToolResult(success: true, content: "Sync triggered successfully (stub)."));
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
+
+        try
+        {
+            var relativePath = AuthoringMcpSessionHelper.ResolveEntityRelativePath(session, filePath);
+            var absolute = Path.Combine(session.VaultPath!, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(absolute))
+                File.Delete(absolute);
+            AuthoringMcpSessionHelper.RefreshUiIfAvailable();
+            return new AuthoringToolResult(success: true, path: relativePath);
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
     }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "Fetches the remote Campaign Vault snapshot into the local cache (.cv/remote-cache). Does not modify vault files.")]
+    public async Task<AuthoringToolResult> FetchVault()
+    {
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
+
+        try
+        {
+            AuthoringMcpSessionHelper.EnsureSyncConfigured(session);
+            await session.FetchAsync();
+            var summary = session.GetSyncSummary();
+            AuthoringMcpSessionHelper.RefreshUiIfAvailable();
+            return new AuthoringToolResult(success: true, summary: BuildSyncSummaryPayload(summary));
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "Pushes local entity changes to Campaign Vault via gRPC. Requires a clean working tree for a full push.")]
+    public async Task<AuthoringToolResult> PushToVault(
+        [Description("Optional entity IDs to push (e.g. characters/grog). Omit to push all pending entities.")]
+        string[]? entityIds = null)
+    {
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
+
+        try
+        {
+            AuthoringMcpSessionHelper.EnsureSyncConfigured(session);
+            await session.PushAsync(entityIds);
+            var summary = session.GetSyncSummary();
+            AuthoringMcpSessionHelper.RefreshUiIfAvailable();
+            return new AuthoringToolResult(success: true, summary: BuildSyncSummaryPayload(summary));
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("Pulls entity changes from the Campaign Vault remote cache into the local vault.")]
+    public async Task<AuthoringToolResult> PullFromVault(
+        [Description("Optional entity IDs to pull (e.g. characters/grog). Omit to pull all pending entities.")]
+        string[]? entityIds = null)
+    {
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
+
+        try
+        {
+            AuthoringMcpSessionHelper.EnsureSyncConfigured(session);
+            await session.PullAsync(entityIds);
+            var summary = session.GetSyncSummary();
+            AuthoringMcpSessionHelper.RefreshUiIfAvailable();
+            return new AuthoringToolResult(success: true, summary: BuildSyncSummaryPayload(summary));
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+    }
+
+    private static object BuildSyncSummaryPayload(VaultSyncSummary summary) => new
+    {
+        syncedCount = summary.SyncedCount,
+        aheadCount = summary.AheadCount,
+        behindCount = summary.BehindCount,
+        conflictCount = summary.ConflictCount,
+        connection = summary.Connection.State.ToString(),
+        connectionMessage = summary.Connection.Message,
+        remoteCacheCorrupt = summary.RemoteCacheCorrupt,
+        lastFetchedAt = summary.LastFetchedAt
+    };
 }

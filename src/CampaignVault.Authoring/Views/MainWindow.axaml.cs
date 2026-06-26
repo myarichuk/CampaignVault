@@ -16,7 +16,6 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.SetStorageProvider(StorageProvider);
-            viewModel.Workspace.SetStorageProvider(StorageProvider);
         }
     }
 }

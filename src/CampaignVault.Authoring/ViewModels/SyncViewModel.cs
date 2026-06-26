@@ -2,91 +2,89 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Vault;
+using CampaignVault.Authoring.Vault.Sync;
 using CampaignVault.Grpc;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace CampaignVault.Authoring.ViewModels;
 
-public partial class SyncDiffItem : ObservableObject
+public partial class VaultSyncPlanItem : ObservableObject
 {
-    [ObservableProperty] private string _filePath = string.Empty;
+    public VaultEntitySyncPlan Plan { get; }
 
-    [ObservableProperty] private string _fileName = string.Empty;
-
-    [ObservableProperty] private string _status = "Modified"; // Modified, Added Remote, Added Local, Deleted
+    [ObservableProperty] private string _displayName = string.Empty;
 
     [ObservableProperty] private string _localContent = string.Empty;
 
     [ObservableProperty] private string _remoteContent = string.Empty;
 
-    [ObservableProperty] private bool _isSynchronized;
-
-    public string EntityType { get; set; } = string.Empty;
-    public string EntityId { get; set; } = string.Empty;
+    public VaultSyncPlanItem(VaultEntitySyncPlan plan, string displayName)
+    {
+        Plan = plan;
+        DisplayName = displayName;
+    }
 }
 
 public partial class SyncViewModel : ObservableObject
 {
     private readonly SettingsViewModel _settings;
-    private readonly WorkspaceViewModel _workspace;
-    private readonly CampaignStateService _campaignState;
+    private CampaignVaultSession? _session;
+    private Action? _refreshExplorer;
 
-    [ObservableProperty] private bool _isConnected;
+    [ObservableProperty] private bool _isBusy;
 
-    [ObservableProperty] private string _statusMessage = "Disconnected from CampaignVault Remote.";
+    [ObservableProperty] private string _statusMessage = "Open a vault and fetch to compare with Campaign Vault.";
 
     [ObservableProperty] private string _lastSyncTime = "Never";
 
-    [ObservableProperty] private ObservableCollection<SyncDiffItem> _syncDiffs = new();
-
-    [ObservableProperty] private SyncDiffItem? _selectedDiff;
+    [ObservableProperty] private ObservableCollection<VaultSyncPlanItem> _syncPlans = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanPushSelected))]
     [NotifyPropertyChangedFor(nameof(CanPullSelected))]
     [NotifyPropertyChangedFor(nameof(IsConflictSelected))]
-    private bool _isSyncing;
+    private VaultSyncPlanItem? _selectedPlan;
 
-    [ObservableProperty]
-    private System.Collections.ObjectModel.ObservableCollection<string> _availableCampaigns = new();
+    [ObservableProperty] private ObservableCollection<string> _availableCampaigns = new();
 
-    [ObservableProperty] private string? _selectedCampaign;
+    [ObservableProperty] private int _aheadCount;
 
-    public Func<CampaignSync.CampaignSyncClient>? ClientFactory { get; set; }
+    [ObservableProperty] private int _behindCount;
 
-    public SyncViewModel(SettingsViewModel settings, WorkspaceViewModel workspace, CampaignStateService campaignState)
+    [ObservableProperty] private int _conflictCount;
+
+    [ObservableProperty] private string _connectionBanner = string.Empty;
+
+    [ObservableProperty] private bool _showConnectionBanner;
+
+    public SyncViewModel(SettingsViewModel settings)
     {
         _settings = settings;
-        _workspace = workspace;
-        _campaignState = campaignState;
     }
 
-    public void ClearDiffs()
+    public void Bind(CampaignVaultSession? session, Action? refreshExplorer = null)
     {
-        SyncDiffs.Clear();
-        SelectedDiff = null;
-        StatusMessage = "Disconnected from CampaignVault gRPC sync.";
+        _session = session;
+        _refreshExplorer = refreshExplorer;
+        ClearPlans();
+        UpdateSummary();
     }
 
-    public void UpdateConnectionStatus(string message)
+    public void ClearPlans()
     {
-        StatusMessage = message;
+        SyncPlans.Clear();
+        SelectedPlan = null;
+        if (_session is not { IsOpen: true })
+            StatusMessage = "Open a vault to sync with Campaign Vault.";
     }
 
     internal CampaignSync.CampaignSyncClient CreateClient()
     {
-        if (ClientFactory != null)
-        {
-            return ClientFactory();
-        }
-
         var port = _settings.GrpcPortValue is > 0 and <= 65535
             ? (int)_settings.GrpcPortValue.Value
             : 50051;
@@ -94,328 +92,292 @@ public partial class SyncViewModel : ObservableObject
         return VaultGrpcClientFactory.CreateClient(_settings.GrpcHost, port, token);
     }
 
+    public void ConfigureSessionSync()
+    {
+        if (_session is not { IsOpen: true })
+            return;
+
+        var settings = new CampaignAuthoringSettings
+        {
+            GrpcHost = _settings.GrpcHost,
+            GrpcPort = _settings.GrpcPortValue is > 0 and <= 65535 ? (int)_settings.GrpcPortValue.Value : 50051,
+            GrpcToken = _settings.GrpcToken
+        };
+        _session.ConfigureVaultSync(CreateClient, settings);
+    }
+
     [RelayCommand]
     internal async Task FetchCampaignsAsync()
     {
-        if (IsSyncing) return;
-        IsSyncing = true;
+        if (IsBusy) return;
+        IsBusy = true;
         StatusMessage = "Fetching campaign list from server...";
         try
         {
             var client = CreateClient();
-            var response = await client.GetCampaignsAsync(new CampaignVault.Grpc.EmptyRequest());
+            var response = await client.GetCampaignsAsync(new EmptyRequest());
             AvailableCampaigns.Clear();
             foreach (var c in response.Campaigns)
                 AvailableCampaigns.Add(c.Name);
 
-            // Auto-select campaign matching the workspace folder name
-            var folderName = string.IsNullOrEmpty(_workspace.CurrentDirectory)
-                ? null
-                : System.IO.Path.GetFileName(_workspace.CurrentDirectory);
-
-            SelectedCampaign = AvailableCampaigns
-                                   .FirstOrDefault(c =>
-                                       string.Equals(c, folderName, System.StringComparison.OrdinalIgnoreCase))
-                               ?? AvailableCampaigns.FirstOrDefault();
-
             StatusMessage = AvailableCampaigns.Count > 0
-                ? $"Found {AvailableCampaigns.Count} campaign(s). Selected: {SelectedCampaign}"
+                ? $"Found {AvailableCampaigns.Count} campaign(s) on Campaign Vault."
                 : "No campaigns found on server.";
+            SetConnectionBanner(false);
         }
         catch (Exception ex)
         {
             StatusMessage = $"Failed to fetch campaigns: {ex.Message}";
+            SetConnectionBanner(true, ex.Message);
         }
         finally
         {
-            IsSyncing = false;
-        }
-    }
-
-    public bool CanPushSelected => !IsSyncing && SelectedDiff != null &&
-                                   (SelectedDiff.Status == "LocalOnly" || SelectedDiff.Status == "ModifiedLocally");
-
-    public bool CanPullSelected => !IsSyncing && SelectedDiff != null &&
-                                   (SelectedDiff.Status == "RemoteOnly" || SelectedDiff.Status == "ModifiedRemotely");
-
-    public bool IsConflictSelected => SelectedDiff != null && SelectedDiff.Status == "Conflict";
-
-    partial void OnSelectedDiffChanged(SyncDiffItem? value)
-    {
-        OnPropertyChanged(nameof(CanPushSelected));
-        OnPropertyChanged(nameof(CanPullSelected));
-        OnPropertyChanged(nameof(IsConflictSelected));
-    }
-
-    public async Task PopulateActualDiffsAsync()
-    {
-        if (IsSyncing) return;
-        IsSyncing = true;
-        SyncDiffs.Clear();
-        SelectedDiff = null;
-
-        if (string.IsNullOrWhiteSpace(_workspace.CurrentDirectory))
-        {
-            StatusMessage = "No workspace directory opened.";
-            IsSyncing = false;
-            return;
-        }
-
-        StatusMessage = "Syncing state with CampaignVault Remote...";
-
-        try
-        {
-            var campaignName = SelectedCampaign ?? Path.GetFileName(_workspace.CurrentDirectory);
-            if (string.IsNullOrWhiteSpace(campaignName))
-            {
-                StatusMessage = "No campaign selected. Use 'Fetch Campaigns' to discover server campaigns.";
-                return;
-            }
-
-            await _campaignState.RefreshStateAsync(campaignName);
-
-            foreach (var entity in _campaignState.Entities)
-            {
-                var state = entity.CalculatedState;
-                if (state == SyncState.Synced) continue;
-
-                string localContent = string.Empty;
-                var absolutePath = entity.RelativePath != null
-                    ? Path.Combine(_workspace.CurrentDirectory, entity.RelativePath)
-                    : Path.Combine(_workspace.CurrentDirectory,
-                        $"{entity.EntityType}s/{Path.GetFileName(entity.Id)}.md");
-
-                if (entity.LocalHash != null && File.Exists(absolutePath))
-                {
-                    localContent = await File.ReadAllTextAsync(absolutePath);
-                }
-
-                SyncDiffs.Add(new SyncDiffItem
-                {
-                    FilePath = absolutePath,
-                    FileName = entity.Name,
-                    Status = state.ToString(),
-                    LocalContent = localContent,
-                    RemoteContent = entity.RemoteMarkdown ?? string.Empty,
-                    EntityType = entity.EntityType,
-                    EntityId = entity.Id
-                });
-            }
-
-            if (SyncDiffs.Count > 0) SelectedDiff = SyncDiffs[0];
-            StatusMessage = $"Connected to '{campaignName}'. Found {SyncDiffs.Count} unsynchronized entities.";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Sync Error: {ex.Message}";
-        }
-        finally
-        {
-            IsSyncing = false;
+            IsBusy = false;
         }
     }
 
     [RelayCommand]
-    internal async Task SyncAllAsync()
+    private async Task FetchAsync()
     {
-        if (IsSyncing || SyncDiffs.Count == 0) return;
-        IsSyncing = true;
-        StatusMessage = "Syncing all non-conflicting changes...";
+        if (IsBusy || _session is not { IsOpen: true })
+            return;
 
-        int pushedCount = 0;
-        int pulledCount = 0;
-        int conflictCount = 0;
-
+        IsBusy = true;
+        StatusMessage = "Fetching remote snapshot...";
         try
         {
-            var itemsToSync = SyncDiffs.ToList();
-            foreach (var diff in itemsToSync)
-            {
-                if (diff.Status == "Conflict")
-                {
-                    conflictCount++;
-                    continue;
-                }
-
-                try
-                {
-                    if (diff.Status == "LocalOnly" || diff.Status == "ModifiedLocally")
-                    {
-                        await PushItemAsync(diff);
-                        SyncDiffs.Remove(diff);
-                        pushedCount++;
-                    }
-                    else if (diff.Status == "RemoteOnly" || diff.Status == "ModifiedRemotely")
-                    {
-                        await PullItemAsync(diff);
-                        SyncDiffs.Remove(diff);
-                        pulledCount++;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    StatusMessage = $"Error syncing {diff.FileName}: {ex.Message}";
-                }
-            }
-
+            ConfigureSessionSync();
+            await _session.FetchAsync();
+            await RefreshPlansAsync();
             LastSyncTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            StatusMessage =
-                $"Sync completed. Pushed: {pushedCount}, Pulled: {pulledCount}, Conflicts: {conflictCount}.";
-            SelectedDiff = SyncDiffs.FirstOrDefault();
+            SetConnectionBanner(false);
+        }
+        catch (VaultException ex)
+        {
+            StatusMessage = ex.Message;
+            SetConnectionBanner(true, ex.Message);
+            UpdateSummary();
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Sync failed: {ex.Message}";
+            StatusMessage = $"Fetch failed: {ex.Message}";
+            SetConnectionBanner(true, ex.Message);
         }
         finally
         {
-            IsSyncing = false;
+            IsBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task RefreshPlansAsync()
+    {
+        if (_session is not { IsOpen: true })
+            return;
+
+        ConfigureSessionSync();
+        var selectedId = SelectedPlan?.Plan.EntityId;
+        SyncPlans.Clear();
+
+        foreach (var plan in _session.GetEntitySyncPlans()
+                     .Where(p => p.State is not VaultSyncState.Synced and not VaultSyncState.Absent)
+                     .OrderBy(p => p.EntityId, StringComparer.OrdinalIgnoreCase))
+        {
+            var displayName = plan.RelativePath != null
+                ? Path.GetFileNameWithoutExtension(plan.RelativePath)
+                : plan.EntityId;
+            SyncPlans.Add(new VaultSyncPlanItem(plan, displayName));
+        }
+
+        SelectedPlan = selectedId != null
+            ? SyncPlans.FirstOrDefault(p =>
+                string.Equals(p.Plan.EntityId, selectedId, StringComparison.OrdinalIgnoreCase))
+            : SyncPlans.FirstOrDefault();
+
+        if (SelectedPlan != null)
+            await LoadPlanContentAsync(SelectedPlan);
+
+        UpdateSummary();
+        StatusMessage = SyncPlans.Count > 0
+            ? $"{SyncPlans.Count} entity(ies) need attention."
+            : "Vault is in sync with the remote cache.";
+    }
+
+    [RelayCommand]
+    private async Task PushAllAsync()
+    {
+        await ExecuteSyncAsync(() => _session!.PushAsync(), "Push");
+    }
+
+    [RelayCommand]
+    private async Task PullAllAsync()
+    {
+        await ExecuteSyncAsync(() => _session!.PullAsync(), "Pull");
     }
 
     [RelayCommand]
     private async Task PushSelectedAsync()
     {
-        if (IsSyncing || SelectedDiff == null) return;
-        IsSyncing = true;
-        StatusMessage = $"Pushing {SelectedDiff.FileName} to remote...";
+        if (SelectedPlan == null || _session is not { IsOpen: true })
+            return;
 
-        try
-        {
-            await PushItemAsync(SelectedDiff);
-            SyncDiffs.Remove(SelectedDiff);
-            SelectedDiff = SyncDiffs.FirstOrDefault();
-            StatusMessage = "Push successful.";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Push failed: {ex.Message}";
-        }
-        finally
-        {
-            IsSyncing = false;
-        }
+        await ExecuteSyncAsync(
+            () => _session.PushAsync([SelectedPlan.Plan.EntityId]),
+            $"Push {SelectedPlan.DisplayName}");
     }
 
     [RelayCommand]
     private async Task PullSelectedAsync()
     {
-        if (IsSyncing || SelectedDiff == null) return;
-        IsSyncing = true;
-        StatusMessage = $"Pulling {SelectedDiff.FileName} from remote...";
+        if (SelectedPlan == null || _session is not { IsOpen: true })
+            return;
 
-        try
-        {
-            await PullItemAsync(SelectedDiff);
-            SyncDiffs.Remove(SelectedDiff);
-            SelectedDiff = SyncDiffs.FirstOrDefault();
-            StatusMessage = "Pull successful.";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Pull failed: {ex.Message}";
-        }
-        finally
-        {
-            IsSyncing = false;
-        }
+        await ExecuteSyncAsync(
+            () => _session.PullAsync([SelectedPlan.Plan.EntityId]),
+            $"Pull {SelectedPlan.DisplayName}");
     }
 
     [RelayCommand]
     private async Task ResolveKeepLocalAsync()
     {
-        await PushSelectedAsync();
+        if (SelectedPlan == null || _session is not { IsOpen: true })
+            return;
+
+        await ExecuteSyncAsync(
+            () => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.KeepLocal),
+            $"Keep local for {SelectedPlan.DisplayName}");
     }
 
     [RelayCommand]
-    private async Task ResolveKeepRemoteAsync()
+    private async Task ResolveKeepVaultAsync()
     {
-        await PullSelectedAsync();
+        if (SelectedPlan == null || _session is not { IsOpen: true })
+            return;
+
+        await ExecuteSyncAsync(
+            () => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.KeepVault),
+            $"Keep vault for {SelectedPlan.DisplayName}");
     }
 
-    private async Task PushItemAsync(SyncDiffItem diff)
+    private async Task ExecuteSyncAsync(Func<Task> action, string label)
     {
-        var campaignName = SelectedCampaign ?? Path.GetFileName(_workspace.CurrentDirectory);
-        var client = CreateClient();
+        if (IsBusy || _session is not { IsOpen: true })
+            return;
 
-        var (json, entityType) = SerializeEntity(diff);
-        if (json == null) throw new InvalidOperationException("Failed to parse local entity markdown.");
-
-        var pushReq = new PushCampaignEntityRequest
-        {
-            CampaignName = campaignName,
-            Id = diff.EntityId,
-            Type = entityType,
-            Content = json
-        };
-        var response = await client.PushCampaignEntityAsync(pushReq);
-        if (!response.Success) throw new Exception(response.Message);
-
-        var localHash = ComputeSha256Hash(diff.LocalContent);
-        _workspace.DbService.UpdateLastSyncedHash(diff.EntityId, localHash, "Synced");
-
-        await _workspace.RefreshLocalStateAsync();
-    }
-
-    private async Task PullItemAsync(SyncDiffItem diff)
-    {
-        var directory = Path.GetDirectoryName(diff.FilePath);
-        if (directory != null && !Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        await File.WriteAllTextAsync(diff.FilePath, diff.RemoteContent);
-
-        string schemaData = "{}";
+        IsBusy = true;
+        StatusMessage = $"{label} in progress...";
         try
         {
-            if (diff.EntityType == "character")
-                schemaData = JsonSerializer.Serialize(_workspace.Parser.ParseCharacter(diff.RemoteContent));
-            else if (diff.EntityType == "location")
-                schemaData = JsonSerializer.Serialize(_workspace.Parser.ParseLocation(diff.RemoteContent));
-            else if (diff.EntityType == "quest")
-                schemaData = JsonSerializer.Serialize(_workspace.Parser.ParseQuest(diff.RemoteContent));
+            ConfigureSessionSync();
+            await action();
+            await RefreshPlansAsync();
+            _refreshExplorer?.Invoke();
+            LastSyncTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            StatusMessage = $"{label} completed.";
+            SetConnectionBanner(false);
         }
-        catch
+        catch (VaultException ex)
         {
+            StatusMessage = ex.Message;
+            SetConnectionBanner(true, ex.Message);
         }
-
-        var remoteHash = ComputeSha256Hash(diff.RemoteContent);
-        var relativePath = Path.GetRelativePath(_workspace.CurrentDirectory, diff.FilePath).Replace('\\', '/');
-        _workspace.DbService.UpsertEntity(
-            diff.EntityId,
-            diff.EntityType,
-            relativePath,
-            remoteHash,
-            remoteHash,
-            "Synced",
-            schemaData
-        );
-
-        await _workspace.RefreshLocalStateAsync();
+        catch (Exception ex)
+        {
+            StatusMessage = $"{label} failed: {ex.Message}";
+            SetConnectionBanner(true, ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
-    private (string? json, string entityType) SerializeEntity(SyncDiffItem diff)
+    public bool CanPushSelected => !IsBusy && SelectedPlan != null &&
+                                   SelectedPlan.Plan.State is VaultSyncState.AheadOfVault
+                                       or VaultSyncState.LocalOnly
+                                       or VaultSyncState.DeletedLocally;
+
+    public bool CanPullSelected => !IsBusy && SelectedPlan != null &&
+                                   SelectedPlan.Plan.State is VaultSyncState.BehindVault
+                                       or VaultSyncState.RemoteOnly
+                                       or VaultSyncState.DeletedRemotely;
+
+    public bool IsConflictSelected => SelectedPlan?.Plan.State == VaultSyncState.Conflict;
+
+    partial void OnSelectedPlanChanged(VaultSyncPlanItem? value)
     {
-        return diff.EntityType switch
-        {
-            "location" => (JsonSerializer.Serialize(_workspace.Parser.ParseLocation(diff.LocalContent)), "location"),
-            "quest" => (JsonSerializer.Serialize(_workspace.Parser.ParseQuest(diff.LocalContent)), "quest"),
-            _ => (JsonSerializer.Serialize(_workspace.Parser.ParseCharacter(diff.LocalContent)), "character")
-        };
+        OnPropertyChanged(nameof(CanPushSelected));
+        OnPropertyChanged(nameof(CanPullSelected));
+        OnPropertyChanged(nameof(IsConflictSelected));
+
+        if (value != null)
+            _ = LoadPlanContentAsync(value);
     }
 
-    private string ComputeSha256Hash(string text)
+    private async Task LoadPlanContentAsync(VaultSyncPlanItem item)
     {
-        var bytes = Encoding.UTF8.GetBytes(text);
-        var hashBytes = SHA256.HashData(bytes);
-        var sb = new StringBuilder();
-        foreach (var b in hashBytes)
+        if (_session is not { IsOpen: true })
+            return;
+
+        var plan = item.Plan;
+        item.LocalContent = string.Empty;
+        item.RemoteContent = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(plan.RelativePath))
         {
-            sb.Append(b.ToString("x2"));
+            try
+            {
+                item.LocalContent = await _session.ReadFileAsync(plan.RelativePath);
+            }
+            catch
+            {
+                item.LocalContent = "(no local file)";
+            }
+        }
+        else
+        {
+            item.LocalContent = "(no local file)";
         }
 
-        return sb.ToString();
+        var cachePath = Path.Combine(
+            _session.VaultPath!,
+            VaultPaths.AppConfigDirectoryName,
+            "remote-cache",
+            "entities",
+            plan.EntityId.Replace('\\', '/') + ".md");
+
+        if (File.Exists(cachePath))
+            item.RemoteContent = await File.ReadAllTextAsync(cachePath);
+        else
+            item.RemoteContent = "(not in remote cache — fetch first)";
+    }
+
+    public void UpdateSummary()
+    {
+        if (_session is not { IsOpen: true })
+        {
+            AheadCount = BehindCount = ConflictCount = 0;
+            return;
+        }
+
+        ConfigureSessionSync();
+        var summary = _session.GetSyncSummary();
+        AheadCount = summary.AheadCount;
+        BehindCount = summary.BehindCount;
+        ConflictCount = summary.ConflictCount;
+
+        var connection = summary.Connection;
+        if (connection.State is VaultConnectionState.Offline or VaultConnectionState.Error)
+            SetConnectionBanner(true, connection.Message ?? connection.State.ToString());
+        else if (summary.RemoteCacheCorrupt)
+            SetConnectionBanner(true, "Remote cache manifest is corrupt. Fetch again.");
+        else
+            SetConnectionBanner(false);
+    }
+
+    private void SetConnectionBanner(bool show, string? message = null)
+    {
+        ShowConnectionBanner = show;
+        ConnectionBanner = message ?? string.Empty;
     }
 }

@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CampaignVault.Authoring.ViewModels"
+             x:Class="CampaignVault.Authoring.Views.SourceControlView"
+             x:DataType="vm:SourceControlViewModel">
+    <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="8">
+        <TextBlock Grid.Row="0" Text="Source Control" FontSize="13" FontWeight="Bold" Foreground="#A0A0AB" Margin="0,0,0,8" />
+        <StackPanel Grid.Row="1" Spacing="4" Margin="0,0,0,10">
+            <TextBlock FontSize="11" Foreground="#71717A">
+                <Run Text="HEAD: " />
+                <Run Text="{Binding HeadCommitShort}" FontWeight="Bold" Foreground="#E4E4EB" />
+            </TextBlock>
+            <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="#A0A0AB" TextWrapping="Wrap" />
+        </StackPanel>
+        <ListBox Grid.Row="2" ItemsSource="{Binding ChangedPaths}"
+                 Background="Transparent" BorderThickness="0" MaxHeight="200">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontSize="10" Foreground="#E4E4EB" FontFamily="Consolas" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <StackPanel Grid.Row="3" Spacing="8" Margin="0,10,0,0">
+            <TextBox Text="{Binding CommitMessage}" PlaceholderText="Commit message"
+                     FontSize="11" AcceptsReturn="False" />
+            <Button Content="Commit" Command="{Binding CommitCommand}"
+                    IsEnabled="{Binding IsDirty}"
+                    Background="#2563EB" Foreground="White"
+                    HorizontalAlignment="Stretch" Padding="10,8" />
+        </StackPanel>
+    </Grid>
+</UserControl>

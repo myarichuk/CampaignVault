@@ -3,8 +3,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Vault;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -19,7 +19,7 @@ public partial class HubViewModel : ViewModelBase
 
     [ObservableProperty] private ObservableCollection<string> _remoteCampaigns = new();
 
-    [ObservableProperty] private string _statusMessage = "Welcome to CampaignVault Authoring";
+    [ObservableProperty] private string _statusMessage = "Welcome to CampaignVault Authoring — entities only, no simulation sync.";
 
     [ObservableProperty] private bool _isCloudConnected;
 
@@ -36,23 +36,23 @@ public partial class HubViewModel : ViewModelBase
     {
         if (IsBusy) return;
         IsBusy = true;
-        StatusMessage = "Connecting to Vault...";
+        StatusMessage = "Connecting to Campaign Vault...";
         try
         {
             await _mainViewModel.Sync.FetchCampaignsAsync();
             RemoteCampaigns.Clear();
             foreach (var campaign in _mainViewModel.Sync.AvailableCampaigns)
-            {
                 RemoteCampaigns.Add(campaign);
-            }
 
-            IsCloudConnected = true;
-            StatusMessage = $"Cloud Connected: Found {RemoteCampaigns.Count} campaigns.";
+            IsCloudConnected = RemoteCampaigns.Count > 0;
+            StatusMessage = IsCloudConnected
+                ? $"Connected: {RemoteCampaigns.Count} campaign(s) on Campaign Vault."
+                : "Connected, but no campaigns found on server.";
         }
         catch (Exception ex)
         {
             IsCloudConnected = false;
-            StatusMessage = $"Cloud Error: {ex.Message}";
+            StatusMessage = $"Connection error: {ex.Message}";
         }
         finally
         {
@@ -62,12 +62,9 @@ public partial class HubViewModel : ViewModelBase
 
     public void LoadRecentCampaigns()
     {
-        var history = _historyService.Load();
         RecentCampaigns.Clear();
-        foreach (var path in history.RecentPaths)
-        {
+        foreach (var path in _historyService.Load().RecentPaths)
             RecentCampaigns.Add(path);
-        }
     }
 
     [RelayCommand]
@@ -100,7 +97,7 @@ public partial class HubViewModel : ViewModelBase
     {
         _historyService.Remove(path);
         LoadRecentCampaigns();
-        StatusMessage = "Removed from recent campaigns.";
+        StatusMessage = "Removed from recent vaults.";
     }
 
     [RelayCommand]
@@ -108,25 +105,31 @@ public partial class HubViewModel : ViewModelBase
     {
         if (IsBusy) return;
         IsBusy = true;
-        StatusMessage = "Creating new campaign...";
+        StatusMessage = "Creating new vault...";
         try
         {
             var path = await _mainViewModel.PickFolderAsync();
             if (string.IsNullOrEmpty(path))
             {
-                StatusMessage = "Create cancelled: No folder selected.";
+                StatusMessage = "Create cancelled: no folder selected.";
                 return;
             }
 
-            var campaignName = Path.GetFileName(path);
-            var metadataService = new MetadataService();
-            await metadataService.SaveMetadataAsync(path, new VaultMetadata
-            {
-                CampaignName = campaignName
-            });
+            var campaignName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            await _mainViewModel.Session.CreateAsync(path, campaignName);
+            _historyService.Add(path);
+            LoadRecentCampaigns();
 
-            await _mainViewModel.LoadCampaignAsync(path);
-            StatusMessage = $"Created new campaign '{campaignName}' locally.";
+            _mainViewModel.Sync.ConfigureSessionSync();
+            _mainViewModel.Workspace.BindSession(_mainViewModel.Session);
+            _mainViewModel.Sync.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
+            _mainViewModel.SourceControl.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
+            WorkspaceService.VaultSession = _mainViewModel.Session;
+
+            _mainViewModel.ApplicationState.CurrentState = AppState.Editor;
+            _mainViewModel.WorkspaceStatusMessage = $"Vault: {path}";
+            _mainViewModel.RefreshAll();
+            StatusMessage = $"Created vault '{campaignName}'.";
         }
         catch (Exception ex)
         {
@@ -143,46 +146,37 @@ public partial class HubViewModel : ViewModelBase
     {
         if (IsBusy) return;
         IsBusy = true;
-        StatusMessage = $"Preparing to stream campaign '{campaignName}'...";
+        StatusMessage = $"Importing '{campaignName}' from Campaign Vault...";
 
         try
         {
-            // 1. Pick folder
             var path = await _mainViewModel.PickFolderAsync();
             if (string.IsNullOrEmpty(path))
             {
-                StatusMessage = "Download cancelled: No folder selected.";
+                StatusMessage = "Import cancelled: no folder selected.";
                 return;
             }
 
-            // 2. Create vault-metadata.json
-            var metadataService = new MetadataService();
-            await metadataService.SaveMetadataAsync(path, new VaultMetadata
-            {
-                CampaignName = campaignName
-            });
+            await _mainViewModel.Session.CreateAsync(path, campaignName);
+            _historyService.Add(path);
 
-            // 3. Load the campaign into workspace
-            _mainViewModel.Sync.SelectedCampaign = campaignName;
-            await _mainViewModel.LoadCampaignAsync(path);
+            _mainViewModel.Sync.ConfigureSessionSync();
+            _mainViewModel.Workspace.BindSession(_mainViewModel.Session);
+            _mainViewModel.Sync.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
+            _mainViewModel.SourceControl.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
+            WorkspaceService.VaultSession = _mainViewModel.Session;
+            _mainViewModel.ApplicationState.CurrentState = AppState.Editor;
 
-            // 4. Trigger the initial sync (Pull everything)
-            StatusMessage = $"Streaming '{campaignName}' contents...";
-            await _mainViewModel.Sync.PopulateActualDiffsAsync();
+            StatusMessage = $"Fetching '{campaignName}'...";
+            await _mainViewModel.Sync.FetchCommand.ExecuteAsync(null);
+            await _mainViewModel.Sync.PullAllCommand.ExecuteAsync(null);
 
-            if (_mainViewModel.Sync.SyncDiffs.Any())
-            {
-                await _mainViewModel.Sync.SyncAllAsync();
-                StatusMessage = $"Successfully downloaded '{campaignName}'.";
-            }
-            else
-            {
-                StatusMessage = $"Campaign '{campaignName}' is empty or already up to date.";
-            }
+            _mainViewModel.RefreshAll();
+            StatusMessage = $"Imported '{campaignName}' into local vault.";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Download failed: {ex.Message}";
+            StatusMessage = $"Import failed: {ex.Message}";
         }
         finally
         {

@@ -9,13 +9,16 @@
         <dock:ProportionalStackPanel Orientation="Horizontal" Background="#1A1A1E" IsVisible="{Binding HasSelection}">
             <!-- Left Editor Pane -->
             <Grid dock:ProportionalStackPanel.Proportion="0.5" RowDefinitions="Auto, *" Margin="12,12,6,12" MinWidth="300">
-                <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="5,0,0,10">
+                <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" Margin="5,0,0,10">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                         <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" Width="14" Height="14" Foreground="#2563EB" VerticalAlignment="Center" />
                         <TextBlock Text="Editor" FontSize="12" FontWeight="SemiBold" Foreground="#A0A0AB" VerticalAlignment="Center" />
                     </StackPanel>
                     <Button Grid.Column="1" Content="Save Changes" Command="{Binding SaveActiveFileCommand}" 
                             Background="#2563EB" Foreground="White" Padding="12,6" FontSize="11" CornerRadius="4" 
+                            IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <Button Grid.Column="2" Content="Delete" Command="{Binding DeleteSelectedEntityCommand}" 
+                            Background="#7F1D1D" Foreground="White" Padding="12,6" FontSize="11" CornerRadius="4" Margin="6,0,0,0"
                             IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </Grid>
                 <Border Grid.Row="1" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="4" ClipToBounds="True">
@@ -133,7 +136,7 @@
             <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" 
                       Width="64" Height="64" Foreground="#3F3F46" />
             <TextBlock Text="No Entity Selected" FontSize="20" FontWeight="Bold" Foreground="#71717A" HorizontalAlignment="Center"/>
-            <TextBlock Text="Select a character, location, or quest from the explorer to start editing." 
+            <TextBlock Text="Select an entity or click + in Explorer to create one." 
                        FontSize="14" Foreground="#52525B" HorizontalAlignment="Center"/>
         </StackPanel>
     </Panel>

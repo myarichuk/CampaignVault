@@ -23,6 +23,9 @@
         <DataTemplate DataType="vm:SyncViewModel">
             <views:SyncView />
         </DataTemplate>
+        <DataTemplate DataType="vm:SourceControlViewModel">
+            <views:SourceControlView />
+        </DataTemplate>
         <DataTemplate DataType="vm:SettingsViewModel">
             <views:SettingsView />
         </DataTemplate>

@@ -9,6 +9,11 @@ namespace CampaignVault.Services;
 public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentKeys keys)
     : CampaignSync.CampaignSyncBase
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly CampaignDocumentKeys _keys = keys;
 
     public override async Task<CampaignListResponse> GetCampaigns(EmptyRequest request, ServerCallContext context)
@@ -127,6 +132,19 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
+        var items = await session.Query<Item>()
+            .Where(i => i.CampaignName == campaignName || i.CampaignName == null || i.CampaignName == "")
+            .ToListAsync();
+        foreach (var i in items)
+        {
+            response.Entities.Add(new EntityItem
+            {
+                Id = i.Id,
+                Type = "item",
+                Content = JsonSerializer.Serialize(i)
+            });
+        }
+
         return response;
     }
 
@@ -139,7 +157,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             
             if (request.Type == "character")
             {
-                var charData = JsonSerializer.Deserialize<Character>(request.Content);
+                var charData = JsonSerializer.Deserialize<Character>(request.Content, JsonOptions);
                 if (charData != null)
                 {
                     charData.CampaignName = campaignName;
@@ -148,7 +166,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             }
             else if (request.Type == "location")
             {
-                var locData = JsonSerializer.Deserialize<Location>(request.Content);
+                var locData = JsonSerializer.Deserialize<Location>(request.Content, JsonOptions);
                 if (locData != null)
                 {
                     locData.CampaignName = campaignName;
@@ -157,7 +175,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             }
             else if (request.Type == "quest")
             {
-                var questData = JsonSerializer.Deserialize<Quest>(request.Content);
+                var questData = JsonSerializer.Deserialize<Quest>(request.Content, JsonOptions);
                 if (questData != null)
                 {
                     questData.CampaignName = campaignName;
@@ -166,7 +184,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             }
             else if (request.Type == "faction")
             {
-                var factionData = JsonSerializer.Deserialize<Faction>(request.Content);
+                var factionData = JsonSerializer.Deserialize<Faction>(request.Content, JsonOptions);
                 if (factionData != null)
                 {
                     factionData.CampaignName = campaignName;
@@ -175,7 +193,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             }
             else if (request.Type == "lore")
             {
-                var loreData = JsonSerializer.Deserialize<Lore>(request.Content);
+                var loreData = JsonSerializer.Deserialize<Lore>(request.Content, JsonOptions);
                 if (loreData != null)
                 {
                     loreData.CampaignName = campaignName;
@@ -184,7 +202,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             }
             else if (request.Type == "rumor")
             {
-                var rumorData = JsonSerializer.Deserialize<Rumor>(request.Content);
+                var rumorData = JsonSerializer.Deserialize<Rumor>(request.Content, JsonOptions);
                 if (rumorData != null)
                 {
                     rumorData.CampaignName = campaignName;
@@ -193,17 +211,43 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             }
             else if (request.Type == "event")
             {
-                var eventData = JsonSerializer.Deserialize<Event>(request.Content);
+                var eventData = JsonSerializer.Deserialize<Event>(request.Content, JsonOptions);
                 if (eventData != null)
                 {
                     eventData.CampaignName = campaignName;
                     await session.StoreAsync(eventData, eventData.Id);
                 }
             }
+            else if (request.Type == "item")
+            {
+                var itemData = JsonSerializer.Deserialize<Item>(request.Content, JsonOptions);
+                if (itemData != null)
+                {
+                    itemData.CampaignName = campaignName;
+                    await session.StoreAsync(itemData, itemData.Id);
+                }
+            }
 
             await session.SaveChangesAsync();
 
             return new PushResponse { Success = true, Message = "Successfully pushed." };
+        }
+        catch (Exception ex)
+        {
+            return new PushResponse { Success = false, Message = ex.Message };
+        }
+    }
+
+    public override async Task<PushResponse> DeleteCampaignEntity(
+        DeleteCampaignEntityRequest request,
+        ServerCallContext context)
+    {
+        try
+        {
+            using var session = documentStore.OpenAsyncSession();
+            session.Delete(request.Id);
+            await session.SaveChangesAsync();
+            return new PushResponse { Success = true, Message = "Successfully deleted." };
         }
         catch (Exception ex)
         {

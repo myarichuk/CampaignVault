@@ -52,6 +52,73 @@ id: ""test_char""
     }
 
     [Fact]
+    public void ParseFaction_BodyMapsToDescription()
+    {
+        var markdown = """
+            ---
+            id: factions/guild
+            name: Thieves Guild
+            factionType: criminal
+            ---
+            Underground network.
+            """;
+
+        var faction = _parser.ParseFaction(markdown);
+        Assert.Equal("Underground network.", faction.Description);
+    }
+
+    [Fact]
+    public void ParseLore_BodyMapsToContent()
+    {
+        var markdown = """
+            ---
+            id: lore/tale
+            title: Tale
+            ---
+            Once upon a time.
+            """;
+
+        var lore = _parser.ParseLore(markdown);
+        Assert.Equal("Once upon a time.", lore.Content);
+    }
+
+    [Fact]
+    public void ParseRumor_BodyMapsToCurrentText()
+    {
+        var markdown = """
+            ---
+            id: rumors/gossip
+            regionLocationId: locations/tavern
+            subject: Gossip
+            state: spreading
+            truthValue: partiallyTrue
+            dayCreated: 1
+            lastStateChangeDay: 1
+            ---
+            Heard at the bar.
+            """;
+
+        var rumor = _parser.ParseRumor(markdown);
+        Assert.Equal("Heard at the bar.", rumor.CurrentText);
+    }
+
+    [Fact]
+    public void ParseEvent_BodyMapsToSummary()
+    {
+        var markdown = """
+            ---
+            id: events/ambush
+            category: combat
+            dayLogged: 2
+            ---
+            Ambush on the road.
+            """;
+
+        var evt = _parser.ParseEvent(markdown);
+        Assert.Equal("Ambush on the road.", evt.Summary);
+    }
+
+    [Fact]
     public void ParseCharacter_CRLFLineEndings_ParsesCorrectly()
     {
         var markdown = "---\r\n$type: \"character\"\r\nid: \"test_char\"\r\n---\r\nBody";

@@ -5,9 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Platform.Storage;
-using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Vault;
+using CampaignVault.Authoring.Vault.Git;
+using CampaignVault.Authoring.Vault.Sync;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -19,9 +20,7 @@ public partial class ExplorerNodeViewModel : ObservableObject
     public ObservableCollection<ExplorerNodeViewModel> Children { get; } = new();
 }
 
-public partial class CategoryNodeViewModel : ExplorerNodeViewModel
-{
-}
+public partial class CategoryNodeViewModel : ExplorerNodeViewModel;
 
 public partial class FolderNodeViewModel : ExplorerNodeViewModel
 {
@@ -30,18 +29,28 @@ public partial class FolderNodeViewModel : ExplorerNodeViewModel
 
 public partial class EntityNodeViewModel : ExplorerNodeViewModel
 {
-    public UnifiedEntity Entity { get; private set; }
+    public VaultEntity Entity { get; private set; } = null!;
 
-    public EntityNodeViewModel(UnifiedEntity entity)
+    [ObservableProperty] private VaultSyncState _syncState;
+
+    [ObservableProperty] private bool _isGitDirty;
+
+    [ObservableProperty] private bool _hasLocalFile;
+
+    public EntityNodeViewModel(VaultEntity entity, VaultSyncState syncState, bool isGitDirty, bool hasLocalFile,
+        string? vaultPath = null)
     {
-        Entity = entity;
-        Title = entity.Name;
+        SyncFrom(entity, syncState, isGitDirty, hasLocalFile, vaultPath);
     }
 
-    public void SyncFrom(UnifiedEntity entity)
+    public void SyncFrom(VaultEntity entity, VaultSyncState syncState, bool isGitDirty, bool hasLocalFile,
+        string? vaultPath = null)
     {
         Entity = entity;
-        Title = entity.Name;
+        SyncState = syncState;
+        IsGitDirty = isGitDirty;
+        HasLocalFile = hasLocalFile;
+        Title = VaultEntityDisplay.GetDisplayName(entity, vaultPath);
     }
 }
 
@@ -50,244 +59,87 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public static Avalonia.Data.Converters.FuncValueConverter<object?, double> NullToOpacityConverter { get; } =
         new(v => v == null ? 0.6 : 1.0);
 
-    private readonly WorkspaceDbService _dbService = new();
-    public WorkspaceParser Parser { get; } = new();
-    private WorkspaceScanner? _scanner;
-
-    private IStorageProvider? _storageProvider;
+    private CampaignVaultSession? _session;
     private CancellationTokenSource? _debounceSource;
-    private CampaignStateService? _stateService;
+    private FileSystemWatcher? _watcher;
 
     [ObservableProperty] private ObservableCollection<ExplorerNodeViewModel> _categories = new();
 
-    [ObservableProperty] private ExplorerNodeViewModel? _selectedNode;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedEntity))]
+    private ExplorerNodeViewModel? _selectedNode;
+
+    public bool HasSelectedEntity => SelectedNode is EntityNodeViewModel;
 
     [ObservableProperty] private string _currentDirectory = string.Empty;
 
-    [ObservableProperty] private string _workspaceStatusMessage = "Open a campaign folder to begin.";
+    [ObservableProperty] private string _workspaceStatusMessage = "Open a campaign vault to begin.";
 
     [ObservableProperty] private bool _isLoading;
 
-    private FileSystemWatcher? _watcher;
+    public WorkspaceParser Parser { get; } = new();
 
-    public WorkspaceDbService DbService => _dbService;
-    public CampaignStateService? StateService => _stateService;
-
-    public void SetStorageProvider(IStorageProvider sp)
+    public void BindSession(CampaignVaultSession? session)
     {
-        _storageProvider = sp;
-    }
+        StopWatcher();
+        _session = session;
+        CurrentDirectory = session?.VaultPath ?? string.Empty;
+        WorkspaceStatusMessage = session?.IsOpen == true
+            ? $"Vault: {session.VaultPath}. Use + or File > New to add entities."
+            : "Open a campaign vault to begin.";
 
-    public async Task RefreshLocalStateAsync()
-    {
-        if (_stateService != null)
-        {
-            await _stateService.RefreshLocalStateOnlyAsync();
-        }
-    }
+        if (session?.IsOpen == true)
+            StartWatcher(session.VaultPath!);
 
-    public void SetStateService(CampaignStateService stateService)
-    {
-        if (_stateService != null)
-        {
-            _stateService.StateChanged -= OnStateChanged;
-        }
-
-        _stateService = stateService;
-        _stateService.StateChanged += OnStateChanged;
         RefreshFilesList();
     }
 
-    private void OnStateChanged(object? sender, EventArgs e)
+    [RelayCommand]
+    private void RefreshExplorer()
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(RefreshFilesList);
+        RefreshFilesList();
     }
 
     [RelayCommand]
-    private async Task OpenCampaignFolderAsync()
+    private async Task CreateNewEntityAsync()
     {
-        if (_storageProvider == null)
+        // Delegate to main VM which owns the session and editor selection
+        var main = Services.WorkspaceService.MainWindowViewModel;
+        if (main != null)
         {
-            WorkspaceStatusMessage = "Folder picker is not available yet.";
-            return;
+            await main.CreateNewEntityCommand.ExecuteAsync(null);
         }
-
-        var folders = await _storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "Select Campaign Workspace Folder",
-            AllowMultiple = false
-        });
-
-        var folder = folders.FirstOrDefault();
-        if (folder == null) return;
-
-        var path = folder.TryGetLocalPath();
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            WorkspaceStatusMessage = "Could not resolve the selected folder path.";
-            return;
-        }
-
-        LoadDirectory(path);
-        WorkspaceStatusMessage = $"Workspace: {path}";
     }
 
     [RelayCommand]
-    public async Task RefreshStateAsync()
+    private async Task DeleteSelectedEntityAsync()
     {
-        if (_stateService != null)
+        var main = Services.WorkspaceService.MainWindowViewModel;
+        if (main != null)
         {
-            IsLoading = true;
-            try
-            {
-                var campaignName = Path.GetFileName(CurrentDirectory);
-                try
-                {
-                    var metadata = await new MetadataService().LoadMetadataAsync(CurrentDirectory);
-                    if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
-                        campaignName = metadata.CampaignName;
-                }
-                catch
-                {
-                }
-
-                await _stateService.RefreshStateAsync(campaignName);
-            }
-            finally
-            {
-                IsLoading = false;
-            }
+            await main.DeleteSelectedEntityCommand.ExecuteAsync(null);
         }
-    }
-
-    public void LoadDirectory(string path)
-    {
-        _ = LoadDirectoryAsync(path);
-    }
-
-    public async Task LoadDirectoryAsync(string path)
-    {
-        IsLoading = true;
-        try
-        {
-            CurrentDirectory = path;
-
-            if (_watcher != null)
-            {
-                _watcher.EnableRaisingEvents = false;
-                _watcher.Dispose();
-                _watcher = null;
-            }
-
-            if (!Directory.Exists(path))
-            {
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(RefreshFilesList);
-                return;
-            }
-
-            _dbService.InitializeDatabase(path);
-            _scanner = new WorkspaceScanner(_dbService, Parser);
-
-            await _scanner.ScanWorkspaceAsync(path);
-
-            var campaignName = Path.GetFileName(path);
-            try
-            {
-                var metadata = await new MetadataService().LoadMetadataAsync(path);
-                if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
-                    campaignName = metadata.CampaignName;
-            }
-            catch
-            {
-            }
-
-            if (_stateService != null)
-                await _stateService.RefreshStateAsync(campaignName);
-
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(RefreshFilesList);
-
-            _watcher = new FileSystemWatcher(path, "*.md")
-            {
-                IncludeSubdirectories = true,
-                EnableRaisingEvents = true
-            };
-
-            _watcher.Created += OnWorkspaceChanged;
-            _watcher.Deleted += OnWorkspaceChanged;
-            _watcher.Changed += OnWorkspaceChanged;
-            _watcher.Renamed += OnWorkspaceChanged;
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private void OnWorkspaceChanged(object sender, FileSystemEventArgs e)
-    {
-        // Cancel any pending debounced scan and start a new one
-        _debounceSource?.Cancel();
-        _debounceSource = new CancellationTokenSource();
-        var token = _debounceSource.Token;
-
-        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
-        {
-            IsLoading = true;
-            try
-            {
-                await Task.Delay(400, token);
-
-                var selectedEntityId = (SelectedNode as EntityNodeViewModel)?.Entity.Id;
-
-                if (_scanner != null && !string.IsNullOrEmpty(CurrentDirectory))
-                {
-                    await _scanner.ScanWorkspaceAsync(CurrentDirectory);
-                    if (_stateService != null)
-                    {
-                        var campaignName = Path.GetFileName(CurrentDirectory);
-                        try
-                        {
-                            var metadata = await new MetadataService().LoadMetadataAsync(CurrentDirectory);
-                            if (metadata != null && !string.IsNullOrEmpty(metadata.CampaignName))
-                                campaignName = metadata.CampaignName;
-                        }
-                        catch
-                        {
-                        }
-
-                        await _stateService.RefreshStateAsync(campaignName);
-                    }
-                }
-
-                RefreshFilesList();
-
-                if (!string.IsNullOrEmpty(selectedEntityId))
-                {
-                    var found = FindEntityNode(Categories, selectedEntityId);
-                    if (found != null)
-                    {
-                        SelectedNode = found;
-                        WorkspaceService.MainWindowViewModel?.ReloadActiveFileContent();
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Debounce cancelled — a newer event will take over
-            }
-            finally
-            {
-                if (!token.IsCancellationRequested)
-                    IsLoading = false;
-            }
-        });
     }
 
     public void RefreshFilesList()
     {
-        if (_stateService == null) return;
+        if (_session is not { IsOpen: true })
+        {
+            Categories.Clear();
+            return;
+        }
 
-        var entities = _stateService.Entities.ToList();
+        var entities = _session.ScanEntities();
+        var syncPlans = _session.GetEntitySyncPlans()
+            .ToDictionary(p => p.EntityId, StringComparer.OrdinalIgnoreCase);
+        var gitStatus = _session.GetGitStatus();
+        var dirtyPaths = new HashSet<string>(
+            gitStatus.ModifiedPaths
+                .Concat(gitStatus.AddedPaths)
+                .Concat(gitStatus.UntrackedPaths)
+                .Select(NormalizePath),
+            StringComparer.OrdinalIgnoreCase);
+
         var categoryKeys = entities
             .Select(GetCategoryKey)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -297,13 +149,14 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         var toRemoveCats = Categories
             .Where(c => !categoryKeys.Contains(c.Title, StringComparer.OrdinalIgnoreCase))
             .ToList();
-        foreach (var c in toRemoveCats) Categories.Remove(c);
+        foreach (var c in toRemoveCats)
+            Categories.Remove(c);
 
         foreach (var categoryKey in categoryKeys)
         {
             var categoryEntities = entities
                 .Where(e => string.Equals(GetCategoryKey(e), categoryKey, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(e => e.RelativePath ?? e.Name, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(e => e.RelativePath, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             var category = Categories.FirstOrDefault(c =>
@@ -314,27 +167,92 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                 Categories.Add(category);
             }
 
-            SyncFolderChildren(category, categoryKey, categoryEntities, categoryKey);
+            SyncFolderChildren(category, categoryKey, categoryEntities, categoryKey, syncPlans, dirtyPaths,
+                _session?.VaultPath);
         }
     }
 
-    private static string GetCategoryKey(UnifiedEntity entity)
+    private void StartWatcher(string vaultPath)
     {
-        if (!string.IsNullOrWhiteSpace(entity.RelativePath))
-        {
-            var parts = entity.RelativePath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length > 0)
-                return parts[0];
-        }
+        if (!Directory.Exists(vaultPath))
+            return;
 
-        return entity.EntityType + "s";
+        _watcher = new FileSystemWatcher(vaultPath, "*.md")
+        {
+            IncludeSubdirectories = true,
+            EnableRaisingEvents = true
+        };
+
+        _watcher.Created += OnWorkspaceChanged;
+        _watcher.Deleted += OnWorkspaceChanged;
+        _watcher.Changed += OnWorkspaceChanged;
+        _watcher.Renamed += OnWorkspaceChanged;
+    }
+
+    private void StopWatcher()
+    {
+        _debounceSource?.Cancel();
+        _debounceSource?.Dispose();
+        _debounceSource = null;
+
+        if (_watcher != null)
+        {
+            _watcher.EnableRaisingEvents = false;
+            _watcher.Dispose();
+            _watcher = null;
+        }
+    }
+
+    private void OnWorkspaceChanged(object sender, FileSystemEventArgs e)
+    {
+        _debounceSource?.Cancel();
+        _debounceSource = new CancellationTokenSource();
+        var token = _debounceSource.Token;
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            IsLoading = true;
+            try
+            {
+                await Task.Delay(400, token);
+                var selectedEntityId = (SelectedNode as EntityNodeViewModel)?.Entity.Id;
+                RefreshFilesList();
+
+                if (!string.IsNullOrEmpty(selectedEntityId))
+                {
+                    var found = FindEntityNode(Categories, selectedEntityId);
+                    if (found != null)
+                    {
+                        SelectedNode = found;
+                        Services.WorkspaceService.MainWindowViewModel?.ReloadActiveFileContent();
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
+                    IsLoading = false;
+            }
+        });
+    }
+
+    private static string GetCategoryKey(VaultEntity entity)
+    {
+        var parts = entity.RelativePath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 0 ? parts[0] : entity.EntityType + "s";
     }
 
     private static void SyncFolderChildren(
         ExplorerNodeViewModel parent,
         string parentPath,
-        IReadOnlyList<UnifiedEntity> entities,
-        string categoryKey)
+        IReadOnlyList<VaultEntity> entities,
+        string categoryKey,
+        IReadOnlyDictionary<string, VaultEntitySyncPlan> syncPlans,
+        HashSet<string> dirtyPaths,
+        string? vaultPath)
     {
         var childFolders = entities
             .Select(e => GetChildFolderName(e, parentPath, categoryKey))
@@ -378,29 +296,35 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                 .Where(e => string.Equals(GetChildFolderName(e, parentPath, categoryKey), folderName,
                     StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            SyncFolderChildren(folder, folderPath, folderEntities, categoryKey);
+            SyncFolderChildren(folder, folderPath, folderEntities, categoryKey, syncPlans, dirtyPaths, vaultPath);
         }
 
-        foreach (var entity in directEntities.OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase))
+        foreach (var entity in directEntities.OrderBy(e => VaultEntityDisplay.GetDisplayName(e, vaultPath),
+                     StringComparer.OrdinalIgnoreCase))
         {
+            syncPlans.TryGetValue(entity.Id, out var plan);
+            var syncState = plan?.State
+                            ?? (entity.HasValidFrontmatter ? VaultSyncState.LocalOnly : VaultSyncState.Invalid);
+            var hasLocal = !string.IsNullOrWhiteSpace(entity.ContentHash);
+            var isGitDirty = dirtyPaths.Contains(NormalizePath(entity.RelativePath));
+
             var existing = parent.Children.OfType<EntityNodeViewModel>()
                 .FirstOrDefault(n => string.Equals(n.Entity.Id, entity.Id, StringComparison.OrdinalIgnoreCase));
             if (existing == null)
             {
-                InsertEntityNode(parent, new EntityNodeViewModel(entity));
+                InsertEntityNode(parent, new EntityNodeViewModel(entity, syncState, isGitDirty, hasLocal, vaultPath));
             }
             else
             {
-                existing.SyncFrom(entity);
+                existing.SyncFrom(entity, syncState, isGitDirty, hasLocal, vaultPath);
             }
         }
     }
 
-    private static string? GetChildFolderName(UnifiedEntity entity, string parentPath, string categoryKey)
-    {
-        if (string.IsNullOrWhiteSpace(entity.RelativePath))
-            return null;
+    private static string NormalizePath(string path) => path.Replace('\\', '/');
 
+    private static string? GetChildFolderName(VaultEntity entity, string parentPath, string categoryKey)
+    {
         var parts = entity.RelativePath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
             return null;
@@ -421,15 +345,13 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         ExplorerNodeViewModel child,
         string parentPath,
         string categoryKey,
-        HashSet<string> expectedChildIds)
-    {
-        return child switch
+        HashSet<string> expectedChildIds) =>
+        child switch
         {
             FolderNodeViewModel folder => expectedChildIds.Contains($"folder:{folder.FolderPath}"),
             EntityNodeViewModel entity => expectedChildIds.Contains($"entity:{entity.Entity.Id}"),
             _ => false
         };
-    }
 
     private static void InsertFolderNode(ExplorerNodeViewModel parent, FolderNodeViewModel folder)
     {
@@ -465,9 +387,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         return index;
     }
 
-    private static EntityNodeViewModel? FindEntityNode(
-        IEnumerable<ExplorerNodeViewModel> nodes,
-        string entityId)
+    private static EntityNodeViewModel? FindEntityNode(IEnumerable<ExplorerNodeViewModel> nodes, string entityId)
     {
         foreach (var node in nodes)
         {
@@ -487,18 +407,6 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        _debounceSource?.Cancel();
-        _debounceSource?.Dispose();
-        if (_watcher != null)
-        {
-            _watcher.EnableRaisingEvents = false;
-            _watcher.Dispose();
-            _watcher = null;
-        }
-
-        if (_stateService != null)
-        {
-            _stateService.StateChanged -= OnStateChanged;
-        }
+        StopWatcher();
     }
 }

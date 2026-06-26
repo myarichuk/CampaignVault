@@ -81,9 +81,7 @@ public partial class SettingsViewModel : ObservableObject
     private async Task CheckConnectionAsync()
     {
         if (_userDisconnected)
-        {
             return;
-        }
 
         var port = ResolveGrpcPort();
         var (success, message) = await VaultGrpcClientFactory.TestConnectionAsync(
@@ -93,24 +91,16 @@ public partial class SettingsViewModel : ObservableObject
 
         if (success)
         {
-            if (!IsGrpcConnected)
-            {
-                IsGrpcConnected = true;
-                GrpcStatusText = message;
-                GrpcStatusColor = "Green";
+            IsGrpcConnected = true;
+            GrpcStatusText = message;
+            GrpcStatusColor = "Green";
 
-                var mainVm = WorkspaceService.MainWindowViewModel;
-                if (mainVm != null)
-                {
-                    mainVm.Sync.IsConnected = true;
-                    _ = mainVm.Sync.FetchCampaignsAsync();
-                    _ = mainVm.Sync.PopulateActualDiffsAsync();
-                }
-            }
-            else
+            var mainVm = WorkspaceService.MainWindowViewModel;
+            if (mainVm?.Session.IsOpen == true)
             {
-                GrpcStatusText = message;
-                GrpcStatusColor = "Green";
+                mainVm.Sync.ConfigureSessionSync();
+                mainVm.Sync.UpdateSummary();
+                mainVm.UpdateStatusBar();
             }
         }
         else
@@ -119,32 +109,18 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    private int ResolveGrpcPort()
-    {
-        return GrpcPortValue is > 0 and <= 65535 ? (int)GrpcPortValue.Value : 50051;
-    }
+    private int ResolveGrpcPort() =>
+        GrpcPortValue is > 0 and <= 65535 ? (int)GrpcPortValue.Value : 50051;
 
     private void SetDisconnected(string? statusMessage = null)
     {
-        var wasConnected = IsGrpcConnected;
         IsGrpcConnected = false;
         GrpcStatusText = statusMessage ?? "Disconnected";
         GrpcStatusColor = "Red";
 
-        if (wasConnected)
-        {
-            var mainVm = WorkspaceService.MainWindowViewModel;
-            if (mainVm != null)
-            {
-                mainVm.Sync.IsConnected = false;
-                mainVm.Sync.ClearDiffs();
-            }
-        }
-        else if (!string.IsNullOrWhiteSpace(statusMessage))
-        {
-            var mainVm = WorkspaceService.MainWindowViewModel;
-            mainVm?.Sync.UpdateConnectionStatus(statusMessage);
-        }
+        var mainVm = WorkspaceService.MainWindowViewModel;
+        if (mainVm?.Session.IsOpen == true)
+            mainVm.UpdateStatusBar();
     }
 
     public void UpdateMcpStatus()
@@ -165,9 +141,7 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         if (service.IsRunning)
-        {
             await service.StopAsync();
-        }
         else
         {
             var port = McpPortValue.HasValue ? (int)McpPortValue.Value : 8080;
@@ -207,5 +181,7 @@ public partial class SettingsViewModel : ObservableObject
         _settings.VaultMcpPort = VaultMcpPortValue is > 0 and <= 65535 ? (int)VaultMcpPortValue.Value : 5275;
 
         _settingsService.SaveSettings(_settings);
+
+        WorkspaceService.MainWindowViewModel?.Sync.ConfigureSessionSync();
     }
 }

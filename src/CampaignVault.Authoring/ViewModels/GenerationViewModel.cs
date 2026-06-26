@@ -147,15 +147,54 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void Insert()
+    private async Task Insert()
     {
         if (string.IsNullOrEmpty(GenerationResult)) return;
 
         var mainVm = WorkspaceService.MainWindowViewModel;
-        if (mainVm != null)
+        if (mainVm == null) return;
+
+        if (mainVm.Workspace.SelectedNode is EntityNodeViewModel)
         {
             mainVm.EditorText = GenerationResult;
-            StatusMessage = "Content inserted into editor.";
+            StatusMessage = "Content inserted into editor. Save to persist.";
         }
+        else if (mainVm.Session.IsOpen)
+        {
+            // No selection: create a new entity file from generated content.
+            // Try to infer a reasonable path from content or default to character.
+            var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            var relative = $"characters/generated-{ts}.md";
+            try
+            {
+                await mainVm.Session.WriteFileAsync(relative, GenerationResult);
+                mainVm.RefreshAll();
+                // Try select it
+                var found = FindGenerated(mainVm.Workspace.Categories, relative);
+                if (found != null) mainVm.Workspace.SelectedNode = found;
+                StatusMessage = $"Saved generated content as {relative}.";
+            }
+            catch (Exception ex)
+            {
+                mainVm.EditorText = GenerationResult; // fallback to buffer
+                StatusMessage = $"Insert to buffer (create failed: {ex.Message})";
+            }
+        }
+        else
+        {
+            mainVm.EditorText = GenerationResult;
+            StatusMessage = "Content inserted (open a vault to persist new entities).";
+        }
+    }
+
+    private static EntityNodeViewModel? FindGenerated(System.Collections.Generic.IEnumerable<ExplorerNodeViewModel> nodes, string rel)
+    {
+        foreach (var n in nodes)
+        {
+            if (n is EntityNodeViewModel en && string.Equals(en.Entity.RelativePath, rel, StringComparison.OrdinalIgnoreCase)) return en;
+            var deeper = FindGenerated(n.Children, rel);
+            if (deeper != null) return deeper;
+        }
+        return null;
     }
 }

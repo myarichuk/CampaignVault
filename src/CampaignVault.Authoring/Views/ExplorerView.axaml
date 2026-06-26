@@ -3,34 +3,29 @@
              xmlns:vm="using:CampaignVault.Authoring.ViewModels"
              x:Class="CampaignVault.Authoring.Views.ExplorerView"
              x:DataType="vm:WorkspaceViewModel">
-    <Grid RowDefinitions="Auto, Auto, *">
-        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="5,0,0,8">
+    <Grid RowDefinitions="Auto, *">
+        <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto" Margin="5,0,0,8">
             <TextBlock Grid.Column="0" Text="Campaign Explorer" FontSize="13" FontWeight="Bold" Foreground="#A0A0AB" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Command="{Binding RefreshStateCommand}" ToolTip.Tip="Refresh local and remote state"
+            <Button Grid.Column="1" Command="{Binding CreateNewEntityCommand}" ToolTip.Tip="Create new entity (character by default)"
+                    Background="Transparent" BorderThickness="0" Padding="4" Margin="0,0,4,0">
+                <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="14" Height="14" Foreground="#10B981" />
+            </Button>
+            <Button Grid.Column="2" Command="{Binding DeleteSelectedEntityCommand}" ToolTip.Tip="Delete selected entity (removes local file)"
+                    Background="Transparent" BorderThickness="0" Padding="4" Margin="0,0,4,0"
+                    IsEnabled="{Binding HasSelectedEntity}">
+                <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Width="14" Height="14" Foreground="#F87171" />
+            </Button>
+            <Button Grid.Column="3" Command="{Binding RefreshExplorerCommand}" ToolTip.Tip="Refresh entity list"
                     Background="Transparent" BorderThickness="0" Padding="4">
-                <PathIcon Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" 
+                <PathIcon Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"
                           Width="14" Height="14" Foreground="#71717A" />
             </Button>
         </Grid>
         <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="2" Margin="0,0,0,4" Foreground="#2563EB" VerticalAlignment="Top"/>
-        <StackPanel Grid.Row="1" Spacing="6" Margin="0,6,0,10">
-            <Button Content="Open Campaign Folder"
-                    Command="{Binding OpenCampaignFolderCommand}"
-                    Background="#2563EB"
-                    Foreground="White"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Center"
-                    Padding="8,6"
-                    FontSize="11" />
-            <TextBlock Text="{Binding WorkspaceStatusMessage}"
-                       FontSize="10"
-                       Foreground="#71717A"
-                       TextWrapping="Wrap" />
-        </StackPanel>
-        <TreeView Grid.Row="2" ItemsSource="{Binding Categories}"
+        <TreeView Grid.Row="1" ItemsSource="{Binding Categories}"
                   SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                   IsEnabled="{Binding !IsLoading}"
-                  Background="Transparent" BorderThickness="0">
+                  Background="Transparent" BorderThickness="0" Margin="0,6,0,0">
             <TreeView.DataTemplates>
                 <TreeDataTemplate DataType="vm:CategoryNodeViewModel" ItemsSource="{Binding Children}">
                     <StackPanel Orientation="Horizontal" Spacing="4">
@@ -52,16 +47,23 @@
                             <Panel Width="12" Height="12">
                                 <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z"
                                           Width="12" Height="12" Foreground="#71717A"
-                                          IsVisible="{Binding Entity.LocalHash, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                          IsVisible="{Binding HasLocalFile}"/>
                                 <PathIcon Data="M17.5,15C19.38,15 21,13.38 21,11.5C21,9.62 19.38,8 17.5,8C17.15,8 16.81,8.05 16.5,8.14C15.86,5.77 13.68,4 11,4C8.24,4 6,6.24 6,9C6,9.15 6.02,9.3 6.05,9.44C4.26,9.88 3,11.54 3,13.5C3,15.93 4.97,17.9 7.4,18H17.5V15Z"
                                           Width="12" Height="12" Foreground="#38BDF8"
-                                          IsVisible="{Binding Entity.LocalHash, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                          IsVisible="{Binding !HasLocalFile}"/>
                             </Panel>
                             <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="11"
-                                       Opacity="{Binding Entity.LocalHash, Converter={x:Static vm:WorkspaceViewModel.NullToOpacityConverter}}"/>
+                                       Opacity="{Binding HasLocalFile, Converter={x:Static vm:WorkspaceViewModel.NullToOpacityConverter}}"/>
                         </StackPanel>
                         <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="3" Padding="4,1" Background="#2A2A35" Margin="4,0,0,0">
-                            <TextBlock Text="{Binding Entity.CalculatedState, Converter={x:Static vm:SyncStateDisplayConverter.Instance}}" FontSize="8" Foreground="#A0A0B0" />
+                            <TextBlock FontSize="8" Foreground="#A0A0B0">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{x:Static vm:ExplorerBadgeConverter.Instance}">
+                                        <Binding Path="SyncState" />
+                                        <Binding Path="IsGitDirty" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
                         </Border>
                     </Grid>
                 </DataTemplate>
