@@ -1640,65 +1640,103 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task Upserts_Assign_Semantic_Vectors_For_All_Entity_Types()
     {
         var repo = _fixture.CreateRepository();
-        using var session = _store.OpenAsyncSession();
-        
         var charId = "npcs/semantic-" + Guid.NewGuid();
-        await repo.UpsertCharacterAsync(session, new Character { Id = charId, Name = "Semantic NPC", Notes = "Some lore notes" }, TestCampaignDefaults.Slug);
-        
         var loreId = "lore/semantic-" + Guid.NewGuid();
-        await repo.UpsertLoreAsync(session, new Lore { Id = loreId, Title = "Semantic Lore", Content = "Some content" }, TestCampaignDefaults.Slug);
-        
         var locId = "locations/semantic-" + Guid.NewGuid();
-        await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Semantic Loc", Description = "Some description", Type = LocationType.Room }, TestCampaignDefaults.Slug);
-        
         var rumorId = "rumors/semantic-" + Guid.NewGuid();
-        await repo.UpsertRumorAsync(session, new Rumor { Id = rumorId, Subject = "Semantic Rumor", CurrentText = "Some text" }, TestCampaignDefaults.Slug);
-        
         var itemId = "items/semantic-" + Guid.NewGuid();
-        await repo.UpsertItemAsync(session, new Item { Id = itemId, Name = "Semantic Item", Description = "Some description" }, TestCampaignDefaults.Slug);
-        
         var factionId = "factions/semantic-" + Guid.NewGuid();
-        await repo.UpsertFactionAsync(session, new Faction { Id = factionId, Name = "Semantic Faction", Description = "Some description" }, TestCampaignDefaults.Slug);
-        
         var questId = "quests/semantic-" + Guid.NewGuid();
-        await repo.UpsertQuestAsync(session, new Quest { Id = questId, Title = "Semantic Quest", DmNotes = "Some notes" }, TestCampaignDefaults.Slug);
-        
         var eventId = "events/semantic-" + Guid.NewGuid();
-        await repo.LogEventAsync(session, new Event { Id = eventId, Summary = "Semantic Event", Category = EventCategory.Simulation }, TestCampaignDefaults.Slug);
 
-        await session.SaveChangesAsync();
+        // 1. Initial Insert
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertCharacterAsync(session, new Character { Id = charId, Name = "Semantic NPC", Notes = "Some lore notes" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLoreAsync(session, new Lore { Id = loreId, Title = "Semantic Lore", Content = "Some content" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Semantic Loc", Description = "Some description", Type = LocationType.Room }, TestCampaignDefaults.Slug);
+            await repo.UpsertRumorAsync(session, new Rumor { Id = rumorId, Subject = "Semantic Rumor", CurrentText = "Some text" }, TestCampaignDefaults.Slug);
+            await repo.UpsertItemAsync(session, new Item { Id = itemId, Name = "Semantic Item", Description = "Some description" }, TestCampaignDefaults.Slug);
+            await repo.UpsertFactionAsync(session, new Faction { Id = factionId, Name = "Semantic Faction", Description = "Some description" }, TestCampaignDefaults.Slug);
+            await repo.UpsertQuestAsync(session, new Quest { Id = questId, Title = "Semantic Quest", DmNotes = "Some notes" }, TestCampaignDefaults.Slug);
+            await repo.LogEventAsync(session, new Event { Id = eventId, Summary = "Semantic Event", Category = EventCategory.Simulation }, TestCampaignDefaults.Slug);
+            await session.SaveChangesAsync();
+        }
 
-        var dbChar = await session.LoadAsync<Character>(charId);
-        Assert.NotNull(dbChar.SemanticVector);
-        Assert.NotEmpty(dbChar.SemanticVector);
-        
-        var dbLore = await session.LoadAsync<Lore>(loreId);
-        Assert.NotNull(dbLore.SemanticVector);
-        Assert.NotEmpty(dbLore.SemanticVector);
-        
-        var dbLoc = await session.LoadAsync<Location>(locId);
-        Assert.NotNull(dbLoc.SemanticVector);
-        Assert.NotEmpty(dbLoc.SemanticVector);
-        
-        var dbRumor = await session.LoadAsync<Rumor>(rumorId);
-        Assert.NotNull(dbRumor.SemanticVector);
-        Assert.NotEmpty(dbRumor.SemanticVector);
-        
-        var dbItem = await session.LoadAsync<Item>(itemId);
-        Assert.NotNull(dbItem.SemanticVector);
-        Assert.NotEmpty(dbItem.SemanticVector);
-        
-        var dbFaction = await session.LoadAsync<Faction>(factionId);
-        Assert.NotNull(dbFaction.SemanticVector);
-        Assert.NotEmpty(dbFaction.SemanticVector);
-        
-        var dbQuest = await session.LoadAsync<Quest>(questId);
-        Assert.NotNull(dbQuest.SemanticVector);
-        Assert.NotEmpty(dbQuest.SemanticVector);
-        
-        var dbEvent = await session.LoadAsync<Event>(eventId);
-        Assert.NotNull(dbEvent.SemanticVector);
-        Assert.NotEmpty(dbEvent.SemanticVector);
+        // 2. Assert vectors populated in new session
+        using (var session = _store.OpenAsyncSession())
+        {
+            var dbChar = await session.LoadAsync<Character>(charId);
+            Assert.NotNull(dbChar.SemanticVector);
+            Assert.NotEmpty(dbChar.SemanticVector);
+            
+            var dbLore = await session.LoadAsync<Lore>(loreId);
+            Assert.NotNull(dbLore.SemanticVector);
+            Assert.NotEmpty(dbLore.SemanticVector);
+            
+            var dbLoc = await session.LoadAsync<Location>(locId);
+            Assert.NotNull(dbLoc.SemanticVector);
+            Assert.NotEmpty(dbLoc.SemanticVector);
+            
+            var dbRumor = await session.LoadAsync<Rumor>(rumorId);
+            Assert.NotNull(dbRumor.SemanticVector);
+            Assert.NotEmpty(dbRumor.SemanticVector);
+            
+            var dbItem = await session.LoadAsync<Item>(itemId);
+            Assert.NotNull(dbItem.SemanticVector);
+            Assert.NotEmpty(dbItem.SemanticVector);
+            
+            var dbFaction = await session.LoadAsync<Faction>(factionId);
+            Assert.NotNull(dbFaction.SemanticVector);
+            Assert.NotEmpty(dbFaction.SemanticVector);
+            
+            var dbQuest = await session.LoadAsync<Quest>(questId);
+            Assert.NotNull(dbQuest.SemanticVector);
+            Assert.NotEmpty(dbQuest.SemanticVector);
+            
+            var dbEvent = await session.LoadAsync<Event>(eventId);
+            Assert.NotNull(dbEvent.SemanticVector);
+            Assert.NotEmpty(dbEvent.SemanticVector);
+        }
+
+        // 3. Update with empty text to clear vectors
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertCharacterAsync(session, new Character { Id = charId, Name = "", Notes = "" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLoreAsync(session, new Lore { Id = loreId, Title = "", Content = "" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "", Description = "", Type = LocationType.Room }, TestCampaignDefaults.Slug);
+            await repo.UpsertRumorAsync(session, new Rumor { Id = rumorId, Subject = "", CurrentText = "" }, TestCampaignDefaults.Slug);
+            await repo.UpsertItemAsync(session, new Item { Id = itemId, Name = "", Description = "" }, TestCampaignDefaults.Slug);
+            await repo.UpsertFactionAsync(session, new Faction { Id = factionId, Name = "", Description = "" }, TestCampaignDefaults.Slug);
+            await repo.UpsertQuestAsync(session, new Quest { Id = questId, Title = "", DmNotes = "" }, TestCampaignDefaults.Slug);
+            // Event doesn't have an update method (LogEvent creates new), so we only test the rest for updates.
+            await session.SaveChangesAsync();
+        }
+
+        // 4. Assert vectors cleared in new session
+        using (var session = _store.OpenAsyncSession())
+        {
+            var dbChar = await session.LoadAsync<Character>(charId);
+            Assert.Empty(dbChar.SemanticVector!);
+            
+            var dbLore = await session.LoadAsync<Lore>(loreId);
+            Assert.Empty(dbLore.SemanticVector!);
+            
+            var dbLoc = await session.LoadAsync<Location>(locId);
+            Assert.Empty(dbLoc.SemanticVector!);
+            
+            var dbRumor = await session.LoadAsync<Rumor>(rumorId);
+            Assert.Empty(dbRumor.SemanticVector!);
+            
+            var dbItem = await session.LoadAsync<Item>(itemId);
+            Assert.Empty(dbItem.SemanticVector!);
+            
+            var dbFaction = await session.LoadAsync<Faction>(factionId);
+            Assert.Empty(dbFaction.SemanticVector!);
+            
+            var dbQuest = await session.LoadAsync<Quest>(questId);
+            Assert.Empty(dbQuest.SemanticVector!);
+        }
     }
 
     [Fact]

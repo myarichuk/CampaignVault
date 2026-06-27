@@ -65,6 +65,10 @@ public class CampaignRepository
             {
                 semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
             }
+            else
+            {
+                semanticEntity.SemanticVector = Array.Empty<float>();
+            }
         }
     }
 
@@ -1084,6 +1088,7 @@ public class CampaignRepository
         {
             existing.Name = item.Name;
             existing.Description = item.Description;
+            existing.Tags = item.Tags ?? existing.Tags ?? []; // Hardening pass: don't wipe existing tags if omit
             existing.Properties = item.Properties ?? [];
             existing.HolderId = item.HolderId;
             existing.LastUpdated = item.LastUpdated;
