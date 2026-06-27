@@ -24,6 +24,8 @@ public class Faction_Search : AbstractIndexCreationTask<Faction>
                 f.ControllingTerritory,
                 TerritoryLocationIds = f.TerritoryLocationIds,
                 KnownLeaderIds = f.KnownLeaderIds
+,
+                SemanticVector = CreateVector(f.SemanticVector)
             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

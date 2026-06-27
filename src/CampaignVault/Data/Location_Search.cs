@@ -15,6 +15,8 @@ public class Location_Search : AbstractIndexCreationTask<Location>
                 l.Type,
                 l.ParentLocationId,
                 CampaignName = l.CampaignName
+,
+                SemanticVector = CreateVector(l.SemanticVector)
             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

@@ -15,6 +15,8 @@ public class Lore_Search : AbstractIndexCreationTask<Lore>
                 lore.Tags,
                 lore.Category,
                 CampaignName = lore.CampaignName
+,
+                SemanticVector = CreateVector(lore.SemanticVector)
             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

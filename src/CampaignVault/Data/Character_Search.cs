@@ -26,6 +26,8 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                 c.KeepAlive,
                 c.MaxHp,
                 HasSchedule = c.Schedule != null
+,
+                SemanticVector = CreateVector(c.SemanticVector)
             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

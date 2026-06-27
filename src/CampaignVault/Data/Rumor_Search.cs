@@ -15,6 +15,8 @@ public class Rumor_Search : AbstractIndexCreationTask<Rumor>
                 r.RegionLocationId,
                 r.State,
                 CampaignName = r.CampaignName
+,
+                SemanticVector = CreateVector(r.SemanticVector)
             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

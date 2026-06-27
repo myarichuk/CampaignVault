@@ -15,6 +15,8 @@ public class Event_Search : AbstractIndexCreationTask<Event>
                 e.Timestamp,
                 e.DayLogged,
                 CampaignName = e.CampaignName
+,
+                SemanticVector = CreateVector(e.SemanticVector)
             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;

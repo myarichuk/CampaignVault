@@ -15,6 +15,8 @@ public class Item_Search : AbstractIndexCreationTask<Item>
                 i.HolderId,
                 i.Tags,
                 CampaignName = i.CampaignName
+,
+                SemanticVector = CreateVector(i.SemanticVector)
             };
 
         SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
