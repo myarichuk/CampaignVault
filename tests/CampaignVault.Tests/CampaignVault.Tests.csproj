@@ -27,4 +27,6 @@
     <ProjectReference Include="..\..\src\CampaignVault.Authoring\CampaignVault.Authoring.csproj" />
   </ItemGroup>
 
+  <Import Project="..\..\models\EmbeddingModels.props" />
+
 </Project>

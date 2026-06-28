@@ -26,6 +26,8 @@
     <Protobuf Include="Protos\vault_sync.proto" GrpcServices="Both" />
   </ItemGroup>
 
+  <Import Project="..\..\models\EmbeddingModels.props" />
+
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>CampaignVault.Tests</_Parameter1>
