@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <EmbeddingModelsSourceDir>$(MSBuildThisFileDirectory)embedding\</EmbeddingModelsSourceDir>
+    <EmbeddingModelsOutputDir>models\embedding\</EmbeddingModelsOutputDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="$(EmbeddingModelsSourceDir)config.json" Link="$(EmbeddingModelsOutputDir)config.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(EmbeddingModelsSourceDir)model.onnx" Link="$(EmbeddingModelsOutputDir)model.onnx" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(EmbeddingModelsSourceDir)special_tokens_map.json" Link="$(EmbeddingModelsOutputDir)special_tokens_map.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(EmbeddingModelsSourceDir)tokenizer.json" Link="$(EmbeddingModelsOutputDir)tokenizer.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(EmbeddingModelsSourceDir)tokenizer_config.json" Link="$(EmbeddingModelsOutputDir)tokenizer_config.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(EmbeddingModelsSourceDir)vocab.txt" Link="$(EmbeddingModelsOutputDir)vocab.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
