@@ -7,6 +7,8 @@ public class Lore_Search : AbstractIndexCreationTask<Lore>
 {
     public Lore_Search()
     {
+        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Corax;
+        Vector("SemanticVector", f => f);
         Map = lores => from lore in lores
             select new
             {
@@ -19,7 +21,7 @@ public class Lore_Search : AbstractIndexCreationTask<Lore>
                 SemanticVector = CreateVector(lore.SemanticVector)
             };
 
-        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
+        
 
         Index(x => x.Title, FieldIndexing.Search);
         Index(x => x.Content, FieldIndexing.Search);

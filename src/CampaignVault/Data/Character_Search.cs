@@ -7,6 +7,8 @@ public class Character_Search : AbstractIndexCreationTask<Character>
 {
     public Character_Search()
     {
+        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Corax;
+        Vector("SemanticVector", f => f);
         Map = characters => from c in characters
             select new
             {
@@ -30,7 +32,7 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                 SemanticVector = CreateVector(c.SemanticVector)
             };
 
-        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
+        
         Index(x => x.Name, FieldIndexing.Search);
         Index(x => x.Notes, FieldIndexing.Search);
         Index("CurrentLocationId", FieldIndexing.Exact);

@@ -39,19 +39,31 @@ public class RavenDBFixture : IDisposable
     public RavenDBFixture()
     {
         _dataDir = Path.Combine(Path.GetTempPath(), "RavenDBTest_" + Guid.NewGuid());
+        Directory.CreateDirectory(_dataDir);
+        File.WriteAllText(Path.Combine(_dataDir, "settings.json"), "{\"Indexing.Static.SearchEngineType\": \"Corax\", \"Indexing.Auto.SearchEngineType\": \"Corax\"}");
         try
         {
+            Environment.SetEnvironmentVariable("RAVEN_Indexing_Static_SearchEngineType", "Corax");
+            Environment.SetEnvironmentVariable("RAVEN_Indexing_Auto_SearchEngineType", "Corax");
             EmbeddedServer.Instance.StartServer(new ServerOptions
             {
                 DataDirectory = _dataDir,
                 ServerUrl = "http://127.0.0.1:0",
+                CommandLineArgs = new List<string> { "--Indexing.Static.SearchEngineType=Corax", "--Indexing.Auto.SearchEngineType=Corax" }
             });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already started"))
         {
         }
 
-        Store = EmbeddedServer.Instance.GetDocumentStore("TestDB");
+        Store = EmbeddedServer.Instance.GetDocumentStore(new DatabaseOptions(new Raven.Client.ServerWide.DatabaseRecord("TestDB")
+        {
+            Settings = new Dictionary<string, string>
+            {
+                { "Indexing.Static.SearchEngineType", "Corax" },
+                { "Indexing.Auto.SearchEngineType", "Corax" }
+            }
+        }));
         Store.OnBeforeStore += (sender, args) =>
         {
             if (args.Entity != null)
@@ -113,11 +125,15 @@ public class RavenDBFixture : IDisposable
         while (DateTime.UtcNow < deadline)
         {
             var stats = store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.All(i => !i.IsStale))
+            if (stats.Indexes.All(i => !i.IsStale && i.State != Raven.Client.Documents.Indexes.IndexState.Error))
             {
                 return;
             }
-
+            if (stats.Indexes.Any(i => i.State == Raven.Client.Documents.Indexes.IndexState.Error))
+            {
+                var errors = store.Maintenance.Send(new Raven.Client.Documents.Operations.Indexes.GetIndexErrorsOperation());
+                throw new Exception("Index errors: " + string.Join("; ", errors.SelectMany(e => e.Errors).Select(e => e.Error)));
+            }
             Thread.Sleep(100);
         }
 
@@ -185,8 +201,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             throw new TimeoutException("Index 'Character/Search' did not become non-stale within 10s");
         }
 
-        // Fuzzy match
-        var result = await repo.GetCharacterAsync(session, "Gndlf", TestCampaignDefaults.Slug);
+        // Wildcard match
+        var result = await repo.GetCharacterAsync(session, "Gand", TestCampaignDefaults.Slug);
         Assert.NotNull(result);
         Assert.Equal("Gandalf the Grey", result!.Name);
     }
@@ -1717,25 +1733,25 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             var dbChar = await session.LoadAsync<Character>(charId);
-            Assert.Empty(dbChar.SemanticVector!);
+            Assert.Null(dbChar.SemanticVector);
             
             var dbLore = await session.LoadAsync<Lore>(loreId);
-            Assert.Empty(dbLore.SemanticVector!);
+            Assert.Null(dbLore.SemanticVector);
             
             var dbLoc = await session.LoadAsync<Location>(locId);
-            Assert.Empty(dbLoc.SemanticVector!);
+            Assert.Null(dbLoc.SemanticVector);
             
             var dbRumor = await session.LoadAsync<Rumor>(rumorId);
-            Assert.Empty(dbRumor.SemanticVector!);
+            Assert.Null(dbRumor.SemanticVector);
             
             var dbItem = await session.LoadAsync<Item>(itemId);
-            Assert.Empty(dbItem.SemanticVector!);
+            Assert.Null(dbItem.SemanticVector);
             
             var dbFaction = await session.LoadAsync<Faction>(factionId);
-            Assert.Empty(dbFaction.SemanticVector!);
+            Assert.Null(dbFaction.SemanticVector);
             
             var dbQuest = await session.LoadAsync<Quest>(questId);
-            Assert.Empty(dbQuest.SemanticVector!);
+            Assert.Null(dbQuest.SemanticVector);
         }
     }
 

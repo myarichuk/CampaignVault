@@ -13,10 +13,15 @@ public class CampaignHistory
 
 public class CampaignHistoryService
 {
-    private readonly string _path = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
-        "CampaignVault", 
-        "history.json");
+    private readonly string _path;
+
+    public CampaignHistoryService(string? customPath = null)
+    {
+        _path = customPath ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
+            "CampaignVault", 
+            "history.json");
+    }
 
     public CampaignHistory Load()
     {

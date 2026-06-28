@@ -7,6 +7,8 @@ public class Event_Search : AbstractIndexCreationTask<Event>
 {
     public Event_Search()
     {
+        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Corax;
+        Vector("SemanticVector", f => f);
         Map = events => from e in events
             select new
             {
@@ -19,7 +21,7 @@ public class Event_Search : AbstractIndexCreationTask<Event>
                 SemanticVector = CreateVector(e.SemanticVector)
             };
 
-        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
+        
         Index(x => x.Summary, FieldIndexing.Search);
         Index(x => x.CampaignName, FieldIndexing.Exact);
         Index(x => x.DayLogged, FieldIndexing.Exact);

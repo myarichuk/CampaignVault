@@ -14,7 +14,7 @@ public class CampaignHistoryServiceTests : IDisposable
     {
         _tempDirectory = Path.Combine(Path.GetTempPath(), "CampaignHistory_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDirectory);
-        _service = new CampaignHistoryService();
+        _service = new CampaignHistoryService(Path.Combine(_tempDirectory, "history.json"));
     }
 
     public void Dispose()
