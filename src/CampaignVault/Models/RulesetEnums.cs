@@ -155,7 +155,10 @@ public enum RecoveryType
     /// <summary>Recovers after 1 hour of short rest (D&D Warlocks, PF2e Focus Points).</summary>
     ShortRest,
 
-    /// <summary>Recovers at the end of an encounter (Fallout 2d20 Action Points).</summary>
+    /// <summary>Recovers at the start of each combat turn (Fallout 2d20 Action Points). LLM manually resets via resource commits.</summary>
+    PerTurn,
+
+    /// <summary>Recovers at the end of an encounter (rarely used; most systems use PerTurn or ShortRest instead).</summary>
     EncounterEnd,
 
     /// <summary>Resets daily at a configured time (Inspiration, daily uses of abilities).</summary>

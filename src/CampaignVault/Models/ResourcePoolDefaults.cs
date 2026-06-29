@@ -8,9 +8,10 @@ namespace CampaignVault.Models;
 /// </summary>
 public static class ResourcePoolDefaults
 {
-    /// <summary>D&D 5e spell slots (levels 1-9), sorcerer points, etc.</summary>
+    /// <summary>D&D 5e spell slots (levels 1-9), sorcerer points, class-specific resources (maneuvers, channel divinity, etc.).</summary>
     public static Dictionary<string, ResourcePoolTemplate> Dnd5e => new()
     {
+        // ── SPELL SLOTS ──
         // Spell slots by level: based on class and character level
         // Maps: "1" -> 4 slots at level 1, "2" -> 3 slots at level 3, etc.
         {
@@ -201,13 +202,107 @@ public static class ResourcePoolDefaults
                 },
                 Description = "Monk Ki Points (recovers on short rest)"
             }
+        },
+
+        // ── CLASS-SPECIFIC RESOURCES ──
+        {
+            "superiority_dice",
+            new ResourcePoolTemplate
+            {
+                PoolName = "superiority_dice",
+                Recovery = RecoveryType.ShortRest,
+                DefaultMax = 4,
+                ApplicableSystems = ["dnd5e"],
+                LevelToMaxMap = new()
+                {
+                    { "3", 4 }, { "7", 5 }, { "11", 6 }, { "15", 7 }, { "18", 8 }, { "20", 8 }
+                },
+                Description = "Battle Master Superiority Dice for maneuvers (recovers on short rest)"
+            }
+        },
+        {
+            "channel_divinity",
+            new ResourcePoolTemplate
+            {
+                PoolName = "channel_divinity",
+                Recovery = RecoveryType.ShortRest,
+                DefaultMax = 1,
+                ApplicableSystems = ["dnd5e"],
+                LevelToMaxMap = new()
+                {
+                    { "1", 1 }, { "6", 2 }, { "18", 3 }, { "20", 3 }
+                },
+                Description = "Cleric/Paladin Channel Divinity uses (recovers on short rest)"
+            }
+        },
+        {
+            "bardic_inspiration",
+            new ResourcePoolTemplate
+            {
+                PoolName = "bardic_inspiration",
+                Recovery = RecoveryType.LongRest,
+                DefaultMax = 3,
+                ApplicableSystems = ["dnd5e"],
+                LevelToMaxMap = new()
+                {
+                    { "1", 3 }, { "5", 4 }, { "9", 5 }, { "13", 6 }, { "17", 7 }, { "20", 8 }
+                },
+                Description = "Bard Bardic Inspiration uses (recovers on long rest)"
+            }
+        },
+        {
+            "wildshape_uses",
+            new ResourcePoolTemplate
+            {
+                PoolName = "wildshape_uses",
+                Recovery = RecoveryType.ShortRest,
+                DefaultMax = 2,
+                ApplicableSystems = ["dnd5e"],
+                LevelToMaxMap = new()
+                {
+                    { "2", 2 }, { "4", 3 }, { "8", 4 }, { "12", 5 }, { "16", 6 }, { "20", 6 }
+                },
+                Description = "Druid Wild Shape uses (recovers on short rest)"
+            }
+        },
+        {
+            "action_surge",
+            new ResourcePoolTemplate
+            {
+                PoolName = "action_surge",
+                Recovery = RecoveryType.ShortRest,
+                DefaultMax = 1,
+                ApplicableSystems = ["dnd5e"],
+                LevelToMaxMap = new()
+                {
+                    { "1", 1 }, { "17", 2 }, { "20", 2 }
+                },
+                Description = "Fighter Action Surge uses (recovers on short rest)"
+            }
+        },
+        {
+            "font_of_magic",
+            new ResourcePoolTemplate
+            {
+                PoolName = "font_of_magic",
+                Recovery = RecoveryType.LongRest,
+                DefaultMax = 1,
+                ApplicableSystems = ["dnd5e"],
+                LevelToMaxMap = new()
+                {
+                    { "1", 0 }, { "2", 2 }, { "3", 3 }, { "4", 4 }, { "5", 5 },
+                    { "6", 6 }, { "7", 7 }, { "8", 8 }, { "9", 9 }, { "20", 9 }
+                },
+                Description = "Sorcerer Font of Magic points (flexible metamagic, recovers on long rest)"
+            }
         }
     };
 
-    /// <summary>Pathfinder 2e spell levels (1-4) and Focus Points.</summary>
+    /// <summary>Pathfinder 2e spell levels (1-4), Focus Points, and class-specific resources.</summary>
     public static Dictionary<string, ResourcePoolTemplate> Pf2e => new()
     {
-        // PF2e spell slots: levels 1-4 for most spellcasters, plus focus points
+        // ── SPELL SLOTS ──
+        // PF2e spell slots: levels 1-4 for most spellcasters
         {
             "spell_slots_1",
             new ResourcePoolTemplate
@@ -266,10 +361,34 @@ public static class ResourcePoolDefaults
                 },
                 Description = "Focus Points (recovers on short rest)"
             }
+        },
+
+        // ── CLASS-SPECIFIC RESOURCES ──
+        {
+            "bon_mot",
+            new ResourcePoolTemplate
+            {
+                PoolName = "bon_mot",
+                Recovery = RecoveryType.ShortRest,
+                DefaultMax = 1,
+                ApplicableSystems = ["pf2e"],
+                Description = "Bard Bon Mot uses (recovers on short rest)"
+            }
+        },
+        {
+            "recall_knowledge",
+            new ResourcePoolTemplate
+            {
+                PoolName = "recall_knowledge",
+                Recovery = RecoveryType.ShortRest,
+                DefaultMax = 1,
+                ApplicableSystems = ["pf2e"],
+                Description = "Investigator Recall Knowledge uses (recovers on short rest)"
+            }
         }
     };
 
-    /// <summary>Fallout 2d20 Action Points (per-encounter resource).</summary>
+    /// <summary>Fallout 2d20 Action Points (per-turn resource).</summary>
     public static Dictionary<string, ResourcePoolTemplate> Fallout2d20 => new()
     {
         {
@@ -277,14 +396,14 @@ public static class ResourcePoolDefaults
             new ResourcePoolTemplate
             {
                 PoolName = "action_points",
-                Recovery = RecoveryType.EncounterEnd,
+                Recovery = RecoveryType.PerTurn,
                 DefaultMax = 10,
                 ApplicableSystems = ["fallout2d20"],
                 LevelToMaxMap = new()
                 {
                     { "1", 10 }, { "5", 11 }, { "10", 12 }, { "15", 13 }, { "20", 14 }
                 },
-                Description = "Action Points (resets at end of encounter)"
+                Description = "Action Points (resets at start of your turn in combat — LLM manually resets via resource commits)"
             }
         }
     };

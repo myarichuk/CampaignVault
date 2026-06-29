@@ -6,6 +6,10 @@ namespace CampaignVault.Data;
 /// Recovers resource pools (spell slots, focus points, etc.) after long or short rests.
 /// Runs daily during advance_world and checks each character's LastRestedDay.
 /// If a rest was completed on the current or previous day, refills matching pools.
+///
+/// LIMITATION: PerTurn recovery (Fallout 2d20 Action Points) is not automatically handled.
+/// The LLM must manually reset these via resource commits at the start of each turn in combat.
+/// Example: commit { $type: "resource", characterId: "chars/agent-1", poolName: "action_points", delta: 10, reason: "Turn start" }
 /// </summary>
 public class SpellRecoveryRule : ISimulationRule
 {
@@ -44,8 +48,19 @@ public class SpellRecoveryRule : ISimulationRule
             foreach (var (poolName, pool) in character.SystemStats.ResourcePools)
             {
                 // Skip if pool is already at max or doesn't recover via rest
-                if (pool.Current == pool.Max ||
-                    (pool.Recovery != RecoveryType.LongRest && pool.Recovery != RecoveryType.ShortRest))
+                if (pool.Current == pool.Max)
+                {
+                    continue;
+                }
+
+                // Skip PerTurn pools (manually managed by LLM) and other non-rest recovery types
+                if (pool.Recovery == RecoveryType.PerTurn || pool.Recovery == RecoveryType.EncounterEnd || pool.Recovery == RecoveryType.Daily || pool.Recovery == RecoveryType.Never)
+                {
+                    continue;
+                }
+
+                // Only recover LongRest and ShortRest types
+                if (pool.Recovery != RecoveryType.LongRest && pool.Recovery != RecoveryType.ShortRest)
                 {
                     continue;
                 }
