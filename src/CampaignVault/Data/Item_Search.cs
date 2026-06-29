@@ -7,6 +7,8 @@ public class Item_Search : AbstractIndexCreationTask<Item>
 {
     public Item_Search()
     {
+        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Corax;
+        Vector("SemanticVector", f => f);
         Map = items => from i in items
             select new
             {
@@ -15,9 +17,11 @@ public class Item_Search : AbstractIndexCreationTask<Item>
                 i.HolderId,
                 i.Tags,
                 CampaignName = i.CampaignName
+,
+                SemanticVector = CreateVector(i.SemanticVector)
             };
 
-        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
+        
         Index(x => x.Name, FieldIndexing.Search);
         Index(x => x.Description, FieldIndexing.Search);
     }

@@ -20,9 +20,11 @@ public enum EventCategory
     SceneInterrupt
 }
 
-public class Event
+public class Event : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
+    
+    public float[]? SemanticVector { get; set; }
     
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 

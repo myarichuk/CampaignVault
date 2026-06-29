@@ -13,6 +13,8 @@ public class Faction_Search : AbstractIndexCreationTask<Faction>
 {
     public Faction_Search()
     {
+        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Corax;
+        Vector("SemanticVector", f => f);
         Map = factions => from f in factions
             select new
             {
@@ -24,9 +26,11 @@ public class Faction_Search : AbstractIndexCreationTask<Faction>
                 f.ControllingTerritory,
                 TerritoryLocationIds = f.TerritoryLocationIds,
                 KnownLeaderIds = f.KnownLeaderIds
+,
+                SemanticVector = CreateVector(f.SemanticVector)
             };
 
-        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
+        
         Index(x => x.Name, FieldIndexing.Search);
         Index(x => x.Description, FieldIndexing.Search);
         Index(x => x.FactionType, FieldIndexing.Exact);

@@ -1,8 +1,10 @@
 namespace CampaignVault.Models;
 
-public class Rumor
+public class Rumor : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
+    
+    public float[]? SemanticVector { get; set; }
     
     public string RegionLocationId { get; set; } = default!;
     

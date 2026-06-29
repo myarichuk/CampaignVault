@@ -1,8 +1,10 @@
 namespace CampaignVault.Models;
 
-public class Character
+public class Character : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
+    
+    public float[]? SemanticVector { get; set; }
     
     public string Name { get; set; } = default!;
     

@@ -2,9 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
 
-public class Location
+public class Location : IHasSemanticVector
 {
     public string Id { get; set; } = default!;
+    
+    public float[]? SemanticVector { get; set; }
     
     public string Name { get; set; } = default!;
     

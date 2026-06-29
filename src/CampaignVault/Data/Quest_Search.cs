@@ -13,6 +13,8 @@ public class Quest_Search : AbstractIndexCreationTask<Quest>
 {
     public Quest_Search()
     {
+        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Corax;
+        Vector("SemanticVector", f => f);
         Map = quests => from q in quests
             select new
             {
@@ -27,9 +29,11 @@ public class Quest_Search : AbstractIndexCreationTask<Quest>
                 LastUpdatedDay = q.LastUpdatedDay,
                 // Flatten objectives for full-text search across descriptions
                 ObjectiveDescriptions = q.Objectives != null ? q.Objectives.Select(o => o.Description) : new string[0]
+,
+                SemanticVector = CreateVector(q.SemanticVector)
             };
 
-        SearchEngineType = Raven.Client.Documents.Indexes.SearchEngineType.Lucene;
+        
         Index(x => x.Title, FieldIndexing.Search);
         Index(x => x.Category, FieldIndexing.Search);
         Index("ObjectiveDescriptions", FieldIndexing.Search);
