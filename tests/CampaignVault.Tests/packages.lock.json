@@ -70,6 +70,17 @@
         "resolved": "3.1.5",
         "contentHash": "tKi7dSTwP4m5m9eXPM2Ime4Kn7xNf4x4zT9sdLO/G4hZVnQCRiMTWoSZqI/pYTVeI27oPPqHBKYI/DjJ9GsYgA=="
       },
+      "AllMiniLmL6V2Sharp": {
+        "type": "Transitive",
+        "resolved": "0.0.3",
+        "contentHash": "ufFeCThwzc4jdcBMRLEkCYZr6LHFe1W3kXqxsxuz2BWc80Cq/J1Oq/VQdLd6IHvSxrXo22tjNsGZAdpPJ+kE2Q==",
+        "dependencies": {
+          "Microsoft.ML": "3.0.0",
+          "Microsoft.ML.OnnxRuntime": "1.16.3",
+          "Microsoft.ML.OnnxRuntime.Managed": "1.16.3",
+          "libtorch-cpu-win-x64": "2.1.0.1"
+        }
+      },
       "Autofac": {
         "type": "Transitive",
         "resolved": "9.1.0",
@@ -435,6 +446,11 @@
         "resolved": "2.0.323",
         "contentHash": "Kg+fJGWhGj5qRXG0Ilj4ddhuodGXZg57yhfX6OVUDR0M2DKg/UR42/d74+qv5l1qotc1qJilo/ho7xQnULP6yA=="
       },
+      "libtorch-cpu-win-x64": {
+        "type": "Transitive",
+        "resolved": "2.1.0.1",
+        "contentHash": "zh9Ll+DefpXfMzaaEzHgtY3Q9iDi6NHTnETI0Jah5jGiPrzphTidsVxLC+njAeeThhFGRakx4CMwPqJFMvfw7A=="
+      },
       "MicroCom.Runtime": {
         "type": "Transitive",
         "resolved": "0.11.4",
@@ -794,6 +810,30 @@
         "resolved": "3.0.1",
         "contentHash": "s/s20YTVY9r9TPfTrN5g8zPF1YhwxyqO6PxUkrYTGI2B+OGPe9AdajWZrLhFqXIvqIW23fnUE4+ztrUWNU1+9g=="
       },
+      "Microsoft.ML": {
+        "type": "Transitive",
+        "resolved": "3.0.0",
+        "contentHash": "r3G3ak3BFvu9B/sH2pX0fuFcPT1vTVMF0t595vjRwg7ZcxYQ0YG8zT8f8bGxyXAk16764GWHwOxuALDdFWjMEQ==",
+        "dependencies": {
+          "Microsoft.ML.CpuMath": "3.0.0",
+          "Microsoft.ML.DataView": "3.0.0",
+          "Newtonsoft.Json": "13.0.1",
+          "System.CodeDom": "4.5.0"
+        }
+      },
+      "Microsoft.ML.CpuMath": {
+        "type": "Transitive",
+        "resolved": "3.0.0",
+        "contentHash": "qlJTWlpGULnqIH89driG/RQAQ3Kvjix/Bypcopv046hd3a/fw/jVsS87Oa1O8jQqce+oj0kFk5oDh/62iXMyIA==",
+        "dependencies": {
+          "System.Numerics.Tensors": "8.0.0"
+        }
+      },
+      "Microsoft.ML.DataView": {
+        "type": "Transitive",
+        "resolved": "3.0.0",
+        "contentHash": "un4jBS4VYVWcGDNASmyjtAr7k5AhcYP+T6XLGqxuXlmh1txiikSM9BrDrTe2lZFHUPf+W/5A7CwPJdvHTN+w8g=="
+      },
       "Microsoft.ML.OnnxRuntime": {
         "type": "Transitive",
         "resolved": "1.18.0",
@@ -945,6 +985,11 @@
           "System.Memory.Data": "10.0.3"
         }
       },
+      "System.CodeDom": {
+        "type": "Transitive",
+        "resolved": "4.5.0",
+        "contentHash": "gqpR1EeXOuzNQWL7rOzmtdIz3CaXVjSQCiaGOs2ivjPwynKSJYm39X81fdlp7WuojZs/Z5t1k5ni7HtKQurhjw=="
+      },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",
         "resolved": "10.0.8",
@@ -1013,6 +1058,7 @@
       "campaignvault": {
         "type": "Project",
         "dependencies": {
+          "AllMiniLmL6V2Sharp": "[0.0.3, )",
           "Autofac": "[9.1.0, )",
           "Autofac.Extensions.DependencyInjection": "[11.0.0, )",
           "Google.Protobuf": "[3.31.1, )",
