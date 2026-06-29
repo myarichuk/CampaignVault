@@ -326,7 +326,7 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("UNIFIED SEARCH: Keyword search across lore, characters, and locations (campaign-scoped plus shared-universe entities with no CampaignName). Requires campaignName.")]
+    [Description("UNIFIED SEARCH: Hybrid keyword + semantic search across characters, lore, locations, rumors, factions, quests, events, and items (campaign-scoped plus shared-universe entities with no CampaignName). Requires campaignName.")]
     public Task<ToolResult<UnifiedSearchResult>> SearchWorld(
         [Description("The keyword or phrase to search for.")] string query,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
@@ -340,7 +340,7 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("HISTORY RECALL: Keyword search over past events for the active campaign slug. Use to remember prior sessions or plot points.")]
+    [Description("HISTORY RECALL: Hybrid keyword + semantic search over past events for the active campaign slug. Use to remember prior sessions or plot points.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
         [Description("The keyword or phrase to search for in historical events.")] string query,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,

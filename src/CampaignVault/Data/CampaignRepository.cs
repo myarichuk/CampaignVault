@@ -4,6 +4,7 @@ using CampaignVault.Data.Scenes;
 using CampaignVault.Models;
 using CampaignVault.Services;
 using Raven.Client.Documents;
+using Raven.Client.Documents.Indexes;
 using Raven.Client.Documents.Linq;
 using Raven.Client.Documents.Session;
 
@@ -59,35 +60,37 @@ public class CampaignRepository
         _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
     }
 
-    private async Task EnrichSemanticVectorAsync(object entity)
+    private async Task EnrichSemanticVectorAsync(IHasSemanticVector entity)
     {
-        if (entity is IHasSemanticVector semanticEntity) {
-            string textToEmbed = BuildEmbeddingText(semanticEntity);
-            if (!string.IsNullOrWhiteSpace(textToEmbed))
-            {
-                semanticEntity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-            }
-            else
-            {
-                semanticEntity.SemanticVector = null;
-            }
+        var textToEmbed = entity.BuildEmbeddingText();
+        if (string.IsNullOrWhiteSpace(textToEmbed))
+        {
+            entity.SemanticVector = null;
+            entity.EmbeddingTextHash = null;
+            return;
+        }
+
+        var hash = ComputeEmbeddingHash(textToEmbed);
+        if (hash == entity.EmbeddingTextHash)
+            return;
+
+        try
+        {
+            entity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
+            entity.EmbeddingTextHash = hash;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Embedding generation failed for {EntityType}; semantic search unavailable for this entity.", entity.GetType().Name);
+            entity.SemanticVector = null;
+            entity.EmbeddingTextHash = null;
         }
     }
 
-    private string BuildEmbeddingText(IHasSemanticVector entity)
+    private static string ComputeEmbeddingHash(string text)
     {
-        return entity switch
-        {
-            Character c => $"{c.Name}\n{c.Notes}",
-            Lore l => $"{l.Title}\n{l.Content}",
-            Location loc => $"{loc.Name}\n{loc.Description}",
-            Rumor r => $"{r.Subject}\n{r.CurrentText}",
-            Item i => $"{i.Name}\n{i.Description}",
-            Faction f => $"{f.Name}\n{f.Description}",
-            Quest q => $"{q.Title}\n{q.DmNotes}",
-            Event e => e.Summary,
-            _ => string.Empty
-        };
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text));
+        return Convert.ToHexString(bytes);
     }
 
     /// <summary>
@@ -455,8 +458,10 @@ public class CampaignRepository
 
     // --- Search & Recall ---
 
+    private const int UnifiedSearchPerTypeLimit = 3;
+
     /// <summary>
-    /// Performs a parallel, fuzzy search across Characters, Lore, and Locations for the given query.
+    /// Performs hybrid keyword + vector search across all semantically-indexed narrative entity types.
     /// Returns a mixed collection of documents matching the search string.
     /// </summary>
     public async Task<IEnumerable<object>> UnifiedSearchAsync(IAsyncDocumentSession session, string query,
@@ -465,82 +470,44 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         var queryVector = await _embeddingService.GenerateEmbeddingAsync(query);
 
-        var charsQuery = session.Query<Character, Character_Search>()
-            .Search(x => x.Name, $"*{query}*");
-        if (queryVector != null && queryVector.Length > 0)
-        {
-            charsQuery = charsQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-        }
-
-        var loreQuery = session.Query<Lore, Lore_Search>()
-            .Search(x => x.Title, $"*{query}*");
-        if (queryVector != null && queryVector.Length > 0)
-        {
-            loreQuery = loreQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-        }
-
-        var locsQuery = session.Query<Location, Location_Search>()
-            .Search(x => x.Name, $"*{query}*");
-        if (queryVector != null && queryVector.Length > 0)
-        {
-            locsQuery = locsQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-        }
-
-        if (!string.IsNullOrEmpty(effective))
-        {
-            charsQuery = charsQuery.Where(x => x.CampaignName == string.Empty || x.CampaignName == null || x.CampaignName == effective);
-            loreQuery = loreQuery.Where(x => x.CampaignName == string.Empty || x.CampaignName == null || x.CampaignName == effective);
-            locsQuery = locsQuery.Where(x => x.CampaignName == string.Empty || x.CampaignName == null || x.CampaignName == effective);
-        }
-
         // Await queries individually. The previous Task-capture + WhenAll + re-await pattern
         // could leave RavenDB session tracking "active async tasks" after the method returned,
         // causing "Disposing session with active async task is forbidden" on ExecuteAsync disposal.
-        var chars = await charsQuery.Take(5).ToListAsync();
-        var lore = await loreQuery.Take(5).ToListAsync();
-        var locs = await locsQuery.Take(5).ToListAsync();
+        var chars = await ApplyHybridSearchAsync<Character, Character_Search>(
+            session, queryVector, effective,
+            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var lore = await ApplyHybridSearchAsync<Lore, Lore_Search>(
+            session, queryVector, effective,
+            q => q.Search(x => x.Title, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var locs = await ApplyHybridSearchAsync<Location, Location_Search>(
+            session, queryVector, effective,
+            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var rumors = await ApplyHybridSearchAsync<Rumor, Rumor_Search>(
+            session, queryVector, effective,
+            q => q.Search(x => x.Subject, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var factions = await ApplyHybridSearchAsync<Faction, Faction_Search>(
+            session, queryVector, effective,
+            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var quests = await ApplyHybridSearchAsync<Quest, Quest_Search>(
+            session, queryVector, effective,
+            q => q.Search(x => x.Title, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var events = await ApplyHybridSearchAsync<Event, Event_Search>(
+            session, queryVector, effective,
+            q => q.Search(x => x.Summary, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var items = await ApplyHybridSearchAsync<Item, Item_Search>(
+            session, queryVector, effective,
+            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit);
 
-        // Critical: Locations returned to the LLM via SearchWorld can contain Metadata dictionaries
-        // that hold JsonElement (from STJ inbound or legacy data). Without sanitization here,
-        // STJ serialization of the tool response in the MCP layer blows up with
-        // "Operation is not valid due to the current state of the object" (dead JsonElement).
         foreach (var l in locs)
         {
             SanitizeLocation(l);
         }
 
-        var results = new List<object>();
-        results.AddRange(chars);
-        results.AddRange(lore);
-        results.AddRange(locs);
-        return results;
-    }
-
-    /// <summary>
-    /// Retrieves historical narrative events, optionally filtered by search query or event category.
-    /// </summary>
-    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query,
-        EventCategory? category, int limit = 10, string? campaignName = null)
-    {
-        var effective = ResolveCampaign(campaignName);
-        var q = session.Advanced.AsyncDocumentQuery<Event, Event_Search>();
-
-        if (!string.IsNullOrEmpty(effective))
+        foreach (var item in items)
         {
-            q = q.WhereEquals(x => x.CampaignName, effective);
+            SanitizeItem(item);
         }
 
-        if (!string.IsNullOrEmpty(query))
-        {
-            q = q.AndAlso().Search(x => x.Summary, $"*{query}*");
-        }
-
-        if (category.HasValue)
-        {
-            q = q.AndAlso().WhereEquals(x => x.Category, category.Value);
-        }
-
-        var events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
         foreach (var ev in events)
         {
             if (ev.Details != null)
@@ -549,7 +516,179 @@ public class CampaignRepository
             }
         }
 
+        var results = new List<object>();
+        results.AddRange(chars);
+        results.AddRange(lore);
+        results.AddRange(locs);
+        results.AddRange(rumors);
+        results.AddRange(factions);
+        results.AddRange(quests);
+        results.AddRange(events);
+        results.AddRange(items);
+        return results;
+    }
+
+    private static async Task<List<T>> ApplyHybridSearchAsync<T, TIndex>(
+        IAsyncDocumentSession session,
+        float[]? queryVector,
+        string effective,
+        Func<IRavenQueryable<T>, IRavenQueryable<T>> buildTextQuery,
+        int limit)
+        where T : class, ICampaignScopedEntity
+        where TIndex : AbstractIndexCreationTask, new()
+    {
+        var textQuery = ApplyCampaignScope(buildTextQuery(session.Query<T, TIndex>()), effective);
+        var textResults = await textQuery.Take(limit).ToListAsync();
+
+        if (queryVector is not { Length: EmbeddingModelPaths.VectorDimensions })
+        {
+            return textResults;
+        }
+
+        var vectorQuery = ApplyCampaignScope(
+            session.Query<T, TIndex>().VectorSearch(
+                field => field.WithField(x => x.SemanticVector),
+                searchTerm => searchTerm.ByEmbedding(queryVector)),
+            effective);
+        var vectorResults = await vectorQuery.Take(limit).ToListAsync();
+        return MergeSearchResults(textResults, vectorResults, limit);
+    }
+
+    private static IRavenQueryable<T> ApplyCampaignScope<T>(IRavenQueryable<T> query, string effective)
+        where T : class, ICampaignScopedEntity
+    {
+        if (string.IsNullOrEmpty(effective))
+        {
+            return query;
+        }
+
+        return query.Where(x =>
+            x.CampaignName == string.Empty || x.CampaignName == null || x.CampaignName == effective);
+    }
+
+    private static List<T> MergeSearchResults<T>(IReadOnlyList<T> textResults, IReadOnlyList<T> vectorResults, int limit)
+        where T : class, ICampaignScopedEntity
+    {
+        var merged = new List<T>(limit);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var result in textResults.Concat(vectorResults))
+        {
+            if (!seen.Add(result.Id))
+            {
+                continue;
+            }
+
+            merged.Add(result);
+            if (merged.Count >= limit)
+            {
+                break;
+            }
+        }
+
+        return merged;
+    }
+
+    /// <summary>
+    /// Retrieves historical narrative events, optionally filtered by hybrid keyword/semantic search or event category.
+    /// </summary>
+    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query,
+        EventCategory? category, int limit = 10, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        List<Event> events;
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var queryVector = await _embeddingService.GenerateEmbeddingAsync(query);
+            events = await QueryEventsHybridAsync(session, query, queryVector, effective, category, limit);
+        }
+        else
+        {
+            var q = session.Query<Event, Event_Search>();
+            if (!string.IsNullOrEmpty(effective))
+            {
+                q = q.Where(x => x.CampaignName == effective);
+            }
+
+            if (category.HasValue)
+            {
+                q = q.Where(x => x.Category == category.Value);
+            }
+
+            events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
+        }
+
+        SanitizeEventDetails(events);
         return events;
+    }
+
+    private static async Task<List<Event>> QueryEventsHybridAsync(
+        IAsyncDocumentSession session,
+        string query,
+        float[]? queryVector,
+        string effective,
+        EventCategory? category,
+        int limit)
+    {
+        var fetchLimit = Math.Max(limit * 2, limit);
+
+        IRavenQueryable<Event> ApplyEventFilters(IRavenQueryable<Event> q)
+        {
+            if (!string.IsNullOrEmpty(effective))
+            {
+                q = q.Where(x => x.CampaignName == effective);
+            }
+
+            if (category.HasValue)
+            {
+                q = q.Where(x => x.Category == category.Value);
+            }
+
+            return q;
+        }
+
+        var textResults = await ApplyEventFilters(
+                session.Query<Event, Event_Search>().Search(x => x.Summary, $"*{query}*"))
+            .Take(fetchLimit)
+            .ToListAsync();
+
+        List<Event> merged;
+        if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
+        {
+            var vectorResults = await ApplyEventFilters(
+                    session.Query<Event, Event_Search>().VectorSearch(
+                        field => field.WithField(x => x.SemanticVector),
+                        searchTerm => searchTerm.ByEmbedding(queryVector)))
+                .Take(fetchLimit)
+                .ToListAsync();
+            // Text matches are always included first (keyword hit = relevant regardless of recency).
+            // Vector-only results fill remaining slots, sorted by timestamp.
+            var textIds = new HashSet<string>(textResults.Select(e => e.Id), StringComparer.OrdinalIgnoreCase);
+            var vectorOnly = vectorResults
+                .Where(e => !textIds.Contains(e.Id))
+                .OrderByDescending(e => e.Timestamp)
+                .Take(Math.Max(0, limit - textResults.Count))
+                .ToList();
+            merged = textResults.Concat(vectorOnly).Take(limit).ToList();
+        }
+        else
+        {
+            merged = textResults.Take(limit).ToList();
+        }
+
+        return merged;
+    }
+
+    private void SanitizeEventDetails(IEnumerable<Event> events)
+    {
+        foreach (var ev in events)
+        {
+            if (ev.Details != null)
+            {
+                ev.Details = SanitizeDetails(ev.Details);
+            }
+        }
     }
 
     // --- Base Helpers ---
@@ -575,6 +714,8 @@ public class CampaignRepository
             return character;
         }
 
+        // Corax does not support .Fuzzy(); use wildcard substring as last-resort name match.
+        // Misspelled names from LLM tool calls are caught by semantic vector search in UnifiedSearchAsync.
         var fuzzy = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .Search(x => x.Name, "*" + identifier + "*").FirstOrDefaultAsync();
         return fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective) ? fuzzy : null;
@@ -633,6 +774,7 @@ public class CampaignRepository
             existing.LastUpdated = character.LastUpdated;
             existing.CampaignName = character.CampaignName;
             existing.SemanticVector = character.SemanticVector; // ensure set/copied for scoping
+            existing.EmbeddingTextHash = character.EmbeddingTextHash;
         }
         else
         {
@@ -829,6 +971,7 @@ public class CampaignRepository
             existing.LastUpdated = lore.LastUpdated;
             existing.CampaignName = lore.CampaignName;
             existing.SemanticVector = lore.SemanticVector; // ensure set/copied for scoping
+            existing.EmbeddingTextHash = lore.EmbeddingTextHash;
         }
         else
         {
@@ -913,6 +1056,7 @@ public class CampaignRepository
             existing.LastUpdated = location.LastUpdated;
             existing.CampaignName = location.CampaignName;
             existing.SemanticVector = location.SemanticVector; // ensure set/copied for scoping
+            existing.EmbeddingTextHash = location.EmbeddingTextHash;
             existing.ControllingFactionId = location.ControllingFactionId; // Phase 7.1
         }
         else
@@ -997,6 +1141,7 @@ public class CampaignRepository
             existing.LastUpdated = rumor.LastUpdated;
             existing.CampaignName = rumor.CampaignName;
             existing.SemanticVector = rumor.SemanticVector; // ensure for scoping (strict for rumors)
+            existing.EmbeddingTextHash = rumor.EmbeddingTextHash;
         }
         else
         {
@@ -1095,6 +1240,7 @@ public class CampaignRepository
             existing.LastUpdated = item.LastUpdated;
             existing.CampaignName = item.CampaignName;
             existing.SemanticVector = item.SemanticVector; // ensure set/copied for scoping
+            existing.EmbeddingTextHash = item.EmbeddingTextHash;
         }
         else
         {
@@ -1124,37 +1270,45 @@ public class CampaignRepository
 
         var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "locations/");
 
-        var suggestions = await session.Query<Location, Location_Search>()
-            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == effective || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-            .Take(3).ToListAsync();
-
-        if (suggestions.Count < 3)
+        try
         {
-            var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-            var byNameQuery = session.Query<Location, Location_Search>()
+            var suggestions = await session.Query<Location, Location_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Search(x => x.Name, cleanQuery + "*");
+                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
+                .Take(3).ToListAsync();
 
-            if (queryVector != null && queryVector.Length > 0)
+            if (suggestions.Count < 3)
             {
-                byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-            }
+                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
+                var byNameQuery = session.Query<Location, Location_Search>()
+                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
+                    .Search(x => x.Name, cleanQuery + "*");
 
-            var byName = await byNameQuery.Take(3).ToListAsync();
-
-            foreach (var item in byName)
-            {
-                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
                 {
-                    suggestions.Add(item);
+                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
+                }
+
+                var byName = await byNameQuery.Take(3).ToListAsync();
+
+                foreach (var item in byName)
+                {
+                    if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                    {
+                        suggestions.Add(item);
+                    }
                 }
             }
-        }
 
-        return suggestions;
+            return suggestions;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "SuggestLocationsAsync timed out waiting for index; returning empty results.");
+            return [];
+        }
     }
 
     public async Task<List<Character>> SuggestCharactersAsync(IAsyncDocumentSession session, string nameQuery,
@@ -1179,37 +1333,45 @@ public class CampaignRepository
 
         var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "chars/");
 
-        var suggestions = await session.Query<Character, Character_Search>()
-            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == effective || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-            .Take(3).ToListAsync();
-
-        if (suggestions.Count < 3)
+        try
         {
-            var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-            var byNameQuery = session.Query<Character, Character_Search>()
+            var suggestions = await session.Query<Character, Character_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Search(x => x.Name, cleanQuery + "*");
+                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
+                .Take(3).ToListAsync();
 
-            if (queryVector != null && queryVector.Length > 0)
+            if (suggestions.Count < 3)
             {
-                byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-            }
+                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
+                var byNameQuery = session.Query<Character, Character_Search>()
+                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
+                    .Search(x => x.Name, cleanQuery + "*");
 
-            var byName = await byNameQuery.Take(3).ToListAsync();
-
-            foreach (var item in byName)
-            {
-                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
                 {
-                    suggestions.Add(item);
+                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
+                }
+
+                var byName = await byNameQuery.Take(3).ToListAsync();
+
+                foreach (var item in byName)
+                {
+                    if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                    {
+                        suggestions.Add(item);
+                    }
                 }
             }
-        }
 
-        return suggestions;
+            return suggestions;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "SuggestCharactersAsync timed out waiting for index; returning empty.");
+            return [];
+        }
     }
 
     public async Task<List<Item>> SuggestItemsAsync(IAsyncDocumentSession session, string nameQuery,
@@ -1234,37 +1396,45 @@ public class CampaignRepository
 
         var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "items/");
 
-        var suggestions = await session.Query<Item, Item_Search>()
-            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == effective || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-            .Take(3).ToListAsync();
-
-        if (suggestions.Count < 3)
+        try
         {
-            var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-            var byNameQuery = session.Query<Item, Item_Search>()
+            var suggestions = await session.Query<Item, Item_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Search(x => x.Name, cleanQuery + "*");
+                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
+                .Take(3).ToListAsync();
 
-            if (queryVector != null && queryVector.Length > 0)
+            if (suggestions.Count < 3)
             {
-                byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-            }
+                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
+                var byNameQuery = session.Query<Item, Item_Search>()
+                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
+                    .Search(x => x.Name, cleanQuery + "*");
 
-            var byName = await byNameQuery.Take(3).ToListAsync();
-
-            foreach (var item in byName)
-            {
-                if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
                 {
-                    suggestions.Add(item);
+                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
+                }
+
+                var byName = await byNameQuery.Take(3).ToListAsync();
+
+                foreach (var item in byName)
+                {
+                    if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
+                    {
+                        suggestions.Add(item);
+                    }
                 }
             }
-        }
 
-        return suggestions;
+            return suggestions;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "SuggestItemsAsync timed out waiting for index; returning empty.");
+            return [];
+        }
     }
 
     /// <summary>
@@ -1288,37 +1458,45 @@ public class CampaignRepository
 
         var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "factions/");
 
-        var suggestions = await session.Query<Faction, Faction_Search>()
-            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == effective || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-            .Take(3).ToListAsync();
-
-        if (suggestions.Count < 3)
+        try
         {
-            var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-            var byNameQuery = session.Query<Faction, Faction_Search>()
+            var suggestions = await session.Query<Faction, Faction_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Search(x => x.Name, cleanQuery + "*");
+                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
+                .Take(3).ToListAsync();
 
-            if (queryVector != null && queryVector.Length > 0)
+            if (suggestions.Count < 3)
             {
-                byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-            }
+                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
+                var byNameQuery = session.Query<Faction, Faction_Search>()
+                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
+                    .Search(x => x.Name, cleanQuery + "*");
 
-            var byName = await byNameQuery.Take(3).ToListAsync();
-
-            foreach (var f in byName)
-            {
-                if (suggestions.All(s => s.Id != f.Id) && suggestions.Count < 3)
+                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
                 {
-                    suggestions.Add(f);
+                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
+                }
+
+                var byName = await byNameQuery.Take(3).ToListAsync();
+
+                foreach (var f in byName)
+                {
+                    if (suggestions.All(s => s.Id != f.Id) && suggestions.Count < 3)
+                    {
+                        suggestions.Add(f);
+                    }
                 }
             }
-        }
 
-        return suggestions;
+            return suggestions;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "SuggestFactionsAsync timed out waiting for index; returning empty.");
+            return [];
+        }
     }
 
     /// <summary>
@@ -1342,37 +1520,45 @@ public class CampaignRepository
 
         var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "quests/");
 
-        var suggestions = await session.Query<Quest, Quest_Search>()
-            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(x => x.CampaignName == effective || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-            .Take(3).ToListAsync();
-
-        if (suggestions.Count < 3)
+        try
         {
-            var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-            var byNameQuery = session.Query<Quest, Quest_Search>()
+            var suggestions = await session.Query<Quest, Quest_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Search(x => x.Title, cleanQuery + "*");
+                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
+                .Take(3).ToListAsync();
 
-            if (queryVector != null && queryVector.Length > 0)
+            if (suggestions.Count < 3)
             {
-                byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-            }
+                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
+                var byNameQuery = session.Query<Quest, Quest_Search>()
+                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
+                    .Search(x => x.Title, cleanQuery + "*");
 
-            var byName = await byNameQuery.Take(3).ToListAsync();
-
-            foreach (var q in byName)
-            {
-                if (suggestions.All(s => s.Id != q.Id) && suggestions.Count < 3)
+                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
                 {
-                    suggestions.Add(q);
+                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
+                }
+
+                var byName = await byNameQuery.Take(3).ToListAsync();
+
+                foreach (var q in byName)
+                {
+                    if (suggestions.All(s => s.Id != q.Id) && suggestions.Count < 3)
+                    {
+                        suggestions.Add(q);
+                    }
                 }
             }
-        }
 
-        return suggestions;
+            return suggestions;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "SuggestQuestsAsync timed out waiting for index; returning empty.");
+            return [];
+        }
     }
 
     public async Task<List<Quest>> GetActiveQuestsAsync(IAsyncDocumentSession session, string? campaignName = null,
@@ -1438,6 +1624,7 @@ public class CampaignRepository
             existing.LastUpdated = faction.LastUpdated;
             existing.CampaignName = faction.CampaignName;
             existing.SemanticVector = faction.SemanticVector;
+            existing.EmbeddingTextHash = faction.EmbeddingTextHash;
         }
         else
         {
@@ -1492,6 +1679,7 @@ public class CampaignRepository
             existing.LastUpdated = quest.LastUpdated;
             existing.CampaignName = quest.CampaignName;
             existing.SemanticVector = quest.SemanticVector;
+            existing.EmbeddingTextHash = quest.EmbeddingTextHash;
         }
         else
         {
