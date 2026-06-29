@@ -42,32 +42,21 @@ public class SpellRecoveryRule : ISimulationRule
                 continue;
             }
 
-            var restedToday = character.LastRestedDay.Value == (int)currentDay;
-            var restType = restedToday ? "long" : "recent";
+            if (character.LastRestType == null)
+            {
+                continue;
+            }
 
             foreach (var (poolName, pool) in character.SystemStats.ResourcePools)
             {
-                // Skip if pool is already at max or doesn't recover via rest
+                // Skip if pool is already at max
                 if (pool.Current == pool.Max)
                 {
                     continue;
                 }
 
-                // Skip PerTurn pools (manually managed by LLM) and other non-rest recovery types
-                if (pool.Recovery == RecoveryType.PerTurn || pool.Recovery == RecoveryType.EncounterEnd || pool.Recovery == RecoveryType.Daily || pool.Recovery == RecoveryType.Never)
-                {
-                    continue;
-                }
-
-                // Only recover LongRest and ShortRest types
-                if (pool.Recovery != RecoveryType.LongRest && pool.Recovery != RecoveryType.ShortRest)
-                {
-                    continue;
-                }
-
-                // Skip short-rest recovery if only a day has passed (recovery should happen when short rest is actually taken)
-                // For now, treat both as long-rest for simplicity; LLM can emit multiple short rests if needed
-                if (pool.Recovery == RecoveryType.ShortRest && !restedToday)
+                // Check if this pool should recover based on rest type hierarchy
+                if (!ShouldRecoverPool(character.LastRestType.Value, pool.Recovery))
                 {
                     continue;
                 }
@@ -78,14 +67,37 @@ public class SpellRecoveryRule : ISimulationRule
                     CharacterId = character.Id,
                     PoolName = poolName,
                     Delta = recovery,
-                    Reason = $"{restType} rest recovery"
+                    Reason = $"{character.LastRestType} rest recovery"
                 });
 
-                narratives.Add($"{character.Name} recovered {recovery} {poolName} after {restType} rest.");
-                _logger.LogDebug("SpellRecoveryRule: {CharacterName} recovered {Count} {PoolName}", character.Name, recovery, poolName);
+                narratives.Add($"{character.Name} recovered {recovery} {poolName} after {character.LastRestType} rest.");
+                _logger.LogDebug("SpellRecoveryRule: {CharacterName} recovered {Count} {PoolName} after {RestType} rest",
+                    character.Name, recovery, poolName, character.LastRestType);
             }
         }
 
         return new RuleResult(narratives, deltas);
     }
+
+    /// <summary>
+    /// Recovery type hierarchy matrix: determines which resource pools recover for a given rest type.
+    /// LongRest ⊃ ShortRest ⊃ PerTurn (each includes lower levels).
+    /// </summary>
+    private static bool ShouldRecoverPool(RestType restTaken, RecoveryType poolRecovery) => (restTaken, poolRecovery) switch
+    {
+        // LongRest recovers everything: LongRest pools, ShortRest pools, PerTurn pools
+        (RestType.LongRest, RecoveryType.LongRest) => true,
+        (RestType.LongRest, RecoveryType.ShortRest) => true,
+        (RestType.LongRest, RecoveryType.PerTurn) => true,
+
+        // ShortRest recovers ShortRest and PerTurn pools (not LongRest)
+        (RestType.ShortRest, RecoveryType.ShortRest) => true,
+        (RestType.ShortRest, RecoveryType.PerTurn) => true,
+
+        // PerTurn only recovers PerTurn pools
+        (RestType.PerTurn, RecoveryType.PerTurn) => true,
+
+        // All other combinations don't recover (Daily, Never, EncounterEnd are independent)
+        _ => false
+    };
 }

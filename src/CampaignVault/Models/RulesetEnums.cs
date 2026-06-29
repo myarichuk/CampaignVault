@@ -145,14 +145,16 @@ public enum DiceMechanic
 
 /// <summary>
 /// When a resource pool recovers. Used by ResourcePoolTemplate and ResourcePool.
+/// Recovery types form a hierarchy: LongRest ⊃ ShortRest ⊃ PerTurn (each includes the ones below).
+/// Daily and Never are independent (not part of the hierarchy).
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum RecoveryType
 {
-    /// <summary>Recovers after 8 hours of long rest (D&D spell slots, PF2e spell levels).</summary>
+    /// <summary>Recovers after 8 hours of long rest (D&D spell slots, PF2e spell levels). Includes ShortRest and PerTurn recovery.</summary>
     LongRest,
 
-    /// <summary>Recovers after 1 hour of short rest (D&D Warlocks, PF2e Focus Points).</summary>
+    /// <summary>Recovers after 1 hour of short rest (D&D Warlocks, PF2e Focus Points). Includes PerTurn recovery.</summary>
     ShortRest,
 
     /// <summary>Recovers at the start of each combat turn (Fallout 2d20 Action Points). LLM manually resets via resource commits.</summary>
@@ -161,9 +163,26 @@ public enum RecoveryType
     /// <summary>Recovers at the end of an encounter (rarely used; most systems use PerTurn or ShortRest instead).</summary>
     EncounterEnd,
 
-    /// <summary>Resets daily at a configured time (Inspiration, daily uses of abilities).</summary>
+    /// <summary>Resets daily at a configured time (Inspiration, daily uses of abilities). Independent of rest hierarchy.</summary>
     Daily,
 
     /// <summary>Never recovers — must be spent carefully or manually restored.</summary>
     Never
+}
+
+/// <summary>
+/// Type of rest taken by a character (used to determine which resource pools recover).
+/// Hierarchy: LongRest ⊃ ShortRest ⊃ PerTurn.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum RestType
+{
+    /// <summary>8+ hours of uninterrupted rest. Recovers LongRest, ShortRest, and PerTurn pools.</summary>
+    LongRest,
+
+    /// <summary>1-8 hours of rest. Recovers ShortRest and PerTurn pools (not LongRest).</summary>
+    ShortRest,
+
+    /// <summary>Combat turn start (Fallout AP reset). Recovers only PerTurn pools.</summary>
+    PerTurn
 }

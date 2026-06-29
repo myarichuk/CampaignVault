@@ -72,6 +72,11 @@ public class RestChange : WorldChange
     [JsonPropertyName("securityModifier")]
     public int SecurityModifier { get; set; }
 
+    [Description("Optional: Explicit rest type (LongRest, ShortRest, PerTurn). If omitted, engine infers from intendedHours: 8+ = LongRest, 1-7 = ShortRest.")]
+    [JsonPropertyName("restType")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public RestType? RestType { get; set; }
+
     [Description("Narrative description of how the character rests.")]
     [JsonPropertyName("narrativeNote")]
     public string? NarrativeNote { get; set; }

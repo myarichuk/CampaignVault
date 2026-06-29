@@ -69,6 +69,10 @@ public class RestChangeHandler : IWorldChangeHandler
             // Mark the day when the rest was completed (for spell slot recovery)
             character.LastRestedDay = (int)time.TotalDaysElapsed;
 
+            // Infer or use explicit rest type for pool recovery
+            var restType = rc.RestType ?? (hoursRested >= 8 ? RestType.LongRest : RestType.ShortRest);
+            character.LastRestType = restType;
+
             await context.Dispatcher.DispatchMutationAsync(context, new ActivityChange
             {
                 CharacterId = rc.CharacterId,
@@ -78,7 +82,7 @@ public class RestChangeHandler : IWorldChangeHandler
                 Reason = "Rest complete"
             }, ct);
 
-            return new ChangeHandlerResult(true, $"Rest completed safely. {hoursRested} hours passed.");
+            return new ChangeHandlerResult(true, $"Rest completed safely. {hoursRested} hours passed ({restType} rest).");
         }
         else
         {

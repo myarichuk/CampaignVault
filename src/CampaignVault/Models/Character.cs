@@ -63,6 +63,9 @@ public class Character : ICampaignScopedEntity
     /// <summary>Day when the character last completed a successful rest (tracked for spell slot recovery).</summary>
     public int? LastRestedDay { get; set; }
 
+    /// <summary>Type of the last rest taken (LongRest, ShortRest, PerTurn) — determines which pools recover.</summary>
+    public RestType? LastRestType { get; set; }
+
     public PsychologyProfile Psychology { get; set; } = new();
     
     public SocialProfile Social { get; set; } = new();
