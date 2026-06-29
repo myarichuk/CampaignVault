@@ -17,8 +17,9 @@ public sealed record SimulationContext(
     IReadOnlyList<Character> ScheduledNpcs,
     IAsyncDocumentSession Session,
     double DaysPassed,
-    string? CampaignName = null,                    // Added for multi-campaign support
-    IReadOnlyList<Faction>? ActiveFactions = null,  // Phase 7.1: faction context for FactionEcosystemRule
-    IReadOnlyList<Quest>? ActiveQuests = null,      // Phase 7.1: quest context for QuestStalenessRule
-    CampaignConfig? Config = null                   // Phase 8.5: configuration for decay
+    string? CampaignName = null,
+    IReadOnlyList<Faction>? ActiveFactions = null,
+    IReadOnlyList<Quest>? ActiveQuests = null,
+    CampaignConfig? Config = null,
+    IReadOnlyList<PlotThread>? ActivePlotThreads = null
 );

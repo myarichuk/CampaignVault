@@ -66,6 +66,9 @@ public class RestChangeHandler : IWorldChangeHandler
 
         if (!interrupted)
         {
+            // Mark the day when the rest was completed (for spell slot recovery)
+            character.LastRestedDay = (int)time.TotalDaysElapsed;
+
             await context.Dispatcher.DispatchMutationAsync(context, new ActivityChange
             {
                 CharacterId = rc.CharacterId,

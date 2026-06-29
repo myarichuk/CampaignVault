@@ -43,6 +43,11 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             // Supports explicit clears (NewLocationId=null + UpdateLocation=true) from TransientEvictionRule etc.
             // For LLM-authored partial updates that only change activity, omit newLocationId (or set UpdateLocation false).
             character.CurrentLocationId = act.NewLocationId;
+            if (!string.IsNullOrEmpty(act.NewLocationId))
+            {
+                character.DepartedAtDay = null;
+                character.DepartedFromLocationId = null;
+            }
         }
 
         context.RecordMessage($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");

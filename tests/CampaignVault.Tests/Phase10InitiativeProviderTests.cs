@@ -24,7 +24,7 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
     private sealed class TestSimulationEngine : IWorldSimulationEngine
     {
         public Task<SimulationResult> RunAsync(SimulationContext context, CancellationToken ct = default) =>
-            Task.FromResult(new SimulationResult([], [], []));
+            Task.FromResult(new SimulationResult([], [], [], [], []));
     }
 
     private CampaignRepository CreateRepo() =>

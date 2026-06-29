@@ -17,7 +17,9 @@ public enum EventCategory
     Interaction,
     Test,
     Travel,
-    SceneInterrupt
+    SceneInterrupt,
+    /// <summary>Transient NPC left a location (engine eviction or explicit departure).</summary>
+    Departure
 }
 
 public class Event : ICampaignScopedEntity

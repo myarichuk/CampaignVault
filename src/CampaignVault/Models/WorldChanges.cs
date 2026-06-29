@@ -44,6 +44,10 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(EngagementRelationChange), "engagement_relation")]
 [JsonDerivedType(typeof(SpatialPositionChange), "spatial_position")]
 [JsonDerivedType(typeof(SceneInterruptCheck), "scene_interrupt_check")]
+[JsonDerivedType(typeof(PlotThreadCreate), "plot_thread_create")]
+[JsonDerivedType(typeof(PlotThreadProgress), "plot_thread_progress")]
+[JsonDerivedType(typeof(PlotThreadClueDiscovered), "plot_thread_clue")]
+[JsonDerivedType(typeof(ResourceChange), "resource")]
 public abstract class WorldChange;
 
 /// <summary>
@@ -76,6 +80,8 @@ public class RestChange : WorldChange
 /// <summary>
 /// Optional single-roll check for whether someone from the ambient crowd interrupts the scene.
 /// LLM calls this after tense beats in crowded locations — not on every line of dialog.
+/// ENGINE MACRO: Rolls crowd reaction internally and may emit a derived ActivityChange promoting
+/// a transient from the crowd. Cooldown: one interrupt per location per day.
 /// </summary>
 public class SceneInterruptCheck : WorldChange
 {
@@ -394,6 +400,9 @@ public class ActivityChange : WorldChange
 /// and returns primitive WorldChange mutations (HpChange, StatusChange, NeedChange, etc.)
 /// back into the StageChangesAsync pipeline.
 ///
+/// ENGINE SIDE EFFECTS: This action auto-applies HpChange, StatusChange, and EngagementRelationChange
+/// as derived mutations. Do NOT add separate hp/status commits for the same action — that causes double-application.
+///
 /// IMPORTANT: The LLM must NOT invent random numbers. Use this action type and let the
 /// C# resolver roll dice deterministically. The LLM receives back a structured RollResult
 /// and narrates the outcome.
@@ -612,6 +621,10 @@ public class LocationUpdate : WorldChange
     [Description("Distinctive features to remove.")]
     [JsonPropertyName("featuresToRemove")]
     public List<string>? FeaturesToRemove { get; set; }
+
+    [Description("Record a transient NPC departure on this location (engine-internal; caps list at 10, most recent first).")]
+    [JsonPropertyName("recordDeparture")]
+    public DepartedNpcRecord? RecordDeparture { get; set; }
 }
 
 /// <summary>
@@ -1051,6 +1064,18 @@ public class CharacterUpdate : WorldChange
     [Description("Partial ruleset stats merge. Same shape as character_create.systemStats.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
+
+    [Description("Set when a transient NPC departs (engine eviction). Cleared automatically when the character is re-anchored to a location.")]
+    [JsonPropertyName("departedAtDay")]
+    public int? DepartedAtDay { get; set; }
+
+    [Description("Location the character departed from. Pair with departedAtDay.")]
+    [JsonPropertyName("departedFromLocationId")]
+    public string? DepartedFromLocationId { get; set; }
+
+    [Description("Clear departure metadata when re-promoting or returning an evicted NPC.")]
+    [JsonPropertyName("clearDeparture")]
+    public bool? ClearDeparture { get; set; }
 }
 
 /// <summary>
@@ -1111,4 +1136,166 @@ public class KnowledgeUpdate : WorldChange
     [Description("Optional entity IDs this memory relates to (characters, items, locations).")]
     [JsonPropertyName("relatedEntityIds")]
     public List<string>? RelatedEntityIds { get; set; }
+}
+
+/// <summary>
+/// Seed a new plot thread — a DM-facing narrative arc that ticks forward whether or not players engage.
+/// Unlike Quests (player-facing objectives), PlotThreads are world-state scaffolding: mysteries, conspiracies,
+/// slow-burn conflicts, rising threats. The simulation engine escalates tension automatically.
+/// </summary>
+public class PlotThreadCreate : WorldChange
+{
+    [Description("Unique ID for this thread (e.g. 'plot-threads/guild-infiltration'). Use kebab-case.")]
+    [JsonPropertyName("plotThreadId")]
+    public string PlotThreadId { get; set; } = default!;
+
+    [Description("Short title for DM reference (e.g. 'Guild Infiltration of the City Watch').")]
+    [JsonPropertyName("title")]
+    public string Title { get; set; } = default!;
+
+    [Description("DM-facing summary of what this arc is about. Not shown to players.")]
+    [JsonPropertyName("summary")]
+    public string? Summary { get; set; }
+
+    [Description("Initial state. Defaults to Active (tension accumulates). Use Dormant to seed an arc that hasn't started yet.")]
+    [JsonPropertyName("state")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public PlotThreadState State { get; set; } = PlotThreadState.Active;
+
+    [Description("Initial tension level 0–100. Usually 0 at creation; simulation escalates it.")]
+    [JsonPropertyName("tensionLevel")]
+    public int TensionLevel { get; set; } = 0;
+
+    [Description("Ordered or unordered clues the players might discover. Each has an Id, Description, and optional InvolvedEntityIds.")]
+    [JsonPropertyName("clues")]
+    public List<PlotClueDto> Clues { get; set; } = [];
+
+    [Description("Character, faction, location, or item IDs that are part of this arc (e.g. the conspirators, the hidden evidence location).")]
+    [JsonPropertyName("involvedEntityIds")]
+    public List<string> InvolvedEntityIds { get; set; } = [];
+
+    [Description("What must happen for this thread to resolve (e.g. 'Guild leader arrested or killed', 'Conspiracy exposed publicly').")]
+    [JsonPropertyName("resolutionCondition")]
+    public string? ResolutionCondition { get; set; }
+
+    [Description("Hooks already planted in the world — things the DM seeded earlier that connect back to this arc (e.g. 'The guard captain's signet ring the party found').")]
+    [JsonPropertyName("foreshadowingHooks")]
+    public List<string> ForeshadowingHooks { get; set; } = [];
+
+    [Description("DM-only notes. Never visible to players.")]
+    [JsonPropertyName("dmNotes")]
+    public string? DmNotes { get; set; }
+
+    [Description("Optional absolute campaign day (TotalDaysElapsed) by which this thread must resolve or consequences trigger.")]
+    [JsonPropertyName("deadlineDay")]
+    public int? DeadlineDay { get; set; }
+
+    [Description("Set true if players already know this arc exists (they named the conspiracy, etc.). Usually false.")]
+    [JsonPropertyName("isPlayerVisible")]
+    public bool IsPlayerVisible { get; set; }
+}
+
+public class PlotClueDto
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = default!;
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = default!;
+
+    [JsonPropertyName("involvedEntityIds")]
+    public List<string>? InvolvedEntityIds { get; set; }
+}
+
+/// <summary>
+/// Update a plot thread's state, tension, notes, resolution condition, or involved entities.
+/// Use to manually escalate/de-escalate tension, shift state, or append new foreshadowing.
+/// </summary>
+public class PlotThreadProgress : WorldChange
+{
+    [Description("ID of the plot thread to update (e.g. 'plot-threads/guild-infiltration').")]
+    [JsonPropertyName("plotThreadId")]
+    public string PlotThreadId { get; set; } = default!;
+
+    [Description("New state override. Omit to keep current state.")]
+    [JsonPropertyName("newState")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public PlotThreadState? NewState { get; set; }
+
+    [Description("Delta to apply to tension level (-100 to +100). Positive = more urgent. Omit to leave unchanged.")]
+    [JsonPropertyName("tensionDelta")]
+    public int? TensionDelta { get; set; }
+
+    [Description("Replace or set the resolution condition.")]
+    [JsonPropertyName("resolutionCondition")]
+    public string? ResolutionCondition { get; set; }
+
+    [Description("Append a new foreshadowing hook string to the existing list.")]
+    [JsonPropertyName("addForeshadowingHook")]
+    public string? AddForeshadowingHook { get; set; }
+
+    [Description("Add an entity ID to InvolvedEntityIds (character, faction, location, or item).")]
+    [JsonPropertyName("addInvolvedEntityId")]
+    public string? AddInvolvedEntityId { get; set; }
+
+    [Description("Remove an entity ID from InvolvedEntityIds.")]
+    [JsonPropertyName("removeInvolvedEntityId")]
+    public string? RemoveInvolvedEntityId { get; set; }
+
+    [Description("Add a new clue to the thread's clue chain.")]
+    [JsonPropertyName("addClue")]
+    public PlotClueDto? AddClue { get; set; }
+
+    [Description("Narrative note about this progress step (stored in DmNotes).")]
+    [JsonPropertyName("narrativeNote")]
+    public string? NarrativeNote { get; set; }
+}
+
+/// <summary>
+/// Mark a clue in a plot thread as discovered by the party.
+/// This resets the staleness timer (prevents the 'no engagement' pressure) and logs the event.
+/// Pair with EventOccurred to record the narrative moment of discovery.
+/// </summary>
+public class PlotThreadClueDiscovered : WorldChange
+{
+    [Description("ID of the plot thread containing the clue (e.g. 'plot-threads/guild-infiltration').")]
+    [JsonPropertyName("plotThreadId")]
+    public string PlotThreadId { get; set; } = default!;
+
+    [Description("ID of the specific clue that was discovered (matches PlotClue.Id).")]
+    [JsonPropertyName("clueId")]
+    public string ClueId { get; set; } = default!;
+
+    [Description("Character IDs who discovered or witnessed the clue.")]
+    [JsonPropertyName("discoveredByCharacterIds")]
+    public List<string> DiscoveredByCharacterIds { get; set; } = [];
+
+    [Description("Optional narrative note about how the clue was found.")]
+    [JsonPropertyName("narrativeNote")]
+    public string? NarrativeNote { get; set; }
+}
+
+/// <summary>
+/// Spend or recover a resource pool (spell slot, focus point, action point, etc.).
+/// Used to track spellcasting, ability uses, and other per-session resource expenditure.
+/// Positive delta = recovery (long rest, short rest, end of encounter).
+/// Negative delta = expenditure (spell cast, ability used).
+/// </summary>
+public class ResourceChange : WorldChange
+{
+    [Description("Character ID whose resource is changing (e.g. 'characters/wizard-1').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("Pool name (e.g., 'spell_slots_3', 'sorcerer_points', 'focus_points', 'action_points'). Must match an existing pool in character.systemStats.resourcePools.")]
+    [JsonPropertyName("poolName")]
+    public string PoolName { get; set; } = default!;
+
+    [Description("Delta to apply to the pool (-3 = spend 3 points, +1 = recover 1 point). Cannot exceed pool max.")]
+    [JsonPropertyName("delta")]
+    public int Delta { get; set; }
+
+    [Description("Optional reason for the change (e.g., 'Cast Fireball', 'Long rest recovery', 'Exhausted pool').")]
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
 }

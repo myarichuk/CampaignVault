@@ -411,11 +411,12 @@ public class CampaignRepository
         // Phase 7.1: Load active factions and quests so simulation rules can reason about them.
         var activeFactions = await SimulationQueryHelper.QueryCampaignFactionsAsync(session, effective, ct: default);
         var activeQuests = await SimulationQueryHelper.QueryActiveQuestsAsync(session, effective, ct: default);
+        var activePlotThreads = await SimulationQueryHelper.QueryActivePlotThreadsAsync(session, effective, ct: default);
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
         var config = await GetCampaignConfigAsync(session, effective);
         var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective, activeFactions,
-            activeQuests, config);
+            activeQuests, config, activePlotThreads);
 
         _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", days, time);
 
@@ -452,7 +453,9 @@ public class CampaignRepository
         {
             NewTime = time,
             SimulatorEvents = simResult.NarrativeEvents.ToList(),
-            WorldPressure = simResult.WorldPressure.ToList()
+            WorldPressure = simResult.WorldPressure.ToList(),
+            EvictedNpcIds = simResult.EvictedNpcIds.ToList(),
+            EvictedNpcs = simResult.EvictedNpcSummaries.ToList()
         };
     }
 
@@ -1640,6 +1643,18 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         var quest = await session.LoadAsync<Quest>(id);
         return quest != null && !IsVisibleInCampaign(quest.CampaignName, effective) ? null : quest;
+    }
+
+    public async Task<PlotThread?> GetPlotThreadAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var thread = await session.LoadAsync<PlotThread>(id);
+        return thread != null && !IsVisibleInCampaign(thread.CampaignName, effective) ? null : thread;
+    }
+
+    public async Task<List<PlotThread>> GetActivePlotThreadsAsync(IAsyncDocumentSession session, string? campaignName = null)
+    {
+        return await SimulationQueryHelper.QueryActivePlotThreadsAsync(session, ResolveCampaign(campaignName));
     }
 
     /// <summary>

@@ -142,3 +142,25 @@ public enum DiceMechanic
     /// </summary>
     SuccessCount
 }
+
+/// <summary>
+/// When a resource pool recovers. Used by ResourcePoolTemplate and ResourcePool.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum RecoveryType
+{
+    /// <summary>Recovers after 8 hours of long rest (D&D spell slots, PF2e spell levels).</summary>
+    LongRest,
+
+    /// <summary>Recovers after 1 hour of short rest (D&D Warlocks, PF2e Focus Points).</summary>
+    ShortRest,
+
+    /// <summary>Recovers at the end of an encounter (Fallout 2d20 Action Points).</summary>
+    EncounterEnd,
+
+    /// <summary>Resets daily at a configured time (Inspiration, daily uses of abilities).</summary>
+    Daily,
+
+    /// <summary>Never recovers — must be spent carefully or manually restored.</summary>
+    Never
+}

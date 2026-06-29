@@ -149,4 +149,43 @@ public class CampaignConfig
     /// (affection, resentment, trust bands only).
     /// </summary>
     public int RelationalRearmIntervalDays { get; set; } = 7;
+
+    /// <summary>
+    /// Per-campaign resource pool definitions (spell slots, focus points, action points, etc.).
+    /// If empty, built-in defaults are loaded based on ActiveSystem.
+    /// Allows homebrew variants and custom systems.
+    /// Key = pool name (e.g., "spell_slots_1", "focus_points").
+    /// </summary>
+    public Dictionary<string, ResourcePoolTemplate> ResourcePoolSchemas { get; set; } = [];
+}
+
+/// <summary>
+/// Template for initializing a resource pool on character creation.
+/// Used by character_create handler to populate Character.SystemExtension.ResourcePools.
+/// </summary>
+public class ResourcePoolTemplate
+{
+    /// <summary>Pool identifier (e.g., "spell_slots_1", "sorcerer_points", "focus_points", "action_points").</summary>
+    [JsonPropertyName("poolName")]
+    public string PoolName { get; set; } = default!;
+
+    /// <summary>When this pool recovers (LongRest, ShortRest, EncounterEnd, Daily, Never).</summary>
+    [JsonPropertyName("recovery")]
+    public RecoveryType Recovery { get; set; } = RecoveryType.LongRest;
+
+    /// <summary>Base maximum value (can be overridden per-character based on level/class).</summary>
+    [JsonPropertyName("defaultMax")]
+    public int DefaultMax { get; set; }
+
+    /// <summary>TTRPG systems this pool applies to ("dnd5e", "pf2e", "fallout2d20"). Null = all systems.</summary>
+    [JsonPropertyName("applicableSystems")]
+    public List<string>? ApplicableSystems { get; set; }
+
+    /// <summary>For slot-based pools: map character level to max count. E.g., "1" -> 4, "2" -> 3 for spell slots.</summary>
+    [JsonPropertyName("levelToMaxMap")]
+    public Dictionary<string, int>? LevelToMaxMap { get; set; }
+
+    /// <summary>Human-readable description for DM reference.</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
 }

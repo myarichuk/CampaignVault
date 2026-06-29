@@ -1,6 +1,7 @@
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
@@ -8,11 +9,13 @@ public class CharacterCreateHandler : IWorldChangeHandler
 {
     private readonly CampaignDocumentKeys _keys;
     private readonly CharacterBootstrapOrchestrator _bootstrap;
+    private readonly ResourcePoolInitializer _poolInitializer;
 
-    public CharacterCreateHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap)
+    public CharacterCreateHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap, ResourcePoolInitializer? poolInitializer = null)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
+        _poolInitializer = poolInitializer ?? new ResourcePoolInitializer();
     }
 
     public bool ShouldHandle(WorldChange change) => change is CharacterCreate;
@@ -43,6 +46,8 @@ public class CharacterCreateHandler : IWorldChangeHandler
             if (cc.CurrentLocationId != null)
             {
                 existing.CurrentLocationId = cc.CurrentLocationId;
+                existing.DepartedAtDay = null;
+                existing.DepartedFromLocationId = null;
             }
 
             if (cc.CurrentActivity != null)
@@ -113,6 +118,12 @@ public class CharacterCreateHandler : IWorldChangeHandler
             await ApplyBootstrapAsync(existing, activeSystemForExisting, cc.MaxHp, cc.CurrentHp, null,
                 BootstrapTrigger.Create, context, ct);
 
+            // Reinitialize resource pools if needed (in case level/class changed)
+            var campaignConfigExisting = context.Session != null
+                ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
+                : null;
+            _poolInitializer.InitializePools(existing, activeSystemForExisting, campaignConfigExisting);
+
             var hint = existing.KeepAlive
                 ? " For existing PCs, prefer commit with activity/character_update instead of character_create. Call get_party to confirm PCs already exist."
                 : string.Empty;
@@ -167,6 +178,12 @@ public class CharacterCreateHandler : IWorldChangeHandler
         }
 
         await ApplyBootstrapAsync(newChar, activeSystem, cc.MaxHp, cc.CurrentHp, null, BootstrapTrigger.Create, context, ct);
+
+        // Initialize resource pools (spell slots, focus points, action points, etc.)
+        var campaignConfig = context.Session != null
+            ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
+            : null;
+        _poolInitializer.InitializePools(newChar, activeSystem, campaignConfig);
 
         await context.Session!.StoreAsync(newChar, ct);
         context.RegisterNewCharacter(newChar);
@@ -423,6 +440,24 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
             await CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
                 _bootstrap, character, activeSystem, null, null, BootstrapTrigger.SystemStatsPatch, context, ct: ct);
+        }
+
+        if (cu.DepartedAtDay.HasValue)
+        {
+            character.DepartedAtDay = cu.DepartedAtDay;
+        }
+
+        if (cu.DepartedFromLocationId != null)
+        {
+            character.DepartedFromLocationId = string.IsNullOrWhiteSpace(cu.DepartedFromLocationId)
+                ? null
+                : cu.DepartedFromLocationId;
+        }
+
+        if (cu.ClearDeparture == true)
+        {
+            character.DepartedAtDay = null;
+            character.DepartedFromLocationId = null;
         }
 
         context.RecordMessage($"Updated character '{cu.CharacterId}'.");

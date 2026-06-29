@@ -46,6 +46,48 @@ public class DeepDiveTools : CampaignToolBase
     [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
+        "PLOT THREADS: Returns all active/escalating/climax plot threads for the campaign — DM-facing narrative arcs. " +
+        "Includes tension level, discovered clue count, and resolution condition. Requires campaignName.")]
+    public Task<ToolResult<IReadOnlyList<PlotThread>>> ListPlotThreads(
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var threads = await _repository.GetActivePlotThreadsAsync(session, effective);
+            return new ToolResult<IReadOnlyList<PlotThread>>(
+                true,
+                threads,
+                $"{threads.Count} active plot thread(s) in campaign '{effective}'.");
+        }, saveChanges: false);
+    }
+
+    [ToolCategory("Deep dives")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "PLOT THREAD DEEP DIVE: Returns the full PlotThread document — all clues, foreshadowing hooks, involved entities, and DM notes. Requires campaignName.")]
+    public Task<ToolResult<PlotThread>> GetPlotThread(
+        [Description("Exact plot thread ID e.g. 'plot-threads/guild-infiltration'.")]
+        string plotThreadId,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var thread = await _repository.GetPlotThreadAsync(session, plotThreadId, effective);
+            if (thread == null)
+                return new ToolResult<PlotThread>(false, Error: "NotFound",
+                    Summary: $"PlotThread '{plotThreadId}' not found. Use list_plot_threads to see available IDs.");
+
+            var discoveredClues = thread.Clues.Count(c => c.IsDiscovered);
+            return new ToolResult<PlotThread>(true, thread,
+                $"Plot thread '{thread.Title}': {thread.State}, tension {thread.TensionLevel}/100, {discoveredClues}/{thread.Clues.Count} clues discovered.");
+        }, saveChanges: false);
+    }
+
+    [ToolCategory("Deep dives")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
         "DEEP DIVE TOOL: Returns the full Quest document (objectives, deadlines, rewards, giver). Requires campaignName.")]
     public Task<ToolResult<Quest>> GetQuestDetails(
         [Description("Exact quest ID e.g. 'quests/rats_01'.")]

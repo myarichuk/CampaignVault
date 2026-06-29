@@ -36,6 +36,12 @@ public sealed class EntityCanonicalizer
         .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull | DefaultValuesHandling.OmitDefaults)
         .Build();
 
+    // Includes zero/false/empty-list values so templates show all meaningful fields.
+    private static readonly ISerializer TemplateSerializer = new SerializerBuilder()
+        .WithNamingConvention(CamelCaseNamingConvention.Instance)
+        .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
+        .Build();
+
     private readonly WorkspaceParser _parser = new();
 
     public string MarkdownToJson(string entityType, string markdown)
@@ -243,6 +249,7 @@ public sealed class EntityCanonicalizer
             PointOfInterestDetails = l.PointOfInterestDetails,
             AmbientCrowd = l.AmbientCrowd,
             LastVisitedDay = l.LastVisitedDay,
+            RecentlyDeparted = l.RecentlyDeparted,
             Metadata = l.Metadata,
             CurrentState = l.CurrentState,
             VisualTags = l.VisualTags,
@@ -333,4 +340,77 @@ public sealed class EntityCanonicalizer
             Tags = i.Tags,
             Properties = i.Properties
         }, i.Description ?? string.Empty);
+
+    /// <summary>
+    /// Returns a canonical markdown template for a new entity with all meaningful fields populated
+    /// at sensible defaults. Uses the same field whitelist as the sync serializer, guaranteeing
+    /// round-trip fidelity on first save.
+    /// </summary>
+    public string GetBlankTemplate(string entityType, string id, string name)
+    {
+        var model = CreateBlankModel(entityType, id, name);
+        var (frontmatter, body) = entityType switch
+        {
+            "character" => BuildCharacter((Character)model),
+            "location"  => BuildLocation((Location)model),
+            "quest"     => BuildQuest((Quest)model),
+            "faction"   => BuildFaction((Faction)model),
+            "lore"      => BuildLore((Lore)model),
+            "rumor"     => BuildRumor((Rumor)model),
+            "event"     => BuildEvent((Event)model),
+            "item"      => BuildItem((Item)model),
+            _ => throw new VaultException($"Unsupported entity type '{entityType}'.")
+        };
+
+        var yaml = TemplateSerializer.Serialize(frontmatter);
+        var markdown = $"---\n{yaml}---\n\n{body}".ReplaceLineEndings("\n");
+        if (!markdown.EndsWith('\n'))
+            markdown += "\n";
+        return markdown;
+    }
+
+    private static object CreateBlankModel(string entityType, string id, string name) => entityType switch
+    {
+        "character" => new Character
+        {
+            Id = id, Name = name, CurrentHp = 10, MaxHp = 10,
+            Notes = "Notes and description here."
+        },
+        "location" => new Location
+        {
+            Id = id, Name = name, Type = LocationType.Building,
+            Description = "Description of the location."
+        },
+        "quest" => new Quest
+        {
+            Id = id, Title = name, OverallState = QuestState.Open, Urgency = QuestUrgency.Normal,
+            DmNotes = "DM notes for this quest."
+        },
+        "faction" => new Faction
+        {
+            Id = id, Name = name, FactionType = FactionType.Guild, InfluenceLevel = 50,
+            Description = "Description of the faction."
+        },
+        "lore" => new Lore
+        {
+            Id = id, Title = name, Category = "General",
+            Content = "Lore content goes here."
+        },
+        "rumor" => new Rumor
+        {
+            Id = id, Subject = name, State = RumorState.Nascent, TruthValue = RumorTruth.Unknown,
+            CurrentText = "Current rumor text."
+        },
+        "event" => new Event
+        {
+            Id = id, Category = EventCategory.Discovery,
+            Summary = "Event summary."
+        },
+        "item" => new Item
+        {
+            Id = id, Name = name, CoreCategory = ItemCategory.Other, HolderId = "",
+            Description = "Item description and details."
+        },
+        _ => throw new VaultException($"Unsupported entity type '{entityType}'.")
+    };
 }

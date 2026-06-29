@@ -50,7 +50,7 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
     private sealed class TestSimulationEngine : IWorldSimulationEngine
     {
         public Task<SimulationResult> RunAsync(SimulationContext context, CancellationToken ct = default) =>
-            Task.FromResult(new SimulationResult([], [], []));
+            Task.FromResult(new SimulationResult([], [], [], [], []));
     }
 
     private async Task SeedCampaignAsync(string campaignName)

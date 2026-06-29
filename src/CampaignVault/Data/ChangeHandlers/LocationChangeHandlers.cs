@@ -326,6 +326,19 @@ public class LocationUpdateHandler : IWorldChangeHandler
             loc.DistinctiveFeatures.RemoveAll(f => lu.FeaturesToRemove.Contains(f));
         }
 
+        if (lu.RecordDeparture != null)
+        {
+            loc.RecentlyDeparted ??= [];
+            loc.RecentlyDeparted.RemoveAll(d =>
+                string.Equals(d.CharacterId, lu.RecordDeparture.CharacterId, StringComparison.Ordinal));
+            loc.RecentlyDeparted.Insert(0, lu.RecordDeparture);
+            const int maxDeparted = 10;
+            if (loc.RecentlyDeparted.Count > maxDeparted)
+            {
+                loc.RecentlyDeparted = loc.RecentlyDeparted.Take(maxDeparted).ToList();
+            }
+        }
+
         if (lu.PointOfInterestDetails != null)
         {
             loc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);

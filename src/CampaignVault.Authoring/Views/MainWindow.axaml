@@ -19,10 +19,10 @@
             <MenuItem Header="_File">
                 <MenuItem Header="_Open Folder..." Command="{Binding OpenCampaignFolderCommand}" />
                 <Separator />
-                <MenuItem Header="New Character" Command="{Binding CreateNewCharacterCommand}" />
-                <MenuItem Header="New Location" Command="{Binding CreateNewLocationCommand}" />
-                <MenuItem Header="New Quest" Command="{Binding CreateNewQuestCommand}" />
-                <MenuItem Header="New Item" Command="{Binding CreateNewItemCommand}" />
+                <MenuItem Header="New Character" Command="{Binding Workspace.CreateNewEntityCommand}" CommandParameter="character" />
+                <MenuItem Header="New Location" Command="{Binding Workspace.CreateNewEntityCommand}" CommandParameter="location" />
+                <MenuItem Header="New Quest"    Command="{Binding Workspace.CreateNewEntityCommand}" CommandParameter="quest" />
+                <MenuItem Header="New Item"     Command="{Binding Workspace.CreateNewEntityCommand}" CommandParameter="item" />
                 <Separator />
                 <MenuItem Header="E_xit" />
             </MenuItem>

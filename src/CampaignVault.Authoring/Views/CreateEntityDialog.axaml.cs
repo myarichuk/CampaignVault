@@ -1,29 +1,60 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using CampaignVault.Authoring.ViewModels;
 
 namespace CampaignVault.Authoring.Views;
 
 public partial class CreateEntityDialog : Window
 {
-    public string? SelectedEntityType { get; private set; }
+    // Name the user auto-filled so we can replace it when they switch type
+    private string? _autoFilledName;
 
     public CreateEntityDialog()
     {
         InitializeComponent();
-        EntityTypeComboBox.SelectedIndex = 0;
     }
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    private void TypeListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        Close(null);
-    }
+        var type = SelectedType();
+        CreateButton.IsEnabled = type != null;
 
-    private void Create_Click(object? sender, RoutedEventArgs e)
-    {
-        if (EntityTypeComboBox.SelectedItem is ComboBoxItem item)
+        if (type == null) return;
+
+        var defaultName = GetDefaultName(type);
+        if (string.IsNullOrEmpty(NameTextBox.Text) || NameTextBox.Text == _autoFilledName)
         {
-            SelectedEntityType = item.Content?.ToString()?.ToLowerInvariant();
+            NameTextBox.Text = defaultName;
+            _autoFilledName = defaultName;
         }
-        Close(SelectedEntityType);
     }
+
+    private void NameTextBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && CreateButton.IsEnabled)
+            Submit();
+    }
+
+    private void Cancel_Click(object? sender, RoutedEventArgs e) => Close(null);
+
+    private void Create_Click(object? sender, RoutedEventArgs e) => Submit();
+
+    private void Submit()
+    {
+        var type = SelectedType();
+        if (type == null) return;
+
+        var name = string.IsNullOrWhiteSpace(NameTextBox.Text)
+            ? GetDefaultName(type)
+            : NameTextBox.Text.Trim();
+
+        Close(new CreateEntityRequest(type, name));
+    }
+
+    private string? SelectedType() =>
+        (TypeListBox.SelectedItem as ListBoxItem)?.Tag?.ToString();
+
+    private static string GetDefaultName(string type) =>
+        type.Length == 0 ? "New Entity" : $"New {char.ToUpper(type[0])}{type[1..]}";
 }

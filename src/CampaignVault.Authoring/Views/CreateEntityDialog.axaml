@@ -2,23 +2,169 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="CampaignVault.Authoring.Views.CreateEntityDialog"
         Title="Create New Entity"
-        Width="300" Height="150"
+        Width="480" Height="530"
+        MinWidth="420" MinHeight="480"
         WindowStartupLocation="CenterOwner"
-        Background="#1C1C24" Foreground="#E4E4EB">
-    <StackPanel Margin="20" Spacing="15">
-        <TextBlock Text="Select Entity Type:" />
-        <ComboBox Name="EntityTypeComboBox" HorizontalAlignment="Stretch">
-            <ComboBoxItem Content="Character" />
-            <ComboBoxItem Content="Location" />
-            <ComboBoxItem Content="Quest" />
-            <ComboBoxItem Content="Item" />
-            <ComboBoxItem Content="Faction" />
-            <ComboBoxItem Content="Lore" />
-            <ComboBoxItem Content="Event" />
-        </ComboBox>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-            <Button Content="Cancel" Click="Cancel_Click" />
-            <Button Content="Create" Click="Create_Click" Background="#2563EB" Foreground="White" />
+        Background="#1C1C24" Foreground="#E4E4EB"
+        CanResize="False">
+    <DockPanel Margin="20">
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16" Spacing="4">
+            <TextBlock Text="Create New Entity" FontSize="17" FontWeight="Bold" Foreground="#E4E4EB" />
+            <TextBlock Text="Choose an entity type then enter a name." FontSize="12" Foreground="#71717A" />
         </StackPanel>
-    </StackPanel>
+
+        <!-- Footer: name + buttons -->
+        <Grid DockPanel.Dock="Bottom" RowDefinitions="Auto,Auto" Margin="0,14,0,0">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,12">
+                <TextBlock Grid.Column="0" Text="Name:" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#A0A0AB" />
+                <TextBox Grid.Column="1" Name="NameTextBox"
+                         PlaceholderText="Entity name…"
+                         Background="#2A2A35" Foreground="#E4E4EB"
+                         BorderBrush="#3F3F50" BorderThickness="1"
+                         CornerRadius="4" Padding="8,6"
+                         KeyDown="NameTextBox_KeyDown" />
+            </Grid>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Cancel" Click="Cancel_Click"
+                        Background="#2A2A35" Foreground="#A0A0AB"
+                        BorderBrush="#3F3F50" BorderThickness="1"
+                        CornerRadius="4" Padding="16,7" />
+                <Button Name="CreateButton" Content="Create" Click="Create_Click"
+                        Background="#2563EB" Foreground="White"
+                        BorderThickness="0" CornerRadius="4" Padding="16,7"
+                        IsEnabled="False" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Entity type grid -->
+        <ListBox Name="TypeListBox"
+                 SelectionChanged="TypeListBox_SelectionChanged"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="0">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="3" />
+                    <Setter Property="CornerRadius" Value="6" />
+                    <Setter Property="Background" Value="#2A2A35" />
+                    <Setter Property="BorderBrush" Value="#3F3F50" />
+                    <Setter Property="BorderThickness" Value="1" />
+                </Style>
+                <Style Selector="ListBoxItem:selected">
+                    <Setter Property="Background" Value="#1D3461" />
+                    <Setter Property="BorderBrush" Value="#2563EB" />
+                </Style>
+                <Style Selector="ListBoxItem:pointerover">
+                    <Setter Property="Background" Value="#32324A" />
+                </Style>
+                <Style Selector="ListBoxItem:selected:pointerover">
+                    <Setter Property="Background" Value="#1D3461" />
+                </Style>
+            </ListBox.Styles>
+
+            <!-- Character -->
+            <ListBoxItem Tag="character">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="12,10">
+                    <PathIcon Data="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"
+                              Width="22" Height="22" Foreground="#60A5FA" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Character" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4EB" />
+                        <TextBlock Text="PCs, NPCs, companions" FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
+                </StackPanel>
+            </ListBoxItem>
+
+            <!-- Location -->
+            <ListBoxItem Tag="location">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="12,10">
+                    <PathIcon Data="M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2Z"
+                              Width="22" Height="22" Foreground="#34D399" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Location" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4EB" />
+                        <TextBlock Text="Places, dungeons, cities" FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
+                </StackPanel>
+            </ListBoxItem>
+
+            <!-- Quest -->
+            <ListBoxItem Tag="quest">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="12,10">
+                    <PathIcon Data="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"
+                              Width="22" Height="22" Foreground="#FBBF24" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Quest" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4EB" />
+                        <TextBlock Text="Missions, objectives, hooks" FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
+                </StackPanel>
+            </ListBoxItem>
+
+            <!-- Item -->
+            <ListBoxItem Tag="item">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="12,10">
+                    <PathIcon Data="M21,16.5C21,16.88 20.79,17.21 20.47,17.38L12.57,21.82C12.41,21.94 12.21,22 12,22C11.79,22 11.59,21.94 11.43,21.82L3.53,17.38C3.21,17.21 3,16.88 3,16.5V7.5C3,7.12 3.21,6.79 3.53,6.62L11.43,2.18C11.59,2.06 11.79,2 12,2C12.21,2 12.41,2.06 12.57,2.18L20.47,6.62C20.79,6.79 21,7.12 21,7.5V16.5M12,4.15L6.04,7.5L12,10.85L17.96,7.5L12,4.15Z"
+                              Width="22" Height="22" Foreground="#A78BFA" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Item" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4EB" />
+                        <TextBlock Text="Weapons, armor, artifacts" FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
+                </StackPanel>
+            </ListBoxItem>
+
+            <!-- Faction -->
+            <ListBoxItem Tag="faction">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="12,10">
+                    <PathIcon Data="M12,1L3,5V11C3,16.55 6.84,21.73 12,23C17.16,21.73 21,16.55 21,11V5L12,1Z"
+                              Width="22" Height="22" Foreground="#F87171" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Faction" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4EB" />
+                        <TextBlock Text="Guilds, orders, factions" FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
+                </StackPanel>
+            </ListBoxItem>
+
+            <!-- Lore -->
+            <ListBoxItem Tag="lore">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="12,10">
+                    <PathIcon Data="M19,2L14,6.5V17.5L19,13V2M6.5,5C4.55,5 2.45,5.4 1,6.5V21.16C1,21.41 1.25,21.66 1.5,21.66C1.6,21.66 1.65,21.59 1.75,21.59C3.1,20.94 5.05,20.5 6.5,20.5C8.45,20.5 10.55,20.9 12,22C13.35,21.15 15.8,20.5 17.5,20.5C19.15,20.5 20.85,20.81 22.25,21.56C22.35,21.61 22.4,21.59 22.5,21.59C22.75,21.59 23,21.34 23,21.09V6.5C22.4,6.05 21.75,5.75 21,5.5V19C19.9,18.65 18.7,18.5 17.5,18.5C15.8,18.5 13.35,19.15 12,20V6.5C10.55,5.4 8.45,5 6.5,5Z"
+                              Width="22" Height="22" Foreground="#FB923C" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Lore" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4EB" />
+                        <TextBlock Text="History, world knowledge" FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
+                </StackPanel>
+            </ListBoxItem>
+
+            <!-- Rumor -->
+            <ListBoxItem Tag="rumor">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="12,10">
+                    <PathIcon Data="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2Z"
+                              Width="22" Height="22" Foreground="#94A3B8" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Rumor" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4EB" />
+                        <TextBlock Text="Whispers, secrets, intel" FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
+                </StackPanel>
+            </ListBoxItem>
+
+            <!-- Event -->
+            <ListBoxItem Tag="event">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="12,10">
+                    <PathIcon Data="M7,2V13H10V22L17,10H13L17,2H7Z"
+                              Width="22" Height="22" Foreground="#38BDF8" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Event" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4EB" />
+                        <TextBlock Text="Session events, story beats" FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
+                </StackPanel>
+            </ListBoxItem>
+
+        </ListBox>
+    </DockPanel>
 </Window>

@@ -8,5 +8,7 @@ namespace CampaignVault.Data;
 public sealed record SimulationResult(
     IReadOnlyList<string> NarrativeEvents,
     IReadOnlyList<WorldChange> Deltas,
-    IReadOnlyList<WorldPressureItem> WorldPressure
+    IReadOnlyList<WorldPressureItem> WorldPressure,
+    IReadOnlyList<string> EvictedNpcIds,
+    IReadOnlyList<EvictedNpcSummary> EvictedNpcSummaries
 );

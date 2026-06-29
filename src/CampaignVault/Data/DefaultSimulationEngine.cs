@@ -30,6 +30,8 @@ public sealed class DefaultSimulationEngine : IWorldSimulationEngine
         var allNarratives = new List<string>();
         var allDeltas = new List<WorldChange>();
         var pressure = new List<WorldPressureItem>();
+        var allEvictedIds = new List<string>();
+        var allEvictedSummaries = new List<EvictedNpcSummary>();
 
         _logger.LogInformation("Running simulation engine with {RuleCount} rules for {Days} days", _rules.Count(), context.DaysPassed);
 
@@ -57,6 +59,12 @@ public sealed class DefaultSimulationEngine : IWorldSimulationEngine
                 allDeltas.AddRange(result.Deltas);
                 _logger.LogDebug("Rule {RuleName} produced {Count} deltas", rule.Name, result.Deltas.Count);
             }
+
+            if (result.EvictedEntityIds is { Count: > 0 })
+                allEvictedIds.AddRange(result.EvictedEntityIds);
+
+            if (result.EvictedNpcSummaries is { Count: > 0 })
+                allEvictedSummaries.AddRange(result.EvictedNpcSummaries);
         }
 
         // Basic pressure signals (can be expanded by dedicated rules later)
@@ -68,7 +76,9 @@ public sealed class DefaultSimulationEngine : IWorldSimulationEngine
         return new SimulationResult(
             allNarratives.AsReadOnly(),
             allDeltas.AsReadOnly(),
-            pressure.AsReadOnly()
+            pressure.AsReadOnly(),
+            allEvictedIds.AsReadOnly(),
+            allEvictedSummaries.AsReadOnly()
         );
     }
 }

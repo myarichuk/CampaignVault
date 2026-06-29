@@ -16,6 +16,6 @@ public interface IWorkspaceState
     void RefreshAll();
     void ReloadActiveFileContent();
     
-    CommunityToolkit.Mvvm.Input.IAsyncRelayCommand<string?> CreateNewEntityCommand { get; }
+    CommunityToolkit.Mvvm.Input.IAsyncRelayCommand<CreateEntityRequest?> CreateNewEntityCommand { get; }
     CommunityToolkit.Mvvm.Input.IAsyncRelayCommand DeleteSelectedEntityCommand { get; }
 }

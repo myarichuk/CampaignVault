@@ -54,6 +54,15 @@ public class Character : ICampaignScopedEntity
     public string? CurrentLocationId { get; set; }
     public string? CurrentActivity { get; set; }
 
+    /// <summary>Day the character last departed their anchored location (transient eviction). Null when present somewhere.</summary>
+    public int? DepartedAtDay { get; set; }
+
+    /// <summary>Location ID the character departed from. Null when present somewhere.</summary>
+    public string? DepartedFromLocationId { get; set; }
+
+    /// <summary>Day when the character last completed a successful rest (tracked for spell slot recovery).</summary>
+    public int? LastRestedDay { get; set; }
+
     public PsychologyProfile Psychology { get; set; } = new();
     
     public SocialProfile Social { get; set; } = new();
@@ -293,6 +302,34 @@ public class SystemExtension
     /// </summary>
     [System.Text.Json.Serialization.JsonPropertyName("spatialPositions")]
     public List<SpatialPosition> SpatialPositions { get; set; } = [];
+
+    /// <summary>
+    /// Spendable resource pools: spell slots, focus points, action points, etc.
+    /// Initialized at character_create based on system and campaign config.
+    /// Keys are pool names like "spell_slots_1", "sorcerer_points", "focus_points".
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("resourcePools")]
+    public Dictionary<string, ResourcePool> ResourcePools { get; set; } = [];
+}
+
+/// <summary>
+/// A tracked resource (spell slot, focus point, action point, ability use).
+/// Current/Max are integers; recovery type determines when it resets.
+/// </summary>
+public record ResourcePool
+{
+    [System.Text.Json.Serialization.JsonPropertyName("current")]
+    public int Current { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("max")]
+    public int Max { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("recovery")]
+    public RecoveryType Recovery { get; set; } = RecoveryType.LongRest;
+
+    /// <summary>Last day when this pool was recovered (for LongRest, ShortRest, Daily).</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("lastRecoveredDay")]
+    public int? LastRecoveredDay { get; set; }
 }
 
 public record SpatialPosition

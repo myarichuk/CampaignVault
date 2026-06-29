@@ -21,7 +21,7 @@ namespace CampaignVault.Tests;
 public sealed class TestNoOpSimulationEngine : IWorldSimulationEngine
 {
     public Task<SimulationResult> RunAsync(SimulationContext context, CancellationToken ct = default)
-        => Task.FromResult(new SimulationResult([], [], []));
+        => Task.FromResult(new SimulationResult([], [], [], [], []));
 }
 
 public sealed class TestFakeEmbeddingService : CampaignVault.Services.ILocalEmbeddingService

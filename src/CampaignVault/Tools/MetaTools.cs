@@ -9,6 +9,19 @@ public class MetaTools
 {
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
+    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for commit $type discriminators — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use. Filter by category to reduce output.")]
+    public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
+        [Description("Optional category filter: Combat, Narrative, World, PlotThread, Meta. Omit to return all.")]
+        string? category = null)
+    {
+        var schema = CommitSchemaRegistry.GetAll(category);
+        return Task.FromResult(new ToolResult<IReadOnlyList<CommitTypeSchema>>(
+            true, schema,
+            $"Returned {schema.Count} commit type schemas{(category != null ? $" for category '{category}'" : "")}. Side-effect types are marked hasSideEffects=true — do not duplicate their auto-mutations."));
+    }
+
+    [ToolCategory("System")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(@"TOOL CATALOG: Returns the complete list of CampaignVault MCP tools (name, category, one-line description). Call this if search-based discovery only surfaced a subset. Optional category filter available.")]
     public Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(
         [Description("Optional category filter. Omit to return all tools. Values: Session & exploration, Mutation & time, Combat & rulesets, Campaign management, Deep dives, World builder, System.")] string? category = null)

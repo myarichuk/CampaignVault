@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
@@ -38,16 +39,34 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
-        var time = new CampaignTime { TotalDaysElapsed = 3 }; // 3 - 1 > 1 (should evict)
+        var time = new CampaignTime { TotalDaysElapsed = 3 };
 
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "evict-test");
 
         var result = await rule.ApplyAsync(ctx);
 
-        Assert.Single(result.Deltas);
-        var delta = Assert.IsType<ActivityChange>(result.Deltas[0]);
-        Assert.Equal(c.Id, delta.CharacterId);
-        Assert.Null(delta.NewLocationId);
+        var activity = Assert.Single(result.Deltas.OfType<ActivityChange>());
+        Assert.Equal(c.Id, activity.CharacterId);
+        Assert.Null(activity.NewLocationId);
+        Assert.True(activity.UpdateLocation);
+
+        var departureEvent = Assert.Single(result.Deltas.OfType<EventOccurred>());
+        Assert.Equal(EventCategory.Departure, departureEvent.Category);
+        Assert.Contains(c.Id, departureEvent.Involved!);
+        Assert.Equal(loc.Id, departureEvent.RelatedEntityId);
+
+        var locationUpdate = Assert.Single(result.Deltas.OfType<LocationUpdate>());
+        Assert.Equal(loc.Id, locationUpdate.LocationId);
+        Assert.NotNull(locationUpdate.RecordDeparture);
+        Assert.Equal(c.Id, locationUpdate.RecordDeparture!.CharacterId);
+
+        var characterUpdate = Assert.Single(result.Deltas.OfType<CharacterUpdate>());
+        Assert.Equal(c.Id, characterUpdate.CharacterId);
+        Assert.Equal(3, characterUpdate.DepartedAtDay);
+        Assert.Equal(loc.Id, characterUpdate.DepartedFromLocationId);
+
+        Assert.Single(result.EvictedNpcSummaries!);
+        Assert.Equal(c.Name, result.EvictedNpcSummaries![0].Name);
 
         Assert.Single(result.NarrativeEvents);
         Assert.Contains("is no longer present", result.NarrativeEvents[0]);
@@ -73,7 +92,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
-        var time = new CampaignTime { TotalDaysElapsed = 3 }; // 3 - 2 = 1 (should not evict yet)
+        var time = new CampaignTime { TotalDaysElapsed = 3 };
 
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 1, "keep-test");
 
@@ -103,7 +122,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
-        var time = new CampaignTime { TotalDaysElapsed = 3 }; // Should evict based on time
+        var time = new CampaignTime { TotalDaysElapsed = 3 };
 
         var activeQuests = new List<Quest>
         {
@@ -115,7 +134,6 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
 
         var result = await rule.ApplyAsync(ctx);
 
-        // Verify eviction didn't happen
         Assert.Empty(result.Deltas);
         Assert.Single(result.NarrativeEvents);
         Assert.Contains("Quest giver 'Quest Guy' is a transient NPC but has an active quest",
@@ -123,7 +141,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task ApplyAsync_DeletesOrphanItems()
+    public async Task ApplyAsync_TransfersOrphanItems_ToDepartedLocation()
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
@@ -145,24 +163,18 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
-        var time = new CampaignTime { TotalDaysElapsed = 3 }; // Should evict
+        var time = new CampaignTime { TotalDaysElapsed = 3 };
 
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "item-evict-test");
 
         var result = await rule.ApplyAsync(ctx);
-        await session.SaveChangesAsync(); // Actually apply the deletes to DB
 
-        // The character was evicted
-        Assert.Single(result.Deltas);
-        var delta = Assert.IsType<ActivityChange>(result.Deltas[0]);
-        Assert.Equal(c.Id, delta.CharacterId);
-        Assert.Null(delta.NewLocationId);
+        var transfer = Assert.Single(result.Deltas.OfType<ItemTransfer>());
+        Assert.Equal(i.Id, transfer.ItemId);
+        Assert.Equal(loc.Id, transfer.ToHolderId);
 
-        Assert.Contains(result.NarrativeEvents, n => n.Contains("orphaned items held by transient characters"));
-
-        using var verifySession = _fixture.Store.OpenAsyncSession();
-        var deletedItem = await verifySession.LoadAsync<Item>(i.Id);
-        Assert.Null(deletedItem); // The item should be gone!
+        Assert.Contains(result.NarrativeEvents,
+            n => n.Contains("Transferred", StringComparison.Ordinal) && n.Contains("item", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -185,7 +197,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
-        var time = new CampaignTime { TotalDaysElapsed = 3 }; // 3 - 1 = 2, should NOT evict with grace=3
+        var time = new CampaignTime { TotalDaysElapsed = 3 };
         var config = new CampaignConfig { TransientEvictionGraceDays = 3 };
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "grace-test",
             Config: config);
@@ -193,7 +205,6 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         var result = await rule.ApplyAsync(ctx);
         Assert.DoesNotContain(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == c.Id);
 
-        // Now advance past grace: day 5 -> 5-1=4 > 3
         time = new CampaignTime { TotalDaysElapsed = 5 };
         ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 4, "grace-test",
             Config: config);
@@ -221,7 +232,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
-        var time = new CampaignTime { TotalDaysElapsed = 3 }; // Should evict based on time
+        var time = new CampaignTime { TotalDaysElapsed = 3 };
 
         var activeQuests = new List<Quest>
         {
@@ -236,7 +247,6 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
 
         var result = await rule.ApplyAsync(ctx);
 
-        // Verify eviction DID happen because quest is Complete
         Assert.Contains(result.Deltas, d => d is ActivityChange);
         Assert.DoesNotContain(result.NarrativeEvents, n => n.Contains("has an active quest"));
     }

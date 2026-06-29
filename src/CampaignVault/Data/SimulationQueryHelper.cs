@@ -145,4 +145,24 @@ internal static class SimulationQueryHelper
 
         return indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit).ToList();
     }
+
+    public static async Task<List<PlotThread>> QueryActivePlotThreadsAsync(
+        IAsyncDocumentSession session,
+        string? campaignName,
+        CancellationToken ct = default)
+    {
+        var query = session.Query<PlotThread, PlotThread_Search>()
+            .Customize(x => x.WaitForNonStaleResults(IndexWait))
+            .Where(t => t.State != PlotThreadState.Resolved && t.State != PlotThreadState.Abandoned);
+
+        var threads = await query.ToListAsync(ct);
+
+        if (string.IsNullOrWhiteSpace(campaignName))
+            return threads;
+
+        return threads
+            .Where(t => string.IsNullOrEmpty(t.CampaignName)
+                || string.Equals(t.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
 }

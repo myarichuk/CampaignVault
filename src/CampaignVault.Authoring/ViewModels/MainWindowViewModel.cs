@@ -37,6 +37,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     public McpServerService? McpServerService { get; set; }
 
     private readonly WorkspaceParser _parser = new();
+    private readonly CampaignVault.Authoring.Vault.Canonical.EntityCanonicalizer _canonicalizer = new();
     private readonly CampaignHistoryService _historyService = new();
     private IStorageProvider? _storageProvider;
 
@@ -295,37 +296,34 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     }
 
     [RelayCommand]
-    private async Task CreateNewEntityAsync(string? entityType = null)
+    private async Task CreateNewEntityAsync(CreateEntityRequest? request)
     {
-        if (!Session.IsOpen)
+        if (request == null || !Session.IsOpen)
         {
-            WorkspaceStatusMessage = "Open a vault before creating entities.";
+            if (!Session.IsOpen)
+                WorkspaceStatusMessage = "Open a vault before creating entities.";
             return;
         }
 
-        var type = (entityType ?? "character").ToLowerInvariant();
+        var type = request.EntityType.ToLowerInvariant();
         if (!IsSupportedEntityType(type))
-        {
             type = "character";
-        }
 
         var folder = GetFolderForType(type);
-        var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-        var slug = $"new-{type}-{ts}";
+        var ts = DateTime.Now.ToString("yyyyMMddHHmmss");
+        var nameSlug = ToSlug(request.Name);
+        var slug = string.IsNullOrEmpty(nameSlug) ? $"new-{type}-{ts}" : $"{nameSlug}-{ts}";
         var relative = $"{folder}/{slug}.md";
 
-        var skeleton = BuildSkeleton(type, slug, $"New {char.ToUpper(type[0]) + type[1..]}");
+        var template = _canonicalizer.GetBlankTemplate(type, slug, request.Name);
         try
         {
-            await Session.WriteFileAsync(relative, skeleton);
+            await Session.WriteFileAsync(relative, template);
             RefreshAll();
 
-            // Select the new entity
             var found = FindEntityNodeByPath(Workspace.Categories, relative);
             if (found != null)
-            {
                 Workspace.SelectedNode = found;
-            }
 
             WorkspaceStatusMessage = $"Created {relative}. Edit and Save (or Commit).";
             Sync.StatusMessage = $"New {type} ready for editing.";
@@ -336,55 +334,24 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         }
     }
 
-    [RelayCommand] private Task CreateNewCharacterAsync() => CreateNewEntityAsync("character");
-    [RelayCommand] private Task CreateNewLocationAsync() => CreateNewEntityAsync("location");
-    [RelayCommand] private Task CreateNewQuestAsync() => CreateNewEntityAsync("quest");
-    [RelayCommand] private Task CreateNewItemAsync() => CreateNewEntityAsync("item");
-
     private static bool IsSupportedEntityType(string t) =>
         t is "character" or "location" or "quest" or "faction" or "lore" or "rumor" or "event" or "item";
 
     private static string GetFolderForType(string t) => t switch
     {
         "character" => "characters",
-        "location" => "locations",
-        "quest" => "quests",
-        "faction" => "factions",
-        "lore" => "lore",
-        "rumor" => "rumors",
-        "event" => "events",
-        "item" => "items",
+        "location"  => "locations",
+        "quest"     => "quests",
+        "faction"   => "factions",
+        "lore"      => "lore",
+        "rumor"     => "rumors",
+        "event"     => "events",
+        "item"      => "items",
         _ => "characters"
     };
 
-    private static string BuildSkeleton(string type, string id, string name)
-    {
-        var front = type switch
-        {
-            "character" => $"id: {id}\nname: {name}\ncurrentHp: 10\nmaxHp: 10",
-            "location" => $"id: {id}\nname: {name}\ntype: Building\ndangerModifier: 0",
-            "quest" => $"id: {id}\ntitle: {name}\noverallState: Open\nurgency: Normal",
-            "faction" => $"id: {id}\nname: {name}\ninfluenceLevel: 1",
-            "lore" => $"id: {id}\ntitle: {name}\ncategory: General",
-            "rumor" => $"id: {id}\nsubject: {name}\nstate: Nascent\ntruthValue: Unknown\ndayCreated: 0",
-            "event" => $"id: {id}\ncategory: Discovery\ndayLogged: 0",
-            "item" => $"id: {id}\nname: {name}\ncoreCategory: Other\nholderId: \"\"",
-            _ => $"id: {id}\nname: {name}"
-        };
-        var bodyHint = type switch
-        {
-            "character" => "Notes and description here.",
-            "location" => "Description of the location.",
-            "quest" => "DM notes for the quest.",
-            "faction" => "Description of the faction.",
-            "lore" => "Lore content.",
-            "rumor" => "Current rumor text.",
-            "event" => "Event summary.",
-            "item" => "Item description and details.",
-            _ => ""
-        };
-        return $"---\n{front}\n---\n\n{bodyHint}\n";
-    }
+    private static string ToSlug(string name) =>
+        System.Text.RegularExpressions.Regex.Replace(name.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
 
     private static EntityNodeViewModel? FindEntityNodeByPath(System.Collections.Generic.IEnumerable<ExplorerNodeViewModel> nodes, string relativePath)
     {

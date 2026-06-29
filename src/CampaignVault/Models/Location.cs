@@ -36,6 +36,13 @@ public class Location : ICampaignScopedEntity
     public string? AmbientCrowd { get; set; }
     
     public int? LastVisitedDay { get; set; }
+
+    /// <summary>
+    /// Transient NPCs evicted from this location, most recent first (capped by handler).
+    /// Surfaced in get_scene via the full Location object so the LLM can reference who recently left.
+    /// </summary>
+    [JsonPropertyName("recentlyDeparted")]
+    public List<DepartedNpcRecord> RecentlyDeparted { get; set; } = [];
     
     public Dictionary<string, object> Metadata { get; set; } = [];
     

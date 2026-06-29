@@ -9,5 +9,7 @@ namespace CampaignVault.Data;
 /// </summary>
 public sealed record RuleResult(
     IReadOnlyList<string> NarrativeEvents,
-    IReadOnlyList<WorldChange> Deltas
+    IReadOnlyList<WorldChange> Deltas,
+    IReadOnlyList<string>? EvictedEntityIds = null,
+    IReadOnlyList<EvictedNpcSummary>? EvictedNpcSummaries = null
 );

@@ -32,7 +32,9 @@
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <StackPanel.ContextMenu>
                             <ContextMenu x:CompileBindings="False">
-                                <MenuItem Header="Create New Entity..." Command="{Binding #ExplorerRoot.DataContext.CreateNewEntityCommand}" />
+                                <MenuItem Header="{Binding CreateEntityMenuLabel}"
+                                          Command="{Binding #ExplorerRoot.DataContext.CreateNewEntityCommand}"
+                                          CommandParameter="{Binding EntityType}" />
                             </ContextMenu>
                         </StackPanel.ContextMenu>
                         <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
@@ -44,7 +46,8 @@
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <StackPanel.ContextMenu>
                             <ContextMenu x:CompileBindings="False">
-                                <MenuItem Header="Create New Entity..." Command="{Binding #ExplorerRoot.DataContext.CreateNewEntityCommand}" />
+                                <MenuItem Header="New Entity..."
+                                          Command="{Binding #ExplorerRoot.DataContext.CreateNewEntityCommand}" />
                             </ContextMenu>
                         </StackPanel.ContextMenu>
                         <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"

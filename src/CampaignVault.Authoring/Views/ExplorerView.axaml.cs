@@ -14,13 +14,13 @@ public partial class ExplorerView : UserControl
         base.OnAttachedToVisualTree(e);
         if (DataContext is ViewModels.WorkspaceViewModel vm)
         {
-            vm.RequestEntityTypeAsync = async () =>
+            vm.RequestEntityCreationAsync = async () =>
             {
                 var topLevel = TopLevel.GetTopLevel(this);
                 if (topLevel is Window window)
                 {
                     var dialog = new CreateEntityDialog();
-                    return await dialog.ShowDialog<string?>(window);
+                    return await dialog.ShowDialog<ViewModels.CreateEntityRequest?>(window);
                 }
                 return null;
             };

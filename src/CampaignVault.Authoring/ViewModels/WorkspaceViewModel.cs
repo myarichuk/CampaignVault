@@ -20,7 +20,14 @@ public partial class ExplorerNodeViewModel : ObservableObject
     public ObservableCollection<ExplorerNodeViewModel> Children { get; } = new();
 }
 
-public partial class CategoryNodeViewModel : ExplorerNodeViewModel;
+public partial class CategoryNodeViewModel : ExplorerNodeViewModel
+{
+    public string? EntityType { get; init; }
+
+    public string CreateEntityMenuLabel => EntityType is not null
+        ? $"New {char.ToUpper(EntityType[0])}{EntityType[1..]}"
+        : "New Entity...";
+}
 
 public partial class FolderNodeViewModel : ExplorerNodeViewModel
 {
@@ -100,26 +107,30 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         RefreshFilesList();
     }
 
-    public Func<Task<string?>>? RequestEntityTypeAsync { get; set; }
+    public Func<Task<CreateEntityRequest?>>? RequestEntityCreationAsync { get; set; }
 
     [RelayCommand]
     private async Task CreateNewEntityAsync(string? entityType = null)
     {
-        if (string.IsNullOrEmpty(entityType) && RequestEntityTypeAsync != null)
-        {
-            entityType = await RequestEntityTypeAsync();
-        }
+        CreateEntityRequest? request;
 
         if (string.IsNullOrEmpty(entityType))
         {
-            return;
+            if (RequestEntityCreationAsync == null) return;
+            request = await RequestEntityCreationAsync();
+        }
+        else
+        {
+            var typeName = char.ToUpper(entityType[0]) + entityType[1..];
+            request = new CreateEntityRequest(entityType, $"New {typeName}");
         }
 
-        // Delegate to main VM which owns the session and editor selection
+        if (request == null) return;
+
         var main = App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
         if (main != null)
         {
-            await main.CreateNewEntityCommand.ExecuteAsync(entityType);
+            await main.CreateNewEntityCommand.ExecuteAsync(request);
         }
     }
 
@@ -175,7 +186,10 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                 string.Equals(c.Title, categoryKey, StringComparison.OrdinalIgnoreCase));
             if (category == null)
             {
-                category = new CategoryNodeViewModel { Title = categoryKey };
+                var entityType = VaultPaths.EntityFolders
+                    .FirstOrDefault(f => string.Equals(f.Folder, categoryKey, StringComparison.OrdinalIgnoreCase))
+                    .EntityType;
+                category = new CategoryNodeViewModel { Title = categoryKey, EntityType = entityType };
                 Categories.Add(category);
             }
 

@@ -5,8 +5,9 @@ namespace CampaignVault.Data;
 public class TransientEvictionRule : ISimulationRule
 {
     private readonly ILogger<TransientEvictionRule> _logger;
+
     public string Name => "Transient NPC Eviction (anti-bloat)";
-    
+
     // Runs after ScheduleEvaluationRule, Needs, RumorDecay, StatusExpiry
     public int Order => 100;
 
@@ -20,8 +21,6 @@ public class TransientEvictionRule : ISimulationRule
         var narratives = new List<string>();
         var deltas = new List<WorldChange>();
 
-        // Campaign-scoped index query — avoids unscoped Take(N) truncation when the shared
-        // embedded test DB accumulates characters from the full suite.
         var candidatesQuery = await SimulationQueryHelper.QueryEvictableTransientCharactersAsync(
             context.Session, context.CampaignName, 200, ct);
 
@@ -30,89 +29,139 @@ public class TransientEvictionRule : ISimulationRule
             return new RuleResult(narratives, deltas);
         }
 
-        // 2. Collect unique CurrentLocationIds and Load Locations
         var locationIds = candidatesQuery.Select(c => c.CurrentLocationId!).Distinct().ToList();
         var locations = await context.Session.LoadAsync<Location>(locationIds, ct);
 
         var evictedIds = new List<string>();
+        var evictedSummaries = new List<EvictedNpcSummary>();
+        var currentDay = context.Time.TotalDaysElapsed;
 
-        // 3. Evaluate each candidate
         foreach (var c in candidatesQuery)
         {
             if (c.CurrentLocationId == null)
             {
-                continue; // Safety check
+                continue;
             }
 
-            // Phase 7.3: Quest Giver Eviction Safety
-            if (context.ActiveQuests != null && context.ActiveQuests.Any(q => q.GiverId == c.Id && (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)))
+            if (context.ActiveQuests != null && context.ActiveQuests.Any(q =>
+                    q.GiverId == c.Id && (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)))
             {
-                narratives.Add($"Quest giver '{c.Name}' is a transient NPC but has an active quest. Set `keepAlive: true` or assign a schedule to prevent accidental eviction.");
-                continue; // Skip eviction
+                narratives.Add(
+                    $"Quest giver '{c.Name}' is a transient NPC but has an active quest. Set `keepAlive: true` or assign a schedule to prevent accidental eviction.");
+                continue;
             }
 
-            if (locations.TryGetValue(c.CurrentLocationId, out var loc) && loc != null)
+            var fromLocationId = c.CurrentLocationId;
+            Location? fromLoc = null;
+            var shouldEvict = false;
+            var evictionReason = "Engine transient eviction — orphaned transient";
+
+            if (locations.TryGetValue(fromLocationId, out fromLoc) && fromLoc != null)
             {
                 var graceDays = context.Config?.TransientEvictionGraceDays ?? 1;
-                var shouldEvict = loc.LastVisitedDay == null || (context.Time.TotalDaysElapsed - loc.LastVisitedDay.Value > graceDays);
-                
-                if (shouldEvict)
-                {
-                    deltas.Add(new ActivityChange
-                    {
-                        CharacterId = c.Id,
-                        NewLocationId = null,
-                        UpdateLocation = true,
-                        NewActivity = "drifted away / area has quieted since the party left",
-                        Reason = "Engine transient eviction — location unvisited for >1 campaign day"
-                    });
-                    narratives.Add($"{c.Name} is no longer present in {loc.Name} (the area has gone cold).");
-                    evictedIds.Add(c.Id);
-                }
+                shouldEvict = fromLoc.LastVisitedDay == null ||
+                              (currentDay - fromLoc.LastVisitedDay.Value > graceDays);
+                evictionReason = "Engine transient eviction — location unvisited for > grace period";
             }
             else
             {
-                // The location doesn't exist anymore; evict the orphaned transient
-                deltas.Add(new ActivityChange
-                {
-                    CharacterId = c.Id,
-                    NewLocationId = null,
-                    UpdateLocation = true,
-                    NewActivity = "wandered off after their surroundings changed",
-                    Reason = "Engine transient eviction — orphaned transient"
-                });
-                evictedIds.Add(c.Id);
+                shouldEvict = true;
             }
+
+            if (!shouldEvict)
+            {
+                continue;
+            }
+
+            var fromLocationName = fromLoc?.Name;
+            var activityNote = fromLoc != null
+                ? "drifted away / area has quieted since the party left"
+                : "wandered off after their surroundings changed";
+
+            deltas.Add(new ActivityChange
+            {
+                CharacterId = c.Id,
+                NewLocationId = null,
+                UpdateLocation = true,
+                NewActivity = activityNote,
+                Reason = evictionReason
+            });
+
+            deltas.Add(new EventOccurred
+            {
+                Summary = fromLocationName != null
+                    ? $"{c.Name} departed {fromLocationName} ({activityNote})."
+                    : $"{c.Name} departed ({activityNote}).",
+                Category = EventCategory.Departure,
+                Involved = [c.Id],
+                RelatedEntityId = fromLocationId
+            });
+
+            if (fromLoc != null)
+            {
+                deltas.Add(new LocationUpdate
+                {
+                    LocationId = fromLocationId,
+                    RecordDeparture = new DepartedNpcRecord(c.Id, c.Name, currentDay, evictionReason)
+                });
+            }
+
+            deltas.Add(new CharacterUpdate
+            {
+                CharacterId = c.Id,
+                DepartedAtDay = currentDay,
+                DepartedFromLocationId = fromLocationId
+            });
+
+            narratives.Add(fromLocationName != null
+                ? $"{c.Name} is no longer present in {fromLocationName} (the area has gone cold)."
+                : $"{c.Name} is no longer present (orphaned transient).");
+            evictedIds.Add(c.Id);
+            evictedSummaries.Add(new EvictedNpcSummary(c.Id, c.Name, fromLocationId, fromLocationName));
         }
 
-        if (evictedIds.Any())
+        if (evictedIds.Count > 0)
         {
-            var orphanedItems = new List<Item>();
+            var transferredItems = 0;
             foreach (var evictedId in evictedIds)
             {
+                var summary = evictedSummaries.First(s => s.CharacterId == evictedId);
+                var dropLocationId = summary.FromLocationId;
+                if (string.IsNullOrWhiteSpace(dropLocationId))
+                {
+                    continue;
+                }
+
                 var held = await context.Session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
                     .WaitForNonStaleResults(TimeSpan.FromSeconds(3))
                     .WhereEquals(x => x.HolderId, evictedId)
                     .Take(50)
                     .ToListAsync(ct);
-                orphanedItems.AddRange(held);
+
+                foreach (var item in held)
+                {
+                    deltas.Add(new ItemTransfer
+                    {
+                        ItemId = item.Id,
+                        ToHolderId = dropLocationId
+                    });
+                    transferredItems++;
+                }
             }
 
-            foreach (var item in orphanedItems)
+            if (transferredItems > 0)
             {
-                context.Session.Delete(item);
+                narratives.Add(
+                    $"Transferred {transferredItems} item(s) left behind by evicted transients to their last known locations.");
             }
-            if (orphanedItems.Any())
-            {
-                narratives.Add($"Evicted {orphanedItems.Count} orphaned items held by transient characters.");
-            }
-        }
 
-        if (narratives.Any())
-        {
             _logger.LogInformation("TransientEvictionRule evicted {Count} transient characters.", evictedIds.Count);
         }
 
-        return new RuleResult(narratives, deltas);
+        return new RuleResult(
+            narratives,
+            deltas,
+            evictedIds.Count > 0 ? evictedIds.AsReadOnly() : null,
+            evictedSummaries.Count > 0 ? evictedSummaries.AsReadOnly() : null);
     }
 }

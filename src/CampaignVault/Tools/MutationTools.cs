@@ -147,6 +147,22 @@ Basic + creating on the fly examples are also shown in the tool description and 
                     Id = "events/" + Guid.NewGuid(), CampaignName = effective, Summary = narrative,
                     Category = EventCategory.SceneCommit, Involved = result.InvolvedEntities
                 }, effective);
+
+            // Warn if the batch contained combat/status mutations but no narrative event
+            var hasCombatMutation = changes.Any(c => c is HpChange or RulesetAction or StatusChange);
+            var hasNarrativeEvent = changes.Any(c => c is EventOccurred);
+            if (hasCombatMutation && !hasNarrativeEvent)
+            {
+                result.NarrativeReminder =
+                    "This commit included combat/status changes but no 'event' ($type: event). " +
+                    "Add an EventOccurred to record the narrative beat for future get_npc_context and recall_history queries.";
+            }
+
+            // Surface remaining rate-limit budget so the LLM can pace large scenes
+            var stats = CommitRateLimiter.GetStatistics();
+            if (stats != null)
+                result.RateLimitTokensRemaining = (int)stats.CurrentAvailablePermits;
+
             var msg = $"World updated with {changes.Length} changes. Full result in structuredContent.";
             return new ToolResult<CommitResult>(true, result, msg);
         });

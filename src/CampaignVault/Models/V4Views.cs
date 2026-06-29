@@ -122,6 +122,20 @@ public class CommitResult
     public int ChangesProcessed { get; set; }
     public List<string> Summary { get; set; } = [];
     public List<string> InvolvedEntities { get; set; } = [];
+    /// <summary>Set when the batch contained combat/status changes but no EventOccurred. Reminder to log the narrative.</summary>
+    public string? NarrativeReminder { get; set; }
+    /// <summary>Remaining commit token budget (approximate). Replenishes 10 tokens/10s up to 50.</summary>
+    public int? RateLimitTokensRemaining { get; set; }
+}
+
+/// <summary>Rich eviction record returned from advance_world for transient NPC departures.</summary>
+public record EvictedNpcSummary(
+    string CharacterId,
+    string Name,
+    string? FromLocationId,
+    string? FromLocationName)
+{
+    public EvictedNpcSummary() : this(default!, default!, default, default) { }
 }
 
 public class AdvanceResult
@@ -129,6 +143,10 @@ public class AdvanceResult
     public CampaignTime NewTime { get; set; } = default!;
     public List<string> SimulatorEvents { get; set; } = [];
     public List<WorldPressureItem> WorldPressure { get; set; } = [];
+    /// <summary>IDs of transient NPCs evicted during this advance. Re-introduce important ones via keepAlive or schedule_change.</summary>
+    public List<string> EvictedNpcIds { get; set; } = [];
+    /// <summary>Structured eviction details (names + source locations). Prefer over bare IDs for narration and recovery.</summary>
+    public List<EvictedNpcSummary> EvictedNpcs { get; set; } = [];
 }
 
 public record RumorSummary(string Subject, string CurrentText, RumorState State)
