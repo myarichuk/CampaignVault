@@ -2,6 +2,18 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "AllMiniLmL6V2Sharp": {
+        "type": "Direct",
+        "requested": "[0.0.3, )",
+        "resolved": "0.0.3",
+        "contentHash": "ufFeCThwzc4jdcBMRLEkCYZr6LHFe1W3kXqxsxuz2BWc80Cq/J1Oq/VQdLd6IHvSxrXo22tjNsGZAdpPJ+kE2Q==",
+        "dependencies": {
+          "Microsoft.ML": "3.0.0",
+          "Microsoft.ML.OnnxRuntime": "1.16.3",
+          "Microsoft.ML.OnnxRuntime.Managed": "1.16.3",
+          "libtorch-cpu-win-x64": "2.1.0.1"
+        }
+      },
       "Autofac": {
         "type": "Direct",
         "requested": "[9.1.0, )",
@@ -124,6 +136,11 @@
         "resolved": "3.1.4",
         "contentHash": "Ryzu7T7ZzjQxTGxCSInAe0ZO3gbskW09qizdnrTUbZeNOyJzbdcQ39ylj4mJEYFeOUO1DQ1RqtBhQdiaMTSC6g=="
       },
+      "libtorch-cpu-win-x64": {
+        "type": "Transitive",
+        "resolved": "2.1.0.1",
+        "contentHash": "zh9Ll+DefpXfMzaaEzHgtY3Q9iDi6NHTnETI0Jah5jGiPrzphTidsVxLC+njAeeThhFGRakx4CMwPqJFMvfw7A=="
+      },
       "Microsoft.AspNetCore.JsonPatch": {
         "type": "Transitive",
         "resolved": "10.0.6",
@@ -141,6 +158,30 @@
         "type": "Transitive",
         "resolved": "3.0.1",
         "contentHash": "s/s20YTVY9r9TPfTrN5g8zPF1YhwxyqO6PxUkrYTGI2B+OGPe9AdajWZrLhFqXIvqIW23fnUE4+ztrUWNU1+9g=="
+      },
+      "Microsoft.ML": {
+        "type": "Transitive",
+        "resolved": "3.0.0",
+        "contentHash": "r3G3ak3BFvu9B/sH2pX0fuFcPT1vTVMF0t595vjRwg7ZcxYQ0YG8zT8f8bGxyXAk16764GWHwOxuALDdFWjMEQ==",
+        "dependencies": {
+          "Microsoft.ML.CpuMath": "3.0.0",
+          "Microsoft.ML.DataView": "3.0.0",
+          "Newtonsoft.Json": "13.0.1",
+          "System.CodeDom": "4.5.0"
+        }
+      },
+      "Microsoft.ML.CpuMath": {
+        "type": "Transitive",
+        "resolved": "3.0.0",
+        "contentHash": "qlJTWlpGULnqIH89driG/RQAQ3Kvjix/Bypcopv046hd3a/fw/jVsS87Oa1O8jQqce+oj0kFk5oDh/62iXMyIA==",
+        "dependencies": {
+          "System.Numerics.Tensors": "8.0.0"
+        }
+      },
+      "Microsoft.ML.DataView": {
+        "type": "Transitive",
+        "resolved": "3.0.0",
+        "contentHash": "un4jBS4VYVWcGDNASmyjtAr7k5AhcYP+T6XLGqxuXlmh1txiikSM9BrDrTe2lZFHUPf+W/5A7CwPJdvHTN+w8g=="
       },
       "Microsoft.ML.OnnxRuntime.Managed": {
         "type": "Transitive",
@@ -206,6 +247,16 @@
           "Newtonsoft.Json": "13.0.3",
           "Nito.AsyncEx.Coordination": "5.1.2"
         }
+      },
+      "System.CodeDom": {
+        "type": "Transitive",
+        "resolved": "4.5.0",
+        "contentHash": "gqpR1EeXOuzNQWL7rOzmtdIz3CaXVjSQCiaGOs2ivjPwynKSJYm39X81fdlp7WuojZs/Z5t1k5ni7HtKQurhjw=="
+      },
+      "System.Numerics.Tensors": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "fhODzTe9ON9IzmRfyVeA6L8yXOciMtpq1YufkRVBliggcVKZE+XDxqIn46+yF4PWR6wNPuDpXtPpuY86VcKxUA=="
       }
     }
   }

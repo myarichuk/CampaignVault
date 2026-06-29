@@ -1,13 +1,34 @@
-using Microsoft.ML.OnnxRuntime;
+using AllMiniLmL6V2Sharp;
+using AllMiniLmL6V2Sharp.Tokenizer;
 
 namespace CampaignVault.Services;
 
-public class LocalEmbeddingService : ILocalEmbeddingService
+public class LocalEmbeddingService : ILocalEmbeddingService, IDisposable
 {
+    private readonly AllMiniLmL6V2Embedder _embedder;
+
+    public LocalEmbeddingService()
+    {
+        var modelPath = EmbeddingModelPaths.ModelOnnxPath;
+        var vocabPath = EmbeddingModelPaths.VocabPath;
+
+        if (!File.Exists(modelPath) || !File.Exists(vocabPath))
+        {
+            throw new FileNotFoundException(
+                $"Embedding model assets not found under '{EmbeddingModelPaths.ModelDirectory}'.");
+        }
+
+        var tokenizer = new BertTokenizer(vocabPath);
+        _embedder = new AllMiniLmL6V2Embedder(modelPath, tokenizer);
+    }
+
     public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
     {
-        // full implementation will be loaded when the actual model is downloaded
-        // for now, return a dummy vector to satisfy the interface -> but don't "poison" so empty
-        return Task.FromResult(Array.Empty<float>()); 
+        if (string.IsNullOrWhiteSpace(text))
+            return Task.FromResult(Array.Empty<float>());
+
+        return Task.Run(() => _embedder.GenerateEmbedding(text).ToArray(), ct);
     }
+
+    public void Dispose() => _embedder.Dispose();
 }

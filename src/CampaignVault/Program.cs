@@ -60,7 +60,8 @@ var documentStore = RavenStartup.Initialize(dbPath);
 
 // Services
 builder.Services.AddSingleton(documentStore);
-builder.Services.AddSingleton<ILocalEmbeddingService, LocalEmbeddingService>();
+builder.Services.AddSingleton<LocalEmbeddingService>();
+builder.Services.AddSingleton<ILocalEmbeddingService>(sp => sp.GetRequiredService<LocalEmbeddingService>());
 
 builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
 {
