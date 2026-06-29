@@ -1,11 +1,14 @@
 namespace CampaignVault.Models;
 
-public class Rumor : IHasSemanticVector
+public class Rumor : ICampaignScopedEntity
 {
     public string Id { get; set; } = default!;
     
     public float[]? SemanticVector { get; set; }
-    
+    public string? EmbeddingTextHash { get; set; }
+
+    public string BuildEmbeddingText() => $"{Subject}\n{CurrentText}";
+
     public string RegionLocationId { get; set; } = default!;
     
     public string Subject { get; set; } = default!;

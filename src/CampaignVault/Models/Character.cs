@@ -1,11 +1,14 @@
 namespace CampaignVault.Models;
 
-public class Character : IHasSemanticVector
+public class Character : ICampaignScopedEntity
 {
     public string Id { get; set; } = default!;
     
     public float[]? SemanticVector { get; set; }
-    
+    public string? EmbeddingTextHash { get; set; }
+
+    public string BuildEmbeddingText() => $"{Name}\n{Notes}";
+
     public string Name { get; set; } = default!;
     
     public string? ClassLevel { get; set; }

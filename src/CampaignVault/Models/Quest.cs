@@ -1,9 +1,23 @@
 namespace CampaignVault.Models;
 
-public class Quest : IHasSemanticVector
+public class Quest : ICampaignScopedEntity
 {
     public string Id { get; set; } = default!;
     public float[]? SemanticVector { get; set; }
+    public string? EmbeddingTextHash { get; set; }
+
+    public string BuildEmbeddingText()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Title))
+            parts.Add(Title);
+        if (Objectives != null)
+            parts.AddRange(Objectives.Select(o => o.Description).Where(d => !string.IsNullOrWhiteSpace(d)));
+        if (!string.IsNullOrWhiteSpace(DmNotes))
+            parts.Add(DmNotes);
+        return string.Join('\n', parts);
+    }
+
     public string Title { get; set; } = default!;
     public string? GiverId { get; set; }
     public List<QuestObjective> Objectives { get; set; } = [];

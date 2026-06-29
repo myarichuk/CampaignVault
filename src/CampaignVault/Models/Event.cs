@@ -20,12 +20,15 @@ public enum EventCategory
     SceneInterrupt
 }
 
-public class Event : IHasSemanticVector
+public class Event : ICampaignScopedEntity
 {
     public string Id { get; set; } = default!;
     
     public float[]? SemanticVector { get; set; }
-    
+    public string? EmbeddingTextHash { get; set; }
+
+    public string BuildEmbeddingText() => Summary ?? string.Empty;
+
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
     public int DayLogged { get; set; }

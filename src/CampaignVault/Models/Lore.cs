@@ -1,11 +1,14 @@
 namespace CampaignVault.Models;
 
-public class Lore : IHasSemanticVector
+public class Lore : ICampaignScopedEntity
 {
     public string Id { get; set; } = default!;
     
     public float[]? SemanticVector { get; set; }
-    
+    public string? EmbeddingTextHash { get; set; }
+
+    public string BuildEmbeddingText() => $"{Title}\n{Content}";
+
     public string Title { get; set; } = default!;
     
     public string Content { get; set; } = default!;
