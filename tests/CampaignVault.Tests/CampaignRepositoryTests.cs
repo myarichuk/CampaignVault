@@ -27,7 +27,7 @@ public sealed class TestNoOpSimulationEngine : IWorldSimulationEngine
 public sealed class TestFakeEmbeddingService : CampaignVault.Services.ILocalEmbeddingService
 {
     public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
-        => Task.FromResult(new float[] { 0.1f, 0.2f, 0.3f });
+        => Task.FromResult(Enumerable.Repeat(0.1f, CampaignVault.Services.EmbeddingModelPaths.VectorDimensions).ToArray());
 }
 
 public class RavenDBFixture : IDisposable
@@ -201,10 +201,46 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             throw new TimeoutException("Index 'Character/Search' did not become non-stale within 10s");
         }
 
-        // Wildcard match
+        // Wildcard (substring) match — Corax does not support .Fuzzy(); substring is the last-resort path
         var result = await repo.GetCharacterAsync(session, "Gand", TestCampaignDefaults.Slug);
         Assert.NotNull(result);
         Assert.Equal("Gandalf the Grey", result!.Name);
+    }
+
+    [Fact]
+    public async Task UnifiedSearch_Does_Not_Leak_Across_Campaigns()
+    {
+        const string campaignA = "isolation-camp-a";
+        const string campaignB = "isolation-camp-b";
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignA);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignB);
+
+        var repo = _fixture.CreateRepository();
+
+        // Store a character exclusively in campaign B
+        var charId = "chars/secret-dragon-" + Guid.NewGuid().ToString("N")[..8];
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertCharacterAsync(session,
+                new Character { Id = charId, Name = "Secret Dragon of Campaign B", Notes = "dragon fire breath scales" },
+                campaignB);
+            await session.SaveChangesAsync();
+        }
+
+        // Wait for indexes
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (DateTime.UtcNow < deadline)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.All(x => !x.IsStale)) break;
+            await Task.Delay(100);
+        }
+
+        using var searchSession = _store.OpenAsyncSession();
+        var resultsFromA = await repo.UnifiedSearchAsync(searchSession, "dragon", campaignName: campaignA);
+
+        Assert.DoesNotContain(resultsFromA, r => r is Character c && c.Id == charId);
     }
 
     [Fact]
@@ -780,6 +816,98 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     // =====================================================================
     // REGRESSION TESTS FOR MCP CRASHES REPORTED IN PRODUCTION / COUSIN RUN
     // =====================================================================
+
+    [Fact]
+    public async Task QueryEventsAsync_Finds_Events_By_Keyword()
+    {
+        var repo = _fixture.CreateRepository();
+        // No hyphens: Corax's StandardAnalyzer splits on hyphens, so "*recall-findme*" would search
+        // for a single token that doesn't exist after tokenization. Use a single unbroken word instead.
+        const string marker = "recallfindme";
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var eventId = $"events/{marker}-{suffix}";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.LogEventAsync(session,
+                new Event { Id = eventId, Summary = $"{marker} ambush at the bridge", Category = EventCategory.Test },
+                TestCampaignDefaults.Slug);
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            // Diagnostic: confirm the document exists at all
+            var loaded = await session.LoadAsync<Event>(eventId);
+            Assert.True(loaded != null, $"Event was not persisted to DB. EventId={eventId}");
+
+            // Diagnostic: check direct text-only path, forcing non-stale read.
+            // Use trailing-wildcard only: Corax supports "token*" but not leading "*token*" on analyzed fields.
+            var directHits = await session.Query<Event, CampaignVault.Data.Event_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(15)))
+                .Search(x => x.Summary, $"{marker}*")
+                .Where(x => x.CampaignName == TestCampaignDefaults.Slug)
+                .ToListAsync();
+            Assert.True(directHits.Any(e => e.Id == eventId),
+                $"Index missed event even after WaitForNonStaleResults. loaded.CampaignName={loaded?.CampaignName ?? "<null>"}");
+
+            var results = (await repo.QueryEventsAsync(session, marker, null, 5, TestCampaignDefaults.Slug)).ToList();
+            Assert.Contains(results, e => e.Id == eventId);
+        }
+    }
+
+    [Fact]
+    public async Task UnifiedSearchAsync_Returns_All_Semantic_Entity_Types()
+    {
+        var repo = _fixture.CreateRepository();
+        const string marker = "unified-findme";
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertCharacterAsync(session,
+                new Character { Id = $"chars/{marker}-{suffix}", Name = $"{marker} hero", Notes = "notes" },
+                TestCampaignDefaults.Slug);
+            await repo.UpsertLoreAsync(session,
+                new Lore { Id = $"lore/{marker}-{suffix}", Title = $"{marker} lore", Content = "content" },
+                TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(session,
+                new Location { Id = $"locations/{marker}-{suffix}", Name = $"{marker} tavern", Description = "desc", Type = LocationType.Room },
+                TestCampaignDefaults.Slug);
+            await repo.UpsertRumorAsync(session,
+                new Rumor { Id = $"rumors/{marker}-{suffix}", Subject = $"{marker} rumor", CurrentText = "text" },
+                TestCampaignDefaults.Slug);
+            await repo.UpsertFactionAsync(session,
+                new Faction { Id = $"factions/{marker}-{suffix}", Name = $"{marker} guild", Description = "desc" },
+                TestCampaignDefaults.Slug);
+            await repo.UpsertQuestAsync(session,
+                new Quest { Id = $"quests/{marker}-{suffix}", Title = $"{marker} quest", DmNotes = "notes" },
+                TestCampaignDefaults.Slug);
+            await repo.LogEventAsync(session,
+                new Event { Id = $"events/{marker}-{suffix}", Summary = $"{marker} battle", Category = EventCategory.Test },
+                TestCampaignDefaults.Slug);
+            await repo.UpsertItemAsync(session,
+                new Item { Id = $"items/{marker}-{suffix}", Name = $"{marker} sword", Description = "desc" },
+                TestCampaignDefaults.Slug);
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var results = (await repo.UnifiedSearchAsync(session, marker, TestCampaignDefaults.Slug)).ToList();
+
+            Assert.Contains(results, r => r is Character);
+            Assert.Contains(results, r => r is Lore);
+            Assert.Contains(results, r => r is Location);
+            Assert.Contains(results, r => r is Rumor);
+            Assert.Contains(results, r => r is Faction);
+            Assert.Contains(results, r => r is Quest);
+            Assert.Contains(results, r => r is Event);
+            Assert.Contains(results, r => r is Item);
+        }
+    }
 
     [Fact]
     public async Task SearchWorld_Does_Not_Throw_ActiveAsyncTask_Disposal_Error()
