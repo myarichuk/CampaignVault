@@ -93,14 +93,14 @@ public class Dnd5eSavingThrowTests
             SystemStats = new Dnd5eExtension
             {
                 Dexterity = 10,
-                StatusEffects = new List<StatusEffect>
-                {
+                StatusEffects =
+                [
                     new StatusEffect
                     {
                         Name = "Bless",
                         StatModifiers = new Dictionary<string, float> { { "AllSaves", 2.0f } }
                     }
-                }
+                ]
             }
         };
         var context = CreateContext(actor);
@@ -143,14 +143,14 @@ public class Dnd5eSavingThrowTests
             SystemStats = new Dnd5eExtension
             {
                 Dexterity = 10,
-                StatusEffects = new List<StatusEffect>
-                {
+                StatusEffects =
+                [
                     new StatusEffect
                     {
                         Name = "Luck",
                         StatModifiers = new Dictionary<string, float> { { "AllRolls", 2.0f } }
                     }
-                }
+                ]
             }
         };
         var context = CreateContext(actor);

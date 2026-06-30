@@ -138,7 +138,7 @@ public class McpServerTests : IDisposable
             Task.FromResult(response),
             Task.FromResult(new Metadata()),
             () => Status.DefaultSuccess,
-            () => new Metadata(),
+            () => [],
             () => { });
 
     private static void TryDeleteDirectory(string path)

@@ -11,14 +11,9 @@ using Xunit;
 namespace CampaignVault.Tests.SimulationHarness;
 
 [Collection("RavenDB")]
-public class StatusExpiryRuleTests : IClassFixture<RavenDBFixture>
+public class StatusExpiryRuleTests(RavenDBFixture fixture) : IClassFixture<RavenDBFixture>
 {
-    private readonly IDocumentStore _store;
-
-    public StatusExpiryRuleTests(RavenDBFixture fixture)
-    {
-        _store = fixture.Store;
-    }
+    private readonly IDocumentStore _store = fixture.Store;
 
     [Fact]
     public async Task ApplyAsync_ExpiresOnlyDayBasedStatuses()

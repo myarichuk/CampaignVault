@@ -34,7 +34,7 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
             new Dictionary<string, Faction>(),
             new Dictionary<string, Quest>(),
             NullLogger.Instance,
-            summaryList ?? new List<string>(),
+            summaryList ?? [],
             dispatcher,
             null,
             campaignName

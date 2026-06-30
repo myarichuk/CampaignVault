@@ -32,7 +32,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             () => Task.FromResult(new CampaignTime { TotalDaysElapsed = 10 }),
             () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask,
-            new List<string>(),
+            [],
             new WorldChangeDispatcher(new List<IWorldChangeHandler>(), new CampaignVault.Data.CampaignDocumentKeys()),
             null,
             "test-campaign"

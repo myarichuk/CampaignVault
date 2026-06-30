@@ -293,7 +293,7 @@ public sealed class VaultSyncEngineTests : IDisposable
             Task.FromResult(response),
             Task.FromResult(new Metadata()),
             () => Status.DefaultSuccess,
-            () => new Metadata(),
+            () => [],
             () => { });
 
     private static AsyncUnaryCall<TResponse> CreateFakeUnaryCall<TResponse>(Task<TResponse> responseTask) =>
@@ -301,7 +301,7 @@ public sealed class VaultSyncEngineTests : IDisposable
             responseTask,
             Task.FromResult(new Metadata()),
             () => Status.DefaultSuccess,
-            () => new Metadata(),
+            () => [],
             () => { });
 
     private async Task WriteAndCommitEntityAsync(string markdown)

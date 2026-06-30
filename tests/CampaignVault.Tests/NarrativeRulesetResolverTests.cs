@@ -62,7 +62,7 @@ public class NarrativeRulesetResolverTests
         var dispatcher = new WorldChangeDispatcher([], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var context = new ChangeContext(
             null, chars, new Dictionary<string, Item>(), new Dictionary<string, Location>(),
-            null, null, NullLogger.Instance, new List<string>(), dispatcher
+            null, null, NullLogger.Instance, [], dispatcher
         );
 
         var output = await _resolver.Actions.ResolveAsync(context, action);
@@ -97,7 +97,7 @@ public class NarrativeRulesetResolverTests
         var dispatcher = new WorldChangeDispatcher([], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var context = new ChangeContext(
             null, chars, new Dictionary<string, Item>(), new Dictionary<string, Location>(),
-            null, null, NullLogger.Instance, new List<string>(), dispatcher
+            null, null, NullLogger.Instance, [], dispatcher
         );
 
         var output = await _resolver.Actions.ResolveAsync(context, action);

@@ -38,7 +38,7 @@ public class RavenDBFixture : IDisposable
 
     public RavenDBFixture()
     {
-        _dataDir = Path.Combine(Path.GetTempPath(), "RavenDBTest_" + Guid.NewGuid());
+        _dataDir = Path.Combine(Path.GetTempPath(), $"RavenDBTest_{Guid.NewGuid()}");
         Directory.CreateDirectory(_dataDir);
         File.WriteAllText(Path.Combine(_dataDir, "settings.json"), "{\"Indexing.Static.SearchEngineType\": \"Corax\", \"Indexing.Auto.SearchEngineType\": \"Corax\"}");
         try
@@ -49,7 +49,7 @@ public class RavenDBFixture : IDisposable
             {
                 DataDirectory = _dataDir,
                 ServerUrl = "http://127.0.0.1:0",
-                CommandLineArgs = new List<string> { "--Indexing.Static.SearchEngineType=Corax", "--Indexing.Auto.SearchEngineType=Corax" }
+                CommandLineArgs = ["--Indexing.Static.SearchEngineType=Corax", "--Indexing.Auto.SearchEngineType=Corax"]
             });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already started"))

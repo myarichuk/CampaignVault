@@ -36,7 +36,7 @@ public class TravelEngagementLockTests
         var locDict = new Dictionary<string, Location> { { destination.Id, destination } };
 
         var dispatcher = new WorldChangeDispatcher(
-            new IWorldChangeHandler[] { new TravelChangeHandler(new EncounterResolver()) },
+            [new TravelChangeHandler(new EncounterResolver())],
             new CampaignVault.Data.CampaignDocumentKeys(),
             NullLogger<WorldChangeDispatcher>.Instance
         );

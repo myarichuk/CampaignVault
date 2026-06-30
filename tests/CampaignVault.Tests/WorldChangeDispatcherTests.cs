@@ -367,7 +367,7 @@ public class WorldChangeDispatcherTests
             new Dictionary<string, Faction>(),
             new Dictionary<string, Quest>(),
             NullLogger<WorldChangeDispatcher>.Instance,
-            new List<string>(),
+            [],
             dispatcher,
             null,
             "test_campaign");

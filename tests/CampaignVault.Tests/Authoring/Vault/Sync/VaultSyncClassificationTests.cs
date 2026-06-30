@@ -172,7 +172,7 @@ public sealed class VaultSyncClassificationTests : IDisposable
     }
 
     private static AsyncUnaryCall<TResponse> CreateFakeUnaryCall<TResponse>(TResponse response) =>
-        new(Task.FromResult(response), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { });
+        new(Task.FromResult(response), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => [], () => { });
 
     private static string GrogJson(string notes) => $$"""
         {
