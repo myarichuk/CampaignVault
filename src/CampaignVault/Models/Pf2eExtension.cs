@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
@@ -40,4 +41,32 @@ public class Pf2eExtension : SystemExtension
 
     [JsonPropertyName("level")]
     public int? Level { get; set; }
+
+    [Description("Ancestry template name (e.g. \"human\", \"elf\", \"dwarf\"). References an AncestryDefinition template in RulesetData/pf2e/ancestries/.")]
+    [JsonPropertyName("ancestry")]
+    public string? Ancestry { get; set; }
+
+    [Description("Heritage template name (e.g. \"half-elf\", \"dwarven_clan_drinker\"). References a HeritageDefinition template in RulesetData/pf2e/heritages/.")]
+    [JsonPropertyName("heritage")]
+    public string? Heritage { get; set; }
+
+    [Description("Background template name (e.g. \"soldier\", \"scholar\", \"criminal\"). References a BackgroundDefinition template in RulesetData/pf2e/backgrounds/.")]
+    [JsonPropertyName("background")]
+    public string? Background { get; set; }
+
+    [Description("Ancestry feat template names. References FeatDefinition templates in RulesetData/pf2e/feats/.")]
+    [JsonPropertyName("ancestryFeats")]
+    public List<string> AncestryFeats { get; set; } = [];
+
+    [Description("Class feat template names. References FeatDefinition templates in RulesetData/pf2e/feats/.")]
+    [JsonPropertyName("classFeats")]
+    public List<string> ClassFeats { get; set; } = [];
+
+    [Description("Skill feat template names. References FeatDefinition templates in RulesetData/pf2e/feats/.")]
+    [JsonPropertyName("skillFeats")]
+    public List<string> SkillFeats { get; set; } = [];
+
+    [Description("General feat template names. References FeatDefinition templates in RulesetData/pf2e/feats/.")]
+    [JsonPropertyName("generalFeats")]
+    public List<string> GeneralFeats { get; set; } = [];
 }

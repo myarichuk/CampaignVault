@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
@@ -49,4 +50,7 @@ public class Fallout2d20Extension : SystemExtension
     /// <summary>HP gained per level after L1. Defaults to Endurance when bootstrapping.</summary>
     [JsonPropertyName("hpPerLevel")]
     public int? HpPerLevel { get; set; }
+
+    [JsonPropertyName("perks")]
+    public List<string> Perks { get; set; } = [];
 }

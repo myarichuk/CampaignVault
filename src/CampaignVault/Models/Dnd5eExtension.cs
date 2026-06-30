@@ -70,6 +70,18 @@ public class Dnd5eExtension : SystemExtension
     [JsonPropertyName("spellAttackBonus")]
     public int? SpellAttackBonus { get; set; }
 
+    [Description("Race template name (e.g. \"human\", \"elf\", \"half-orc\"). References a RaceDefinition template in RulesetData/dnd5e/races/.")]
+    [JsonPropertyName("race")]
+    public string? Race { get; set; }
+
+    [Description("Background template name (e.g. \"soldier\", \"acolyte\", \"criminal\"). References a BackgroundDefinition template in RulesetData/dnd5e/backgrounds/.")]
+    [JsonPropertyName("background")]
+    public string? Background { get; set; }
+
+    [Description("Feat template names (e.g. [\"great_weapon_master\", \"alert\"]). References FeatDefinition templates in RulesetData/dnd5e/feats/. Order is not significant.")]
+    [JsonPropertyName("feats")]
+    public List<string> Feats { get; set; } = [];
+
     public int GetAbilityModifier(int score)
     {
         return (int)Math.Floor((score - 10) / 2.0);
