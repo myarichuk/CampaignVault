@@ -48,6 +48,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(PlotThreadProgress), "plot_thread_progress")]
 [JsonDerivedType(typeof(PlotThreadClueDiscovered), "plot_thread_clue")]
 [JsonDerivedType(typeof(ResourceChange), "resource")]
+[JsonDerivedType(typeof(RestRecoveryAck), "rest_recovery_ack")]
 public abstract class WorldChange;
 
 /// <summary>
@@ -1303,4 +1304,17 @@ public class ResourceChange : WorldChange
     [Description("Optional reason for the change (e.g., 'Cast Fireball', 'Long rest recovery', 'Exhausted pool').")]
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Simulation-internal: marks that pool recovery for a completed rest has been applied.
+/// Emitted by SpellRecoveryRule during advance_world; not intended for LLM commit use.
+/// </summary>
+public class RestRecoveryAck : WorldChange
+{
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [JsonPropertyName("restDay")]
+    public int RestDay { get; set; }
 }

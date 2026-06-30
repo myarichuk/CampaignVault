@@ -47,7 +47,7 @@ public class RestChangeHandler : IWorldChangeHandler
             context,
             character, 
             location, 
-            rc.IntendedHours > 0 ? rc.IntendedHours : 8, 
+            CalculateRestHours(rc), 
             4, // bucket size 4 hours
             rc.SecurityModifier,
             "Rest");
@@ -87,6 +87,17 @@ public class RestChangeHandler : IWorldChangeHandler
         else
         {
             return new ChangeHandlerResult(true, $"Rest INTERRUPTED after {hoursRested} hours! Encounter spawned. Do NOT apply healing commits yet; resolve the encounter first.");
+        }
+
+        int CalculateRestHours(RestChange restChange)
+        {
+            // note: speial case, at the moment used by Fallout system for recharging AP
+            if (restChange.RestType == RestType.PerTurn)
+            {
+                return 0;
+            }
+
+            return restChange.IntendedHours > 0 ? restChange.IntendedHours : 8;
         }
     }
 }

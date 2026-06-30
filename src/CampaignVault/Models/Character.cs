@@ -66,6 +66,9 @@ public class Character : ICampaignScopedEntity
     /// <summary>Type of the last rest taken (LongRest, ShortRest, PerTurn) — determines which pools recover.</summary>
     public RestType? LastRestType { get; set; }
 
+    /// <summary>Day when rest-based pool recovery was last applied for <see cref="LastRestedDay"/>.</summary>
+    public int? LastRestRecoveredDay { get; set; }
+
     public PsychologyProfile Psychology { get; set; } = new();
     
     public SocialProfile Social { get; set; } = new();

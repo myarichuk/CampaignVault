@@ -4,8 +4,8 @@ namespace CampaignVault.Data;
 
 /// <summary>
 /// Recovers resource pools (spell slots, focus points, etc.) after long or short rests.
-/// Runs daily during advance_world and checks each character's LastRestedDay.
-/// If a rest was completed on the current or previous day, refills matching pools.
+/// Runs during advance_world for any character with a completed rest not yet recovered
+/// (LastRestRecoveredDay != LastRestedDay).
 ///
 /// LIMITATION: PerTurn recovery (Fallout 2d20 Action Points) is not automatically handled.
 /// The LLM must manually reset these via resource commits at the start of each turn in combat.
@@ -16,67 +16,78 @@ public class SpellRecoveryRule : ISimulationRule
     private readonly ILogger<SpellRecoveryRule> _logger;
 
     public string Name => "Spell Slot & Resource Recovery";
-    public int Order => 38; // After ScheduleEvaluation (35), before NeedsAccumulation (35)
+    public int Order => 38; // After NeedsAccumulation (35) and ScheduleEvaluation (35)
 
     public SpellRecoveryRule(ILogger<SpellRecoveryRule> logger)
     {
         _logger = logger;
     }
 
-    public virtual async Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
+    public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
-        var narratives = new List<string>();
-        var deltas = new List<WorldChange>();
-        var currentDay = context.Time.TotalDaysElapsed;
-
-        foreach (var character in context.ScheduledNpcs)
+        try
         {
-            if (character.SystemStats?.ResourcePools == null || character.SystemStats.ResourcePools.Count == 0)
-            {
-                continue;
-            }
+            var narratives = new List<string>();
+            var deltas = new List<WorldChange>();
 
-            // Check if this character rested recently (within the last day)
-            if (character.LastRestedDay == null || currentDay - character.LastRestedDay.Value > 1)
+            foreach (var character in context.ScheduledNpcs)
             {
-                continue;
-            }
-
-            if (character.LastRestType == null)
-            {
-                continue;
-            }
-
-            foreach (var (poolName, pool) in character.SystemStats.ResourcePools)
-            {
-                // Skip if pool is already at max
-                if (pool.Current == pool.Max)
+                if (character.SystemStats?.ResourcePools == null || character.SystemStats.ResourcePools.Count == 0)
                 {
                     continue;
                 }
 
-                // Check if this pool should recover based on rest type hierarchy
-                if (!ShouldRecoverPool(character.LastRestType.Value, pool.Recovery))
+                if (character.LastRestedDay == null || character.LastRestType == null)
                 {
                     continue;
                 }
 
-                var recovery = pool.Max - pool.Current;
-                deltas.Add(new ResourceChange
+                if (character.LastRestRecoveredDay == character.LastRestedDay)
+                {
+                    continue;
+                }
+
+                foreach (var (poolName, pool) in character.SystemStats.ResourcePools)
+                {
+                    // Skip if pool is already at max
+                    if (pool.Current == pool.Max)
+                    {
+                        continue;
+                    }
+
+                    // Check if this pool should recover based on rest type hierarchy
+                    if (!ShouldRecoverPool(character.LastRestType.Value, pool.Recovery))
+                    {
+                        continue;
+                    }
+
+                    var recovery = pool.Max - pool.Current;
+                    deltas.Add(new ResourceChange
+                    {
+                        CharacterId = character.Id,
+                        PoolName = poolName,
+                        Delta = recovery,
+                        Reason = $"{character.LastRestType} rest recovery"
+                    });
+
+                    narratives.Add($"{character.Name} recovered {recovery} {poolName} after {character.LastRestType} rest.");
+                    _logger.LogDebug("SpellRecoveryRule: {CharacterName} recovered {Count} {PoolName} after {RestType} rest",
+                        character.Name, recovery, poolName, character.LastRestType);
+                }
+
+                deltas.Add(new RestRecoveryAck
                 {
                     CharacterId = character.Id,
-                    PoolName = poolName,
-                    Delta = recovery,
-                    Reason = $"{character.LastRestType} rest recovery"
+                    RestDay = character.LastRestedDay.Value
                 });
-
-                narratives.Add($"{character.Name} recovered {recovery} {poolName} after {character.LastRestType} rest.");
-                _logger.LogDebug("SpellRecoveryRule: {CharacterName} recovered {Count} {PoolName} after {RestType} rest",
-                    character.Name, recovery, poolName, character.LastRestType);
             }
-        }
 
-        return new RuleResult(narratives, deltas);
+            return Task.FromResult(new RuleResult(narratives, deltas));
+        }
+        catch (Exception exception)
+        {
+            return Task.FromException<RuleResult>(exception);
+        }
     }
 
     /// <summary>
