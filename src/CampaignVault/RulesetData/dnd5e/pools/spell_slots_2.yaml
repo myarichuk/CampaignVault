@@ -1,0 +1,16 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: spell_slots_2
+description: 2nd-level spell slots (recovers on long rest)
+applicableSystems: [dnd5e]
+recovery: LongRest
+defaultMax: 2
+levelToMaxMap:
+  "3": 2
+  "4": 3
+  "5": 3
+  "6": 3
+  "7": 3
+  "8": 3
+  "9": 3
+  "20": 3

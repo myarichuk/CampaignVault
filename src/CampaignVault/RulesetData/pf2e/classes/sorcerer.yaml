@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the ORC License by Paizo Inc.
+name: sorcerer
+system: pf2e
+hitDie: d6
+casterType: Full
+pools: [spell_slots_1, spell_slots_2, spell_slots_3, spell_slots_4, focus_points]
+aliases: [sorcerer]

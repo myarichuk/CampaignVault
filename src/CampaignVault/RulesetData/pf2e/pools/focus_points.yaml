@@ -1,0 +1,13 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+# See https://paizo.com/orclicense — certain elements are Paizo's Reserved Material under the ORC License.
+name: focus_points
+description: Focus Points (recovers on short rest)
+applicableSystems: [pf2e]
+applicableClasses: [wizard, witch, sorcerer, cleric, druid, bard, oracle, psychic, magus, summoner, mesmerist]
+recovery: ShortRest
+defaultMax: 1
+levelToMaxMap:
+  "1": 1
+  "10": 2
+  "16": 3
+  "20": 3

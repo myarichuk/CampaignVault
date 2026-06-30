@@ -1,0 +1,18 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: spell_slots_1
+description: 1st-level spell slots (recovers on long rest)
+applicableSystems: [dnd5e]
+recovery: LongRest
+defaultMax: 4
+levelToMaxMap:
+  "1": 2
+  "2": 3
+  "3": 4
+  "4": 4
+  "5": 4
+  "6": 4
+  "7": 4
+  "8": 4
+  "9": 4
+  "20": 4

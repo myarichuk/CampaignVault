@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: fighter
+system: dnd5e
+hitDie: d10
+casterType: None
+savingThrows: [Strength, Constitution]
+pools: [action_surge]
+aliases: [fighter]

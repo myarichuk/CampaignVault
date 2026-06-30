@@ -85,6 +85,12 @@
           "RavenDB.Client": "7.2.2"
         }
       },
+      "YamlDotNet": {
+        "type": "Direct",
+        "requested": "[18.0.0, )",
+        "resolved": "18.0.0",
+        "contentHash": "ptHVgcYmLejGuWXV7RMFoEqFKYMXnieOlWLPzEslfDtzZ9ngMhjYwykfqjBN2+fMEAEyobozkj07lKEpR4dssA=="
+      },
       "Grpc.AspNetCore.Server": {
         "type": "Transitive",
         "resolved": "2.80.0",

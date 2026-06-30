@@ -27,6 +27,10 @@
     <ProjectReference Include="..\..\src\CampaignVault.Authoring\CampaignVault.Authoring.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="TestData\sample_template.yaml" />
+  </ItemGroup>
+
   <Import Project="..\..\models\EmbeddingModels.props" />
 
 </Project>

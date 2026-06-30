@@ -1,0 +1,19 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: font_of_magic
+description: Sorcerer Font of Magic points (flexible metamagic, recovers on long rest)
+applicableSystems: [dnd5e]
+applicableClasses: [sorcerer]
+recovery: LongRest
+defaultMax: 1
+levelToMaxMap:
+  "1": 0
+  "2": 2
+  "3": 3
+  "4": 4
+  "5": 5
+  "6": 6
+  "7": 7
+  "8": 8
+  "9": 9
+  "20": 9

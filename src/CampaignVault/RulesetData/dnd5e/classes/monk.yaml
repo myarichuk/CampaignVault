@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: monk
+system: dnd5e
+hitDie: d8
+casterType: None
+savingThrows: [Strength, Dexterity]
+pools: [ki_points]
+aliases: [monk]

@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: channel_divinity
+description: Cleric/Paladin Channel Divinity uses (recovers on short rest)
+applicableSystems: [dnd5e]
+applicableClasses: [cleric, paladin]
+recovery: ShortRest
+defaultMax: 1
+levelToMaxMap:
+  "1": 1
+  "6": 2
+  "18": 3
+  "20": 3

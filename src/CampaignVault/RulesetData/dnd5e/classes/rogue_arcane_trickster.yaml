@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: rogue_arcane_trickster
+inherits: [rogue]
+casterType: Third
+pools: [spell_slots_1, spell_slots_2, spell_slots_3, spell_slots_4]
+aliases: [arcane trickster]

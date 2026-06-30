@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: barbarian
+system: dnd5e
+hitDie: d12
+casterType: None
+savingThrows: [Strength, Constitution]
+pools: []
+aliases: [barbarian]

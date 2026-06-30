@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.ML.OnnxRuntime.Extensions" Version="0.14.0" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.3.0" />
     <PackageReference Include="RavenDB.Embedded" Version="7.2.2" />
+    <PackageReference Include="YamlDotNet" Version="18.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,6 +47,7 @@
 
   <ItemGroup>
     <EmbeddedResource Remove="CampaignVault.Tests\**" />
+    <EmbeddedResource Include="RulesetData\**\*.yaml" />
   </ItemGroup>
 
   <ItemGroup>

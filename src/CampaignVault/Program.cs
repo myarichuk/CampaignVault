@@ -39,6 +39,7 @@ builder.WebHost.ConfigureKestrel(options =>
         options.ListenLocalhost(grpcPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
     }
 });
+
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
 builder.Logging.ClearProviders();
@@ -63,14 +64,8 @@ builder.Services.AddSingleton(documentStore);
 builder.Services.AddSingleton<LocalEmbeddingService>();
 builder.Services.AddSingleton<ILocalEmbeddingService>(sp => sp.GetRequiredService<LocalEmbeddingService>());
 
-builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
-{
-    containerBuilder.RegisterModule<CampaignVault.AutofacModules.SimulationModule>();
-    containerBuilder.RegisterModule<CampaignVault.AutofacModules.RulesetsModule>();
-    containerBuilder.RegisterModule<CampaignVault.AutofacModules.PressureModule>();
-    containerBuilder.RegisterModule<CampaignVault.AutofacModules.InitiativeModule>();
-    containerBuilder.RegisterModule<CampaignVault.AutofacModules.CampaignCoreModule>();
-});
+builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder => 
+    containerBuilder.RegisterAssemblyModules());
 
 // CORS configuration (Issue #16 from code review)
 // - Default (or "*"): AllowAnyOrigin (current behavior, convenient for local MCP + LLM clients)

@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: spell_slots_3
+description: 3rd-level spell slots (recovers on long rest)
+applicableSystems: [dnd5e]
+recovery: LongRest
+defaultMax: 1
+levelToMaxMap:
+  "5": 2
+  "6": 2
+  "7": 2
+  "8": 2
+  "9": 2
+  "20": 2

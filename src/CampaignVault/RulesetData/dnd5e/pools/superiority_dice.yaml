@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: superiority_dice
+description: Battle Master Superiority Dice for maneuvers (recovers on short rest)
+applicableSystems: [dnd5e]
+applicableClasses: [battle master]
+recovery: ShortRest
+defaultMax: 4
+levelToMaxMap:
+  "3": 4
+  "7": 5
+  "11": 6
+  "15": 7
+  "18": 8
+  "20": 8

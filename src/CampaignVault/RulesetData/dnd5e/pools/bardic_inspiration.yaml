@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: bardic_inspiration
+description: Bard Bardic Inspiration uses (recovers on long rest)
+applicableSystems: [dnd5e]
+applicableClasses: [bard]
+recovery: LongRest
+defaultMax: 3
+levelToMaxMap:
+  "1": 3
+  "5": 4
+  "9": 5
+  "13": 6
+  "17": 7
+  "20": 8

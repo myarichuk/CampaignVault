@@ -1,0 +1,18 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: warlock_invocations
+description: Warlock Spell Slot (short-rest recovery)
+applicableSystems: [dnd5e]
+applicableClasses: [warlock]
+recovery: ShortRest
+defaultMax: 1
+levelToMaxMap:
+  "1": 1
+  "2": 2
+  "5": 3
+  "7": 4
+  "9": 5
+  "12": 6
+  "15": 7
+  "18": 8
+  "20": 8

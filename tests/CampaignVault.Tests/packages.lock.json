@@ -1066,7 +1066,8 @@
           "Microsoft.ML.OnnxRuntime": "[1.18.0, )",
           "Microsoft.ML.OnnxRuntime.Extensions": "[0.14.0, )",
           "ModelContextProtocol.AspNetCore": "[1.3.0, )",
-          "RavenDB.Embedded": "[7.2.2, )"
+          "RavenDB.Embedded": "[7.2.2, )",
+          "YamlDotNet": "[18.0.0, )"
         }
       },
       "campaignvault.authoring": {
