@@ -56,7 +56,7 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(wizard);
         await session.SaveChangesAsync();
 
-        var handler = new LevelUpChangeHandler(keys, BootstrapTestHelper.CreateOrchestrator());
+        var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var ctx = CreateContext(session, campaign);
         ctx.RegisterNewCharacter(wizard);
 
@@ -119,7 +119,7 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(gish);
         await session.SaveChangesAsync();
 
-        var handler = new LevelUpChangeHandler(keys, BootstrapTestHelper.CreateOrchestrator());
+        var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var ctx = CreateContext(session, campaign);
         ctx.RegisterNewCharacter(gish);
 

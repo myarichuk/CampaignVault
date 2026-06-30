@@ -10,7 +10,7 @@ namespace CampaignVault.Services;
 /// Each system has its own loader to prevent name collisions between systems
 /// (e.g. dnd5e and pf2e both define "wizard" with different properties).
 /// </summary>
-public class ClassDefinitionProvider
+public class ClassDefinitionProvider : IRulesetYamlProvider
 {
     private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<ClassDefinition>> _loaders = new();
     private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, ClassDefinition>?> _cache = new();

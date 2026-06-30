@@ -1,3 +1,4 @@
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 
 namespace CampaignVault.Services;
@@ -6,7 +7,7 @@ namespace CampaignVault.Services;
 /// Initializes and syncs resource pools (spell slots, focus points, action points, etc.).
 /// Preserves spent resources on re-sync; removes pools that no longer apply to the character's classes.
 /// </summary>
-public class ResourcePoolInitializer
+public class ResourcePoolInitializer : IRulesetDataInitializer
 {
     private readonly ResourcePoolProvider? _provider;
     private readonly ClassDefinitionProvider? _classProvider;

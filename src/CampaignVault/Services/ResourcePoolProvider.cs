@@ -10,7 +10,7 @@ namespace CampaignVault.Services;
 /// Each system (dnd5e, pf2e, fallout2d20) has its own loader to prevent name collisions between systems
 /// (e.g. dnd5e and pf2e both define "spell_slots_1" with different tables).
 /// </summary>
-public class ResourcePoolProvider
+public class ResourcePoolProvider : IRulesetYamlProvider
 {
     private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<ResourcePoolTemplate>> _loaders = new();
     private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, ResourcePoolTemplate>?> _cache = new();

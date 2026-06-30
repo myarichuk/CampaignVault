@@ -85,11 +85,7 @@ public class RavenDBFixture : IDisposable
 
         var builder = new ContainerBuilder();
         builder.RegisterInstance(Store).As<IDocumentStore>();
-        builder.RegisterModule<CampaignVault.AutofacModules.SimulationModule>();
-        builder.RegisterModule<CampaignVault.AutofacModules.RulesetsModule>();
-        builder.RegisterModule<CampaignVault.AutofacModules.CampaignCoreModule>();
-        builder.RegisterModule<CampaignVault.AutofacModules.PressureModule>();
-        builder.RegisterModule<CampaignVault.AutofacModules.InitiativeModule>();
+        builder.RegisterModule<CampaignVault.AutofacModules.CampaignVaultModule>();
         builder.RegisterInstance(Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignRepository>.Instance)
             .As<ILogger<CampaignRepository>>();
         builder.RegisterType<TestNoOpSimulationEngine>().As<IWorldSimulationEngine>().InstancePerLifetimeScope();

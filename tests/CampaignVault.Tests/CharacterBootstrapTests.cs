@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -202,6 +203,75 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task CharacterCreate_ValidClass_ResponseIncludesResolvedSummary()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var keys = new CampaignDocumentKeys();
+        await session.StoreAsync(new CampaignConfig
+        {
+            Id = keys.Config("resolved-echo"),
+            ActiveSystem = RulesetSystem.Dnd5e,
+        });
+        await session.SaveChangesAsync();
+
+        var handler = RulesetDataTestHelper.CreateCharacterCreateHandler(keys);
+        var summary = new List<string>();
+        var ctx = CreateContext(session, "resolved-echo", summary);
+        var result = await handler.ApplyAsync(new CharacterCreate
+        {
+            CharacterId = "chars/resolved-fighter",
+            Name = "Resolved Fighter",
+            IsPc = true,
+            ClassLevel = "Human Fighter 2",
+            SystemStats = new Dnd5eExtension
+            {
+                Constitution = 14,
+                HitDie = "d10",
+                Level = 2,
+            },
+        }, ctx);
+
+        Assert.True(result.Success);
+        Assert.Contains(summary, m =>
+            m.StartsWith("[RESOLVED]", StringComparison.Ordinal) &&
+            m.Contains("class=fighter", StringComparison.Ordinal) &&
+            m.Contains("casterType=None", StringComparison.Ordinal) &&
+            m.Contains("action_surge", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task CharacterCreate_UnknownClass_ReturnsSoftWarningWithKnownList()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var keys = new CampaignDocumentKeys();
+        await session.StoreAsync(new CampaignConfig
+        {
+            Id = keys.Config("unknown-class"),
+            ActiveSystem = RulesetSystem.Dnd5e,
+        });
+        await session.SaveChangesAsync();
+
+        var handler = RulesetDataTestHelper.CreateCharacterCreateHandler(keys);
+        var summary = new List<string>();
+        var ctx = CreateContext(session, "unknown-class", summary);
+        var result = await handler.ApplyAsync(new CharacterCreate
+        {
+            CharacterId = "chars/unknown-class",
+            Name = "Mystery Hero",
+            IsPc = true,
+            ClassLevel = "Totally Unknown Class XYZ 1",
+            SystemStats = new Dnd5eExtension { Level = 1 },
+        }, ctx);
+
+        Assert.True(result.Success);
+        Assert.Contains(summary, m =>
+            m.Contains("[WARNING]", StringComparison.Ordinal) &&
+            m.Contains("Totally Unknown Class", StringComparison.Ordinal) &&
+            m.Contains("Known classes:", StringComparison.Ordinal) &&
+            m.Contains("fighter", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task CharacterCreate_BootstrapsHpAndDefense_WhenMaxHpOmitted()
     {
         using var session = _fixture.Store.OpenAsyncSession();
@@ -213,7 +283,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         });
         await session.SaveChangesAsync();
 
-        var handler = new CharacterCreateHandler(keys, BootstrapTestHelper.CreateOrchestrator());
+        var handler = RulesetDataTestHelper.CreateCharacterCreateHandler(keys);
         var change = new CharacterCreate
         {
             CharacterId = "chars/bootstrap-fighter",
@@ -273,7 +343,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(existing);
         await session.SaveChangesAsync();
 
-        var handler = new LevelUpChangeHandler(keys, BootstrapTestHelper.CreateOrchestrator());
+        var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var change = new LevelUpChange
         {
             CharacterId = "chars/level-up-pc",
@@ -313,7 +383,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(existing);
         await session.SaveChangesAsync();
 
-        var handler = new LevelUpChangeHandler(keys, BootstrapTestHelper.CreateOrchestrator());
+        var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var summary = new List<string>();
         var ctx = CreateContext(session, "level-up-noop", summary);
         ctx.RegisterNewCharacter(existing);
@@ -458,7 +528,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(existing);
         await session.SaveChangesAsync();
 
-        var handler = new LevelUpChangeHandler(keys, BootstrapTestHelper.CreateOrchestrator());
+        var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var summary = new List<string>();
         var ctx = CreateContext(session, "level-up-statblock", summary);
         ctx.RegisterNewCharacter(existing);

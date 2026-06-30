@@ -69,7 +69,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         await StoreDnd5eConfigAsync(session, "bootstrap-create");
 
         var characterId = "chars/elara-voss-" + Guid.NewGuid().ToString("N")[..8];
-        var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
+        var handler = RulesetDataTestHelper.CreateCharacterCreateHandler();
         var change = new CharacterCreate
         {
             CharacterId = characterId,
@@ -151,7 +151,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         await StoreDnd5eConfigAsync(session, "bootstrap-mismatch");
 
-        var handler = new CharacterCreateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
+        var handler = RulesetDataTestHelper.CreateCharacterCreateHandler();
         var change = new CharacterCreate
         {
             CharacterId = "chars/bad-stats",

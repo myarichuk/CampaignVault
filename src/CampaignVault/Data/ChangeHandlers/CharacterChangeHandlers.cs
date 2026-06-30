@@ -11,18 +11,18 @@ public class CharacterCreateHandler : IWorldChangeHandler
     private readonly CampaignDocumentKeys _keys;
     private readonly CharacterBootstrapOrchestrator _bootstrap;
     private readonly ResourcePoolInitializer _poolInitializer;
-    private readonly ClassDefinitionProvider? _classProvider;
+    private readonly ClassDefinitionProvider _classProvider;
 
     public CharacterCreateHandler(
         CampaignDocumentKeys keys,
         CharacterBootstrapOrchestrator bootstrap,
-        ResourcePoolInitializer? poolInitializer = null,
-        ClassDefinitionProvider? classProvider = null)
+        ResourcePoolInitializer poolInitializer,
+        ClassDefinitionProvider classProvider)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
-        _poolInitializer = poolInitializer ?? new ResourcePoolInitializer();
-        _classProvider = classProvider;
+        _poolInitializer = poolInitializer ?? throw new ArgumentNullException(nameof(poolInitializer));
+        _classProvider = classProvider ?? throw new ArgumentNullException(nameof(classProvider));
     }
 
     public bool ShouldHandle(WorldChange change) => change is CharacterCreate;
@@ -206,7 +206,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
         RulesetSystem system,
         string? classLevelInput)
     {
-        if (_classProvider == null || string.IsNullOrWhiteSpace(classLevelInput))
+        if (string.IsNullOrWhiteSpace(classLevelInput))
             return;
 
         var classLevels = CharacterClassResolver.ResolveClassLevels(character);
@@ -275,11 +275,11 @@ public class LevelUpChangeHandler : IWorldChangeHandler
     public LevelUpChangeHandler(
         CampaignDocumentKeys keys,
         CharacterBootstrapOrchestrator bootstrap,
-        ResourcePoolInitializer? poolInitializer = null)
+        ResourcePoolInitializer poolInitializer)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
-        _poolInitializer = poolInitializer ?? new ResourcePoolInitializer();
+        _poolInitializer = poolInitializer ?? throw new ArgumentNullException(nameof(poolInitializer));
     }
 
     public bool ShouldHandle(WorldChange change) => change is LevelUpChange;
