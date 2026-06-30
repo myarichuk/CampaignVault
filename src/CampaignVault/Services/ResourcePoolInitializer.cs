@@ -3,20 +3,20 @@ using CampaignVault.Models;
 namespace CampaignVault.Services;
 
 /// <summary>
-/// Initializes resource pools (spell slots, focus points, action points, etc.) on character creation.
-/// Responsible for:
-/// - Loading built-in defaults or campaign-specific schemas
-/// - Deriving per-character max values from classLevels/level
-/// - Populating Character.SystemExtension.ResourcePools
+/// Initializes and syncs resource pools (spell slots, focus points, action points, etc.).
+/// Preserves spent resources on re-sync; removes pools that no longer apply to the character's classes.
 /// </summary>
 public class ResourcePoolInitializer
 {
-    /// <summary>
-    /// Initialize resource pools for a character based on system and config.
-    /// </summary>
-    /// <param name="character">Character to initialize (modifies in-place).</param>
-    /// <param name="system">The active ruleset system.</param>
-    /// <param name="campaignConfig">Campaign config (may contain custom ResourcePoolSchemas).</param>
+    private readonly ResourcePoolProvider? _provider;
+    private readonly ClassDefinitionProvider? _classProvider;
+
+    public ResourcePoolInitializer(ResourcePoolProvider? provider = null, ClassDefinitionProvider? classProvider = null)
+    {
+        _provider = provider;
+        _classProvider = classProvider;
+    }
+
     public void InitializePools(Character character, RulesetSystem system, CampaignConfig? campaignConfig)
     {
         if (character?.SystemStats == null)
@@ -24,39 +24,145 @@ public class ResourcePoolInitializer
             return;
         }
 
-        // Get pool schemas: campaign-specific or built-in defaults
-        var schemas = campaignConfig?.ResourcePoolSchemas?.Count > 0
-            ? campaignConfig.ResourcePoolSchemas
-            : ResourcePoolDefaults.GetDefaults(system);
+        IReadOnlyDictionary<string, ResourcePoolTemplate> schemas;
+        if (campaignConfig?.ResourcePoolSchemas?.Count > 0)
+        {
+            schemas = campaignConfig.ResourcePoolSchemas;
+        }
+        else if (_provider != null)
+        {
+            schemas = _provider.GetPoolsForSystem(system);
+        }
+        else
+        {
+#pragma warning disable CS0618
+            schemas = ResourcePoolDefaults.GetDefaults(system);
+#pragma warning restore CS0618
+        }
 
         character.SystemStats.ResourcePools ??= [];
 
-        // Derive character level from systemStats or classLevel
-        var charLevel = DeriveCharacterLevel(character);
+        var classLevels = CharacterClassResolver.ResolveClassLevels(character);
+        var characterLevel = DeriveCharacterLevel(character);
+        var casterLevel = system == RulesetSystem.Dnd5e
+            ? Dnd5eCasterLevelHelper.ComputeCasterLevel(classLevels, _classProvider)
+            : 0;
+
+        var desiredPools = new Dictionary<string, ResourcePool>();
 
         foreach (var (poolName, template) in schemas)
         {
-            // Skip if this pool doesn't apply to this system
-            if (template.ApplicableSystems != null && !template.ApplicableSystems.Contains(system.ToString().ToLower()))
+            if (template.ApplicableSystems != null && !template.ApplicableSystems.Contains(system.ToSlug()))
             {
                 continue;
             }
 
-            // Derive max value based on level
-            var maxValue = DeriveMaxValue(template, charLevel);
+            if (!TryResolveLevelForPool(poolName, template, system, classLevels, characterLevel, casterLevel,
+                    _classProvider, out var levelForMax))
+            {
+                continue;
+            }
 
-            // Initialize pool at full capacity
-            character.SystemStats.ResourcePools[poolName] = new ResourcePool
+            var maxValue = DeriveMaxValue(template, levelForMax);
+            if (maxValue <= 0)
+            {
+                continue;
+            }
+
+            desiredPools[poolName] = BuildPool(template, maxValue,
+                character.SystemStats.ResourcePools.GetValueOrDefault(poolName));
+        }
+
+        character.SystemStats.ResourcePools = desiredPools;
+    }
+
+    private static bool TryResolveLevelForPool(
+        string poolName,
+        ResourcePoolTemplate template,
+        RulesetSystem system,
+        IReadOnlyList<ClassLevelEntry> classLevels,
+        int characterLevel,
+        int casterLevel,
+        ClassDefinitionProvider? classProvider,
+        out int levelForMax)
+    {
+        if (IsSpellSlotPool(poolName))
+        {
+            if (system == RulesetSystem.Dnd5e)
+            {
+                if (casterLevel <= 0)
+                {
+                    levelForMax = 0;
+                    return false;
+                }
+
+                levelForMax = casterLevel;
+                return true;
+            }
+
+            if (system == RulesetSystem.Pathfinder2e)
+            {
+                if (!Pf2eCasterClasses.HasCaster(classLevels, classProvider))
+                {
+                    levelForMax = 0;
+                    return false;
+                }
+
+                levelForMax = characterLevel;
+                return true;
+            }
+
+            levelForMax = 0;
+            return false;
+        }
+
+        if (template.ApplicableClasses is { Count: > 0 })
+        {
+            var matchingClasses = template.ApplicableClasses
+                .Where(slug => CharacterClassResolver.HasClass(classLevels, slug))
+                .ToList();
+
+            if (matchingClasses.Count == 0)
+            {
+                levelForMax = 0;
+                return false;
+            }
+
+            levelForMax = matchingClasses
+                .Max(slug => CharacterClassResolver.GetClassLevel(classLevels, slug));
+            return true;
+        }
+
+        levelForMax = characterLevel;
+        return true;
+    }
+
+    private static ResourcePool BuildPool(ResourcePoolTemplate template, int maxValue, ResourcePool? existing)
+    {
+        var recovery = template.Recovery ?? RecoveryType.LongRest;
+
+        if (existing == null)
+        {
+            return new ResourcePool
             {
                 Current = maxValue,
                 Max = maxValue,
-                Recovery = template.Recovery,
-                LastRecoveredDay = 0 // Just created, recovered at day 0
+                Recovery = recovery,
+                LastRecoveredDay = 0
             };
         }
+
+        return existing with
+        {
+            Max = maxValue,
+            Recovery = recovery,
+            Current = Math.Min(existing.Current, maxValue)
+        };
     }
 
-    /// <summary>Derive character level from systemStats or classLevel string.</summary>
+    private static bool IsSpellSlotPool(string poolName) =>
+        poolName.StartsWith("spell_slots_", StringComparison.Ordinal);
+
     private int DeriveCharacterLevel(Character character)
     {
         if (character.SystemStats is Dnd5eExtension dnd5e && dnd5e.Level.HasValue)
@@ -74,28 +180,21 @@ public class ResourcePoolInitializer
             return fallout.Level.Value;
         }
 
-        // Try parsing from classLevel string (e.g., "Fighter 5")
-        if (!string.IsNullOrWhiteSpace(character.ClassLevel))
+        var classLevels = CharacterClassResolver.ResolveClassLevels(character);
+        if (classLevels.Count > 0)
         {
-            var parts = character.ClassLevel.Split(' ');
-            if (parts.Length > 1 && int.TryParse(parts[^1], out var level))
-            {
-                return level;
-            }
+            return classLevels.Sum(e => e.Level);
         }
 
-        return 1; // Default
+        return 1;
     }
 
-    /// <summary>Derive max value for a pool based on character level and template config.</summary>
-    private int DeriveMaxValue(ResourcePoolTemplate template, int charLevel)
+    private static int DeriveMaxValue(ResourcePoolTemplate template, int level)
     {
-        // If there's a level-to-max mapping, use it
         if (template.LevelToMaxMap?.Count > 0)
         {
-            // Find the highest level that doesn't exceed charLevel
             var applicableLevels = template.LevelToMaxMap.Keys
-                .Where(k => int.TryParse(k, out var lvl) && lvl <= charLevel)
+                .Where(k => int.TryParse(k, out var lvl) && lvl <= level)
                 .Select(k => int.Parse(k))
                 .OrderByDescending(l => l)
                 .ToList();
@@ -108,9 +207,10 @@ public class ResourcePoolInitializer
                     return max;
                 }
             }
+
+            return 0;
         }
 
-        // Fall back to default max
-        return template.DefaultMax;
+        return template.DefaultMax ?? 0;
     }
 }

@@ -1,3 +1,4 @@
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
@@ -10,12 +11,18 @@ public class CharacterCreateHandler : IWorldChangeHandler
     private readonly CampaignDocumentKeys _keys;
     private readonly CharacterBootstrapOrchestrator _bootstrap;
     private readonly ResourcePoolInitializer _poolInitializer;
+    private readonly ClassDefinitionProvider? _classProvider;
 
-    public CharacterCreateHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap, ResourcePoolInitializer? poolInitializer = null)
+    public CharacterCreateHandler(
+        CampaignDocumentKeys keys,
+        CharacterBootstrapOrchestrator bootstrap,
+        ResourcePoolInitializer? poolInitializer = null,
+        ClassDefinitionProvider? classProvider = null)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
         _poolInitializer = poolInitializer ?? new ResourcePoolInitializer();
+        _classProvider = classProvider;
     }
 
     public bool ShouldHandle(WorldChange change) => change is CharacterCreate;
@@ -185,10 +192,52 @@ public class CharacterCreateHandler : IWorldChangeHandler
             : null;
         _poolInitializer.InitializePools(newChar, activeSystem, campaignConfig);
 
+        RecordClassResolutionEcho(context, newChar, activeSystem, cc.ClassLevel);
+
         await context.Session!.StoreAsync(newChar, ct);
         context.RegisterNewCharacter(newChar);
 
         return ChangeHandlerResult.Ok;
+    }
+
+    private void RecordClassResolutionEcho(
+        ChangeContext context,
+        Character character,
+        RulesetSystem system,
+        string? classLevelInput)
+    {
+        if (_classProvider == null || string.IsNullOrWhiteSpace(classLevelInput))
+            return;
+
+        var classLevels = CharacterClassResolver.ResolveClassLevels(character);
+        if (classLevels.Count == 0)
+            return;
+
+        // Emit a resolved summary for the first (primary) class
+        var primary = classLevels[0];
+        if (!_classProvider.TryResolveClass(system, primary.Class, out var classDef))
+        {
+            // Soft warning — unknown class, list known options
+            var known = _classProvider.GetClassesForSystem(system);
+            var knownNames = string.Join(", ", known.Values
+                .SelectMany(d => d.Aliases)
+                .OrderBy(a => a, StringComparer.OrdinalIgnoreCase)
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+            context.RecordMessage(
+                $"[WARNING] Class '{primary.Class}' did not match any known {system} class definition. " +
+                $"Known classes: {knownNames}. " +
+                $"Character was created, but resource pools may be incomplete. " +
+                $"Use get_system_handbook to see available classes.");
+            return;
+        }
+
+        var poolsInitialized = character.SystemStats?.ResourcePools ?? new Dictionary<string, ResourcePool>();
+        var poolSummary = string.Join(", ",
+            poolsInitialized.Select(kvp => $"{kvp.Key}:{kvp.Value.Max}"));
+
+        context.RecordMessage(
+            $"[RESOLVED] class={classDef.Name}, casterType={classDef.CasterType ?? CasterType.None}" +
+            (poolsInitialized.Count > 0 ? $", pools=[{poolSummary}]" : ", pools=[]"));
     }
 
     private Task ApplyBootstrapAsync(
@@ -221,11 +270,16 @@ public class LevelUpChangeHandler : IWorldChangeHandler
 {
     private readonly CampaignDocumentKeys _keys;
     private readonly CharacterBootstrapOrchestrator _bootstrap;
+    private readonly ResourcePoolInitializer _poolInitializer;
 
-    public LevelUpChangeHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap)
+    public LevelUpChangeHandler(
+        CampaignDocumentKeys keys,
+        CharacterBootstrapOrchestrator bootstrap,
+        ResourcePoolInitializer? poolInitializer = null)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
+        _poolInitializer = poolInitializer ?? new ResourcePoolInitializer();
     }
 
     public bool ShouldHandle(WorldChange change) => change is LevelUpChange;
@@ -305,6 +359,11 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         {
             character.CurrentHp += character.MaxHp - previousMax;
         }
+
+        var campaignConfig = context.Session != null && !string.IsNullOrEmpty(context.CampaignName)
+            ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
+            : null;
+        _poolInitializer.InitializePools(character, activeSystem, campaignConfig);
 
         return ChangeHandlerResult.Ok;
     }

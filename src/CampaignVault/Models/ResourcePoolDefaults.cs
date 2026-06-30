@@ -6,9 +6,42 @@ namespace CampaignVault.Models;
 /// Built-in resource pool definitions for each supported TTRPG system.
 /// Used when CampaignConfig.ResourcePoolSchemas is empty (default case).
 /// </summary>
+/// <remarks>
+/// This software includes material derived from third-party open content.
+/// All trademarks remain the property of their respective owners.
+/// No affiliation, endorsement, or sponsorship is claimed or implied.
+///
+/// D&amp;D 5e tables are derived from the System Reference Document 5.1 ("SRD 5.1") by
+/// Wizards of the Coast LLC, available at https://dnd.wizards.com/resources/systems-reference-document.
+/// The SRD 5.1 is provided under the Creative Commons Attribution 4.0 International License
+/// (CC BY 4.0), available at https://creativecommons.org/licenses/by/4.0/legalcode.
+/// This work includes material taken from the SRD 5.1 by Wizards of the Coast LLC as permitted
+/// by that license.
+/// "D&amp;D", "Dungeons &amp; Dragons", and "Wizards of the Coast" are registered trademarks of
+/// Wizards of the Coast LLC.
+///
+/// Pathfinder 2e tables are derived from material released under the Open RPG Creative (ORC)
+/// License by Paizo Inc. See https://paizo.com/orclicense.
+/// Certain elements are Paizo's Reserved Material under the ORC License.
+/// "Pathfinder" and "Paizo" are registered trademarks of Paizo Inc.
+/// This product is not published, endorsed, or specifically approved by Paizo.
+///
+/// Fallout 2d20 tables are author-derived approximations and independent implementations of
+/// core 2d20 System mechanics, adapted for resource pool handling in this tool.
+/// Fallout 2d20 has no official published SRD for the full setting/ruleset.
+/// The generic 2d20 System SRD is available from Modiphius but does not cover licensed
+/// setting material.
+/// "Fallout" is a registered trademark of Bethesda Softworks LLC.
+/// The "2d20 System" is a trademark of Modiphius Entertainment Ltd.
+/// This software is not published, endorsed, sponsored, or affiliated with Bethesda Softworks,
+/// Modiphius Entertainment, or any related entities.
+/// No use of protected setting content, proper names, lore, or IP from official Fallout
+/// products is included.
+/// </remarks>
+[Obsolete("Use ResourcePoolProvider (YAML-backed). Kept as a test oracle until Stage 2 regression tests are green.")]
 public static class ResourcePoolDefaults
 {
-    /// <summary>D&D 5e spell slots (levels 1-9), sorcerer points, class-specific resources (maneuvers, channel divinity, etc.).</summary>
+    /// <summary>D&amp;D 5e spell slots (levels 1-9), sorcerer points, class-specific resources (maneuvers, channel divinity, etc.).</summary>
     public static Dictionary<string, ResourcePoolTemplate> Dnd5e => new()
     {
         // ── SPELL SLOTS ──
@@ -18,7 +51,7 @@ public static class ResourcePoolDefaults
             "spell_slots_1",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_1",
+                Name = "spell_slots_1",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 4,
                 ApplicableSystems = ["dnd5e"],
@@ -34,7 +67,7 @@ public static class ResourcePoolDefaults
             "spell_slots_2",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_2",
+                Name = "spell_slots_2",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 2,
                 ApplicableSystems = ["dnd5e"],
@@ -50,7 +83,7 @@ public static class ResourcePoolDefaults
             "spell_slots_3",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_3",
+                Name = "spell_slots_3",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
@@ -65,7 +98,7 @@ public static class ResourcePoolDefaults
             "spell_slots_4",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_4",
+                Name = "spell_slots_4",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
@@ -80,7 +113,7 @@ public static class ResourcePoolDefaults
             "spell_slots_5",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_5",
+                Name = "spell_slots_5",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
@@ -95,7 +128,7 @@ public static class ResourcePoolDefaults
             "spell_slots_6",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_6",
+                Name = "spell_slots_6",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
@@ -110,7 +143,7 @@ public static class ResourcePoolDefaults
             "spell_slots_7",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_7",
+                Name = "spell_slots_7",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
@@ -125,7 +158,7 @@ public static class ResourcePoolDefaults
             "spell_slots_8",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_8",
+                Name = "spell_slots_8",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
@@ -140,7 +173,7 @@ public static class ResourcePoolDefaults
             "spell_slots_9",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_9",
+                Name = "spell_slots_9",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
@@ -152,31 +185,14 @@ public static class ResourcePoolDefaults
             }
         },
         {
-            "sorcerer_points",
-            new ResourcePoolTemplate
-            {
-                PoolName = "sorcerer_points",
-                Recovery = RecoveryType.LongRest,
-                DefaultMax = 2,
-                ApplicableSystems = ["dnd5e"],
-                LevelToMaxMap = new()
-                {
-                    { "1", 2 }, { "2", 3 }, { "3", 3 }, { "4", 4 }, { "5", 5 },
-                    { "6", 5 }, { "7", 6 }, { "8", 6 }, { "9", 7 }, { "10", 7 },
-                    { "11", 8 }, { "12", 8 }, { "13", 9 }, { "14", 9 }, { "15", 10 },
-                    { "16", 10 }, { "17", 11 }, { "18", 11 }, { "19", 12 }, { "20", 12 }
-                },
-                Description = "Sorcerer Points (recovers on long rest)"
-            }
-        },
-        {
             "warlock_invocations",
             new ResourcePoolTemplate
             {
-                PoolName = "warlock_invocations",
+                Name = "warlock_invocations",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
+                ApplicableClasses = ["warlock"],
                 LevelToMaxMap = new()
                 {
                     { "1", 1 }, { "2", 2 }, { "5", 3 }, { "7", 4 }, { "9", 5 },
@@ -189,10 +205,11 @@ public static class ResourcePoolDefaults
             "ki_points",
             new ResourcePoolTemplate
             {
-                PoolName = "ki_points",
+                Name = "ki_points",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
+                ApplicableClasses = ["monk"],
                 LevelToMaxMap = new()
                 {
                     { "1", 0 }, { "3", 3 }, { "4", 4 }, { "5", 5 }, { "6", 6 },
@@ -209,10 +226,11 @@ public static class ResourcePoolDefaults
             "superiority_dice",
             new ResourcePoolTemplate
             {
-                PoolName = "superiority_dice",
+                Name = "superiority_dice",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 4,
                 ApplicableSystems = ["dnd5e"],
+                ApplicableClasses = ["battle master"],
                 LevelToMaxMap = new()
                 {
                     { "3", 4 }, { "7", 5 }, { "11", 6 }, { "15", 7 }, { "18", 8 }, { "20", 8 }
@@ -224,10 +242,11 @@ public static class ResourcePoolDefaults
             "channel_divinity",
             new ResourcePoolTemplate
             {
-                PoolName = "channel_divinity",
+                Name = "channel_divinity",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
+                ApplicableClasses = ["cleric", "paladin"],
                 LevelToMaxMap = new()
                 {
                     { "1", 1 }, { "6", 2 }, { "18", 3 }, { "20", 3 }
@@ -239,10 +258,11 @@ public static class ResourcePoolDefaults
             "bardic_inspiration",
             new ResourcePoolTemplate
             {
-                PoolName = "bardic_inspiration",
+                Name = "bardic_inspiration",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 3,
                 ApplicableSystems = ["dnd5e"],
+                ApplicableClasses = ["bard"],
                 LevelToMaxMap = new()
                 {
                     { "1", 3 }, { "5", 4 }, { "9", 5 }, { "13", 6 }, { "17", 7 }, { "20", 8 }
@@ -254,10 +274,11 @@ public static class ResourcePoolDefaults
             "wildshape_uses",
             new ResourcePoolTemplate
             {
-                PoolName = "wildshape_uses",
+                Name = "wildshape_uses",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 2,
                 ApplicableSystems = ["dnd5e"],
+                ApplicableClasses = ["druid"],
                 LevelToMaxMap = new()
                 {
                     { "2", 2 }, { "4", 3 }, { "8", 4 }, { "12", 5 }, { "16", 6 }, { "20", 6 }
@@ -269,13 +290,14 @@ public static class ResourcePoolDefaults
             "action_surge",
             new ResourcePoolTemplate
             {
-                PoolName = "action_surge",
+                Name = "action_surge",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
+                ApplicableClasses = ["fighter"],
                 LevelToMaxMap = new()
                 {
-                    { "1", 1 }, { "17", 2 }, { "20", 2 }
+                    { "2", 1 }, { "17", 2 }, { "20", 2 }
                 },
                 Description = "Fighter Action Surge uses (recovers on short rest)"
             }
@@ -284,10 +306,11 @@ public static class ResourcePoolDefaults
             "font_of_magic",
             new ResourcePoolTemplate
             {
-                PoolName = "font_of_magic",
+                Name = "font_of_magic",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["dnd5e"],
+                ApplicableClasses = ["sorcerer"],
                 LevelToMaxMap = new()
                 {
                     { "1", 0 }, { "2", 2 }, { "3", 3 }, { "4", 4 }, { "5", 5 },
@@ -307,7 +330,7 @@ public static class ResourcePoolDefaults
             "spell_slots_1",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_1",
+                Name = "spell_slots_1",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["pf2e"],
@@ -318,7 +341,7 @@ public static class ResourcePoolDefaults
             "spell_slots_2",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_2",
+                Name = "spell_slots_2",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["pf2e"],
@@ -329,7 +352,7 @@ public static class ResourcePoolDefaults
             "spell_slots_3",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_3",
+                Name = "spell_slots_3",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["pf2e"],
@@ -340,7 +363,7 @@ public static class ResourcePoolDefaults
             "spell_slots_4",
             new ResourcePoolTemplate
             {
-                PoolName = "spell_slots_4",
+                Name = "spell_slots_4",
                 Recovery = RecoveryType.LongRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["pf2e"],
@@ -351,13 +374,18 @@ public static class ResourcePoolDefaults
             "focus_points",
             new ResourcePoolTemplate
             {
-                PoolName = "focus_points",
+                Name = "focus_points",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["pf2e"],
+                ApplicableClasses =
+                [
+                    "wizard", "witch", "sorcerer", "cleric", "druid", "bard", "oracle", "psychic",
+                    "magus", "summoner", "mesmerist"
+                ],
                 LevelToMaxMap = new()
                 {
-                    { "1", 0 }, { "4", 1 }, { "10", 2 }, { "16", 3 }, { "20", 3 }
+                    { "1", 1 }, { "10", 2 }, { "16", 3 }, { "20", 3 }
                 },
                 Description = "Focus Points (recovers on short rest)"
             }
@@ -368,10 +396,11 @@ public static class ResourcePoolDefaults
             "bon_mot",
             new ResourcePoolTemplate
             {
-                PoolName = "bon_mot",
+                Name = "bon_mot",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["pf2e"],
+                ApplicableClasses = ["bard"],
                 Description = "Bard Bon Mot uses (recovers on short rest)"
             }
         },
@@ -379,10 +408,11 @@ public static class ResourcePoolDefaults
             "recall_knowledge",
             new ResourcePoolTemplate
             {
-                PoolName = "recall_knowledge",
+                Name = "recall_knowledge",
                 Recovery = RecoveryType.ShortRest,
                 DefaultMax = 1,
                 ApplicableSystems = ["pf2e"],
+                ApplicableClasses = ["investigator"],
                 Description = "Investigator Recall Knowledge uses (recovers on short rest)"
             }
         }
@@ -395,7 +425,7 @@ public static class ResourcePoolDefaults
             "action_points",
             new ResourcePoolTemplate
             {
-                PoolName = "action_points",
+                Name = "action_points",
                 Recovery = RecoveryType.PerTurn,
                 DefaultMax = 10,
                 ApplicableSystems = ["fallout2d20"],

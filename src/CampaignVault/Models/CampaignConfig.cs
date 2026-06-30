@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using CampaignVault.Data.Templates;
 
 namespace CampaignVault.Models;
 
@@ -162,30 +163,62 @@ public class CampaignConfig
 /// <summary>
 /// Template for initializing a resource pool on character creation.
 /// Used by character_create handler to populate Character.SystemExtension.ResourcePools.
+/// Can be defined inline in CampaignConfig.ResourcePoolSchemas or loaded from YAML via ResourcePoolProvider.
 /// </summary>
-public class ResourcePoolTemplate
+public record ResourcePoolTemplate : RulesetTemplate
 {
-    /// <summary>Pool identifier (e.g., "spell_slots_1", "sorcerer_points", "focus_points", "action_points").</summary>
-    [JsonPropertyName("poolName")]
-    public string PoolName { get; set; } = default!;
-
-    /// <summary>When this pool recovers (LongRest, ShortRest, EncounterEnd, Daily, Never).</summary>
+    /// <summary>When this pool recovers. Null means "not set" — inherited from a parent template via YAML.</summary>
     [JsonPropertyName("recovery")]
-    public RecoveryType Recovery { get; set; } = RecoveryType.LongRest;
+    public RecoveryType? Recovery { get; set; }
 
-    /// <summary>Base maximum value (can be overridden per-character based on level/class).</summary>
+    /// <summary>Base maximum value (can be overridden per-character based on level/class). Null = inherit from parent.</summary>
     [JsonPropertyName("defaultMax")]
-    public int DefaultMax { get; set; }
+    public int? DefaultMax { get; set; }
 
     /// <summary>TTRPG systems this pool applies to ("dnd5e", "pf2e", "fallout2d20"). Null = all systems.</summary>
     [JsonPropertyName("applicableSystems")]
     public List<string>? ApplicableSystems { get; set; }
 
+    /// <summary>
+    /// Classes that receive this pool (substring match on class name, e.g. "monk", "battle master").
+    /// Null = not class-gated (spell slot pools use caster-level rules instead).
+    /// </summary>
+    [JsonPropertyName("applicableClasses")]
+    public List<string>? ApplicableClasses { get; set; }
+
     /// <summary>For slot-based pools: map character level to max count. E.g., "1" -> 4, "2" -> 3 for spell slots.</summary>
     [JsonPropertyName("levelToMaxMap")]
     public Dictionary<string, int>? LevelToMaxMap { get; set; }
 
-    /// <summary>Human-readable description for DM reference.</summary>
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
+    /// <summary>
+    /// Merge two templates: child fields win; parent fills gaps.
+    /// Used by RulesetTemplateResolver during YAML inheritance resolution.
+    /// </summary>
+    public static ResourcePoolTemplate Merge(ResourcePoolTemplate child, ResourcePoolTemplate parent)
+    {
+        var merged = child with
+        {
+            Description = child.Description ?? parent.Description,
+            Recovery = child.Recovery ?? parent.Recovery,
+            DefaultMax = child.DefaultMax ?? parent.DefaultMax,
+            ApplicableSystems = child.ApplicableSystems?.Count > 0
+                ? child.ApplicableSystems
+                : parent.ApplicableSystems,
+            ApplicableClasses = child.ApplicableClasses?.Count > 0
+                ? child.ApplicableClasses
+                : parent.ApplicableClasses,
+        };
+
+        if (parent.LevelToMaxMap?.Count > 0)
+        {
+            var mergedMap = child.LevelToMaxMap != null
+                ? new Dictionary<string, int>(child.LevelToMaxMap)
+                : new Dictionary<string, int>();
+            foreach (var (k, v) in parent.LevelToMaxMap)
+                mergedMap.TryAdd(k, v);
+            merged = merged with { LevelToMaxMap = mergedMap };
+        }
+
+        return merged;
+    }
 }
