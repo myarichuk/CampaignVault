@@ -294,7 +294,7 @@ You (the LLM) author narrative state; the engine scores a fixed set of **visualT
 - Factions have dynamic `EconomicDemand`. If a faction is desperate for an item the party is carrying (e.g. ""spell scrolls""), `get_scene` will pressure you to narrate merchants offering a premium or thieves attempting to steal them. Fulfill this naturally during roleplay!
 
 ## Ruleset Actions (Combat, Spells & Skill Checks)
-Use `ruleset_action` inside `commit` for attacks, spells, skills, grapples, and item use. The engine rolls and returns results — narrate from the response. **The engine auto-applies `hp` deltas from ruleset_action — do not also commit separate `hp` for the same hit.** **After any spell, commit `status` separately for concentration/charm/etc. Spend spell slots via `$type: "resource"` (poolName: spell_slots_N, delta: -1, spellName required for validation); the engine validates spell level vs. slot level but clamps to 0 without hard-failing if the pool is already empty — watch for `(Clamped: ...)` in the narrative.**
+Use `ruleset_action` inside `commit` for attacks, spells, skills, grapples, and item use. The engine rolls and returns results — narrate from the response. **The engine auto-applies `hp` deltas from ruleset_action — do not also commit separate `hp` for the same hit.** **After any spell, commit `status` separately for concentration/charm/etc. Spend spell slots via $type: ""resource"" (poolName: spell_slots_N, delta: -1, spellName required for validation); the engine validates spell level vs. slot level but clamps to 0 without hard-failing if the pool is already empty — watch for (Clamped: ...) in the narrative.**
 
 " + CommitRumorHelpExamples.RoutingGuide + @"
 
