@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using CampaignVault.Models;
@@ -7,8 +8,7 @@ using Xunit;
 namespace CampaignVault.Tests;
 
 /// <summary>
-/// Stage 2 regression tests: verifies that YAML-backed pool loading produces
-/// the same results as the C# ResourcePoolDefaults oracle.
+/// Stage 2 regression tests: verifies YAML-backed pool loading and initializer behaviour.
 /// </summary>
 public class ResourcePoolStage2Tests
 {
@@ -91,23 +91,22 @@ public class ResourcePoolStage2Tests
     [Fact]
     public void Provider_Dnd5e_LoadsExpectedPoolCount()
     {
-#pragma warning disable CS0618
-        var expected = ResourcePoolDefaults.Dnd5e;
-#pragma warning restore CS0618
         var actual = Provider.GetPoolsForSystem(RulesetSystem.Dnd5e);
 
-        Assert.Equal(expected.Count, actual.Count);
+        // 9 spell slot levels + 8 class-specific pools
+        Assert.Equal(17, actual.Count);
+        Assert.True(actual.ContainsKey("spell_slots_1"));
+        Assert.True(actual.ContainsKey("font_of_magic"));
     }
 
     [Fact]
     public void Provider_Pf2e_LoadsExpectedPoolCount()
     {
-#pragma warning disable CS0618
-        var expected = ResourcePoolDefaults.Pf2e;
-#pragma warning restore CS0618
         var actual = Provider.GetPoolsForSystem(RulesetSystem.Pathfinder2e);
 
-        Assert.Equal(expected.Count, actual.Count);
+        // 4 spell slot levels + focus_points + bon_mot (no recall_knowledge — investigator not in ORC set)
+        Assert.Equal(6, actual.Count);
+        Assert.False(actual.ContainsKey("recall_knowledge"));
     }
 
     [Fact]
@@ -132,63 +131,63 @@ public class ResourcePoolStage2Tests
         Assert.NotEqual(dnd5e["spell_slots_1"].DefaultMax, pf2e["spell_slots_1"].DefaultMax);
     }
 
-    // ── ResourcePoolInitializer — YAML parity with defaults ──────────────────
+    // ── ResourcePoolInitializer — YAML-backed pools ────────────────────────────
 
     [Theory]
-    [InlineData(RulesetSystem.Dnd5e)]
-    [InlineData(RulesetSystem.Pathfinder2e)]
-    [InlineData(RulesetSystem.Fallout2d20)]
-    public void Initializer_YamlPools_SameResultAsDefaults(RulesetSystem system)
+    [InlineData(RulesetSystem.Dnd5e, 4, 3)]   // wizard 5: 4×1st, 3×2nd
+    [InlineData(RulesetSystem.Pathfinder2e, 1, 1)]
+    public void Initializer_YamlPools_WizardLevel5_CreatesExpectedSpellSlots(
+        RulesetSystem system, int expectedSlots1, int expectedSlots2)
     {
-        var wizardClass = system switch
-        {
-            RulesetSystem.Dnd5e => "Wizard 5",
-            RulesetSystem.Pathfinder2e => "Wizard 5",
-            _ => "Survivor 5"
-        };
-        var extension = system switch
-        {
-            RulesetSystem.Dnd5e => (SystemExtension)new Dnd5eExtension { Level = 5 },
-            RulesetSystem.Pathfinder2e => new Pf2eExtension { Level = 5 },
-            _ => new Fallout2d20Extension { Level = 5 }
-        };
-
-        var charDefault = new Character
-        {
-            Id = "chars/test-default",
-            ClassLevel = wizardClass,
-            SystemStats = extension
-        };
-        var charYaml = new Character
+        var character = new Character
         {
             Id = "chars/test-yaml",
-            ClassLevel = wizardClass,
-            SystemStats = CloneExtension(extension)
+            ClassLevel = "Wizard 5",
+            SystemStats = system switch
+            {
+                RulesetSystem.Dnd5e => (SystemExtension)new Dnd5eExtension { Level = 5 },
+                RulesetSystem.Pathfinder2e => new Pf2eExtension { Level = 5 },
+                _ => throw new System.NotSupportedException()
+            }
         };
 
-        var sutDefault = new ResourcePoolInitializer();       // uses ResourcePoolDefaults
-        var sutYaml = new ResourcePoolInitializer(Provider);  // uses YAML
+        var sut = new ResourcePoolInitializer(Provider);
+        sut.InitializePools(character, system, null);
 
-        sutDefault.InitializePools(charDefault, system, null);
-        sutYaml.InitializePools(charYaml, system, null);
-
-        Assert.Equal(charDefault.SystemStats.ResourcePools.Count,
-            charYaml.SystemStats.ResourcePools.Count);
-
-        foreach (var (poolName, defaultPool) in charDefault.SystemStats.ResourcePools)
-        {
-            Assert.True(charYaml.SystemStats.ResourcePools.TryGetValue(poolName, out var yamlPool),
-                $"Pool '{poolName}' missing from YAML-loaded result");
-            Assert.Equal(defaultPool.Max, yamlPool!.Max);
-            Assert.Equal(defaultPool.Recovery, yamlPool.Recovery);
-        }
+        Assert.Equal(expectedSlots1, character.SystemStats.ResourcePools["spell_slots_1"].Max);
+        Assert.Equal(expectedSlots2, character.SystemStats.ResourcePools["spell_slots_2"].Max);
     }
 
-    private static SystemExtension CloneExtension(SystemExtension ext) => ext switch
+    [Fact]
+    public void Initializer_WithoutProvider_Throws()
     {
-        Dnd5eExtension d => new Dnd5eExtension { Level = d.Level, ClassLevels = d.ClassLevels },
-        Pf2eExtension p => new Pf2eExtension { Level = p.Level },
-        Fallout2d20Extension f => new Fallout2d20Extension { Level = f.Level },
-        _ => throw new System.NotSupportedException()
-    };
+        var sut = new ResourcePoolInitializer();
+        var character = new Character
+        {
+            Id = "chars/no-provider",
+            ClassLevel = "Wizard 1",
+            SystemStats = new Dnd5eExtension { Level = 1 }
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            sut.InitializePools(character, RulesetSystem.Dnd5e, null));
+
+        Assert.Contains("ResourcePoolProvider", ex.Message);
+    }
+
+    [Fact]
+    public void Initializer_YamlPools_Fallout2d20_CreatesActionPoints()
+    {
+        var character = new Character
+        {
+            Id = "chars/test-fallout",
+            ClassLevel = "Survivor 5",
+            SystemStats = new Fallout2d20Extension { Level = 5 }
+        };
+
+        var sut = new ResourcePoolInitializer(Provider);
+        sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
+
+        Assert.Equal(11, character.SystemStats.ResourcePools["action_points"].Max);
+    }
 }

@@ -191,6 +191,12 @@ public record ResourcePoolTemplate : RulesetTemplate
     public Dictionary<string, int>? LevelToMaxMap { get; set; }
 
     /// <summary>
+    /// When true, pool is only initialized via <see cref="FeatDefinition.ExtraPools"/>, not class/caster rules.
+    /// </summary>
+    [JsonPropertyName("featGrantedOnly")]
+    public bool? FeatGrantedOnly { get; set; }
+
+    /// <summary>
     /// Merge two templates: child fields win; parent fills gaps.
     /// Used by RulesetTemplateResolver during YAML inheritance resolution.
     /// </summary>
@@ -207,6 +213,7 @@ public record ResourcePoolTemplate : RulesetTemplate
             ApplicableClasses = child.ApplicableClasses?.Count > 0
                 ? child.ApplicableClasses
                 : parent.ApplicableClasses,
+            FeatGrantedOnly = child.FeatGrantedOnly ?? parent.FeatGrantedOnly,
         };
 
         if (parent.LevelToMaxMap?.Count > 0)

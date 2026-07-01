@@ -1,7 +1,6 @@
 using System.Reflection;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
-using Microsoft.Extensions.Logging;
 
 namespace CampaignVault.Services;
 
@@ -15,9 +14,11 @@ public class ResourcePoolProvider : IRulesetYamlProvider
     private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<ResourcePoolTemplate>> _loaders = new();
     private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, ResourcePoolTemplate>?> _cache = new();
     private readonly object _lock = new();
+    private readonly ILogger? _logger;
 
     public ResourcePoolProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
+        _logger = logger;
         Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", embeddedAssembly, logger);
         Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", embeddedAssembly, logger);
         Register(RulesetSystem.Fallout2d20, rulesetDataDirectory, "fallout2d20", embeddedAssembly, logger);
@@ -49,13 +50,10 @@ public class ResourcePoolProvider : IRulesetYamlProvider
 
             var raw = loader.Load();
             var resolver = new RulesetTemplateResolver<ResourcePoolTemplate>(
-                name => raw.TryGetValue(name, out var t) ? t : null,
+                name => raw.GetValueOrDefault(name),
                 ResourcePoolTemplate.Merge);
 
-            var resolved = raw.ToDictionary(
-                kvp => kvp.Key,
-                kvp => resolver.Resolve(kvp.Value),
-                StringComparer.OrdinalIgnoreCase);
+            var resolved = resolver.ResolveAll(raw, _logger);
 
             _cache[system] = resolved;
             return resolved;

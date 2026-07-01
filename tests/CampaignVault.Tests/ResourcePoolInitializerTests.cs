@@ -7,7 +7,7 @@ namespace CampaignVault.Tests;
 
 public class ResourcePoolInitializerTests
 {
-    private readonly ResourcePoolInitializer _sut = new();
+    private readonly ResourcePoolInitializer _sut = RulesetDataTestHelper.CreateServices().Initializer;
 
     [Fact]
     public void InitializePools_Pathfinder2eWizard_CreatesPf2eCasterPools()

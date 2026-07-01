@@ -1,23 +1,24 @@
 using System.Reflection;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
-using Microsoft.Extensions.Logging;
 
 namespace CampaignVault.Services;
 
 /// <summary>
 /// Loads class definitions from per-system YAML files, resolves inheritance, and caches results.
 /// Each system has its own loader to prevent name collisions between systems
-/// (e.g. dnd5e and pf2e both define "wizard" with different properties).
+/// (dnd5e and pf2e both define "wizard" with different properties).
 /// </summary>
 public class ClassDefinitionProvider : IRulesetYamlProvider
 {
     private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<ClassDefinition>> _loaders = new();
     private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, ClassDefinition>?> _cache = new();
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
+    private readonly ILogger? _logger;
 
     public ClassDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
+        _logger = logger;
         Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", embeddedAssembly, logger);
         Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", embeddedAssembly, logger);
     }
@@ -48,13 +49,10 @@ public class ClassDefinitionProvider : IRulesetYamlProvider
 
             var raw = loader.Load();
             var resolver = new RulesetTemplateResolver<ClassDefinition>(
-                name => raw.TryGetValue(name, out var t) ? t : null,
+                raw.GetValueOrDefault,
                 ClassDefinition.Merge);
 
-            var resolved = raw.ToDictionary(
-                kvp => kvp.Key,
-                kvp => resolver.Resolve(kvp.Value),
-                StringComparer.OrdinalIgnoreCase);
+            var resolved = resolver.ResolveAll(raw, _logger);
 
             _cache[system] = resolved;
             return resolved;

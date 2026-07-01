@@ -1,7 +1,0 @@
-# Source: Pathfinder 2e material released under the ORC License by Paizo Inc.
-name: magus
-system: pf2e
-hitDie: d8
-casterType: Half
-pools: [spell_slots_1, spell_slots_2, spell_slots_3, focus_points]
-aliases: [magus]

@@ -11,11 +11,16 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
 {
     private readonly ResourcePoolProvider? _provider;
     private readonly ClassDefinitionProvider? _classProvider;
+    private readonly FeatDefinitionProvider? _featProvider;
 
-    public ResourcePoolInitializer(ResourcePoolProvider? provider = null, ClassDefinitionProvider? classProvider = null)
+    public ResourcePoolInitializer(
+        ResourcePoolProvider? provider = null,
+        ClassDefinitionProvider? classProvider = null,
+        FeatDefinitionProvider? featProvider = null)
     {
         _provider = provider;
         _classProvider = classProvider;
+        _featProvider = featProvider;
     }
 
     public void InitializePools(Character character, RulesetSystem system, CampaignConfig? campaignConfig)
@@ -36,9 +41,9 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         }
         else
         {
-#pragma warning disable CS0618
-            schemas = ResourcePoolDefaults.GetDefaults(system);
-#pragma warning restore CS0618
+            throw new InvalidOperationException(
+                "ResourcePoolProvider is required when campaign config has no ResourcePoolSchemas. " +
+                "Register ResourcePoolInitializer through DI (CampaignVaultModule) or supply schemas in CampaignConfig.");
         }
 
         character.SystemStats.ResourcePools ??= [];
@@ -53,29 +58,111 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
 
         foreach (var (poolName, template) in schemas)
         {
-            if (template.ApplicableSystems != null && !template.ApplicableSystems.Contains(system.ToSlug()))
-            {
+            if (template.FeatGrantedOnly == true)
                 continue;
-            }
 
-            if (!TryResolveLevelForPool(poolName, template, system, classLevels, characterLevel, casterLevel,
-                    _classProvider, out var levelForMax))
-            {
-                continue;
-            }
-
-            var maxValue = DeriveMaxValue(template, levelForMax);
-            if (maxValue <= 0)
-            {
-                continue;
-            }
-
-            desiredPools[poolName] = BuildPool(template, maxValue,
-                character.SystemStats.ResourcePools.GetValueOrDefault(poolName));
+            TryAddPool(
+                poolName,
+                template,
+                system,
+                classLevels,
+                characterLevel,
+                casterLevel,
+                _classProvider,
+                character.SystemStats.ResourcePools,
+                desiredPools);
         }
+
+        AddFeatGrantedPools(
+            character,
+            system,
+            schemas,
+            classLevels,
+            characterLevel,
+            casterLevel,
+            desiredPools);
 
         character.SystemStats.ResourcePools = desiredPools;
     }
+
+    private void AddFeatGrantedPools(
+        Character character,
+        RulesetSystem system,
+        IReadOnlyDictionary<string, ResourcePoolTemplate> schemas,
+        IReadOnlyList<ClassLevelEntry> classLevels,
+        int characterLevel,
+        int casterLevel,
+        Dictionary<string, ResourcePool> desiredPools)
+    {
+        if (_featProvider == null)
+            return;
+
+        foreach (var featName in CollectFeatNames(character.SystemStats, system))
+        {
+            if (!_featProvider.TryGet(system, featName, out var feat) || feat.ExtraPools.Count == 0)
+                continue;
+
+            foreach (var poolName in feat.ExtraPools)
+            {
+                if (desiredPools.ContainsKey(poolName) || !schemas.TryGetValue(poolName, out var template))
+                    continue;
+
+                // Route through the same class/caster-level gating as class-granted pools so a
+                // feat-granted pool restricted to a class, or scaled by caster level, behaves
+                // identically regardless of how it was granted.
+                TryAddPool(
+                    poolName,
+                    template,
+                    system,
+                    classLevels,
+                    characterLevel,
+                    casterLevel,
+                    _classProvider,
+                    character.SystemStats.ResourcePools,
+                    desiredPools);
+            }
+        }
+    }
+
+    private static bool TryAddPool(
+        string poolName,
+        ResourcePoolTemplate template,
+        RulesetSystem system,
+        IReadOnlyList<ClassLevelEntry> classLevels,
+        int characterLevel,
+        int casterLevel,
+        ClassDefinitionProvider? classProvider,
+        Dictionary<string, ResourcePool> existingPools,
+        Dictionary<string, ResourcePool> desiredPools)
+    {
+        if (template.ApplicableSystems != null && !template.ApplicableSystems.Contains(system.ToSlug()))
+            return false;
+
+        if (!TryResolveLevelForPool(poolName, template, system, classLevels, characterLevel, casterLevel,
+                classProvider, out var levelForMax))
+            return false;
+
+        var maxValue = DeriveMaxValue(template, levelForMax);
+        if (maxValue <= 0)
+            return false;
+
+        desiredPools[poolName] = BuildPool(template, maxValue, existingPools.GetValueOrDefault(poolName));
+        return true;
+    }
+
+    private static IReadOnlyList<string> CollectFeatNames(SystemExtension stats, RulesetSystem system) =>
+        system switch
+        {
+            RulesetSystem.Dnd5e when stats is Dnd5eExtension dnd => dnd.Feats,
+            RulesetSystem.Pathfinder2e when stats is Pf2eExtension pf2 =>
+                pf2.AncestryFeats
+                    .Concat(pf2.ClassFeats)
+                    .Concat(pf2.SkillFeats)
+                    .Concat(pf2.GeneralFeats)
+                    .ToList(),
+            RulesetSystem.Fallout2d20 when stats is Fallout2d20Extension fallout => fallout.Perks,
+            _ => [],
+        };
 
     private static bool TryResolveLevelForPool(
         string poolName,

@@ -3,7 +3,7 @@
 name: focus_points
 description: Focus Points (recovers on short rest)
 applicableSystems: [pf2e]
-applicableClasses: [wizard, witch, sorcerer, cleric, druid, bard, oracle, psychic, magus, summoner, mesmerist]
+applicableClasses: [wizard, witch, cleric, druid, bard]
 recovery: ShortRest
 defaultMax: 1
 levelToMaxMap:

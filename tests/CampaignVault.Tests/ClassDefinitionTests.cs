@@ -87,7 +87,7 @@ public class ClassDefinitionTests
         Assert.True(classes.ContainsKey("fighter"));
         Assert.True(classes.ContainsKey("warlock"));
         Assert.True(classes.ContainsKey("paladin"));
-        Assert.True(classes.ContainsKey("fighter_eldritch_knight"));
+        Assert.True(classes.ContainsKey("monk"));
     }
 
     [Fact]
@@ -97,7 +97,10 @@ public class ClassDefinitionTests
 
         Assert.True(classes.ContainsKey("wizard"));
         Assert.True(classes.ContainsKey("bard"));
-        Assert.True(classes.ContainsKey("summoner"));
+        Assert.True(classes.ContainsKey("cleric"));
+        Assert.True(classes.ContainsKey("fighter"));
+        Assert.True(classes.ContainsKey("ranger"));
+        Assert.True(classes.ContainsKey("rogue"));
     }
 
     [Fact]
@@ -124,20 +127,6 @@ public class ClassDefinitionTests
         Assert.Equal(CasterType.None, classes["fighter"].CasterType);
     }
 
-    // ── EldritchKnight inherits from Fighter ──────────────────────────────────
-
-    [Fact]
-    public void EldritchKnight_InheritsFromFighter_HasCorrectCasterType()
-    {
-        var classes = Provider.GetClassesForSystem(RulesetSystem.Dnd5e);
-        var ek = classes["fighter_eldritch_knight"];
-
-        Assert.Equal(CasterType.Third, ek.CasterType);
-        // Inherited fighter alias via union
-        Assert.Contains("fighter", ek.Aliases, System.StringComparer.OrdinalIgnoreCase);
-        Assert.Contains("eldritch knight", ek.Aliases, System.StringComparer.OrdinalIgnoreCase);
-    }
-
     // ── TryResolveClass alias matching ────────────────────────────────────────
 
     [Fact]
@@ -150,15 +139,14 @@ public class ClassDefinitionTests
     [Fact]
     public void TryResolveClass_SubstringAlias_Matches()
     {
-        Assert.True(Provider.TryResolveClass(RulesetSystem.Dnd5e, "Fighter (Eldritch Knight)", out var def));
-        Assert.Equal("fighter_eldritch_knight", def!.Name);
+        Assert.True(Provider.TryResolveClass(RulesetSystem.Dnd5e, "Battle Wizard", out var def));
+        Assert.Equal("wizard", def!.Name);
     }
 
     [Fact]
     public void TryResolveClass_PlainFighter_ResolvesToFighter()
     {
         Assert.True(Provider.TryResolveClass(RulesetSystem.Dnd5e, "Fighter", out var def));
-        // "Fighter" contains "fighter" (len 7) but NOT "eldritch knight", so plain fighter wins
         Assert.Equal("fighter", def!.Name);
     }
 

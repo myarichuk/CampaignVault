@@ -1,8 +1,0 @@
-# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
-# See https://paizo.com/orclicense — certain elements are Paizo's Reserved Material under the ORC License.
-name: recall_knowledge
-description: Investigator Recall Knowledge uses (recovers on short rest)
-applicableSystems: [pf2e]
-applicableClasses: [investigator]
-recovery: ShortRest
-defaultMax: 1

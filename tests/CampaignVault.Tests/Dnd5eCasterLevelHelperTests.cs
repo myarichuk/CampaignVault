@@ -44,13 +44,15 @@ public class Dnd5eCasterLevelHelperTests
     }
 
     [Fact]
-    public void ComputeCasterLevel_EldritchKnight_CountsThirdCaster()
+    public void ComputeCasterLevel_PlainFighter_IsNonCaster()
     {
+        // fighter_eldritch_knight.yaml was removed from the embedded set (non-SRD-base
+        // subclass); plain "Fighter" must resolve to CasterType.None, not a third-caster.
         var classes = new List<ClassLevelEntry>
         {
-            new() { Class = "Fighter (Eldritch Knight)", Level = 9 }
+            new() { Class = "Fighter", Level = 9 }
         };
 
-        Assert.Equal(3, Dnd5eCasterLevelHelper.ComputeCasterLevel(classes));
+        Assert.Equal(0, Dnd5eCasterLevelHelper.ComputeCasterLevel(classes));
     }
 }
