@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: frightened
+system: pf2e
+durationType: Timed
+mechanicalSummary: Valued penalty (frightened X) to all checks and DCs; decreases by 1 at end of each turn
+moodHint: terrified
+immunities: []
+suppresses: []

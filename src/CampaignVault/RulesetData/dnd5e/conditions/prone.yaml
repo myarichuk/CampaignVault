@@ -1,0 +1,8 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: prone
+system: dnd5e
+durationType: Manual
+mechanicalSummary: Attack rolls have disadvantage; melee attackers have advantage; ranged attackers have disadvantage; stand up costs half speed
+immunities: []
+suppresses: []

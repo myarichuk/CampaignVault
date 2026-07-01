@@ -18,7 +18,7 @@ public class StatusExpiryRuleTests(RavenDBFixture fixture) : IClassFixture<Raven
     [Fact]
     public async Task ApplyAsync_ExpiresOnlyDayBasedStatuses()
     {
-        var rule = new StatusExpiryRule();
+        var rule = new StatusExpiryRule(RulesetDataTestHelper.CreateConditionProvider());
         var charId = "char_" + Guid.NewGuid();
 
         var character = new Character

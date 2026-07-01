@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: restrained
+system: pf2e
+durationType: Manual
+mechanicalSummary: Cannot move; penalty to attacks and AC; can attempt to Escape or break free
+moodHint: bound, claustrophobic
+immunities: []
+suppresses: []

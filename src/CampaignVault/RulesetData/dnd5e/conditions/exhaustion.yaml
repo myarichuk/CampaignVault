@@ -1,0 +1,10 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: exhaustion
+system: dnd5e
+durationType: UntilLongRest
+isStacking: true
+mechanicalSummary: Stacking levels 1-6; 1=disadvantage on checks, 2=halved speed, 3=disadvantage on attacks/saves, 4=halved HP max, 5=speed zero, 6=death
+moodHint: exhausted, bone-weary
+immunities: []
+suppresses: []

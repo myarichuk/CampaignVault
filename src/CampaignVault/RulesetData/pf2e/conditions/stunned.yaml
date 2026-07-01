@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: stunned
+system: pf2e
+durationType: Timed
+mechanicalSummary: Valued condition (stunned X); lose X actions at start of turn; reduces by 1 per action lost; overrides slowed
+immunities: []
+suppresses: [slowed]

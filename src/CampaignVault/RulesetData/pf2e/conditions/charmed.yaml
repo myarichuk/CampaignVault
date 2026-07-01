@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: charmed
+system: pf2e
+durationType: Timed
+mechanicalSummary: Cannot use hostile actions against the charmer; charmer gains bonuses to social checks
+moodHint: trusting, infatuated
+immunities: []
+suppresses: []

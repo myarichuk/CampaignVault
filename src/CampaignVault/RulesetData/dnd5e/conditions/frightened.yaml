@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: frightened
+system: dnd5e
+durationType: Manual
+mechanicalSummary: Disadvantage on attack rolls and ability checks while source is in sight; cannot move toward source
+moodHint: terrified
+immunities: []
+suppresses: []

@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: prone
+system: pf2e
+durationType: Manual
+mechanicalSummary: -2 circumstance penalty to attack rolls; melee attackers gain +1 to hit; can only Crawl unless Stand action taken; take cover while prone
+immunities: []
+suppresses: []

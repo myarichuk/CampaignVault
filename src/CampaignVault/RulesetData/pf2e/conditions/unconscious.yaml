@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: unconscious
+system: pf2e
+durationType: Timed
+mechanicalSummary: Blinded, flat-footed, cannot take actions; falls prone if standing; -4 to AC, Perception, and Reflex saves
+moodHint: unconscious
+immunities: []
+suppresses: [prone, blinded, flat-footed]

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: blinded
+system: pf2e
+durationType: Timed
+mechanicalSummary: Cannot see; all checks requiring sight fail; attacks by this creature have the blinded condition's penalties
+moodHint: disoriented, helpless
+immunities: []
+suppresses: []

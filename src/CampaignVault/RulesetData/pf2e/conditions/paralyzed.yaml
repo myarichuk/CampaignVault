@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: paralyzed
+system: pf2e
+durationType: Timed
+mechanicalSummary: Cannot act; critical hits against this creature succeed on a lower degree of success
+moodHint: frozen, helpless
+immunities: []
+suppresses: []

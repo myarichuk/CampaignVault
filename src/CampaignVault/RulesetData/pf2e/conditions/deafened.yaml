@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: deafened
+system: pf2e
+durationType: Timed
+mechanicalSummary: Cannot hear; all checks requiring hearing automatically fail
+moodHint: isolated, frustrated
+immunities: []
+suppresses: []

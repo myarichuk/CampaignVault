@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: sickened
+system: pf2e
+durationType: Timed
+mechanicalSummary: Valued penalty (sickened X) to all checks and DCs; cannot willingly consume food or drink; attempt flat DC 15 check to reduce value on each turn
+moodHint: nauseated, ill
+immunities: []
+suppresses: []

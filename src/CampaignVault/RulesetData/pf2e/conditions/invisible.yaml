@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: invisible
+system: pf2e
+durationType: Concentration
+mechanicalSummary: Undetected by sight; gains hidden or undetected against sight; ends when spell or effect ends
+moodHint: unseen, predatory
+immunities: []
+suppresses: []

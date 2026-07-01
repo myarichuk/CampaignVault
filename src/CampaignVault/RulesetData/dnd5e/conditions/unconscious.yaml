@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: unconscious
+system: dnd5e
+durationType: Timed
+mechanicalSummary: Incapacitated; can't move or speak; unaware of surroundings; drops held items; falls prone; auto-fail STR/DEX saves; attackers have advantage; hits within 5 ft are critical hits
+moodHint: unconscious
+immunities: []
+suppresses: [incapacitated, prone]

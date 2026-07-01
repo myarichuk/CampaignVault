@@ -5,7 +5,7 @@ namespace CampaignVault.Rulesets.Contributors;
 
 public sealed class Dnd5eExhaustionPressureContributor : IRulesetPressureContributor
 {
-    public const string GroupingKey = "Character:Attribute:exhaustion";
+    public const string GroupingKey = "Character:Attribute:exhaustion_level";
 
     public PressureScope Scope => PressureScope.World;
     public int Order => 25;
@@ -22,12 +22,14 @@ public sealed class Dnd5eExhaustionPressureContributor : IRulesetPressureContrib
 
         foreach (var c in characters)
         {
+            // Mechanical D&D 5e exhaustion (1-6 scale), distinct from the ruleset-agnostic
+            // narrative "tiredness" need read by CharacterDistressPressureContributor.
             if (c.SystemStats?.Attributes != null
-                && c.SystemStats.Attributes.TryGetValue("exhaustion", out var exhaustion)
+                && c.SystemStats.Attributes.TryGetValue("exhaustion_level", out var exhaustion)
                 && exhaustion >= 3f)
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id,
-                    $"{c.Name} has exhaustion level {exhaustion:F0} (D&D 5e). At level 3+, they suffer disadvantage on attacks/saves and reduced speed. Narrate fatigue and consider rest.",
+                    $"{c.Name} has exhaustion level {exhaustion:F0} (D&D 5e, 1-6 scale). At level 3+, they suffer disadvantage on attacks/saves and reduced speed. Narrate fatigue and consider rest.",
                     GroupingKey));
             }
         }

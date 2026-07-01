@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: poisoned
+system: dnd5e
+durationType: Timed
+mechanicalSummary: Disadvantage on attack rolls and ability checks
+moodHint: nauseated, ill
+immunities: []
+suppresses: []

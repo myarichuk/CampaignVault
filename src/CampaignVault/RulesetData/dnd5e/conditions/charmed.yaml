@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: charmed
+system: dnd5e
+durationType: Timed
+mechanicalSummary: Cannot attack or target the charmer with harmful abilities or spells; charmer has advantage on social checks against this creature
+moodHint: infatuated, compelled
+immunities: []
+suppresses: []

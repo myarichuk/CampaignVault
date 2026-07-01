@@ -1,4 +1,5 @@
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
@@ -19,6 +20,13 @@ namespace CampaignVault.Data.ChangeHandlers;
 /// </summary>
 public sealed class StatusChangeHandler : IWorldChangeHandler
 {
+    private readonly ConditionDefinitionProvider _conditionProvider;
+
+    public StatusChangeHandler(ConditionDefinitionProvider conditionProvider)
+    {
+        _conditionProvider = conditionProvider ?? throw new ArgumentNullException(nameof(conditionProvider));
+    }
+
     public bool ShouldHandle(WorldChange change)
         => change is StatusChange or StatusRemove;
 
@@ -67,6 +75,7 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         {
             // Preferred path: fully structured StatusEffect from LLM DM
             effect = add.Effect;
+            RecordConditionValidationWarning(context, character.SystemStats, effect);
         }
         else
         {
@@ -82,6 +91,40 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         character.SystemStats.StatusEffects.Add(effect);
         context.RecordMessage($"Status '{effect.Name}' (category: {effect.Category}) added to {add.CharacterId}");
         return ChangeHandlerResult.Ok;
+    }
+
+    private void RecordConditionValidationWarning(
+        ChangeContext context,
+        SystemExtension stats,
+        StatusEffect effect)
+    {
+        if (string.IsNullOrWhiteSpace(effect.ConditionName))
+            return;
+
+        if (!RulesetSystemResolver.TryFromStats(stats, out var system))
+        {
+            context.RecordMessage(
+                $"[WARNING] conditionName '{effect.ConditionName}' could not be validated — unknown system stats type. " +
+                "Effect was applied with expiresAtDay/expiresAtRound heuristics only.");
+            return;
+        }
+
+        if (_conditionProvider.TryGet(system, effect.ConditionName, out _))
+            return;
+
+        const int maxSample = 8;
+        var knownNames = _conditionProvider.GetConditionsForSystem(system).Keys
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var sample = string.Join(", ", knownNames.Take(maxSample));
+        var overflow = knownNames.Count > maxSample
+            ? $" (+{knownNames.Count - maxSample} more via get_system_handbook)"
+            : string.Empty;
+
+        context.RecordMessage(
+            $"[WARNING] conditionName '{effect.ConditionName}' did not match any known {system} condition definition. " +
+            $"Sample conditions: {sample}{overflow}. " +
+            "Effect was applied, but expiry will fall back to expiresAtDay/expiresAtRound heuristics.");
     }
 
     // ── Remove ────────────────────────────────────────────────────────────────

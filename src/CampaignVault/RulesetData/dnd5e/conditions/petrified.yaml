@@ -1,0 +1,8 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: petrified
+system: dnd5e
+durationType: Manual
+mechanicalSummary: Transformed into stone; incapacitated; auto-fail STR/DEX saves; resistance to all damage; immune to poison/disease
+immunities: []
+suppresses: [incapacitated]

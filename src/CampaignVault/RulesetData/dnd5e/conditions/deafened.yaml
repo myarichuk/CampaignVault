@@ -1,0 +1,8 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: deafened
+system: dnd5e
+durationType: Timed
+mechanicalSummary: Auto-fail hearing checks; immune to thunder damage that requires hearing
+immunities: []
+suppresses: []

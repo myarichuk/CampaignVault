@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: grabbed
+system: pf2e
+durationType: Manual
+mechanicalSummary: Immobilized by a grab; can attempt to Escape; ends when grabber releases or is incapacitated
+moodHint: trapped, struggling
+immunities: []
+suppresses: []

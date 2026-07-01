@@ -1,16 +1,17 @@
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
 public class RestChangeHandler : IWorldChangeHandler
 {
     private readonly EncounterResolver _resolver;
+    private readonly ConditionDefinitionProvider _conditionProvider;
 
-    public RestChangeHandler() : this(new EncounterResolver()) { }
-
-    public RestChangeHandler(EncounterResolver resolver)
+    public RestChangeHandler(EncounterResolver resolver, ConditionDefinitionProvider conditionProvider)
     {
-        _resolver = resolver ?? new EncounterResolver();
+        _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        _conditionProvider = conditionProvider ?? throw new ArgumentNullException(nameof(conditionProvider));
     }
 
     public bool ShouldHandle(WorldChange change) => change is RestChange;
@@ -45,9 +46,9 @@ public class RestChangeHandler : IWorldChangeHandler
 
         var (interrupted, hoursRested, deltas, narratives) = await _resolver.EvaluateAsync(
             context,
-            character, 
-            location, 
-            CalculateRestHours(rc), 
+            character,
+            location,
+            CalculateRestHours(rc),
             4, // bucket size 4 hours
             rc.SecurityModifier,
             "Rest");
@@ -72,6 +73,12 @@ public class RestChangeHandler : IWorldChangeHandler
             // Infer or use explicit rest type for pool recovery
             var restType = rc.RestType ?? (hoursRested >= 8 ? RestType.LongRest : RestType.ShortRest);
             character.LastRestType = restType;
+            character.RestSequence = (character.RestSequence ?? 0) + 1;
+
+            if (restType == RestType.LongRest)
+            {
+                await ClearUntilLongRestConditionsAsync(rc.CharacterId, character, context, ct);
+            }
 
             await context.Dispatcher.DispatchMutationAsync(context, new ActivityChange
             {
@@ -82,12 +89,12 @@ public class RestChangeHandler : IWorldChangeHandler
                 Reason = "Rest complete"
             }, ct);
 
-            return new ChangeHandlerResult(true, $"Rest completed safely. {hoursRested} hours passed ({restType} rest).");
+            return new ChangeHandlerResult(true,
+                $"Rest completed safely. {hoursRested} hours passed ({restType} rest). " +
+                "Resource pools (spell slots, etc.) recover on the NEXT advance_world call, not immediately.");
         }
-        else
-        {
-            return new ChangeHandlerResult(true, $"Rest INTERRUPTED after {hoursRested} hours! Encounter spawned. Do NOT apply healing commits yet; resolve the encounter first.");
-        }
+
+        return new ChangeHandlerResult(true, $"Rest INTERRUPTED after {hoursRested} hours! Encounter spawned. Do NOT apply healing commits yet; resolve the encounter first.");
 
         int CalculateRestHours(RestChange restChange)
         {
@@ -100,4 +107,86 @@ public class RestChangeHandler : IWorldChangeHandler
             return restChange.IntendedHours > 0 ? restChange.IntendedHours : 8;
         }
     }
+
+    private async Task ClearUntilLongRestConditionsAsync(
+        string characterId,
+        Character character,
+        ChangeContext context,
+        CancellationToken ct)
+    {
+        foreach (var effect in ConditionExpiryEvaluator.CollectLongRestFullClears(character, _conditionProvider))
+        {
+            await context.Dispatcher.DispatchMutationAsync(context, new StatusRemove
+            {
+                CharacterId = characterId,
+                Status = effect.Name
+            }, ct);
+            context.RecordMessage(
+                $"UntilLongRest condition '{effect.Name}' cleared on {characterId} after long rest.");
+        }
+
+        // Stacking conditions (e.g. dnd5e exhaustion) decrement by one level per long rest
+        // instead of fully clearing — see ConditionDefinition.IsStacking.
+        foreach (var effect in ConditionExpiryEvaluator.CollectLongRestDecrements(character, _conditionProvider))
+        {
+            if (!TryParseStackLevel(effect.Name, out var level))
+            {
+                context.RecordMessage(
+                    $"[WARNING] Stacking condition '{effect.Name}' has no parseable numeric level; left unchanged.");
+                continue;
+            }
+
+            if (level <= 1)
+            {
+                await context.Dispatcher.DispatchMutationAsync(context, new StatusRemove
+                {
+                    CharacterId = characterId,
+                    Status = effect.Name
+                }, ct);
+                context.RecordMessage(
+                    $"Stacking condition '{effect.Name}' reached 0 and was cleared on {characterId} after long rest.");
+            }
+            else
+            {
+                var baseName = effect.Name[..effect.Name.LastIndexOf(' ')];
+                var newName = $"{baseName} {level - 1}";
+
+                await context.Dispatcher.DispatchMutationAsync(context, new StatusRemove
+                {
+                    CharacterId = characterId,
+                    Status = effect.Name
+                }, ct);
+
+                await context.Dispatcher.DispatchMutationAsync(context, new StatusChange
+                {
+                    CharacterId = characterId,
+                    Effect = CloneStatusEffect(effect, newName)
+                }, ct);
+
+                context.RecordMessage(
+                    $"Stacking condition decremented to '{newName}' on {characterId} after long rest.");
+            }
+        }
+    }
+
+    private static bool TryParseStackLevel(string name, out int level)
+    {
+        level = 0;
+        var lastSpace = name.LastIndexOf(' ');
+        return lastSpace >= 0 && int.TryParse(name[(lastSpace + 1)..], out level);
+    }
+
+    private static StatusEffect CloneStatusEffect(StatusEffect source, string newName) =>
+        new()
+        {
+            Name = newName,
+            Category = source.Category,
+            ConditionName = source.ConditionName,
+            AffectedPart = source.AffectedPart,
+            StatModifiers = new Dictionary<string, float>(source.StatModifiers),
+            ExpiresAtDay = source.ExpiresAtDay,
+            ExpiresAtRound = source.ExpiresAtRound,
+            RecoveryHint = source.RecoveryHint,
+            AppliedBy = source.AppliedBy
+        };
 }

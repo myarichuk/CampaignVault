@@ -88,4 +88,18 @@ public class StatusEffect
     /// </summary>
     [JsonPropertyName("appliedBy")]
     public string? AppliedBy { get; set; }
+
+    /// <summary>
+    /// Optional reference to a <c>ConditionDefinition</c> template name (e.g. "frightened", "blinded").
+    /// When set, <c>StatusExpiryRule</c> uses the definition's <c>DurationType</c> to gate
+    /// day-based expiry rather than relying on <c>ExpiresAtDay</c> alone.
+    /// Leave null for narrative / non-SRD effects.
+    /// </summary>
+    [System.ComponentModel.Description(
+        "Optional SRD condition template key (e.g. \"frightened\", \"blinded\", \"exhaustion\"). " +
+        "References a ConditionDefinition in RulesetData. Drives expiry: Timed uses expiresAtDay; " +
+        "UntilLongRest clears on long rest; UntilDawn clears on advance_world; Manual/Concentration do not auto-expire by day. " +
+        "Omit for narrative-only effects (wounds, mood, environmental states).")]
+    [JsonPropertyName("conditionName")]
+    public string? ConditionName { get; set; }
 }

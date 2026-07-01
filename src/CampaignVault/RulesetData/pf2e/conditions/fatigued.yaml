@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: fatigued
+system: pf2e
+durationType: UntilLongRest
+mechanicalSummary: Cannot use exploration or downtime activities that require exertion; penalty to checks from fatigue
+moodHint: weary, drained
+immunities: []
+suppresses: []

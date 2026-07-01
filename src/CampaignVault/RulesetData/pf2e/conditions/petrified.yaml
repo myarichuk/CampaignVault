@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: petrified
+system: pf2e
+durationType: Manual
+mechanicalSummary: Turned to stone; cannot act; treated as an object; resistant to damage
+moodHint: frozen in terror
+immunities: []
+suppresses: []

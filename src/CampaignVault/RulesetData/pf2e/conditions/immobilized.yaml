@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Core Rulebook, ORC License
+name: immobilized
+system: pf2e
+durationType: Manual
+mechanicalSummary: Cannot move; may still act unless otherwise prevented
+moodHint: pinned, desperate
+immunities: []
+suppresses: []
