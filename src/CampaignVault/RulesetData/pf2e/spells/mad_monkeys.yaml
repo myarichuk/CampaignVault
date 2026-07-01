@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: mad_monkeys
+system: pf2e
+level: 3
+classes: [druid]
+concentration: true
+castingTime: 2 actions

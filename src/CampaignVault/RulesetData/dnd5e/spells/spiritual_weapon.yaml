@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: spiritual_weapon
+system: dnd5e
+level: 2
+classes: [cleric]
+concentration: false
+castingTime: 1 bonus action

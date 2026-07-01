@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: environmental_endurance
+system: pf2e
+level: 2
+classes: [cleric, druid, witch, wizard]
+concentration: true
+castingTime: 2 actions

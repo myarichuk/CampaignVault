@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: fire_shield
+system: pf2e
+level: 4
+classes: [druid, witch, wizard]
+concentration: true
+castingTime: 2 actions

@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: imprisonment
+system: dnd5e
+level: 9
+classes: [warlock, wizard]
+concentration: false
+castingTime: 1 minute

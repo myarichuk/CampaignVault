@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: true_target
+system: pf2e
+level: 7
+classes: [bard, witch, wizard]
+concentration: true
+castingTime: 1 action

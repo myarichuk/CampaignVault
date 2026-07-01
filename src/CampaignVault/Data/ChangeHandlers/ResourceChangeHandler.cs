@@ -1,4 +1,5 @@
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
@@ -8,6 +9,13 @@ namespace CampaignVault.Data.ChangeHandlers;
 /// </summary>
 public class ResourceChangeHandler : IWorldChangeHandler
 {
+    private readonly SpellDefinitionProvider? _spellProvider;
+
+    public ResourceChangeHandler(SpellDefinitionProvider? spellProvider = null)
+    {
+        _spellProvider = spellProvider;
+    }
+
     public bool ShouldHandle(WorldChange change) => change is ResourceChange;
 
     public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
@@ -49,13 +57,19 @@ public class ResourceChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Resource pool '{rc.PoolName}' does not exist for character '{rc.CharacterId}'.");
         }
 
+        var spellFailure = TryValidateSpellSpend(rc, character, context);
+        if (spellFailure != null)
+            return spellFailure.Value;
+
         // Clamp the new value to [0, max]
         var oldCurrent = pool.Current;
         var newCurrent = Math.Clamp(oldCurrent + rc.Delta, 0, pool.Max);
         var actualDelta = newCurrent - oldCurrent;
 
         // Update the pool
-        var updatedPool = pool with { Current = newCurrent };
+        var updatedPool = rc.RecoveredOnDay.HasValue
+            ? pool with { Current = newCurrent, LastRecoveredDay = rc.RecoveredOnDay.Value }
+            : pool with { Current = newCurrent };
         character.SystemStats.ResourcePools[rc.PoolName] = updatedPool;
 
         var narrative = rc.Reason ?? "Resource pool updated.";
@@ -65,5 +79,52 @@ public class ResourceChangeHandler : IWorldChangeHandler
         }
 
         return new ChangeHandlerResult(true, $"{character.Name}'s {rc.PoolName}: {oldCurrent} → {newCurrent}. {narrative}");
+    }
+
+    private ChangeHandlerResult? TryValidateSpellSpend(ResourceChange rc, Character character, ChangeContext context)
+    {
+        if (_spellProvider == null || !SpellSlotValidator.IsSpellSlotSpend(rc.Delta, rc.PoolName))
+            return null;
+
+        if (string.IsNullOrWhiteSpace(rc.SpellName))
+        {
+            context.RecordMessage(
+                "[WARNING] spell_slots spend without spellName — slot-level validation skipped. " +
+                "Set spellName from get_spells so the engine can verify slot level.");
+            return null;
+        }
+
+        if (!RulesetSystemResolver.TryFromStats(character.SystemStats, out var system))
+        {
+            context.RecordMessage(
+                "[WARNING] Cannot resolve ruleset system for spell validation; spend was applied.");
+            return null;
+        }
+        if (!_spellProvider.TryGet(system, rc.SpellName, out var spell) || spell == null)
+        {
+            context.RecordMessage(
+                $"[WARNING] spellName '{rc.SpellName}' did not match any known {system} spell definition. " +
+                $"Spend was applied; call get_spells to verify slot usage.");
+            return null;
+        }
+
+        if (SpellSlotValidator.IsCantrip(spell))
+        {
+            context.RecordMessage(SpellSlotValidator.CantripWarning(spell));
+            return null;
+        }
+
+        if (!SpellSlotValidator.TryParseSlotLevel(rc.PoolName, out var slotLevel))
+            return null;
+
+        var error = SpellSlotValidator.ValidateSpend(spell, slotLevel);
+        if (error != null)
+            return ChangeHandlerResult.Failure(error);
+
+        var concentrationHint = SpellSlotValidator.BuildConcentrationHint(spell);
+        if (concentrationHint != null)
+            context.RecordMessage(concentrationHint);
+
+        return null;
     }
 }

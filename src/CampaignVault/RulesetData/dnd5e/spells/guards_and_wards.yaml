@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: guards_and_wards
+system: dnd5e
+level: 6
+classes: [bard, wizard]
+concentration: false
+castingTime: 10 minutes

@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: summon_undead
+system: pf2e
+level: 1
+classes: [bard, cleric, witch, wizard]
+concentration: true
+castingTime: 3 actions

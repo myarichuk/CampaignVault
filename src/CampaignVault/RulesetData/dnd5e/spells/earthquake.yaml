@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: earthquake
+system: dnd5e
+level: 8
+classes: [cleric, druid, sorcerer]
+concentration: true
+castingTime: 1 action

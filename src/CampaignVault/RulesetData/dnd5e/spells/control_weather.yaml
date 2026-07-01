@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: control_weather
+system: dnd5e
+level: 8
+classes: [cleric, druid, wizard]
+concentration: true
+castingTime: 10 minutes

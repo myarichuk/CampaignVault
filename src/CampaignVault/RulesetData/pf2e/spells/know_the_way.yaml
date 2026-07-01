@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: know_the_way
+system: pf2e
+level: 0
+classes: [bard, cleric, druid]
+concentration: true
+castingTime: 2 actions

@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: poison_spray
+system: dnd5e
+level: 0
+classes: [druid, sorcerer, warlock, wizard]
+concentration: false
+castingTime: 1 action

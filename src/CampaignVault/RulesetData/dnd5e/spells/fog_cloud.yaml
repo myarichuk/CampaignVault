@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: fog_cloud
+system: dnd5e
+level: 1
+classes: [druid, ranger, sorcerer, wizard]
+concentration: true
+castingTime: 1 action

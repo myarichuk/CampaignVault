@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: blessed_boundary
+system: pf2e
+level: 6
+classes: [cleric]
+concentration: true
+castingTime: 3 actions

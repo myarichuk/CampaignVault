@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: mind_blank
+system: dnd5e
+level: 8
+classes: [bard, wizard]
+concentration: false
+castingTime: 1 action

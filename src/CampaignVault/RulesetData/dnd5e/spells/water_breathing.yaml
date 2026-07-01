@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: water_breathing
+system: dnd5e
+level: 3
+classes: [druid, ranger, sorcerer, wizard]
+concentration: false
+castingTime: 1 action

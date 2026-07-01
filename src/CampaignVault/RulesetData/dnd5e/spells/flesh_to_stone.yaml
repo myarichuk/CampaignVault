@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: flesh_to_stone
+system: dnd5e
+level: 6
+classes: [warlock, wizard]
+concentration: true
+castingTime: 1 action

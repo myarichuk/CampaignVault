@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: fabricated_truth
+system: pf2e
+level: 10
+classes: [bard]
+concentration: true
+castingTime: 3 actions

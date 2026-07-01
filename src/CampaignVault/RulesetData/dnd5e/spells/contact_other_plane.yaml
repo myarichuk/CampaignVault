@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: contact_other_plane
+system: dnd5e
+level: 5
+classes: [warlock, wizard]
+concentration: false
+castingTime: 1 minute

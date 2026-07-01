@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: detect_poison_and_disease
+system: dnd5e
+level: 1
+classes: [cleric, druid, paladin, ranger]
+concentration: true
+castingTime: 1 action
