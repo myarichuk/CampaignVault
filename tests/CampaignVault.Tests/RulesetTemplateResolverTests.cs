@@ -136,4 +136,43 @@ public class RulesetTemplateResolverTests
 
         Assert.Throws<InvalidOperationException>(() => resolver.Resolve(a));
     }
+
+    [Fact]
+    public void ResolveAll_SkipsTemplateWithMissingParent_ButResolvesTheRest()
+    {
+        var good = new TestTemplate { Name = "good", FieldA = "fine" };
+        var broken = new TestTemplate { Name = "broken", Inherits = ["nonexistent"] };
+        var raw = new Dictionary<string, TestTemplate>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["good"] = good,
+            ["broken"] = broken,
+        };
+        var resolver = BuildResolver(good, broken);
+
+        var resolved = resolver.ResolveAll(raw);
+
+        Assert.True(resolved.ContainsKey("good"));
+        Assert.False(resolved.ContainsKey("broken"));
+    }
+
+    [Fact]
+    public void ResolveAll_SkipsCyclicTemplate_ButResolvesTheRest()
+    {
+        var good = new TestTemplate { Name = "good", FieldA = "fine" };
+        var a = new TestTemplate { Name = "a", Inherits = ["b"] };
+        var b = new TestTemplate { Name = "b", Inherits = ["a"] };
+        var raw = new Dictionary<string, TestTemplate>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["good"] = good,
+            ["a"] = a,
+            ["b"] = b,
+        };
+        var resolver = BuildResolver(good, a, b);
+
+        var resolved = resolver.ResolveAll(raw);
+
+        Assert.True(resolved.ContainsKey("good"));
+        Assert.False(resolved.ContainsKey("a"));
+        Assert.False(resolved.ContainsKey("b"));
+    }
 }

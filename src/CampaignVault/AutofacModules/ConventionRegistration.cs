@@ -8,7 +8,6 @@ using CampaignVault.Data.Scenes;
 using CampaignVault.Data.Templates;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
-using CampaignVault.Services;
 
 namespace CampaignVault.AutofacModules;
 
@@ -67,13 +66,6 @@ internal static class ConventionRegistration
         Assembly assembly,
         string rulesetDataDirectory)
     {
-        builder.RegisterAssemblyTypes(assembly)
-            .Where(t => t.Namespace == typeof(RulesetTemplateRegistry).Namespace
-                        && t.Name.EndsWith("Registry", StringComparison.Ordinal)
-                        && !t.IsAbstract)
-            .AsSelf()
-            .SingleInstance();
-
         builder.RegisterAssemblyTypes(assembly)
             .Where(t => t.IsAssignableTo<IRulesetYamlProvider>() && !t.IsAbstract)
             .AsSelf()

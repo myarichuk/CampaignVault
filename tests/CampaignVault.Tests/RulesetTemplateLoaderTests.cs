@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using CampaignVault.Data.Templates;
 using Xunit;
 
@@ -126,5 +129,55 @@ public class RulesetTemplateLoaderTests : IDisposable
 
         var extracted = Path.Combine(_tempDir, "sample_template.yaml");
         Assert.True(File.Exists(extracted), "Embedded file should be extracted to disk on first load.");
+    }
+
+    // ── Stale extraction pruning ──────────────────────────────────────────────
+
+    [Fact]
+    public void Load_PrunesStaleExtractedFile_WhenRemovedFromEmbedded()
+    {
+        // Simulate a prior Load() that extracted a now-removed embedded default: write the file
+        // to disk exactly as extraction would have, under a prefix with no matching embedded
+        // resources this time around (i.e. the embedded source is gone).
+        WriteYaml(_tempDir, "removed_class.yaml", "removed_class", "old_value");
+
+        var firstLoader = BuildLoader(prefix: "CampaignVault.Tests.NoSuchPrefix");
+        firstLoader.Load(); // establishes the manifest as if this file had just been extracted
+        SeedManifestEntry("removed_class.yaml", File.ReadAllText(Path.Combine(_tempDir, "removed_class.yaml")));
+
+        var secondLoader = BuildLoader(prefix: "CampaignVault.Tests.NoSuchPrefix");
+        var result = secondLoader.Load();
+
+        Assert.False(File.Exists(Path.Combine(_tempDir, "removed_class.yaml")));
+        Assert.False(result.ContainsKey("removed_class"));
+    }
+
+    [Fact]
+    public void Load_PreservesUserModifiedFile_EvenWhenRemovedFromEmbedded()
+    {
+        WriteYaml(_tempDir, "edited_class.yaml", "edited_class", "old_value");
+        var originalContent = File.ReadAllText(Path.Combine(_tempDir, "edited_class.yaml"));
+        SeedManifestEntry("edited_class.yaml", originalContent);
+
+        // DM edits the extracted file locally after it was extracted.
+        WriteYaml(_tempDir, "edited_class.yaml", "edited_class", "dm_customized_value");
+
+        var loader = BuildLoader(prefix: "CampaignVault.Tests.NoSuchPrefix");
+        var result = loader.Load();
+
+        Assert.True(File.Exists(Path.Combine(_tempDir, "edited_class.yaml")));
+        Assert.True(result.TryGetValue("edited_class", out var t));
+        Assert.Equal("dm_customized_value", t!.Value);
+    }
+
+    private void SeedManifestEntry(string fileName, string extractedContent)
+    {
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(extractedContent)));
+        var manifestPath = Path.Combine(_tempDir, ".extracted-manifest.json");
+        var manifest = File.Exists(manifestPath)
+            ? JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(manifestPath))!
+            : new Dictionary<string, string>();
+        manifest[fileName] = hash;
+        File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest));
     }
 }

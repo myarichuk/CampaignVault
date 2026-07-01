@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace CampaignVault.Data.Templates;
 
 /// <summary>
@@ -15,6 +17,33 @@ public class RulesetTemplateResolver<T> where T : RulesetTemplate
     {
         _lookup = lookup;
         _merge = merge;
+    }
+
+    /// <summary>
+    /// Resolves every template in <paramref name="raw"/>, skipping (and logging) any entry whose
+    /// inheritance chain is broken (missing parent or a cycle) instead of throwing, so one
+    /// malformed homebrew YAML file doesn't take down every other template for that system.
+    /// </summary>
+    public IReadOnlyDictionary<string, T> ResolveAll(
+        IReadOnlyDictionary<string, T> raw,
+        ILogger? logger = null)
+    {
+        var resolved = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, template) in raw)
+        {
+            try
+            {
+                resolved[name] = Resolve(template);
+            }
+            catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
+            {
+                logger?.LogWarning(ex,
+                    "Skipping template '{Name}': failed to resolve inheritance (missing parent or cycle).",
+                    name);
+            }
+        }
+
+        return resolved;
     }
 
     public T Resolve(T child) => Resolve(child, []);
