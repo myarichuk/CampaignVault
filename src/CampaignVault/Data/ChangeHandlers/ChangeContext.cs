@@ -20,6 +20,7 @@ public sealed class ChangeContext
     public IReadOnlyDictionary<string, Quest> Quests => _quests;
     public ILogger Logger { get; }
     public CombatEncounter? ActiveCombat { get; }
+    public CampaignConfig? Config { get; }
 
     /// <summary>
     /// The effective campaign name for this change context (for scoping entities like Characters/Locations on create).
@@ -71,7 +72,8 @@ public sealed class ChangeContext
         List<string> summary,
         WorldChangeDispatcher dispatcher,
         CombatEncounter? activeCombat = null,
-        string? campaignName = null)
+        string? campaignName = null,
+        CampaignConfig? config = null)
     {
         Session = session ?? throw new ArgumentNullException(nameof(session));
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -87,6 +89,7 @@ public sealed class ChangeContext
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
         CampaignName = campaignName;
+        Config = config;
         InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -105,7 +108,8 @@ public sealed class ChangeContext
         List<string> summary,
         WorldChangeDispatcher dispatcher,
         CombatEncounter? activeCombat = null,
-        string? campaignName = null)
+        string? campaignName = null,
+        CampaignConfig? config = null)
     {
         Session = sessionForTests!; // may be null; only for tests with fake handlers
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -121,6 +125,7 @@ public sealed class ChangeContext
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
         CampaignName = campaignName;
+        Config = config;
         InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 

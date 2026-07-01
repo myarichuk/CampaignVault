@@ -42,14 +42,6 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
                 exampleCall: "start_combat(\"locations/tavern\", [\"characters/hero\"])");
         }
 
-        if (combatantIds is null)
-        {
-            return ToolArgumentErrors.Missing<CombatEncounter>(
-                "combatantIds",
-                "Pass an array of character IDs participating in combat.",
-                exampleCall: "start_combat(\"locations/tavern\", [\"characters/hero\"])");
-        }
-
         if (combatantIds.Length == 0)
         {
             return Task.FromResult(new ToolResult<CombatEncounter>(

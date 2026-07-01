@@ -186,6 +186,10 @@ Implemented and registered at startup:
 
 Consumption goes through `ResourceChangeHandler` via `$type: "resource"` commits — validates spell level vs. slot pool level (hard-fails only for over-level spells), **clamps to [0, Max] without hard-failing on pool depletion** (appends `(Clamped: ...)` narrative note so the LLM sees it), and logs the spend. Recovery happens on the **next `advance_world`** after a rest, not at rest time, via `ResourceRecoveryRule` (Order 38) which applies the rest-type hierarchy (LongRest ⊃ ShortRest ⊃ PerTurn). Narrative rulesets opt out structurally: `ResourcePoolProvider` never registers pool YAML for `RulesetSystem.Narrative`, so Narrative characters skip recovery entirely.
 
+### Relationship-based social roll modifiers
+
+`RelationshipModifierHelper` translates stored relationship scores (on `Character.Social.Relationships`) into social skill roll modifiers for Dnd5e, PF2e, and Fallout2d20. Gating is applied by each resolver: social checks include `ActionCategory: Social` **or** skill names in {Persuasion, Deception, Intimidation, Insight, Performance}. Modifiers are banded: score ≥80 → +5 (trusted friend), 60–79 → +3 (friendly), 40–59 → +1 (acquainted), −39..39 → 0 (neutral), −59..−40 → −1 (distrustful), −79..−60 → −3 (hostile), ≤−80 → −5 (hated enemy). Each resolver adds the modifier to the roll bonus and includes the label in the narrative (e.g., `(trusted friend)`). Contested checks apply the modifier only to the actor's roll, leaving the target unmodified. `CampaignConfig.SymmetricRelationshipFallback` (default false) enables fallback to half the reverse relationship when the target has no recorded opinion of the actor. Narrative rulesets (oracle mode) do not apply relationship modifiers structurally — they skip `ruleset_action` entirely.
+
 ### Character bootstrap pipeline
 
 `CharacterBootstrapOrchestrator` runs each ruleset's ordered `ICharacterBootstrapPipeline` when:

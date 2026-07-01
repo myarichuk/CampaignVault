@@ -74,6 +74,17 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         };
     }
 
+    private static bool ShouldApplyRelationshipModifier(RulesetAction action, string skillName)
+    {
+        if (action.ActionCategory == ActionCategory.Social)
+        {
+            return true;
+        }
+
+        var socialSkills = new[] { "Persuasion", "Deception", "Intimidation", "Insight", "Performance" };
+        return socialSkills.Any(s => string.Equals(s, skillName, StringComparison.OrdinalIgnoreCase));
+    }
+
     private Pf2eDegreeOfSuccess CalculateDegreeOfSuccess(RollOutcome roll, int dc)
     {
         Pf2eDegreeOfSuccess degree;
@@ -237,11 +248,25 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
 
+        var relationshipLabel = "neutral";
+        var relationshipBonus = 0;
+        if (ShouldApplyRelationshipModifier(action, skillName))
+        {
+            var targetId = action.TargetIds.FirstOrDefault();
+            if (targetId != null && context.Characters.TryGetValue(targetId, out var target) &&
+                context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            {
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                bonus += relationshipBonus;
+            }
+        }
+
         var outcome = await _rollService.RollAsync(new RollRequest { Tag = "skill", Expression = "1d20", Bonus = bonus, Mechanic = DiceMechanic.Standard }, ct);
-        
+
         var degree = CalculateDegreeOfSuccess(outcome, dc);
-        
-        return ResolverResult.Ok($"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
+        var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
+
+        return ResolverResult.Ok($"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}");
     }
 
     protected override async Task<ResolverResult> ResolveContestedCheckAsync(
@@ -333,6 +358,17 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var actorRollBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
         actorRollBonus = ApplyAllModifiers(actorStats, actorRollBonus, "SkillCheck", actorSkill);
 
+        var relationshipLabel = "neutral";
+        var relationshipBonus = 0;
+        if (ShouldApplyRelationshipModifier(action, actorSkill))
+        {
+            if (context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            {
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                actorRollBonus += relationshipBonus;
+            }
+        }
+
         var targetRollBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
         targetRollBonus = ApplyAllModifiers(targetStats, targetRollBonus, "SkillCheck", targetSkill);
 
@@ -342,7 +378,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var actorWins = actorRoll.Result > targetRoll.Result;
         var resultStr = actorWins ? "Actor Wins" : "Target Wins";
 
-        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).");
+        var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
+        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).");
     }
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)

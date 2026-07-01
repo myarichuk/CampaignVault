@@ -25,6 +25,17 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
     protected override IRollService? GetRollService() => _rollService;
 
+    private static bool ShouldApplyRelationshipModifier(RulesetAction action, string skillName)
+    {
+        if (action.ActionCategory == ActionCategory.Social)
+        {
+            return true;
+        }
+
+        var socialSkills = new[] { "Persuasion", "Deception", "Intimidation", "Insight", "Performance" };
+        return socialSkills.Any(s => string.Equals(s, skillName, StringComparison.OrdinalIgnoreCase));
+    }
+
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(
         RulesetAction action,
         ChangeContext context,
@@ -44,14 +55,28 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var request = FalloutPoolHelper.BuildPoolRequest(
             actorStats, attribute, skill, action.Parameters, "skill", ApplyAllModifiers, "SkillCheck", skill, attribute);
 
+        var relationshipLabel = "neutral";
+        var relationshipBonus = 0;
+        if (ShouldApplyRelationshipModifier(action, skill))
+        {
+            var targetId = action.TargetIds.FirstOrDefault();
+            if (targetId != null && context.Characters.TryGetValue(targetId, out var target) &&
+                context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            {
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                request.TargetNumber += relationshipBonus;
+            }
+        }
+
         var outcome = await _rollService.RollAsync(request, ct);
 
         var success = outcome.Successes >= difficulty;
         var apGenerated = Math.Max(0, outcome.Successes - difficulty);
         var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
+        var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
 
         return ResolverResult.Ok(
-            $"{action.ActionName} ({attribute}+{skill} TN {request.TargetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
+            $"{action.ActionName} ({attribute}+{skill} TN {request.TargetNumber}){relationshipSuffix}: {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
     }
 
     protected override async Task<ResolverResult> ResolveAttackAsync(
@@ -192,6 +217,18 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         var actorRequest = FalloutPoolHelper.BuildPoolRequest(
             actorStats, actorAttribute, actorSkill, action.Parameters, "actor", ApplyAllModifiers, "SkillCheck", actorSkill, actorAttribute);
+
+        var relationshipLabel = "neutral";
+        var relationshipBonus = 0;
+        if (!isGrapple && !isEscape && ShouldApplyRelationshipModifier(action, actorSkill))
+        {
+            if (context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            {
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                actorRequest.TargetNumber += relationshipBonus;
+            }
+        }
+
         var targetRequest = FalloutPoolHelper.BuildPoolRequest(
             targetStats, targetAttribute, targetSkill, action.Parameters, "target", ApplyAllModifiers, "SkillCheck", targetSkill, targetAttribute);
 
@@ -212,8 +249,9 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             resultStr += " Actor breaks free of the grapple.";
         }
 
+        var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
         return ResolverResult.Ok(
-            $"{action.ActionName}: {resultStr}. Actor {actorOutcome.Successes} successes ({actorAttribute}+{actorSkill}), Target {targetOutcome.Successes} successes ({targetAttribute}+{targetSkill}). {actorOutcome.Summary} vs {targetOutcome.Summary}");
+            $"{action.ActionName}: {resultStr}. Actor {actorOutcome.Successes} successes ({actorAttribute}+{actorSkill}){relationshipSuffix}, Target {targetOutcome.Successes} successes ({targetAttribute}+{targetSkill}). {actorOutcome.Summary} vs {targetOutcome.Summary}");
     }
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(

@@ -46,6 +46,9 @@ Healing Word: `{ "$type":"ruleset_action", "actorId":"chars/cleric", "targetIds"
 Fallout grenade: `{ "$type":"ruleset_action", "actorId":"chars/raider", "targetIds":["chars/pc1"], "actionType":"Spell", "actionName":"Frag Grenade", "parameters":{"resolution":"save","dc":"2","saveAttribute":"Endurance","damageDice":"3"} }`
 Stimpak: `{ "$type":"ruleset_action", "actorId":"chars/pc1", "targetIds":["chars/pc1"], "actionType":"UseItem", "actionName":"Stimpak", "parameters":{"healAmount":"8"} }`
 
+**Social skill bonuses (relationship modifiers):**
+Social skill checks (Persuasion, Deception, Intimidation, Insight, Performance, or `ActionCategory: Social`) apply a bonus/penalty based on the target's relationship to the actor. Bands: ≥80→+5 (trusted friend), 60–79→+3 (friendly), 40–59→+1 (acquainted), −39..39→0 (neutral), −59..−40→−1 (distrustful), −79..−60→−3 (hostile), ≤−80→−5 (hated enemy). Narrative system (Fallout 1d6 oracle) **does not apply relationship modifiers**; skip `ruleset_action` for social checks in pure narrative flow.
+
 **Engagements (non-combat RP):**
 - `engagement_relation` — pairwise state (`actorId`, `targetId`, `category`, `verb`). Physical/Medical=Hard, Social=Soft.
 - `spatial_position` — placement (`characterId`, `targetId`, `distanceBand`, `zone`).

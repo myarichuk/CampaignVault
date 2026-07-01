@@ -78,6 +78,17 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         };
     }
 
+    private static bool ShouldApplyRelationshipModifier(RulesetAction action, string skillName)
+    {
+        if (action.ActionCategory == ActionCategory.Social)
+        {
+            return true;
+        }
+
+        var socialSkills = new[] { "Persuasion", "Deception", "Intimidation", "Insight", "Performance" };
+        return socialSkills.Any(s => string.Equals(s, skillName, StringComparison.OrdinalIgnoreCase));
+    }
+
     protected override async Task<ResolverResult> ResolveAttackAsync(
         RulesetAction action, 
         ChangeContext context, 
@@ -208,9 +219,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     }
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(
-        RulesetAction action, 
+        RulesetAction action,
         ChangeContext context,
-        Dnd5eExtension actorStats, 
+        Dnd5eExtension actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
     {
@@ -222,6 +233,20 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var skillName = action.Parameters.GetValueOrDefault("skill", "Strength");
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
+
+        var relationshipLabel = "neutral";
+        var relationshipBonus = 0;
+        if (ShouldApplyRelationshipModifier(action, skillName))
+        {
+            var targetId = action.TargetIds.FirstOrDefault();
+            if (targetId != null && context.Characters.TryGetValue(targetId, out var target) &&
+                context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            {
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                bonus += relationshipBonus;
+            }
+        }
+
         var mechanic = GetMechanicFromAction(action);
 
         var outcome = await _rollService.RollAsync(new RollRequest
@@ -234,8 +259,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         var isSuccess = outcome.Result >= dc;
         var resultStr = isSuccess ? "Success" : "Failure";
-        
-        return ResolverResult.Ok($"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}. {outcome.Summary}");
+        var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
+
+        return ResolverResult.Ok($"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}");
     }
 
     protected override async Task<ResolverResult> ResolveContestedCheckAsync(
@@ -269,6 +295,17 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
         actorBonus = ApplyAllModifiers(actorStats, actorBonus, "SkillCheck", actorSkill);
 
+        var relationshipLabel = "neutral";
+        var relationshipBonus = 0;
+        if (!isGrapple && !isEscape && ShouldApplyRelationshipModifier(action, actorSkill))
+        {
+            if (context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            {
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                actorBonus += relationshipBonus;
+            }
+        }
+
         var targetBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
         targetBonus = ApplyAllModifiers(targetStats, targetBonus, "SkillCheck", targetSkill);
 
@@ -289,7 +326,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             resultStr += " Actor breaks free of the grapple.";
         }
 
-        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}), Target rolled {targetRoll.Result} ({targetSkill}).");
+        var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
+        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).");
     }
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(

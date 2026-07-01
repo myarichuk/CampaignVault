@@ -316,6 +316,8 @@ Use `ruleset_action` inside `commit` for attacks, spells, skills, grapples, and 
 
 - **advantageState**: `""Advantage""`, `""Disadvantage""`, `""None""` (5e native).
 
+**Relationship-based social roll bonuses:** Social skill checks (Persuasion, Deception, Intimidation, Insight, Performance, or `ActionCategory: Social`) automatically apply modifiers based on the target NPC's relationship opinion of the actor. Relationship bands: ≥80 trusted friend (+5), 60–79 friendly (+3), 40–59 acquainted (+1), −39..39 neutral (0), −59..−40 distrustful (−1), −79..−60 hostile (−3), ≤−80 hated enemy (−5). The engine includes the relationship label (e.g., ""(trusted friend)"") in the roll narrative. Non-social skills (Athletics, Perception, etc.) are unaffected by relationships. **Note: NarrativeRulesetResolver (pure oracle mode) does not apply relationship modifiers.**
+
 **Multi-shot into a crowd:** AmbientCrowd mercs are not combatants until `character_create`d. Spawn 2–5 hostile transients with HP/systemStats, then one `ruleset_action` with multiple `targetIds` (and optional `attackCount` from the weapon). Example spray with Schlag (attackCount 3):
 ```json
 {

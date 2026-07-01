@@ -108,6 +108,7 @@ public sealed class WorldChangeDispatcher
         Dictionary<string, Faction> factions;
         Dictionary<string, Quest> quests;
         CombatEncounter? activeCombat = null;
+        CampaignConfig? config = null;
 
         if (session != null)
         {
@@ -161,6 +162,12 @@ public sealed class WorldChangeDispatcher
             {
                 activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effectiveCampaign));
             }
+
+            // Preload campaign config for resolver and handler access (ruleset selection, feature flags, etc).
+            if (!string.IsNullOrEmpty(effectiveCampaign))
+            {
+                config = await session.LoadAsync<CampaignConfig>(_keys.Config(effectiveCampaign));
+            }
         }
         else
         {
@@ -177,11 +184,11 @@ public sealed class WorldChangeDispatcher
         {
             // Support pure unit tests of handler selection / duplicate detection / result aggregation
             // that use fake TestHandlers which never access Session / time / logging hooks.
-            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, effectiveCampaign);
+            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, effectiveCampaign, config);
         }
         else
         {
-            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign);
+            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign, config);
         }
 
         foreach (var id in allInvolved)
