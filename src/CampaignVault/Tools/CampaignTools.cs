@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.Text.Json;
-using System.Threading.Tasks;
 using CampaignVault.Models;
 
 namespace CampaignVault.Tools;
@@ -125,6 +123,17 @@ public class CampaignTools(
     public Task<ToolResult<List<Campaign>>> ListCampaigns() => management.ListCampaigns();
     public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(string campaignName) =>
         management.GetCurrentCampaign(campaignName);
+
+    public Task<ToolResult<SystemHandbookResponse>> GetSystemHandbook(string campaignName) =>
+        management.GetSystemHandbook(campaignName);
+
+    public Task<ToolResult<SpellListResponse>> GetSpells(
+        string @class,
+        string campaignName,
+        int? level = null,
+        int offset = 0,
+        int? limit = null) =>
+        management.GetSpells(@class, campaignName, level, offset, limit);
 
     // --- Meta ---
     public Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(string? category = null) =>

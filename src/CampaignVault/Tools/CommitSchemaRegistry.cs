@@ -72,7 +72,8 @@ internal static class CommitSchemaRegistry
 
         new("rest", "Combat",
             "ENGINE SIDE EFFECTS: Calculates danger of the rest location and may emit encounter events. " +
-            "Applies need recovery automatically.",
+            "Applies need recovery automatically. Resource pool recovery (spell slots/focus points) is deferred " +
+            "to the next advance_world call — call advance_world after resting to refill pools.",
             ["characterId", "locationId", "intendedHours"],
             ["securityModifier", "narrativeNote"],
             HasSideEffects: true,
@@ -133,7 +134,9 @@ internal static class CommitSchemaRegistry
             CoCommitHints: []),
 
         new("attribute", "Narrative",
-            "Set or delta an arbitrary narrative attribute (willpower, morale, corruption, etc.).",
+            "Set or delta an arbitrary narrative attribute (willpower, morale, corruption, etc.). " +
+            "'exhaustion_level' is the mechanical D&D 5e exhaustion track (1-6 scale) — distinct from " +
+            "narrative tiredness, which is set via 'need' commits instead.",
             ["characterId", "attribute", "value"],
             ["isDelta"],
             HasSideEffects: false,
@@ -345,12 +348,13 @@ internal static class CommitSchemaRegistry
         // ── Resources (Spells, Focus Points, Action Points) ────────────────────────────
         new("resource", "World",
             "Spend or recover a resource pool (spell slots, sorcerer points, focus points, action points). " +
-            "Negative delta = spend (cast spell, use ability), positive = recover. Clamped to [0, max].",
+            "Negative delta = spend (cast spell, use ability), positive = recover. Clamped to [0, max]. " +
+            "Set spellName when spending spell_slots_* for slot-level validation (call get_spells for names).",
             ["characterId", "poolName", "delta"],
-            ["reason"],
+            ["reason", "spellName"],
             HasSideEffects: false,
             SideEffects: [],
-            CoCommitHints: ["event"],
-            Example: """{"$type":"resource","characterId":"characters/wizard-1","poolName":"spell_slots_3","delta":-1,"reason":"Cast Fireball"}"""),
+            CoCommitHints: ["event", "status"],
+            Example: """{"$type":"resource","characterId":"characters/wizard-1","poolName":"spell_slots_3","delta":-1,"spellName":"fireball","reason":"Cast Fireball"}"""),
     ];
 }

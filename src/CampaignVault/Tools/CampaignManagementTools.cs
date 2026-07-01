@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using CampaignVault.Data;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
+using CampaignVault.Services;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -8,7 +10,13 @@ namespace CampaignVault.Tools;
 [McpServerToolType]
 public class CampaignManagementTools(
     CampaignRepository repository,
-    CampaignDocumentKeys keys)
+    CampaignDocumentKeys keys,
+    SpellDefinitionProvider spellProvider,
+    ClassDefinitionProvider classProvider,
+    RaceDefinitionProvider raceProvider,
+    BackgroundDefinitionProvider backgroundProvider,
+    FeatDefinitionProvider featProvider,
+    ConditionDefinitionProvider conditionProvider)
     : CampaignToolBase(repository, keys)
 {
     [ToolCategory("Campaign management")]
@@ -128,6 +136,79 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
             return new ToolResult<List<Campaign>>(true, campaigns, $"Found {campaigns.Count} campaign(s).");
         }, saveChanges: false);
     }
+
+    [ToolCategory("Campaign management")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        @"RULESET DISCOVERY: Returns available classes, races, backgrounds, feats, and conditions for the campaign's active ruleset.
+Homebrew YAML on disk (RulesetData/{system}/) appears automatically alongside embedded SRD/ORC defaults.
+Call before character_create or when applying typed conditionName values. For spells, see notes → get_spells.")]
+    public Task<ToolResult<SystemHandbookResponse>> GetSystemHandbook(
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var handbook = SystemHandbookBuilder.Build(
+                config.ActiveSystem,
+                classProvider,
+                raceProvider,
+                backgroundProvider,
+                featProvider,
+                conditionProvider);
+
+            return new ToolResult<SystemHandbookResponse>(
+                true,
+                handbook,
+                $"System handbook for {handbook.System} ({handbook.Classes.Count} classes, " +
+                $"{handbook.Conditions.Count} conditions, campaign: {effective}).");
+        }, saveChanges: false);
+    }
+
+    [ToolCategory("Campaign management")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        @"SPELL DISCOVERY: Returns spell metadata (level, concentration, casting time) for the campaign's active ruleset.
+Filter by class and optional spell level. Results are paginated (default 40 per page) — use offset/limit or level filter for large lists.
+Homebrew spells in RulesetData/{system}/spells/ on disk appear automatically.
+Use spell names from this tool in resource commits (spellName field) for slot validation.")]
+    public Task<ToolResult<SpellListResponse>> GetSpells(
+        [Description("Class name for list filtering (e.g. 'Wizard', 'Cleric'). Required.")]
+        string @class,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName,
+        [Description("Optional spell level filter (0 = cantrip). Strongly recommended — full class lists are large.")]
+        int? level = null,
+        [Description("Pagination offset (default 0). Use response.pagination.hasMore and hint for next page.")]
+        int offset = 0,
+        [Description("Page size (default 40, max 100).")]
+        int? limit = null)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var system = config.ActiveSystem;
+            var page = SpellQueryBuilder.QueryPage(
+                spellProvider, system, @class, classProvider, level, offset, limit);
+
+            var response = SpellQueryBuilder.ToResponse(system, @class, level, page, ToSpellSummary);
+
+            return new ToolResult<SpellListResponse>(
+                true,
+                response,
+                response.Hint);
+        }, saveChanges: false);
+    }
+
+    private static SpellSummaryView ToSpellSummary(SpellDefinition spell) =>
+        new()
+        {
+            Name = spell.Name,
+            Level = spell.Level ?? 0,
+            Concentration = spell.Concentration ?? false,
+            CastingTime = spell.CastingTime
+        };
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]

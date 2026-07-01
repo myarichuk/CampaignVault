@@ -6,6 +6,7 @@ using Xunit;
 
 namespace CampaignVault.Tests;
 
+[Collection("McpDescriptorSync")]
 public class McpDescriptorSyncTests
 {
     private static string DescriptorsDirectory =>
@@ -30,6 +31,8 @@ public class McpDescriptorSyncTests
     [Fact]
     public void OnDiskDescriptors_MatchSourceMetadata()
     {
+        RegenerateIfRequested();
+
         var built = McpDescriptorBuilder.BuildAll();
         Assert.NotEmpty(built);
 
@@ -52,6 +55,16 @@ public class McpDescriptorSyncTests
 
     [Fact]
     public void RegenerateMcpDescriptors()
+    {
+        if (!string.Equals(Environment.GetEnvironmentVariable("REGENERATE_MCP"), "1", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        RegenerateIfRequested();
+    }
+
+    private static void RegenerateIfRequested()
     {
         if (!string.Equals(Environment.GetEnvironmentVariable("REGENERATE_MCP"), "1", StringComparison.Ordinal))
         {
