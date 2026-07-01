@@ -1,0 +1,8 @@
+{
+  "subagentModelOverrides": {
+    "Explore": "haiku",
+    "general-purpose": "haiku",
+    "Plan": "opus"
+  },
+  "effortLevel": "medium"
+}

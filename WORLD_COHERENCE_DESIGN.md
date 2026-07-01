@@ -2,14 +2,16 @@
 
 Design document for closing five feedback gaps where CampaignVault trusts the LLM to maintain state the engine does not own.
 
-**Last updated:** 2026-06-29 (review pass: PR-DOC timing, Narrative opt-out, authoring acceptance tests, slot RAW callout, multiclass example, guard-by-PR, migration, 5b performance)  
+**Last updated:** 2026-07-01 (reconciliation pass: Item 1 rewritten against as-built `ResourcePool` implementation shipped 2026-07-01 in `07c35f3`/`d3e466f`/`841a674`/`4521ade`/`0bf7eca`; **PR-DOC gate found violated** for that work — see remediation below)  
 **Single source of truth** for world-coherence work. Update this file when scope or status changes.
 
 ## Problem Statement
 
 CampaignVault excels at scene-centric narrative state, pressure nudges, and ruleset rolling — but several world-model loops are incomplete. When the LLM is attentive in a single session, gaps are papered over. Across time skips, rested spellcasters, earned relationships, hand-authored maps, and accumulated events, the world drifts unless the model manually commits every downstream effect.
 
-This document defines implementation for all five items. **Item 4 core work is landed; PR-1.1 closes remaining gaps.** Items 1–3 and 5 are designed but not implemented.
+This document defines implementation for all five items. **Item 1 is now implemented** (architecture differs materially from the original design below — see "Item 1: As-Built"). **Item 4 core work is landed; PR-1.1 closes remaining gaps.** Items 2, 3, and 5 remain designed but not implemented.
+
+**⚠ PR-DOC gate violation:** Item 1 shipped without the required same-PR/before-merge doc updates. `Tools/DmHelpManual.cs`, `docs/recommended-system-prompt.md`, and `ARCHITECTURE.md` still assert "Engine does not track spell slots" — false as of `d3e466f`. See **PR-DOC gate → Item 1 remediation** below. Treat this as the next required PR before any further Item 1 work.
 
 ---
 
@@ -17,11 +19,11 @@ This document defines implementation for all five items. **Item 4 core work is l
 
 | # | Gap | Severity | Status |
 |---|-----|----------|--------|
-| 1 | Spell slots / ability resources not tracked | High | Designed (5e v1 scoped) |
-| 2 | RelationshipChange has no mechanical bite | Medium | Designed |
-| 3 | One-way location links not auto-repaired | Medium | Designed |
-| 4 | TransientEvictionRule silently deletes NPCs | Medium | **Core implemented** — PR-1.1 pending |
-| 5 | Events are append-only, not structured state | High | Designed (4 sub-phases) |
+| 1 | Spell slots / ability resources not tracked | High | **Implemented** (2026-07-01, as generic cross-ruleset `ResourcePool` system — see rewritten section) — PR-DOC remediation pending |
+| 2 | RelationshipChange has no mechanical bite | Medium | Designed — confirmed not implemented |
+| 3 | One-way location links not auto-repaired | Medium | Designed — confirmed not implemented |
+| 4 | TransientEvictionRule silently deletes NPCs | Medium | **Core implemented** — PR-1.1 pending (`RecentlyDepartedPressureContributor` + integration test still absent) |
+| 5 | Events are append-only, not structured state | High | Designed (4 sub-phases) — confirmed not implemented |
 
 ### Honest Item 4 status
 
@@ -63,6 +65,26 @@ PR-DOC must land in the **same PR** as the implementation **or** in a **follow-u
 - Do **not** enforce strict `slotLevel` on spells until PR-DOC-4b merges (today `DmHelpManual` still says slots are not tracked).
 - Do **not** default auto-repair connectivity to `true` until PR-DOC-3 + authoring `oneWay` UX merge.
 
+### Item 1 PR-DOC remediation (found 2026-07-01 — gate violated)
+
+The resource-pool system (`07c35f3`→`0bf7eca`) merged without honoring this gate. Compliance as found:
+
+| Asset | State | Evidence |
+|-------|-------|----------|
+| `Tools/CommitSchemaRegistry.cs` | ✓ In sync | `resource` commit type + `spell_slots_3` example documented |
+| `Tools/CommitSpellHelpExamples.cs` | ~ Partial | One-liner present; no full JSON example |
+| `Tools/DmHelpManual.cs` | ✗ Stale | ~L297 still: *"Engine does not track spell slots"* |
+| `docs/recommended-system-prompt.md` | ✗ Stale | ~L39, same false claim |
+| `ARCHITECTURE.md` | ✗ Missing | No paragraph on `ResourceRecoveryRule` / `ResourcePoolProvider` |
+| `Tools/ToolCallExamples.cs` | ✗ Missing | No canonical resource-spend/rest example |
+
+**Required next PR (documentation-only, blocks further Item 1 work):**
+
+1. Remove the "Engine does not track spell slots" line from `DmHelpManual.cs` and `recommended-system-prompt.md`; replace with accurate `resource` commit guidance (pool names, `spellName` requirement for validation, clamp-not-fail behavior on empty pools).
+2. Add an `ARCHITECTURE.md` paragraph describing `ResourcePool`/`ResourcePoolProvider`/`ResourceRecoveryRule`.
+3. Add a canonical resource-spend and rest-then-recover example to `ToolCallExamples.cs`.
+4. **Do not** claim "second cast fails when out of slots" in any of the above until the `ResourceChangeHandler` empty-pool clamp-vs-fail gap (see Item 1: As-Built) is actually fixed.
+
 ### Pre-implementation audit (before each PR)
 
 ```powershell
@@ -87,13 +109,13 @@ Add or extend these in `CampaignVault.Tests` as contracts land:
 
 | Guard | PR | Item | Asserts |
 |-------|-----|------|---------|
-| `AdvanceWorld_PersistsRecentlyDeparted_AndDepartureEvent` | PR-1.1 | 4 | Full `AdvanceWorldAsync` → location doc + event query |
-| `SpellBootstrap_FillsSlots_Wizard5` | PR-4a | 1 | Bootstrap step populates `spellSlots` on create |
-| `SpellCast_DecrementsSlot_WhenTrackSpellSlotEconomy` | PR-4b | 1 | Commit `ruleset_action` → `get_scene` shows reduced slot |
-| `SpellCast_FailedSave_StillConsumesSlot` | PR-4b | 1 | Target saves → slot remains decremented (5e RAW) |
-| `SpellCast_SkipsSlots_WhenNarrativeRuleset` | PR-4b | 1 | `ActiveSystem == Narrative` → no slot check/consumption |
-| `LongRest_RestoresSlots` | PR-4c | 1 | Safe 8h rest resets to `spellSlotsMax` |
-| `ShortRest_RestoresKiOnly` | PR-4c | 1 | 1h rest restores classResources, not spell slots |
+| `AdvanceWorld_PersistsRecentlyDeparted_AndDepartureEvent` | PR-1.1 | 4 | Full `AdvanceWorldAsync` → location doc + event query — **still not written** |
+| `ResourcePoolInitializer_Wizard5_FillsSlots` (as-built name) | Shipped | 1 | `ResourcePoolInitializerTests.cs` — bootstrap-equivalent populates `spell_slots_*` on create ✓ |
+| `SpellCast_DecrementsSlot` (as-built via `SpellDefinitionTests.cs` fireball spend) | Shipped | 1 | Commit `resource` → pool `Current` decreases ✓ |
+| `SpellCast_FailedSave_StillConsumesSlot` | **Not implemented** | 1 | No resolver-layer gate before roll exists; slot spend is a separate `resource` commit the LLM must remember to make — RAW behavior is enforced by convention, not by the engine |
+| Narrative opt-out (no named test, structural) | Shipped | 1 | `ResourcePoolProvider` registers no YAML for `Narrative` → empty `ResourcePools` ✓ |
+| `LongRest_RestoresSlots` / `ShortRest_RestoresKiOnly` (as-built: `ResourceRecoveryRuleTests.cs`) | Shipped | 1 | 9 facts covering long/short/daily recovery + rest-type hierarchy ✓ |
+| `ResourceChangeHandler_EmptyPool_DoesNotHardFail` (gap — should be added) | **Missing** | 1 | Documents/asserts the known clamp-not-fail gap so it isn't "fixed" silently without a doc update |
 | `SocialCheck_IncludesRelationshipModifier_InNarrative` | PR-2 | 2 | Resolver output contains `(trusted friend)` tag |
 | `SocialCheck_Athletics_UnaffectedByRelationship` | PR-2 | 2 | Non-social skill unchanged |
 | `SocialCheck_SkipsRelationship_WhenNarrativeRuleset` | PR-2 | 2 | Oracle resolver unchanged |
@@ -114,25 +136,30 @@ Use this as the Phase 1-style audit checklist. **M** = modify, **A** = add new, 
 
 **Anchor** = method/section to open first (saves search time).
 
-### Item 1 — Spell slots (5e v1)
+### Item 1 — Resource pools (as-built, supersedes original 5e-only design)
 
-| File / area | M/A/V | PR | Anchor | Notes |
-|-------------|-------|-----|--------|-------|
-| `Models/Dnd5eExtension.cs` | M | 4a | property block ~L57 | `spellSlots`, `spellSlotsMax`, `classResources`, `classResourcesMax` |
-| `Rulesets/Bootstrap/Dnd5eDeriveSpellSlotsStep.cs` | A | 4a | `ApplyAsync` | After `Dnd5eDeriveSpellcastingStep` |
-| `Rulesets/Bootstrap/CharacterBootstrapOrchestrator.cs` | M | 4a | Dnd5e pipeline ctor | Register new step |
-| `Rulesets/SystemStatsMerger.cs` | M | 4a | `Merge()` ~L24, `DeepMerge` ~L83 | Dict fields merge by JSON deep-merge |
-| `Rulesets/SystemStatsCompleteness.cs` | M | 4a | `GetDnd5eMissing`, `BuildExampleCommit` | Caster hints |
-| `Rulesets/Dnd5eRulesetResolver.cs` | M | 4b | `ResolveSpellSaveAsync`, `ResolveSpellUtilityAsync` | Consumption before roll |
-| `Rulesets/NarrativeRulesetResolver.cs` | ⊘ | — | `ResolveAsync` ~L28 | **Opt out** — see Narrative ruleset |
-| `Data/ChangeHandlers/RulesetActionHandler.cs` | V | 4b | `ApplyAsync` | Dispatches to active resolver |
-| `Data/ChangeHandlers/RestChangeHandler.cs` | M | 4c | post-`EvaluateAsync` safe-rest branch ~L67 | Call `IRestRecoveryContributor` |
-| `Rulesets/IRestRecoveryContributor.cs` + Dnd5e impl | A | 4c | `ComputeRecovery` | DI in ruleset Autofac module |
-| `Rulesets/Contributors/SpellSlotPressureContributor.cs` | A | 4b | `EvaluateAsync` | Scene scope |
-| `Data/Scenes/SceneNpcPresenceFactory.cs` | V | — | `Create` ~L56 | `SystemStats` already exposed |
-| `Models/CampaignConfig.cs` | M | 4a | flags section | `TrackSpellSlotEconomy` (default true; ignored when Narrative) |
-| `Tools/DmHelpManual.cs`, `CommitSchemaRegistry.cs`, `ToolCallExamples.cs` | M | PR-DOC | — | Required before 4b gates |
-| PF2e / Fallout | — | — | — | Out of 5e v1 scope |
+**Done** = shipped in `07c35f3`/`d3e466f`/`841a674`/`4521ade`/`0bf7eca` (2026-06-29 to 2026-07-01). This table replaces the original bootstrap-step/Dnd5eExtension design — see **Item 1: As-Built** for why the architecture diverged.
+
+| File / area | M/A/V | Status | Anchor | Notes |
+|-------------|-------|--------|--------|-------|
+| `Models/Character.cs` | Done | Done | `SystemStats.ResourcePools` ~L324, `ResourcePool` record ~L331 | Generic `Dictionary<string, ResourcePool>` replaces per-system dict fields |
+| `Services/ResourcePoolProvider.cs` | Done | Done | `IRulesetYamlProvider` impl | Loads `RulesetData/{dnd5e,pf2e,fallout2d20}/pools/*.yaml` |
+| `Services/ResourcePoolInitializer.cs` | Done | Done | `InitializePools` | Derives `Max` via `LevelToMaxMap`; preserves spent `Current` / drops stale pools on resync |
+| `Services/Dnd5eCasterLevelHelper.cs` | Done | Done | `ComputeCasterLevel` | Full/half/third-caster stacking; Warlock excluded (0) |
+| `Data/ChangeHandlers/ResourceChangeHandler.cs` | Done | Done | `ApplyAsync`, `TryValidateSpellSpend` | Clamps `[0, Max]`; **does not fail on empty pool** — narrates `(Clamped: ...)` only |
+| `Data/SpellSlotValidator.cs` | Done | Done | `ValidateSpend`, `IsCantrip`, `BuildConcentrationHint` | Over-level rejection, cantrip skip, concentration hint |
+| `Data/Templates/SpellDefinition.cs` + `SpellDefinitionProvider` | Done | Done | YAML spell metadata | `Level`, `Classes`, `Concentration`, `CastingTime` |
+| `Data/ResourceRecoveryRule.cs` | Done | Done | `ApplyAsync`, `ShouldRecoverPool` | Single `ISimulationRule` (Order 38) — no per-ruleset contributor needed |
+| `Data/ChangeHandlers/RestChangeHandler.cs` | Done | Done | sets `LastRestedDay`/`LastRestType`/`RestSequence` | Encounter-interruption gate unchanged from prior design |
+| `Data/ChangeHandlers/RestRecoveryAckHandler.cs` | Done | Done | idempotency marker | Consumes `RestRecoveryAck` from `ResourceRecoveryRule` |
+| `RulesetData/{dnd5e,pf2e,fallout2d20}/pools/*.yaml` | Done | Done | — | dnd5e: slots 1–9, ki, superiority dice, font of magic, action surge, etc.; pf2e: slots 1–4, focus points, bon mot; fallout2d20: action points |
+| `NarrativeRulesetResolver` | ⊘ | Structural opt-out | — | No YAML pools registered for Narrative → `ResourcePools` stays empty, all handlers/rules no-op |
+| `Tools/CommitSchemaRegistry.cs` | Done | In sync | `resource` commit entry | Documents `poolName`/`delta`/`spellName` |
+| `Tools/DmHelpManual.cs` | **Pending** | **Stale** | ~L297 | Still says "Engine does not track spell slots" — false |
+| `docs/recommended-system-prompt.md` | **Pending** | **Stale** | ~L39 | Same false claim |
+| `ARCHITECTURE.md` | **Pending** | **Missing** | — | No paragraph on `ResourceRecoveryRule`/`ResourcePoolProvider` |
+| `Tools/ToolCallExamples.cs` | **Pending** | **Missing** | — | No canonical resource-spend/rest example |
+| PF2e / Fallout | Done | **In scope now** | — | Contradicts original "out of 5e v1 scope" — both systems fully wired with tests |
 
 ### Item 2 — Relationship modifiers
 
@@ -264,96 +291,81 @@ Do not backfill `RecentlyDeparted` from old simulation narratives. Optional one-
 
 ---
 
-## Item 1: Spell Slots & Ability Resources
+## Item 1: Resource Pools (Spell Slots & Ability Resources) — As-Built
 
-### Problem
+### Original problem
 
-Casters can cast unlimited spells. `RestChange` handles encounter interruption only — no slot/ki recovery. `DmHelpManual` explicitly documents this gap.
+Casters could cast unlimited spells. `RestChange` handled encounter interruption only — no slot/ki recovery. `DmHelpManual` explicitly documented this gap.
 
-### v1 scope
+### Why this section was rewritten
 
-- **5e only.** PF2e focus points and Fallout AP are separate PRs.
-- Track **economy** (slots remaining), not spell lists.
-- Recovery in ruleset layer, not LLM commits.
-- Gated by `CampaignConfig.TrackSpellSlotEconomy` (default `true`).
+This item shipped (`07c35f3` → `d3e466f` → `841a674` → `4521ade` → `0bf7eca`, 2026-06-29 to 2026-07-01) with an architecture that diverges from the original per-system `Dnd5eExtension` design below in every material way: one generic schema instead of three, data-driven YAML instead of a bootstrap step, and a single cross-ruleset recovery rule instead of a per-ruleset contributor interface. The result is **more general** than v1 scoped for (it also covers PF2e and Fallout 2d20), but it shipped **without the PR-DOC gate being honored** — see remediation below. The subsections that follow describe what actually exists.
 
-### Schema: `Dnd5eExtension`
+### Schema (as-built)
 
-```csharp
-[JsonPropertyName("spellSlots")]
-public Dictionary<string, int> SpellSlots { get; set; } = [];
-
-[JsonPropertyName("spellSlotsMax")]
-public Dictionary<string, int> SpellSlotsMax { get; set; } = [];
-
-[JsonPropertyName("classResources")]
-public Dictionary<string, int> ClassResources { get; set; } = [];  // ki, rage, channelDivinity
-
-[JsonPropertyName("classResourcesMax")]
-public Dictionary<string, int> ClassResourcesMax { get; set; } = [];
-```
-
-### Spell level resolution (avoids LLM retry loops)
-
-**v1 requires explicit `parameters.slotLevel`** on leveled spells. Do not default missing slotLevel to 1 (that hides bugs).
-
-| Input | Behavior |
-|-------|----------|
-| `parameters.slotLevel` missing + `actionName` matches known cantrip list | No consumption |
-| `parameters.slotLevel` missing + leveled spell | `ResolverResult.Fail` with `CommitJsonErrorHints` + example |
-| `parameters.ritual: true` | No consumption (v2 formalize) |
-| `parameters.slotLevel` > highest slot in table | Fail before roll |
-| Cast fails (save negates, etc.) | **Still consume slot** — see RAW callout below |
-
-Cantrips: never consume. Upcast: consume at declared `slotLevel`.
-
-### Slot consumption on failed casts (PR-DOC callout — required)
-
-> **ENGINE BEHAVIOR (5e RAW):** A spell slot is consumed when the cast **completes**, not when the effect succeeds. If the target succeeds on a saving throw, the slot is **still spent**. CampaignVault does **not** refund slots on "failed" saves, counterspell, or fizzled narrative outcomes unless the LLM commits a manual `system_stats` correction for a documented house rule.
->
-> PR-DOC-4b must include this block verbatim in `DmHelpManual` and `recommended-system-prompt.md` so the LLM does not argue for refunds or loop retries expecting slot recovery.
-
-Optional v2: `CampaignConfig.RefundSlotsOnFailedSave` (default `false`).
-
-### Multiclass (v1 decision — simplified, not PHB)
-
-**Rule:** Sum levels from all entries in `classLevels` where the class is a **known caster** (Bard, Cleric, Druid, Sorcerer, Warlock, Wizard, Paladin, Ranger per `Dnd5eClassProfileResolver`). Look up the **full caster** slot table for that total level. Non-caster class levels in the array do not add slots in v1 (Fighter 5 / Wizard 3 → **3rd-level caster table**, not 8th).
-
-**Worked example (must appear in PR-DOC-4a):**
-
-```
-classLevels: [{ class: Bard, level: 2 }, { class: Wizard, level: 3 }]
-→ casterLevel = 5
-→ spellSlots / spellSlotsMax: { "1": 4, "2": 3, "3": 2 }  // full-caster 5th-level row
-```
-
-```
-classLevels: [{ class: Fighter, level: 5 }, { class: Wizard, level: 3 }]
-→ casterLevel = 3  (Fighter ignored for slot table in v1)
-→ spellSlots: { "1": 4, "2": 2 }
-```
-
-**PR-DOC must state:** "This is a deliberate simplification. Full PHB multiclass slot math is v2." Warlock pact magic (separate slot count) is v2 — document as known gap.
-
-### PR split (was one ~500 LOC PR)
-
-| PR | Deliverable | Exit criteria |
-|----|-------------|---------------|
-| **PR-4a** | `Dnd5eDeriveSpellSlotsStep` + merge + completeness hints | Wizard 5 bootstrap fills slots in `get_scene` |
-| **PR-4b** | Cast consumption in resolver + `SpellSlotPressureContributor` | Second same-level cast fails when tracking enabled |
-| **PR-4c** | `IRestRecoveryContributor` + `RestChangeHandler` hook | Long rest restores slots; short rest restores ki |
-
-### `IRestRecoveryContributor`
+Generic, cross-ruleset, lives on `SystemStats` (not a per-system extension):
 
 ```csharp
-interface IRestRecoveryContributor
+// Models/Character.cs
+[JsonPropertyName("resourcePools")]
+public Dictionary<string, ResourcePool> ResourcePools { get; set; } = [];
+
+public record ResourcePool
 {
-    RulesetSystem System { get; }
-    IReadOnlyList<WorldChange> ComputeRecovery(Character character, int hoursRested);
+    public int Current { get; init; }
+    public int Max { get; init; }
+    public RecoveryType Recovery { get; init; } = RecoveryType.LongRest;
+    public int? LastRecoveredDay { get; init; }
 }
 ```
 
-Register in Autofac ruleset module alongside resolvers. Interrupted rest → no recovery (existing behavior).
+Pools are keyed by name (`spell_slots_1`..`spell_slots_9`, `ki_points`, `focus_points`, `action_points`, `superiority_dice`, `bardic_inspiration`, etc.). Rest-tracking fields live directly on `Character`: `LastRestedDay`, `LastRestType` (`RestType?`), `RestSequence`, `LastRecoveredRestSequence`, `LastRestRecoveredDay` (legacy fallback for pre-`RestSequence` saves).
+
+### Population — data-driven, not a bootstrap step
+
+`Services/ResourcePoolProvider.cs` (`IRulesetYamlProvider`) loads `ResourcePoolTemplate` records from `RulesetData/{dnd5e,pf2e,fallout2d20}/pools/*.yaml` (fields: `Name`, `ApplicableSystems`, `ApplicableClasses`, `Recovery`, `DefaultMax`, `LevelToMaxMap`, `FeatGrantedOnly`). `Services/ResourcePoolInitializer.cs` derives each pool's `Max`:
+
+- **dnd5e spell slots**: `Services/Dnd5eCasterLevelHelper.ComputeCasterLevel` sums caster contribution per class-level entry — Full casters add their level as-is, Half casters add `level / 2`, Third casters add `level / 3` (rounded **per class entry, then summed** — not sum-then-round, so it's an approximation of PHB math for multi-half-caster multiclasses), Warlock contributes `0` (pact magic tracked separately via `warlock_invocations`). Result indexes `LevelToMaxMap`.
+- **pf2e spell slots**: gated by `Pf2eCasterClasses.HasCaster`, indexed by raw character level (not a derived caster level).
+- **Other pools** (ki, rage, focus points, action points): matched by `ApplicableClasses` + relevant class level, or plain character level.
+- Feat-granted pools (e.g. `font_of_magic`) are added via a separate feat provider under the same gating.
+- Re-sync on level-up/class-change (`Data/ChangeHandlers/CharacterChangeHandlers.cs`) preserves spent `Current` (clamped to new `Max`) and drops pools no longer applicable.
+
+**PF2e and Fallout 2d20 are now in scope** — `RulesetData/pf2e/pools/spell_slots_1..4.yaml`, `focus_points.yaml` (class-gated: wizard/witch/cleric/druid/bard, `LevelToMaxMap` 1/10/16/20 → 1/2/3 points, `ShortRest` recovery), `bon_mot.yaml`; `RulesetData/fallout2d20/pools/action_points.yaml`. This directly contradicts the original "PF2e out of 5e v1 scope" line — treat that line as superseded.
+
+### Consumption — `resource` commit, not a resolver-layer intercept
+
+```json
+{ "$type": "resource", "characterId": "characters/wizard-1", "poolName": "spell_slots_3", "delta": -1, "spellName": "fireball", "reason": "Cast Fireball" }
+```
+
+Handled by `Data/ChangeHandlers/ResourceChangeHandler.cs`:
+
+- Clamps `Current` to `[0, Max]`.
+- If the pool is a `spell_slots_*` pool and `spellName` is provided: resolves `SpellDefinition` via `SpellDefinitionProvider` for the character's active `RulesetSystem`, then applies `Data/SpellSlotValidator.cs` — skips validation with a `[WARNING]` on cantrips, **fails the commit** if `spell.Level > slotLevel` (before any roll), and emits a soft `[HINT]` reminding the LLM to commit a separate `status` change for concentration.
+- Missing `spellName`, unresolvable system, or unknown spell name → soft `[WARNING]`, **spend still applies** (fails open, does not block the commit).
+
+**⚠ Known gap vs. original design intent:** spending against an **already-empty pool** does **not** fail the commit. `ResourceChangeHandler.ApplyAsync` clamps `Current` to 0, computes `actualDelta = 0`, and appends `(Clamped: requested -1, actual 0)` to the narrative — but returns `success: true`. There is no hard rejection of "cast when no slots remain." The LLM must notice the clamp narrative; nothing currently blocks the action. This means the original design's "second same-level cast fails" behavior (and the RAW slot-on-failed-save callout, which assumed a resolver-layer gate before the roll) is **not implemented as originally envisioned** — only the over-level-spell case hard-fails. Treat as an open follow-up, not a shipped behavior; do not claim "second cast fails" in `DmHelpManual`/`recommended-system-prompt.md` until this is fixed.
+
+### Narrative ruleset opt-out — structural, not a flag
+
+There is no `TrackSpellSlotEconomy` config flag in the as-built system. `ResourcePoolProvider` simply never registers YAML loaders for `RulesetSystem.Narrative`, so Narrative characters get an empty `ResourcePools` dict and `ResourceRecoveryRule`/`ResourceChangeHandler` no-op on the empty dictionary. Functionally equivalent to the designed opt-out, achieved differently.
+
+### Recovery — one generic rule, not per-ruleset contributors
+
+`Data/ResourceRecoveryRule.cs` (`ISimulationRule`, Order 38) runs during `advance_world` for every scheduled character with a non-empty `ResourcePools`:
+
+1. **Daily recovery** — any pool with `RecoveryType.Daily` refills once per campaign day, gated by `LastRecoveredDay >= currentDay`, independent of rest state.
+2. **Rest recovery** — gated by `IsRestAlreadyRecovered` (`LastRecoveredRestSequence == RestSequence`, else legacy `LastRestRecoveredDay == LastRestedDay` fallback). Hierarchy: `LongRest ⊃ ShortRest ⊃ PerTurn` (a rest of a given type recovers pools tagged at that type or lower). `EncounterEnd` recovery type exists in the enum but is **not yet wired** (PerTurn Action Points still require manual LLM commits per the class doc comment).
+3. Emits `ResourceChange` deltas plus one `RestRecoveryAck` per character (consumed by `Data/ChangeHandlers/RestRecoveryAckHandler.cs`) for idempotency.
+
+`Data/ChangeHandlers/RestChangeHandler.cs` still owns the LLM-facing `rest` commit: runs the existing encounter-interruption check, and on an uninterrupted rest sets `LastRestedDay`, `LastRestType` (explicit or inferred: ≥8h → LongRest, else ShortRest), increments `RestSequence`. Recovery itself happens on the **next** `advance_world`, not immediately — `DmHelpManual` already documents this timing correctly.
+
+There is no `IRestRecoveryContributor` interface — the single generic rule replaced the planned per-ruleset-contributor design. DI is automatic via `AutofacModules/ConventionRegistration.cs` marker-interface scanning (`ISimulationRule`, `IWorldChangeHandler`, `IRulesetYamlProvider`, `IRulesetDataInitializer`); no manual registration exists or is needed.
+
+### Test coverage (as-built)
+
+`ResourceRecoveryRuleTests.cs` (9 facts), `RestChangeHandlerTests.cs`, `ResourcePoolInitializerTests.cs` (10 facts incl. multiclass full/half-caster stacking, pf2e wizard/fighter gating, preserve-spent-on-resync, remove-stale-on-class-change), `SpellDefinitionTests.cs` (spell YAML golden tests, slot-validator over-level rejection, cantrip skip, fireball spend/warn/fail paths), `LevelUpResourcePoolTests.cs` (level-up gains new slot tier while preserving spent slots). This is a genuinely thorough, tested feature — not a stub.
 
 ---
 
@@ -606,9 +618,10 @@ Extend `FactionRecentEventPressureContributor` or `FactionEcosystemRule` to read
 public bool AutoRepairLocationConnectivity { get; set; } = false;
 public bool AutoEvolveLocationState { get; set; } = false;
 public bool AutoApplyEventConsequences { get; set; } = false;
-public bool TrackSpellSlotEconomy { get; set; } = true;
 public bool SymmetricRelationshipFallback { get; set; } = false;
 ```
+
+**Note:** `TrackSpellSlotEconomy` never shipped — the as-built resource-pool system has no such flag. Tracking is structural: a `RulesetSystem` either has YAML pool templates registered (dnd5e/pf2e/fallout2d20) or doesn't (Narrative). See **Item 1: As-Built → Narrative ruleset opt-out**.
 
 ### Pressure item consistency
 
@@ -620,10 +633,10 @@ All connectivity and consequence contributors must set `SuggestedCommitJson`. `E
 
 | Item | Narrative behavior | Rationale |
 |------|-------------------|-----------|
-| **1 Spell slots** | **No tracking, no consumption, no recovery.** `TrackSpellSlotEconomy` is ignored. Spells use oracle `1d6` in `NarrativeRulesetResolver.ResolveAsync` (~L28). | Narrative mode has no slot economy; oracle replaces spell math. |
-| **2 Relationships** | **No roll modifiers.** Oracle rolls are not skill checks; no DC, no target-bound persuasion pipeline. | Relationship pressure + initiative still apply for prose. |
+| **1 Spell slots** | **No tracking, no consumption, no recovery — confirmed as-built.** No config flag involved; `ResourcePoolProvider` registers no pool YAML for `RulesetSystem.Narrative`, so `ResourcePools` stays empty and `ResourceRecoveryRule`/`ResourceChangeHandler` no-op. Spells use oracle `1d6` in `NarrativeRulesetResolver.ResolveAsync` (~L28). | Narrative mode has no slot economy; oracle replaces spell math. |
+| **2 Relationships** | **No roll modifiers.** Oracle rolls are not skill checks; no DC, no target-bound persuasion pipeline. Item 2 unimplemented, so this is currently true for all rulesets, not just Narrative. | Relationship pressure + initiative still apply for prose. |
 
-**PR-DOC language (required in PR-DOC-2 and PR-DOC-4b):**
+**PR-DOC language (required in PR-DOC-2 and the Item 1 remediation PR):**
 
 > When `set_active_system` is **Narrative**, the engine does **not** track spell slots or apply relationship modifiers to rolls. Use oracle outcomes and narrative pressure instead. Switch to **Dnd5e** (or PF2e) for tracked slots and social roll bonuses.
 
@@ -636,15 +649,19 @@ Touchpoint Matrix marks `NarrativeRulesetResolver` as **⊘** (opt-out), not **V
 ```
 PR-1:  Eviction observability (core) ✅
   │
-  └─► PR-1.1: Integration test + RecentlyDeparted pressure + PR-DOC polish
+  ├─► PR-1.1: Integration test + RecentlyDeparted pressure + PR-DOC polish  [still open]
+  │
+  PR-Resources: Resource pool system (Item 1) ✅ shipped 2026-07-01
+  │   (07c35f3 → d3e466f → 841a674 → 4521ade → 0bf7eca — superseded original PR-4a/4b/4c split,
+  │    which never ran; do not plan further work against the old split)
+  │
+  └─► PR-DOC-Resources-fix: Close PR-DOC gate violation for the shipped resource system
+        (DmHelpManual, recommended-system-prompt.md, ARCHITECTURE.md, ToolCallExamples —
+         see "Item 1 PR-DOC remediation" above) — REQUIRED NEXT, blocks further Item 1 work
         │
         ├─► PR-2: Relationship roll modifiers + PR-DOC-2
         │
         ├─► PR-3: Connectivity detect + SuggestedCommitJson + oneWay + opt-in repair + Authoring + PR-DOC-3
-        │
-        ├─► PR-4a: Spell slot bootstrap + PR-DOC-4a
-        │     └─► PR-4b: Cast consumption + PR-DOC-4b
-        │           └─► PR-4c: Rest recovery + PR-DOC-4c
         │
         └─► PR-5a: Event consequence templates + integration tests + PR-DOC-5a
               └─► PR-5b: EventConsequenceRule + idempotency + Departure TTL
@@ -652,9 +669,9 @@ PR-1:  Eviction observability (core) ✅
                           └─► PR-5d: Faction event coupling (optional)
 ```
 
-PR-2 and PR-3 can run in parallel after PR-1.1. PR-4a–c are sequential. PR-5b blocked on 5a tests.
+PR-1.1, PR-2, and PR-3 can run in parallel with/after the PR-DOC-Resources-fix. PR-5b blocked on 5a tests.
 
-PR-DOC merges **with or immediately before** implementation PR — see **PR-DOC gate → Timing** (no grace window).
+PR-DOC merges **with or immediately before** implementation PR — see **PR-DOC gate → Timing** (no grace window). **This rule was violated for the resource-pool work; PR-DOC-Resources-fix is the correction.**
 
 ---
 
@@ -663,12 +680,15 @@ PR-DOC merges **with or immediately before** implementation PR — see **PR-DOC 
 | Check | Status |
 |-------|--------|
 | Item 4 core logic matches git (delta bundle, handlers, Departure) | ✓ Landed |
-| PR-1.1 items listed as **A** in matrix, not claimed done | ✓ |
+| PR-1.1 items listed as **A** in matrix, not claimed done | ✓ — confirmed still absent (2026-07-01 re-check) |
 | Schema additions non-breaking (nullable / new lists only) | ✓ |
-| Config defaults safe-by-default (`AutoRepair=false`, `AutoApply=false`) | ✓ |
-| Item 5 PoI overlap has guard test `LocationDecay_SinglePressureVoice_NoPoIDuplicate` | ✓ Added |
-| Narrative ruleset explicitly opt-out, not "verify" | ✓ Locked |
+| Config defaults safe-by-default (`AutoRepair=false`, `AutoApply=false`) | ✓ (n/a yet — Items 2/3/5 unimplemented, no flags exist to check) |
+| Item 5 PoI overlap has guard test `LocationDecay_SinglePressureVoice_NoPoIDuplicate` | Not yet — Item 5 unimplemented as of 2026-07-01 |
+| Narrative ruleset explicitly opt-out, not "verify" | ✓ Locked (design); ✓ confirmed structurally true for the shipped resource system |
 | Pre-Item-4 deleted items migration | ✓ Documented as unrecoverable |
+| **Item 1 architecture matches as-built code** | **✗ Original design superseded — see "Item 1: As-Built"; doc rewritten 2026-07-01** |
+| **PR-DOC gate honored for Item 1** | **✗ Not honored — `DmHelpManual`/`recommended-system-prompt.md`/`ARCHITECTURE.md` stale; see remediation** |
+| Items 2, 3, 5 confirmed absent (no renamed/partial implementation) | ✓ Re-verified 2026-07-01 via direct grep of resolvers, contributors, config, Autofac registration |
 
 ---
 
@@ -676,13 +696,13 @@ PR-DOC merges **with or immediately before** implementation PR — see **PR-DOC 
 
 | # | Question | Proposed default |
 |---|----------|------------------|
-| 1 | Full PHB multiclass slot math? | v2; v1 uses caster-class level sum + full-caster table |
-| 2 | Auto-apply consequences without LLM commit? | `AutoApplyEventConsequences = false`; 5b limited to safe deltas (PoI, TTL) |
-| 3 | RecentlyDeparted TTL? | 30 days; prune in 5b `EventConsequenceRule` |
-| 4 | Item `currentState` on eviction drop? | PR-1.1 optional; `"left behind by departed patron"` |
-| 5 | Narrative ruleset spell slots / relationships? | **Locked: opt out** (see Narrative ruleset section) |
-| 6 | Symmetric relationship fallback? | Off by default (`SymmetricRelationshipFallback`) |
-| 7 | Refund slot on failed save (house rule)? | Off; `RefundSlotsOnFailedSave` v2 config |
+| 1 | Full PHB multiclass slot math? | **Resolved as-built**: `Dnd5eCasterLevelHelper.ComputeCasterLevel` already does full/half/third-caster stacking (Warlock excluded), rounding per-class-entry then summing — closer to PHB than the original "full-caster-only sum" v1 plan, though not an exact match for multi-half-caster multiclasses (PHB sums levels first, then divides once). No further v2 work needed unless that edge case matters. |
+| 2 | Auto-apply consequences without LLM commit? | `AutoApplyEventConsequences = false`; 5b limited to safe deltas (PoI, TTL) — unchanged, Item 5 not started |
+| 3 | RecentlyDeparted TTL? | 30 days; prune in 5b `EventConsequenceRule` — unchanged, not started |
+| 4 | Item `currentState` on eviction drop? | PR-1.1 optional; `"left behind by departed patron"` — unchanged, PR-1.1 not started |
+| 5 | Narrative ruleset spell slots / relationships? | **Locked: opt out.** Confirmed as-built for resource pools (structural, no YAML registered for Narrative). Relationships (Item 2) unimplemented so N/A there. |
+| 6 | Symmetric relationship fallback? | Off by default (`SymmetricRelationshipFallback`) — unchanged, Item 2 not started |
+| 7 | Refund slot on failed save (house rule)? | **Reframed**: the as-built system doesn't have a resolver-layer gate to refund *from* — slot spend is a manual `resource` commit the LLM makes alongside a spell cast. No refund mechanism exists or is needed until a resolver-layer cast pipeline is built. Off; revisit only if that pipeline is added. |
 
 ---
 
@@ -691,9 +711,11 @@ PR-DOC merges **with or immediately before** implementation PR — see **PR-DOC 
 - [ ] Item 4: integration test proves persisted eviction trail after `advance_world`
 - [ ] Item 2: social skill narrative includes relationship bonus tag
 - [ ] Item 3: one-way **accidental** links surface `SuggestedCommitJson`; intentional `oneWay` exits silent
-- [ ] Item 1: second leveled spell cast fails without rest when tracking enabled
+- [ ] Item 1: second leveled spell cast fails without rest when tracking enabled — **not met as-built; `ResourceChangeHandler` clamps silently on empty pools instead of failing (see "Item 1: As-Built" gap)**
+- [x] Item 1: bootstrap/initializer populates slots for a leveled caster on create (`ResourcePoolInitializerTests.cs`)
+- [x] Item 1: rest recovery restores pools per the LongRest ⊃ ShortRest ⊃ PerTurn hierarchy (`ResourceRecoveryRuleTests.cs`)
 - [ ] Item 5a: combat at location produces consequence pressure on next `get_scene` without double-apply
-- [ ] Every PR merged with PR-DOC updates to `DmHelpManual` + `recommended-system-prompt.md`
+- [ ] Every PR merged with PR-DOC updates to `DmHelpManual` + `recommended-system-prompt.md` — **violated for the resource-pool PRs; remediation required**
 - [ ] Full test suite green; new guard tests listed above pass
 
 ---
@@ -701,13 +723,18 @@ PR-DOC merges **with or immediately before** implementation PR — see **PR-DOC 
 ## Developer experience notes
 
 1. **Touchpoint Matrix** — use the **Anchor** column first; line numbers are approximate against current main.
-2. **Guard tests** — **PR** column tells you which tests to add in which PR; do not land all Item 1 guards in 4a.
-3. **PR-DOC** — same PR or doc-first stack; no merge window without docs (see Execution Rules).
+2. **Guard tests** — **PR** column tells you which tests to add in which PR; Item 1's original PR-4a/4b/4c split never ran — it shipped as one connected body of work under a different architecture (see "Item 1: As-Built").
+3. **PR-DOC** — same PR or doc-first stack; no merge window without docs (see Execution Rules). **This was violated for Item 1 — check `Tools/DmHelpManual.cs` line ~297 before trusting anything it says about spell slots.**
 4. **Migration** — Item 4 is prospective only; do not build backfill jobs.
 5. **5b performance** — respect event cap + day window; add a timing assertion in integration test if scans regress.
+6. **Item 1 empty-pool gap** — do not assume "out of slots" blocks a cast. It doesn't yet; `ResourceChangeHandler` clamps to 0 and narrates, but returns success. Fix this (and its guard test) before claiming the original design's success criterion is met.
 
 ---
 
 ## Summary
 
-Item 4 fixed the eviction observability hole in core code; PR-1.1 closes the persistence and discoverability loop. Items 1–3 and 5 have a **touchpoint matrix with anchors**, **PR-scoped guard tests**, **locked Narrative opt-out**, **authoring acceptance tests**, **slot RAW PR-DOC callout**, **multiclass worked examples**, and **5b performance bounds**. Execute PR-1.1 next, then PR-2 or PR-3 in parallel.
+**Item 1 (Spell Slots & Ability Resources) shipped 2026-07-01**, generalized into a cross-ruleset `ResourcePool` system (dnd5e + pf2e + fallout2d20, data-driven YAML, single recovery rule) — architecturally different from and broader than originally designed, but its PR-DOC gate was violated (`DmHelpManual`, `recommended-system-prompt.md`, `ARCHITECTURE.md` still describe the old gap) and it has one known behavioral hole (empty pools clamp silently instead of failing the cast). **PR-DOC-Resources-fix is the required next step**, before any further Item 1 work.
+
+Item 4 fixed the eviction observability hole in core code; PR-1.1 (persistence + discoverability loop) is still open and unstarted. Items 2, 3, and 5 remain fully unimplemented, each with a **touchpoint matrix with anchors**, **PR-scoped guard tests**, **locked Narrative opt-out**, **authoring acceptance tests**, and **5b performance bounds** — none of that has changed since the last design pass.
+
+**Execute in this order:** PR-DOC-Resources-fix (closes the Item 1 gate violation) → PR-1.1, PR-2, PR-3 in parallel → PR-5a onward.

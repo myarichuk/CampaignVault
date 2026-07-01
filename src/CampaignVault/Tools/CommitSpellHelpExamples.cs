@@ -157,6 +157,32 @@ internal static class CommitSpellHelpExamples
 { "$type": "level_up", "characterId": "chars/gish", "levelsGained": 1, "classGained": "Wizard", "hpMode": "average" }
 """;
 
+    internal const string ResourceSpendExample = """
+[
+  {
+    "$type": "resource",
+    "characterId": "chars/wizard",
+    "poolName": "spell_slots_3",
+    "delta": -1,
+    "spellName": "fireball",
+    "reason": "Cast Fireball"
+  }
+]
+""";
+
+    internal const string RestRecoveryExample = """
+[
+  {
+    "$type": "rest",
+    "characterId": "chars/wizard",
+    "intendedHours": 8,
+    "securityModifier": 0
+  }
+]
+
+After this rest commit, call `advance_world` on the next session day for `ResourceRecoveryRule` to refill the pools per the rest type (LongRest ⊃ ShortRest ⊃ PerTurn hierarchy).
+""";
+
     internal const string HelpSection = RoutingGuide + """
 
 **Fireball (save — all targets, one commit):**
@@ -178,5 +204,11 @@ internal static class CommitSpellHelpExamples
 """ + FalloutStimpak + """
 
 **Concentration (after save spell — separate commit):**
-""" + ConcentrationStatus;
+""" + ConcentrationStatus + """
+
+**Resource spend (spell slots, ki, focus points — required for typed casters):**
+""" + ResourceSpendExample + """
+
+**Rest and recovery timing:**
+""" + RestRecoveryExample;
 }

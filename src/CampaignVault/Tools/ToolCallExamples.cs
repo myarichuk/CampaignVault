@@ -527,6 +527,7 @@ internal static class ToolCallExamples
                     + "Fireball pattern: resolution save, dc, save, damageDice, halfOnSave true. "
                     + "Detect Magic: resolution check, dc, skill — no targetIds. "
                     + "5e casters: bootstrap spellcastingAbility on systemStats; omit dc/bonus if spellSaveDc/spellAttackBonus derived. "
+                    + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points; validates spell level but clamps (never hard-fails) on empty — watch for (Clamped: ...) in narrative. Recovery on NEXT advance_world after rest, not at rest time. "
                     + "Fallout: dc aliases difficulty; Stimpak = UseItem + healAmount. "
                     + "RUMORS: seed with $type rumor_create (rumorId, subject, text); evolve with $type rumor (rumorId, newState). "
                     + "Engine auto-applies hp from ruleset_action — no duplicate hp commits. "

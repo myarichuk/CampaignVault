@@ -141,6 +141,7 @@ Simulation context loading (`SimulationQueryHelper`) is campaign-scoped: charact
 | `QuestStalenessRule` | Quest urgency / staleness progression |
 | `RelationalRearmRule` | Relationship cooldown re-arming |
 | `TransientEvictionRule` | Evict transient NPCs from cold locations |
+| `ResourceRecoveryRule` | Recover `ResourcePools` (spell slots, ki, focus points, etc.) on long/short rest, per pool recovery types and rest hierarchy |
 
 Rule output: narrative strings (logged as simulation events), `WorldChange` deltas (applied via the same commit path), and optional engine-level pressure items.
 
@@ -178,6 +179,12 @@ Implemented and registered at startup:
 | `NarrativeRulesetResolver` | Narrative | Oracle-style d100 rolls for skill/combat checks when mechanical rulesets are disabled; no HP math |
 
 `RulesetModuleSelector` validates that every `RulesetSystem` enum value has a registered module at startup. `DefaultRollService` provides deterministic dice evaluation.
+
+### Resource pools (spell slots, ability resources)
+
+`ResourcePoolProvider` (`IRulesetYamlProvider`) loads pool templates from `RulesetData/{system}/pools/*.yaml` (e.g. `spell_slots_1..9`, `ki_points`, `focus_points`) — configuration is data-driven, not hardcoded. Each pool tracks `Current` and `Max` (derived at character create/level-up by `ResourcePoolInitializer` via `Dnd5eCasterLevelHelper` for d&d5e multiclass stacking, class-level maps for PF2e, etc.), `Recovery` type (`LongRest`/`ShortRest`/`Daily`), and last-recovered tracking for idempotency.
+
+Consumption goes through `ResourceChangeHandler` via `$type: "resource"` commits — validates spell level vs. slot pool level (hard-fails only for over-level spells), **clamps to [0, Max] without hard-failing on pool depletion** (appends `(Clamped: ...)` narrative note so the LLM sees it), and logs the spend. Recovery happens on the **next `advance_world`** after a rest, not at rest time, via `ResourceRecoveryRule` (Order 38) which applies the rest-type hierarchy (LongRest ⊃ ShortRest ⊃ PerTurn). Narrative rulesets opt out structurally: `ResourcePoolProvider` never registers pool YAML for `RulesetSystem.Narrative`, so Narrative characters skip recovery entirely.
 
 ### Character bootstrap pipeline
 

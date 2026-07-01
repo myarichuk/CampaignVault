@@ -36,7 +36,7 @@ Engine rolls dice; you narrate results. Never invent roll totals. Non-magic skil
 
 `SavingThrow` = **actor** resists one effect. `Spell`+`save` = **each target** in one commit.
 
-**After every spell:** commit `status` for concentration/charm/etc. Engine does **not** track spell slots.
+**After every spell:** commit `status` for concentration/charm/etc. Spell slots tracked via `resource` commit: `{ "$type":"resource", "characterId":"chars/wizard", "poolName":"spell_slots_3", "delta":-1, "spellName":"fireball", "reason":"Cast Fireball" }`. Engine validates spell level; clamps (never hard-fails) on empty pool — watch for `(Clamped: ...)` in narrative.
 Concentration: `{ "$type":"status", "characterId":"chars/wizard", "effect":{"name":"Concentration: Fireball","category":"Condition"} }`
 
 **Spell examples (copy-paste, replace IDs):**
