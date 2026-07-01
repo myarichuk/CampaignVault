@@ -158,6 +158,20 @@ public class CampaignConfig
     /// Key = pool name (e.g., "spell_slots_1", "focus_points").
     /// </summary>
     public Dictionary<string, ResourcePoolTemplate> ResourcePoolSchemas { get; set; } = [];
+
+    /// <summary>
+    /// When true, relationship modifiers on social skill checks use the reverse relationship as a fallback
+    /// if the target has no recorded opinion of the actor (reads half of actor → target relationship, rounded down).
+    /// Defaults to false — only target → actor relationships directly modify rolls.
+    /// </summary>
+    public bool SymmetricRelationshipFallback { get; set; } = false;
+
+    /// <summary>
+    /// When true, the engine automatically repairs one-way location exits by appending reverse exits
+    /// when they are missing (unless the forward exit is marked OneWay: true).
+    /// Defaults to false — many campaigns use intentional one-way exits (chutes, secret doors, traps).
+    /// </summary>
+    public bool AutoRepairLocationConnectivity { get; set; } = false;
 }
 
 /// <summary>
