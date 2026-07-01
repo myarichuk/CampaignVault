@@ -69,6 +69,12 @@ public class Character : ICampaignScopedEntity
     /// <summary>Day when rest-based pool recovery was last applied for <see cref="LastRestedDay"/>.</summary>
     public int? LastRestRecoveredDay { get; set; }
 
+    /// <summary>Monotonic counter incremented on each successful rest — gates one recovery pass per rest event.</summary>
+    public int? RestSequence { get; set; }
+
+    /// <summary><see cref="RestSequence"/> value for which rest-based pool recovery was last applied.</summary>
+    public int? LastRecoveredRestSequence { get; set; }
+
     public PsychologyProfile Psychology { get; set; } = new();
     
     public SocialProfile Social { get; set; } = new();
@@ -312,7 +318,7 @@ public class SystemExtension
     /// <summary>
     /// Spendable resource pools: spell slots, focus points, action points, etc.
     /// Initialized at character_create based on system and campaign config.
-    /// Keys are pool names like "spell_slots_1", "sorcerer_points", "focus_points".
+    /// Keys are pool names like "spell_slots_1", "font_of_magic", "focus_points".
     /// </summary>
     [System.Text.Json.Serialization.JsonPropertyName("resourcePools")]
     public Dictionary<string, ResourcePool> ResourcePools { get; set; } = [];

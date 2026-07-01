@@ -149,7 +149,8 @@ public class StatusChange : WorldChange
 
     [Description(
         "[Preferred] Fully structured StatusEffect authored by the LLM DM. " +
-        "Provide name, category, optional affectedPart (BodyPart enum), statModifiers (key-value penalties/bonuses), " +
+        "Provide name, category, optional conditionName (SRD template key from get_system_handbook), " +
+        "optional affectedPart (BodyPart enum), statModifiers (key-value penalties/bonuses), " +
         "and optionally expiresAtDay (CampaignTime.TotalDaysElapsed + N) or expiresAtRound (CombatEncounter.Round + N). " +
         "Leave both expiration fields null for permanent effects (broken bones, curses). " +
         "Set recoveryHint to a free-text note for your own future reference about how this effect can be removed.")]
@@ -344,7 +345,7 @@ public class AttributeChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Name of the attribute. Common examples: 'willpower', 'temperature', 'morale', 'corruption', 'reputation', 'fear'. Invent others that fit the story.")]
+    [Description("Name of the attribute. Common examples: 'willpower', 'temperature', 'morale', 'corruption', 'reputation', 'fear', 'exhaustion_level' (D&D 5e mechanical exhaustion, 1-6 scale — distinct from narrative tiredness set via 'need' commits). Invent others that fit the story.")]
     [JsonPropertyName("attribute")]
     public string Attribute { get; set; } = default!;
 
@@ -1293,7 +1294,7 @@ public class ResourceChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Pool name (e.g., 'spell_slots_3', 'sorcerer_points', 'focus_points', 'action_points'). Must match an existing pool in character.systemStats.resourcePools.")]
+    [Description("Pool name (e.g., 'spell_slots_3', 'font_of_magic', 'focus_points', 'action_points'). Must match an existing pool in character.systemStats.resourcePools.")]
     [JsonPropertyName("poolName")]
     public string PoolName { get; set; } = default!;
 
@@ -1304,11 +1305,19 @@ public class ResourceChange : WorldChange
     [Description("Optional reason for the change (e.g., 'Cast Fireball', 'Long rest recovery', 'Exhausted pool').")]
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+
+    [Description("Spell template name when spending spell_slots_* (e.g. 'fireball'). Enables slot-level validation via get_spells registry.")]
+    [JsonPropertyName("spellName")]
+    public string? SpellName { get; set; }
+
+    [Description("Simulation-internal: campaign day this recovery is attributed to. When set, stamps ResourcePool.LastRecoveredDay for per-pool idempotency (used by rest/daily recovery paths). Omit for manual LLM resource spends/grants.")]
+    [JsonPropertyName("recoveredOnDay")]
+    public int? RecoveredOnDay { get; set; }
 }
 
 /// <summary>
 /// Simulation-internal: marks that pool recovery for a completed rest has been applied.
-/// Emitted by SpellRecoveryRule during advance_world; not intended for LLM commit use.
+/// Emitted by ResourceRecoveryRule during advance_world; not intended for LLM commit use.
 /// </summary>
 public class RestRecoveryAck : WorldChange
 {
@@ -1317,4 +1326,7 @@ public class RestRecoveryAck : WorldChange
 
     [JsonPropertyName("restDay")]
     public int RestDay { get; set; }
+
+    [JsonPropertyName("restSequence")]
+    public int RestSequence { get; set; }
 }

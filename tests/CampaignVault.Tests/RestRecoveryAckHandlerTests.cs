@@ -30,11 +30,12 @@ public class RestRecoveryAckHandlerTests
                 NullLogger<WorldChangeDispatcher>.Instance));
 
         var result = await handler.ApplyAsync(
-            new RestRecoveryAck { CharacterId = "chars/wizard", RestDay = 5 },
+            new RestRecoveryAck { CharacterId = "chars/wizard", RestDay = 5, RestSequence = 3 },
             context,
             CancellationToken.None);
 
         Assert.True(result.Success);
         Assert.Equal(5, character.LastRestRecoveredDay);
+        Assert.Equal(3, character.LastRecoveredRestSequence);
     }
 }

@@ -31,6 +31,7 @@ public class RestRecoveryAckHandler : IWorldChangeHandler
         }
 
         character.LastRestRecoveredDay = ack.RestDay;
+        character.LastRecoveredRestSequence = ack.RestSequence;
         return ChangeHandlerResult.Ok;
     }
 }
