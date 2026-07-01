@@ -188,7 +188,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
 
-        var damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4";
+        var damageDice = action.Parameters.GetValueOrDefault("damageDice", "1d4");
         
         var damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
@@ -233,7 +233,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Skill check requires a 'dc' parameter.");
         }
 
-        var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
+        var skillName = action.Parameters.GetValueOrDefault("skill", "Strength");
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
 
@@ -267,7 +267,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         if (isGrapple)
         {
-            var skillName = action.Parameters.TryGetValue("skill", out var skill) ? skill : "Athletics";
+            var skillName = action.Parameters.GetValueOrDefault("skill", "Athletics");
             var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
             bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
 
@@ -299,7 +299,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         if (isEscape)
         {
-            var skillName = action.Parameters.TryGetValue("skill", out var skill) ? skill : "Athletics";
+            var skillName = action.Parameters.GetValueOrDefault("skill", "Athletics");
             var actorBonus = GetSkillOrAbilityBonus(actorStats, skillName);
             actorBonus = ApplyAllModifiers(actorStats, actorBonus, "SkillCheck", skillName);
 
@@ -327,8 +327,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Escape DC {escapeDc}.{resultSuffix} {outcome.Summary}");
         }
 
-        var actorSkill = action.Parameters.TryGetValue("skill", out var actorSkillName) ? actorSkillName : "Athletics";
-        var targetSkill = action.Parameters.TryGetValue("targetSkill", out var targetSkillName) ? targetSkillName : actorSkill;
+        var actorSkill = action.Parameters.GetValueOrDefault("skill", "Athletics");
+        var targetSkill = action.Parameters.GetValueOrDefault("targetSkill", actorSkill);
 
         var actorRollBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
         actorRollBonus = ApplyAllModifiers(actorStats, actorRollBonus, "SkillCheck", actorSkill);
@@ -352,7 +352,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Saving throw requires a 'dc' parameter.");
         }
 
-        var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Constitution";
+        var saveName = action.Parameters.GetValueOrDefault("save", "Constitution");
         var bonus = GetSavingThrowBonus(actorStats, saveName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SavingThrow", saveName);
 
@@ -383,7 +383,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Spell save requires a 'dc' parameter.");
         }
 
-        var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Reflex";
+        var saveName = action.Parameters.GetValueOrDefault("save", "Reflex");
         var narratives = new List<string>();
 
         foreach (var targetId in targets)
@@ -432,7 +432,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 $"{action.ActionName}: Non-combat spell (detect aura, prestidigitation, message). Narrate effect; commit status or knowledge_update if the world changes.");
         }
 
-        var skillName = action.Parameters.TryGetValue("skill", out var skill) ? skill : "Arcana";
+        var skillName = action.Parameters.GetValueOrDefault("skill", "Arcana");
         action.Parameters["skill"] = skillName;
         return await ResolveSkillCheckAsync(action, context, actorStats, mutations, ct);
     }

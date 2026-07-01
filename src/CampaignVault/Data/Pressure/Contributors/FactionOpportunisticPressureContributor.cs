@@ -1,4 +1,3 @@
-using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.Pressure.Contributors;

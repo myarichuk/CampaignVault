@@ -1,5 +1,3 @@
-using System;
-
 namespace CampaignVault.Models
 {
     public interface IHasSemanticVector

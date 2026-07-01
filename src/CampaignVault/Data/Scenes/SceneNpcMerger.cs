@@ -1,4 +1,3 @@
-using CampaignVault.Data;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.Scenes;

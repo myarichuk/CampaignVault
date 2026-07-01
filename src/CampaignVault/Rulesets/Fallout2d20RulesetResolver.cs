@@ -38,8 +38,8 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid difficulty value '{diffStr}'.");
         }
 
-        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
-        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
+        var attribute = action.Parameters.GetValueOrDefault("attribute", "Agility");
+        var skill = action.Parameters.GetValueOrDefault("skill", "SmallGuns");
 
         var request = FalloutPoolHelper.BuildPoolRequest(
             actorStats, attribute, skill, action.Parameters, "skill", ApplyAllModifiers, "SkillCheck", skill, attribute);
@@ -101,8 +101,8 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         }
 
-        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Agility";
-        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "SmallGuns";
+        var attribute = action.Parameters.GetValueOrDefault("attribute", "Agility");
+        var skill = action.Parameters.GetValueOrDefault("skill", "SmallGuns");
         var difficulty = FalloutPoolHelper.ResolveAttackDifficulty(targetStats, action.Parameters, ApplyAllModifiers);
 
         var request = FalloutPoolHelper.BuildPoolRequest(
@@ -124,8 +124,8 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         }
 
         combatDiceCount = ApplyAllModifiers(actorStats, combatDiceCount, "DamageRoll");
-        var damageType = action.DamageType ?? (action.Parameters.TryGetValue("damageType", out var dt) ? dt : "Physical");
-        var targetPart = action.Parameters.TryGetValue("targetPart", out var part) ? part : null;
+        var damageType = action.DamageType ?? (action.Parameters.GetValueOrDefault("damageType", "Physical"));
+        var targetPart = action.Parameters.GetValueOrDefault("targetPart");
 
         var combatResult = await _rollService.RollFalloutCombatDiceAsync(combatDiceCount, ct);
 
@@ -185,16 +185,10 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var actorAttribute = action.Parameters.TryGetValue("attribute", out var actorAttr)
             ? actorAttr
             : isGrapple || isEscape ? "Strength" : "Agility";
-        var actorSkill = action.Parameters.TryGetValue("skill", out var actorSk)
-            ? actorSk
-            : "Athletics";
+        var actorSkill = action.Parameters.GetValueOrDefault("skill", "Athletics");
 
-        var targetAttribute = action.Parameters.TryGetValue("targetAttribute", out var targetAttr)
-            ? targetAttr
-            : actorAttribute;
-        var targetSkill = action.Parameters.TryGetValue("targetSkill", out var targetSk)
-            ? targetSk
-            : actorSkill;
+        var targetAttribute = action.Parameters.GetValueOrDefault("targetAttribute", actorAttribute);
+        var targetSkill = action.Parameters.GetValueOrDefault("targetSkill", actorSkill);
 
         var actorRequest = FalloutPoolHelper.BuildPoolRequest(
             actorStats, actorAttribute, actorSkill, action.Parameters, "actor", ApplyAllModifiers, "SkillCheck", actorSkill, actorAttribute);
@@ -240,8 +234,8 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
             difficulty = dc;
         }
 
-        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Endurance";
-        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : null;
+        var attribute = action.Parameters.GetValueOrDefault("attribute", "Endurance");
+        var skill = action.Parameters.GetValueOrDefault("skill");
 
         var request = skill is not null
             ? FalloutPoolHelper.BuildPoolRequest(actorStats, attribute, skill, action.Parameters, "save", ApplyAllModifiers, "SavingThrow", skill, attribute)
@@ -294,10 +288,10 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         var attribute = action.Parameters.TryGetValue("saveAttribute", out var saveAttr)
             ? saveAttr
-            : action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Endurance";
+            : action.Parameters.GetValueOrDefault("attribute", "Endurance");
         var skill = action.Parameters.TryGetValue("saveSkill", out var saveSkill)
             ? saveSkill
-            : action.Parameters.TryGetValue("skill", out var sk) ? sk : null;
+            : action.Parameters.GetValueOrDefault("skill");
 
         var damageDice = 3;
         if (action.Parameters.TryGetValue("damageDice", out var dd) && int.TryParse(dd, out var parsedDice))
@@ -357,8 +351,8 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
                 $"{action.ActionName}: Weird science / exploration action outside combat. Narrate fabrication, hacking, or chem effects; commit item or status changes separately.");
         }
 
-        var attribute = action.Parameters.TryGetValue("attribute", out var attr) ? attr : "Intelligence";
-        var skill = action.Parameters.TryGetValue("skill", out var sk) ? sk : "Science";
+        var attribute = action.Parameters.GetValueOrDefault("attribute", "Intelligence");
+        var skill = action.Parameters.GetValueOrDefault("skill", "Science");
         action.Parameters.TryAdd("attribute", attribute);
         action.Parameters.TryAdd("skill", skill);
 

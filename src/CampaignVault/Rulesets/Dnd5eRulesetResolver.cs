@@ -147,7 +147,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
 
-        var damageDice = action.Parameters.TryGetValue("damageDice", out var dd) ? dd : "1d4";
+        var damageDice = action.Parameters.GetValueOrDefault("damageDice", "1d4");
         
         var damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
@@ -219,7 +219,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Skill check requires a 'dc' parameter.");
         }
 
-        var skillName = action.Parameters.TryGetValue("skill", out var s) ? s : "Strength";
+        var skillName = action.Parameters.GetValueOrDefault("skill", "Strength");
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
         var mechanic = GetMechanicFromAction(action);
@@ -304,7 +304,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Saving throw requires a 'dc' parameter.");
         }
 
-        var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Dexterity";
+        var saveName = action.Parameters.GetValueOrDefault("save", "Dexterity");
         var bonus = GetSavingThrowBonus(actorStats, saveName);
         
         bonus = ApplyAllModifiers(actorStats, bonus, "SavingThrow", saveName);
@@ -350,7 +350,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Spell save requires a 'dc' parameter or spellSaveDc on the caster.");
         }
 
-        var saveName = action.Parameters.TryGetValue("save", out var s) ? s : "Dexterity";
+        var saveName = action.Parameters.GetValueOrDefault("save", "Dexterity");
         var narratives = new List<string>();
 
         foreach (var targetId in targets)

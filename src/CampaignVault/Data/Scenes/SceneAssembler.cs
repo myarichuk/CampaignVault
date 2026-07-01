@@ -1,4 +1,3 @@
-using System;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Models;
 

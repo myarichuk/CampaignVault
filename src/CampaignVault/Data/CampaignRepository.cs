@@ -3,9 +3,7 @@ using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Scenes;
 using CampaignVault.Models;
 using CampaignVault.Services;
-using Raven.Client.Documents;
 using Raven.Client.Documents.Indexes;
-using Raven.Client.Documents.Linq;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;

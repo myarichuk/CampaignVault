@@ -1,5 +1,3 @@
-using System.ComponentModel;
-
 namespace CampaignVault.Models;
 
 public class PlotThread : ICampaignScopedEntity

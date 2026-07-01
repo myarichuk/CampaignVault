@@ -69,6 +69,9 @@ public sealed class CharacterDistressPressureContributor : IPressureContributor
 
             if (c.Needs?.ActiveNeeds != null)
             {
+                // Narrative fatigue pressure ("tiredness") flows through here, ruleset-agnostic.
+                // Mechanical D&D exhaustion pressure is a separate, ruleset-specific concern
+                // (see Dnd5eExhaustionPressureContributor).
                 foreach (var kvp in c.Needs.ActiveNeeds)
                 {
                     switch (kvp.Value)
@@ -109,10 +112,13 @@ public sealed class CharacterDistressPressureContributor : IPressureContributor
 
                 if (c.SystemStats.Attributes != null)
                 {
+                    // Deliberately does not read mechanical "exhaustion_level" — narrative fatigue
+                    // pressure comes from the "tiredness" need above; mechanical D&D exhaustion
+                    // pressure is handled separately by Dnd5eExhaustionPressureContributor.
                     foreach (KeyValuePair<string, float> attribute in c.SystemStats.Attributes)
                     {
                         var attrKey = attribute.Key.ToLowerInvariant();
-                        if ((attrKey == "corruption" || attrKey == "fear" || attrKey == "exhaustion") && attribute.Value >= 90f)
+                        if ((attrKey == "corruption" || attrKey == "fear") && attribute.Value >= 90f)
                         {
                             pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is consumed by {attribute.Key} ({attribute.Value:F0}). They should exhibit severe physical or mental symptoms.", GetAttributeGroupingKey(attribute.Key)));
                         }

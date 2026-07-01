@@ -1,5 +1,4 @@
 using CampaignVault.Models;
-using Raven.Client.Documents.Linq;
 
 namespace CampaignVault.Data.Pressure.Contributors;
 

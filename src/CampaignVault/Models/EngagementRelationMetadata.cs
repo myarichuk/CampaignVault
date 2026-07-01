@@ -91,9 +91,7 @@ public static class EngagementRelationCatalog
     };
 
     public static EngagementCategory InferCategory(string verb) =>
-        LegacyVerbCategories.TryGetValue(verb, out var category)
-            ? category
-            : EngagementCategory.Physical;
+        LegacyVerbCategories.GetValueOrDefault(verb, EngagementCategory.Physical);
 
     public static EngagementRelationMetadata GetMetadata(EngagementRelation relation)
     {

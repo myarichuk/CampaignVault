@@ -389,7 +389,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     [
         new HpChangeHandler(),
         new ItemTransferHandler(),
-        new StatusChangeHandler(),
+        RulesetDataTestHelper.CreateStatusChangeHandler(),
         new EventOccurredHandler(),
         new RumorEvolvesHandler(),
         new RelationshipChangeHandler(),
@@ -417,7 +417,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         new KnowledgeUpdateHandler(),
         new RulesetActionHandler(selector, keys),
         new RumorCreateHandler(),
-        new RestChangeHandler()
+        RulesetDataTestHelper.CreateRestChangeHandler()
     ];
 
     /// <summary>Deterministic rolls so harness combat assertions are stable across rulesets.</summary>
