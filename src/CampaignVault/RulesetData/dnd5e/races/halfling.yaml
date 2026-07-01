@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: halfling
+system: dnd5e
+description: Small folk with cheerful courage and nimble feet
+traits: [Lucky, Brave, Halfling Nimbleness]
+abilityBonuses:
+  Dexterity: 2
+size: Small
+baseSpeed: 25

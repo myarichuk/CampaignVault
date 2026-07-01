@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: criminal
+system: dnd5e
+description: You have a history of breaking the law
+skillProficiencies: [Deception, Stealth]
+toolProficiencies: [One type of gaming set, Thieves' tools]
+feature: Criminal Contact

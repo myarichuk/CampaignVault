@@ -1,0 +1,6 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: acolyte
+system: pf2e
+description: You served at a temple, monastery, or shrine
+skillProficiencies: [Religion, one other Lore]
+feature: Deity's Domain

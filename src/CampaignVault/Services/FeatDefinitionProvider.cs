@@ -1,0 +1,74 @@
+using System.Reflection;
+using CampaignVault.Data.Templates;
+using CampaignVault.Models;
+
+namespace CampaignVault.Services;
+
+/// <summary>
+/// Loads feat/perk definitions from per-system YAML files, resolves inheritance, and caches results.
+/// D&amp;D 5e and PF2e use <c>feats/</c>; Fallout 2d20 uses <c>perks/</c>.
+/// </summary>
+public class FeatDefinitionProvider : IRulesetYamlProvider
+{
+    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<FeatDefinition>> _loaders = new();
+    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, FeatDefinition>?> _cache = new();
+    private readonly object _lock = new();
+    private readonly ILogger? _logger;
+
+    public FeatDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
+    {
+        _logger = logger;
+        Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", "feats", embeddedAssembly, logger);
+        Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", "feats", embeddedAssembly, logger);
+        Register(RulesetSystem.Fallout2d20, rulesetDataDirectory, "fallout2d20", "perks", embeddedAssembly, logger);
+    }
+
+    private void Register(
+        RulesetSystem system,
+        string rulesetDataDirectory,
+        string systemSlug,
+        string subfolder,
+        Assembly embeddedAssembly,
+        ILogger? logger)
+    {
+        _loaders[system] = new RulesetTemplateLoader<FeatDefinition>(
+            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
+            embeddedAssembly,
+            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
+            logger);
+    }
+
+    public IReadOnlyDictionary<string, FeatDefinition> GetFeatsForSystem(RulesetSystem system)
+    {
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(system, out var cached) && cached != null)
+                return cached;
+
+            if (!_loaders.TryGetValue(system, out var loader))
+                return new Dictionary<string, FeatDefinition>();
+
+            var raw = loader.Load();
+            var resolver = new RulesetTemplateResolver<FeatDefinition>(
+                name => raw.GetValueOrDefault(name),
+                FeatDefinition.Merge);
+
+            var resolved = resolver.ResolveAll(raw, _logger);
+
+            _cache[system] = resolved;
+            return resolved;
+        }
+    }
+
+    public bool TryGet(RulesetSystem system, string featName, out FeatDefinition? feat)
+    {
+        var feats = GetFeatsForSystem(system);
+        return feats.TryGetValue(featName, out feat);
+    }
+
+    public void Reload()
+    {
+        lock (_lock)
+            _cache.Clear();
+    }
+}

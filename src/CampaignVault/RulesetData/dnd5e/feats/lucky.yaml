@@ -1,0 +1,5 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: lucky
+system: dnd5e
+mechanicalSummary: 3 luck points per long rest; spend to reroll an attack roll, ability check, or saving throw
+extraPools: []

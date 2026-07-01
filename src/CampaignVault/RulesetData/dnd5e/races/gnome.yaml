@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: gnome
+system: dnd5e
+description: Curious small folk with natural magic and keen minds
+traits: [Darkvision, Gnome Cunning]
+abilityBonuses:
+  Intelligence: 2
+size: Small
+baseSpeed: 25

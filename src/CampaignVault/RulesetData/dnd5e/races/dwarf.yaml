@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: dwarf
+system: dnd5e
+description: Stout and hardy folk known for resilience and craftsmanship
+traits: [Darkvision, Dwarven Resilience, Stonecunning]
+abilityBonuses:
+  Constitution: 2
+size: Medium
+baseSpeed: 25

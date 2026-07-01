@@ -1,0 +1,5 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: tough
+system: dnd5e
+mechanicalSummary: Hit point maximum increases by 2 per level
+extraPools: []

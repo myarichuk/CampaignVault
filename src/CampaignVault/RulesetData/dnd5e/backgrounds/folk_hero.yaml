@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: folk_hero
+system: dnd5e
+description: You come from a humble social rank, but you are destined for more
+skillProficiencies: [Animal Handling, Survival]
+toolProficiencies: [One type of artisan's tools, Vehicles (land)]
+feature: Rustic Hospitality

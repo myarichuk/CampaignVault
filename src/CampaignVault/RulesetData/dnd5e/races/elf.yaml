@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: elf
+system: dnd5e
+description: Graceful people with keen senses and fey ancestry
+traits: [Darkvision, Fey Ancestry, Trance]
+abilityBonuses:
+  Dexterity: 2
+size: Medium
+baseSpeed: 30

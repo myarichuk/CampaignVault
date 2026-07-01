@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: half-elf
+system: dnd5e
+description: Children of human and elf parents, blending adaptability with fey grace
+traits: [Darkvision, Fey Ancestry, Skill Versatility]
+abilityBonuses:
+  Charisma: 2
+size: Medium
+baseSpeed: 30

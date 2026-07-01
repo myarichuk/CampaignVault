@@ -1,0 +1,10 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: tiefling
+system: dnd5e
+description: Mortals touched by infernal legacy
+traits: [Darkvision, Hellish Resistance, Infernal Legacy]
+abilityBonuses:
+  Intelligence: 1
+  Charisma: 2
+size: Medium
+baseSpeed: 30

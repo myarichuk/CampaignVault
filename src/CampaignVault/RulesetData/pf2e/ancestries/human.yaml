@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: human
+system: pf2e
+description: Versatile and ambitious, humans are found in every corner of the world
+traits: [Adaptable]
+size: Medium
+baseSpeed: 25

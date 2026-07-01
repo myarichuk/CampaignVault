@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: elf
+system: pf2e
+description: Long-lived people with keen senses and affinity for magic
+traits: [Low-Light Vision, Elven Weapon Familiarity]
+size: Medium
+baseSpeed: 30

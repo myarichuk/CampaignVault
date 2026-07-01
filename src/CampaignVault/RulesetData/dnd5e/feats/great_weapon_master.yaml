@@ -1,0 +1,6 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: great_weapon_master
+system: dnd5e
+prerequisite: Strength 13 or higher
+mechanicalSummary: On a crit or kill with a melee weapon, bonus action attack; take -5 on attack for +10 damage
+extraPools: []

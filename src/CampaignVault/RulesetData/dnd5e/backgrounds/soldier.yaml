@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: soldier
+system: dnd5e
+description: War has been your life for as long as you care to remember
+skillProficiencies: [Athletics, Intimidation]
+toolProficiencies: [One type of gaming set, Vehicles (land)]
+feature: Military Rank

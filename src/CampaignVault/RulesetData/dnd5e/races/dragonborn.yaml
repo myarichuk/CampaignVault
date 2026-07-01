@@ -1,0 +1,10 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: dragonborn
+system: dnd5e
+description: Proud draconic humanoids with breath weapons and elemental resistance
+traits: [Draconic Ancestry, Breath Weapon, Damage Resistance]
+abilityBonuses:
+  Strength: 2
+  Charisma: 1
+size: Medium
+baseSpeed: 30

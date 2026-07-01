@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: fighter
+system: pf2e
+hitDie: d10
+casterType: None
+pools: []
+aliases: [fighter]

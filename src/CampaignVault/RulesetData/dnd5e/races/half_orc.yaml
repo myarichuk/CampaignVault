@@ -1,0 +1,10 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: half-orc
+system: dnd5e
+description: Strong and relentless, bearing the mark of orcish ancestry
+traits: [Darkvision, Relentless Endurance, Savage Attacks]
+abilityBonuses:
+  Strength: 2
+  Constitution: 1
+size: Medium
+baseSpeed: 30

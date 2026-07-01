@@ -1,0 +1,7 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: acolyte
+system: dnd5e
+description: You have spent your life in service to a temple
+skillProficiencies: [Insight, Religion]
+languages: [Two of your choice]
+feature: Shelter of the Faithful

@@ -1,0 +1,6 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: war_caster
+system: dnd5e
+prerequisite: Able to cast at least one spell
+mechanicalSummary: Advantage on concentration saves; cast spells with hands full; use spell in place of opportunity attack
+extraPools: []

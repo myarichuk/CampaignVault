@@ -1,0 +1,7 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: dwarf
+system: pf2e
+description: Stout folk with legendary toughness and craftsmanship
+traits: [Darkvision, Clan Dagger]
+size: Medium
+baseSpeed: 20

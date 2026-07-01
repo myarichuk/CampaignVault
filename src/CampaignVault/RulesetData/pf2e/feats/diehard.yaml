@@ -1,0 +1,5 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: diehard
+system: pf2e
+mechanicalSummary: Treat dying value as 1 lower; DC 5 flat check to stabilize
+extraPools: []

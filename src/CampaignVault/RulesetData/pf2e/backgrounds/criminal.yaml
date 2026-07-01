@@ -1,0 +1,6 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+name: criminal
+system: pf2e
+description: You eked out a living in dark alleys and back rooms
+skillProficiencies: [Stealth, Thievery]
+feature: Underworld Contacts
