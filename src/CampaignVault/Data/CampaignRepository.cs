@@ -109,7 +109,7 @@ public class CampaignRepository
     ///
     /// Use this for all atomic world mutations coming from tools or simulation rules.
     /// </summary>
-    public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[] changes,
+    public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[]? changes,
         string? campaignName = null)
     {
         changes ??= [];

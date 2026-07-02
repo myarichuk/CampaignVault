@@ -15,6 +15,7 @@ public class SceneView
     /// Lightweight summaries of NPCs currently present (driven by simulated Schedule + Current* state).
     /// Much smaller than full Character objects, focused on what an LLM DM actually needs for roleplay.
     /// </summary>
+    // ReSharper disable once InconsistentNaming
     public IEnumerable<NpcPresenceSummary> PresentNPCs { get; set; } = [];
     public IEnumerable<RumorSummary> LocalRumors { get; set; } = [];
     public IEnumerable<Item> VisibleItems { get; set; } = [];

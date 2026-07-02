@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -20,6 +21,33 @@ public record AuthoringToolResult(
 [McpServerToolType]
 public class AuthoringMcpTools
 {
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "Returns the open vault's current state: path, git HEAD/synced commit SHAs, working-tree dirty status, and sync summary. Use this for a single orientation call before deciding what sync action to take next.")]
+    public Task<AuthoringToolResult> GetVaultStatus()
+    {
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return Task.FromResult(error!);
+
+        var gitStatus = session.GetGitStatus();
+        var summary = session.GetSyncSummary();
+
+        var payload = new
+        {
+            vaultPath = session.VaultPath,
+            headCommitSha = session.HeadCommitSha,
+            syncedCommitSha = session.SyncedCommitSha,
+            isDirty = gitStatus.IsDirty,
+            modifiedPaths = gitStatus.ModifiedPaths,
+            addedPaths = gitStatus.AddedPaths,
+            removedPaths = gitStatus.RemovedPaths,
+            untrackedPaths = gitStatus.UntrackedPaths,
+            sync = BuildSyncSummaryPayload(summary)
+        };
+
+        return Task.FromResult(new AuthoringToolResult(success: true, summary: payload));
+    }
+
     [McpServerTool(UseStructuredContent = true)]
     [Description(
         "Lists all campaign entities in the open vault (characters, locations, quests, factions, lore, rumors, events).")]
@@ -207,6 +235,105 @@ public class AuthoringMcpTools
             return new AuthoringToolResult(success: true, summary: BuildSyncSummaryPayload(summary));
         }
         catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "Commits all pending local changes in the vault's git repository. All modified/added/untracked files are staged and committed. Required before Push (push requires a clean working tree).")]
+    public async Task<AuthoringToolResult> CommitVault(
+        [Description("Commit message describing the change.")]
+        string message)
+    {
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
+
+        try
+        {
+            await session.CommitAsync(message);
+            AuthoringMcpSessionHelper.RefreshUiIfAvailable();
+            return new AuthoringToolResult(success: true,
+                summary: new { headCommitSha = session.HeadCommitSha });
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "Resolves a conflicted entity by choosing: KeepLocal (push the local version), KeepVault (overwrite local with remote), or Merged (supply your own merged content).")]
+    public async Task<AuthoringToolResult> ResolveVaultConflict(
+        [Description("Entity id in 'folder/name' form, e.g. 'characters/grog' (no .md extension).")]
+        string entityId,
+        [Description("Resolution method: KeepLocal, KeepVault, or Merged.")]
+        string resolution,
+        [Description("Required only when resolution is Merged: the full merged markdown+frontmatter content to write.")]
+        string? mergedContent = null)
+    {
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
+
+        if (!Enum.TryParse<ConflictResolution>(resolution, ignoreCase: true, out var parsed))
+        {
+            return new AuthoringToolResult(success: false,
+                error: $"Unknown resolution '{resolution}'. Expected KeepLocal, KeepVault, or Merged.");
+        }
+
+        try
+        {
+            AuthoringMcpSessionHelper.EnsureSyncConfigured(session);
+            await session.ResolveConflictAsync(entityId, parsed, mergedContent);
+            var summary = session.GetSyncSummary();
+            AuthoringMcpSessionHelper.RefreshUiIfAvailable();
+            return new AuthoringToolResult(success: true,
+                summary: BuildSyncSummaryPayload(summary),
+                path: entityId);
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "Creates a new campaign entity with a blank template in the open vault (character, location, quest, faction, lore, rumor, event, or item). Returns the relative path and starter YAML+markdown content; edit with WriteWorkspaceEntity, then CommitVault.")]
+    public async Task<AuthoringToolResult> CreateWorkspaceEntity(
+        [Description("Entity type: character, location, quest, faction, lore, rumor, event, or item.")]
+        string entityType,
+        [Description("Display name for the new entity.")]
+        string name)
+    {
+        if (AuthoringMcpSessionHelper.TryGetOpenSession(out var error) is not { } session)
+            return error!;
+
+        try
+        {
+            var (relativePath, content) = await session.CreateEntityAsync(entityType, name);
+            AuthoringMcpSessionHelper.RefreshUiIfAvailable();
+            return new AuthoringToolResult(success: true, path: relativePath, content: content);
+        }
+        catch (VaultException ex)
+        {
+            return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+        catch (ArgumentException ex)
         {
             return new AuthoringToolResult(success: false, error: ex.Message);
         }

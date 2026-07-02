@@ -11,7 +11,7 @@ public class RulesetModuleSelector : IRulesetModuleSelector
 {
     private readonly Dictionary<RulesetSystem, IRulesetModule> _modules;
 
-    public RulesetModuleSelector(IEnumerable<IRulesetModule> modules)
+    public RulesetModuleSelector(IEnumerable<IRulesetModule>? modules)
     {
         _modules = modules?.ToDictionary(m => m.System) ?? new Dictionary<RulesetSystem, IRulesetModule>();
 

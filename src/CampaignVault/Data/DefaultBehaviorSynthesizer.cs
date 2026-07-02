@@ -12,7 +12,7 @@ namespace CampaignVault.Data;
 /// </summary>
 public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
 {
-    public string GenerateSummary(Character npc, CampaignTime? currentTime = null, IEnumerable<Event>? recentEvents = null)
+    public string GenerateSummary(Character? npc, CampaignTime? currentTime = null, IEnumerable<Event>? recentEvents = null)
     {
         if (npc == null)
         {

@@ -23,7 +23,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         _featProvider = featProvider;
     }
 
-    public void InitializePools(Character character, RulesetSystem system, CampaignConfig? campaignConfig)
+    public void InitializePools(Character? character, RulesetSystem system, CampaignConfig? campaignConfig)
     {
         if (character?.SystemStats == null)
         {

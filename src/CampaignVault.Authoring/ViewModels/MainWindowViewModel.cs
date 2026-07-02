@@ -279,9 +279,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         var rel = entityNode.Entity.RelativePath;
         try
         {
-            var absolute = Path.Combine(Session.VaultPath!, rel.Replace('/', Path.DirectorySeparatorChar));
-            if (File.Exists(absolute))
-                File.Delete(absolute);
+            await Session.DeleteEntityFileAsync(rel);
 
             // Clear selection and refresh
             Workspace.SelectedNode = null;
@@ -306,19 +304,12 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         }
 
         var type = request.EntityType.ToLowerInvariant();
-        if (!IsSupportedEntityType(type))
+        if (!EntityCreation.IsSupportedEntityType(type))
             type = "character";
 
-        var folder = GetFolderForType(type);
-        var ts = DateTime.Now.ToString("yyyyMMddHHmmss");
-        var nameSlug = ToSlug(request.Name);
-        var slug = string.IsNullOrEmpty(nameSlug) ? $"new-{type}-{ts}" : $"{nameSlug}-{ts}";
-        var relative = $"{folder}/{slug}.md";
-
-        var template = _canonicalizer.GetBlankTemplate(type, slug, request.Name);
         try
         {
-            await Session.WriteFileAsync(relative, template);
+            var (relative, _) = await Session.CreateEntityAsync(type, request.Name);
             RefreshAll();
 
             var found = FindEntityNodeByPath(Workspace.Categories, relative);
@@ -333,25 +324,6 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
             WorkspaceStatusMessage = $"Failed to create: {ex.Message}";
         }
     }
-
-    private static bool IsSupportedEntityType(string t) =>
-        t is "character" or "location" or "quest" or "faction" or "lore" or "rumor" or "event" or "item";
-
-    private static string GetFolderForType(string t) => t switch
-    {
-        "character" => "characters",
-        "location"  => "locations",
-        "quest"     => "quests",
-        "faction"   => "factions",
-        "lore"      => "lore",
-        "rumor"     => "rumors",
-        "event"     => "events",
-        "item"      => "items",
-        _ => "characters"
-    };
-
-    private static string ToSlug(string name) =>
-        System.Text.RegularExpressions.Regex.Replace(name.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
 
     private static EntityNodeViewModel? FindEntityNodeByPath(System.Collections.Generic.IEnumerable<ExplorerNodeViewModel> nodes, string relativePath)
     {

@@ -19,7 +19,7 @@ public interface IPressureManager
 public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>? logger = null) : IPressureManager
 {
     public async Task<List<WorldPressureItem>> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay,
-        IEnumerable<WorldPressureItem> rawPressures, bool disableCooldowns = false)
+        IEnumerable<WorldPressureItem>? rawPressures, bool disableCooldowns = false)
     {
         var pressures = rawPressures?.ToList() ?? [];
         if (pressures.Count == 0)
@@ -114,7 +114,7 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
     /// Formats pressure items into the display strings used in ToolResult.WorldPressure (legacy text channel).
     /// Includes SuggestedCommitJson inline when present on an item. Attempts light batching by GroupingKey.
     /// </summary>
-    public static string[] ToDisplayStrings(IEnumerable<WorldPressureItem> items)
+    public static string[] ToDisplayStrings(IEnumerable<WorldPressureItem>? items)
     {
         if (items == null) return [];
         var list = items.ToList();

@@ -16,7 +16,7 @@ public static class RelationshipModifierHelper
     /// <param name="actor">The character making the social check.</param>
     /// <param name="config">Campaign configuration (for symmetric fallback option).</param>
     /// <returns>Tuple of (modifier bonus/penalty, narrative label)</returns>
-    public static (int Modifier, string Label) GetSocialModifier(Character target, Character actor, CampaignConfig config)
+    public static (int Modifier, string Label) GetSocialModifier(Character? target, Character? actor, CampaignConfig config)
     {
         if (target?.Social?.Relationships == null || actor?.Id == null)
         {

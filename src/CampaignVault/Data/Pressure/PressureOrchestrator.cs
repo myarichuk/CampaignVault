@@ -10,7 +10,7 @@ public sealed class PressureOrchestrator : IPressureOrchestrator
     private readonly IRulesetModuleSelector _rulesetSelector;
 
     public PressureOrchestrator(
-        IEnumerable<IPressureContributor> contributors,
+        IEnumerable<IPressureContributor>? contributors,
         IPressureManager pressureManager,
         IRulesetModuleSelector rulesetSelector)
     {

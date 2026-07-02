@@ -1,4 +1,5 @@
 using CampaignVault.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -17,21 +18,15 @@ namespace CampaignVault.Data.ChangeHandlers;
 /// Handlers are expected to be registered as IEnumerable&lt;IWorldChangeHandler&gt; via DI.
 /// The dispatcher itself is stateless and can be singleton.
 /// </summary>
-public sealed class WorldChangeDispatcher
+public sealed class WorldChangeDispatcher(
+    IEnumerable<IWorldChangeHandler>? handlers,
+    CampaignDocumentKeys keys,
+    ILogger<WorldChangeDispatcher>? logger = null)
 {
-    private readonly IReadOnlyList<IWorldChangeHandler> _handlers;
-    private readonly ILogger<WorldChangeDispatcher> _logger;
-    private readonly CampaignDocumentKeys _keys;
+    private readonly IReadOnlyList<IWorldChangeHandler> _handlers = handlers?.ToList() ?? [];
+    private readonly ILogger<WorldChangeDispatcher> _logger = logger ?? NullLogger<WorldChangeDispatcher>.Instance;
+    private readonly CampaignDocumentKeys _keys = keys ?? throw new ArgumentNullException(nameof(keys));
 
-    public WorldChangeDispatcher(
-        IEnumerable<IWorldChangeHandler> handlers,
-        CampaignDocumentKeys keys,
-        ILogger<WorldChangeDispatcher>? logger = null)
-    {
-        _handlers = handlers?.ToList() ?? [];
-        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
-        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance;
-    }
 
     /// <summary>
     /// Returns the first handler that claims this change (if any).
@@ -51,8 +46,8 @@ public sealed class WorldChangeDispatcher
     }
 
     public async Task<CommitResult> DispatchAsync(
-        IAsyncDocumentSession session,
-        WorldChange[] changes,
+        IAsyncDocumentSession? session,
+        WorldChange[]? changes,
         string? effectiveCampaign,
         Func<Task<CampaignTime>> getCurrentTimeAsync,
         Func<Task<Dictionary<string, string>>> getSystemOptionsAsync,

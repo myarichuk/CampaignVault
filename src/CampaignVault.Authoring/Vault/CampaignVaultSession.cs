@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Vault.Canonical;
 using CampaignVault.Authoring.Vault.Git;
 using CampaignVault.Authoring.Vault.Sync;
 using CampaignVault.Grpc;
@@ -16,6 +18,8 @@ public sealed class CampaignVaultSession : IDisposable
     private readonly VaultCatalog _catalog = new();
     private readonly VaultBootstrap _bootstrap = new();
     private readonly VaultSyncEngine _syncEngine = new();
+    private readonly EntityCanonicalizer _canonicalizer = new();
+    private readonly SemaphoreSlim _mutationLock = new(1, 1);
     private VaultGitRepository? _git;
     private Func<CampaignSync.CampaignSyncClient>? _clientFactory;
     private CampaignAuthoringSettings? _syncSettings;
@@ -98,7 +102,7 @@ public sealed class CampaignVaultSession : IDisposable
         return _git!.GetWorkingTreeStatus();
     }
 
-    public Task FetchAsync() => _syncEngine.FetchAsync();
+    public Task FetchAsync() => WithLockAsync(() => _syncEngine.FetchAsync());
 
     public VaultSyncSummary GetSyncSummary() => _syncEngine.GetSyncSummary();
 
@@ -108,15 +112,31 @@ public sealed class CampaignVaultSession : IDisposable
 
     public IReadOnlyList<VaultEntitySyncPlan> GetEntitySyncPlans() => _syncEngine.GetEntitySyncPlans();
 
-    public Task CommitAsync(string message)
+    private async Task<T> WithLockAsync<T>(Func<Task<T>> action)
     {
-        EnsureOpen();
-        if (string.IsNullOrWhiteSpace(message))
-            throw new ArgumentException("Commit message is required.", nameof(message));
-
-        _git!.Commit(message);
-        return Task.CompletedTask;
+        await _mutationLock.WaitAsync();
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            _mutationLock.Release();
+        }
     }
+
+    private Task WithLockAsync(Func<Task> action) =>
+        WithLockAsync(async () => { await action(); return true; });
+
+    public Task CommitAsync(string message) =>
+        WithLockAsync(async () =>
+        {
+            EnsureOpen();
+            if (string.IsNullOrWhiteSpace(message))
+                throw new ArgumentException("Commit message is required.", nameof(message));
+
+            _git!.Commit(message);
+        });
 
     public Task<string> ReadFileAsync(string relativePath)
     {
@@ -132,24 +152,57 @@ public sealed class CampaignVaultSession : IDisposable
         return File.ReadAllTextAsync(absolute);
     }
 
-    public async Task WriteFileAsync(string relativePath, string content)
-    {
-        EnsureOpen();
-        if (string.IsNullOrWhiteSpace(relativePath))
-            throw new ArgumentException("Relative path is required.", nameof(relativePath));
+    public Task WriteFileAsync(string relativePath, string content) =>
+        WithLockAsync(async () =>
+        {
+            EnsureOpen();
+            if (string.IsNullOrWhiteSpace(relativePath))
+                throw new ArgumentException("Relative path is required.", nameof(relativePath));
 
-        var normalized = relativePath.Replace('\\', '/');
-        var absolute = Path.Combine(VaultPath!, normalized.Replace('/', Path.DirectorySeparatorChar));
-        Directory.CreateDirectory(Path.GetDirectoryName(absolute)!);
-        await File.WriteAllTextAsync(absolute, content);
-    }
+            var normalized = relativePath.Replace('\\', '/');
+            var absolute = Path.Combine(VaultPath!, normalized.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(absolute)!);
+            await File.WriteAllTextAsync(absolute, content);
+        });
 
-    public Task PushAsync(IEnumerable<string>? entityIds = null) => _syncEngine.PushAsync(entityIds);
+    public Task PushAsync(IEnumerable<string>? entityIds = null) =>
+        WithLockAsync(() => _syncEngine.PushAsync(entityIds));
 
-    public Task PullAsync(IEnumerable<string>? entityIds = null) => _syncEngine.PullAsync(entityIds);
+    public Task PullAsync(IEnumerable<string>? entityIds = null) =>
+        WithLockAsync(() => _syncEngine.PullAsync(entityIds));
 
     public Task ResolveConflictAsync(string entityId, ConflictResolution resolution, string? mergedContent = null) =>
-        _syncEngine.ResolveConflictAsync(entityId, resolution, mergedContent);
+        WithLockAsync(() => _syncEngine.ResolveConflictAsync(entityId, resolution, mergedContent));
+
+    public Task<(string RelativePath, string Content)> CreateEntityAsync(string entityType, string name) =>
+        WithLockAsync(async () =>
+        {
+            EnsureOpen();
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Entity name is required.", nameof(name));
+
+            var normalizedType = entityType?.Trim().ToLowerInvariant() ?? "";
+            if (!EntityCreation.IsSupportedEntityType(normalizedType))
+                throw new VaultException($"Unsupported entity type '{entityType}'.");
+
+            var (relativePath, slug) = EntityCreation.BuildNewEntityPath(normalizedType, name, DateTime.Now);
+            var template = _canonicalizer.GetBlankTemplate(normalizedType, slug, name);
+            await WriteFileAsync(relativePath, template);
+            return (relativePath, template);
+        });
+
+    public Task DeleteEntityFileAsync(string relativePath) =>
+        WithLockAsync(async () =>
+        {
+            EnsureOpen();
+            if (string.IsNullOrWhiteSpace(relativePath))
+                throw new ArgumentException("Relative path is required.", nameof(relativePath));
+
+            var normalized = relativePath.Replace('\\', '/');
+            var absolute = Path.Combine(VaultPath!, normalized.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(absolute))
+                File.Delete(absolute);
+        });
 
     public Task CloseAsync()
     {

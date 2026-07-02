@@ -125,6 +125,122 @@ public class McpServerTests : IDisposable
         Assert.Equal(AuthoringMcpSessionHelper.NoVaultError, result.error);
     }
 
+    [Fact]
+    public async Task GetVaultStatus_NoVault_ReturnsError()
+    {
+        var mockWorkspace = Substitute.For<IWorkspaceState>();
+        mockWorkspace.Session.Returns((CampaignVaultSession?)null);
+        AuthoringMcpSessionHelper.WorkspaceStateProvider = () => mockWorkspace;
+        var tools = new AuthoringMcpTools();
+
+        var result = await tools.GetVaultStatus();
+
+        Assert.False(result.success);
+        Assert.Equal(AuthoringMcpSessionHelper.NoVaultError, result.error);
+    }
+
+    [Fact]
+    public async Task GetVaultStatus_OpenVault_ReturnsStatusPayload()
+    {
+        await OpenVaultAsync();
+        var tools = new AuthoringMcpTools();
+
+        // Write a file to make working tree dirty
+        await tools.WriteWorkspaceEntity("characters/test.md", "---\nid: characters/test\nname: Test\n---");
+
+        var result = await tools.GetVaultStatus();
+
+        Assert.True(result.success, result.error);
+        Assert.NotNull(result.summary);
+
+        var payload = Assert.IsType<System.Collections.Generic.Dictionary<string, object>>(result.summary);
+        Assert.True((bool)payload["isDirty"]);
+        Assert.NotNull(payload["vaultPath"]);
+        Assert.NotNull(payload["sync"]);
+    }
+
+    [Fact]
+    public async Task CommitVault_WritesCommit_HeadShaAdvances()
+    {
+        await OpenVaultAsync();
+        var tools = new AuthoringMcpTools();
+
+        // Make a change
+        await tools.WriteWorkspaceEntity("characters/test.md", "---\nid: characters/test\nname: Test\n---");
+
+        var statusBefore = await tools.GetVaultStatus();
+        var headBefore = ((System.Collections.Generic.Dictionary<string, object>)statusBefore.summary)["headCommitSha"];
+
+        // Commit
+        var commitResult = await tools.CommitVault("Test commit");
+        Assert.True(commitResult.success);
+        var headAfter = ((System.Collections.Generic.Dictionary<string, object>)commitResult.summary)["headCommitSha"];
+
+        Assert.NotEqual(headBefore, headAfter);
+
+        // Verify working tree is clean
+        var statusAfter = await tools.GetVaultStatus();
+        var isDirty = ((System.Collections.Generic.Dictionary<string, object>)statusAfter.summary)["isDirty"];
+        Assert.False((bool)isDirty);
+    }
+
+    [Fact]
+    public async Task CommitVault_EmptyMessage_ReturnsError()
+    {
+        await OpenVaultAsync();
+        var tools = new AuthoringMcpTools();
+
+        var result = await tools.CommitVault("");
+
+        Assert.False(result.success);
+        Assert.Contains("required", result.error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateWorkspaceEntity_ValidType_WritesTemplateAndMatchesUiPath()
+    {
+        await OpenVaultAsync();
+        var tools = new AuthoringMcpTools();
+
+        var result = await tools.CreateWorkspaceEntity("character", "TestNPC");
+
+        Assert.True(result.success, result.error);
+        Assert.NotNull(result.path);
+        Assert.NotNull(result.content);
+        Assert.StartsWith("characters/", result.path);
+        Assert.EndsWith(".md", result.path);
+        Assert.Contains("testcnpc", result.path);
+
+        // Verify file was written
+        var readResult = await tools.ReadWorkspaceEntity(result.path);
+        Assert.True(readResult.success);
+        Assert.Equal(result.content, readResult.content);
+    }
+
+    [Fact]
+    public async Task CreateWorkspaceEntity_UnsupportedType_ReturnsError()
+    {
+        await OpenVaultAsync();
+        var tools = new AuthoringMcpTools();
+
+        var result = await tools.CreateWorkspaceEntity("invalid-type", "Test");
+
+        Assert.False(result.success);
+        Assert.Contains("Unsupported", result.error);
+    }
+
+    [Fact]
+    public async Task ResolveVaultConflict_UnknownResolutionString_ReturnsError()
+    {
+        await OpenVaultAsync();
+        var tools = new AuthoringMcpTools();
+
+        var result = await tools.ResolveVaultConflict("characters/test", "InvalidResolution");
+
+        Assert.False(result.success);
+        Assert.Contains("Unknown resolution", result.error);
+    }
+
     private async Task OpenVaultAsync()
     {
         await _session.CreateAsync(_tempDirectory, "mcp-test");

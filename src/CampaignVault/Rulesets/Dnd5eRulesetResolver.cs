@@ -239,8 +239,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         if (ShouldApplyRelationshipModifier(action, skillName))
         {
             var targetId = action.TargetIds.FirstOrDefault();
-            if (targetId != null && context.Characters.TryGetValue(targetId, out var target) &&
-                context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            if (targetId != null && 
+                context.Characters.TryGetValue(targetId, out var target) &&
+                context.Characters.TryGetValue(action.CharacterId, out var actor) && 
+                context.Config != null)
             {
                 (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
                 bonus += relationshipBonus;
