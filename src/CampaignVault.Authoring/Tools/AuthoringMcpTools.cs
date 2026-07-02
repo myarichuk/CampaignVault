@@ -32,17 +32,17 @@ public class AuthoringMcpTools
         var gitStatus = session.GetGitStatus();
         var summary = session.GetSyncSummary();
 
-        var payload = new
+        var payload = new Dictionary<string, object>
         {
-            vaultPath = session.VaultPath,
-            headCommitSha = session.HeadCommitSha,
-            syncedCommitSha = session.SyncedCommitSha,
-            isDirty = gitStatus.IsDirty,
-            modifiedPaths = gitStatus.ModifiedPaths,
-            addedPaths = gitStatus.AddedPaths,
-            removedPaths = gitStatus.RemovedPaths,
-            untrackedPaths = gitStatus.UntrackedPaths,
-            sync = BuildSyncSummaryPayload(summary)
+            { "vaultPath", session.VaultPath },
+            { "headCommitSha", session.HeadCommitSha },
+            { "syncedCommitSha", session.SyncedCommitSha },
+            { "isDirty", gitStatus.IsDirty },
+            { "modifiedPaths", gitStatus.ModifiedPaths },
+            { "addedPaths", gitStatus.AddedPaths },
+            { "removedPaths", gitStatus.RemovedPaths },
+            { "untrackedPaths", gitStatus.UntrackedPaths },
+            { "sync", BuildSyncSummaryPayload(summary) }
         };
 
         return Task.FromResult(new AuthoringToolResult(success: true, summary: payload));
@@ -259,7 +259,7 @@ public class AuthoringMcpTools
             await session.CommitAsync(message);
             AuthoringMcpSessionHelper.RefreshUiIfAvailable();
             return new AuthoringToolResult(success: true,
-                summary: new { headCommitSha = session.HeadCommitSha });
+                summary: new Dictionary<string, object> { { "headCommitSha", session.HeadCommitSha } });
         }
         catch (VaultException ex)
         {
@@ -343,15 +343,15 @@ public class AuthoringMcpTools
         }
     }
 
-    private static object BuildSyncSummaryPayload(VaultSyncSummary summary) => new
+    private static object BuildSyncSummaryPayload(VaultSyncSummary summary) => new Dictionary<string, object>
     {
-        syncedCount = summary.SyncedCount,
-        aheadCount = summary.AheadCount,
-        behindCount = summary.BehindCount,
-        conflictCount = summary.ConflictCount,
-        connection = summary.Connection.State.ToString(),
-        connectionMessage = summary.Connection.Message,
-        remoteCacheCorrupt = summary.RemoteCacheCorrupt,
-        lastFetchedAt = summary.LastFetchedAt
+        { "syncedCount", summary.SyncedCount },
+        { "aheadCount", summary.AheadCount },
+        { "behindCount", summary.BehindCount },
+        { "conflictCount", summary.ConflictCount },
+        { "connection", summary.Connection.State.ToString() },
+        { "connectionMessage", summary.Connection.Message },
+        { "remoteCacheCorrupt", summary.RemoteCacheCorrupt },
+        { "lastFetchedAt", summary.LastFetchedAt }
     };
 }
