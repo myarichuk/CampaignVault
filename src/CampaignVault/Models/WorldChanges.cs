@@ -733,6 +733,10 @@ public class LevelUpChange : WorldChange
     [Description("For multiclass PCs: which class gained the level (e.g. 'Wizard', 'Fighter'). Determines hit die for HP gain.")]
     [JsonPropertyName("classGained")]
     public string? ClassGained { get; set; }
+
+    [Description("Optional narrative reason logged in the commit summary (e.g. 'defeated the goblin chief', 'milestone after clearing the mine').")]
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
 }
 
 /// <summary>

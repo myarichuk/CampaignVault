@@ -317,10 +317,10 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure(hidden);
         }
 
-        if (!character.IsPc)
+        if (!character.IsPc && !character.IsPartyCompanion)
         {
             return ChangeHandlerResult.Failure(
-                $"level_up applies only to player characters (isPc: true). '{levelUp.CharacterId}' is not a PC.");
+                $"level_up applies only to player characters (isPc: true) or party companions (isPartyCompanion: true). '{levelUp.CharacterId}' is neither.");
         }
 
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
@@ -364,6 +364,10 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
             : null;
         _poolInitializer.InitializePools(character, activeSystem, campaignConfig);
+
+        var reasonSuffix = string.IsNullOrWhiteSpace(levelUp.Reason) ? "" : $" ({levelUp.Reason})";
+        context.RecordMessage(
+            $"Level up: {character.Name} gained {levelUp.LevelsGained} level(s){reasonSuffix}. MaxHp {previousMax} → {character.MaxHp}.");
 
         return ChangeHandlerResult.Ok;
     }

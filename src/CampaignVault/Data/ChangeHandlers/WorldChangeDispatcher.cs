@@ -89,12 +89,14 @@ public sealed class WorldChangeDispatcher(
         var factionIds = new HashSet<string>();
         var questIds = new HashSet<string>();
         var needsCombat = false;
+        var needsRulesetConfig = false;
         var allInvolved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var change in changes)
         {
             ExtractInvolvedIds(change, characterIds, locationIds, factionIds, questIds, itemIds, allInvolved);
             if (change is RulesetAction) needsCombat = true;
+            if (change is RulesetAction or LevelUpChange) needsRulesetConfig = true;
         }
 
         Dictionary<string, Character> characters;
@@ -158,10 +160,12 @@ public sealed class WorldChangeDispatcher(
                 activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effectiveCampaign));
             }
 
-            // Preload campaign config for resolver and handler access (ruleset selection, feature flags, etc).
-            if (!string.IsNullOrEmpty(effectiveCampaign))
+            // Preload campaign config when ruleset resolvers or level_up need feature flags.
+            if (needsRulesetConfig && !string.IsNullOrEmpty(effectiveCampaign))
             {
-                config = await session.LoadAsync<CampaignConfig>(_keys.Config(effectiveCampaign));
+                var configId = _keys.Config(effectiveCampaign);
+                config = await session.LoadAsync<CampaignConfig>(configId)
+                         ?? new CampaignConfig { Id = configId };
             }
         }
         else
