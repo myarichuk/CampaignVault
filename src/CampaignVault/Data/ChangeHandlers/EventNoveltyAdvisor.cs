@@ -1,5 +1,6 @@
 using CampaignVault.Data;
 using CampaignVault.Models;
+using Microsoft.Extensions.Logging;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -30,13 +31,14 @@ internal static class EventNoveltyAdvisor
         {
             recent = await context.Session.Query<Event, Event_Search>()
                 .Where(x => x.CampaignName == context.CampaignName)
-                .OrderByDescending(x => x.DayLogged)
+                .OrderByDescending(x => x.Timestamp)
                 .Take(RecentEventsToCompare)
                 .ToListAsync(ct);
         }
-        catch
+        catch (Exception ex)
         {
             // Advisory only — a stale/unavailable index must never affect commit success.
+            context.Logger.LogDebug(ex, "EventNoveltyAdvisor: skipped novelty scoring (advisory only).");
             return null;
         }
 

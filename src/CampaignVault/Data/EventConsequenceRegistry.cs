@@ -46,13 +46,14 @@ public static class EventConsequenceRegistry
     private static bool TryCombatLocationDamage(Event evt, out string json)
     {
         json = string.Empty;
-        if (evt.Category != EventCategory.Combat || !IsLocationRelated(evt.RelatedEntityId))
+        var locationId = evt.ResolvePrimaryLocationId();
+        if (evt.Category != EventCategory.Combat || locationId == null)
         {
             return false;
         }
 
         json = BuildLocationUpdateJson(
-            evt.RelatedEntityId!,
+            locationId,
             "Signs of recent combat — scorched earth, scattered debris, lingering smoke",
             ["scorched", "battle-scarred"]);
         return true;
@@ -61,13 +62,14 @@ public static class EventConsequenceRegistry
     private static bool TryDiscoveryLocationState(Event evt, out string json)
     {
         json = string.Empty;
-        if (evt.Category != EventCategory.Discovery || !IsLocationRelated(evt.RelatedEntityId))
+        var locationId = evt.ResolvePrimaryLocationId();
+        if (evt.Category != EventCategory.Discovery || locationId == null)
         {
             return false;
         }
 
         json = BuildLocationUpdateJson(
-            evt.RelatedEntityId!,
+            locationId,
             "Area recently explored — disturbed terrain, fresh tracks, overturned stones",
             ["recently-explored"]);
         return true;
@@ -103,10 +105,6 @@ public static class EventConsequenceRegistry
         json = arr.ToJsonString();
         return true;
     }
-
-    private static bool IsLocationRelated(string? relatedEntityId) =>
-        !string.IsNullOrWhiteSpace(relatedEntityId)
-        && relatedEntityId.StartsWith("locations/", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildLocationUpdateJson(string locationId, string newState, IReadOnlyList<string> tags)
     {

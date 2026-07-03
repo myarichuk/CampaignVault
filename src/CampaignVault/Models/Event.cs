@@ -57,6 +57,57 @@ public class Event : ICampaignScopedEntity
     /// <summary>Additional locations touched by a spillover beat (e.g. a bar fight that spills into an alley).</summary>
     public List<string>? RelatedLocationIds { get; set; }
 
+    /// <summary>Whether this event is tied to <paramref name="locationId"/> via any spatial anchor field.</summary>
+    public bool TouchesLocation(string locationId)
+    {
+        if (string.IsNullOrEmpty(locationId))
+        {
+            return false;
+        }
+
+        if (string.Equals(LocationId, locationId, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(RelatedEntityId, locationId, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (RelatedLocationIds?.Contains(locationId, StringComparer.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+
+        return Involved?.Contains(locationId, StringComparer.OrdinalIgnoreCase) ?? false;
+    }
+
+    /// <summary>
+    /// Resolves the primary location ID for consequence templates: prefers explicit <see cref="LocationId"/>,
+    /// then legacy <see cref="RelatedEntityId"/>, then spillover/involved location IDs.
+    /// </summary>
+    public string? ResolvePrimaryLocationId()
+    {
+        if (IsLocationId(LocationId))
+        {
+            return LocationId;
+        }
+
+        if (IsLocationId(RelatedEntityId))
+        {
+            return RelatedEntityId;
+        }
+
+        var spillover = RelatedLocationIds?.FirstOrDefault(IsLocationId);
+        if (spillover != null)
+        {
+            return spillover;
+        }
+
+        return Involved?.FirstOrDefault(IsLocationId);
+    }
+
+    private static bool IsLocationId(string? id) =>
+        !string.IsNullOrWhiteSpace(id)
+        && id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
     /// Associates the entity with a specific campaign for multi-campaign isolation.
     /// Set automatically from current campaign context on create/log (via repo + handlers).

@@ -25,8 +25,7 @@ public sealed class EventConsequencePressureContributor : IPressureContributor
             ctx.Session, ctx.CampaignName, minDay, 50, ct);
 
         var locationEvents = recentEvents
-            .Where(e => string.Equals(e.RelatedEntityId, locId, StringComparison.OrdinalIgnoreCase)
-                        || (e.Involved?.Contains(locId, StringComparer.OrdinalIgnoreCase) ?? false))
+            .Where(e => e.TouchesLocation(locId))
             .OrderByDescending(e => e.Timestamp)
             .Take(5);
 
