@@ -23,15 +23,19 @@ public static class RelationshipModifierHelper
             return (0, "neutral");
         }
 
-        var relationshipScore = target.Social.Relationships.GetValueOrDefault(actor.Id, 0);
+        var hasDirectScore = target.Social.Relationships.TryGetValue(actor.Id, out var relationshipScore);
+        if (!hasDirectScore)
+        {
+            relationshipScore = 0;
+        }
 
-        // If missing and symmetric fallback enabled, try half of the reverse direction.
-        if (relationshipScore == 0 && config.SymmetricRelationshipFallback)
+        // Fallback only when the target→actor key is missing (not when explicitly neutral at 0).
+        if (!hasDirectScore && config.SymmetricRelationshipFallback)
         {
             var reverseScore = actor.Social?.Relationships?.GetValueOrDefault(target.Id, 0) ?? 0;
             if (reverseScore != 0)
             {
-                relationshipScore = reverseScore / 2; // Integer division, rounds toward zero.
+                relationshipScore = (int)Math.Floor(reverseScore / 2.0);
             }
         }
 

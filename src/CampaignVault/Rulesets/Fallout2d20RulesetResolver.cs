@@ -25,17 +25,6 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
     protected override IRollService? GetRollService() => _rollService;
 
-    private static bool ShouldApplyRelationshipModifier(RulesetAction action, string skillName)
-    {
-        if (action.ActionCategory == ActionCategory.Social)
-        {
-            return true;
-        }
-
-        var socialSkills = new[] { "Persuasion", "Deception", "Intimidation", "Insight", "Performance" };
-        return socialSkills.Any(s => string.Equals(s, skillName, StringComparison.OrdinalIgnoreCase));
-    }
-
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(
         RulesetAction action,
         ChangeContext context,
@@ -57,13 +46,14 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         var relationshipLabel = "neutral";
         var relationshipBonus = 0;
-        if (ShouldApplyRelationshipModifier(action, skill))
+        if (SocialSkillGating.ShouldApplyRelationshipModifier(System, action, skill))
         {
-            var targetId = action.TargetIds.FirstOrDefault();
+            var targetId = SocialSkillGating.ResolveRelationshipTargetId(action);
             if (targetId != null && context.Characters.TryGetValue(targetId, out var target) &&
-                context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+                context.Characters.TryGetValue(action.CharacterId, out var actor))
             {
-                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(
+                    target, actor, CampaignConfigHelper.EffectiveConfig(context));
                 request.TargetNumber += relationshipBonus;
             }
         }
@@ -220,11 +210,12 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         var relationshipLabel = "neutral";
         var relationshipBonus = 0;
-        if (!isGrapple && !isEscape && ShouldApplyRelationshipModifier(action, actorSkill))
+        if (!isGrapple && !isEscape && SocialSkillGating.ShouldApplyRelationshipModifier(System, action, actorSkill))
         {
-            if (context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            if (context.Characters.TryGetValue(action.CharacterId, out var actor))
             {
-                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(
+                    target, actor, CampaignConfigHelper.EffectiveConfig(context));
                 actorRequest.TargetNumber += relationshipBonus;
             }
         }

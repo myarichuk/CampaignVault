@@ -74,17 +74,6 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         };
     }
 
-    private static bool ShouldApplyRelationshipModifier(RulesetAction action, string skillName)
-    {
-        if (action.ActionCategory == ActionCategory.Social)
-        {
-            return true;
-        }
-
-        var socialSkills = new[] { "Persuasion", "Deception", "Intimidation", "Insight", "Performance" };
-        return socialSkills.Any(s => string.Equals(s, skillName, StringComparison.OrdinalIgnoreCase));
-    }
-
     private Pf2eDegreeOfSuccess CalculateDegreeOfSuccess(RollOutcome roll, int dc)
     {
         Pf2eDegreeOfSuccess degree;
@@ -250,13 +239,14 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         var relationshipLabel = "neutral";
         var relationshipBonus = 0;
-        if (ShouldApplyRelationshipModifier(action, skillName))
+        if (SocialSkillGating.ShouldApplyRelationshipModifier(System, action, skillName))
         {
-            var targetId = action.TargetIds.FirstOrDefault();
+            var targetId = SocialSkillGating.ResolveRelationshipTargetId(action);
             if (targetId != null && context.Characters.TryGetValue(targetId, out var target) &&
-                context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+                context.Characters.TryGetValue(action.CharacterId, out var actor))
             {
-                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(
+                    target, actor, CampaignConfigHelper.EffectiveConfig(context));
                 bonus += relationshipBonus;
             }
         }
@@ -360,11 +350,12 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         var relationshipLabel = "neutral";
         var relationshipBonus = 0;
-        if (ShouldApplyRelationshipModifier(action, actorSkill))
+        if (SocialSkillGating.ShouldApplyRelationshipModifier(System, action, actorSkill))
         {
-            if (context.Characters.TryGetValue(action.CharacterId, out var actor) && context.Config != null)
+            if (context.Characters.TryGetValue(action.CharacterId, out var actor))
             {
-                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(target, actor, context.Config);
+                (relationshipBonus, relationshipLabel) = RelationshipModifierHelper.GetSocialModifier(
+                    target, actor, CampaignConfigHelper.EffectiveConfig(context));
                 actorRollBonus += relationshipBonus;
             }
         }

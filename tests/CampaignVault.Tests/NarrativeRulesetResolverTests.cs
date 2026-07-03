@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,6 +76,39 @@ public class NarrativeRulesetResolverTests
         {
             Assert.Contains(output.Mutations, m => m is NeedChange nc && nc.Need == "stress");
         }
+    }
+
+    [Fact]
+    public async Task SocialCheck_SkipsRelationship_WhenNarrativeRuleset()
+    {
+        _rollServiceSub.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Result = 5, Summary = "Oracle: 5" }));
+
+        var target = new Character { Id = "chars/merchant", Name = "Merchant" };
+        target.Social.Relationships[_actor.Id] = 85;
+
+        var action = new RulesetAction
+        {
+            ActionType = RulesetActionType.SkillCheck,
+            ActionCategory = ActionCategory.Social,
+            ActionName = "Persuade",
+            CharacterId = _actor.Id,
+            TargetIds = [target.Id],
+            Parameters = new Dictionary<string, string> { { "skill", "Persuasion" } }
+        };
+
+        var chars = new Dictionary<string, Character> { { _actor.Id, _actor }, { target.Id, target } };
+        var dispatcher = new WorldChangeDispatcher([], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
+        var context = new ChangeContext(
+            null, chars, new Dictionary<string, Item>(), new Dictionary<string, Location>(),
+            null, null, NullLogger.Instance, [], dispatcher, config: new CampaignConfig());
+
+        var output = await _resolver.Actions.ResolveAsync(context, action);
+
+        Assert.True(output.Result.Success);
+        Assert.Contains("Narrative Oracle Result", output.Result.Narrative);
+        Assert.DoesNotContain("trusted friend", output.Result.Narrative);
+        Assert.DoesNotContain("relationship", output.Result.Narrative, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -71,6 +71,87 @@ public class RelationshipModifierTests
     }
 
     [Fact]
+    public void GetSocialModifier_SymmetricFallback_ExplicitZeroStaysNeutral()
+    {
+        var target = new Character { Id = "target" };
+        var actor = new Character { Id = "actor" };
+        var config = new CampaignConfig { SymmetricRelationshipFallback = true };
+
+        target.Social.Relationships["actor"] = 0;
+        actor.Social.Relationships["target"] = 120;
+
+        var (modifier, label) = RelationshipModifierHelper.GetSocialModifier(target, actor, config);
+
+        Assert.Equal(0, modifier);
+        Assert.Equal("neutral", label);
+    }
+
+    [Theory]
+    [InlineData(RulesetSystem.Dnd5e, "Persuasion", true)]
+    [InlineData(RulesetSystem.Dnd5e, "Athletics", false)]
+    [InlineData(RulesetSystem.Pathfinder2e, "Diplomacy", true)]
+    [InlineData(RulesetSystem.Pathfinder2e, "Persuasion", false)]
+    [InlineData(RulesetSystem.Fallout2d20, "Speech", true)]
+    [InlineData(RulesetSystem.Fallout2d20, "SmallGuns", false)]
+    public void SocialSkillGating_UsesPerRulesetSkillLists(RulesetSystem system, string skill, bool expected)
+    {
+        var action = new RulesetAction
+        {
+            ActionType = RulesetActionType.SkillCheck,
+            Parameters = new Dictionary<string, string> { { "skill", skill } }
+        };
+
+        Assert.Equal(expected, SocialSkillGating.ShouldApplyRelationshipModifier(system, action, skill));
+    }
+
+    [Fact]
+    public async Task Dnd5eSkillCheck_NullConfig_StillAppliesRelationshipModifier()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome
+            { Result = 14, HasCritical = false, HasComplication = false, Summary = "Rolled 14" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+
+        var actor = new Character { Id = "actor", SystemStats = new Dnd5eExtension { Charisma = 16 } };
+        var target = new Character { Id = "target" };
+        target.Social.Relationships["actor"] = 85;
+
+        var charDict = new Dictionary<string, Character> { { "actor", actor }, { "target", target } };
+
+        var context = new ChangeContext(
+            sessionForTests: null,
+            characters: charDict,
+            items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
+            factions: null,
+            quests: null,
+            logger: NullLogger.Instance,
+            summary: [],
+            dispatcher: new WorldChangeDispatcher(
+                new IWorldChangeHandler[0],
+                new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
+            campaignName: null,
+            config: null
+        );
+
+        var action = new RulesetAction
+        {
+            CharacterId = "actor",
+            ActionName = "Persuade",
+            ActionType = RulesetActionType.SkillCheck,
+            ActionCategory = ActionCategory.Social,
+            TargetIds = ["target"],
+            Parameters = new Dictionary<string, string> { { "skill", "Persuasion" }, { "dc", "15" } }
+        };
+
+        var result = await resolver.ResolveAsync(context, action);
+
+        Assert.True(result.Result.Success);
+        Assert.Contains("trusted friend", result.Result.Narrative);
+    }
+
+    [Fact]
     public async Task Dnd5eSkillCheck_Social_IncludesRelationshipModifier()
     {
         var rollService = new FakeRollService();
