@@ -67,6 +67,15 @@ public partial class SettingsViewModel : ObservableObject
         _vaultMcpPortValue = _settings.VaultMcpPort;
 
         UpdateMcpStatus();
+    }
+
+    /// <summary>
+    /// Starts periodic gRPC health checks. Call from the Avalonia app only — not from unit tests.
+    /// </summary>
+    public void StartAutoConnectMonitoring()
+    {
+        if (_autoConnectTimer != null)
+            return;
 
         _autoConnectTimer = new Avalonia.Threading.DispatcherTimer
         {

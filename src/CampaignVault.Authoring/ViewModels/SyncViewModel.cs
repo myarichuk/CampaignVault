@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.Services;
@@ -115,7 +116,11 @@ public partial class SyncViewModel : ObservableObject
         try
         {
             var client = CreateClient();
-            var response = await client.GetCampaignsAsync(new EmptyRequest());
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var response = await client.GetCampaignsAsync(
+                new EmptyRequest(),
+                deadline: DateTime.UtcNow.AddSeconds(5),
+                cancellationToken: cts.Token);
             AvailableCampaigns.Clear();
             foreach (var c in response.Campaigns)
                 AvailableCampaigns.Add(c.Name);

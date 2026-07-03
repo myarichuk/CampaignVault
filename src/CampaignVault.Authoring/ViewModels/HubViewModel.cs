@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Services;
 using CampaignVault.Authoring.Vault;
+using CampaignVault.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -44,10 +45,10 @@ public partial class HubViewModel : ViewModelBase
             foreach (var campaign in _mainViewModel.Sync.AvailableCampaigns)
                 RemoteCampaigns.Add(campaign);
 
-            IsCloudConnected = RemoteCampaigns.Count > 0;
-            StatusMessage = IsCloudConnected
+            IsCloudConnected = true;
+            StatusMessage = RemoteCampaigns.Count > 0
                 ? $"Connected: {RemoteCampaigns.Count} campaign(s) on Campaign Vault."
-                : "Connected, but no campaigns found on server.";
+                : "Connected to Campaign Vault, but no campaigns exist yet. Create one in play MCP first.";
         }
         catch (Exception ex)
         {
@@ -115,20 +116,17 @@ public partial class HubViewModel : ViewModelBase
                 return;
             }
 
-            var campaignName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var folderName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var campaignName = CampaignSlug.Canonicalize(folderName);
             await _mainViewModel.Session.CreateAsync(path, campaignName);
             _historyService.Add(path);
             LoadRecentCampaigns();
 
-            _mainViewModel.Sync.ConfigureSessionSync();
-            _mainViewModel.Workspace.BindSession(_mainViewModel.Session);
-            _mainViewModel.Sync.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
-            _mainViewModel.SourceControl.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
-
-            _mainViewModel.ApplicationState.CurrentState = AppState.Editor;
-            _mainViewModel.WorkspaceStatusMessage = $"Vault: {path}";
+            _mainViewModel.EnterEditorMode(path);
             _mainViewModel.RefreshAll();
-            StatusMessage = $"Created vault '{campaignName}'.";
+            StatusMessage = folderName != campaignName
+                ? $"Created vault '{campaignName}' (from folder '{folderName}'). Slug must match the server campaign for gRPC sync."
+                : $"Created vault '{campaignName}'.";
         }
         catch (Exception ex)
         {
@@ -158,12 +156,8 @@ public partial class HubViewModel : ViewModelBase
 
             await _mainViewModel.Session.CreateAsync(path, campaignName);
             _historyService.Add(path);
-
-            _mainViewModel.Sync.ConfigureSessionSync();
-            _mainViewModel.Workspace.BindSession(_mainViewModel.Session);
-            _mainViewModel.Sync.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
-            _mainViewModel.SourceControl.Bind(_mainViewModel.Session, _mainViewModel.RefreshAll);
-            _mainViewModel.ApplicationState.CurrentState = AppState.Editor;
+            LoadRecentCampaigns();
+            _mainViewModel.EnterEditorMode(path);
 
             StatusMessage = $"Fetching '{campaignName}'...";
             await _mainViewModel.Sync.FetchCommand.ExecuteAsync(null);

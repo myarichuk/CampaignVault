@@ -26,6 +26,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var mainWindowViewModel = new MainWindowViewModel();
+            mainWindowViewModel.Settings.StartAutoConnectMonitoring();
             
             var services = new ServiceCollection();
             services.AddSingleton<IWorkspaceState>(mainWindowViewModel);

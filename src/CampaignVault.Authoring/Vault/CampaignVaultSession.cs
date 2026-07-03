@@ -153,17 +153,19 @@ public sealed class CampaignVaultSession : IDisposable
     }
 
     public Task WriteFileAsync(string relativePath, string content) =>
-        WithLockAsync(async () =>
-        {
-            EnsureOpen();
-            if (string.IsNullOrWhiteSpace(relativePath))
-                throw new ArgumentException("Relative path is required.", nameof(relativePath));
+        WithLockAsync(() => WriteEntityFileUnlockedAsync(relativePath, content));
 
-            var normalized = relativePath.Replace('\\', '/');
-            var absolute = Path.Combine(VaultPath!, normalized.Replace('/', Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(Path.GetDirectoryName(absolute)!);
-            await File.WriteAllTextAsync(absolute, content);
-        });
+    private async Task WriteEntityFileUnlockedAsync(string relativePath, string content)
+    {
+        EnsureOpen();
+        if (string.IsNullOrWhiteSpace(relativePath))
+            throw new ArgumentException("Relative path is required.", nameof(relativePath));
+
+        var normalized = relativePath.Replace('\\', '/');
+        var absolute = Path.Combine(VaultPath!, normalized.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(absolute)!);
+        await File.WriteAllTextAsync(absolute, content);
+    }
 
     public Task PushAsync(IEnumerable<string>? entityIds = null) =>
         WithLockAsync(() => _syncEngine.PushAsync(entityIds));
@@ -187,7 +189,7 @@ public sealed class CampaignVaultSession : IDisposable
 
             var (relativePath, slug) = EntityCreation.BuildNewEntityPath(normalizedType, name, DateTime.Now);
             var template = _canonicalizer.GetBlankTemplate(normalizedType, slug, name);
-            await WriteFileAsync(relativePath, template);
+            await WriteEntityFileUnlockedAsync(relativePath, template);
             return (relativePath, template);
         });
 
