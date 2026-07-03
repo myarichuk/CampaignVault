@@ -47,7 +47,7 @@ Fallout grenade: `{ "$type":"ruleset_action", "actorId":"chars/raider", "targetI
 Stimpak: `{ "$type":"ruleset_action", "actorId":"chars/pc1", "targetIds":["chars/pc1"], "actionType":"UseItem", "actionName":"Stimpak", "parameters":{"healAmount":"8"} }`
 
 **Social skill bonuses (relationship modifiers):**
-Social skill checks (Persuasion, Deception, Intimidation, Insight, Performance, or `ActionCategory: Social`) apply a bonus/penalty based on the target's relationship to the actor. Bands: ≥80→+5 (trusted friend), 60–79→+3 (friendly), 40–59→+1 (acquainted), −39..39→0 (neutral), −59..−40→−1 (distrustful), −79..−60→−3 (hostile), ≤−80→−5 (hated enemy). Narrative system (Fallout 1d6 oracle) **does not apply relationship modifiers**; skip `ruleset_action` for social checks in pure narrative flow.
+Social skill checks apply a bonus/penalty from the target's relationship to the actor. Gate with `ActionCategory: Social` or native skill names: 5e {Persuasion, Deception, Intimidation, Insight, Performance}; PF2e {Diplomacy, Deception, Intimidation, Performance, Society}; Fallout {Speech, Barter}. Bands: ≥80→+5 (trusted friend), 60–79→+3 (friendly), 40–59→+1 (acquainted), −39..39→0 (neutral), −59..−40→−1 (distrustful), −79..−60→−3 (hostile), ≤−80→−5 (hated enemy). Multi-target: first `targetId` is the relationship source. Narrative oracle mode **does not apply** relationship modifiers.
 
 **Engagements (non-combat RP):**
 - `engagement_relation` — pairwise state (`actorId`, `targetId`, `category`, `verb`). Physical/Medical=Hard, Social=Soft.
@@ -61,7 +61,8 @@ Combat grapples: ruleset handles. RP hugs/tending wounds: commit `engagement_rel
 - **PF2e:** `classHpPerLevel`, `ancestryHp`, `level`, mods, `skillModifiers.Perception`.
 - **Fallout:** SPECIAL, `skills`, `tagSkills`, `endurance`, `luck`, `level`.
 
-**Conversation commits:** `event` with `category: Conversation` MUST include `involved: [every speaker ID]` — NOT `participants`.
+**Conversation commits:** `event` with `category: Conversation` MUST include `involved: [every speaker ID]` — NOT `participants`. For 3+ speakers (PC + companion + barkeep), list everyone explicitly or pair `engagement_relation` rows (one per speaker↔anchor) in the same batch — the engine merges participants automatically.
+**Level up:** No XP tracking — commit `{ "$type":"level_up", "characterId":"...", "levelsGained":1, "reason":"milestone text" }` when narratively earned. Works for `isPc` and `isPartyCompanion` characters.
 
 **Style:** Narrate vividly; commit atomically at beat end. `get_help()` when unsure — full spell JSON, tavern walkthrough, enum tables. Prefer `commit` over upserts during play. Fix ENGINE WARNING JSON before continuing.
 

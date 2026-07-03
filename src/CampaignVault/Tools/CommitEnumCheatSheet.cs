@@ -52,7 +52,7 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 | Field | Valid values | LLM alias hints |
 |-------|----------------|-----------------|
 | `category` | Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure | Narrative, Roleplay → **Conversation**; Scene → **Interaction** |
-| `involved` | **Required** when `category` is `Conversation` | Array of character IDs for every participant. Field name is `involved` (NOT `participants`). Auto-inferred from `engagement_relation`/`activity` in the same batch if omitted. |
+| `involved` | **Required** when `category` is `Conversation` | Array of character IDs for **every** participant (2+). Field name is `involved` (NOT `participants`). Auto-inferred/merged from `engagement_relation`, `spatial_position`, `activity`, `ruleset_action`, or other events in the same batch if omitted or partial. |
 
 **Conversation commit template (copy-paste):**
 { "$type": "event", "category": "Conversation", "summary": "Valen asked Lirael about the missing caravans.", "involved": ["chars/valen", "chars/lirael-goldvein"] }
@@ -156,6 +156,8 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 | `hpMode` (5e) | average, rolled — override for this level gain |
 | `healToMatch` | Boolean — if true, increase `currentHp` by the same amount as `maxHp` gain |
 | `classGained` (5e multiclass) | Which class gained the level (e.g. `"Wizard"`) — sets hit die for HP gain |
+| `reason` | Optional narrative milestone text logged in commit summary |
+| Eligibility | `isPc: true` or `isPartyCompanion: true` — engine does not track XP; LLM commits when earned |
 
 """;
 }

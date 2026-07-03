@@ -132,6 +132,14 @@ Clear when the beat ends (`verb` or `distanceBand` null):
 
 *Combat vs manual: ruleset resolvers automatically establish and clear mechanical engagements (grappling, escape) via `ruleset_action` contested checks. For unresolved non-combat beats (hugs, tending wounds, intense confrontations), commit `engagement_relation` yourself — otherwise scene pressure will nag you and Hard engagements block `travel`.*
 
+**Multi-party conversations (PC + companion + NPC):** `engagement_relation` is pairwise — use one row per speaker↔anchor pair, then log the beat. Either set `involved` explicitly on the `event`, or let the engine merge participants from `engagement_relation`, `spatial_position`, `activity`, and `ruleset_action` in the same commit batch.
+[
+  { ""$type"": ""engagement_relation"", ""characterId"": ""chars/pc"", ""targetId"": ""chars/barkeep"", ""category"": ""Social"", ""verb"": ""ordering drinks from"", ""bidirectional"": true },
+  { ""$type"": ""engagement_relation"", ""characterId"": ""chars/companion"", ""targetId"": ""chars/barkeep"", ""category"": ""Social"", ""verb"": ""listening in on"", ""bidirectional"": true },
+  { ""$type"": ""event"", ""category"": ""Conversation"", ""summary"": ""The party and the barkeep trade rumors over ale."", ""involved"": [""chars/pc"", ""chars/companion"", ""chars/barkeep""] }
+]
+All participants in `involved` are recalled by `get_npc_context` for each speaker.
+
 Item + transfer patterns, status with modifiers, ruleset_action (see below), etc.
 
 **After you see a pressure in get_scene/get_world_state, your *next* action should usually be a `commit` using the exact snippet provided (adapted with real IDs/names).** Then narrate the outcome. The engine will clear the pressure on subsequent reads.
@@ -271,8 +279,10 @@ Infer from class+level for PCs. Pure flavor transients (no HP, not KeepAlive) sk
 5e creature stat block (statBlockHp — HP formula skipped, AC still bootstrapped if omitted):
 { ""$type"": ""character_create"", ""characterId"": ""chars/goblin-scout"", ""name"": ""Goblin Scout"", ""classLevel"": ""Goblin 1"", ""systemStats"": { ""$system"": ""dnd5e"", ""statBlockHp"": 7, ""dexterity"": 14, ""strength"": 8, ""skillModifiers"": { ""Stealth"": 6, ""Perception"": 2 }, ""savingThrowModifiers"": { ""Dexterity"": 2 } } }
 
-Level up (5e HP gain; optional `healToMatch`; multiclass PCs add `classGained`):
-{ ""$type"": ""level_up"", ""characterId"": ""chars/kergil"", ""levelsGained"": 1, ""hpMode"": ""rolled"", ""healToMatch"": false }
+**Level up:** The engine does not track XP. When a milestone is earned in narration, commit `level_up` for the PC or party companion (`isPartyCompanion: true`). Applies HP gains, re-syncs spell/resource pools, and runs bootstrap. Optional `reason` is logged in the commit summary.
+{ ""$type"": ""level_up"", ""characterId"": ""chars/kergil"", ""levelsGained"": 1, ""hpMode"": ""rolled"", ""healToMatch"": false, ""reason"": ""cleared the goblin warrens"" }
+Party companion:
+{ ""$type"": ""level_up"", ""characterId"": ""chars/wolf-companion"", ""levelsGained"": 1, ""reason"": ""bonded after the siege"" }
 
 PF2e auto-bootstrap:
 { ""$type"": ""character_create"", ""characterId"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""classHpPerLevel"": 10, ""ancestryHp"": 8, ""level"": 2, ""constitutionMod"": 2, ""armorClass"": 19, ""strengthMod"": 4, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 } } }
