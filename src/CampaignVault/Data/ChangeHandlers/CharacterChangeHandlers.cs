@@ -162,7 +162,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
             Notes = cc.Notes,
             CurrentLocationId = cc.CurrentLocationId,
             CurrentActivity = cc.CurrentActivity,
-            KeepAlive = cc.KeepAlive,
+            KeepAlive = cc.KeepAlive || cc.IsPc || cc.IsPartyCompanion,
             IsPc = cc.IsPc,
             IsPartyCompanion = cc.IsPartyCompanion,
             Schedule = cc.Schedule,
@@ -487,6 +487,12 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
             character.IsPc = newIsPc;
             character.IsPartyCompanion = newIsCompanion;
+
+            // Force KeepAlive = true if flipping IsPc or IsPartyCompanion to true
+            if (newIsPc || newIsCompanion)
+            {
+                character.KeepAlive = true;
+            }
         }
 
         if (cu.SystemStats != null)
@@ -644,7 +650,17 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
 
         memory.Details = ku.Details;
         var time = await context.GetCurrentTimeAsync();
-        memory.DayAcquired = (int)time.TotalDaysElapsed;
+
+        if (isNew)
+        {
+            // New memory: set DayAcquired to now
+            memory.DayAcquired = (int)time.TotalDaysElapsed;
+        }
+        else
+        {
+            // Existing memory: nudge salience up instead of resetting DayAcquired (so decay tracking stays honest)
+            memory.Salience = Math.Clamp(memory.Salience + 0.1f, 0.0, 1.0);
+        }
 
         if (ku.Importance.HasValue)
         {

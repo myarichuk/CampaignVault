@@ -11,7 +11,7 @@ public class QuestStalenessRule : ISimulationRule
 
     public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
-        var narratives = new List<string>();
+        var narratives = new List<RuleNarrative>();
         var deltas = new List<WorldChange>();
 
         if (context.ActiveQuests == null || !context.ActiveQuests.Any())
@@ -78,8 +78,8 @@ public class QuestStalenessRule : ISimulationRule
                         RelatedLocationIds = quest.RelatedLocationIds
                     });
 
-                    narratives.Add($"Quest '{quest.Title}' failed because its deadline of Day {missedDay} has passed.");
-                
+                    narratives.Add(new RuleNarrative($"Quest '{quest.Title}' failed because its deadline of Day {missedDay} has passed."));
+
                 // Skip the 10-day nag if we just failed it
                 continue;
             }
@@ -94,7 +94,7 @@ public class QuestStalenessRule : ISimulationRule
 
             if (currentDay - oldestDayStarted > 10)
             {
-                narratives.Add($"Quest '{quest.Title}' has been pending for over 10 days. Consider progressing or failing it.");
+                narratives.Add(new RuleNarrative($"Quest '{quest.Title}' has been pending for over 10 days. Consider progressing or failing it.", Persist: false));
             }
         }
 

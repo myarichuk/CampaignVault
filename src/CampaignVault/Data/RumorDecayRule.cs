@@ -27,7 +27,7 @@ public class RumorDecayRule : ISimulationRule
 
     public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
-        var narratives = new List<string>();
+        var narratives = new List<RuleNarrative>();
         var deltas = new List<WorldChange>();
 
         // Scoping hardened: ActiveRumors from AdvanceWorld are now pre-filtered by CampaignName (strict for rumors).
@@ -66,6 +66,8 @@ public class RumorDecayRule : ISimulationRule
 
             deltas.Add(new RumorEvolves { RumorId = rumor.Id, NewState = nextState.Value });
 
+            // Escalation transitions (real state changes) persist; decay transitions are routine
+            var persist = nextState.Value is RumorState.Spreading or RumorState.Peak;
             var narrative = nextState.Value switch
             {
                 RumorState.Spreading => $"The rumor '{rumor.Subject}' is beginning to spread.",
@@ -74,7 +76,7 @@ public class RumorDecayRule : ISimulationRule
                 RumorState.Forgotten => $"The rumor '{rumor.Subject}' has been forgotten.",
                 _                    => $"The rumor '{rumor.Subject}' has transitioned to {nextState.Value}."
             };
-            narratives.Add(narrative);
+            narratives.Add(new RuleNarrative(narrative, Persist: persist));
         }
 
         return Task.FromResult(new RuleResult(narratives, deltas));

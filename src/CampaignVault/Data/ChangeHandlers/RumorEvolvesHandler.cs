@@ -21,6 +21,12 @@ public sealed class RumorEvolvesHandler : IWorldChangeHandler
             throw new InvalidOperationException("RumorEvolvesHandler requires a non-null session for Patch operations.");
         }
 
+        var existing = await context.Session.LoadAsync<Rumor>(rumor.RumorId, ct);
+        if (existing is null)
+        {
+            return ChangeHandlerResult.Failure($"Rumor '{rumor.RumorId}' not found.");
+        }
+
         context.Session.Advanced.Patch<Rumor, RumorState>(rumor.RumorId, x => x.State, rumor.NewState);
 
         if (rumor.NewText != null)
@@ -50,6 +56,12 @@ public sealed class RumorCreateHandler : IWorldChangeHandler
         if (context.Session is null)
         {
             throw new InvalidOperationException("RumorCreateHandler requires a non-null session.");
+        }
+
+        var existing = await context.Session.LoadAsync<Rumor>(rc.RumorId, ct);
+        if (existing is not null)
+        {
+            return ChangeHandlerResult.Failure($"Rumor '{rc.RumorId}' already exists. Use rumor_evolves to update it.");
         }
 
         var time = await context.GetCurrentTimeAsync();

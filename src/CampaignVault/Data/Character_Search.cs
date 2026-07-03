@@ -27,6 +27,8 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                 CampaignName = c.CampaignName,
                 c.KeepAlive,
                 c.MaxHp,
+                c.IsPc,
+                c.IsPartyCompanion,
                 HasSchedule = c.Schedule != null
 ,
                 SemanticVector = CreateVector(c.SemanticVector)

@@ -49,7 +49,15 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(PlotThreadClueDiscovered), "plot_thread_clue")]
 [JsonDerivedType(typeof(ResourceChange), "resource")]
 [JsonDerivedType(typeof(RestRecoveryAck), "rest_recovery_ack")]
-public abstract class WorldChange;
+public abstract class WorldChange
+{
+    /// <summary>
+    /// Internal flag: true if this change was authored by the simulation engine (not by LLM commit or manual authoring).
+    /// Not exposed in JSON. Used to skip certain side-effects (e.g., pressure cooldown resets, staleness updates).
+    /// </summary>
+    [JsonIgnore]
+    public bool IsEngineAuthored { get; set; }
+}
 
 /// <summary>
 /// Attempt to pass time resting. The engine calculates the danger of the location and the LLM's security modifier
@@ -1252,6 +1260,10 @@ public class PlotThreadProgress : WorldChange
     [Description("Delta to apply to tension level (-100 to +100). Positive = more urgent. Omit to leave unchanged.")]
     [JsonPropertyName("tensionDelta")]
     public int? TensionDelta { get; set; }
+
+    [Description("Day when Climax state was entered (stamped once, used for auto-resolution timeout). Omit to leave unchanged.")]
+    [JsonPropertyName("climaxEnteredDay")]
+    public int? ClimaxEnteredDay { get; set; }
 
     [Description("Replace or set the resolution condition.")]
     [JsonPropertyName("resolutionCondition")]

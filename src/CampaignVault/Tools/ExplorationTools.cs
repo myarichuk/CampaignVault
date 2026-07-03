@@ -301,7 +301,7 @@ public class ExplorationTools : CampaignToolBase
                 context,
                 $"Psychological context for {npc.Name} retrieved (campaign: {effective}).",
                 WorldPressure: initiativePressure is { Length: > 0 } ? initiativePressure : null);
-        }, saveChanges: false);
+        }, saveChanges: true);
     }
 
     [ToolCategory("Session & exploration")]

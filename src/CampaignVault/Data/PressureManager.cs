@@ -77,13 +77,37 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
         }
 
         // Group by GroupingKey (and Severity) to batch similar alerts
-        var groups = finalItems
+        var allGroups = finalItems
             .GroupBy(x => new { x.Item.GroupingKey, x.Item.Severity, x.Escalated })
             .OrderByDescending(g => g.Key.Severity)
-            .Take(maxPressures)
             .ToList();
 
-        var cappedItems = groups.SelectMany(g => g).Select(t => t.Item).ToList();
+        // Cap at the item level: accumulate whole groups while item count stays under maxPressures.
+        // Always include at least one group, even if it alone exceeds the cap.
+        var cappedGroups = new List<IGrouping<dynamic, (WorldPressureItem Item, string OriginalKey, bool Escalated)>>();
+        int itemCount = 0;
+        foreach (var group in allGroups)
+        {
+            if (cappedGroups.Count == 0 || itemCount + group.Count() <= maxPressures)
+            {
+                cappedGroups.Add((IGrouping<dynamic, (WorldPressureItem Item, string OriginalKey, bool Escalated)>)group);
+                itemCount += group.Count();
+            }
+            else if (cappedGroups.Count == 0)
+            {
+                // Always include at least the first (most severe) group, even if it exceeds the cap
+                cappedGroups.Add((IGrouping<dynamic, (WorldPressureItem Item, string OriginalKey, bool Escalated)>)group);
+                itemCount = group.Count();
+                break;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        var cappedItems = cappedGroups.SelectMany(g => g).Select(t => t.Item).ToList();
+        var groups = cappedGroups;
 
         if (!disableCooldowns)
         {

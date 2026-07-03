@@ -111,10 +111,22 @@ public class CampaignConfig
     public int RumorAgingPressureDays { get; set; } = 5;
 
     /// <summary>
+    /// Days a forgotten rumor must age before being archived (deleted) from the campaign.
+    /// Defaults to 30.
+    /// </summary>
+    public int RumorArchiveAfterDays { get; set; } = 30;
+
+    /// <summary>
     /// Days without quest progress before staleness pressure is surfaced.
     /// Defaults to 10.
     /// </summary>
     public int QuestStalenessDays { get; set; } = 10;
+
+    /// <summary>
+    /// Days a plot thread can sit at Climax before auto-resolving with a disaster outcome.
+    /// Defaults to 10.
+    /// </summary>
+    public int PlotThreadClimaxAutoResolveDays { get; set; } = 10;
 
     /// <summary>
     /// HP ratio threshold (current/max) below which a character is considered critically wounded.

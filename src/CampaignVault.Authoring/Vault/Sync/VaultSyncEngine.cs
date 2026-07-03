@@ -150,6 +150,23 @@ public sealed class VaultSyncEngine
                     continue;
                 }
 
+                // Refresh remote cache before push: re-fetch to catch any simulation activity
+                var refreshResponse = await client.GetCampaignEntitiesAsync(
+                    new GetCampaignEntitiesRequest { CampaignName = _campaignName });
+                await _remoteCache.WriteFetchResultAsync(_campaignName, refreshResponse.Entities);
+                RefreshManifestState();
+
+                // Re-evaluate sync state for this entity
+                var currentPlan = EvaluateAllPlans().FirstOrDefault(p =>
+                    string.Equals(p.EntityId, item.EntityId, StringComparison.OrdinalIgnoreCase));
+
+                if (currentPlan == null || currentPlan.State == VaultSyncState.Conflict ||
+                    currentPlan.State == VaultSyncState.BehindVault)
+                {
+                    failures.Add($"{item.EntityId}: remote has changed since last Fetch — likely simulation activity — re-review before pushing");
+                    continue;
+                }
+
                 var content = ReadLocalEntityContent(item);
                 if (content == null)
                 {

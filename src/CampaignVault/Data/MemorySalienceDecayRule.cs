@@ -12,7 +12,7 @@ public class MemorySalienceDecayRule : ISimulationRule
 
     public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
-        var narratives = new List<string>();
+        var narratives = new List<RuleNarrative>();
         var days = (float)context.DaysPassed;
         var currentDay = context.Time.TotalDaysElapsed;
         var decayDays = context.Config?.MemoryImportantDecayDays ?? 40;
@@ -49,7 +49,36 @@ public class MemorySalienceDecayRule : ISimulationRule
 
                 if (before - memory.Salience > 0.01)
                 {
-                    narratives.Add($"Memory '{memory.Topic}' for {npc.Name} is fading (salience {memory.Salience:F2}).");
+                    narratives.Add(new RuleNarrative($"Memory '{memory.Topic}' for {npc.Name} is fading (salience {memory.Salience:F2}).", Persist: false));
+                }
+            }
+
+            // 4a: Evict non-Core memories at floor salience and cap total memory count
+            var maxMemories = 40;
+            var memoryFloor = 0.1f;
+
+            // Remove non-Core memories that have sat at floor salience beyond a threshold
+            var memoriesToEvict = memories.Values
+                .Where(m => m.Importance != MemoryImportance.Core && Math.Abs(m.Salience - memoryFloor) < 0.01f)
+                .ToList();
+
+            foreach (var memory in memoriesToEvict)
+            {
+                memories.Remove(memory.Topic);
+            }
+
+            // If still over cap, evict lowest-salience non-Core memories until under cap
+            if (memories.Count > maxMemories)
+            {
+                var coreMemories = memories.Values.Where(m => m.Importance == MemoryImportance.Core).ToList();
+                var nonCoreMemories = memories.Values.Where(m => m.Importance != MemoryImportance.Core)
+                    .OrderBy(m => m.Salience)
+                    .ToList();
+
+                var toRemove = memories.Count - maxMemories + coreMemories.Count;
+                for (int i = 0; i < toRemove && i < nonCoreMemories.Count; i++)
+                {
+                    memories.Remove(nonCoreMemories[i].Topic);
                 }
             }
         }

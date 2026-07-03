@@ -80,6 +80,8 @@ public class PlotThreadProgressHandler : IWorldChangeHandler
         if (thread == null)
             return ChangeHandlerResult.Failure($"PlotThread '{ptp.PlotThreadId}' not found.");
 
+        var prevState = thread.State;
+
         if (ptp.NewState.HasValue)
             thread.State = ptp.NewState.Value;
 
@@ -109,8 +111,19 @@ public class PlotThreadProgressHandler : IWorldChangeHandler
                 ? ptp.NarrativeNote
                 : thread.DmNotes + "\n" + ptp.NarrativeNote;
 
-        var time = await context.GetCurrentTimeAsync();
-        thread.LastUpdatedDay = time.TotalDaysElapsed;
+        // Stamp ClimaxEnteredDay when transitioning to Climax (only once)
+        if (ptp.NewState == PlotThreadState.Climax && prevState != PlotThreadState.Climax && !thread.ClimaxEnteredDay.HasValue)
+        {
+            var time = await context.GetCurrentTimeAsync();
+            thread.ClimaxEnteredDay = time.TotalDaysElapsed;
+        }
+
+        // Only update LastUpdatedDay for non-engine-authored changes (7-iii: staleness metric reflects agent engagement, not engine auto-progress)
+        if (!ptp.IsEngineAuthored)
+        {
+            var time = await context.GetCurrentTimeAsync();
+            thread.LastUpdatedDay = time.TotalDaysElapsed;
+        }
 
         context.RecordMessage($"Updated plot thread '{thread.Title}': state={thread.State}, tension={thread.TensionLevel}.");
         return ChangeHandlerResult.Ok;

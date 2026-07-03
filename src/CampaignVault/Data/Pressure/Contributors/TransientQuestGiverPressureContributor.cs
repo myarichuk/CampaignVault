@@ -22,7 +22,7 @@ public sealed class TransientQuestGiverPressureContributor : IPressureContributo
             if (!npc.KeepAlive && ctx.Scene.ActiveQuests.Any(q => q.GiverId == npc.Id))
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, npc.Id,
-                    $"Character '{npc.Name}' is a Quest Giver but is marked as transient (KeepAlive = false). The engine will delete them when the party leaves! Anchor them immediately:\n[ {{ \"$type\": \"character_update\", \"characterId\": \"{npc.Id}\", \"keepAlive\": true }} ]",
+                    $"Character '{npc.Name}' is a Quest Giver but is marked as transient (KeepAlive = false). The engine will evict them from their current location when the party leaves (recoverable — they stay in the database and can reappear by reassigning their location; no data is deleted, but they'll be gone from the scene). Anchor them immediately:\n[ {{ \"$type\": \"character_update\", \"characterId\": \"{npc.Id}\", \"keepAlive\": true }} ]",
                     GroupingKey));
             }
         }

@@ -285,8 +285,19 @@ public class CampaignRepository
         string locationId,
         string effectiveCampaign)
     {
-        return (await QueryEventsAsync(session, null, null, 5, effectiveCampaign))
-            .Where(e => e.Involved.Contains(locationId))
+        // Primary query: use indexed locationId parameter
+        var primary = (await QueryEventsAsync(session, null, null, 5, effectiveCampaign, locationId: locationId))
+            .ToList();
+
+        // Fallback for legacy events that only recorded location via Involved
+        var legacy = (await QueryEventsAsync(session, null, null, 5, effectiveCampaign))
+            .Where(e => string.IsNullOrEmpty(e.LocationId) && (e.RelatedLocationIds == null || !e.RelatedLocationIds.Any())
+                && e.Involved.Contains(locationId))
+            .ToList();
+
+        // Merge, dedupe by Id, re-sort, take 5
+        return primary.Concat(legacy)
+            .DistinctBy(e => e.Id)
             .OrderByDescending(e => e.Timestamp)
             .Take(5)
             .ToList();
@@ -426,13 +437,13 @@ public class CampaignRepository
             simResult.Deltas.Count,
             simResult.WorldPressure.Count);
 
-        // Persist simulation narrative events
-        foreach (var narrative in simResult.NarrativeEvents)
+        // Persist simulation narrative events (only those marked as Persist: true)
+        foreach (var narrative in simResult.Narratives.Where(n => n.Persist))
         {
             await LogEventAsync(session, new()
             {
                 Id = "events/" + Guid.NewGuid(),
-                Summary = narrative,
+                Summary = narrative.Text,
                 Category = EventCategory.Simulation,
                 DayLogged = time.TotalDaysElapsed
             }, effective);
@@ -444,6 +455,26 @@ public class CampaignRepository
         {
             _logger.LogDebug("Applying {DeltaCount} simulation deltas", simResult.Deltas.Count);
             await StageChangesAsync(session, simResult.Deltas.ToArray(), effective);
+        }
+
+        // 4d: Cap PressureCooldowns dictionary size (e.g. 500 entries), evicting oldest-surfaced entries beyond the cap
+        var campaignDoc = await session.LoadAsync<Campaign>(_keys.Meta(effective));
+        if (campaignDoc != null)
+        {
+            const int maxCooldownEntries = 500;
+            if (campaignDoc.PressureCooldowns.Count > maxCooldownEntries)
+            {
+                var entriesToEvict = campaignDoc.PressureCooldowns.Count - maxCooldownEntries;
+                var oldestEntries = campaignDoc.PressureCooldowns
+                    .OrderBy(kvp => kvp.Value.LastSurfacedDay)
+                    .Take(entriesToEvict)
+                    .ToList();
+
+                foreach (var entry in oldestEntries)
+                {
+                    campaignDoc.PressureCooldowns.Remove(entry.Key);
+                }
+            }
         }
 
         // WorldPressure from the engine is surfaced to the caller (AdvanceWorld tool).

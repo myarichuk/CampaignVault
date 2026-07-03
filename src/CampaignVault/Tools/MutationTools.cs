@@ -136,16 +136,20 @@ Basic + creating on the fly examples are also shown in the tool description and 
             var result = await _repository.StageChangesAsync(session, changes, effective);
             if (!result.Success)
             {
-                var errorMsg = string.Join("\n", result.Summary);
+                var errorMsg = "NO CHANGES WERE SAVED — the entire batch was rolled back because at least one " +
+                                "change failed validation. Fix the error(s) below and resend the FULL batch " +
+                                "(not just the failed item).\n" + string.Join("\n", result.Summary);
                 return new ToolResult<CommitResult>(false, result, Summary: errorMsg,
                     Error: "ValidationError");
             }
 
+            var commitTime = await _repository.GetTimeAsync(session, effective);
             await _repository.LogEventAsync(session,
                 new Event
                 {
                     Id = "events/" + Guid.NewGuid(), CampaignName = effective, Summary = narrative,
-                    Category = EventCategory.SceneCommit, Involved = result.InvolvedEntities
+                    Category = EventCategory.SceneCommit, Involved = result.InvolvedEntities,
+                    DayLogged = (int)commitTime.TotalDaysElapsed
                 }, effective);
 
             // Warn if the batch contained combat/status mutations but no narrative event

@@ -32,7 +32,7 @@ internal static class CommitSchemaRegistry
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: ["event"],
-            Example: """{"$type":"hp","characterId":"characters/grog","delta":-8}"""),
+            Example: """{"$type":"hp","characterId":"chars/grog","delta":-8}"""),
 
         new("ruleset_action", "Combat",
             "ENGINE SIDE EFFECTS: Rolls dice and auto-applies HpChange, StatusChange, EngagementRelationChange. " +
@@ -355,6 +355,6 @@ internal static class CommitSchemaRegistry
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: ["event", "status"],
-            Example: """{"$type":"resource","characterId":"characters/wizard-1","poolName":"spell_slots_3","delta":-1,"spellName":"fireball","reason":"Cast Fireball"}"""),
+            Example: """{"$type":"resource","characterId":"chars/wizard-1","poolName":"spell_slots_3","delta":-1,"spellName":"fireball","reason":"Cast Fireball"}"""),
     ];
 }

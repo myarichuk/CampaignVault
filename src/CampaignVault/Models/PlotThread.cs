@@ -39,6 +39,7 @@ public class PlotThread : ICampaignScopedEntity
     public int DayCreated { get; set; }
     public int LastUpdatedDay { get; set; }
     public int? DeadlineDay { get; set; }
+    public int? ClimaxEnteredDay { get; set; }
 
     /// <summary>When true, players are aware this arc exists. Usually false — most threads are hidden DM scaffolding.</summary>
     public bool IsPlayerVisible { get; set; }
