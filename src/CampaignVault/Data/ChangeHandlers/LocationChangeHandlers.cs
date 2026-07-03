@@ -245,9 +245,18 @@ public class LocationUpdateHandler : IWorldChangeHandler
 
         if (lu.AddExit != null)
         {
+            var added = false;
             if (!loc.Exits.Any(e => e.TargetLocationId == lu.AddExit.TargetLocationId))
             {
                 loc.Exits.Add(lu.AddExit);
+                added = true;
+            }
+
+            if (added
+                && context.Config?.AutoRepairLocationConnectivity == true
+                && !lu.AddExit.OneWay)
+            {
+                await TryAutoRepairReverseExitAsync(context, loc, lu.AddExit, ct);
             }
         }
 
@@ -354,5 +363,32 @@ public class LocationUpdateHandler : IWorldChangeHandler
         }
         
         return ChangeHandlerResult.Ok;
+    }
+
+    private static async Task TryAutoRepairReverseExitAsync(
+        ChangeContext context,
+        Location sourceLoc,
+        LocationExit forwardExit,
+        CancellationToken ct)
+    {
+        var targetId = forwardExit.TargetLocationId;
+        if (!context.Locations.TryGetValue(targetId, out var targetLoc))
+        {
+            targetLoc = context.Session != null ? await context.Session.LoadAsync<Location>(targetId, ct) : null;
+            if (targetLoc == null)
+            {
+                return;
+            }
+
+            context.RegisterNewLocation(targetLoc);
+        }
+
+        if (targetLoc.Exits.Any(e => e.TargetLocationId == sourceLoc.Id))
+        {
+            return;
+        }
+
+        var reverseDesc = $"Leads back to {sourceLoc.Name}";
+        targetLoc.Exits.Add(new LocationExit(sourceLoc.Id, reverseDesc));
     }
 }

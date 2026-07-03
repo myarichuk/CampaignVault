@@ -90,7 +90,8 @@ public record LocationExit(
     string? LockCondition = null,
     int? TravelCostHours = 0,
     string? Terrain = null,
-    string? EncounterHint = null
+    string? EncounterHint = null,
+    bool OneWay = false
 )
 {
     public LocationExit() : this(default!, default!) { }

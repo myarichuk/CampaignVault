@@ -18,19 +18,52 @@ public sealed class LocationConnectivityPressureContributor : IPressureContribut
         }
 
         var loc = ctx.Scene.Location;
+
         if (!string.IsNullOrEmpty(loc.ParentLocationId))
         {
             try
             {
                 var parentLoc = await ctx.Session.LoadAsync<Location>(loc.ParentLocationId, ct);
-                if (parentLoc != null && !parentLoc.Exits.Any(e => e.TargetLocationId == loc.Id))
+                if (parentLoc != null && LocationConnectivitySuggestions.TargetLacksReverseExit(parentLoc, loc.Id))
                 {
+                    var suggested = LocationConnectivitySuggestions.BuildReverseExitCommitJson(
+                        parentLoc.Id, loc.Id, loc.Name);
                     pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, parentLoc.Id,
                         $"This location has a ParentLocationId but the parent has no matching exit back to it (one-way link / broken connectivity). " +
-                        "Fix with location_update on the parent:\n" +
-                        "[ { \"$type\": \"location_update\", \"locationId\": \"" + parentLoc.Id + "\", " +
-                        "\"addExit\": { \"targetLocationId\": \"" + loc.Id + "\", \"description\": \"... (back to " + loc.Name + ")\" } } ]",
-                        MissingReverseLinkGroupingKey));
+                        "Fix with location_update on the parent.",
+                        MissingReverseLinkGroupingKey)
+                    {
+                        SuggestedCommitJson = suggested
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Pressure check error: {ex.Message}");
+            }
+        }
+
+        foreach (var exit in loc.Exits.Where(e => !e.OneWay))
+        {
+            try
+            {
+                var targetLoc = await ctx.Session.LoadAsync<Location>(exit.TargetLocationId, ct);
+                if (targetLoc == null)
+                {
+                    continue;
+                }
+
+                if (LocationConnectivitySuggestions.TargetLacksReverseExit(targetLoc, loc.Id))
+                {
+                    var suggested = LocationConnectivitySuggestions.BuildReverseExitCommitJson(
+                        targetLoc.Id, loc.Id, loc.Name);
+                    pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, targetLoc.Id,
+                        $"Exit from '{loc.Name}' to '{targetLoc.Name}' has no return path (accidental one-way link). " +
+                        $"Add a reverse exit on '{targetLoc.Name}' or mark the forward exit oneWay: true if intentional.",
+                        MissingReverseLinkGroupingKey)
+                    {
+                        SuggestedCommitJson = suggested
+                    });
                 }
             }
             catch (Exception ex)

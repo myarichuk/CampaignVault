@@ -1,3 +1,4 @@
+using CampaignVault.Data;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.Pressure.Contributors;
@@ -37,10 +38,11 @@ public sealed class LocationIntegrityPressureContributor : IPressureContributor
         {
             pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, loc.Id,
                 $"This location has no Exits. The players are soft-locked. " +
-                "Use `location_update` to add an exit back:\n" +
-                "[ { \"$type\": \"location_update\", \"locationId\": \"" + loc.Id + "\", " +
-                "\"addExit\": { \"targetLocationId\": \"locations/previous_area\", \"description\": \"...\" } } ]",
-                NoExitsGroupingKey));
+                "Use `location_update` to add an exit back.",
+                NoExitsGroupingKey)
+            {
+                SuggestedCommitJson = LocationConnectivitySuggestions.BuildNoExitsCommitJson(loc.Id)
+            });
         }
 
         return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
