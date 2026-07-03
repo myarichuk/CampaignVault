@@ -350,6 +350,67 @@ public class WorldChangeDispatcherTests
     }
 
     [Fact]
+    public async Task EventOccurredHandler_ConversationCategory_InfersThreeParticipants_FromMultipleEngagements()
+    {
+        var handler = new EventOccurredHandler();
+        var engagementStub = new TestHandler(
+            "Engagement",
+            c => c is EngagementRelationChange,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(engagementStub, handler);
+        var loggedEvents = new List<Event>();
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Conversation,
+                    Summary = "The party and the barkeep discuss rumors over ale.",
+                    Involved = null
+                },
+                new EngagementRelationChange
+                {
+                    CharacterId = "chars/pc",
+                    TargetId = "chars/barkeep",
+                    Category = EngagementCategory.Social,
+                    Verb = "ordering drinks from",
+                    Bidirectional = true
+                },
+                new EngagementRelationChange
+                {
+                    CharacterId = "chars/companion",
+                    TargetId = "chars/barkeep",
+                    Category = EngagementCategory.Social,
+                    Verb = "listening in on",
+                    Bidirectional = true
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            e =>
+            {
+                loggedEvents.Add(e);
+                return Task.CompletedTask;
+            });
+
+        Assert.True(result.Success);
+        Assert.Single(loggedEvents);
+        Assert.Equal(3, loggedEvents[0].Involved.Count);
+        Assert.Contains("chars/pc", loggedEvents[0].Involved);
+        Assert.Contains("chars/companion", loggedEvents[0].Involved);
+        Assert.Contains("chars/barkeep", loggedEvents[0].Involved);
+    }
+
+    [Fact]
     public async Task DispatchMutationAsync_TracksInvolvedEntities_ForPressureCooldown()
     {
         var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) =>

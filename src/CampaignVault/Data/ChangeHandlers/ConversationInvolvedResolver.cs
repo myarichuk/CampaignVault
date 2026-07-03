@@ -31,6 +31,19 @@ internal static class ConversationInvolvedResolver
 
             if (change.Involved is { Count: > 0 })
             {
+                var merged = new HashSet<string>(change.Involved, StringComparer.OrdinalIgnoreCase);
+                foreach (var id in batchParticipantIds)
+                {
+                    merged.Add(id);
+                }
+
+                if (merged.Count > change.Involved.Count)
+                {
+                    change.Involved = merged.ToList();
+                    notes.Add(
+                        $"Merged additional participants into Conversation event involved [{string.Join(", ", change.Involved)}] from other changes in the same commit batch.");
+                }
+
                 continue;
             }
 
@@ -79,6 +92,21 @@ internal static class ConversationInvolvedResolver
                     break;
                 case HpChange hp:
                     AddIfPresent(ids, hp.CharacterId);
+                    break;
+                case SpatialPositionChange sp:
+                    AddIfPresent(ids, sp.CharacterId);
+                    AddIfPresent(ids, sp.TargetId);
+                    break;
+                case EventOccurred ev:
+                    if (ev.Involved != null)
+                    {
+                        foreach (var id in ev.Involved)
+                        {
+                            AddIfPresent(ids, id);
+                        }
+                    }
+
+                    AddIfPresent(ids, ev.RelatedEntityId);
                     break;
             }
         }
