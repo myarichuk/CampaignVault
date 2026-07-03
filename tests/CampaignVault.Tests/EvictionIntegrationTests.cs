@@ -51,6 +51,7 @@ public class EvictionIntegrationTests : IClassFixture<RavenDBFixture>
         // Advance time enough to trigger eviction (TransientEvictionRule checks if location was visited
         // recently; with LastVisitedDay=1 and advancing to day 3+, the NPC should be evicted).
         await repo.AdvanceWorldAsync(session, 3, TimeOfDay.Noon, campaign);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
         await session.SaveChangesAsync();
 
         // Reload location and assert RecentlyDeparted is populated.
