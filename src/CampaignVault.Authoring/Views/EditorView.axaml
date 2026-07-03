@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:CampaignVault.Authoring.ViewModels"
+             xmlns:services="using:CampaignVault.Authoring.Services"
              xmlns:dock="clr-namespace:Dock.Controls.ProportionalStackPanel;assembly=Dock.Controls.ProportionalStackPanel"
              xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
              x:Class="CampaignVault.Authoring.Views.EditorView"
@@ -8,7 +9,7 @@
     <Panel>
         <dock:ProportionalStackPanel Orientation="Horizontal" Background="#1A1A1E" IsVisible="{Binding HasSelection}">
             <!-- Left Editor Pane -->
-            <Grid dock:ProportionalStackPanel.Proportion="0.5" RowDefinitions="Auto, *" Margin="12,12,6,12" MinWidth="300">
+            <Grid dock:ProportionalStackPanel.Proportion="0.5" RowDefinitions="Auto, *, Auto" Margin="12,12,6,12" MinWidth="300">
                 <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" Margin="5,0,0,10">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                         <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" Width="14" Height="14" Foreground="#2563EB" VerticalAlignment="Center" />
@@ -30,6 +31,25 @@
                                    HorizontalScrollBarVisibility="Auto"
                                    VerticalScrollBarVisibility="Visible"
                                    ShowLineNumbers="True" />
+                </Border>
+                <Border Grid.Row="2" Margin="0,8,0,0" Padding="10,8" Background="#2A1A1F" BorderBrush="#7F1D1D" BorderThickness="1" CornerRadius="4"
+                        IsVisible="{Binding HasYamlDiagnostics}">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="YAML issues" FontSize="11" FontWeight="SemiBold" Foreground="#F43F5E" />
+                        <ItemsControl ItemsSource="{Binding YamlDiagnostics}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="services:YamlDiagnostic">
+                                    <TextBlock FontSize="11" Foreground="#FCA5A5" TextWrapping="Wrap">
+                                        <Run Text="Line " />
+                                        <Run Text="{Binding Line}" />
+                                        <Run Text=": " />
+                                        <Run Text="{Binding Message}" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="Hover squiggles in the editor for details." FontSize="10" Foreground="#71717A" />
+                    </StackPanel>
                 </Border>
             </Grid>
 
@@ -120,8 +140,8 @@
                         <StackPanel IsVisible="{Binding HasParseError}" VerticalAlignment="Center" HorizontalAlignment="Stretch" Spacing="16" Margin="20">
                             <PathIcon Data="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z" Width="48" Height="48" Foreground="#F43F5E" HorizontalAlignment="Center" />
                             <TextBlock Text="YAML Parse Error" FontSize="16" FontWeight="Bold" Foreground="#F43F5E" HorizontalAlignment="Center" />
-                            <TextBlock Text="The frontmatter is invalid. Please check your YAML syntax to enable properties and preview." 
-                                       TextWrapping="Wrap" TextAlignment="Center" FontSize="12" Foreground="#A0A0AB" MaxWidth="250" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding PrimaryYamlError}"
+                                       TextWrapping="Wrap" TextAlignment="Center" FontSize="12" Foreground="#A0A0AB" MaxWidth="320" HorizontalAlignment="Center" />
                             <Expander Header="View Error Details" HorizontalAlignment="Stretch" Margin="0,10,0,0">
                                 <TextBox Text="{Binding ParseErrorMessage}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="250" FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderThickness="0" />
                             </Expander>

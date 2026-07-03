@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -170,13 +171,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
             _historyService.Add(path);
             Hub.LoadRecentCampaigns();
 
-            Sync.ConfigureSessionSync();
-            Workspace.BindSession(Session);
-            Sync.Bind(Session, RefreshAll);
-            SourceControl.Bind(Session, RefreshAll);
-
-            ApplicationState.CurrentState = AppState.Editor;
-            WorkspaceStatusMessage = $"Vault: {path}";
+            EnterEditorMode(path);
             Sync.StatusMessage = "Vault open. Fetch to compare with Campaign Vault.";
             RefreshAll();
         }
@@ -192,6 +187,18 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
             ShowStatusBanner = true;
             StatusBannerMessage = ex.Message;
         }
+    }
+
+    public void EnterEditorMode(string? vaultPath = null)
+    {
+        if (!string.IsNullOrWhiteSpace(vaultPath))
+            WorkspaceStatusMessage = $"Vault: {vaultPath}";
+
+        Sync.ConfigureSessionSync();
+        Workspace.BindSession(Session);
+        Sync.Bind(Session, RefreshAll);
+        SourceControl.Bind(Session, RefreshAll);
+        ApplicationState.CurrentState = AppState.Editor;
     }
 
     public void RefreshAll()
@@ -264,6 +271,15 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     {
         if (Workspace.SelectedNode is not EntityNodeViewModel entityNode || !Session.IsOpen)
             return;
+
+        if (YamlDiagnostics.Count > 0)
+        {
+            WorkspaceStatusMessage =
+                $"Cannot save: YAML error on line {YamlDiagnostics[0].Line}: {YamlDiagnostics[0].Message}";
+            ShowStatusBanner = true;
+            StatusBannerMessage = WorkspaceStatusMessage;
+            return;
+        }
 
         await Session.WriteFileAsync(entityNode.Entity.RelativePath, EditorText);
         RefreshAll();
@@ -349,15 +365,39 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
 
     [ObservableProperty] private string _parseErrorMessage = string.Empty;
 
+    [ObservableProperty] private IReadOnlyList<YamlDiagnostic> _yamlDiagnostics = Array.Empty<YamlDiagnostic>();
+
+    public string PrimaryYamlError => YamlDiagnostics.Count > 0 ? YamlDiagnostics[0].Message : string.Empty;
+
+    public bool HasYamlDiagnostics => YamlDiagnostics.Count > 0;
+
     private bool _isUpdatingFromForm;
+
+    partial void OnYamlDiagnosticsChanged(IReadOnlyList<YamlDiagnostic> value)
+    {
+        OnPropertyChanged(nameof(PrimaryYamlError));
+        OnPropertyChanged(nameof(HasYamlDiagnostics));
+    }
 
     partial void OnEditorTextChanged(string value)
     {
         if (_isUpdatingFromForm) return;
 
+        YamlDiagnostics = YamlFrontmatterValidator.ValidateDocument(value);
+
         try
         {
-            ParseErrorMessage = string.Empty;
+            ParseErrorMessage = YamlDiagnostics.Count > 0 ? YamlDiagnostics[0].Message : string.Empty;
+
+            if (YamlDiagnostics.Count > 0)
+            {
+                ParsedCharacter = null;
+                PreviewNotes = value;
+                IsCharacter = false;
+                Badge1Label = Badge1Value = Badge2Label = Badge2Value = string.Empty;
+                OnPropertyChanged(nameof(HasParseError));
+                return;
+            }
 
             if (string.IsNullOrEmpty(value))
             {
