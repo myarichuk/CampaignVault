@@ -62,6 +62,11 @@ public sealed class WorldChangeDispatcher(
             summary.Add(note);
         }
 
+        foreach (var note in EventFollowUpAdvisor.Apply(changes))
+        {
+            summary.Add(note);
+        }
+
         var overallSuccess = true;
 
         if (changes.Length == 0)

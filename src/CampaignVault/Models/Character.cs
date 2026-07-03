@@ -159,6 +159,9 @@ public class MemoryNode
     public string? TriggerCondition { get; set; }
     public MemoryUrgency Urgency { get; set; } = MemoryUrgency.Normal;
 
+    /// <summary>Ground-truth Event ID(s) this memory derives from — lets the engine/DM compare what this NPC believes against what was actually logged.</summary>
+    public List<string> SourceEventIds { get; set; } = [];
+
     /// <summary>
     /// Applies migration defaults for documents saved before Phase 10 enrichment fields existed.
     /// Legacy nodes deserialize with Salience=0 and enum zero-values; normalize once on touch.

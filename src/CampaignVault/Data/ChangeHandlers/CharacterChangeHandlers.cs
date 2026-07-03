@@ -688,6 +688,11 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         {
             memory.RelatedEntityIds = ku.RelatedEntityIds;
         }
+
+        if (ku.SourceEventIds != null)
+        {
+            memory.SourceEventIds = ku.SourceEventIds;
+        }
     }
 
     private static void InferDefaultsFromDetails(MemoryNode memory, string details)

@@ -207,7 +207,7 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychology — relationships, goals, fears, knowledge, mood, initiative signals. Requires campaignName.")]
+    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychology — relationships, goals, fears, knowledge, mood, initiative signals. Psychology.Memories reflects what this NPC SUBJECTIVELY believes, which may have drifted from what actually happened — use recall_history (with involvedCharacterId) instead when you need ground truth, e.g. 'was this NPC actually a witness to X'. Requires campaignName.")]
     public Task<ToolResult<NpcContextView>> GetNpcContext(
         [Description("The unique ID of the character.")] string characterId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
@@ -227,11 +227,10 @@ public class ExplorationTools : CampaignToolBase
                 return new ToolResult<NpcContextView>(false, Error: "NotFound");
             }
 
-            // Use repo query (now scoped) + client filter for involved.
-            var npcEvents = (await _repository.QueryEventsAsync(session, null, null, 10, effective))
-                .Where(e => e.Involved != null && e.Involved.Contains(characterId))
-                .OrderByDescending(e => e.Timestamp)
-                .Take(10)
+            // Filtered at the index level (involvedCharacterId) so recency Take(10) doesn't silently
+            // drop older events that genuinely involve this NPC.
+            var npcEvents = (await _repository.QueryEventsAsync(session, null, null, 10, effective,
+                    involvedCharacterId: characterId))
                 .ToList();
 
             foreach (var ev in npcEvents)
@@ -340,14 +339,17 @@ public class ExplorationTools : CampaignToolBase
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("HISTORY RECALL: Hybrid keyword + semantic search over past events for the active campaign slug. Use to remember prior sessions or plot points.")]
+    [Description("HISTORY RECALL (GROUND TRUTH): Hybrid keyword + semantic search over past events for the active campaign slug, optionally filtered by locationId and/or involvedCharacterId. Use this to check what ACTUALLY happened — e.g. 'was Bob a witness to the robbery' — as distinct from get_npc_context, which returns what an NPC subjectively believes/remembers (which may have drifted from the truth). Use to remember prior sessions or plot points.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
-        [Description("The keyword or phrase to search for in historical events.")] string query,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
-        [Description("Maximum number of events to return.")] int limit = 5)
+        [Description("The keyword or phrase to search for in historical events. Optional if filtering purely by locationId/involvedCharacterId.")] string query = "",
+        [Description("Maximum number of events to return.")] int limit = 5,
+        [Description("Optional. Only return events at this location ID (or with this ID among relatedLocationIds).")] string? locationId = null,
+        [Description("Optional. Only return events where this character ID appears in 'involved' — i.e. ground-truth presence, not subjective memory.")] string? involvedCharacterId = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var results = await _repository.QueryEventsAsync(session, query, null, limit, effective);
+            var results = await _repository.QueryEventsAsync(session, query, null, limit, effective,
+                locationId, involvedCharacterId);
             return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events (campaign: {effective}).");
         }, saveChanges: false);
     }

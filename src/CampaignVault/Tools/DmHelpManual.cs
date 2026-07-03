@@ -92,8 +92,14 @@ Use the canonical copy-paste batch from the `commit` tool description (RECOMMEND
 
 Discovery + activity sync:
 [
-  { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party found the hidden stair."", ""involved"": [""chars/pc1"", ""locations/cellar""] },
+  { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party found the hidden stair."", ""involved"": [""chars/pc1""], ""locationId"": ""locations/cellar"" },
   { ""$type"": ""activity"", ""characterId"": ""chars/guard1"", ""newLocationId"": ""locations/cellar"", ""newActivity"": ""Searching crates nervously"" }
+]
+
+**Spatial anchoring (`locationId` / `relatedLocationIds`):** `locationId` is the primary place an event happened; `relatedLocationIds` covers a beat that spills across more than one place. Prefer these over stuffing a location ID into `involved` — `locationId`/`relatedLocationIds` are indexed for `recall_history`'s `locationId` filter, `involved` is not searched that way.
+Bar fight spilling into the alley (one event, two locations):
+[
+  { ""$type"": ""event"", ""category"": ""Combat"", ""summary"": ""A bar fight breaks out and spills from the tavern into the alley outside, where a PC drags a bully to interrogate him."", ""involved"": [""chars/pc1"", ""chars/bully""], ""locationId"": ""locations/rusty-nail"", ""relatedLocationIds"": [""locations/rusty-nail-alley""] }
 ]
 
 **Creating on the fly (the laziness countermeasure - use these instead of pure narration for anything that might matter later):**
@@ -139,6 +145,24 @@ Clear when the beat ends (`verb` or `distanceBand` null):
   { ""$type"": ""event"", ""category"": ""Conversation"", ""summary"": ""The party and the barkeep trade rumors over ale."", ""involved"": [""chars/pc"", ""chars/companion"", ""chars/barkeep""] }
 ]
 All participants in `involved` are recalled by `get_npc_context` for each speaker.
+
+**N-way NPC debate (no PC present):** `involved` isn't limited to PC-anchored beats — any number of NPCs arguing among themselves works the same way. List every speaker in `involved`; `engagement_relation` rows are optional here since there's no travel-lock or pressure need, just useful if you want to show who's directly sparring with whom.
+[
+  { ""$type"": ""event"", ""category"": ""Conversation"", ""summary"": ""Archivist Wren, Magister Dol, and two visiting scholars argue over the ruin's true age, voices rising over each other in the reading room."", ""involved"": [""chars/archivist-wren"", ""chars/magister-dol"", ""chars/scholar-1"", ""chars/scholar-2""] },
+  { ""$type"": ""activity"", ""characterId"": ""chars/archivist-wren"", ""newActivity"": ""Jabbing a finger at a spread map, insisting on the older dating"" },
+  { ""$type"": ""activity"", ""characterId"": ""chars/magister-dol"", ""newActivity"": ""Arms crossed, unconvinced, muttering counterpoints"" },
+  { ""$type"": ""activity"", ""characterId"": ""chars/scholar-1"", ""newActivity"": ""Frantically flipping through a referenced text to back Wren up"" },
+  { ""$type"": ""activity"", ""characterId"": ""chars/scholar-2"", ""newActivity"": ""Sipping tea, quietly amused by the chaos"" }
+]
+`get_npc_context` for any of the four will recall the debate and who was in it — no PC involvement required.
+
+**Commit hints:** after a `Conversation`/`Discovery`/`Betrayal` event, the engine may return advisory `Hint:` lines in the commit summary — e.g. flagging that no `activity` commit covered a participant's body language, that no `knowledge_update` captured what was learned, that a co-committed `knowledge_update` doesn't set `sourceEventIds`, or that the beat reads as unusually novel/repetitive versus recent events. These never fail the commit; treat them as a second-pass checklist, not an error.
+
+**Ground truth vs. subjective memory — two different questions:** ""what does this NPC remember"" and ""did this actually happen"" are NOT the same query, and conflating them will make an NPC's (possibly distorted) belief look like fact.
+- **What an NPC believes** (subjective, may have drifted or be flat wrong): `get_npc_context` → `Psychology.Memories`.
+- **What actually happened** (ground truth, indexed): `recall_history` with `involvedCharacterId` (was this character actually present/involved?) and/or `locationId` (what happened at this place?).
+Example — ""was Bob a witness to the party robbing the noble three sessions ago"": call `recall_history(involvedCharacterId: ""chars/bob"", locationId: ""locations/noble-manor"")` and check whether the robbery event is in the results — do NOT infer this from `chars/bob`'s `Psychology.Memories`, since a memory there only tells you what Bob *thinks* happened (or that he has no memory of it at all, which isn't the same as ""wasn't there"").
+When a `knowledge_update` is derived from a specific logged event, set `sourceEventIds` (referencing either a prior event's ID or a same-batch `eventId` you set on the `event` change) so later `knowledge_update`s can be checked against the ground truth instead of drifting unmoored.
 
 Item + transfer patterns, status with modifiers, ruleset_action (see below), etc.
 
@@ -299,7 +323,7 @@ You (the LLM) author narrative state; the engine scores a fixed set of **visualT
 - Use `$type: ""item_update""` to add temporary `TagsToAdd` (e.g., `[""wet"", ""muddy""]`) and a narrative `NewState` (e.g., ""Covered in mud"") to items. You can also add permanent `FeaturesToAdd` (e.g., ""Leather wrapped handle"") or change `coreCategory`.
 - Use `$type: ""character_update""` to do the same for characters. Give them temporary `TagsToAdd` (`[""soot_covered""]`), narrative `AppearanceOverride`, or permanent `FeaturesToAdd` (`[""Scar over left eye""]`).
 - Use `$type: ""location_update""` with `newState`, `tagsToAdd`, and `featuresToAdd` to persistently change the environment (e.g., ""On fire"", `[""smoky""]`, `[""collapsed roof""]`).
-- Use `$type: ""knowledge_update""` to record an important memory for a character (e.g., `""topic"": ""The Dragon"", ""details"": ""Lives in the mountain.""`). Memories naturally decay and generate prompt pressure over time to simulate epistemic drift!
+- Use `$type: ""knowledge_update""` to record an important memory for a character (e.g., `""topic"": ""The Dragon"", ""details"": ""Lives in the mountain.""`). Memories naturally decay and generate prompt pressure over time to simulate epistemic drift! When the memory stems from a logged event, also set `sourceEventIds` (e.g. `[""events/valen-lirael-caravans""]`) — this lets you later compare the NPC's retelling against what actually happened (via `recall_history`), which is exactly what makes a good rumor: a memory that has quietly drifted from its source.
 - Read these fields from `SceneView` and interpret them naturally. If a goblin has the ""wet"" tag, you inherently know lightning magic should be more effective. If the PC is ""disheveled"", the noble faction should react poorly.
 - Factions have dynamic `EconomicDemand`. If a faction is desperate for an item the party is carrying (e.g. ""spell scrolls""), `get_scene` will pressure you to narrate merchants offering a premium or thieves attempting to steal them. Fulfill this naturally during roleplay!
 

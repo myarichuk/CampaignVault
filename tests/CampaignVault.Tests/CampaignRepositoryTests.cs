@@ -854,6 +854,86 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task QueryEventsAsync_FiltersByLocationId_IncludingRelatedLocationIds()
+    {
+        var repo = _fixture.CreateRepository();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var locationId = $"locations/loc-{suffix}";
+        var relatedLocationId = $"locations/related-{suffix}";
+        var otherLocationId = $"locations/other-{suffix}";
+
+        var primaryEventId = $"events/primary-{suffix}";
+        var relatedEventId = $"events/related-{suffix}";
+        var unrelatedEventId = $"events/unrelated-{suffix}";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.LogEventAsync(session,
+                new Event { Id = primaryEventId, Summary = "Bar fight breaks out", Category = EventCategory.Test, LocationId = locationId },
+                TestCampaignDefaults.Slug);
+            await repo.LogEventAsync(session,
+                new Event { Id = relatedEventId, Summary = "Fight spills into the alley", Category = EventCategory.Test, LocationId = otherLocationId, RelatedLocationIds = [relatedLocationId] },
+                TestCampaignDefaults.Slug);
+            await repo.LogEventAsync(session,
+                new Event { Id = unrelatedEventId, Summary = "Unrelated event elsewhere", Category = EventCategory.Test, LocationId = otherLocationId },
+                TestCampaignDefaults.Slug);
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var byPrimary = (await repo.QueryEventsAsync(session, null, EventCategory.Test, 10, TestCampaignDefaults.Slug, locationId: locationId)).ToList();
+            Assert.Contains(byPrimary, e => e.Id == primaryEventId);
+            Assert.DoesNotContain(byPrimary, e => e.Id == relatedEventId);
+            Assert.DoesNotContain(byPrimary, e => e.Id == unrelatedEventId);
+
+            var byRelated = (await repo.QueryEventsAsync(session, null, EventCategory.Test, 10, TestCampaignDefaults.Slug, locationId: relatedLocationId)).ToList();
+            Assert.Contains(byRelated, e => e.Id == relatedEventId);
+            Assert.DoesNotContain(byRelated, e => e.Id == primaryEventId);
+            Assert.DoesNotContain(byRelated, e => e.Id == unrelatedEventId);
+        }
+    }
+
+    [Fact]
+    public async Task QueryEventsAsync_FiltersByInvolvedCharacterId_AtIndexLevel_BeforeTake()
+    {
+        // Regression test: involvedCharacterId must be applied server-side (before Take), not filtered
+        // client-side after the fact — otherwise an older event genuinely involving the character can be
+        // silently dropped once enough newer unrelated events exist.
+        var repo = _fixture.CreateRepository();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var characterId = $"chars/witness-{suffix}";
+        var targetEventId = $"events/target-{suffix}";
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            // The event involving our character is logged FIRST (oldest).
+            await repo.LogEventAsync(session,
+                new Event { Id = targetEventId, Summary = "Witnessed event", Category = EventCategory.Test, Involved = [characterId] },
+                TestCampaignDefaults.Slug);
+
+            // 10 newer, unrelated events — enough to push the target out of a naive Take(10) if the
+            // participant filter isn't applied at the index level.
+            for (var i = 0; i < 10; i++)
+            {
+                await repo.LogEventAsync(session,
+                    new Event { Id = $"events/noise-{suffix}-{i}", Summary = $"Unrelated event {i}", Category = EventCategory.Test },
+                    TestCampaignDefaults.Slug);
+            }
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var results = (await repo.QueryEventsAsync(session, null, EventCategory.Test, 10, TestCampaignDefaults.Slug, involvedCharacterId: characterId)).ToList();
+            Assert.Contains(results, e => e.Id == targetEventId);
+        }
+    }
+
+    [Fact]
     public async Task UnifiedSearchAsync_Returns_All_Semantic_Entity_Types()
     {
         var repo = _fixture.CreateRepository();

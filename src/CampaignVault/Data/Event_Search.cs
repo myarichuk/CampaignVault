@@ -16,14 +16,19 @@ public class Event_Search : AbstractIndexCreationTask<Event>
                 Category = e.Category,
                 e.Timestamp,
                 e.DayLogged,
-                CampaignName = e.CampaignName
-,
+                CampaignName = e.CampaignName,
+                e.LocationId,
+                e.RelatedLocationIds,
+                e.Involved,
                 SemanticVector = CreateVector(e.SemanticVector)
             };
 
-        
+
         Index(x => x.Summary, FieldIndexing.Search);
         Index(x => x.CampaignName, FieldIndexing.Exact);
         Index(x => x.DayLogged, FieldIndexing.Exact);
+        Index(x => x.LocationId, FieldIndexing.Exact);
+        Index(x => x.RelatedLocationIds, FieldIndexing.Exact);
+        Index(x => x.Involved, FieldIndexing.Exact);
     }
 }

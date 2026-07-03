@@ -39,9 +39,13 @@ public sealed class MemoryDecayPressureContributor : IPressureContributor
 
                 if (age > threshold)
                 {
+                    var sourceNote = mem.SourceEventIds is { Count: > 0 }
+                        ? $" Compare against its source event(s) ({string.Join(", ", mem.SourceEventIds)}) via recall_history to decide how far the retelling has drifted."
+                        : string.Empty;
+
                     pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, npc.Id,
                         $"Character '{npc.Name}' has a memory about '{mem.Topic}' that is {age:F0} days old and may be fading. " +
-                        $"Consider misremembering, distorting, or forgetting details. Update it using `knowledge_update`.",
+                        $"Consider misremembering, distorting, or forgetting details. Update it using `knowledge_update`.{sourceNote}",
                         GetMemoryDecayGroupingKey(npc.Id, mem.Topic)));
                 }
             }

@@ -307,6 +307,31 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task KnowledgeUpdate_SourceEventIds_CopiedToMemoryNode()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var c = new Character { Id = "chars/sourced", Name = "Sourced" };
+        await session.StoreAsync(c);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+        var handler = new KnowledgeUpdateHandler();
+        var update = new KnowledgeUpdate
+        {
+            CharacterId = "chars/sourced",
+            Topic = "Caravan disappearances",
+            Details = "Three caravans vanished near Whispering Pass.",
+            SourceEventIds = ["events/valen-lirael-caravans"]
+        };
+
+        var result = await handler.ApplyAsync(update, ctx);
+
+        Assert.True(result.Success);
+        var mem = (await session.LoadAsync<Character>("chars/sourced")).Psychology.Memories["Caravan disappearances"];
+        Assert.Equal(["events/valen-lirael-caravans"], mem.SourceEventIds);
+    }
+
+    [Fact]
     public async Task KnowledgeUpdate_InferenceDefaults_FromDetailsKeywords()
     {
         using var session = _fixture.Store.OpenAsyncSession();

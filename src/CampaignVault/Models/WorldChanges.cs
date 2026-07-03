@@ -203,6 +203,18 @@ public class EventOccurred : WorldChange
     [Description("Optional. Item, character, or location ID this beat relates to.")]
     [JsonPropertyName("relatedEntityId")]
     public string? RelatedEntityId { get; set; }
+
+    [Description("Optional. Primary location ID where the event occurred (e.g. 'locations/rusty-nail'). Enables recall_history/location-scoped queries.")]
+    [JsonPropertyName("locationId")]
+    public string? LocationId { get; set; }
+
+    [Description("Optional. Additional location IDs touched by a spillover beat, e.g. a bar fight that spills from the tavern into the alley outside.")]
+    [JsonPropertyName("relatedLocationIds")]
+    public List<string>? RelatedLocationIds { get; set; }
+
+    [Description("Optional client-chosen ID for this event (e.g. 'events/tavern-bar-fight-001'), so other changes in the SAME commit batch (e.g. knowledge_update.sourceEventIds) can reference it. Omit to let the engine generate one automatically — most events should omit this.")]
+    [JsonPropertyName("eventId")]
+    public string? EventId { get; set; }
 }
 
 /// <summary>Change the state of an existing rumor and optionally rewrite its current text.</summary>
@@ -1147,6 +1159,10 @@ public class KnowledgeUpdate : WorldChange
     [Description("Optional entity IDs this memory relates to (characters, items, locations).")]
     [JsonPropertyName("relatedEntityIds")]
     public List<string>? RelatedEntityIds { get; set; }
+
+    [Description("Optional ground-truth event ID(s) this memory derives from (e.g. ['events/tavern-bar-fight-001']). Reference a prior event's ID (returned in its commit response, or found via recall_history), or an 'eventId' you set explicitly on an 'event' change in THIS SAME commit batch. Populating this lets the engine/DM later compare what this NPC believes against what actually happened — useful for detecting/narrating misremembering or rumor distortion.")]
+    [JsonPropertyName("sourceEventIds")]
+    public List<string>? SourceEventIds { get; set; }
 }
 
 /// <summary>

@@ -26,23 +26,74 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         }
 
         var currentTime = await context.GetCurrentTimeAsync();
+        var id = await ResolveEventIdAsync(ev.EventId, context, ct);
+
         var e = new Event
         {
-            Id = "events/" + Guid.NewGuid(),
+            Id = id,
             Summary = ev.Summary,
             Category = ev.Category,
             Involved = ev.Involved ?? [],
             DayLogged = currentTime.TotalDaysElapsed,
             EmotionalBeat = ev.EmotionalBeat,
-            RelatedEntityId = ev.RelatedEntityId
+            RelatedEntityId = ev.RelatedEntityId,
+            LocationId = ev.LocationId,
+            RelatedLocationIds = ev.RelatedLocationIds
         };
 
         e.CampaignName = context.CampaignName;
 
         await context.LogEventAsync(e);
-        context.RecordMessage($"Event logged: {ev.Summary}");
+        context.RecordMessage($"Event logged: {ev.Summary} (id: {e.Id})");
+
+        // Skip novelty scoring for engine/bookkeeping-generated categories (transient eviction departures,
+        // timeskip/simulation logging, crowd interrupts) — these are auto-narrated, not LLM narrative
+        // choices, so "is this novel" adds no DM value. Also avoids an extra query per event on hot
+        // simulation paths (e.g. TransientEvictionRule emitting many Departure events per AdvanceWorld tick).
+        if (ev.Category is not (EventCategory.Departure or EventCategory.Timeskip or EventCategory.Simulation
+            or EventCategory.SceneInterrupt or EventCategory.Test))
+        {
+            var noveltyHint = await EventNoveltyAdvisor.ScoreAsync(context, e, ct);
+            if (noveltyHint != null)
+            {
+                context.RecordMessage(noveltyHint);
+            }
+        }
 
         return ChangeHandlerResult.Ok;
+    }
+
+    /// <summary>
+    /// Resolves the ID for a newly logged event. Honors a client-supplied EventId (normalized to the
+    /// "events/" prefix) so other changes in the same commit batch can reference it via sourceEventIds.
+    /// On a collision with an existing event, falls back to a generated ID rather than overwriting —
+    /// unlike LocationCreate's upsert-on-collision, events are an append-only log and silent overwrite
+    /// would destroy prior history.
+    /// </summary>
+    private static async Task<string> ResolveEventIdAsync(string? requestedId, ChangeContext context, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(requestedId))
+        {
+            return "events/" + Guid.NewGuid();
+        }
+
+        var id = requestedId.StartsWith("events/", StringComparison.OrdinalIgnoreCase)
+            ? requestedId
+            : "events/" + requestedId;
+
+        if (context.Session != null)
+        {
+            var existing = await context.Session.LoadAsync<Event>(id, ct);
+            if (existing != null)
+            {
+                var fallbackId = "events/" + Guid.NewGuid();
+                context.RecordMessage(
+                    $"WARNING: eventId '{id}' already exists; generated a new ID instead: {fallbackId}.");
+                return fallbackId;
+            }
+        }
+
+        return id;
     }
 
     public bool ExtractInvolvedEntities(
@@ -80,6 +131,24 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             else if (eo.RelatedEntityId.StartsWith("quests/")) questIds?.Add(eo.RelatedEntityId);
             else if (eo.RelatedEntityId.StartsWith("items/")) itemIds?.Add(eo.RelatedEntityId);
             allInvolvedIds?.Add(eo.RelatedEntityId);
+        }
+
+        if (!string.IsNullOrEmpty(eo.LocationId))
+        {
+            locationIds?.Add(eo.LocationId);
+            allInvolvedIds?.Add(eo.LocationId);
+        }
+
+        if (eo.RelatedLocationIds != null)
+        {
+            foreach (var id in eo.RelatedLocationIds)
+            {
+                if (!string.IsNullOrEmpty(id))
+                {
+                    locationIds?.Add(id);
+                    allInvolvedIds?.Add(id);
+                }
+            }
         }
 
         return true;

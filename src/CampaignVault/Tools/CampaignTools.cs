@@ -45,8 +45,9 @@ public class CampaignTools(
         exploration.SearchWorld(query, ResolveCampaign(campaignName));
 
     public Task<ToolResult<IEnumerable<Event>>>
-        RecallHistory(string query, int limit = 5, string? campaignName = TestDefaultCampaignSlug) =>
-        exploration.RecallHistory(query, ResolveCampaign(campaignName), limit);
+        RecallHistory(string query, int limit = 5, string? campaignName = TestDefaultCampaignSlug,
+            string? locationId = null, string? involvedCharacterId = null) =>
+        exploration.RecallHistory(ResolveCampaign(campaignName), query, limit, locationId, involvedCharacterId);
 
     public Task<ToolResult<NpcNeedsView>> GetNpcNeeds(string characterId,
         string? campaignName = TestDefaultCampaignSlug) =>

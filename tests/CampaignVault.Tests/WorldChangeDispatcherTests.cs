@@ -411,6 +411,392 @@ public class WorldChangeDispatcherTests
     }
 
     [Fact]
+    public async Task EventOccurredHandler_EchoesGeneratedEventId_InCommitSummary()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Discovery,
+                    Summary = "Party found the hidden stair.",
+                    Involved = ["chars/pc1"]
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Contains(result.Summary, s => s.StartsWith("Event logged: Party found the hidden stair. (id: events/"));
+    }
+
+    [Fact]
+    public async Task EventOccurredHandler_UsesClientSuppliedEventId_WhenNoCollision()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+        // LoadAsync<Event> is left unconfigured — NSubstitute returns null by default, simulating no collision.
+
+        var loggedEvents = new List<Event>();
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    EventId = "events/valen-lirael-caravans",
+                    Category = EventCategory.Discovery,
+                    Summary = "Party found the hidden stair.",
+                    Involved = ["chars/pc1"]
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            e =>
+            {
+                loggedEvents.Add(e);
+                return Task.CompletedTask;
+            });
+
+        Assert.True(result.Success);
+        Assert.Single(loggedEvents);
+        Assert.Equal("events/valen-lirael-caravans", loggedEvents[0].Id);
+        Assert.Contains(result.Summary, s => s.Contains("(id: events/valen-lirael-caravans)"));
+    }
+
+    [Fact]
+    public async Task EventOccurredHandler_FallsBackToGeneratedId_OnEventIdCollision()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+        // Simulate a collision: an event already exists at the requested ID.
+        mockSession.LoadAsync<Event>("events/valen-lirael-caravans", Arg.Any<CancellationToken>())
+            .Returns(new Event { Id = "events/valen-lirael-caravans", Summary = "Pre-existing event" });
+
+        var loggedEvents = new List<Event>();
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    EventId = "events/valen-lirael-caravans",
+                    Category = EventCategory.Discovery,
+                    Summary = "A different event entirely.",
+                    Involved = ["chars/pc1"]
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            e =>
+            {
+                loggedEvents.Add(e);
+                return Task.CompletedTask;
+            });
+
+        Assert.True(result.Success);
+        Assert.Single(loggedEvents);
+        Assert.NotEqual("events/valen-lirael-caravans", loggedEvents[0].Id);
+        Assert.StartsWith("events/", loggedEvents[0].Id);
+        Assert.Contains(result.Summary, s => s.Contains("WARNING") && s.Contains("already exists"));
+    }
+
+    [Fact]
+    public async Task EventFollowUpAdvisor_Conversation_HintsMissingActivityAndKnowledgeUpdate_WhenBatchHasNeither()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Conversation,
+                    Summary = "Archivist Wren and Magister Dol argue over the ruin's age.",
+                    Involved = ["chars/archivist-wren", "chars/magister-dol"]
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Contains(result.Summary, s => s.Contains("no 'activity' commit found"));
+        Assert.Contains(result.Summary, s => s.Contains("no 'knowledge_update' commit found"));
+    }
+
+    [Fact]
+    public async Task EventFollowUpAdvisor_Conversation_SuppressesHints_WhenActivityAndKnowledgeUpdatePresent()
+    {
+        var handler = new EventOccurredHandler();
+        var activityStub = new TestHandler(
+            "Activity",
+            c => c is ActivityChange,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var knowledgeStub = new TestHandler(
+            "Knowledge",
+            c => c is KnowledgeUpdate,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(activityStub, knowledgeStub, handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Conversation,
+                    Summary = "Archivist Wren and Magister Dol argue over the ruin's age.",
+                    Involved = ["chars/archivist-wren", "chars/magister-dol"]
+                },
+                new ActivityChange { CharacterId = "chars/archivist-wren", NewActivity = "Jabbing a finger at the map" },
+                new KnowledgeUpdate { CharacterId = "chars/magister-dol", Topic = "Ruin age dispute", Details = "Wren insists it's older than the record shows." }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(result.Summary, s => s.Contains("no 'activity' commit found"));
+        Assert.DoesNotContain(result.Summary, s => s.Contains("no 'knowledge_update' commit found"));
+    }
+
+    [Fact]
+    public async Task EventFollowUpAdvisor_Discovery_HintsMissingActivityAndKnowledgeUpdate_WhenBatchHasNeither()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Discovery,
+                    Summary = "Party found the hidden stair.",
+                    Involved = ["chars/pc1"]
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Contains(result.Summary, s => s.Contains("no 'activity' commit found"));
+        Assert.Contains(result.Summary, s => s.Contains("no 'knowledge_update' commit found"));
+    }
+
+    [Fact]
+    public async Task EventFollowUpAdvisor_Discovery_SuppressesHints_WhenActivityAndKnowledgeUpdatePresent()
+    {
+        var handler = new EventOccurredHandler();
+        var activityStub = new TestHandler(
+            "Activity",
+            c => c is ActivityChange,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var knowledgeStub = new TestHandler(
+            "Knowledge",
+            c => c is KnowledgeUpdate,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(activityStub, knowledgeStub, handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Discovery,
+                    Summary = "Party found the hidden stair.",
+                    Involved = ["chars/pc1"]
+                },
+                new ActivityChange { CharacterId = "chars/pc1", NewActivity = "Crouching to examine the stair" },
+                new KnowledgeUpdate { CharacterId = "chars/pc1", Topic = "Hidden stair", Details = "Found beneath the cellar rug." }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(result.Summary, s => s.Contains("no 'activity' commit found"));
+        Assert.DoesNotContain(result.Summary, s => s.Contains("no 'knowledge_update' commit found"));
+    }
+
+    [Fact]
+    public async Task EventFollowUpAdvisor_Betrayal_HintsMissingActivityKnowledgeAndRelationship_WhenBatchHasNone()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Betrayal,
+                    Summary = "The steward reveals he sold the party out to the guild.",
+                    Involved = ["chars/pc1", "chars/steward"]
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Contains(result.Summary, s => s.Contains("no 'activity' commit found"));
+        Assert.Contains(result.Summary, s => s.Contains("no 'knowledge_update' commit found"));
+        Assert.Contains(result.Summary, s => s.Contains("no 'relationship_change' or 'engagement_relation' found"));
+    }
+
+    [Fact]
+    public async Task EventFollowUpAdvisor_Betrayal_SuppressesHints_WhenActivityKnowledgeAndRelationshipPresent()
+    {
+        var handler = new EventOccurredHandler();
+        var activityStub = new TestHandler(
+            "Activity",
+            c => c is ActivityChange,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var knowledgeStub = new TestHandler(
+            "Knowledge",
+            c => c is KnowledgeUpdate,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var relationshipStub = new TestHandler(
+            "Relationship",
+            c => c is RelationshipChange,
+            (_, _) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(activityStub, knowledgeStub, relationshipStub, handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Betrayal,
+                    Summary = "The steward reveals he sold the party out to the guild.",
+                    Involved = ["chars/pc1", "chars/steward"]
+                },
+                new ActivityChange { CharacterId = "chars/pc1", NewActivity = "Recoiling, hand on sword hilt" },
+                new KnowledgeUpdate { CharacterId = "chars/pc1", Topic = "Steward's betrayal", Details = "He sold us out to the guild." },
+                new RelationshipChange { CharacterId = "chars/pc1", TargetId = "chars/steward", Delta = -40, Reason = "Betrayed the party to the guild." }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(result.Summary, s => s.Contains("no 'activity' commit found"));
+        Assert.DoesNotContain(result.Summary, s => s.Contains("no 'knowledge_update' commit found"));
+        Assert.DoesNotContain(result.Summary, s => s.Contains("no 'relationship_change' or 'engagement_relation' found"));
+    }
+
+    [Fact]
+    public async Task EventNoveltyAdvisor_SkipsSilently_WhenSemanticVectorNotPopulated()
+    {
+        // Unit tests bypass real persistence (fake logEventAsync delegate), so SemanticVector
+        // is never populated. EventNoveltyAdvisor must no-op rather than touch the session.
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Discovery,
+                    Summary = "Party found the hidden stair.",
+                    Involved = ["chars/pc1"]
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(result.Summary, s => s.Contains("reads as novel") || s.Contains("closely echoes"));
+    }
+
+    [Fact]
     public async Task DispatchMutationAsync_TracksInvolvedEntities_ForPressureCooldown()
     {
         var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) =>

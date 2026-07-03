@@ -594,7 +594,8 @@ public class CampaignRepository
     /// Retrieves historical narrative events, optionally filtered by hybrid keyword/semantic search or event category.
     /// </summary>
     public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query,
-        EventCategory? category, int limit = 10, string? campaignName = null)
+        EventCategory? category, int limit = 10, string? campaignName = null, string? locationId = null,
+        string? involvedCharacterId = null)
     {
         var effective = ResolveCampaign(campaignName);
         List<Event> events;
@@ -602,7 +603,8 @@ public class CampaignRepository
         if (!string.IsNullOrWhiteSpace(query))
         {
             var queryVector = await _embeddingService.GenerateEmbeddingAsync(query);
-            events = await QueryEventsHybridAsync(session, query, queryVector, effective, category, limit);
+            events = await QueryEventsHybridAsync(session, query, queryVector, effective, category, limit,
+                locationId, involvedCharacterId);
         }
         else
         {
@@ -615,6 +617,16 @@ public class CampaignRepository
             if (category.HasValue)
             {
                 q = q.Where(x => x.Category == category.Value);
+            }
+
+            if (!string.IsNullOrEmpty(locationId))
+            {
+                q = q.Where(x => x.LocationId == locationId || x.RelatedLocationIds!.Contains(locationId));
+            }
+
+            if (!string.IsNullOrEmpty(involvedCharacterId))
+            {
+                q = q.Where(x => x.Involved.Contains(involvedCharacterId));
             }
 
             events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
@@ -630,7 +642,9 @@ public class CampaignRepository
         float[]? queryVector,
         string effective,
         EventCategory? category,
-        int limit)
+        int limit,
+        string? locationId = null,
+        string? involvedCharacterId = null)
     {
         var fetchLimit = Math.Max(limit * 2, limit);
 
@@ -644,6 +658,16 @@ public class CampaignRepository
             if (category.HasValue)
             {
                 q = q.Where(x => x.Category == category.Value);
+            }
+
+            if (!string.IsNullOrEmpty(locationId))
+            {
+                q = q.Where(x => x.LocationId == locationId || x.RelatedLocationIds!.Contains(locationId));
+            }
+
+            if (!string.IsNullOrEmpty(involvedCharacterId))
+            {
+                q = q.Where(x => x.Involved.Contains(involvedCharacterId));
             }
 
             return q;

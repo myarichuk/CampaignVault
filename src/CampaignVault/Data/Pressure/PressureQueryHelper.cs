@@ -140,25 +140,15 @@ internal static class PressureQueryHelper
         CancellationToken ct = default)
     {
         var categories = new[] { EventCategory.Combat, EventCategory.Discovery, EventCategory.Betrayal };
-        var results = new List<Event>();
-
-        foreach (var category in categories)
-        {
-            var batch = await session.Advanced.AsyncDocumentQuery<Event, Event_Search>()
-                .WhereEquals(x => x.CampaignName, campaignName)
-                .AndAlso()
-                .WhereEquals(x => x.Category, category)
-                .AndAlso()
-                .WhereGreaterThanOrEqual(x => x.DayLogged, minDayLogged)
-                .Take(limit)
-                .ToListAsync(ct);
-            results.AddRange(batch);
-        }
-
-        return results
+        return await session.Advanced.AsyncDocumentQuery<Event, Event_Search>()
+            .WhereEquals(x => x.CampaignName, campaignName)
+            .AndAlso()
+            .WhereIn(x => x.Category, categories)
+            .AndAlso()
+            .WhereGreaterThanOrEqual(x => x.DayLogged, minDayLogged)
             .OrderByDescending(e => e.Timestamp)
             .Take(limit)
-            .ToList();
+            .ToListAsync(ct);
     }
 
     public static async Task<bool> HasSceneInterruptTodayAsync(

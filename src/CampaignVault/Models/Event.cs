@@ -51,6 +51,12 @@ public class Event : ICampaignScopedEntity
     /// <summary>Optional related entity ID from EventOccurred (item, character, location).</summary>
     public string? RelatedEntityId { get; set; }
 
+    /// <summary>Primary location where the event occurred.</summary>
+    public string? LocationId { get; set; }
+
+    /// <summary>Additional locations touched by a spillover beat (e.g. a bar fight that spills into an alley).</summary>
+    public List<string>? RelatedLocationIds { get; set; }
+
     /// <summary>
     /// Associates the entity with a specific campaign for multi-campaign isolation.
     /// Set automatically from current campaign context on create/log (via repo + handlers).
