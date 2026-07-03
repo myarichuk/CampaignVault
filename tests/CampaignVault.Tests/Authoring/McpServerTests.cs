@@ -46,6 +46,20 @@ public class McpServerTests : IDisposable
     }
 
     [Fact]
+    public async Task WriteWorkspaceEntity_InvalidYaml_ReturnsError()
+    {
+        await OpenVaultAsync();
+        var tools = new AuthoringMcpTools();
+
+        var result = await tools.WriteWorkspaceEntity(
+            "characters/bad.md",
+            "---\nid: characters/bad\n  badIndent: true\n---\n# Test");
+
+        Assert.False(result.success);
+        Assert.Contains("YAML", result.error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task WriteThenList_ShowsEntityInScanResults()
     {
         await OpenVaultAsync();
@@ -209,7 +223,7 @@ public class McpServerTests : IDisposable
         Assert.NotNull(result.content);
         Assert.StartsWith("characters/", result.path);
         Assert.EndsWith(".md", result.path);
-        Assert.Contains("testcnpc", result.path);
+        Assert.Contains("testnpc", result.path);
 
         // Verify file was written
         var readResult = await tools.ReadWorkspaceEntity(result.path);

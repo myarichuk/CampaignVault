@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using CampaignVault.Authoring.Models;
+using CampaignVault.Authoring.Services;
 using CampaignVault.Authoring.Vault;
 using CampaignVault.Authoring.Vault.Sync;
+using CampaignVault.Grpc;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Authoring.Tools;
@@ -119,6 +123,13 @@ public class AuthoringMcpTools
 
         try
         {
+            var yamlIssues = YamlFrontmatterValidator.ValidateDocument(content);
+            if (yamlIssues.Count > 0)
+            {
+                return new AuthoringToolResult(success: false,
+                    error: $"YAML frontmatter invalid (line {yamlIssues[0].Line}): {yamlIssues[0].Message}");
+            }
+
             var relativePath = AuthoringMcpSessionHelper.ResolveEntityRelativePath(session, filePath);
             await session.WriteFileAsync(relativePath, content);
             AuthoringMcpSessionHelper.RefreshUiIfAvailable();
@@ -308,6 +319,35 @@ public class AuthoringMcpTools
         catch (Exception ex)
         {
             return new AuthoringToolResult(success: false, error: ex.Message);
+        }
+    }
+
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "Lists campaigns on the main Campaign Vault server via gRPC CampaignSync. Uses authoring Settings grpc host/port/token — not the play MCP HTTP port.")]
+    public async Task<AuthoringToolResult> ListServerCampaigns()
+    {
+        try
+        {
+            var settings = new SettingsService().LoadSettings();
+            var client = VaultGrpcClientFactory.CreateClient(
+                settings.GrpcHost,
+                settings.GrpcPort,
+                string.IsNullOrWhiteSpace(settings.GrpcToken) ? null : settings.GrpcToken);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var response = await client.GetCampaignsAsync(
+                new EmptyRequest(),
+                deadline: DateTime.UtcNow.AddSeconds(5),
+                cancellationToken: cts.Token);
+            var campaigns = response.Campaigns
+                .Select(c => new { name = c.Name, ruleset = c.Ruleset })
+                .ToList();
+            return new AuthoringToolResult(success: true, files: campaigns);
+        }
+        catch (Exception ex)
+        {
+            return new AuthoringToolResult(success: false,
+                error: $"Failed to list server campaigns via gRPC: {ex.Message}");
         }
     }
 
