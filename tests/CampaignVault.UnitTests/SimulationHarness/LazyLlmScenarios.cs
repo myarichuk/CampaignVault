@@ -38,7 +38,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var (tools, repo) = CreateScenarioHarness();
         using (var session = _store.OpenAsyncSession())
         {
-            var loc = new Location
+            var loc = new LocationUpsertRequest
             {
                 Id = "locations/empty-room-" + Guid.NewGuid(),
                 Name = "Empty Room",
@@ -71,7 +71,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         {
             await session.StoreAsync(new Campaign { Id = keys.Meta("LenientTest"), Name = "LenientTest" });
 
-            var loc = new Location
+            var loc = new LocationUpsertRequest
             {
                 Id = "locations/pony-" + Guid.NewGuid(),
                 Name = "The Prancing Pony",

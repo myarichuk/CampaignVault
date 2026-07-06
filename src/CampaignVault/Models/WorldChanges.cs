@@ -223,6 +223,10 @@ public class EventOccurred : WorldChange
     [Description("Optional client-chosen ID for this event (e.g. 'events/tavern-bar-fight-001'), so other changes in the SAME commit batch (e.g. knowledge_update.sourceEventIds) can reference it. Omit to let the engine generate one automatically — most events should omit this.")]
     [JsonPropertyName("eventId")]
     public string? EventId { get; set; }
+
+    [Description("Optional. How narratively important this event is to THIS campaign's story (Trivial/Important/Core) — see the campaign's narrativeFocus. If omitted, the engine defaults it from category (Betrayal/Discovery/Combat/Arrival -> Important, bookkeeping categories -> Trivial). Core = load-bearing to the plot; always survives retrieval budgets.")]
+    [JsonPropertyName("importance")]
+    public MemoryImportance? Importance { get; set; }
 }
 
 /// <summary>Change the state of an existing rumor and optionally rewrite its current text.</summary>
@@ -793,6 +797,10 @@ public class ItemCreate : WorldChange
     [Description("Where the item currently is (a location ID, character ID, or another item container).")]
     [JsonPropertyName("holderId")]
     public string HolderId { get; set; } = default!;
+
+    [Description("Quantity of identical items to create (e.g., 5 for 'several potions'). Defaults to 1.")]
+    [JsonPropertyName("quantity")]
+    public int Quantity { get; set; } = 1;
 
     [Description("List of structural tags (e.g., ['quest', 'clue']).")]
     [JsonPropertyName("tags")]

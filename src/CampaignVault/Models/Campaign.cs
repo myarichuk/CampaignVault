@@ -68,5 +68,13 @@ public class Campaign
     /// </summary>
     public Dictionary<string, InitiativeSurfacedState> InitiativeSurfaced { get; set; } = [];
 
+    /// <summary>
+    /// Free-text tags describing the kind(s) of story this campaign tells (e.g. "political intrigue",
+    /// "dungeon crawl", "horror investigation"). No server-side genre->importance matrix — these steer
+    /// the LLM's own judgment of event Importance on commit (see DmHelpManual's Narrative Focus section).
+    /// Mutable at any time via set_narrative_focus; campaigns can evolve mid-story.
+    /// </summary>
+    public List<string> NarrativeFocus { get; set; } = [];
+
     // Future: per-campaign defaults, player list, etc. can be added here without breaking storage.
 }

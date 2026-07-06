@@ -97,7 +97,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new Location
+            await repo.UpsertLocationAsync(session, new LocationUpsertRequest
             {
                 Id = locId,
                 Name = "Forest Clearing",
@@ -157,7 +157,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new Location
+            await repo.UpsertLocationAsync(session, new LocationUpsertRequest
             {
                 Id = locId,
                 Name = "Tavern Floor",

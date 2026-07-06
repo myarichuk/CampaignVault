@@ -78,13 +78,13 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await repo.UpsertCharacterAsync(session,
-                new Character
+                new CharacterUpsertRequest
                 {
                     Id = heroId, Name = "Hero", CurrentHp = 50, MaxHp = 50,
                     SystemStats = new Dnd5eExtension { ArmorClass = 10 }
                 }, campaignName);
             await repo.UpsertCharacterAsync(session,
-                new Character
+                new CharacterUpsertRequest
                 {
                     Id = goblinId, Name = "Goblin", CurrentHp = 15, MaxHp = 15,
                     SystemStats = new Dnd5eExtension { ArmorClass = 10 }

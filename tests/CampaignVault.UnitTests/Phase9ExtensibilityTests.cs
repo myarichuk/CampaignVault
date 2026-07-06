@@ -32,7 +32,7 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
 
         var locId = "locations/scope-test-" + Guid.NewGuid();
-        await repo.UpsertLocationAsync(session, new Location
+        await repo.UpsertLocationAsync(session, new LocationUpsertRequest
         {
             Id = locId,
             Name = "Empty Room",

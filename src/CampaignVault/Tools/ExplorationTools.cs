@@ -50,14 +50,14 @@ public class ExplorationTools : CampaignToolBase
             var peak = await _repository.QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
             var rumors = peak.Concat(spreading).ToList();
 
-            var events = await _repository.QueryEventsAsync(session, null, null, 5, effective);
-            
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var events = await _repository.SelectRecentEventsAsync(session, effective, config.EventContextBudgetAmbient);
+
             Location? location = null;
             if (!string.IsNullOrEmpty(partyLocationId))
             {
                 location = await _repository.GetLocationAsync(session, partyLocationId, effective);
             }
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
             var worldActiveQuests = await _repository.GetActiveQuestsAsync(session, effective, 10);
 
             var pressureCtx = new PressureContext(
@@ -227,11 +227,12 @@ public class ExplorationTools : CampaignToolBase
                 return new ToolResult<NpcContextView>(false, Error: "NotFound");
             }
 
-            // Filtered at the index level (involvedCharacterId) so recency Take(10) doesn't silently
-            // drop older events that genuinely involve this NPC.
-            var npcEvents = (await _repository.QueryEventsAsync(session, null, null, 10, effective,
-                    involvedCharacterId: characterId))
-                .ToList();
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+
+            // Filtered at the index level (involvedCharacterId) and importance-ranked so the budget
+            // doesn't silently drop older Core/Important events that genuinely involve this NPC.
+            var npcEvents = await _repository.SelectRecentEventsAsync(session, effective,
+                config.EventContextBudgetNpc, involvedCharacterId: characterId);
 
             foreach (var ev in npcEvents)
             {
@@ -343,13 +344,20 @@ public class ExplorationTools : CampaignToolBase
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("The keyword or phrase to search for in historical events. Optional if filtering purely by locationId/involvedCharacterId.")] string query = "",
-        [Description("Maximum number of events to return.")] int limit = 5,
+        [Description("Maximum number of events to return. Defaults to the campaign's recall event budget (CampaignConfig.EventContextBudgetRecall, 5 unless configured).")] int? limit = null,
         [Description("Optional. Only return events at this location ID (or with this ID among relatedLocationIds).")] string? locationId = null,
         [Description("Optional. Only return events where this character ID appears in 'involved' — i.e. ground-truth presence, not subjective memory.")] string? involvedCharacterId = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var results = await _repository.QueryEventsAsync(session, query, null, limit, effective,
-                locationId, involvedCharacterId);
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var effectiveLimit = limit ?? config.EventContextBudgetRecall;
+
+            // Empty query: pure browse, ranked by importance then recency (same as ambient context).
+            // Non-empty query: unchanged keyword-priority-then-vector relevance via QueryEventsAsync/Hybrid.
+            IEnumerable<Event> results = string.IsNullOrWhiteSpace(query)
+                ? await _repository.SelectRecentEventsAsync(session, effective, effectiveLimit, locationId, involvedCharacterId)
+                : await _repository.QueryEventsAsync(session, query, null, effectiveLimit, effective, locationId, involvedCharacterId);
+
             return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events (campaign: {effective}).");
         }, saveChanges: false);
     }

@@ -33,7 +33,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
         const string charId = "chars/rest-test";
         const string locId = "locations/inn";
 
-        await repo.UpsertCharacterAsync(session, new Character
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
         {
             Id = charId,
             Name = "Rest Test",
@@ -48,7 +48,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
             }
         }, campaign);
 
-        await repo.UpsertLocationAsync(session, new Location { Id = locId, Name = "Inn", Type = LocationType.Room }, campaign);
+        await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Inn", Type = LocationType.Room }, campaign);
         await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 10 }, campaign);
         await session.SaveChangesAsync();
 
@@ -92,7 +92,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
         using var session = _fixture.Store.OpenAsyncSession();
         const string charId = "chars/daily-test";
 
-        await repo.UpsertCharacterAsync(session, new Character
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
         {
             Id = charId,
             Name = "Daily Test",

@@ -7,6 +7,7 @@
     <Project Path="src\CampaignVault.Authoring\CampaignVault.Authoring.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/CampaignVault.Tests/CampaignVault.Tests.csproj" />
+    <Project Path="tests/CampaignVault.UnitTests/CampaignVault.UnitTests.csproj" />
+    <Project Path="tests/CampaignVault.IntegrationTests/CampaignVault.IntegrationTests.csproj" />
   </Folder>
 </Solution>

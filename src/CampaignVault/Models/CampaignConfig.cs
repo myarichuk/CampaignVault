@@ -184,6 +184,23 @@ public class CampaignConfig
     /// Defaults to false — many campaigns use intentional one-way exits (chutes, secret doors, traps).
     /// </summary>
     public bool AutoRepairLocationConnectivity { get; set; } = false;
+
+    /// <summary>
+    /// Number of events surfaced in ambient "story so far" context (get_world_state, get_scene).
+    /// Selected by importance (Core/Important survive first), then recency. Defaults to 5.
+    /// </summary>
+    public int EventContextBudgetAmbient { get; set; } = 5;
+
+    /// <summary>
+    /// Number of events surfaced in get_npc_context. Defaults to 10.
+    /// </summary>
+    public int EventContextBudgetNpc { get; set; } = 10;
+
+    /// <summary>
+    /// Default number of events returned by recall_history when the caller doesn't override via `limit`.
+    /// Defaults to 5.
+    /// </summary>
+    public int EventContextBudgetRecall { get; set; } = 5;
 }
 
 /// <summary>

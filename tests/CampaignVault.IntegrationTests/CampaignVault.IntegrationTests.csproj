@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Safety gate: Check Docker is available before building -->
+  <Target Name="ValidateDockerAvailable" BeforeTargets="Restore">
+    <Exec Command="docker --version" ContinueOnError="true" EchoOff="true">
+      <Output TaskParameter="ExitCode" PropertyName="DockerExitCode" />
+    </Exec>
+    <Error Condition="'$(DockerExitCode)' != '0'"
+           Text="[INTEGRATION TESTS] Docker is not available. Integration tests require Docker. Install Docker and try again." />
+  </Target>
+
+  <!-- Build Docker image before running tests -->
+  <Target Name="BuildDockerImage" BeforeTargets="Build">
+    <Message Text="[INTEGRATION TESTS] Building Docker image: campaignvault:latest" Importance="high" />
+    <Exec Command="docker build -t campaignvault:latest -f ../../Dockerfile ." WorkingDirectory="$(MSBuildProjectDirectory)/../../.." />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Testcontainers" Version="3.7.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CampaignVault\CampaignVault.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

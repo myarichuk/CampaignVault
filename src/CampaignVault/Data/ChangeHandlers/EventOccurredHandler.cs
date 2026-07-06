@@ -38,7 +38,8 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             EmotionalBeat = ev.EmotionalBeat,
             RelatedEntityId = ev.RelatedEntityId,
             LocationId = ev.LocationId,
-            RelatedLocationIds = ev.RelatedLocationIds
+            RelatedLocationIds = ev.RelatedLocationIds,
+            Importance = ev.Importance ?? DefaultImportanceFor(ev.Category)
         };
 
         e.CampaignName = context.CampaignName;
@@ -53,7 +54,8 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         if (ev.Category is not (EventCategory.Departure or EventCategory.Timeskip or EventCategory.Simulation
             or EventCategory.SceneInterrupt or EventCategory.Test))
         {
-            var noveltyHint = await EventNoveltyAdvisor.ScoreAsync(context, e, ct);
+            var (similarity, noveltyHint) = await EventNoveltyAdvisor.ScoreAsync(context, e, ct);
+            e.NoveltyScore = similarity;
             if (noveltyHint != null)
             {
                 context.RecordMessage(noveltyHint);
@@ -62,6 +64,17 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
 
         return ChangeHandlerResult.Ok;
     }
+
+    /// <summary>
+    /// Default importance by category when the LLM omits an explicit value. Mirrors the same
+    /// bookkeeping-category split used to skip novelty scoring above — kept as a single source of truth.
+    /// </summary>
+    private static MemoryImportance DefaultImportanceFor(EventCategory category) => category switch
+    {
+        EventCategory.Departure or EventCategory.Timeskip or EventCategory.Simulation
+            or EventCategory.SceneInterrupt or EventCategory.Test => MemoryImportance.Trivial,
+        _ => MemoryImportance.Important
+    };
 
     /// <summary>
     /// Resolves the ID for a newly logged event. Honors a client-supplied EventId (normalized to the

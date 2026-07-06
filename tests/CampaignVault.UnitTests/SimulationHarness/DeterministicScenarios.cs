@@ -37,8 +37,8 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         var npcId = "npcs/innkeeper-" + Guid.NewGuid();
 
         await repo.UpsertLocationAsync(session,
-            new Location { Id = locId, Name = "The Prancing Pony", Type = LocationType.Building }, TestCampaignDefaults.Slug);
-        await repo.UpsertCharacterAsync(session, new Character
+            new LocationUpsertRequest { Id = locId, Name = "The Prancing Pony", Type = LocationType.Building }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
         {
             Id = npcId,
             Name = "Barliman Butterbur",

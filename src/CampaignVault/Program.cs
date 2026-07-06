@@ -64,8 +64,8 @@ builder.Services.AddSingleton(documentStore);
 builder.Services.AddSingleton<LocalEmbeddingService>();
 builder.Services.AddSingleton<ILocalEmbeddingService>(sp => sp.GetRequiredService<LocalEmbeddingService>());
 
-builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder => 
-    containerBuilder.RegisterAssemblyModules());
+builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
+    containerBuilder.RegisterAssemblyModules(typeof(Program).Assembly));
 
 // CORS configuration (Issue #16 from code review)
 // - Default (or "*"): AllowAnyOrigin (current behavior, convenient for local MCP + LLM clients)

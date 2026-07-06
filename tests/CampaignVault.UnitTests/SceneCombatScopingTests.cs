@@ -33,7 +33,7 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await _repo.UpsertLocationAsync(session,
-                new Location { Id = locId, Name = "Private Room", CampaignName = owner }, owner);
+                new LocationUpsertRequest { Id = locId, Name = "Private Room", CampaignName = owner }, owner);
             await session.SaveChangesAsync();
         }
 

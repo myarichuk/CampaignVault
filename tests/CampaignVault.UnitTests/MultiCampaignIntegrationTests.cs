@@ -77,11 +77,11 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await repo.UpsertCharacterAsync(session,
-                new Character
+                new CharacterUpsertRequest
                     { Id = "characters/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
                 "campaign-a");
             await repo.UpsertCharacterAsync(session,
-                new Character
+                new CharacterUpsertRequest
                     { Id = "characters/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
                 "campaign-b");
             await session.SaveChangesAsync();

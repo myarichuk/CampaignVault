@@ -14,15 +14,17 @@ public class Item : ICampaignScopedEntity
     public string Description { get; set; } = default!;
     
     public string HolderId { get; set; } = default!; // Character.Id, Location.Id, or Item.Id
-    
+
+    public int Quantity { get; set; } = 1;
+
     public string? CurrentState { get; set; }
-    
+
     public List<string> DistinctiveFeatures { get; set; } = [];
-    
+
     public ItemCategory CoreCategory { get; set; }
-    
+
     public List<string> Tags { get; set; } = [];
-    
+
     public Dictionary<string, object> Properties { get; set; } = [];
     
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;

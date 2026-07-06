@@ -32,8 +32,8 @@ public class EvictionIntegrationTests : IClassFixture<RavenDBFixture>
         const string charId = "chars/transient-bard";
         const string locId = "locations/tavern";
 
-        var location = new Location { Id = locId, Name = "The Rusty Nail", Type = LocationType.Room, LastVisitedDay = 1, CampaignName = campaign };
-        var character = new Character
+        var location = new LocationUpsertRequest { Id = locId, Name = "The Rusty Nail", Type = LocationType.Room, LastVisitedDay = 1, CampaignName = campaign };
+        var character = new CharacterUpsertRequest
         {
             Id = charId,
             Name = "Mira the Bard",

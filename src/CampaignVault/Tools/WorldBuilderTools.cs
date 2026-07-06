@@ -37,10 +37,12 @@ HP bootstrap: omit maxHp for PCs — engine derives from typed systemStats (hitD
 Creature stat blocks: set maxHp OR systemStats.statBlockHp (not both needed). currentHp alone sets wounded state.
 Put hitDie on dnd5e systemStats root (NOT in attributes). Class flavor goes in notes.
 
-During play, prefer commit (character_create, level_up, activity) over repeated upserts.")]
+During play, prefer commit (character_create, level_up, activity) over repeated upserts.
+
+Omitted fields are preserved: on an existing character, omitting psychology/social/needs/systemStats keeps the stored value; providing one replaces it wholesale.")]
     public Task<ToolResult<Character>> UpsertCharacter(
-        [Description("The full Character object to create or replace. Strongly typed.")]
-        Character character,
+        [Description("The character to create or update. Strongly typed.")]
+        CharacterUpsertRequest character,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
@@ -48,11 +50,13 @@ During play, prefer commit (character_create, level_up, activity) over repeated 
         {
             var config = await s.LoadAsync<CampaignConfig>(_keys.Config(effective));
             var activeSystem = config?.ActiveSystem ?? RulesetSystem.Dnd5e;
-            var hp = BootstrapHpResolver.Resolve(character, null,
+            var merged = await _repository.UpsertCharacterAsync(s, character, effective);
+
+            var hp = BootstrapHpResolver.Resolve(merged, null,
                 character.CurrentHp > 0 ? character.CurrentHp : null);
             var report = await _bootstrap.ApplyCreationAsync(new BootstrapContext
             {
-                Character = character,
+                Character = merged,
                 ActiveSystem = activeSystem,
                 ExplicitMaxHp = hp.ExplicitMaxHp,
                 ExplicitCurrentHp = hp.ExplicitCurrentHp,
@@ -64,11 +68,10 @@ During play, prefer commit (character_create, level_up, activity) over repeated 
             var extras = report.Messages
                 .Concat(report.LlmHints.Select(h => $"[BOOTSTRAP HINT] {h}"))
                 .ToList();
-            await _repository.UpsertCharacterAsync(s, character, effective);
             var summary = extras.Count > 0
                 ? $"Character upserted (campaign: {effective}). {string.Join(" ", extras)}"
                 : $"Character upserted (campaign context: {effective}).";
-            return new ToolResult<Character>(true, character, summary);
+            return new ToolResult<Character>(true, merged, summary);
         });
     }
 
@@ -76,36 +79,72 @@ During play, prefer commit (character_create, level_up, activity) over repeated 
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Create or overwrite a location on the world map.
 
-Use for seeding new areas or replacing/updating full location documents — exits, parent links, ambientCrowd, pointsOfInterest, descriptions, and hierarchy. Repeated calls overwrite the stored location (upsert semantics).
+Use for seeding new areas or replacing/updating full location documents — exits, parent links, ambientCrowd, pointsOfInterest, descriptions, and hierarchy.
+
+Omitted fields are preserved: on an existing location, omitting exits/pointsOfInterest/pointOfInterestDetails/metadata keeps the stored value; providing one replaces it wholesale.
 
 During play, prefer commit (location_create, location_update) for incremental changes; use upsert_location for bulk world-building or full replacements.")]
     public Task<ToolResult<Location>> UpsertLocation(
-        [Description("The full Location object to create or replace. Strongly typed.")]
-        Location location,
+        [Description("The location to create or update. Strongly typed.")]
+        LocationUpsertRequest location,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
-            await _repository.UpsertLocationAsync(s, location, effective);
-            return new ToolResult<Location>(true, location, $"Location upserted (campaign context: {effective}).");
+            var merged = await _repository.UpsertLocationAsync(s, location, effective);
+            return new ToolResult<Location>(true, merged, $"Location upserted (campaign context: {effective}).");
         });
     }
 
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "WORLD BUILDER TOOL: Create or update a lore entry. Always use SearchWorld first to check whether similar lore already exists.")]
+        "WORLD BUILDER TOOL: Create or update a lore entry. Always use SearchWorld first to check whether similar lore already exists. Omitted fields are preserved: on existing lore, omitting tags/keywords keeps the stored value; providing one replaces it wholesale.")]
     public Task<ToolResult<Lore>> UpsertLore(
-        [Description("The full Lore object to create or replace. Strongly typed.")]
-        Lore lore,
+        [Description("The lore entry to create or update. Strongly typed.")]
+        LoreUpsertRequest lore,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
-            await _repository.UpsertLoreAsync(s, lore, effective);
-            return new ToolResult<Lore>(true, lore, $"Lore upserted (campaign context: {effective}).");
+            var merged = await _repository.UpsertLoreAsync(s, lore, effective);
+            return new ToolResult<Lore>(true, merged, $"Lore upserted (campaign context: {effective}).");
+        });
+    }
+
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). Use for seeding or bulk world-building. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale. During play, prefer commit (item_create) for incremental changes.")]
+    public Task<ToolResult<Item>> UpsertItem(
+        [Description("The item to create or update. Strongly typed.")]
+        ItemUpsertRequest item,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var merged = await _repository.UpsertItemAsync(s, item, effective);
+            return new ToolResult<Item>(true, merged, $"Item upserted (campaign context: {effective}).");
+        });
+    }
+
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "WORLD BUILDER TOOL: Create or update a plot thread — DM-scaffolding for a story arc's clues, tension, and resolution condition (usually not player-visible). Use for bulk-seeding clues or bumping tensionLevel without re-sending every clue. Omitted fields are preserved: on an existing thread, omitting clues/involvedEntityIds/foreshadowingHooks keeps the stored value; providing one replaces it wholesale.")]
+    public Task<ToolResult<PlotThread>> UpsertPlotThread(
+        [Description("The plot thread to create or update. Strongly typed.")]
+        PlotThreadUpsertRequest plotThread,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var merged = await _repository.UpsertPlotThreadAsync(s, plotThread, effective);
+            return new ToolResult<PlotThread>(true, merged, $"PlotThread upserted (campaign context: {effective}).");
         });
     }
 

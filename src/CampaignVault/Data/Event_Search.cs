@@ -20,6 +20,7 @@ public class Event_Search : AbstractIndexCreationTask<Event>
                 e.LocationId,
                 e.RelatedLocationIds,
                 e.Involved,
+                e.Importance,
                 SemanticVector = CreateVector(e.SemanticVector)
             };
 

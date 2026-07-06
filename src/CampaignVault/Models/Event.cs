@@ -57,6 +57,19 @@ public class Event : ICampaignScopedEntity
     /// <summary>Additional locations touched by a spillover beat (e.g. a bar fight that spills into an alley).</summary>
     public List<string>? RelatedLocationIds { get; set; }
 
+    /// <summary>
+    /// Narrative importance of this event to the current campaign's story (see Campaign.NarrativeFocus).
+    /// Drives importance-ranked retrieval budgets (ambient context, NPC context, recall) instead of pure recency.
+    /// </summary>
+    public MemoryImportance Importance { get; set; } = MemoryImportance.Important;
+
+    /// <summary>
+    /// Cosine similarity (0-1) against the most similar recent event at commit time, as computed by
+    /// EventNoveltyAdvisor. Persisted for future retrieval tie-breaking; null when novelty scoring was
+    /// skipped (bookkeeping categories, or no embedding available).
+    /// </summary>
+    public double? NoveltyScore { get; set; }
+
     /// <summary>Whether this event is tied to <paramref name="locationId"/> via any spatial anchor field.</summary>
     public bool TouchesLocation(string locationId)
     {

@@ -190,13 +190,13 @@ public class CampaignRepository
         var npcsFromSimulation = await LoadSceneNpcsFromSimulationAsync(session, targetIds);
         var rumors = (await QueryRumorsAsync(session, null, regionId, null, 5, effectiveCampaign)).ToList();
         var items = await LoadVisibleSceneItemsAsync(session, locationId, effectiveCampaign);
-        var events = await LoadSceneEventsAsync(session, locationId, effectiveCampaign);
+        var config = await GetCampaignConfigAsync(session, effectiveCampaign);
+        var events = await LoadSceneEventsAsync(session, locationId, effectiveCampaign, config.EventContextBudgetAmbient);
 
         JsonSanitizer.Sanitize(location);
 
         var time = await GetTimeAsync(session, effectiveCampaign);
         var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session, effectiveCampaign);
-        var config = await GetCampaignConfigAsync(session, effectiveCampaign);
         var campaign = await LoadOrCreateCampaignMetaAsync(session, effectiveCampaign);
         var recentCampaignEvents = await InitiativeQueryHelper.QueryRecentCampaignEventsAsync(
             session, effectiveCampaign, time.TotalDaysElapsed);
@@ -283,24 +283,75 @@ public class CampaignRepository
     private async Task<List<Event>> LoadSceneEventsAsync(
         IAsyncDocumentSession session,
         string locationId,
-        string effectiveCampaign)
+        string effectiveCampaign,
+        int budget)
     {
         // Primary query: use indexed locationId parameter
-        var primary = (await QueryEventsAsync(session, null, null, 5, effectiveCampaign, locationId: locationId))
-            .ToList();
+        var primary = await SelectRecentEventsAsync(session, effectiveCampaign, budget, locationId: locationId);
 
         // Fallback for legacy events that only recorded location via Involved
-        var legacy = (await QueryEventsAsync(session, null, null, 5, effectiveCampaign))
+        var legacy = (await SelectRecentEventsAsync(session, effectiveCampaign, budget))
             .Where(e => string.IsNullOrEmpty(e.LocationId) && (e.RelatedLocationIds == null || !e.RelatedLocationIds.Any())
                 && e.Involved.Contains(locationId))
             .ToList();
 
-        // Merge, dedupe by Id, re-sort, take 5
+        // Merge, dedupe by Id, re-rank by importance then recency, take budget
         return primary.Concat(legacy)
             .DistinctBy(e => e.Id)
-            .OrderByDescending(e => e.Timestamp)
-            .Take(5)
+            .OrderByDescending(e => e.Importance)
+            .ThenByDescending(e => e.Timestamp)
+            .Take(budget)
             .ToList();
+    }
+
+    /// <summary>
+    /// Centralized importance-ranked event retrieval for ambient "story so far" context
+    /// (get_world_state, get_scene, get_npc_context). Orders by Importance (Core/Important survive
+    /// a flood of recent Trivial bookkeeping events) then recency, unlike QueryEventsAsync's pure-recency
+    /// ordering (which remains for on-demand search via recall_history).
+    /// </summary>
+    public async Task<List<Event>> SelectRecentEventsAsync(
+        IAsyncDocumentSession session,
+        string? campaignName,
+        int budget,
+        string? locationId = null,
+        string? involvedCharacterId = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var q = ApplyEventScalarFilters(session.Query<Event, Event_Search>(), effective, null, locationId, involvedCharacterId);
+        var events = await q.OrderByDescending(x => x.Importance).ThenByDescending(x => x.Timestamp).Take(budget).ToListAsync();
+        SanitizeEventDetails(events);
+        return events;
+    }
+
+    private static IRavenQueryable<Event> ApplyEventScalarFilters(
+        IRavenQueryable<Event> q,
+        string? effective,
+        EventCategory? category,
+        string? locationId,
+        string? involvedCharacterId)
+    {
+        if (!string.IsNullOrEmpty(effective))
+        {
+            q = q.Where(x => x.CampaignName == effective);
+        }
+
+        if (category.HasValue)
+        {
+            q = q.Where(x => x.Category == category.Value);
+        }
+
+        if (!string.IsNullOrEmpty(locationId))
+        {
+            q = q.Where(x => x.LocationId == locationId || x.RelatedLocationIds!.Contains(locationId));
+        }
+
+        if (!string.IsNullOrEmpty(involvedCharacterId))
+        {
+            q = q.Where(x => x.Involved.Contains(involvedCharacterId));
+        }
+
+        return q;
     }
 
     private static List<string> GatherSceneNpcIds(
@@ -639,27 +690,7 @@ public class CampaignRepository
         }
         else
         {
-            var q = session.Query<Event, Event_Search>();
-            if (!string.IsNullOrEmpty(effective))
-            {
-                q = q.Where(x => x.CampaignName == effective);
-            }
-
-            if (category.HasValue)
-            {
-                q = q.Where(x => x.Category == category.Value);
-            }
-
-            if (!string.IsNullOrEmpty(locationId))
-            {
-                q = q.Where(x => x.LocationId == locationId || x.RelatedLocationIds!.Contains(locationId));
-            }
-
-            if (!string.IsNullOrEmpty(involvedCharacterId))
-            {
-                q = q.Where(x => x.Involved.Contains(involvedCharacterId));
-            }
-
+            var q = ApplyEventScalarFilters(session.Query<Event, Event_Search>(), effective, category, locationId, involvedCharacterId);
             events = await q.OrderByDescending(x => x.Timestamp).Take(limit).ToListAsync();
         }
 
@@ -781,7 +812,7 @@ public class CampaignRepository
     /// Inserts or updates a character in the database, safely mutating tracked entities to preserve concurrency.
     /// Also waits for the Character/Search index to catch up to prevent stale queries.
     /// </summary>
-    public async Task UpsertCharacterAsync(IAsyncDocumentSession session, Character character,
+    public async Task<Character> UpsertCharacterAsync(IAsyncDocumentSession session, CharacterUpsertRequest character,
         string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(character.Id))
@@ -790,27 +821,25 @@ public class CampaignRepository
         }
 
         var effective = ResolveCampaign(campaignName);
-        if (string.IsNullOrEmpty(character.CampaignName))
+        var effectiveCampaignName = character.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
         {
-            character.CampaignName = effective;
+            effectiveCampaignName = effective;
         }
 
-        if (!CharacterPartyRules.TryValidate(character.IsPc, character.IsPartyCompanion, character.CampaignName,
+        if (!CharacterPartyRules.TryValidate(character.IsPc, character.IsPartyCompanion, effectiveCampaignName,
                 out var partyError))
         {
             throw new ArgumentException(partyError);
         }
 
-        character.LastUpdated = DateTime.UtcNow;
-
-        await EnrichSemanticVectorAsync(character);
-
         var existing = await session.LoadAsync<Character>(character.Id);
+        Character result;
         if (existing != null)
         {
             // Mutate the already-tracked entity in place. This is the safest pattern
             // with OptimisticConcurrencyMode.Writes + Raven change tracking.
-            // We get full overwrite semantics without ever having two objects for the same ID.
+            // Scalars always overwrite; rich sub-objects preserve the existing value when omitted.
             existing.Name = character.Name;
             existing.ClassLevel = character.ClassLevel;
             existing.CurrentHp = character.CurrentHp;
@@ -820,28 +849,52 @@ public class CampaignRepository
             existing.Schedule = character.Schedule;
             existing.CurrentLocationId = character.CurrentLocationId;
             existing.CurrentActivity = character.CurrentActivity;
-            existing.Psychology = character.Psychology ?? new PsychologyProfile();
-            existing.Social = character.Social ?? new SocialProfile();
-            existing.Needs = character.Needs ?? new NeedsProfile();
-            existing.SystemStats = character.SystemStats ?? new SystemExtension();
+            existing.Psychology = character.Psychology ?? existing.Psychology;
+            existing.Social = character.Social ?? existing.Social;
+            existing.Needs = character.Needs ?? existing.Needs;
+            existing.SystemStats = character.SystemStats ?? existing.SystemStats;
             existing.KeepAlive = character.KeepAlive;
             existing.IsPc = character.IsPc;
             existing.IsPartyCompanion = character.IsPartyCompanion;
-            existing.LastUpdated = character.LastUpdated;
-            existing.CampaignName = character.CampaignName;
-            existing.SemanticVector = character.SemanticVector; // ensure set/copied for scoping
-            existing.EmbeddingTextHash = character.EmbeddingTextHash;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
+            result = existing;
         }
         else
         {
-            await session.StoreAsync(character, null, character.Id);
+            result = new Character
+            {
+                Id = character.Id,
+                Name = character.Name,
+                ClassLevel = character.ClassLevel,
+                CurrentHp = character.CurrentHp,
+                MaxHp = character.MaxHp,
+                Notes = character.Notes,
+                Schedule = character.Schedule,
+                CurrentLocationId = character.CurrentLocationId,
+                CurrentActivity = character.CurrentActivity,
+                Psychology = character.Psychology ?? new PsychologyProfile(),
+                Social = character.Social ?? new SocialProfile(),
+                Needs = character.Needs ?? new NeedsProfile(),
+                SystemStats = character.SystemStats ?? new SystemExtension(),
+                KeepAlive = character.KeepAlive,
+                IsPc = character.IsPc,
+                IsPartyCompanion = character.IsPartyCompanion,
+                LastUpdated = DateTime.UtcNow,
+                CampaignName = effectiveCampaignName,
+            };
+            await session.StoreAsync(result, null, result.Id);
         }
+
+        await EnrichSemanticVectorAsync(result);
 
         // Help keep the Character/Search index fresh after writes that affect Schedule or CurrentLocation.
         session.Advanced.WaitForIndexesAfterSaveChanges(
             timeout: TimeSpan.FromSeconds(3),
             throwOnTimeout: false,
             indexes: ["Character/Search"]);
+
+        return result;
     }
 
     /// <summary>
@@ -999,7 +1052,7 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a piece of Lore, handling creation/update timestamps.
     /// </summary>
-    public async Task UpsertLoreAsync(IAsyncDocumentSession session, Lore lore, string? campaignName = null)
+    public async Task<Lore> UpsertLoreAsync(IAsyncDocumentSession session, LoreUpsertRequest lore, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(lore.Id))
         {
@@ -1007,32 +1060,43 @@ public class CampaignRepository
         }
 
         var effective = ResolveCampaign(campaignName);
-        if (string.IsNullOrEmpty(lore.CampaignName))
+        var effectiveCampaignName = lore.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
         {
-            lore.CampaignName = effective;
+            effectiveCampaignName = effective;
         }
 
-        lore.LastUpdated = DateTime.UtcNow;
-
-        await EnrichSemanticVectorAsync(lore);
-
         var existing = await session.LoadAsync<Lore>(lore.Id);
+        Lore result;
         if (existing != null)
         {
             existing.Title = lore.Title;
             existing.Content = lore.Content;
-            existing.Tags = lore.Tags ?? [];
-            existing.Keywords = lore.Keywords ?? [];
+            existing.Tags = lore.Tags ?? existing.Tags;
+            existing.Keywords = lore.Keywords ?? existing.Keywords;
             existing.Category = lore.Category;
-            existing.LastUpdated = lore.LastUpdated;
-            existing.CampaignName = lore.CampaignName;
-            existing.SemanticVector = lore.SemanticVector; // ensure set/copied for scoping
-            existing.EmbeddingTextHash = lore.EmbeddingTextHash;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
+            result = existing;
         }
         else
         {
-            await session.StoreAsync(lore);
+            result = new Lore
+            {
+                Id = lore.Id,
+                Title = lore.Title,
+                Content = lore.Content,
+                Tags = lore.Tags ?? [],
+                Keywords = lore.Keywords ?? [],
+                Category = lore.Category,
+                LastUpdated = DateTime.UtcNow,
+                CampaignName = effectiveCampaignName,
+            };
+            await session.StoreAsync(result);
         }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
     }
 
     /// <summary>
@@ -1075,7 +1139,7 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a Location, handling sanitization of arbitrary metadata.
     /// </summary>
-    public async Task UpsertLocationAsync(IAsyncDocumentSession session, Location location, string? campaignName = null)
+    public async Task<Location> UpsertLocationAsync(IAsyncDocumentSession session, LocationUpsertRequest location, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(location.Id))
         {
@@ -1083,17 +1147,14 @@ public class CampaignRepository
         }
 
         var effective = ResolveCampaign(campaignName);
-        if (string.IsNullOrEmpty(location.CampaignName))
+        var effectiveCampaignName = location.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
         {
-            location.CampaignName = effective;
+            effectiveCampaignName = effective;
         }
 
-        SanitizeLocation(location);
-        location.LastUpdated = DateTime.UtcNow;
-
-        await EnrichSemanticVectorAsync(location);
-
         var existing = await session.LoadAsync<Location>(location.Id);
+        Location result;
         if (existing != null)
         {
             // Mutate the tracked entity (safest with optimistic concurrency).
@@ -1101,24 +1162,48 @@ public class CampaignRepository
             existing.Description = location.Description;
             existing.Type = location.Type;
             existing.ParentLocationId = location.ParentLocationId;
-            existing.Exits = location.Exits ?? [];
-            existing.PointsOfInterest = location.PointsOfInterest ?? [];
-            existing.PointOfInterestDetails = location.PointOfInterestDetails != null 
+            existing.Exits = location.Exits ?? existing.Exits;
+            existing.PointsOfInterest = location.PointsOfInterest ?? existing.PointsOfInterest;
+            existing.PointOfInterestDetails = location.PointOfInterestDetails != null
                 ? new Dictionary<string, string>(location.PointOfInterestDetails, StringComparer.OrdinalIgnoreCase)
-                : new(StringComparer.OrdinalIgnoreCase);
+                : existing.PointOfInterestDetails;
             existing.AmbientCrowd = location.AmbientCrowd;
             existing.LastVisitedDay = location.LastVisitedDay;
-            existing.Metadata = location.Metadata ?? [];
-            existing.LastUpdated = location.LastUpdated;
-            existing.CampaignName = location.CampaignName;
-            existing.SemanticVector = location.SemanticVector; // ensure set/copied for scoping
-            existing.EmbeddingTextHash = location.EmbeddingTextHash;
+            existing.Metadata = location.Metadata ?? existing.Metadata;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
             existing.ControllingFactionId = location.ControllingFactionId; // Phase 7.1
+            existing.CurrentState = location.CurrentState;
+            result = existing;
         }
         else
         {
-            await session.StoreAsync(location);
+            result = new Location
+            {
+                Id = location.Id,
+                Name = location.Name,
+                Description = location.Description,
+                Type = location.Type,
+                ParentLocationId = location.ParentLocationId,
+                Exits = location.Exits ?? [],
+                PointsOfInterest = location.PointsOfInterest ?? [],
+                PointOfInterestDetails = location.PointOfInterestDetails != null
+                    ? new Dictionary<string, string>(location.PointOfInterestDetails, StringComparer.OrdinalIgnoreCase)
+                    : new(StringComparer.OrdinalIgnoreCase),
+                AmbientCrowd = location.AmbientCrowd,
+                LastVisitedDay = location.LastVisitedDay,
+                Metadata = location.Metadata ?? [],
+                LastUpdated = DateTime.UtcNow,
+                CampaignName = effectiveCampaignName,
+                ControllingFactionId = location.ControllingFactionId,
+                CurrentState = location.CurrentState,
+            };
+            await session.StoreAsync(result);
         }
+
+        SanitizeLocation(result);
+        await EnrichSemanticVectorAsync(result);
+        return result;
     }
 
     /// <summary>
@@ -1266,8 +1351,9 @@ public class CampaignRepository
 
     /// <summary>
     /// Inserts or updates an Item, sanitizing arbitrary properties and preserving optimistic concurrency on edits.
+    /// Rich collection fields (Tags/DistinctiveFeatures/Properties) are preserved when omitted from the request.
     /// </summary>
-    public async Task UpsertItemAsync(IAsyncDocumentSession session, Item item, string? campaignName = null)
+    public async Task<Item> UpsertItemAsync(IAsyncDocumentSession session, ItemUpsertRequest item, string? campaignName = null)
     {
         if (string.IsNullOrWhiteSpace(item.Id))
         {
@@ -1275,33 +1361,52 @@ public class CampaignRepository
         }
 
         var effective = ResolveCampaign(campaignName);
-        if (string.IsNullOrEmpty(item.CampaignName))
+        var effectiveCampaignName = item.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
         {
-            item.CampaignName = effective;
+            effectiveCampaignName = effective;
         }
 
-        SanitizeItem(item);
-        item.LastUpdated = DateTime.UtcNow;
-
-        await EnrichSemanticVectorAsync(item);
-
         var existing = await session.LoadAsync<Item>(item.Id);
+        Item result;
         if (existing != null)
         {
             existing.Name = item.Name;
             existing.Description = item.Description;
-            existing.Tags = item.Tags ?? existing.Tags ?? []; // Hardening pass: don't wipe existing tags if omit
-            existing.Properties = item.Properties ?? [];
             existing.HolderId = item.HolderId;
-            existing.LastUpdated = item.LastUpdated;
-            existing.CampaignName = item.CampaignName;
-            existing.SemanticVector = item.SemanticVector; // ensure set/copied for scoping
-            existing.EmbeddingTextHash = item.EmbeddingTextHash;
+            existing.Quantity = item.Quantity;
+            existing.CurrentState = item.CurrentState;
+            existing.DistinctiveFeatures = item.DistinctiveFeatures ?? existing.DistinctiveFeatures;
+            existing.CoreCategory = item.CoreCategory;
+            existing.Tags = item.Tags ?? existing.Tags;
+            existing.Properties = item.Properties ?? existing.Properties;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
+            result = existing;
         }
         else
         {
-            await session.StoreAsync(item);
+            result = new Item
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Description = item.Description,
+                HolderId = item.HolderId,
+                Quantity = item.Quantity,
+                CurrentState = item.CurrentState,
+                DistinctiveFeatures = item.DistinctiveFeatures ?? [],
+                CoreCategory = item.CoreCategory,
+                Tags = item.Tags ?? [],
+                Properties = item.Properties ?? [],
+                LastUpdated = DateTime.UtcNow,
+                CampaignName = effectiveCampaignName,
+            };
+            await session.StoreAsync(result);
         }
+
+        SanitizeItem(result);
+        await EnrichSemanticVectorAsync(result);
+        return result;
     }
 
     public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery,
@@ -1708,6 +1813,72 @@ public class CampaignRepository
     public async Task<List<PlotThread>> GetActivePlotThreadsAsync(IAsyncDocumentSession session, string? campaignName = null)
     {
         return await SimulationQueryHelper.QueryActivePlotThreadsAsync(session, ResolveCampaign(campaignName));
+    }
+
+    /// <summary>
+    /// Creates or updates a PlotThread, e.g. bulk-seeding clues or bumping TensionLevel. Rich collection
+    /// fields (Clues/InvolvedEntityIds/ForeshadowingHooks) are preserved when omitted from the request.
+    /// </summary>
+    public async Task<PlotThread> UpsertPlotThreadAsync(IAsyncDocumentSession session, PlotThreadUpsertRequest thread, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(thread.Id))
+        {
+            throw new ArgumentException("PlotThread.Id is required for upsert.");
+        }
+
+        var effective = ResolveCampaign(campaignName);
+        var effectiveCampaignName = thread.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
+        {
+            effectiveCampaignName = effective;
+        }
+
+        var currentDay = (await GetTimeAsync(session, effective)).TotalDaysElapsed;
+
+        var existing = await session.LoadAsync<PlotThread>(thread.Id);
+        PlotThread result;
+        if (existing != null)
+        {
+            existing.Title = thread.Title;
+            existing.Summary = thread.Summary;
+            existing.State = thread.State;
+            existing.TensionLevel = thread.TensionLevel;
+            existing.Clues = thread.Clues ?? existing.Clues;
+            existing.InvolvedEntityIds = thread.InvolvedEntityIds ?? existing.InvolvedEntityIds;
+            existing.ResolutionCondition = thread.ResolutionCondition;
+            existing.ForeshadowingHooks = thread.ForeshadowingHooks ?? existing.ForeshadowingHooks;
+            existing.DmNotes = thread.DmNotes;
+            existing.DeadlineDay = thread.DeadlineDay;
+            existing.IsPlayerVisible = thread.IsPlayerVisible;
+            existing.CampaignName = effectiveCampaignName;
+            existing.LastUpdatedDay = currentDay;
+            result = existing;
+        }
+        else
+        {
+            result = new PlotThread
+            {
+                Id = thread.Id,
+                Title = thread.Title,
+                Summary = thread.Summary,
+                State = thread.State,
+                TensionLevel = thread.TensionLevel,
+                Clues = thread.Clues ?? [],
+                InvolvedEntityIds = thread.InvolvedEntityIds ?? [],
+                ResolutionCondition = thread.ResolutionCondition,
+                ForeshadowingHooks = thread.ForeshadowingHooks ?? [],
+                DmNotes = thread.DmNotes,
+                DeadlineDay = thread.DeadlineDay,
+                IsPlayerVisible = thread.IsPlayerVisible,
+                CampaignName = effectiveCampaignName,
+                DayCreated = currentDay,
+                LastUpdatedDay = currentDay,
+            };
+            await session.StoreAsync(result);
+        }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
     }
 
     /// <summary>

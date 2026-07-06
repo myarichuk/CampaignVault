@@ -38,7 +38,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
         for (var i = 0; i < 3; i++)
         {
             var id = $"npcs/fuzzer-{i}-" + Guid.NewGuid();
-            await repo.UpsertCharacterAsync(session, new Character
+            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
             {
                 Id = id,
                 Name = $"Fuzz NPC {i}",
@@ -50,7 +50,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
         }
 
         await repo.UpsertLocationAsync(session,
-            new Location { Id = regionId, Name = "Fuzz Test Ground", Type = LocationType.Region }, TestCampaignDefaults.Slug);
+            new LocationUpsertRequest { Id = regionId, Name = "Fuzz Test Ground", Type = LocationType.Region }, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         // RUN LOOP

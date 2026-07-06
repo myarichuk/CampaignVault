@@ -79,15 +79,15 @@ public class CampaignTools(
         deepDive.GetQuestDetails(questId, ResolveCampaign(campaignName));
 
     // --- World Builder ---
-    public Task<ToolResult<Character>> UpsertCharacter(Character character,
+    public Task<ToolResult<Character>> UpsertCharacter(CharacterUpsertRequest character,
         string? campaignName = TestDefaultCampaignSlug) =>
         worldBuilder.UpsertCharacter(character, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<Location>> UpsertLocation(Location location,
+    public Task<ToolResult<Location>> UpsertLocation(LocationUpsertRequest location,
         string? campaignName = TestDefaultCampaignSlug) =>
         worldBuilder.UpsertLocation(location, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<Lore>> UpsertLore(Lore lore, string? campaignName = TestDefaultCampaignSlug) =>
+    public Task<ToolResult<Lore>> UpsertLore(LoreUpsertRequest lore, string? campaignName = TestDefaultCampaignSlug) =>
         worldBuilder.UpsertLore(lore, ResolveCampaign(campaignName));
 
     public Task<ToolResult<string>> DefineNeedDescriptor(string needName, string descriptor,

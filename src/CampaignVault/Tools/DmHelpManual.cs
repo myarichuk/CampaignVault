@@ -42,6 +42,19 @@ Slugs are canonicalized (spaces to hyphens, lower). Shared canon (no CampaignNam
 
 **Party roster:** Tag human PCs with `isPc: true` and NPC companions with `isPartyCompanion: true` (mutually exclusive; both require a campaign slug). `get_party` returns only those flagged characters for the active campaign — not ambient `keepAlive` NPCs. Combat accepts canon entities (no `CampaignName`) plus campaign-tagged combatants; it rejects entities tagged for a different slug.
 
+## Narrative Focus & Event Importance
+
+`NarrativeFocus` is a free-text tag list on the campaign describing the kind(s) of story it tells (e.g. `[""political intrigue""]`, `[""dungeon crawl""]`, `[""horror investigation""]`). There is no server-side genre→importance matrix — these tags exist purely to steer **your** judgment as DM when you set `importance` on an `event` commit. Campaigns evolve; update the tags whenever the story's center of gravity shifts.
+
+**Setting it:** pass `narrativeFocus` to `create_campaign`, or call `set_narrative_focus(campaignName, tags)` at any point afterward (this replaces the full tag list, not just adds to it). `get_current_campaign` echoes the current tags back to you.
+
+**Choosing `importance` on `event` commits:** every event has an `importance` of `Trivial`, `Important`, or `Core`. If omitted, the engine defaults it by category (`Betrayal`/`Discovery`/`Combat`/`Arrival` → `Important`; engine bookkeeping categories like `Departure`/`Timeskip`/`Simulation` → `Trivial`). But the *same raw happening* should often get a different importance depending on what this campaign is actually about — you should set `importance` explicitly whenever the default would misjudge it:
+
+- **Dungeon-crawl campaign:** the party learns a troll is vulnerable to fire → `Core` (directly actionable, campaign-defining knowledge for this focus). A tavern conversation about local gossip → `Trivial`.
+- **Political-thriller campaign:** the same troll-fire fact → `Trivial` (flavor, not load-bearing). A duke's aide hinting at an assassination plot → `Core`.
+
+`Core` events always survive retrieval budgets (ambient context, NPC context, recall); `Trivial` events are the first to drop off once a budget fills up. When in doubt, check `NarrativeFocus` before deciding.
+
 ## MCP argument normalization (limited)
 The server performs a *minimal* set of transparent rewrites on incoming tool arguments before binding (via McpNormalizationMiddleware + ToolCallExamples):
 - Certain legacy wrapper keys for upsert_* tools (e.g. `l` → `location`).
@@ -219,9 +232,9 @@ When the party resolves a rumor about a rebel smuggler by betraying them to the 
   { ""$type"": ""rumor"", ""rumorId"": ""rumors/smuggling"", ""newState"": ""Resolved"", ""newText"": ""The smuggler who supplied the rebels was caught and jailed."" },
   { ""$type"": ""character_update"", ""characterId"": ""chars/smuggler-npc"", ""keepAlive"": true },
   { ""$type"": ""activity"", ""characterId"": ""chars/smuggler-npc"", ""newLocationId"": ""locations/city-jail"", ""newActivity"": ""Imprisoned behind iron bars"" },
-  { ""$type"": ""event"", ""category"": ""Betrayal"", ""summary"": ""Party betrayed the rebel smuggler at the city gate; smuggler is now locked up."", ""involved"": [""chars/pc1"", ""chars/smuggler-npc"", ""factions/city-watch""] }
+  { ""$type"": ""event"", ""category"": ""Betrayal"", ""summary"": ""Party betrayed the rebel smuggler at the city gate; smuggler is now locked up."", ""involved"": [""chars/pc1"", ""chars/smuggler-npc"", ""factions/city-watch""], ""importance"": ""Core"" }
 ]
-This safely moves the party (with time + fatigue), updates the quest, modifies standing with two factions, resolves the active rumor, moves the smuggler NPC into jail with a new activity, and logs a narrative event in a single atomic database operation.
+This safely moves the party (with time + fatigue), updates the quest, modifies standing with two factions, resolves the active rumor, moves the smuggler NPC into jail with a new activity, and logs a narrative event in a single atomic database operation. The event's explicit `""importance"": ""Core""` here is optional — `Betrayal` already defaults to `Important` — but this beat resolves a whole quest thread, so bumping it to `Core` (see Narrative Focus & Event Importance) keeps it from being pushed out of ambient context by later Trivial bookkeeping events.
 
 **Full ""Quest + Faction + Rumor Lifecycle"" Walkthrough (how a narrative thread breathes across multiple sessions):**
 
@@ -319,7 +332,7 @@ Patch stats on existing character:
 
 **The Visual / Physics Sandbox (Tags & Appearance) & Knowledge:**
 You (the LLM) author narrative state; the engine scores a fixed set of **visualTags** for crowd-pressure and `scene_interrupt_check` (bloody, wanted, disheveled, well_armed, etc.). Ad-hoc tags like ""wet"" still rely on your judgment for physics (e.g. lightning in rain) — only the crowd-vulnerability tag vocabulary is auto-scored.
-- Use `$type: ""item_create""` with `coreCategory` (e.g., ""Weapon"", ""Armor"", ""Document"") when looting or discovering items. Set `holderId` to a PC character ID (or ""party"") for inventory.
+- Use `$type: ""item_create""` with `coreCategory` (e.g., ""Weapon"", ""Armor"", ""Document"") when looting or discovering items. Set `holderId` to a PC character ID (or ""party"") for inventory. Use `quantity` for multiples (e.g., 5 potions = 1 item with quantity: 5, not 5 separate items).
 - Use `$type: ""item_update""` to add temporary `TagsToAdd` (e.g., `[""wet"", ""muddy""]`) and a narrative `NewState` (e.g., ""Covered in mud"") to items. You can also add permanent `FeaturesToAdd` (e.g., ""Leather wrapped handle"") or change `coreCategory`.
 - Use `$type: ""character_update""` to do the same for characters. Give them temporary `TagsToAdd` (`[""soot_covered""]`), narrative `AppearanceOverride`, or permanent `FeaturesToAdd` (`[""Scar over left eye""]`).
 - Use `$type: ""location_update""` with `newState`, `tagsToAdd`, and `featuresToAdd` to persistently change the environment (e.g., ""On fire"", `[""smoky""]`, `[""collapsed roof""]`).
@@ -406,7 +419,7 @@ Additional pressures come from character distress contributors (HP, bad statuses
 - `get_npc_context` / `get_npc_needs`: Use before deep roleplay. Merge descriptors happen automatically.
 - `search_world`, `recall_history`: For discovery without hallucinating duplicates.
 - `define_need_descriptor` + `get_need_descriptors`: For custom needs vocabulary (wanderlust, debt_pressure, etc.).
-- World-builder upserts: Fine for initial seeding / major PoIs. During play, prefer `commit` + the runtime creates.
+- World-builder upserts (`upsert_character`, `upsert_location`, `upsert_lore`, `upsert_item`, `upsert_plot_thread`): Fine for initial seeding / major PoIs / bulk-seeding plot clues. Omitted rich fields (psychology, exits, tags, clues, etc.) are preserved on an existing entity, not blanked — only fields you provide replace anything. During play, prefer `commit` + the runtime creates.
 - Combat: start_combat, next_turn, end_combat + ruleset_action inside commit. Statuses applied via commit survive and modify future rolls.
 
 ## Common Laziness Traps & How the Engine Helps

@@ -91,7 +91,9 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
         [Description("Initial ruleset system. This will be locked.")]
         RulesetSystem initialSystem,
         [Description("Optional human-friendly display name.")]
-        string? displayName = null)
+        string? displayName = null,
+        [Description("Optional free-text tags describing the kind(s) of story this campaign tells (e.g. ['political intrigue'], ['dungeon crawl'], ['horror investigation']). Steers how the LLM should judge event importance on commit — see the Narrative Focus section in get_help. Can be set or changed later via set_narrative_focus.")]
+        List<string>? narrativeFocus = null)
     {
         string normalized;
         try
@@ -115,9 +117,41 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
 
             var campaign =
                 await GetOrCreateCampaignMetaAsync(session, normalized, initialSystem, displayName, forceLock: true);
+            if (narrativeFocus is { Count: > 0 })
+            {
+                campaign.NarrativeFocus = narrativeFocus;
+            }
 
             return new ToolResult<Campaign>(true, campaign,
                 $"Campaign '{normalized}' created and locked to {initialSystem}. Pass campaignName='{normalized}' on subsequent calls.");
+        });
+    }
+
+    [ToolCategory("Campaign management")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(@"CAMPAIGN TOOL: Set or update the campaign's narrative focus tags (e.g. ['political intrigue'], ['dungeon crawl'], ['horror investigation']).
+Campaigns evolve — a dungeon crawl can turn into a political thriller. Call this any time the story's center of gravity shifts.
+Replaces the full tag list; pass all tags you want retained, not just the new ones.
+See the Narrative Focus section in get_help for how this steers event-importance judgment on commit.")]
+    public Task<ToolResult<List<string>>> SetNarrativeFocus(
+        [Description("Full replacement list of narrative focus tags (e.g. ['political intrigue', 'court politics']).")]
+        List<string> tags,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var campaignId = _keys.Meta(effective);
+            var campaign = await session.LoadAsync<Campaign>(campaignId);
+            if (campaign == null)
+            {
+                return new ToolResult<List<string>>(false, Error: "NotFound",
+                    Summary: $"Campaign '{effective}' meta document not found. The campaign might not be initialized yet.");
+            }
+
+            campaign.NarrativeFocus = tags ?? [];
+            return new ToolResult<List<string>>(true, campaign.NarrativeFocus,
+                $"Narrative focus for '{effective}' set to: {string.Join(", ", campaign.NarrativeFocus)}.");
         });
     }
 
