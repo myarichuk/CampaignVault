@@ -98,6 +98,73 @@ Requires campaignName. Example: attack(""characters/valen"", [""characters/gobli
             }
         }
 
+        return await BuildAndCommitAttackAsync(
+            characterId, targetIds, actionName, parameters, narrative, campaignName, isReaction: false);
+    }
+
+    [ToolCategory("Combat & rulesets")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(@"COMBAT TOOL: Triggers an opportunity attack (reaction) against a target who provoked it.
+Opportunity attacks typically occur when a foe disengages, moves away, or provokes by other means.
+The reactor must have a reaction available (checked during turn tracking).
+Uses the same attack resolution as the Attack tool but consumes the reaction slot instead of an action.
+Requires campaignName. Example: trigger_opportunity_attack(""characters/fighter"", ""characters/goblin1"", campaignName=""campaign1"")")]
+    public async Task<ToolResult<CommitResult>> TriggerOpportunityAttack(
+        [Description("ID of the character making the opportunity attack (the reactor).")]
+        string reactorId,
+        [Description("ID of the target being attacked.")]
+        string targetId,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string? campaignName = null,
+        [Description("Weapon or action name (e.g. 'Longsword'). If omitted, uses character's held weapon.")]
+        string? actionName = null,
+        [Description("Damage dice expression (e.g. '1d8+2'). Optional; weapon defaults apply if omitted.")]
+        string? damageDice = null,
+        [Description("Attack roll bonus (e.g. '2'). Optional.")]
+        string? bonus = null,
+        [Description("Narrative description of the opportunity attack (e.g. 'Fighter swings as goblin flees'). If omitted, a default message is generated.")]
+        string? narrative = null)
+    {
+        if (string.IsNullOrWhiteSpace(reactorId))
+        {
+            return new ToolResult<CommitResult>(false, Error: "InvalidInput",
+                Summary: "reactorId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(targetId))
+        {
+            return new ToolResult<CommitResult>(false, Error: "InvalidInput",
+                Summary: "targetId is required.");
+        }
+
+        var parameters = new Dictionary<string, string>();
+
+        if (!string.IsNullOrWhiteSpace(damageDice))
+        {
+            parameters["damageDice"] = damageDice;
+        }
+
+        if (!string.IsNullOrWhiteSpace(bonus))
+        {
+            parameters["bonus"] = bonus;
+        }
+
+        var resolvedActionName = actionName ?? "Opportunity Attack";
+
+        return await BuildAndCommitAttackAsync(
+            reactorId, [targetId], resolvedActionName, parameters, narrative, campaignName, isReaction: true, reactionTrigger: "opportunity_attack");
+    }
+
+    private async Task<ToolResult<CommitResult>> BuildAndCommitAttackAsync(
+        string characterId,
+        string[] targetIds,
+        string actionName,
+        Dictionary<string, string> parameters,
+        string? narrative,
+        string? campaignName,
+        bool isReaction = false,
+        string? reactionTrigger = null)
+    {
         var action = new RulesetAction
         {
             CharacterId = characterId,
@@ -106,10 +173,13 @@ Requires campaignName. Example: attack(""characters/valen"", [""characters/gobli
             ActionType = RulesetActionType.Attack,
             ActionCategory = ActionCategory.Melee,
             Parameters = parameters,
-            IsReaction = false
+            IsReaction = isReaction,
+            ReactionTrigger = reactionTrigger
         };
 
-        var narrativeText = narrative ?? $"{characterId} attacks {string.Join(", ", targetIds)} with {actionName}.";
+        var narrativeText = narrative ?? (isReaction
+            ? $"{characterId} makes an opportunity attack against {string.Join(", ", targetIds)} with {actionName}."
+            : $"{characterId} attacks {string.Join(", ", targetIds)} with {actionName}.");
 
         return await _mutationTools.Commit([action], narrativeText, campaignName);
     }
