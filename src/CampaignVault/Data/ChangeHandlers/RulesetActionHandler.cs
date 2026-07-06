@@ -71,6 +71,15 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
             }
         }
 
+        // Pre-check: range/AoE validation (only if the ruleset enforces it)
+        if (module.Combat.EnforcesRange)
+        {
+            if (!RangeValidationHelper.Validate(action, context, out var rangeError))
+            {
+                return ChangeHandlerResult.Failure($"[OutOfRange] {rangeError}");
+            }
+        }
+
         var output = await module.Actions.ResolveAsync(context, action, ct);
 
         if (!output.Result.Success)

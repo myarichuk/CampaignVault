@@ -85,6 +85,15 @@ internal static class WeaponParameterResolver
         return null;
     }
 
+    /// <summary>
+    /// Copies weapon Item.Properties into action.Parameters (unless already present).
+    /// Property keys flow through automatically via the alias map or verbatim.
+    /// Special conventions for range/AoE:
+    /// - Weapon.Properties["range"] should be a SpatialDistanceBand constant (Touch/Close/Near/Far/Distant).
+    ///   It flows into action.Parameters["range"], which RangeValidationHelper uses to gate single-target attacks.
+    /// - For AoE spells, use action.Parameters["aoeRadius"] (instead of range) + action.Parameters["originId"] (defaults to CharacterId).
+    /// - Range/AoE gating is only active if the ruleset's ICombatRuleset.EnforcesRange is true.
+    /// </summary>
     public static void ApplyWeaponItemProperties(RulesetAction action, Item weapon)
     {
         if (!action.Parameters.ContainsKey("weaponItemId"))
