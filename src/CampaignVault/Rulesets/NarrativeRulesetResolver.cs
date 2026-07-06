@@ -114,4 +114,17 @@ public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, IComb
         var roll = await _rollService.RollAsync(rollReq, ct);
         return roll.Result;
     }
+
+    public IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
+    {
+        return new Dictionary<string, int>();
+    }
+
+    public bool TryConsumeActionSlot(CombatantState state, RulesetAction action, out string? errorReason)
+    {
+        errorReason = null;
+        return true;
+    }
+
+    public bool EnforcesRange => false;
 }

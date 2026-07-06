@@ -498,9 +498,18 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("damageType")]
     public string? DamageType { get; set; }
 
+    [Description("True if this action is being taken as a reaction (e.g. opportunity attack, counterspell) rather than consuming the actor's normal turn action. Consumes the reaction slot/flag instead of the action slot.")]
+    [JsonPropertyName("isReaction")]
+    public bool IsReaction { get; set; }
+
+    [Description("Optional: why a reaction fired, e.g. 'opportunity_attack', 'readied_action'. Narrative/audit only, not required for resolution.")]
+    [JsonPropertyName("reactionTrigger")]
+    public string? ReactionTrigger { get; set; }
+
     [Description(
         "Resolver hints. Spell: resolution (attack|save|check|utility|heal), dc, save, damageDice, halfOnSave (5e default true), healDice. "
         + "5e/PF2e: bonus, damageBonus, ac, mapPenalty. Fallout: difficulty/dc, attribute, skill, pool, rangeModifier, cover, targetPart, healAmount. "
+        + "Range/AoE (all rulesets): range (max SpatialDistanceBand for single-target), aoeRadius (max SpatialDistanceBand for AoE targets), originId (anchor for AoE, defaults to characterId). "
         + "Engine auto-applies hp deltas from ruleset_action — do not duplicate with separate hp commits.")]
     [JsonPropertyName("parameters")]
     [JsonConverter(typeof(FlexibleStringDictionaryConverter))]

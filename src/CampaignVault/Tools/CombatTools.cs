@@ -90,11 +90,14 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
             foreach (var character in validCharacters)
             {
                 var initiative = await module.Combat.RollInitiativeAsync(character);
+                var budget = module.Combat.GetTurnActionBudget(character);
                 combatants.Add(new CombatantState
                 {
                     CharacterId = character.Id,
                     Initiative = initiative,
-                    HasActedThisRound = false
+                    HasActedThisRound = false,
+                    ActionBudget = new Dictionary<string, int>(budget),
+                    ReactionAvailable = true
                 });
             }
 
@@ -148,6 +151,9 @@ Requires campaignName.")]
                     $"Expected active turn to be '{expectedActiveTurnId}' but it was '{encounter.ActiveTurnId}'. The combat state has drifted.");
             }
 
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var module = _rulesetSelector.GetModule(config.ActiveSystem);
+
             var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
             var characters = await session.LoadAsync<Character>(characterIds);
 
@@ -181,7 +187,11 @@ Requires campaignName.")]
 
                 // New round
                 encounter.Round++;
-                foreach (var c in encounter.Combatants) c.HasActedThisRound = false;
+                foreach (var c in encounter.Combatants)
+                {
+                    c.HasActedThisRound = false;
+                    c.ReactionAvailable = true;
+                }
                 next = GetNextAliveUnacted(); // Retrieve the first alive person again
 
                 // Expire round-based status effects
@@ -202,6 +212,13 @@ Requires campaignName.")]
             }
 
             encounter.ActiveTurnId = next?.CharacterId;
+
+            // Refresh action budget for the new active combatant
+            if (next != null && characters.TryGetValue(next.CharacterId, out var nextCharacter) && nextCharacter != null)
+            {
+                var freshBudget = module.Combat.GetTurnActionBudget(nextCharacter);
+                next.ActionBudget = new Dictionary<string, int>(freshBudget);
+            }
             await session.StoreAsync(encounter, encounter.Id);
 
             var summary = $"Advanced to turn of {encounter.ActiveTurnId} (Round {encounter.Round}).";

@@ -30,13 +30,47 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
         {
             return new ChangeHandlerResult(false, $"The field {nameof(context.CampaignName)} is required (in the ChangeContext).");
         }
-        
+
         var effectiveCampaign = context.CampaignName;
         var configId = _keys.Config(effectiveCampaign);
         var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct)
                      ?? new CampaignConfig { Id = configId };
 
         var module = _selector.GetModule(config.ActiveSystem);
+
+        // Pre-check: action economy gating (turn ownership, action slots)
+        if (context.ActiveCombat?.IsActive == true)
+        {
+            var activeCombat = context.ActiveCombat;
+            var combatantState = activeCombat.Combatants.FirstOrDefault(c => c.CharacterId == action.CharacterId);
+
+            if (combatantState != null)
+            {
+                // Turn ownership check (unless this is a reaction)
+                if (!action.IsReaction && activeCombat.ActiveTurnId != action.CharacterId)
+                {
+                    return ChangeHandlerResult.Failure($"[NotYourTurn] {action.CharacterId} cannot act — it is {activeCombat.ActiveTurnId}'s turn.");
+                }
+
+                // Action slot consumption check
+                if (!module.Combat.TryConsumeActionSlot(combatantState, action, out var slotError))
+                {
+                    return ChangeHandlerResult.Failure($"[NoActionAvailable] {slotError}");
+                }
+
+                // Reaction slot check (for reactions)
+                if (action.IsReaction && !combatantState.ReactionAvailable)
+                {
+                    return ChangeHandlerResult.Failure($"[NoReactionAvailable] {action.CharacterId} has already reacted this round.");
+                }
+
+                if (action.IsReaction)
+                {
+                    combatantState.ReactionAvailable = false;
+                }
+            }
+        }
+
         var output = await module.Actions.ResolveAsync(context, action, ct);
 
         if (!output.Result.Success)

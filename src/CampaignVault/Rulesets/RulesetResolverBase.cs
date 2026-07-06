@@ -359,4 +359,45 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         }
         return baseValue + (int)Math.Floor(bonus);
     }
+
+    public virtual IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
+    {
+        return new Dictionary<string, int>
+        {
+            { "action", 1 },
+            { "bonus", 1 },
+            { "reaction", 1 },
+            { "movement", 1 }
+        };
+    }
+
+    public virtual bool TryConsumeActionSlot(CombatantState state, RulesetAction action, out string? errorReason)
+    {
+        errorReason = null;
+
+        if (action.IsReaction)
+        {
+            return true;
+        }
+
+        if (state.ActionBudget.Count == 0)
+        {
+            return true;
+        }
+
+        var slot = action.Parameters.TryGetValue("bonusAction", out var bonusStr) && bool.TryParse(bonusStr, out var isBonus) && isBonus
+            ? "bonus"
+            : "action";
+
+        if (!state.ActionBudget.TryGetValue(slot, out var remaining) || remaining <= 0)
+        {
+            errorReason = $"No {slot} remaining this turn.";
+            return false;
+        }
+
+        state.ActionBudget[slot]--;
+        return true;
+    }
+
+    public virtual bool EnforcesRange => true;
 }

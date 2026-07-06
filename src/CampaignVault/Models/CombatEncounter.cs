@@ -6,12 +6,18 @@ public class CombatantState
 {
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
-    
+
     [JsonPropertyName("initiative")]
     public float Initiative { get; set; }
-    
+
     [JsonPropertyName("hasActedThisRound")]
     public bool HasActedThisRound { get; set; }
+
+    [JsonPropertyName("actionBudget")]
+    public Dictionary<string, int> ActionBudget { get; set; } = [];
+
+    [JsonPropertyName("reactionAvailable")]
+    public bool ReactionAvailable { get; set; } = true;
 }
 
 public class CombatEncounter
