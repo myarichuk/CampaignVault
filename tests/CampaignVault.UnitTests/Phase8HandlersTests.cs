@@ -237,8 +237,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Equal("Actually a thief!", mem.Details);
         // Importance unchanged because it was null in update
         Assert.Equal(MemoryImportance.Important, mem.Importance);
-        // DayAcquired resets to 10
-        Assert.Equal(10, mem.DayAcquired);
+        // Existing memory: DayAcquired is NOT reset (decay tracking stays honest); salience nudges instead.
+        Assert.Equal(2, mem.DayAcquired);
     }
 
     [Fact]
@@ -389,7 +389,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         var mem = (await session.LoadAsync<Character>("chars/legacy")).Psychology.Memories["Mayor"];
         Assert.Equal(MemorySource.Told, mem.Source);
         Assert.Equal(EmotionalValence.Neutral, mem.Valence);
-        Assert.Equal(0.5, mem.Salience);
+        // Migration sets Salience to 0.5, then the existing-memory touch nudges it +0.1.
+        Assert.Equal(0.6, mem.Salience);
         Assert.Equal(MemoryUrgency.Normal, mem.Urgency);
     }
 

@@ -24,6 +24,8 @@ public partial class VaultSyncPlanItem : ObservableObject
 
     [ObservableProperty] private string _remoteContent = string.Empty;
 
+    [ObservableProperty] private string _mergedContent = string.Empty;
+
     public VaultSyncPlanItem(VaultEntitySyncPlan plan, string displayName)
     {
         Plan = plan;
@@ -264,6 +266,18 @@ public partial class SyncViewModel : ObservableObject
             $"Keep vault for {SelectedPlan.DisplayName}");
     }
 
+    [RelayCommand]
+    private async Task ResolveMergedAsync()
+    {
+        if (SelectedPlan == null || _session is not { IsOpen: true })
+            return;
+
+        var mergedContent = SelectedPlan.MergedContent;
+        await ExecuteSyncAsync(
+            () => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.Merged, mergedContent),
+            $"Save merged content for {SelectedPlan.DisplayName}");
+    }
+
     private async Task ExecuteSyncAsync(Func<Task> action, string label)
     {
         if (IsBusy || _session is not { IsOpen: true })
@@ -355,6 +369,8 @@ public partial class SyncViewModel : ObservableObject
             item.RemoteContent = await File.ReadAllTextAsync(cachePath);
         else
             item.RemoteContent = "(not in remote cache — fetch first)";
+
+        item.MergedContent = plan.State == VaultSyncState.Conflict ? item.LocalContent : string.Empty;
     }
 
     public void UpdateSummary()

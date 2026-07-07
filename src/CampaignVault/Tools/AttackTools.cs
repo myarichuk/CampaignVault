@@ -33,7 +33,7 @@ Requires campaignName. Example: attack(""characters/valen"", [""characters/gobli
         [Description("Weapon, spell name, or action label (e.g. 'Longsword', 'Fireball', 'Unarmed Strike').")]
         string actionName,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
-        string? campaignName = null,
+        string campaignName,
         [Description("Damage dice expression (e.g. '1d8', '2d6+1'). Optional; weapon defaults apply if omitted.")]
         string? damageDice = null,
         [Description("Attack roll bonus, separate from weapon defaults (e.g. '2' for a +2 modifier).")]
@@ -66,35 +66,16 @@ Requires campaignName. Example: attack(""characters/valen"", [""characters/gobli
         }
 
         var parameters = new Dictionary<string, string>();
-
-        if (!string.IsNullOrWhiteSpace(damageDice))
-        {
-            parameters["damageDice"] = damageDice;
-        }
-
-        if (!string.IsNullOrWhiteSpace(bonus))
-        {
-            parameters["bonus"] = bonus;
-        }
-
-        if (!string.IsNullOrWhiteSpace(advantageState))
-        {
-            parameters["advantageState"] = advantageState;
-        }
-
-        if (!string.IsNullOrWhiteSpace(weaponItemId))
-        {
-            parameters["weaponItemId"] = weaponItemId;
-        }
+        AddIfPresent(parameters, "damageDice", damageDice);
+        AddIfPresent(parameters, "bonus", bonus);
+        AddIfPresent(parameters, "advantageState", advantageState);
+        AddIfPresent(parameters, "weaponItemId", weaponItemId);
 
         if (extraParameters != null)
         {
             foreach (var kvp in extraParameters)
             {
-                if (!string.IsNullOrWhiteSpace(kvp.Value))
-                {
-                    parameters[kvp.Key] = kvp.Value;
-                }
+                AddIfPresent(parameters, kvp.Key, kvp.Value);
             }
         }
 
@@ -115,7 +96,7 @@ Requires campaignName. Example: trigger_opportunity_attack(""characters/fighter"
         [Description("ID of the target being attacked.")]
         string targetId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
-        string? campaignName = null,
+        string campaignName,
         [Description("Weapon or action name (e.g. 'Longsword'). If omitted, uses character's held weapon.")]
         string? actionName = null,
         [Description("Damage dice expression (e.g. '1d8+2'). Optional; weapon defaults apply if omitted.")]
@@ -138,21 +119,21 @@ Requires campaignName. Example: trigger_opportunity_attack(""characters/fighter"
         }
 
         var parameters = new Dictionary<string, string>();
-
-        if (!string.IsNullOrWhiteSpace(damageDice))
-        {
-            parameters["damageDice"] = damageDice;
-        }
-
-        if (!string.IsNullOrWhiteSpace(bonus))
-        {
-            parameters["bonus"] = bonus;
-        }
+        AddIfPresent(parameters, "damageDice", damageDice);
+        AddIfPresent(parameters, "bonus", bonus);
 
         var resolvedActionName = actionName ?? "Opportunity Attack";
 
         return await BuildAndCommitAttackAsync(
             reactorId, [targetId], resolvedActionName, parameters, narrative, campaignName, isReaction: true, reactionTrigger: "opportunity_attack");
+    }
+
+    private static void AddIfPresent(Dictionary<string, string> parameters, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            parameters[key] = value;
+        }
     }
 
     private async Task<ToolResult<CommitResult>> BuildAndCommitAttackAsync(

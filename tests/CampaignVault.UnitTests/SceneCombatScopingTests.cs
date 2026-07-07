@@ -65,15 +65,24 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
+        // Each GetSceneAsync call issues many round trips; production always opens a fresh
+        // session per tool call (see CampaignToolBase.ExecuteAsync), so mirror that here rather
+        // than sharing one session across both calls (which trips RavenDB's per-session request cap).
+        SceneView sceneA;
         using (var session = _store.OpenAsyncSession())
         {
-            var sceneA = await _repo.GetSceneAsync(session, locId, campA);
-            var sceneB = await _repo.GetSceneAsync(session, locId, campB);
-
-            Assert.NotNull(sceneA.ActiveCombat);
-            Assert.Equal(2, sceneA.ActiveCombat!.Round);
-            Assert.Null(sceneB.ActiveCombat);
+            sceneA = await _repo.GetSceneAsync(session, locId, campA);
         }
+
+        SceneView sceneB;
+        using (var session = _store.OpenAsyncSession())
+        {
+            sceneB = await _repo.GetSceneAsync(session, locId, campB);
+        }
+
+        Assert.NotNull(sceneA.ActiveCombat);
+        Assert.Equal(2, sceneA.ActiveCombat!.Round);
+        Assert.Null(sceneB.ActiveCombat);
     }
 
     [Fact]

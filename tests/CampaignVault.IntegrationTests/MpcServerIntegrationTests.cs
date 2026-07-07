@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
-using Testcontainers.Containers;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
 
 namespace CampaignVault.IntegrationTests;
 
@@ -30,9 +31,9 @@ public class McpServerIntegrationTests : IAsyncLifetime
                         r => r
                             .ForPort(MCP_PORT)
                             .ForPath("/health")
-                            .ForStatusCode(System.Net.HttpStatusCode.OK),
-                        delayBetweenRetries: TimeSpan.FromSeconds(1),
-                        maxAttempts: 60))
+                            .ForStatusCode(System.Net.HttpStatusCode.OK)
+                        )
+                )
                 .Build();
 
             await _container.StartAsync();
@@ -68,14 +69,14 @@ public class McpServerIntegrationTests : IAsyncLifetime
         }
     }
 
-    [Fact]
+    [DockerFact]
     public async Task HealthEndpoint_ShouldRespond()
     {
         var response = await _httpClient!.GetAsync("/health");
         Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
     }
 
-    [Fact]
+    [DockerFact]
     public async Task InfoEndpoint_ShouldReturnServerInfo()
     {
         var response = await _httpClient!.GetAsync("/info");
@@ -85,7 +86,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
         Assert.Contains("Campaign Vault", content, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task ListCampaigns_ShouldResolveWithoutDiErrors()
     {
         // This test verifies that CampaignRepository and all its dependencies
@@ -114,10 +115,9 @@ public class McpServerIntegrationTests : IAsyncLifetime
         Assert.Contains("jsonrpc", content);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task GetCurrentCampaign_ShouldResolveWithoutDiErrors()
     {
-        // Test another tool to verify DI works for different tool types
         var request = new
         {
             jsonrpc = "2.0",

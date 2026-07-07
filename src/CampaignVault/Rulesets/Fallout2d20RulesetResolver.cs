@@ -468,4 +468,42 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         return Task.FromResult((float)initiative);
     }
+
+    public override IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
+    {
+        // Sources the per-turn allotment from the existing "action_points" ResourcePool (level-scaled
+        // Max) rather than a separate field, so this is the single source of truth for Fallout AP.
+        var apMax = character.SystemStats?.ResourcePools != null
+            && character.SystemStats.ResourcePools.TryGetValue("action_points", out var pool)
+            ? pool.Max
+            : 10;
+        return new Dictionary<string, int> { { "ap", apMax } };
+    }
+
+    public override bool TryConsumeActionSlot(CombatantState state, RulesetAction action, out string? errorReason)
+    {
+        errorReason = null;
+
+        if (action.IsReaction)
+        {
+            return true;
+        }
+
+        var cost = 1;
+        if (action.Parameters.TryGetValue("apCost", out var costStr) && !int.TryParse(costStr, out cost))
+        {
+            errorReason = $"Invalid apCost value '{costStr}'.";
+            return false;
+        }
+        cost = Math.Max(1, cost);
+
+        if (!state.ActionBudget.TryGetValue("ap", out var remaining) || remaining < cost)
+        {
+            errorReason = $"Not enough AP remaining this turn (need {cost}, have {remaining}).";
+            return false;
+        }
+
+        state.ActionBudget["ap"] -= cost;
+        return true;
+    }
 }

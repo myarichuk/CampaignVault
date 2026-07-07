@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
@@ -63,7 +64,7 @@ public class ClassDefinitionProvider : IRulesetYamlProvider
     /// Finds the best-matching class definition for a class name string using alias substring matching.
     /// Returns the definition whose longest alias is found in <paramref name="className"/>.
     /// </summary>
-    public bool TryResolveClass(RulesetSystem system, string className, out ClassDefinition? classDef)
+    public bool TryResolveClass(RulesetSystem system, string className, [NotNullWhen(true)] out ClassDefinition? classDef)
     {
         var classes = GetClassesForSystem(system);
         classDef = null;

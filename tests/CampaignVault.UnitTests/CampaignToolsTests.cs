@@ -392,12 +392,33 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await Task.Delay(100);
         }
 
-        var result = await tools.GetWorldState(locId);
-        Assert.True(result.Success, result.Error + ": " + result.Summary);
+        // GetActiveQuestsAsync queries the Quest/Search index without waiting for non-stale results,
+        // so even after the global staleness check above, a query issued a moment later can still
+        // race the indexer. Poll get_world_state itself until the deadline/stuck pressures show up
+        // (or give up and let the final assertions report the last observed state).
+        ToolResult<WorldStateView> result = null!;
+        WorldStateView? view = null;
+        var resultWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - resultWaitStart).TotalSeconds < 10)
+        {
+            result = await tools.GetWorldState(locId);
+            Assert.True(result.Success, result.Error + ": " + result.Summary);
+            view = result.Data;
+            Assert.NotNull(view);
 
-        var view = result.Data;
+            var hasDeadline = view.WorldPressure.Any(p => p.Contains("deadline", StringComparison.OrdinalIgnoreCase));
+            var hasStuck = view.WorldPressure.Any(p =>
+                p.Contains("stuck", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("interrupted", StringComparison.OrdinalIgnoreCase));
+            if (hasDeadline && hasStuck)
+            {
+                break;
+            }
+
+            await Task.Delay(200);
+        }
+
         Assert.NotNull(view);
-
         Assert.NotNull(view.WorldPressure);
         Assert.Contains(view.WorldPressure, p => p.Contains("deadline", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(view.WorldPressure,

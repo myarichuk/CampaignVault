@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
@@ -60,7 +61,7 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
         }
     }
 
-    public bool TryGet(RulesetSystem system, string featName, out FeatDefinition? feat)
+    public bool TryGet(RulesetSystem system, string featName, [NotNullWhen(true)] out FeatDefinition? feat)
     {
         var feats = GetFeatsForSystem(system);
         return feats.TryGetValue(featName, out feat);

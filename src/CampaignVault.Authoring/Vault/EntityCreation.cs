@@ -37,14 +37,30 @@ public static class EntityCreation
     public static (string RelativePath, string Slug) BuildNewEntityPath(
         string entityType,
         string name,
-        DateTime timestampLocal)
+        DateTime timestampLocal,
+        Func<string, bool>? relativePathExists = null)
     {
         var folder = GetFolderForType(entityType);
-        var ts = timestampLocal.ToString("yyyyMMddHHmmss");
         var nameSlug = ToSlug(name);
-        var slug = string.IsNullOrEmpty(nameSlug)
-            ? $"new-{entityType}-{ts}"
-            : $"{nameSlug}-{ts}";
-        return ($"{folder}/{slug}.md", slug);
+
+        if (string.IsNullOrEmpty(nameSlug))
+        {
+            var ts = timestampLocal.ToString("yyyyMMddHHmmss");
+            var fallbackSlug = $"new-{entityType}-{ts}";
+            return ($"{folder}/{fallbackSlug}.md", fallbackSlug);
+        }
+
+        if (relativePathExists == null)
+            return ($"{folder}/{nameSlug}.md", nameSlug);
+
+        var candidateSlug = nameSlug;
+        var suffix = 1;
+        while (relativePathExists($"{folder}/{candidateSlug}.md"))
+        {
+            suffix++;
+            candidateSlug = $"{nameSlug}-{suffix}";
+        }
+
+        return ($"{folder}/{candidateSlug}.md", candidateSlug);
     }
 }

@@ -126,4 +126,92 @@ public class Fallout2d20RulesetResolverTests
         Assert.Equal(13f, initiativeResult);
         await mockRollService.DidNotReceiveWithAnyArgs().RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public void GetTurnActionBudget_DefaultsToTenWhenNoPoolPresent()
+    {
+        var resolver = new Fallout2d20RulesetResolver(Substitute.For<IRollService>());
+        var character = new Character { Id = "test-char", SystemStats = new Fallout2d20Extension() };
+
+        var budget = resolver.GetTurnActionBudget(character);
+
+        Assert.Equal(10, budget["ap"]);
+    }
+
+    [Fact]
+    public void GetTurnActionBudget_ReadsMaxFromActionPointsResourcePool()
+    {
+        var resolver = new Fallout2d20RulesetResolver(Substitute.For<IRollService>());
+        var stats = new Fallout2d20Extension();
+        stats.ResourcePools["action_points"] = new ResourcePool { Current = 11, Max = 11 };
+        var character = new Character { Id = "test-char", SystemStats = stats };
+
+        var budget = resolver.GetTurnActionBudget(character);
+
+        Assert.Equal(11, budget["ap"]);
+    }
+
+    [Fact]
+    public void TryConsumeActionSlot_DefaultApCost_ConsumesOne()
+    {
+        var resolver = new Fallout2d20RulesetResolver(Substitute.For<IRollService>());
+        var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "ap", 2 } } };
+        var action = new RulesetAction { CharacterId = "test-char", ActionType = RulesetActionType.Attack };
+
+        var ok = resolver.TryConsumeActionSlot(state, action, out var error);
+
+        Assert.True(ok);
+        Assert.Null(error);
+        Assert.Equal(1, state.ActionBudget["ap"]);
+    }
+
+    [Fact]
+    public void TryConsumeActionSlot_ApCostTwo_ConsumesTwo()
+    {
+        var resolver = new Fallout2d20RulesetResolver(Substitute.For<IRollService>());
+        var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "ap", 5 } } };
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            ActionType = RulesetActionType.Attack,
+            Parameters = new Dictionary<string, string> { { "apCost", "2" } }
+        };
+
+        var ok = resolver.TryConsumeActionSlot(state, action, out var error);
+
+        Assert.True(ok);
+        Assert.Equal(3, state.ActionBudget["ap"]);
+    }
+
+    [Fact]
+    public void TryConsumeActionSlot_InsufficientAp_ReturnsFalse()
+    {
+        var resolver = new Fallout2d20RulesetResolver(Substitute.For<IRollService>());
+        var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "ap", 1 } } };
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            ActionType = RulesetActionType.Attack,
+            Parameters = new Dictionary<string, string> { { "apCost", "2" } }
+        };
+
+        var ok = resolver.TryConsumeActionSlot(state, action, out var error);
+
+        Assert.False(ok);
+        Assert.NotNull(error);
+        Assert.Equal(1, state.ActionBudget["ap"]);
+    }
+
+    [Fact]
+    public void TryConsumeActionSlot_Reaction_Bypasses()
+    {
+        var resolver = new Fallout2d20RulesetResolver(Substitute.For<IRollService>());
+        var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "ap", 0 } } };
+        var action = new RulesetAction { CharacterId = "test-char", ActionType = RulesetActionType.Attack, IsReaction = true };
+
+        var ok = resolver.TryConsumeActionSlot(state, action, out var error);
+
+        Assert.True(ok);
+        Assert.Null(error);
+    }
 }

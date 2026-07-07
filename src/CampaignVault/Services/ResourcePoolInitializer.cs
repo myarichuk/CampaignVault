@@ -99,7 +99,10 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
 
         foreach (var featName in CollectFeatNames(character.SystemStats, system))
         {
-            if (!_featProvider.TryGet(system, featName, out var feat) || feat.ExtraPools.Count == 0)
+            if (!_featProvider.TryGet(system, featName, out var feat))
+                continue;
+
+            if (feat.ExtraPools.Count == 0)
                 continue;
 
             foreach (var poolName in feat.ExtraPools)

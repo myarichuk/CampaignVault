@@ -362,12 +362,12 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
 
     public virtual IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
     {
+        // "reaction" is deliberately not a budget key: reaction gating is handled entirely via
+        // CombatantState.ReactionAvailable (see TryConsumeActionSlot's IsReaction early-return below).
         return new Dictionary<string, int>
         {
             { "action", 1 },
-            { "bonus", 1 },
-            { "reaction", 1 },
-            { "movement", 1 }
+            { "bonus", 1 }
         };
     }
 

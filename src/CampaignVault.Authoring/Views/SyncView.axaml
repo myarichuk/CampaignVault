@@ -85,10 +85,31 @@
                     <Button Content="Keep Vault" Command="{Binding ResolveKeepVaultCommand}"
                             IsVisible="{Binding IsConflictSelected}"
                             Background="#EF4444" Foreground="White" Padding="12,8" />
+                    <Button Content="Save Merged" Command="{Binding ResolveMergedCommand}"
+                            IsVisible="{Binding IsConflictSelected}"
+                            Background="#8B5CF6" Foreground="White" Padding="12,8" />
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="1" ColumnDefinitions="*, *">
+            <Grid Grid.Row="1" ColumnDefinitions="*, *, *" IsVisible="{Binding IsConflictSelected}">
+                <Grid Grid.Column="0" RowDefinitions="Auto, *" Margin="0,0,8,0">
+                    <TextBlock Grid.Row="0" Text="Local" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,5" />
+                    <TextBox Grid.Row="1" Text="{Binding SelectedPlan.LocalContent}" IsReadOnly="True"
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
+                </Grid>
+                <Grid Grid.Column="1" RowDefinitions="Auto, *" Margin="8,0,8,0">
+                    <TextBlock Grid.Row="0" Text="Remote (cache)" FontSize="12" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,5" />
+                    <TextBox Grid.Row="1" Text="{Binding SelectedPlan.RemoteContent}" IsReadOnly="True"
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
+                </Grid>
+                <Grid Grid.Column="2" RowDefinitions="Auto, *" Margin="8,0,0,0">
+                    <TextBlock Grid.Row="0" Text="Merged (editable)" FontSize="12" FontWeight="Bold" Foreground="#8B5CF6" Margin="0,0,0,5" />
+                    <TextBox Grid.Row="1" Text="{Binding SelectedPlan.MergedContent}" IsReadOnly="False"
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#8B5CF6" AcceptsReturn="True" TextWrapping="Wrap"/>
+                </Grid>
+            </Grid>
+
+            <Grid Grid.Row="1" ColumnDefinitions="*, *" IsVisible="{Binding !IsConflictSelected}">
                 <Grid Grid.Column="0" RowDefinitions="Auto, *" Margin="0,0,8,0">
                     <TextBlock Grid.Row="0" Text="Local" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,5" />
                     <TextBox Grid.Row="1" Text="{Binding SelectedPlan.LocalContent}" IsReadOnly="True"

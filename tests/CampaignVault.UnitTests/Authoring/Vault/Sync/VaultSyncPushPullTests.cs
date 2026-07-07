@@ -96,6 +96,22 @@ public sealed class VaultSyncPushPullTests : IDisposable
     }
 
     [Fact]
+    public async Task PullAsync_DirtyWorkingTree_Throws()
+    {
+        await CreateVaultAsync();
+        SetupSyncMocks(GrogJson("Pulled from vault."));
+        await _session.FetchAsync();
+
+        var otherPath = Path.Combine(_tempDirectory, "characters", "unrelated.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(otherPath)!);
+        await File.WriteAllTextAsync(otherPath, "uncommitted local file");
+        await ReopenSessionAsync();
+
+        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.PullAsync());
+        Assert.Contains("clean working tree", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task PullAsync_WritesCanonicalMarkdownAndCommits()
     {
         await CreateVaultAsync();
@@ -109,6 +125,30 @@ public sealed class VaultSyncPushPullTests : IDisposable
         var content = await File.ReadAllTextAsync(path);
         Assert.Contains("Pulled from vault.", content);
         Assert.False(string.IsNullOrWhiteSpace(_session.HeadCommitSha));
+    }
+
+    [Fact]
+    public async Task PushAsync_MultipleEntities_FetchesRemoteEntitiesOnlyOnce()
+    {
+        await CreateVaultAsync();
+        await WriteAndCommitEntityAsync(GrogMarkdown("Baseline."));
+        var borisPath = Path.Combine(_tempDirectory, "characters", "boris.md");
+        await File.WriteAllTextAsync(borisPath, BorisMarkdown("Baseline."));
+        await CommitAllAsync("add boris");
+
+        SetupMultiEntitySyncMocks(GrogJson("Baseline."), BorisJson("Baseline."));
+        await _session.FetchAsync();
+        await AdvanceSyncedToHeadAsync();
+
+        await File.WriteAllTextAsync(Path.Combine(_tempDirectory, "characters", "grog.md"), GrogMarkdown("Push me."));
+        await File.WriteAllTextAsync(borisPath, BorisMarkdown("Push me too."));
+        await CommitAllAsync("edit both");
+
+        _mockClient.ClearReceivedCalls();
+        await _session.PushAsync();
+
+        _mockClient.Received(1).GetCampaignEntitiesAsync(
+            Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -189,6 +229,44 @@ public sealed class VaultSyncPushPullTests : IDisposable
             .DeleteCampaignEntityAsync(Arg.Any<DeleteCampaignEntityRequest>(), Arg.Any<CallOptions>())
             .Returns(pushCall);
     }
+
+    private void SetupMultiEntitySyncMocks(string grogJson, string borisJson)
+    {
+        var fetchResponse = new EntityListResponse();
+        fetchResponse.Entities.Add(new EntityItem { Id = "characters/grog", Type = "character", Content = grogJson });
+        fetchResponse.Entities.Add(new EntityItem { Id = "characters/boris", Type = "character", Content = borisJson });
+
+        var fetchCall = CreateFakeUnaryCall(fetchResponse);
+        _mockClient
+            .GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>())
+            .Returns(fetchCall);
+        _mockClient
+            .GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<CallOptions>())
+            .Returns(fetchCall);
+
+        var pushResponse = new PushResponse { Success = true, Message = "ok" };
+        var pushCall = CreateFakeUnaryCall(pushResponse);
+        _mockClient
+            .PushCampaignEntityAsync(Arg.Any<PushCampaignEntityRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>())
+            .Returns(pushCall);
+        _mockClient
+            .PushCampaignEntityAsync(Arg.Any<PushCampaignEntityRequest>(), Arg.Any<CallOptions>())
+            .Returns(pushCall);
+    }
+
+    private static string BorisJson(string notes) => $$"""
+        {"id":"characters/boris","name":"Boris","currentHp":15,"maxHp":25,"notes":"{{notes}}"}
+        """;
+
+    private static string BorisMarkdown(string notes) => $$"""
+        ---
+        id: characters/boris
+        name: Boris
+        currentHp: 15
+        maxHp: 25
+        ---
+        {{notes}}
+        """;
 
     private static AsyncUnaryCall<TResponse> CreateFakeUnaryCall<TResponse>(TResponse response) =>
         new(Task.FromResult(response), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => [], () => { });

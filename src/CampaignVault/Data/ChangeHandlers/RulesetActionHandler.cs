@@ -3,18 +3,13 @@ using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
-public sealed class RulesetActionHandler : IWorldChangeHandler
+public sealed class RulesetActionHandler(
+    IRulesetModuleSelector selector,
+    CampaignDocumentKeys keys)
+    : IWorldChangeHandler
 {
-    private readonly IRulesetModuleSelector _selector;
-    private readonly CampaignDocumentKeys _keys;
-
-    public RulesetActionHandler(
-        IRulesetModuleSelector selector,
-        CampaignDocumentKeys keys)
-    {
-        _selector = selector ?? throw new ArgumentNullException(nameof(selector));
-        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
-    }
+    private readonly IRulesetModuleSelector _selector = selector ?? throw new ArgumentNullException(nameof(selector));
+    private readonly CampaignDocumentKeys _keys = keys ?? throw new ArgumentNullException(nameof(keys));
 
     public bool ShouldHandle(WorldChange change) => change is RulesetAction;
 
@@ -58,17 +53,23 @@ public sealed class RulesetActionHandler : IWorldChangeHandler
                     return ChangeHandlerResult.Failure($"[NoActionAvailable] {slotError}");
                 }
 
-                // Reaction slot check (for reactions)
-                if (action.IsReaction && !combatantState.ReactionAvailable)
+                switch (action.IsReaction)
                 {
-                    return ChangeHandlerResult.Failure($"[NoReactionAvailable] {action.CharacterId} has already reacted this round.");
-                }
-
-                if (action.IsReaction)
-                {
-                    combatantState.ReactionAvailable = false;
+                    // Reaction slot check (for reactions)
+                    case true when !combatantState.ReactionAvailable:
+                        return ChangeHandlerResult.Failure($"[NoReactionAvailable] {action.CharacterId} has already reacted this round.");
+                    case true:
+                        combatantState.ReactionAvailable = false;
+                        break;
                 }
             }
+        }
+
+        // Merge weapon-derived defaults (including "range") before range validation runs,
+        // so weapon-based range enforcement (the documented, primary path) actually has data to check.
+        if (action.ActionType == RulesetActionType.Attack)
+        {
+            await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct);
         }
 
         // Pre-check: range/AoE validation (only if the ruleset enforces it)

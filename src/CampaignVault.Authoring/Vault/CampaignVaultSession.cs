@@ -187,7 +187,8 @@ public sealed class CampaignVaultSession : IDisposable
             if (!EntityCreation.IsSupportedEntityType(normalizedType))
                 throw new VaultException($"Unsupported entity type '{entityType}'.");
 
-            var (relativePath, slug) = EntityCreation.BuildNewEntityPath(normalizedType, name, DateTime.Now);
+            var (relativePath, slug) = EntityCreation.BuildNewEntityPath(normalizedType, name, DateTime.Now,
+                relativePathExists: rel => File.Exists(Path.Combine(VaultPath!, rel.Replace('/', Path.DirectorySeparatorChar))));
             var template = _canonicalizer.GetBlankTemplate(normalizedType, slug, name);
             await WriteEntityFileUnlockedAsync(relativePath, template);
             return (relativePath, template);

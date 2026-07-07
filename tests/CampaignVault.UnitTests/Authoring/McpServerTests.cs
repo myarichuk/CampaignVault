@@ -98,6 +98,21 @@ public class McpServerTests : IDisposable
     }
 
     [Fact]
+    public async Task DeleteWorkspaceEntity_RemovesFileThroughLockGuardedSession()
+    {
+        await OpenVaultAsync();
+        var tools = new AuthoringMcpTools();
+
+        const string testContent = "---\nid: characters/test\nname: Test\n---\n# Test";
+        await tools.WriteWorkspaceEntity("characters/test", testContent);
+
+        var deleteResult = await tools.DeleteWorkspaceEntity("characters/test.md");
+
+        Assert.True(deleteResult.success, deleteResult.error);
+        Assert.False(File.Exists(Path.Combine(_tempDirectory, "characters", "test.md")));
+    }
+
+    [Fact]
     public async Task FetchVault_WithMockClient_WritesRemoteCache()
     {
         await OpenVaultAsync();

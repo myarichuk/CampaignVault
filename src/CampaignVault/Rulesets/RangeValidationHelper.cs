@@ -20,6 +20,11 @@ internal static class RangeValidationHelper
         SpatialDistanceBand.Distant
     ];
 
+    // Case-insensitive: LLM-supplied band strings (e.g. "near" vs "Near") should still match.
+    private static readonly Dictionary<string, int> BandRank =
+        BandOrder.Select((band, index) => (band, index))
+                 .ToDictionary(x => x.band, x => x.index, StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Validates that all targets of an attack/spell are within range.
     /// Only gates ActionType.Attack and ActionType.Spell.
@@ -53,15 +58,23 @@ internal static class RangeValidationHelper
             return true;
         }
 
-        var maxRank = Array.IndexOf(BandOrder, maxBand);
-        if (maxRank < 0)
+        if (!BandRank.TryGetValue(maxBand, out var maxRank))
         {
             return true;
         }
 
+        var originPositions = new Dictionary<string, SpatialPosition>();
+        if (originCharacter.SystemStats?.SpatialPositions != null)
+        {
+            foreach (var p in originCharacter.SystemStats.SpatialPositions)
+            {
+                originPositions.TryAdd(p.TargetId, p);
+            }
+        }
+
         foreach (var targetId in action.TargetIds)
         {
-            var pos = originCharacter.SystemStats?.SpatialPositions?.FirstOrDefault(p => p.TargetId == targetId);
+            SpatialPosition? pos = originPositions.TryGetValue(targetId, out var originPos) ? originPos : null;
 
             if (pos is null)
             {
@@ -76,8 +89,7 @@ internal static class RangeValidationHelper
                 continue;
             }
 
-            var targetRank = Array.IndexOf(BandOrder, pos.DistanceBand);
-            if (targetRank < 0)
+            if (!BandRank.TryGetValue(pos.DistanceBand, out var targetRank))
             {
                 continue;
             }

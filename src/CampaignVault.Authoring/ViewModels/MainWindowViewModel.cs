@@ -44,6 +44,10 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
 
     [ObservableProperty] private string _editorText = string.Empty;
 
+    private string _lastLoadedEditorText = string.Empty;
+
+    public bool IsEditorDirty => EditorText != _lastLoadedEditorText;
+
     [ObservableProperty] private string _workspaceStatusMessage = "Open a campaign vault to begin.";
 
     [ObservableProperty] private Character? _parsedCharacter;
@@ -96,11 +100,13 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
                     {
                         var content = await Session.ReadFileAsync(entityNode.Entity.RelativePath);
                         EditorText = content;
+                        _lastLoadedEditorText = content;
                         OnEditorTextChanged(EditorText);
                     }
                     catch
                     {
                         EditorText = string.Empty;
+                        _lastLoadedEditorText = string.Empty;
                     }
                 }
             }
@@ -248,7 +254,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         }
     }
 
-    public void ReloadActiveFileContent()
+    public async Task ReloadActiveFileContentAsync()
     {
         if (Workspace.SelectedNode is not EntityNodeViewModel entityNode)
             return;
@@ -256,13 +262,22 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         if (!Session.IsOpen)
             return;
 
+        if (IsEditorDirty)
+        {
+            WorkspaceStatusMessage = $"{entityNode.Title} changed on disk. Save or discard your edits to reload it.";
+            return;
+        }
+
         try
         {
-            EditorText = Session.ReadFileAsync(entityNode.Entity.RelativePath).GetAwaiter().GetResult();
+            var content = await Session.ReadFileAsync(entityNode.Entity.RelativePath);
+            EditorText = content;
+            _lastLoadedEditorText = content;
         }
         catch
         {
             EditorText = string.Empty;
+            _lastLoadedEditorText = string.Empty;
         }
     }
 
@@ -282,6 +297,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         }
 
         await Session.WriteFileAsync(entityNode.Entity.RelativePath, EditorText);
+        _lastLoadedEditorText = EditorText;
         RefreshAll();
         Sync.StatusMessage = $"Saved {entityNode.Title} at {DateTime.Now:HH:mm:ss}";
     }
@@ -300,6 +316,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
             // Clear selection and refresh
             Workspace.SelectedNode = null;
             EditorText = string.Empty;
+            _lastLoadedEditorText = string.Empty;
             RefreshAll();
             Sync.StatusMessage = $"Deleted {rel}. Commit the change to record it.";
         }
@@ -320,8 +337,6 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         }
 
         var type = request.EntityType.ToLowerInvariant();
-        if (!EntityCreation.IsSupportedEntityType(type))
-            type = "character";
 
         try
         {

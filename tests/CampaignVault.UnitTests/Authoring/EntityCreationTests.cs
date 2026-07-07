@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using CampaignVault.Authoring.Vault;
 using Xunit;
 
@@ -64,20 +65,17 @@ public class EntityCreationTests
     }
 
     [Fact]
-    public void BuildNewEntityPath_UsesVaultPathsFolders()
+    public void BuildNewEntityPath_UsesVaultPathsFolders_AndCleanSlug()
     {
         var now = new DateTime(2025, 7, 2, 14, 30, 45);
         var (relativePath, slug) = EntityCreation.BuildNewEntityPath("character", "TestChar", now);
 
-        // Should match the pattern: characters/testchar-20250702143045.md
-        Assert.StartsWith("characters/", relativePath);
-        Assert.EndsWith(".md", relativePath);
-        Assert.Contains("testchar-20250702143045", relativePath);
-        Assert.Equal("testchar-20250702143045", slug);
+        Assert.Equal("characters/testchar.md", relativePath);
+        Assert.Equal("testchar", slug);
     }
 
     [Fact]
-    public void BuildNewEntityPath_WithEmptyName_UsesTypeAndTimestamp()
+    public void BuildNewEntityPath_WithEmptyName_FallsBackToTypeAndTimestamp()
     {
         var now = new DateTime(2025, 7, 2, 14, 30, 45);
         var (relativePath, slug) = EntityCreation.BuildNewEntityPath("quest", "", now);
@@ -97,9 +95,22 @@ public class EntityCreationTests
         var (path, slug) = EntityCreation.BuildNewEntityPath(entityType, name, now);
 
         var expectedFolder = "factions";
-        var expectedSlug = "the-council-20250702154530";
+        var expectedSlug = "the-council";
 
         Assert.Equal($"{expectedFolder}/{expectedSlug}.md", path);
         Assert.Equal(expectedSlug, slug);
+    }
+
+    [Fact]
+    public void BuildNewEntityPath_WhenSlugExists_DisambiguatesWithSuffix()
+    {
+        var now = new DateTime(2025, 7, 2, 14, 30, 45);
+        var existing = new HashSet<string> { "characters/grog.md", "characters/grog-2.md" };
+
+        var (relativePath, slug) = EntityCreation.BuildNewEntityPath(
+            "character", "Grog", now, relativePathExists: existing.Contains);
+
+        Assert.Equal("characters/grog-3.md", relativePath);
+        Assert.Equal("grog-3", slug);
     }
 }

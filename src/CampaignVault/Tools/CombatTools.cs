@@ -3,6 +3,7 @@ using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using ModelContextProtocol.Server;
+using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Tools;
 
@@ -83,8 +84,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
                     Summary: "None of the specified combatants are valid and alive.");
             }
 
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
-            var module = _rulesetSelector.GetModule(config.ActiveSystem);
+            var module = await GetActiveModuleAsync(session, effective);
 
             var combatants = new List<CombatantState>();
             foreach (var character in validCharacters)
@@ -151,8 +151,7 @@ Requires campaignName.")]
                     $"Expected active turn to be '{expectedActiveTurnId}' but it was '{encounter.ActiveTurnId}'. The combat state has drifted.");
             }
 
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
-            var module = _rulesetSelector.GetModule(config.ActiveSystem);
+            var module = await GetActiveModuleAsync(session, effective);
 
             var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
             var characters = await session.LoadAsync<Character>(characterIds);
@@ -285,5 +284,11 @@ Day-based effects remain active. Requires campaignName.")]
 
             return new ToolResult<CombatEncounter>(true, encounter, summary);
         });
+    }
+
+    private async Task<IRulesetModule> GetActiveModuleAsync(IAsyncDocumentSession session, string effective)
+    {
+        var config = await _repository.GetCampaignConfigAsync(session, effective);
+        return _rulesetSelector.GetModule(config.ActiveSystem);
     }
 }

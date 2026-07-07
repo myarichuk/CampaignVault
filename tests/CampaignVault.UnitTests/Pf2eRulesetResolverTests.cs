@@ -93,8 +93,85 @@ public class Pf2eRulesetResolverTests
         var output = await resolver.ResolveAsync(context, action);
 
         await mockRollService.Received(1).RollAsync(
-            Arg.Is<RollRequest>(req => req.Tag == "attack" && req.Bonus == -1), 
+            Arg.Is<RollRequest>(req => req.Tag == "attack" && req.Bonus == -1),
             Arg.Any<CancellationToken>()
         );
+    }
+
+    [Fact]
+    public void GetTurnActionBudget_ReturnsThreeActions()
+    {
+        var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());
+        var character = new Character { Id = "test-char", SystemStats = new Pf2eExtension() };
+
+        var budget = resolver.GetTurnActionBudget(character);
+
+        Assert.Equal(3, budget["actions"]);
+        Assert.False(budget.ContainsKey("reaction"));
+    }
+
+    [Fact]
+    public void TryConsumeActionSlot_DefaultCost_DecrementsByOne()
+    {
+        var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());
+        var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "actions", 3 } } };
+        var action = new RulesetAction { CharacterId = "test-char", ActionType = RulesetActionType.Attack };
+
+        var ok = resolver.TryConsumeActionSlot(state, action, out var error);
+
+        Assert.True(ok);
+        Assert.Null(error);
+        Assert.Equal(2, state.ActionBudget["actions"]);
+    }
+
+    [Fact]
+    public void TryConsumeActionSlot_ActionCostTwo_ConsumesTwo()
+    {
+        var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());
+        var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "actions", 3 } } };
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            ActionType = RulesetActionType.Attack,
+            Parameters = new Dictionary<string, string> { { "actionCost", "2" } }
+        };
+
+        var ok = resolver.TryConsumeActionSlot(state, action, out var error);
+
+        Assert.True(ok);
+        Assert.Equal(1, state.ActionBudget["actions"]);
+    }
+
+    [Fact]
+    public void TryConsumeActionSlot_InsufficientActions_ReturnsFalseWithReason()
+    {
+        var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());
+        var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "actions", 1 } } };
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            ActionType = RulesetActionType.Attack,
+            Parameters = new Dictionary<string, string> { { "actionCost", "2" } }
+        };
+
+        var ok = resolver.TryConsumeActionSlot(state, action, out var error);
+
+        Assert.False(ok);
+        Assert.NotNull(error);
+        Assert.Equal(1, state.ActionBudget["actions"]);
+    }
+
+    [Fact]
+    public void TryConsumeActionSlot_Reaction_AlwaysSucceeds_DoesNotConsumeBudget()
+    {
+        var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());
+        var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "actions", 0 } } };
+        var action = new RulesetAction { CharacterId = "test-char", ActionType = RulesetActionType.Attack, IsReaction = true };
+
+        var ok = resolver.TryConsumeActionSlot(state, action, out var error);
+
+        Assert.True(ok);
+        Assert.Null(error);
+        Assert.Equal(0, state.ActionBudget["actions"]);
     }
 }

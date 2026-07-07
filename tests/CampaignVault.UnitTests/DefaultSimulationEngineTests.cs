@@ -44,7 +44,10 @@ public class DefaultSimulationEngineTests
 
         var result = await engine.RunAsync(context);
 
-        Assert.Single(result.NarrativeEvents);
-        Assert.Equal("ok", result.NarrativeEvents[0]);
+        // Engine surfaces a narrative for the failed rule (so failures are visible, not silent)
+        // AND continues on to run the remaining rules.
+        Assert.Equal(2, result.NarrativeEvents.Count);
+        Assert.Contains(result.NarrativeEvents, n => n.Contains("Throwing Rule"));
+        Assert.Contains("ok", result.NarrativeEvents);
     }
 }

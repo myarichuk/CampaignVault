@@ -132,6 +132,20 @@ public sealed class VaultSyncEngine
         var client = _clientFactory!();
         var failures = new List<string>();
 
+        // Refresh remote cache once before push (not per-item): catches any simulation
+        // activity since the last Fetch without doing an O(N) full-campaign re-fetch.
+        Dictionary<string, VaultEntitySyncPlan>? currentPlanById = null;
+        if (items.Any(p => p.State != VaultSyncState.DeletedLocally))
+        {
+            var refreshResponse = await client.GetCampaignEntitiesAsync(
+                new GetCampaignEntitiesRequest { CampaignName = _campaignName });
+            await _remoteCache.WriteFetchResultAsync(_campaignName, refreshResponse.Entities);
+            RefreshManifestState();
+
+            currentPlanById = EvaluateAllPlans()
+                .ToDictionary(p => p.EntityId, StringComparer.OrdinalIgnoreCase);
+        }
+
         foreach (var item in items)
         {
             try
@@ -150,15 +164,7 @@ public sealed class VaultSyncEngine
                     continue;
                 }
 
-                // Refresh remote cache before push: re-fetch to catch any simulation activity
-                var refreshResponse = await client.GetCampaignEntitiesAsync(
-                    new GetCampaignEntitiesRequest { CampaignName = _campaignName });
-                await _remoteCache.WriteFetchResultAsync(_campaignName, refreshResponse.Entities);
-                RefreshManifestState();
-
-                // Re-evaluate sync state for this entity
-                var currentPlan = EvaluateAllPlans().FirstOrDefault(p =>
-                    string.Equals(p.EntityId, item.EntityId, StringComparison.OrdinalIgnoreCase));
+                currentPlanById!.TryGetValue(item.EntityId, out var currentPlan);
 
                 if (currentPlan == null || currentPlan.State == VaultSyncState.Conflict ||
                     currentPlan.State == VaultSyncState.BehindVault)
@@ -244,6 +250,7 @@ public sealed class VaultSyncEngine
     public async Task PullAsync(IEnumerable<string>? entityIds = null)
     {
         EnsureBound();
+        RequireCleanWorkingTree("Pull");
 
         var filter = entityIds?.Where(id => !string.IsNullOrWhiteSpace(id))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -641,12 +648,12 @@ public sealed class VaultSyncEngine
         _git.SetSyncedCommit(head);
     }
 
-    private void RequireCleanWorkingTree()
+    private void RequireCleanWorkingTree(string action = "Push")
     {
         if (_git!.GetWorkingTreeStatus().IsDirty)
         {
             throw new VaultException(
-                "Push requires a clean working tree. Commit or discard local changes, then push.");
+                $"{action} requires a clean working tree. Commit or discard local changes, then {action.ToLowerInvariant()}.");
         }
     }
 

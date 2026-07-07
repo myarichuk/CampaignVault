@@ -126,7 +126,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
                 BootstrapTrigger.Create, context, ct);
 
             // Reinitialize resource pools if needed (in case level/class changed)
-            var campaignConfigExisting = context.Session != null
+            var campaignConfigExisting = context.Session != null && !string.IsNullOrEmpty(context.CampaignName)
                 ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
                 : null;
             _poolInitializer.InitializePools(existing, activeSystemForExisting, campaignConfigExisting);
@@ -187,7 +187,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
         await ApplyBootstrapAsync(newChar, activeSystem, cc.MaxHp, cc.CurrentHp, null, BootstrapTrigger.Create, context, ct);
 
         // Initialize resource pools (spell slots, focus points, action points, etc.)
-        var campaignConfig = context.Session != null
+        var campaignConfig = context.Session != null && !string.IsNullOrEmpty(context.CampaignName)
             ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
             : null;
         _poolInitializer.InitializePools(newChar, activeSystem, campaignConfig);
@@ -235,8 +235,9 @@ public class CharacterCreateHandler : IWorldChangeHandler
         var poolSummary = string.Join(", ",
             poolsInitialized.Select(kvp => $"{kvp.Key}:{kvp.Value.Max}"));
 
+        var casterType = classDef.CasterType ?? CasterType.None;
         context.RecordMessage(
-            $"[RESOLVED] class={classDef.Name}, casterType={classDef.CasterType ?? CasterType.None}" +
+            $"[RESOLVED] class={classDef.Name}, casterType={casterType}" +
             (poolsInitialized.Count > 0 ? $", pools=[{poolSummary}]" : ", pools=[]"));
     }
 
@@ -659,7 +660,7 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         else
         {
             // Existing memory: nudge salience up instead of resetting DayAcquired (so decay tracking stays honest)
-            memory.Salience = Math.Clamp(memory.Salience + 0.1f, 0.0, 1.0);
+            memory.Salience = Math.Clamp(memory.Salience + 0.1, 0.0, 1.0);
         }
 
         if (ku.Importance.HasValue)

@@ -523,4 +523,36 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         // Use result + bonus as secondary tie-breaker
         return outcome.Result + (initBonus * 0.01f);
     }
+
+    public override IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
+    {
+        return new Dictionary<string, int> { { "actions", 3 } };
+    }
+
+    public override bool TryConsumeActionSlot(CombatantState state, RulesetAction action, out string? errorReason)
+    {
+        errorReason = null;
+
+        if (action.IsReaction)
+        {
+            return true;
+        }
+
+        var cost = 1;
+        if (action.Parameters.TryGetValue("actionCost", out var costStr) && !int.TryParse(costStr, out cost))
+        {
+            errorReason = $"Invalid actionCost value '{costStr}'.";
+            return false;
+        }
+        cost = Math.Max(1, cost);
+
+        if (!state.ActionBudget.TryGetValue("actions", out var remaining) || remaining < cost)
+        {
+            errorReason = $"Not enough actions remaining this turn (need {cost}, have {remaining}).";
+            return false;
+        }
+
+        state.ActionBudget["actions"] -= cost;
+        return true;
+    }
 }

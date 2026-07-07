@@ -14,7 +14,7 @@ public interface IWorkspaceState
     McpServerService? McpServerService { get; set; }
 
     void RefreshAll();
-    void ReloadActiveFileContent();
+    Task ReloadActiveFileContentAsync();
     
     CommunityToolkit.Mvvm.Input.IAsyncRelayCommand<CreateEntityRequest?> CreateNewEntityCommand { get; }
     CommunityToolkit.Mvvm.Input.IAsyncRelayCommand DeleteSelectedEntityCommand { get; }

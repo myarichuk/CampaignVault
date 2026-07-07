@@ -250,7 +250,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                     if (found != null)
                     {
                         SelectedNode = found;
-                        (App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState)?.ReloadActiveFileContent();
+                        if (App.Current?.Services?.GetService(typeof(IWorkspaceState)) is IWorkspaceState workspaceState)
+                            await workspaceState.ReloadActiveFileContentAsync();
                     }
                 }
             }

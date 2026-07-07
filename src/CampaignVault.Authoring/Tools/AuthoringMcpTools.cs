@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -158,9 +157,7 @@ public class AuthoringMcpTools
         try
         {
             var relativePath = AuthoringMcpSessionHelper.ResolveEntityRelativePath(session, filePath);
-            var absolute = Path.Combine(session.VaultPath!, relativePath.Replace('/', Path.DirectorySeparatorChar));
-            if (File.Exists(absolute))
-                File.Delete(absolute);
+            await session.DeleteEntityFileAsync(relativePath);
             AuthoringMcpSessionHelper.RefreshUiIfAvailable();
             return new AuthoringToolResult(success: true, path: relativePath);
         }

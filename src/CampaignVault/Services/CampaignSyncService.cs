@@ -42,7 +42,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         using var session = documentStore.OpenAsyncSession();
         
         var characters = await session.Query<Character>()
-            .Where(c => c.CampaignName == campaignName || c.CampaignName == null || c.CampaignName == "")
+            .Where(c => c.CampaignName == campaignName)
             .ToListAsync();
         foreach (var c in characters)
         {
@@ -55,7 +55,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         }
 
         var locations = await session.Query<Location>()
-            .Where(l => l.CampaignName == campaignName || l.CampaignName == null || l.CampaignName == "")
+            .Where(l => l.CampaignName == campaignName)
             .ToListAsync();
         foreach (var l in locations)
         {
@@ -68,7 +68,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         }
 
         var quests = await session.Query<Quest>()
-            .Where(q => q.CampaignName == campaignName || q.CampaignName == null || q.CampaignName == "")
+            .Where(q => q.CampaignName == campaignName)
             .ToListAsync();
         foreach (var q in quests)
         {
@@ -81,7 +81,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         }
 
         var factions = await session.Query<Faction>()
-            .Where(f => f.CampaignName == campaignName || f.CampaignName == null || f.CampaignName == "")
+            .Where(f => f.CampaignName == campaignName)
             .ToListAsync();
         foreach (var f in factions)
         {
@@ -94,7 +94,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         }
 
         var lore = await session.Query<Lore>()
-            .Where(l => l.CampaignName == campaignName || l.CampaignName == null || l.CampaignName == "")
+            .Where(l => l.CampaignName == campaignName)
             .ToListAsync();
         foreach (var l in lore)
         {
@@ -107,7 +107,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         }
 
         var rumors = await session.Query<Rumor>()
-            .Where(r => r.CampaignName == campaignName || r.CampaignName == null || r.CampaignName == "")
+            .Where(r => r.CampaignName == campaignName)
             .ToListAsync();
         foreach (var r in rumors)
         {
@@ -133,7 +133,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         }
 
         var items = await session.Query<Item>()
-            .Where(i => i.CampaignName == campaignName || i.CampaignName == null || i.CampaignName == "")
+            .Where(i => i.CampaignName == campaignName)
             .ToListAsync();
         foreach (var i in items)
         {
@@ -154,10 +154,12 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         {
             using var session = documentStore.OpenAsyncSession();
             var campaignName = request.CampaignName;
-            
+            bool stored;
+
             if (request.Type == "character")
             {
                 var charData = JsonSerializer.Deserialize<Character>(request.Content, JsonOptions);
+                stored = charData != null;
                 if (charData != null)
                 {
                     charData.CampaignName = campaignName;
@@ -167,6 +169,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             else if (request.Type == "location")
             {
                 var locData = JsonSerializer.Deserialize<Location>(request.Content, JsonOptions);
+                stored = locData != null;
                 if (locData != null)
                 {
                     locData.CampaignName = campaignName;
@@ -176,6 +179,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             else if (request.Type == "quest")
             {
                 var questData = JsonSerializer.Deserialize<Quest>(request.Content, JsonOptions);
+                stored = questData != null;
                 if (questData != null)
                 {
                     questData.CampaignName = campaignName;
@@ -185,6 +189,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             else if (request.Type == "faction")
             {
                 var factionData = JsonSerializer.Deserialize<Faction>(request.Content, JsonOptions);
+                stored = factionData != null;
                 if (factionData != null)
                 {
                     factionData.CampaignName = campaignName;
@@ -194,6 +199,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             else if (request.Type == "lore")
             {
                 var loreData = JsonSerializer.Deserialize<Lore>(request.Content, JsonOptions);
+                stored = loreData != null;
                 if (loreData != null)
                 {
                     loreData.CampaignName = campaignName;
@@ -203,6 +209,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             else if (request.Type == "rumor")
             {
                 var rumorData = JsonSerializer.Deserialize<Rumor>(request.Content, JsonOptions);
+                stored = rumorData != null;
                 if (rumorData != null)
                 {
                     rumorData.CampaignName = campaignName;
@@ -212,6 +219,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             else if (request.Type == "event")
             {
                 var eventData = JsonSerializer.Deserialize<Event>(request.Content, JsonOptions);
+                stored = eventData != null;
                 if (eventData != null)
                 {
                     eventData.CampaignName = campaignName;
@@ -221,12 +229,20 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             else if (request.Type == "item")
             {
                 var itemData = JsonSerializer.Deserialize<Item>(request.Content, JsonOptions);
+                stored = itemData != null;
                 if (itemData != null)
                 {
                     itemData.CampaignName = campaignName;
                     await session.StoreAsync(itemData, itemData.Id);
                 }
             }
+            else
+            {
+                return new PushResponse { Success = false, Message = $"Unknown entity type '{request.Type}'." };
+            }
+
+            if (!stored)
+                return new PushResponse { Success = false, Message = $"Could not deserialize content for type '{request.Type}'." };
 
             await session.SaveChangesAsync();
 
@@ -245,6 +261,13 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         try
         {
             using var session = documentStore.OpenAsyncSession();
+            var entity = await session.LoadAsync<ICampaignScopedEntity>(request.Id);
+            if (entity == null)
+                return new PushResponse { Success = false, Message = $"Entity '{request.Id}' was not found." };
+
+            if (entity.CampaignName != request.CampaignName)
+                return new PushResponse { Success = false, Message = $"Entity '{request.Id}' does not belong to campaign '{request.CampaignName}'." };
+
             session.Delete(request.Id);
             await session.SaveChangesAsync();
             return new PushResponse { Success = true, Message = "Successfully deleted." };
