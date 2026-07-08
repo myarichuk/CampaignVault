@@ -39,7 +39,10 @@ public partial class SyncViewModel : ObservableObject
     private CampaignVaultSession? _session;
     private Action? _refreshExplorer;
 
-    [ObservableProperty] private bool _isBusy;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanPushSelected))]
+    [NotifyPropertyChangedFor(nameof(CanPullSelected))]
+    private bool _isBusy;
 
     [ObservableProperty] private string _statusMessage = "Open a vault and fetch to compare with Campaign Vault.";
 
@@ -134,8 +137,9 @@ public partial class SyncViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Failed to fetch campaigns: {ex.Message}";
-            SetConnectionBanner(true, ex.Message);
+            var friendlyMsg = ex.ToFriendlyMessage("Failed to fetch campaigns");
+            StatusMessage = friendlyMsg;
+            SetConnectionBanner(true, friendlyMsg);
         }
         finally
         {
@@ -154,7 +158,8 @@ public partial class SyncViewModel : ObservableObject
         try
         {
             ConfigureSessionSync();
-            await _session.FetchAsync();
+            using var cts = new System.Threading.CancellationTokenSource(System.TimeSpan.FromSeconds(30));
+            await _session.FetchAsync(cts.Token);
 
             // Sync campaign metadata (display name, narrative focus) to server
             try
@@ -179,8 +184,9 @@ public partial class SyncViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Fetch failed: {ex.Message}";
-            SetConnectionBanner(true, ex.Message);
+            var friendlyMsg = ex.ToFriendlyMessage("Fetch failed");
+            StatusMessage = friendlyMsg;
+            SetConnectionBanner(true, friendlyMsg);
         }
         finally
         {
@@ -225,13 +231,47 @@ public partial class SyncViewModel : ObservableObject
     [RelayCommand]
     private async Task PushAllAsync()
     {
-        await ExecuteSyncAsync(() => _session!.PushAsync(), "Push");
+        var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+
+        if (owner != null)
+        {
+            var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                owner,
+                "Push All Entities",
+                "Push all local changes to Campaign Vault?\n\nThis will overwrite remote entities and may permanently delete entities on the server that no longer exist locally.",
+                "Push All",
+                isDestructive: true);
+
+            if (!confirmed)
+                return;
+        }
+
+        await ExecuteSyncAsync(ct => _session!.PushAsync(cancellationToken: ct), "Push");
     }
 
     [RelayCommand]
     private async Task PullAllAsync()
     {
-        await ExecuteSyncAsync(() => _session!.PullAsync(), "Pull");
+        var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+
+        if (owner != null)
+        {
+            var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                owner,
+                "Pull All Entities",
+                "Pull all remote changes from Campaign Vault?\n\nThis will overwrite local entities and may delete local files that no longer exist on the server.",
+                "Pull All",
+                isDestructive: true);
+
+            if (!confirmed)
+                return;
+        }
+
+        await ExecuteSyncAsync(ct => _session!.PullAsync(cancellationToken: ct), "Pull");
     }
 
     [RelayCommand]
@@ -241,7 +281,7 @@ public partial class SyncViewModel : ObservableObject
             return;
 
         await ExecuteSyncAsync(
-            () => _session.PushAsync([SelectedPlan.Plan.EntityId]),
+            ct => _session.PushAsync([SelectedPlan.Plan.EntityId], cancellationToken: ct),
             $"Push {SelectedPlan.DisplayName}");
     }
 
@@ -252,7 +292,7 @@ public partial class SyncViewModel : ObservableObject
             return;
 
         await ExecuteSyncAsync(
-            () => _session.PullAsync([SelectedPlan.Plan.EntityId]),
+            ct => _session.PullAsync([SelectedPlan.Plan.EntityId], cancellationToken: ct),
             $"Pull {SelectedPlan.DisplayName}");
     }
 
@@ -263,7 +303,7 @@ public partial class SyncViewModel : ObservableObject
             return;
 
         await ExecuteSyncAsync(
-            () => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.KeepLocal),
+            ct => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.KeepLocal),
             $"Keep local for {SelectedPlan.DisplayName}");
     }
 
@@ -274,7 +314,7 @@ public partial class SyncViewModel : ObservableObject
             return;
 
         await ExecuteSyncAsync(
-            () => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.KeepVault),
+            ct => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.KeepVault),
             $"Keep vault for {SelectedPlan.DisplayName}");
     }
 
@@ -286,11 +326,11 @@ public partial class SyncViewModel : ObservableObject
 
         var mergedContent = SelectedPlan.MergedContent;
         await ExecuteSyncAsync(
-            () => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.Merged, mergedContent),
+            ct => _session.ResolveConflictAsync(SelectedPlan.Plan.EntityId, ConflictResolution.Merged, mergedContent),
             $"Save merged content for {SelectedPlan.DisplayName}");
     }
 
-    private async Task ExecuteSyncAsync(Func<Task> action, string label)
+    private async Task ExecuteSyncAsync(Func<CancellationToken, Task> action, string label)
     {
         if (IsBusy || _session is not { IsOpen: true })
             return;
@@ -300,7 +340,9 @@ public partial class SyncViewModel : ObservableObject
         try
         {
             ConfigureSessionSync();
-            await action();
+            using var cts = new System.Threading.CancellationTokenSource(System.TimeSpan.FromSeconds(30));
+            await action(cts.Token);
+
             await RefreshPlansAsync();
             _refreshExplorer?.Invoke();
             LastSyncTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -314,8 +356,9 @@ public partial class SyncViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"{label} failed: {ex.Message}";
-            SetConnectionBanner(true, ex.Message);
+            var friendlyMsg = ex.ToFriendlyMessage($"{label} failed");
+            StatusMessage = friendlyMsg;
+            SetConnectionBanner(true, friendlyMsg);
         }
         finally
         {

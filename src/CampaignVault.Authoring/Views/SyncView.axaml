@@ -44,7 +44,8 @@
                                     <TextBlock Text="{Binding Plan.EntityId}" FontSize="10" Foreground="#71717A" />
                                 </StackPanel>
                                 <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="4" Padding="6,2" Margin="5,0,0,0"
-                                        Background="{Binding Plan.State, Converter={x:Static vm:VaultSyncStateColorConverter.Instance}}">
+                                        Background="{Binding Plan.State, Converter={x:Static vm:VaultSyncStateColorConverter.Instance}}"
+                                        ToolTip.Tip="{Binding Plan.ParseError}">
                                     <TextBlock Text="{Binding Plan.State, Converter={x:Static vm:VaultSyncStateDisplayConverter.Instance}}"
                                                FontSize="9" FontWeight="Bold" Foreground="White" />
                                 </Border>
@@ -66,11 +67,16 @@
         </Border>
 
         <Grid Grid.Row="2" Grid.Column="1" RowDefinitions="Auto, *" Margin="15"
-              IsVisible="{Binding SelectedPlan, Converter={x:Static ObjectConverters.IsNotNull}}">
+              IsVisible="{Binding SelectedPlan, Converter={x:Static ObjectConverters.IsNotNull}}"
+              IsEnabled="{Binding !IsBusy}">
             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="{Binding SelectedPlan.DisplayName}" FontSize="18" FontWeight="Bold" />
                     <TextBlock Text="{Binding SelectedPlan.Plan.EntityId, StringFormat='ID: \{0\}'}" FontSize="11" Foreground="#71717A" />
+                    <TextBlock Text="{Binding SelectedPlan.Plan.ParseError}"
+                               FontSize="10" Foreground="#DC2626" TextWrapping="Wrap"
+                               IsVisible="{Binding SelectedPlan.Plan.ParseError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Margin="0,8,0,0" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
                     <Button Content="Push" Command="{Binding PushSelectedCommand}"

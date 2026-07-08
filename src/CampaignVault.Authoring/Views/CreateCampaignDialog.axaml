@@ -39,6 +39,7 @@
                                  BorderBrush="#3F3F46" BorderThickness="1"
                                  CornerRadius="3" Padding="8,6"
                                  TextChanged="CampaignNameTextBox_TextChanged" />
+                        <TextBlock Name="SlugErrorBlock" FontSize="10" Foreground="#DC2626" IsVisible="False" />
                     </StackPanel>
                 </Border>
 

@@ -86,7 +86,9 @@ public sealed class VaultRemoteCache
         };
 
         var manifestPath = Path.Combine(CacheRootPath, ManifestFileName);
-        await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest, JsonOptions) + "\n");
+        var tmpManifestPath = manifestPath + ".tmp";
+        await File.WriteAllTextAsync(tmpManifestPath, JsonSerializer.Serialize(manifest, JsonOptions) + "\n");
+        File.Move(tmpManifestPath, manifestPath, overwrite: true);
     }
 
     public RemoteCacheManifestReadResult ReadManifest()
@@ -117,7 +119,7 @@ public sealed class VaultRemoteCache
             return new RemoteCacheManifestReadResult(
                 null,
                 true,
-                $"Corrupt {ManifestFileName}: {ex.Message}");
+                "The remote cache manifest is corrupt. Fetch again from the Vault Sync pane.");
         }
     }
 

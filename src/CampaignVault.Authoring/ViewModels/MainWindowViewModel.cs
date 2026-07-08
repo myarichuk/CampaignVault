@@ -45,8 +45,15 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     [ObservableProperty] private string _editorText = string.Empty;
 
     private string _lastLoadedEditorText = string.Empty;
+    private ExplorerNodeViewModel? _lastSelectedNode;
+    private bool _suppressSelectionGuard;
 
     public bool IsEditorDirty => EditorText != _lastLoadedEditorText;
+
+    private string CurrentEntityTitle =>
+        Workspace.SelectedNode is EntityNodeViewModel entityNode
+            ? entityNode.Title
+            : "current entity";
 
     [ObservableProperty] private string _workspaceStatusMessage = "Open a campaign vault to begin.";
 
@@ -76,6 +83,8 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
 
     [ObservableProperty] private string _statusBannerMessage = string.Empty;
 
+    [ObservableProperty] private bool _isBusy;
+
     public bool HasSelection => Workspace.SelectedNode is EntityNodeViewModel;
 
     public bool HasParseError => Workspace.SelectedNode is EntityNodeViewModel && ParsedCharacter == null &&
@@ -91,6 +100,46 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         {
             if (e.PropertyName == nameof(Workspace.SelectedNode))
             {
+                // Reentrancy guard: if suppress flag is set, this is a confirmed change or revert
+                if (_suppressSelectionGuard)
+                {
+                    _suppressSelectionGuard = false;
+                    // Fall through to normal load logic below
+                }
+                else if (IsEditorDirty && _lastSelectedNode != null)
+                {
+                    // User has unsaved changes and is trying to switch to a different entity
+                    var newNode = Workspace.SelectedNode;
+
+                    // Revert selection to trigger this handler again with suppress flag set
+                    _suppressSelectionGuard = true;
+                    Workspace.SelectedNode = _lastSelectedNode;
+
+                    // Show confirmation dialog
+                    var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                        ? desktop.MainWindow
+                        : null;
+
+                    if (owner != null && newNode is EntityNodeViewModel newEntity)
+                    {
+                        var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                            owner,
+                            "Unsaved Changes",
+                            $"Leave '{_lastSelectedNode.Title}' without saving changes to '{newEntity.Title}'?",
+                            "Leave");
+
+                        if (confirmed)
+                        {
+                            // User confirmed: switch to new node
+                            _suppressSelectionGuard = true;
+                            Workspace.SelectedNode = newNode;
+                        }
+                        // If cancelled, selection is already reverted; do nothing
+                    }
+                    return;
+                }
+
+                // Normal load path
                 OnPropertyChanged(nameof(HasSelection));
                 OnPropertyChanged(nameof(HasParseError));
 
@@ -102,12 +151,18 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
                         EditorText = content;
                         _lastLoadedEditorText = content;
                         OnEditorTextChanged(EditorText);
+                        _lastSelectedNode = entityNode;
                     }
                     catch
                     {
                         EditorText = string.Empty;
                         _lastLoadedEditorText = string.Empty;
+                        _lastSelectedNode = entityNode;
                     }
+                }
+                else
+                {
+                    _lastSelectedNode = Workspace.SelectedNode;
                 }
             }
         };
@@ -150,14 +205,43 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     [RelayCommand]
     private async Task OpenCampaignFolderAsync()
     {
-        var path = await PickFolderAsync();
-        if (path != null)
-            await LoadCampaignAsync(path);
+        if (IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            var path = await PickFolderAsync();
+            if (path != null)
+                await LoadCampaignAsync(path);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
     private async Task BackToHub()
     {
+        if (IsEditorDirty)
+        {
+            var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (owner != null)
+            {
+                var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                    owner,
+                    "Unsaved Changes",
+                    $"You have unsaved changes to '{CurrentEntityTitle}'.\n\nLeave without saving?",
+                    "Leave",
+                    isDestructive: true);
+
+                if (!confirmed)
+                    return;
+            }
+        }
+
         await Session.CloseAsync();
         Workspace.BindSession(null);
         Sync.Bind(null);
@@ -168,11 +252,23 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     }
 
     [RelayCommand]
+    private void Exit()
+    {
+        var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+
+        owner?.Close();
+    }
+
+    [RelayCommand]
     public async Task LoadCampaignAsync(string path)
     {
-        WorkspaceStatusMessage = $"Opening vault: {path}";
+        if (IsBusy) return;
+        IsBusy = true;
         try
         {
+            WorkspaceStatusMessage = $"Opening vault: {path}";
             await Session.OpenAsync(path);
             _historyService.Add(path);
             Hub.LoadRecentCampaigns();
@@ -192,6 +288,10 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
             WorkspaceStatusMessage = $"Failed to open vault: {ex.Message}";
             ShowStatusBanner = true;
             StatusBannerMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -309,6 +409,25 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
             return;
 
         var rel = entityNode.Entity.RelativePath;
+        var title = entityNode.Title;
+
+        var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+
+        if (owner != null)
+        {
+            var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                owner,
+                "Delete Entity",
+                $"Delete '{title}'? This removes the local file.\nYou can still recover it via git history if committed.",
+                "Delete",
+                isDestructive: true);
+
+            if (!confirmed)
+                return;
+        }
+
         try
         {
             await Session.DeleteEntityFileAsync(rel);
@@ -340,7 +459,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
 
         try
         {
-            var (relative, _) = await Session.CreateEntityAsync(type, request.Name);
+            var (relative, _) = await Session.CreateEntityAsync(type, request.Name, request.TargetFolder);
             RefreshAll();
 
             var found = FindEntityNodeByPath(Workspace.Categories, relative);
@@ -539,7 +658,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
             PreviewNotes = value;
             IsCharacter = false;
             Badge1Label = Badge1Value = Badge2Label = Badge2Value = string.Empty;
-            ParseErrorMessage = ex.ToString();
+            ParseErrorMessage = ex.ToFriendlyMessage("Could not parse entity content");
         }
         finally
         {

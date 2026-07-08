@@ -23,6 +23,12 @@ public partial class SourceControlViewModel : ObservableObject
 
     [ObservableProperty] private ObservableCollection<string> _changedPaths = new();
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCommit))]
+    private bool _isBusy;
+
+    public bool CanCommit => IsDirty && !IsBusy;
+
     public void Bind(CampaignVaultSession? session, Action? refreshExplorer = null)
     {
         _session = session;
@@ -44,9 +50,6 @@ public partial class SourceControlViewModel : ObservableObject
         var gitStatus = _session.GetGitStatus();
         IsDirty = gitStatus.IsDirty;
         HeadCommitShort = ShortSha(_session.HeadCommitSha);
-        StatusMessage = gitStatus.IsDirty
-            ? $"{ChangedPaths.Count} uncommitted change(s)."
-            : "Working tree clean.";
 
         ChangedPaths.Clear();
         foreach (var path in gitStatus.ModifiedPaths
@@ -67,6 +70,8 @@ public partial class SourceControlViewModel : ObservableObject
     [RelayCommand]
     private async Task CommitAsync()
     {
+        if (IsBusy) return;
+
         if (_session is not { IsOpen: true })
         {
             StatusMessage = "No vault open.";
@@ -79,6 +84,7 @@ public partial class SourceControlViewModel : ObservableObject
             return;
         }
 
+        IsBusy = true;
         try
         {
             await _session.CommitAsync(CommitMessage.Trim());
@@ -90,6 +96,10 @@ public partial class SourceControlViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"Commit failed: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 

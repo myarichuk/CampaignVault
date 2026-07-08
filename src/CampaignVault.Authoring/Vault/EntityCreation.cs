@@ -38,9 +38,13 @@ public static class EntityCreation
         string entityType,
         string name,
         DateTime timestampLocal,
-        Func<string, bool>? relativePathExists = null)
+        Func<string, bool>? relativePathExists = null,
+        string? targetSubfolder = null)
     {
         var folder = GetFolderForType(entityType);
+        if (!string.IsNullOrEmpty(targetSubfolder))
+            folder = $"{folder}/{targetSubfolder}";
+
         var nameSlug = ToSlug(name);
 
         if (string.IsNullOrEmpty(nameSlug))

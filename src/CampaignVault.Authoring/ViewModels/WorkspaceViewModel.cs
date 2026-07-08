@@ -135,6 +135,27 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private async Task CreateNewEntityInFolderAsync(string? folderPath = null)
+    {
+        if (string.IsNullOrEmpty(folderPath)) return;
+
+        var parts = folderPath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return;
+
+        var entityType = parts[0];
+        var targetSubfolder = parts.Length > 1 ? string.Join("/", parts.Skip(1)) : null;
+
+        var typeName = char.ToUpper(entityType[0]) + entityType[1..];
+        var request = new CreateEntityRequest(entityType, $"New {typeName}", targetSubfolder);
+
+        var main = App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;
+        if (main != null)
+        {
+            await main.CreateNewEntityCommand.ExecuteAsync(request);
+        }
+    }
+
+    [RelayCommand]
     private async Task DeleteSelectedEntityAsync()
     {
         var main = App.Current?.Services?.GetService(typeof(IWorkspaceState)) as IWorkspaceState;

@@ -107,7 +107,7 @@ public sealed class CampaignVaultSession : IDisposable
         return _git!.GetWorkingTreeStatus();
     }
 
-    public Task FetchAsync() => WithLockAsync(() => _syncEngine.FetchAsync());
+    public Task FetchAsync(CancellationToken cancellationToken = default) => WithLockAsync(() => _syncEngine.FetchAsync(cancellationToken));
 
     public VaultSyncSummary GetSyncSummary() => _syncEngine.GetSyncSummary();
 
@@ -172,16 +172,16 @@ public sealed class CampaignVaultSession : IDisposable
         await File.WriteAllTextAsync(absolute, content);
     }
 
-    public Task PushAsync(IEnumerable<string>? entityIds = null) =>
-        WithLockAsync(() => _syncEngine.PushAsync(entityIds));
+    public Task PushAsync(IEnumerable<string>? entityIds = null, CancellationToken cancellationToken = default) =>
+        WithLockAsync(() => _syncEngine.PushAsync(entityIds, cancellationToken));
 
-    public Task PullAsync(IEnumerable<string>? entityIds = null) =>
-        WithLockAsync(() => _syncEngine.PullAsync(entityIds));
+    public Task PullAsync(IEnumerable<string>? entityIds = null, CancellationToken cancellationToken = default) =>
+        WithLockAsync(() => _syncEngine.PullAsync(entityIds, cancellationToken));
 
     public Task ResolveConflictAsync(string entityId, ConflictResolution resolution, string? mergedContent = null) =>
         WithLockAsync(() => _syncEngine.ResolveConflictAsync(entityId, resolution, mergedContent));
 
-    public Task<(string RelativePath, string Content)> CreateEntityAsync(string entityType, string name) =>
+    public Task<(string RelativePath, string Content)> CreateEntityAsync(string entityType, string name, string? targetSubfolder = null) =>
         WithLockAsync(async () =>
         {
             EnsureOpen();
@@ -193,7 +193,8 @@ public sealed class CampaignVaultSession : IDisposable
                 throw new VaultException($"Unsupported entity type '{entityType}'.");
 
             var (relativePath, slug) = EntityCreation.BuildNewEntityPath(normalizedType, name, DateTime.Now,
-                relativePathExists: rel => File.Exists(Path.Combine(VaultPath!, rel.Replace('/', Path.DirectorySeparatorChar))));
+                relativePathExists: rel => File.Exists(Path.Combine(VaultPath!, rel.Replace('/', Path.DirectorySeparatorChar))),
+                targetSubfolder: targetSubfolder);
             var template = _canonicalizer.GetBlankTemplate(normalizedType, slug, name);
             await WriteEntityFileUnlockedAsync(relativePath, template);
             return (relativePath, template);

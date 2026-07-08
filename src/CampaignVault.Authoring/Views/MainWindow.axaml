@@ -24,7 +24,7 @@
                 <MenuItem Header="New Quest"    Command="{Binding Workspace.CreateNewEntityCommand}" CommandParameter="quest" />
                 <MenuItem Header="New Item"     Command="{Binding Workspace.CreateNewEntityCommand}" CommandParameter="item" />
                 <Separator />
-                <MenuItem Header="E_xit" />
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
             </MenuItem>
         </Menu>
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Models;
@@ -46,6 +47,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _grpcStatusColor = "Red";
 
     [ObservableProperty] private string _campaignsRootPath = string.Empty;
+
+    [ObservableProperty] private string _saveStatusMessage = string.Empty;
 
     public ObservableCollection<string> LlmProviders { get; } = new() { "None", "Ollama", "OpenAI", "Gemini" };
 
@@ -184,21 +187,29 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void Save()
     {
-        _settings.McpPort = McpPortValue.HasValue ? (int)McpPortValue.Value : 8080;
-        _settings.AutoStartMcp = AutoStartMcp;
-        _settings.LlmProvider = LlmProvider;
-        _settings.LlmApiKey = LlmApiKey;
-        _settings.LlmEndpoint = LlmEndpoint;
-        _settings.LlmModel = LlmModel;
+        try
+        {
+            _settings.McpPort = McpPortValue.HasValue ? (int)McpPortValue.Value : 8080;
+            _settings.AutoStartMcp = AutoStartMcp;
+            _settings.LlmProvider = LlmProvider;
+            _settings.LlmApiKey = LlmApiKey;
+            _settings.LlmEndpoint = LlmEndpoint;
+            _settings.LlmModel = LlmModel;
 
-        _settings.GrpcHost = GrpcHost;
-        _settings.GrpcPort = ResolveGrpcPort();
-        _settings.GrpcToken = GrpcToken;
-        _settings.VaultMcpPort = VaultMcpPortValue is > 0 and <= 65535 ? (int)VaultMcpPortValue.Value : 5275;
-        _settings.CampaignsRootPath = string.IsNullOrWhiteSpace(CampaignsRootPath) ? null : CampaignsRootPath;
+            _settings.GrpcHost = GrpcHost;
+            _settings.GrpcPort = ResolveGrpcPort();
+            _settings.GrpcToken = GrpcToken;
+            _settings.VaultMcpPort = VaultMcpPortValue is > 0 and <= 65535 ? (int)VaultMcpPortValue.Value : 5275;
+            _settings.CampaignsRootPath = string.IsNullOrWhiteSpace(CampaignsRootPath) ? null : CampaignsRootPath;
 
-        _settingsService.SaveSettings(_settings);
+            _settingsService.SaveSettings(_settings);
 
-        GetWorkspaceState()?.Sync.ConfigureSessionSync();
+            SaveStatusMessage = string.Empty;
+            GetWorkspaceState()?.Sync.ConfigureSessionSync();
+        }
+        catch (Exception ex)
+        {
+            SaveStatusMessage = ex.ToFriendlyMessage("Could not save settings");
+        }
     }
 }

@@ -1,6 +1,8 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Services;
+using CampaignVault.Authoring.Vault;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.AI;
@@ -13,13 +15,25 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private string _userPrompt = string.Empty;
 
-    [ObservableProperty] private string _generationResult = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasResult))]
+    private string _generationResult = string.Empty;
 
-    [ObservableProperty] private bool _isEnabled;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGenerate))]
+    private bool _isEnabled;
 
     [ObservableProperty] private string _statusMessage = string.Empty;
 
-    [ObservableProperty] private bool _isGenerating;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGenerate))]
+    private bool _isGenerating;
+
+    [ObservableProperty] private string _selectedEntityType = "character";
+
+    public bool HasResult => !string.IsNullOrEmpty(GenerationResult);
+
+    public bool CanGenerate => IsEnabled && !IsGenerating;
 
     public GenerationViewModel(SettingsViewModel settingsViewModel)
     {
@@ -70,6 +84,7 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task GenerateAsync()
     {
+        if (IsGenerating) return;
         if (string.IsNullOrEmpty(UserPrompt)) return;
 
         IsGenerating = true;
@@ -120,25 +135,31 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
             }
 
             using (client)
+            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
             {
                 var response = await client.GetResponseAsync(new[]
                 {
                     new ChatMessage(ChatRole.System,
-                        "You are a TTRPG campaign writer. Generate a campaign entity markdown file with YAML frontmatter. " +
-                        "The output MUST start with '---' and end with the markdown body. Do NOT wrap it in code block ticks (```). Just output the raw content."),
+                        $"You are a TTRPG campaign writer. Generate a campaign entity markdown file with YAML frontmatter. " +
+                        $"Generate a {SelectedEntityType} entity. " +
+                        $"The output MUST start with '---' and end with the markdown body. Do NOT wrap it in code block ticks (```). Just output the raw content."),
                     new ChatMessage(ChatRole.User, UserPrompt)
                 }, new ChatOptions
                 {
                     ModelId = string.IsNullOrEmpty(model) ? "default" : model
-                });
+                }, cts.Token);
 
                 GenerationResult = response.Text ?? string.Empty;
                 StatusMessage = "Generation complete!";
             }
         }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "The AI request timed out after 60 seconds.";
+        }
         catch (Exception ex)
         {
-            StatusMessage = $"Error: {ex.Message}";
+            StatusMessage = ex.ToFriendlyMessage("Generation failed");
         }
         finally
         {
@@ -161,12 +182,12 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
         }
         else if (mainVm.Session.IsOpen)
         {
-            // No selection: create a new entity file from generated content.
-            // Try to infer a reasonable path from content or default to character.
-            var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-            var relative = $"characters/generated-{ts}.md";
             try
             {
+                var folder = EntityCreation.GetFolderForType(SelectedEntityType);
+                var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                var relative = $"{folder}/generated-{ts}.md";
+
                 await mainVm.Session.WriteFileAsync(relative, GenerationResult);
                 mainVm.RefreshAll();
                 // Try select it
@@ -177,7 +198,7 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
             catch (Exception ex)
             {
                 mainVm.EditorText = GenerationResult; // fallback to buffer
-                StatusMessage = $"Insert to buffer (create failed: {ex.Message})";
+                StatusMessage = ex.ToFriendlyMessage("Insert to buffer (create failed)");
             }
         }
         else

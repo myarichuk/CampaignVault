@@ -24,7 +24,7 @@
             <TextBox Text="{Binding CommitMessage}" PlaceholderText="Commit message"
                      FontSize="11" AcceptsReturn="False" />
             <Button Content="Commit" Command="{Binding CommitCommand}"
-                    IsEnabled="{Binding IsDirty}"
+                    IsEnabled="{Binding CanCommit}"
                     Background="#2563EB" Foreground="White"
                     HorizontalAlignment="Stretch" Padding="10,8" />
         </StackPanel>

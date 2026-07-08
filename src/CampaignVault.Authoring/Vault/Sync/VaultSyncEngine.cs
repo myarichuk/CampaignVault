@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Models;
 using CampaignVault.Authoring.Vault.Canonical;
@@ -56,7 +57,7 @@ public sealed class VaultSyncEngine
         Connection = new VaultConnectionStatus(VaultConnectionState.Unknown);
     }
 
-    public async Task FetchAsync()
+    public async Task FetchAsync(CancellationToken cancellationToken = default)
     {
         EnsureBound();
         EnsureClientConfigured();
@@ -68,7 +69,8 @@ public sealed class VaultSyncEngine
         {
             var client = _clientFactory!();
             var response = await client.GetCampaignEntitiesAsync(
-                new GetCampaignEntitiesRequest { CampaignName = _campaignName });
+                new GetCampaignEntitiesRequest { CampaignName = _campaignName },
+                cancellationToken: cancellationToken);
 
             await _remoteCache.WriteFetchResultAsync(_campaignName, response.Entities);
             RefreshManifestState();
@@ -134,7 +136,7 @@ public sealed class VaultSyncEngine
         }
     }
 
-    public async Task PushAsync(IEnumerable<string>? entityIds = null)
+    public async Task PushAsync(IEnumerable<string>? entityIds = null, CancellationToken cancellationToken = default)
     {
         EnsureBound();
         EnsureClientConfigured();
@@ -171,7 +173,8 @@ public sealed class VaultSyncEngine
         if (items.Any(p => p.State != VaultSyncState.DeletedLocally))
         {
             var refreshResponse = await client.GetCampaignEntitiesAsync(
-                new GetCampaignEntitiesRequest { CampaignName = _campaignName });
+                new GetCampaignEntitiesRequest { CampaignName = _campaignName },
+                cancellationToken: cancellationToken);
             await _remoteCache.WriteFetchResultAsync(_campaignName, refreshResponse.Entities);
             RefreshManifestState();
 
@@ -190,7 +193,7 @@ public sealed class VaultSyncEngine
                         CampaignName = _campaignName,
                         Id = item.EntityId,
                         Type = item.EntityType
-                    });
+                    }, cancellationToken: cancellationToken);
 
                     if (!response.Success)
                         failures.Add($"{item.EntityId}: {response.Message}");
@@ -220,7 +223,7 @@ public sealed class VaultSyncEngine
                     Id = item.EntityId,
                     Type = item.EntityType,
                     Content = pushJson
-                });
+                }, cancellationToken: cancellationToken);
 
                 if (!pushResponse.Success)
                     failures.Add($"{item.EntityId}: {pushResponse.Message}");
@@ -280,7 +283,7 @@ public sealed class VaultSyncEngine
         }
     }
 
-    public async Task PullAsync(IEnumerable<string>? entityIds = null)
+    public async Task PullAsync(IEnumerable<string>? entityIds = null, CancellationToken cancellationToken = default)
     {
         EnsureBound();
         RequireCleanWorkingTree("Pull");

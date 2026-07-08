@@ -107,12 +107,17 @@
             </Border>
 
             <!-- Save Configuration -->
-            <Button Content="Save Configuration Settings" 
-                    Command="{Binding SaveCommand}" 
-                    Background="#10B981" 
+            <Button Content="Save Configuration Settings"
+                    Command="{Binding SaveCommand}"
+                    Background="#10B981"
                     Foreground="White"
-                    HorizontalAlignment="Left" 
+                    HorizontalAlignment="Left"
                     Padding="20,10" />
+            <TextBlock Text="{Binding SaveStatusMessage}"
+                       Foreground="#DC2626"
+                       FontSize="12"
+                       Margin="0,8,0,0"
+                       IsVisible="{Binding SaveStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

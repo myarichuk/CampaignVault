@@ -79,6 +79,20 @@ public partial class App : Application
                 if (!isShuttingDown)
                 {
                     e.Cancel = true;
+
+                    if (mainWindowViewModel.IsEditorDirty)
+                    {
+                        var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                            desktop.MainWindow,
+                            "Unsaved Changes",
+                            "You have unsaved changes.\n\nQuit without saving?",
+                            "Quit",
+                            isDestructive: true);
+
+                        if (!confirmed)
+                            return;
+                    }
+
                     isShuttingDown = true;
 
                     if (_mcpServerService != null)

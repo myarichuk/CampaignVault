@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CampaignVault.Authoring.Views.ConfirmationDialog"
+        Title="Confirm Action"
+        Width="420" Height="200"
+        MinWidth="380" MinHeight="180"
+        WindowStartupLocation="CenterOwner"
+        Background="#1C1C24" Foreground="#E4E4EB"
+        CanResize="False">
+    <DockPanel Margin="24">
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,20" Spacing="4">
+            <TextBlock Name="TitleBlock" FontSize="16" FontWeight="Bold" Foreground="#E4E4EB" />
+        </StackPanel>
+
+        <!-- Message -->
+        <TextBlock DockPanel.Dock="Top" Name="MessageBlock"
+                   Margin="0,0,0,24"
+                   TextWrapping="Wrap" FontSize="12" Foreground="#A0A0AB"
+                   LineHeight="1.5" />
+
+        <!-- Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Cancel" Click="Cancel_Click"
+                    Background="#2A2A35" Foreground="#A0A0AB"
+                    BorderBrush="#3F3F50" BorderThickness="1"
+                    CornerRadius="4" Padding="18,8" />
+            <Button Name="ConfirmButton" Content="Confirm" Click="Confirm_Click"
+                    Background="#2563EB" Foreground="White"
+                    BorderThickness="0" CornerRadius="4" Padding="18,8" />
+        </StackPanel>
+    </DockPanel>
+</Window>
