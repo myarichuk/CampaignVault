@@ -1,0 +1,161 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CampaignVault.Authoring.Views.CreateCampaignDialog"
+        Title="Create New Campaign"
+        Width="560" Height="680"
+        MinWidth="520" MinHeight="640"
+        WindowStartupLocation="CenterOwner"
+        Background="#1C1C24" Foreground="#E4E4EB">
+    <DockPanel Margin="24">
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,20" Spacing="4">
+            <TextBlock Text="Create New Campaign" FontSize="18" FontWeight="Bold" Foreground="#E4E4EB" />
+            <TextBlock Text="Set up your campaign with metadata for better organization." FontSize="12" Foreground="#71717A" />
+        </StackPanel>
+
+        <!-- Footer: buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
+            <Button Content="Cancel" Click="Cancel_Click"
+                    Background="#2A2A35" Foreground="#A0A0AB"
+                    BorderBrush="#3F3F50" BorderThickness="1"
+                    CornerRadius="4" Padding="18,8" />
+            <Button Name="CreateButton" Content="Create Campaign" Click="Create_Click"
+                    Background="#2563EB" Foreground="White"
+                    BorderThickness="0" CornerRadius="4" Padding="18,8"
+                    IsEnabled="False" />
+        </StackPanel>
+
+        <!-- Content: scrollable form -->
+        <ScrollViewer>
+            <StackPanel Spacing="18" Margin="0,0,12,0">
+                <!-- Campaign Name -->
+                <Border Background="#2A2A35" BorderBrush="#3F3F50" BorderThickness="1" CornerRadius="6" Padding="14,12">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Campaign Slug" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                        <TextBlock Text="URL-safe identifier (auto-generated from folder name, lowercase)" FontSize="10" Foreground="#71717A" />
+                        <TextBox Name="CampaignNameTextBox"
+                                 PlaceholderText="dragonheist"
+                                 Background="#1F1F28" Foreground="#E4E4EB"
+                                 BorderBrush="#3F3F46" BorderThickness="1"
+                                 CornerRadius="3" Padding="8,6"
+                                 TextChanged="CampaignNameTextBox_TextChanged" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Display Name -->
+                <Border Background="#2A2A35" BorderBrush="#3F3F50" BorderThickness="1" CornerRadius="6" Padding="14,12">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Display Name" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                        <TextBlock Text="Human-friendly title for your campaign" FontSize="10" Foreground="#71717A" />
+                        <TextBox Name="DisplayNameTextBox"
+                                 PlaceholderText="Waterdeep: Dragon Heist"
+                                 Background="#1F1F28" Foreground="#E4E4EB"
+                                 BorderBrush="#3F3F46" BorderThickness="1"
+                                 CornerRadius="3" Padding="8,6"
+                                 TextChanged="DisplayNameTextBox_TextChanged" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Ruleset System -->
+                <Border Background="#2A2A35" BorderBrush="#3F3F50" BorderThickness="1" CornerRadius="6" Padding="14,12">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Ruleset System" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                        <TextBlock Text="Choose the TTRPG system (locked after creation)" FontSize="10" Foreground="#71717A" />
+                        <ListBox Name="RulesetListBox"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="0"
+                                 SelectionChanged="RulesetListBox_SelectionChanged">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="6" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.Styles>
+                                <Style Selector="ListBoxItem">
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0" />
+                                </Style>
+                            </ListBox.Styles>
+
+                            <ListBoxItem Tag="dnd5e">
+                                <Border Background="#2D3A4A" BorderBrush="#3F4A5A" BorderThickness="1" CornerRadius="4" Padding="10,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="⚔️" FontSize="16" />
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="D&amp;D 5e" FontWeight="SemiBold" FontSize="12" Foreground="#E4E4EB" />
+                                            <TextBlock Text="Dungeons &amp; Dragons 5th Edition" FontSize="10" Foreground="#71717A" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </ListBoxItem>
+
+                            <ListBoxItem Tag="pf2e">
+                                <Border Background="#2D3A4A" BorderBrush="#3F4A5A" BorderThickness="1" CornerRadius="4" Padding="10,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="🎲" FontSize="16" />
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="Pathfinder 2e" FontWeight="SemiBold" FontSize="12" Foreground="#E4E4EB" />
+                                            <TextBlock Text="Pathfinder Second Edition" FontSize="10" Foreground="#71717A" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </ListBoxItem>
+
+                            <ListBoxItem Tag="fallout2d20">
+                                <Border Background="#2D3A4A" BorderBrush="#3F4A5A" BorderThickness="1" CornerRadius="4" Padding="10,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="☢️" FontSize="16" />
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="Fallout 2d20" FontWeight="SemiBold" FontSize="12" Foreground="#E4E4EB" />
+                                            <TextBlock Text="Fallout: The Tabletop RPG" FontSize="10" Foreground="#71717A" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </ListBoxItem>
+
+                            <ListBoxItem Tag="narrative">
+                                <Border Background="#2D3A4A" BorderBrush="#3F4A5A" BorderThickness="1" CornerRadius="4" Padding="10,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="📖" FontSize="16" />
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="Narrative" FontWeight="SemiBold" FontSize="12" Foreground="#E4E4EB" />
+                                            <TextBlock Text="Custom or rules-light storytelling" FontSize="10" Foreground="#71717A" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </ListBoxItem>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- Narrative Focus / Tags -->
+                <Border Background="#2A2A35" BorderBrush="#3F3F50" BorderThickness="1" CornerRadius="6" Padding="14,12">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Narrative Focus" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                        <TextBlock Text="Tags to guide the LLM's story direction (comma-separated, e.g., 'political intrigue, dungeon crawl, mystery')" FontSize="10" Foreground="#71717A" />
+                        <TextBox Name="NarrativeFocusTextBox"
+                                 PlaceholderText="political intrigue, heist, urban adventure"
+                                 Background="#1F1F28" Foreground="#E4E4EB"
+                                 BorderBrush="#3F3F46" BorderThickness="1"
+                                 CornerRadius="3" Padding="8,6"
+                                 AcceptsReturn="True" Height="60" />
+                        <TextBlock Text="Popular tags: political intrigue, dungeon crawl, horror, mystery, heist, wilderness, diplomacy, combat-heavy"
+                                   FontSize="9" Foreground="#52525B" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+
+    <Window.Styles>
+        <Style Selector="ListBoxItem:selected">
+            <Setter Property="Background" Value="#1D3461" />
+        </Style>
+        <Style Selector="ListBoxItem:selected Border">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="#2563EB" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+    </Window.Styles>
+</Window>

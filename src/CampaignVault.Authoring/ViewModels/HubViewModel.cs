@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using CampaignVault.Authoring.Services;
 using CampaignVault.Authoring.Vault;
 using CampaignVault.Data;
@@ -147,17 +149,37 @@ public partial class HubViewModel : ViewModelBase
                 return;
             }
 
-            var folderName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-            var campaignName = CampaignSlug.Canonicalize(folderName);
-            await _mainViewModel.Session.CreateAsync(path, campaignName);
+            // Show campaign creation wizard
+            var dialog = new Views.CreateCampaignDialog();
+            var mainWindow = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            var result = await dialog.ShowDialog<bool?>(mainWindow as Window);
+            if (result != true)
+            {
+                StatusMessage = "Create cancelled: wizard closed.";
+                return;
+            }
+
+            // Use provided campaign name or derive from folder
+            var campaignName = string.IsNullOrWhiteSpace(dialog.CampaignName)
+                ? CampaignSlug.Canonicalize(Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)))
+                : dialog.CampaignName;
+
+            await _mainViewModel.Session.CreateAsync(
+                path,
+                campaignName,
+                dialog.Ruleset,
+                dialog.DisplayName,
+                dialog.NarrativeFocus);
+
             _historyService.Add(path);
             LoadRecentCampaigns();
 
             _mainViewModel.EnterEditorMode(path);
             _mainViewModel.RefreshAll();
-            StatusMessage = folderName != campaignName
-                ? $"Created vault '{campaignName}' (from folder '{folderName}'). Slug must match the server campaign for gRPC sync."
-                : $"Created vault '{campaignName}'.";
+            StatusMessage = $"Created campaign '{dialog.DisplayName ?? campaignName}' with {dialog.NarrativeFocus?.Count ?? 0} narrative focus tags.";
         }
         catch (Exception ex)
         {

@@ -50,10 +50,15 @@ public sealed class CampaignVaultSession : IDisposable
         }
     }
 
-    public async Task<VaultMetadata> CreateAsync(string vaultPath, string campaignName, string? ruleset = null)
+    public async Task<VaultMetadata> CreateAsync(
+        string vaultPath,
+        string campaignName,
+        string? ruleset = null,
+        string? displayName = null,
+        List<string>? narrativeFocus = null)
     {
         await CloseAsync();
-        var metadata = await _bootstrap.CreateAsync(vaultPath, campaignName, ruleset);
+        var metadata = await _bootstrap.CreateAsync(vaultPath, campaignName, ruleset, displayName, narrativeFocus);
         await OpenAsync(vaultPath);
         return metadata;
     }

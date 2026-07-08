@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,7 +13,12 @@ public sealed class VaultBootstrap
 {
     private readonly MetadataService _metadataService = new();
 
-    public async Task<VaultMetadata> CreateAsync(string vaultPath, string campaignName, string? ruleset = null)
+    public async Task<VaultMetadata> CreateAsync(
+        string vaultPath,
+        string campaignName,
+        string? ruleset = null,
+        string? displayName = null,
+        List<string>? narrativeFocus = null)
     {
         if (string.IsNullOrWhiteSpace(vaultPath))
             throw new ArgumentException("Vault path is required.", nameof(vaultPath));
@@ -31,7 +37,9 @@ public sealed class VaultBootstrap
             SchemaVersion = 1,
             CampaignName = campaignName,
             Ruleset = ruleset,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow,
+            DisplayName = displayName,
+            NarrativeFocus = narrativeFocus ?? new List<string>()
         };
 
         await _metadataService.SaveMetadataAsync(vaultPath, metadata);
