@@ -45,6 +45,8 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private string _grpcStatusColor = "Red";
 
+    [ObservableProperty] private string _campaignsRootPath = string.Empty;
+
     public ObservableCollection<string> LlmProviders { get; } = new() { "None", "Ollama", "OpenAI", "Gemini" };
 
     private Avalonia.Threading.DispatcherTimer? _autoConnectTimer;
@@ -65,6 +67,7 @@ public partial class SettingsViewModel : ObservableObject
         _grpcPortValue = _settings.GrpcPort;
         _grpcToken = _settings.GrpcToken;
         _vaultMcpPortValue = _settings.VaultMcpPort;
+        _campaignsRootPath = _settings.CampaignsRootPath ?? string.Empty;
 
         UpdateMcpStatus();
     }
@@ -192,6 +195,7 @@ public partial class SettingsViewModel : ObservableObject
         _settings.GrpcPort = ResolveGrpcPort();
         _settings.GrpcToken = GrpcToken;
         _settings.VaultMcpPort = VaultMcpPortValue is > 0 and <= 65535 ? (int)VaultMcpPortValue.Value : 5275;
+        _settings.CampaignsRootPath = string.IsNullOrWhiteSpace(CampaignsRootPath) ? null : CampaignsRootPath;
 
         _settingsService.SaveSettings(_settings);
 

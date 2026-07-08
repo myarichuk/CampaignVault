@@ -148,3 +148,14 @@ public class CampaignTooltipConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => Avalonia.AvaloniaProperty.UnsetValue;
 }
+
+public class NotEmptyConverter : IValueConverter
+{
+    public static readonly NotEmptyConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => !string.IsNullOrWhiteSpace(value?.ToString());
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Avalonia.AvaloniaProperty.UnsetValue;
+}

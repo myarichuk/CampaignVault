@@ -16,6 +16,8 @@ public partial class HubViewModel : ViewModelBase
     private readonly CampaignHistoryService _historyService = new();
     private readonly MainWindowViewModel _mainViewModel;
 
+    public MainWindowViewModel MainViewModel => _mainViewModel;
+
     [ObservableProperty] private ObservableCollection<CampaignListItem> _recentCampaigns = new();
 
     [ObservableProperty] private ObservableCollection<string> _remoteCampaigns = new();
@@ -64,10 +66,36 @@ public partial class HubViewModel : ViewModelBase
     public void LoadRecentCampaigns()
     {
         RecentCampaigns.Clear();
-        foreach (var path in _historyService.Load().RecentPaths)
+
+        var campaignsRootPath = _mainViewModel.Settings.CampaignsRootPath;
+
+        if (!string.IsNullOrWhiteSpace(campaignsRootPath) && Directory.Exists(campaignsRootPath))
         {
-            var exists = Directory.Exists(path);
-            RecentCampaigns.Add(new CampaignListItem { Path = path, Exists = exists });
+            try
+            {
+                var subdirs = Directory.GetDirectories(campaignsRootPath)
+                    .OrderByDescending(d => new DirectoryInfo(d).LastAccessTime);
+
+                foreach (var dir in subdirs)
+                {
+                    RecentCampaigns.Add(new CampaignListItem { Path = dir, Exists = true });
+                }
+
+                if (subdirs.Any())
+                    StatusMessage = $"Loaded {subdirs.Count()} campaign(s) from folder.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error scanning campaigns folder: {ex.Message}";
+            }
+        }
+        else
+        {
+            foreach (var path in _historyService.Load().RecentPaths)
+            {
+                var exists = Directory.Exists(path);
+                RecentCampaigns.Add(new CampaignListItem { Path = path, Exists = exists });
+            }
         }
     }
 
@@ -177,6 +205,46 @@ public partial class HubViewModel : ViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task SetCampaignsFolderAsync()
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        StatusMessage = "Selecting campaigns folder...";
+
+        try
+        {
+            var path = await _mainViewModel.PickFolderAsync();
+            if (string.IsNullOrEmpty(path))
+            {
+                StatusMessage = "Cancelled: no folder selected.";
+                return;
+            }
+
+            _mainViewModel.Settings.CampaignsRootPath = path;
+            _mainViewModel.Settings.SaveCommand.Execute(null);
+            LoadRecentCampaigns();
+            StatusMessage = $"Campaigns folder set to: {Path.GetFileName(path)}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error setting campaigns folder: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ClearCampaignsFolder()
+    {
+        _mainViewModel.Settings.CampaignsRootPath = string.Empty;
+        _mainViewModel.Settings.SaveCommand.Execute(null);
+        LoadRecentCampaigns();
+        StatusMessage = "Campaigns folder cleared. Using recent campaign history.";
     }
 }
 

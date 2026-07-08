@@ -16,4 +16,7 @@ public class CampaignAuthoringSettings
 
     // Reference only — CampaignVault MCP for live play sessions (not used for sync)
     public int VaultMcpPort { get; set; } = 5275;
+
+    // Optional: root folder containing all campaign subdirectories. If set, auto-discovers campaigns instead of using history.
+    public string? CampaignsRootPath { get; set; }
 }

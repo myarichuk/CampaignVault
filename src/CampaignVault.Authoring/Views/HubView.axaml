@@ -59,57 +59,83 @@
 
         <!-- Right: Actions -->
         <Border Grid.Row="1" Grid.Column="1" Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1,0,0,0" Padding="30">
-            <StackPanel Spacing="20">
-                <TextBlock Text="Actions" FontSize="16" FontWeight="Bold" Foreground="#E4E4EB" Margin="0,0,0,10" />
-                
-                <Button Command="{Binding Hub.CreateNewCampaignCommand}"
-                        Background="#10B981" Foreground="White" 
-                        HorizontalAlignment="Stretch" Padding="15,12" CornerRadius="6">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="16" Height="16" />
-                        <TextBlock Text="Create New Campaign" VerticalAlignment="Center" FontWeight="SemiBold" />
+            <ScrollViewer>
+                <StackPanel Spacing="20">
+                    <TextBlock Text="Actions" FontSize="16" FontWeight="Bold" Foreground="#E4E4EB" Margin="0,0,0,10" />
+
+                    <Button Command="{Binding Hub.CreateNewCampaignCommand}"
+                            Background="#10B981" Foreground="White"
+                            HorizontalAlignment="Stretch" Padding="15,12" CornerRadius="6">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="16" Height="16" />
+                            <TextBlock Text="Create New Campaign" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding OpenCampaignFolderCommand}"
+                            Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
+                            HorizontalAlignment="Stretch" Padding="15,12" CornerRadius="6">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z" Width="16" Height="16" />
+                            <TextBlock Text="Open Local Folder" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Separator Background="#2D2D3A" Margin="0,10" />
+
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Campaigns Folder" FontSize="12" FontWeight="Bold" Foreground="#71717A" />
+                        <TextBlock Text="Optional: Set a folder containing all campaign subdirectories for easier access." FontSize="10" Foreground="#52525B" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Hub.MainViewModel.Settings.CampaignsRootPath, StringFormat='Current: {0}'}"
+                                   FontSize="9" Foreground="#71717A" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding Hub.MainViewModel.Settings.CampaignsRootPath, Converter={x:Static vm:NotEmptyConverter.Instance}}" />
+                        <Button Command="{Binding Hub.SetCampaignsFolderCommand}"
+                                Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
+                                HorizontalAlignment="Stretch" Padding="12,10" CornerRadius="4" FontSize="11">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z" Width="14" Height="14" />
+                                <TextBlock Text="Set Campaigns Folder" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding Hub.ClearCampaignsFolderCommand}"
+                                Background="#2A1F1F" BorderBrush="#4A2F2F" BorderThickness="1"
+                                HorizontalAlignment="Stretch" Padding="12,8" CornerRadius="4" FontSize="10"
+                                IsVisible="{Binding Hub.MainViewModel.Settings.CampaignsRootPath, Converter={x:Static vm:NotEmptyConverter.Instance}}">
+                            <TextBlock Text="Use Recent History" VerticalAlignment="Center" />
+                        </Button>
                     </StackPanel>
-                </Button>
 
-                <Button Command="{Binding OpenCampaignFolderCommand}"
-                        Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
-                        HorizontalAlignment="Stretch" Padding="15,12" CornerRadius="6">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <PathIcon Data="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z" Width="16" Height="16" />
-                        <TextBlock Text="Open Local Folder" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
+                    <Separator Background="#2D2D3A" Margin="0,10" />
 
-                <Separator Background="#2D2D3A" Margin="0,10" />
+                    <TextBlock Text="Cloud Discovery" FontSize="14" FontWeight="Bold" Foreground="#71717A" />
 
-                <TextBlock Text="Cloud Discovery" FontSize="14" FontWeight="Bold" Foreground="#71717A" />
-                
-                <ListBox ItemsSource="{Binding Hub.RemoteCampaigns}" 
-                         Background="Transparent" BorderThickness="0" 
-                         MaxHeight="200"
-                         IsVisible="{Binding Hub.IsCloudConnected}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Button Classes="RecentItem" 
-                                    Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).Hub.DownloadRemoteCampaignCommand}" 
-                                    CommandParameter="{Binding}">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <PathIcon Data="M6,2Q4.34,2 3.17,3.17Q2,4.34 2,6V18Q2,19.66 3.17,20.83Q4.34,22 6,22H18Q19.66,22 20.83,20.83Q22,19.66 22,18V6Q22,4.34 20.83,3.17Q19.66,2 18,2H6M6,4H18Q18.83,4 19.41,4.59Q20,5.17 20,6V18Q20,18.83 19.41,19.41Q18.83,20 18,20H6Q5.17,20 4.59,19.41Q4,18.83 4,18V6Q4,5.17 4.59,4.59Q5.17,4 6,4M12,9L7,14H10V17H14V14H17L12,9Z" Width="12" Height="12" Foreground="#3B82F6" />
-                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#E4E4EB" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                    <ListBox ItemsSource="{Binding Hub.RemoteCampaigns}"
+                             Background="Transparent" BorderThickness="0"
+                             MaxHeight="200"
+                             IsVisible="{Binding Hub.IsCloudConnected}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Button Classes="RecentItem"
+                                        Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).Hub.DownloadRemoteCampaignCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="M6,2Q4.34,2 3.17,3.17Q2,4.34 2,6V18Q2,19.66 3.17,20.83Q4.34,22 6,22H18Q19.66,22 20.83,20.83Q22,19.66 22,18V6Q22,4.34 20.83,3.17Q19.66,2 18,2H6M6,4H18Q18.83,4 19.41,4.59Q20,5.17 20,6V18Q20,18.83 19.41,19.41Q18.83,20 18,20H6Q5.17,20 4.59,19.41Q4,18.83 4,18V6Q4,5.17 4.59,4.59Q5.17,4 6,4M12,9L7,14H10V17H14V14H17L12,9Z" Width="12" Height="12" Foreground="#3B82F6" />
+                                        <TextBlock Text="{Binding}" FontSize="11" Foreground="#E4E4EB" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
 
-                <TextBlock Text="Connect to a Vault to browse remote campaigns." 
-                           FontSize="11" Foreground="#52525B" TextWrapping="Wrap"
-                           IsVisible="{Binding !Hub.IsCloudConnected}" />
-                
-                <Button Content="Connect to Vault" 
-                        Command="{Binding Hub.RefreshCloudCommand}"
-                        HorizontalAlignment="Stretch" Padding="10,8" FontSize="11" />
-            </StackPanel>
+                    <TextBlock Text="Connect to a Vault to browse remote campaigns."
+                               FontSize="11" Foreground="#52525B" TextWrapping="Wrap"
+                               IsVisible="{Binding !Hub.IsCloudConnected}" />
+
+                    <Button Content="Connect to Vault"
+                            Command="{Binding Hub.RefreshCloudCommand}"
+                            HorizontalAlignment="Stretch" Padding="10,8" FontSize="11" />
+                </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
 
