@@ -159,3 +159,20 @@ public class NotEmptyConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => Avalonia.AvaloniaProperty.UnsetValue;
 }
+
+public class GreaterThanZeroConverter : IValueConverter
+{
+    public static readonly GreaterThanZeroConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is int intValue)
+            return intValue > 0;
+        if (value is System.Collections.ICollection collection)
+            return collection.Count > 0;
+        return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Avalonia.AvaloniaProperty.UnsetValue;
+}

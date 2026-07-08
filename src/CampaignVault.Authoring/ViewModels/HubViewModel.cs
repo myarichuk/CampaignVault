@@ -80,7 +80,8 @@ public partial class HubViewModel : ViewModelBase
 
                 foreach (var dir in subdirs)
                 {
-                    RecentCampaigns.Add(new CampaignListItem { Path = dir, Exists = true });
+                    var item = LoadCampaignMetadata(dir);
+                    RecentCampaigns.Add(item);
                 }
 
                 if (subdirs.Any())
@@ -95,10 +96,36 @@ public partial class HubViewModel : ViewModelBase
         {
             foreach (var path in _historyService.Load().RecentPaths)
             {
-                var exists = Directory.Exists(path);
-                RecentCampaigns.Add(new CampaignListItem { Path = path, Exists = exists });
+                var item = LoadCampaignMetadata(path);
+                RecentCampaigns.Add(item);
             }
         }
+    }
+
+    private CampaignListItem LoadCampaignMetadata(string path)
+    {
+        var item = new CampaignListItem { Path = path, Exists = Directory.Exists(path) };
+
+        if (!item.Exists)
+            return item;
+
+        try
+        {
+            var metadataService = new CampaignVault.Authoring.Services.MetadataService();
+            var metadata = metadataService.LoadMetadataAsync(path).GetAwaiter().GetResult();
+            if (metadata != null)
+            {
+                item.DisplayName = metadata.DisplayName ?? metadata.CampaignName;
+                item.Ruleset = metadata.Ruleset;
+                item.NarrativeFocus = metadata.NarrativeFocus ?? [];
+            }
+        }
+        catch
+        {
+            // If metadata can't be loaded, just use defaults
+        }
+
+        return item;
     }
 
     [RelayCommand]
@@ -274,4 +301,7 @@ public class CampaignListItem
 {
     public string Path { get; set; } = string.Empty;
     public bool Exists { get; set; }
+    public string? DisplayName { get; set; }
+    public string? Ruleset { get; set; }
+    public List<string> NarrativeFocus { get; set; } = [];
 }

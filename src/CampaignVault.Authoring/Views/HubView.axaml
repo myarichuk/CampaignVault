@@ -26,23 +26,56 @@
                         <ItemsControl ItemsSource="{Binding Hub.RecentCampaigns}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,4" Opacity="{Binding Exists, Converter={x:Static vm:MissingCampaignOpacityConverter.Instance}}">
+                                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,8" Opacity="{Binding Exists, Converter={x:Static vm:MissingCampaignOpacityConverter.Instance}}">
                                         <Button Grid.Column="0"
                                                 Classes="RecentItem"
                                                 Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).Hub.OpenCampaignCommand}"
                                                 CommandParameter="{Binding}"
                                                 IsEnabled="{Binding Exists}"
                                                 ToolTip.Tip="{Binding Exists, Converter={x:Static vm:CampaignTooltipConverter.Instance}}">
-                                            <StackPanel Spacing="2">
-                                                <TextBlock Text="{Binding Path, Converter={x:Static vm:PathDisplayConverter.Instance}}" FontSize="12" FontWeight="SemiBold" Foreground="#E4E4EB" />
-                                                <TextBlock Text="{Binding Path}" FontSize="10" Foreground="#71717A" MaxLines="1" TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
+                                            <Border Padding="10,8" CornerRadius="4">
+                                                <StackPanel Spacing="6">
+                                                    <!-- Campaign name + ruleset -->
+                                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{Binding DisplayName}"
+                                                                   FontSize="12" FontWeight="SemiBold" Foreground="#E4E4EB"
+                                                                   VerticalAlignment="Center" />
+                                                        <Border Grid.Column="1" Background="#2D2D3A" Padding="6,2" CornerRadius="2"
+                                                                VerticalAlignment="Center"
+                                                                IsVisible="{Binding Ruleset, Converter={x:Static vm:NotEmptyConverter.Instance}}">
+                                                            <TextBlock Text="{Binding Ruleset}" FontSize="9" Foreground="#999" />
+                                                        </Border>
+                                                    </Grid>
+
+                                                    <!-- Narrative focus tags -->
+                                                    <ItemsControl ItemsSource="{Binding NarrativeFocus}"
+                                                                   IsVisible="{Binding NarrativeFocus.Count, Converter={x:Static vm:GreaterThanZeroConverter.Instance}}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <WrapPanel />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Background="#2D3A4A" BorderBrush="#3F4A5A" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
+                                                                    <TextBlock Text="{Binding}" FontSize="9" Foreground="#A0A0AB" />
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+
+                                                    <!-- Path (subdued) -->
+                                                    <TextBlock Text="{Binding Path}" FontSize="9" Foreground="#52525B" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                            </Border>
                                         </Button>
                                         <Button Grid.Column="1"
                                                 Classes="RemoveRecentItem"
                                                 ToolTip.Tip="Remove from recent"
                                                 Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).Hub.RemoveFromRecentCommand}"
-                                                CommandParameter="{Binding}">
+                                                CommandParameter="{Binding}"
+                                                VerticalAlignment="Top">
                                             <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
                                                       Width="12" Height="12" Foreground="#71717A" />
                                         </Button>
