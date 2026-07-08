@@ -33,7 +33,6 @@ public partial class HubViewModel : ViewModelBase
     public HubViewModel(MainWindowViewModel mainViewModel)
     {
         _mainViewModel = mainViewModel;
-        LoadRecentCampaigns();
     }
 
     [RelayCommand]
@@ -62,6 +61,43 @@ public partial class HubViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    public async Task LoadRecentCampaignsAsync()
+    {
+        RecentCampaigns.Clear();
+
+        var campaignsRootPath = _mainViewModel.Settings.CampaignsRootPath;
+
+        if (!string.IsNullOrWhiteSpace(campaignsRootPath) && Directory.Exists(campaignsRootPath))
+        {
+            try
+            {
+                var subdirs = Directory.GetDirectories(campaignsRootPath)
+                    .OrderByDescending(d => new DirectoryInfo(d).LastAccessTime);
+
+                foreach (var dir in subdirs)
+                {
+                    var item = await LoadCampaignMetadataAsync(dir);
+                    RecentCampaigns.Add(item);
+                }
+
+                if (subdirs.Any())
+                    StatusMessage = $"Loaded {subdirs.Count()} campaign(s) from folder.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error scanning campaigns folder: {ex.Message}";
+            }
+        }
+        else
+        {
+            foreach (var path in _historyService.Load().RecentPaths)
+            {
+                var item = await LoadCampaignMetadataAsync(path);
+                RecentCampaigns.Add(item);
+            }
         }
     }
 
@@ -100,6 +136,32 @@ public partial class HubViewModel : ViewModelBase
                 RecentCampaigns.Add(item);
             }
         }
+    }
+
+    private async Task<CampaignListItem> LoadCampaignMetadataAsync(string path)
+    {
+        var item = new CampaignListItem { Path = path, Exists = Directory.Exists(path) };
+
+        if (!item.Exists)
+            return item;
+
+        try
+        {
+            var metadataService = new CampaignVault.Authoring.Services.MetadataService();
+            var metadata = await metadataService.LoadMetadataAsync(path);
+            if (metadata != null)
+            {
+                item.DisplayName = metadata.DisplayName ?? metadata.CampaignName;
+                item.Ruleset = metadata.Ruleset;
+                item.NarrativeFocus = metadata.NarrativeFocus ?? [];
+            }
+        }
+        catch
+        {
+            // If metadata can't be loaded, just use defaults
+        }
+
+        return item;
     }
 
     private CampaignListItem LoadCampaignMetadata(string path)
