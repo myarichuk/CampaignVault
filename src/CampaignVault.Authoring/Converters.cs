@@ -126,3 +126,25 @@ public class EnumToBoolConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => Avalonia.AvaloniaProperty.UnsetValue;
 }
+
+public class MissingCampaignOpacityConverter : IValueConverter
+{
+    public static readonly MissingCampaignOpacityConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is true ? 1.0 : 0.5;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Avalonia.AvaloniaProperty.UnsetValue;
+}
+
+public class CampaignTooltipConverter : IValueConverter
+{
+    public static readonly CampaignTooltipConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is false ? "Campaign folder not found" : string.Empty;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Avalonia.AvaloniaProperty.UnsetValue;
+}

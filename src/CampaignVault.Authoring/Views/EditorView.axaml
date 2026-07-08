@@ -89,7 +89,7 @@
                                             <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="Name" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" VerticalAlignment="Center" />
-                                                    <TextBox Text="{Binding FormName, Mode=TwoWay}" FontSize="11" Padding="4,2" MinWidth="100" Background="#1A1A1E" BorderThickness="0" />
+                                                    <TextBox Text="{Binding FormName, Mode=TwoWay}" FontSize="11" Padding="4,2" MinWidth="80" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
                                                 </StackPanel>
                                             </Border>
                                         </WrapPanel>
@@ -98,23 +98,23 @@
                                         <StackPanel Spacing="8" IsVisible="{Binding IsCharacter}">
                                             <WrapPanel Orientation="Horizontal">
                                                 <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
                                                         <TextBlock Text="HP" FontWeight="Bold" Foreground="#F43F5E" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormCurrentHp, Mode=TwoWay}" Minimum="0" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="4,2" FontSize="11" MinWidth="40" Background="#1A1A1E" BorderThickness="0" />
+                                                        <NumericUpDown Value="{Binding FormCurrentHp, Mode=TwoWay}" Minimum="0" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="32" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
                                                         <TextBlock Text="/" Foreground="#71717A" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormMaxHp, Mode=TwoWay}" Minimum="1" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="4,2" FontSize="11" MinWidth="40" Background="#1A1A1E" BorderThickness="0" />
+                                                        <NumericUpDown Value="{Binding FormMaxHp, Mode=TwoWay}" Minimum="1" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="32" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
                                                     </StackPanel>
                                                 </Border>
                                                 <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
                                                         <TextBlock Text="Will" FontWeight="Bold" Foreground="#10B981" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormWillpower, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="4,2" FontSize="11" MinWidth="40" Background="#1A1A1E" BorderThickness="0" />
+                                                        <NumericUpDown Value="{Binding FormWillpower, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="28" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
                                                     </StackPanel>
                                                 </Border>
                                                 <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
                                                         <TextBlock Text="Stress" FontWeight="Bold" Foreground="#F59E0B" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormStress, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="4,2" FontSize="11" MinWidth="40" Background="#1A1A1E" BorderThickness="0" />
+                                                        <NumericUpDown Value="{Binding FormStress, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="28" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
                                                     </StackPanel>
                                                 </Border>
                                             </WrapPanel>
@@ -143,7 +143,7 @@
                             <TextBlock Text="{Binding PrimaryYamlError}"
                                        TextWrapping="Wrap" TextAlignment="Center" FontSize="12" Foreground="#A0A0AB" MaxWidth="320" HorizontalAlignment="Center" />
                             <Expander Header="View Error Details" HorizontalAlignment="Stretch" Margin="0,10,0,0">
-                                <TextBox Text="{Binding ParseErrorMessage}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="250" FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderThickness="0" />
+                                <TextBox Text="{Binding ParseErrorMessage}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="250" FontFamily="Consolas" FontSize="11" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" />
                             </Expander>
                         </StackPanel>
                     </Panel>

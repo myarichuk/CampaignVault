@@ -16,7 +16,7 @@ public partial class HubViewModel : ViewModelBase
     private readonly CampaignHistoryService _historyService = new();
     private readonly MainWindowViewModel _mainViewModel;
 
-    [ObservableProperty] private ObservableCollection<string> _recentCampaigns = new();
+    [ObservableProperty] private ObservableCollection<CampaignListItem> _recentCampaigns = new();
 
     [ObservableProperty] private ObservableCollection<string> _remoteCampaigns = new();
 
@@ -65,25 +65,28 @@ public partial class HubViewModel : ViewModelBase
     {
         RecentCampaigns.Clear();
         foreach (var path in _historyService.Load().RecentPaths)
-            RecentCampaigns.Add(path);
+        {
+            var exists = Directory.Exists(path);
+            RecentCampaigns.Add(new CampaignListItem { Path = path, Exists = exists });
+        }
     }
 
     [RelayCommand]
-    private async Task OpenCampaign(string path)
+    private async Task OpenCampaign(CampaignListItem item)
     {
         if (IsBusy) return;
         IsBusy = true;
         try
         {
-            if (Directory.Exists(path))
+            if (Directory.Exists(item.Path))
             {
-                _historyService.Add(path);
-                await _mainViewModel.LoadCampaignAsync(path);
+                _historyService.Add(item.Path);
+                await _mainViewModel.LoadCampaignAsync(item.Path);
             }
             else
             {
-                StatusMessage = $"Directory not found: {path}";
-                _historyService.Remove(path);
+                StatusMessage = $"Directory not found: {item.Path}";
+                _historyService.Remove(item.Path);
                 LoadRecentCampaigns();
             }
         }
@@ -94,9 +97,9 @@ public partial class HubViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void RemoveFromRecent(string path)
+    private void RemoveFromRecent(CampaignListItem item)
     {
-        _historyService.Remove(path);
+        _historyService.Remove(item.Path);
         LoadRecentCampaigns();
         StatusMessage = "Removed from recent vaults.";
     }
@@ -175,4 +178,10 @@ public partial class HubViewModel : ViewModelBase
             IsBusy = false;
         }
     }
+}
+
+public class CampaignListItem
+{
+    public string Path { get; set; } = string.Empty;
+    public bool Exists { get; set; }
 }

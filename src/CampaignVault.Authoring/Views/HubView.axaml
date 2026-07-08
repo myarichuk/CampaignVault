@@ -26,14 +26,16 @@
                         <ItemsControl ItemsSource="{Binding Hub.RecentCampaigns}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,4">
+                                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,4" Opacity="{Binding Exists, Converter={x:Static vm:MissingCampaignOpacityConverter.Instance}}">
                                         <Button Grid.Column="0"
                                                 Classes="RecentItem"
                                                 Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).Hub.OpenCampaignCommand}"
-                                                CommandParameter="{Binding}">
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding Exists}"
+                                                ToolTip.Tip="{Binding Exists, Converter={x:Static vm:CampaignTooltipConverter.Instance}}">
                                             <StackPanel Spacing="2">
-                                                <TextBlock Text="{Binding Converter={x:Static vm:PathDisplayConverter.Instance}}" FontSize="12" FontWeight="SemiBold" Foreground="#E4E4EB" />
-                                                <TextBlock Text="{Binding}" FontSize="10" Foreground="#71717A" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Path, Converter={x:Static vm:PathDisplayConverter.Instance}}" FontSize="12" FontWeight="SemiBold" Foreground="#E4E4EB" />
+                                                <TextBlock Text="{Binding Path}" FontSize="10" Foreground="#71717A" MaxLines="1" TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                         </Button>
                                         <Button Grid.Column="1"
