@@ -14,6 +14,9 @@ service CampaignSync {
 
     // Sync Push: Remove an entity from a specific campaign
     rpc DeleteCampaignEntity (DeleteCampaignEntityRequest) returns (PushResponse);
+
+    // Sync Metadata: Update campaign display name and narrative focus tags
+    rpc UpdateCampaignMetadata (UpdateCampaignMetadataRequest) returns (PushResponse);
 }
 
 message EmptyRequest {}
@@ -52,6 +55,12 @@ message DeleteCampaignEntityRequest {
     string campaignName = 1;
     string id = 2;
     string type = 3;
+}
+
+message UpdateCampaignMetadataRequest {
+    string campaignName = 1;
+    string displayName = 2;
+    repeated string narrativeFocus = 3;
 }
 
 message PushResponse {

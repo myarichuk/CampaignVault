@@ -212,6 +212,12 @@ public sealed class CampaignVaultSession : IDisposable
                 File.Delete(absolute);
         });
 
+    public async Task SyncCampaignMetadataAsync()
+    {
+        EnsureOpen();
+        await _syncEngine.SyncCampaignMetadataAsync();
+    }
+
     public Task CloseAsync()
     {
         _syncEngine.Unbind();

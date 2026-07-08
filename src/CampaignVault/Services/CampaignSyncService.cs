@@ -277,5 +277,38 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             return new PushResponse { Success = false, Message = ex.Message };
         }
     }
+
+    public override async Task<PushResponse> UpdateCampaignMetadata(UpdateCampaignMetadataRequest request, ServerCallContext context)
+    {
+        try
+        {
+            using var session = documentStore.OpenAsyncSession();
+
+            var campaign = await session.Query<Campaign>()
+                .FirstOrDefaultAsync(c => c.Name == request.CampaignName);
+
+            if (campaign == null)
+                return new PushResponse { Success = false, Message = $"Campaign '{request.CampaignName}' not found." };
+
+            campaign.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null : request.DisplayName;
+            campaign.NarrativeFocus = request.NarrativeFocus?.ToList() ?? [];
+
+            await session.SaveChangesAsync();
+
+            return new PushResponse
+            {
+                Success = true,
+                Message = $"Campaign '{request.CampaignName}' metadata updated successfully."
+            };
+        }
+        catch (Exception ex)
+        {
+            return new PushResponse
+            {
+                Success = false,
+                Message = $"Failed to update campaign metadata: {ex.Message}"
+            };
+        }
+    }
 }
 

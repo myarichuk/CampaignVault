@@ -155,6 +155,18 @@ public partial class SyncViewModel : ObservableObject
         {
             ConfigureSessionSync();
             await _session.FetchAsync();
+
+            // Sync campaign metadata (display name, narrative focus) to server
+            try
+            {
+                await _session.SyncCampaignMetadataAsync();
+            }
+            catch (VaultException metaEx)
+            {
+                // Non-critical: log but don't fail the entire fetch
+                System.Diagnostics.Debug.WriteLine($"Metadata sync warning: {metaEx.Message}");
+            }
+
             await RefreshPlansAsync();
             LastSyncTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             SetConnectionBanner(false);

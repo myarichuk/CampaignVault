@@ -26,6 +26,8 @@ public sealed class VaultSyncEngine
     public VaultConnectionStatus Connection { get; private set; } =
         new(VaultConnectionState.Unknown);
 
+    private VaultMetadata? _metadata;
+
     public void Bind(
         string vaultPath,
         VaultGitRepository git,
@@ -35,6 +37,7 @@ public sealed class VaultSyncEngine
     {
         _vaultPath = vaultPath;
         _git = git;
+        _metadata = metadata;
         _campaignName = metadata.CampaignName;
         _clientFactory = clientFactory;
         _settings = settings;
@@ -98,6 +101,36 @@ public sealed class VaultSyncEngine
                 $"Fetch failed: {ex.Message}",
                 DateTimeOffset.UtcNow);
             throw new VaultException(Connection.Message!, ex);
+        }
+    }
+
+    public async Task SyncCampaignMetadataAsync()
+    {
+        EnsureBound();
+        EnsureClientConfigured();
+
+        if (_metadata == null || string.IsNullOrWhiteSpace(_campaignName))
+            return;
+
+        try
+        {
+            var client = _clientFactory!();
+            var request = new UpdateCampaignMetadataRequest
+            {
+                CampaignName = _campaignName,
+                DisplayName = _metadata.DisplayName ?? string.Empty,
+            };
+            request.NarrativeFocus.AddRange(_metadata.NarrativeFocus ?? []);
+
+            var response = await client.UpdateCampaignMetadataAsync(request);
+            if (!response.Success)
+            {
+                throw new VaultException($"Failed to sync campaign metadata: {response.Message}");
+            }
+        }
+        catch (Exception ex) when (ex is not VaultException)
+        {
+            throw new VaultException($"Campaign metadata sync failed: {ex.Message}", ex);
         }
     }
 
