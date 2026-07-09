@@ -34,7 +34,10 @@ public sealed class NeedActivityConflictProvider : INpcInitiativeSignalProvider
 
     private static string GetFraming(string need, string activity, string adjective)
     {
-        return need.ToLower() switch
+        var normalizedNeed = need.ToLower();
+        var primaryNeed = ResolveSimilarNeed(normalizedNeed);
+
+        return primaryNeed switch
         {
             "tiredness" => $"Exhausted but still {activity} — may slip, snap, or ask for help.",
             "hunger" => $"Ravenous while {activity} — distracted, irritable, or fixated on food.",
@@ -48,9 +51,25 @@ public sealed class NeedActivityConflictProvider : INpcInitiativeSignalProvider
         };
     }
 
+    private static string ResolveSimilarNeed(string need)
+    {
+        return need switch
+        {
+            "rage" or "wrath" or "fury" => "bloodlust",
+            "shame" or "remorse" or "regret" => "guilt",
+            "restlessness" or "aimlessness" or "wandering" => "wanderlust",
+            "paranoid" => "paranoia",
+            "obsessed" => "obsession",
+            _ => need
+        };
+    }
+
     private static string DeriveAdjective(string need)
     {
-        return need.ToLower() switch
+        var normalizedNeed = need.ToLower();
+        var primaryNeed = ResolveSimilarNeed(normalizedNeed);
+
+        return primaryNeed switch
         {
             "paranoia" => "Paranoid",
             "wanderlust" => "Restless",
@@ -58,11 +77,11 @@ public sealed class NeedActivityConflictProvider : INpcInitiativeSignalProvider
             "hunger" => "Ravenous",
             "thirst" => "Parched",
             "tiredness" => "Exhausted",
-            "greed" => "Greedy",
-            "guilt" => "Guilt-ridden",
-            "rage" => "Furious",
+            "bloodlust" => "Bloodthirsty",
             "despair" => "Despairing",
-            _ => TryApplySuffixRules(need)
+            "guilt" => "Guilt-ridden",
+            "greed" => "Greedy",
+            _ => TryApplySuffixRules(primaryNeed)
         };
     }
 

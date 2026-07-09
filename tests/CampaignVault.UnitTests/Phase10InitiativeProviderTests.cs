@@ -217,6 +217,34 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Restless", candidates[0].FramingPrompt, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("rage", "Bloodthirsty", "fixated on combat")]
+    [InlineData("wrath", "Bloodthirsty", "fixated on combat")]
+    [InlineData("shame", "Guilt-ridden", "wracked with remorse")]
+    [InlineData("restlessness", "Restless", "Restless")]
+    public void NeedProvider_SynonymNeeds_ReuseSimilarFraming(string synonym, string expectedAdjective, string expectedPhrase)
+    {
+        var provider = new NeedActivityConflictProvider();
+        var npc = new Character
+        {
+            Id = "chars/npc-synonym",
+            Name = "Test NPC",
+            CurrentActivity = "working",
+            Needs = new NeedsProfile
+            {
+                ActiveNeeds = new Dictionary<string, float> { [synonym] = 75f },
+                ActivityConflictActive = true,
+                ActivityConflictNeed = synonym
+            }
+        };
+
+        var candidates = provider.GetCandidates(BuildCtx(npc));
+
+        Assert.Single(candidates);
+        Assert.Contains(expectedAdjective, candidates[0].FramingPrompt, StringComparison.Ordinal);
+        Assert.Contains(expectedPhrase, candidates[0].FramingPrompt, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void DispositionProvider_FearMatch_EmitsDispositionDriver()
     {
