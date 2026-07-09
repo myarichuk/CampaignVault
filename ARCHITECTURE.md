@@ -132,7 +132,7 @@ Simulation context loading (`SimulationQueryHelper`) is campaign-scoped: charact
 | Rule | Responsibility |
 |------|----------------|
 | `ScheduleEvaluationRule` | NPC schedule → activity/location updates |
-| `NeedsAccumulationRule` | Hunger, thirst, tiredness, mood drift |
+| `NeedsAccumulationRule` | Hunger, thirst, tiredness (core); open-ended custom needs (paranoia, obsession, wanderlust, bloodlust, guilt, despair, etc.) |
 | `RumorDecayRule` | Rumor lifecycle progression |
 | `StatusExpiryRule` | Day-based status effect expiry |
 | `MemorySalienceDecayRule` | NPC memory salience decay + urgency bumps |

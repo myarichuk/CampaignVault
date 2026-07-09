@@ -346,14 +346,14 @@ public class SpatialPositionChange : WorldChange
     public string? Zone { get; set; }
 }
 
-/// <summary>Adjust one of a character's open-ended psychological or physical needs (hunger, thirst, tiredness, wanderlust, duty, etc.).</summary>
+/// <summary>Adjust one of a character's open-ended psychological or physical needs (hunger, thirst, tiredness; paranoia, obsession, wanderlust, bloodlust, guilt, despair, or other custom needs).</summary>
 public class NeedChange : WorldChange
 {
     [Description("ID of the character whose need is changing (e.g. 'characters/grog').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Name of the need being adjusted. The system is intentionally open: use 'hunger', 'thirst', 'tiredness', 'social_drive', or invent narrative-appropriate ones like 'wanderlust', 'homesickness', 'vengeance', 'duty'.")]
+    [Description("Name of the need being adjusted. The system is intentionally open: core needs ('hunger', 'thirst', 'tiredness') + custom ones ('paranoia', 'obsession', 'wanderlust', 'bloodlust', 'guilt', 'despair', 'homesickness', 'vengeance', 'duty', etc.) all get evocative activity-conflict framings.")]
     [JsonPropertyName("need")]
     public string Need { get; set; } = default!;
 

@@ -166,6 +166,57 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Exhausted", candidates[0].FramingPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("bloodlust", "Bloodthirsty")]
+    [InlineData("paranoia", "Paranoid")]
+    [InlineData("obsession", "Consumed")]
+    [InlineData("despair", "Despairing")]
+    [InlineData("guilt", "Guilt-ridden")]
+    public void NeedProvider_CustomNeeds_HaveEvocativeFramings(string need, string expectedAdjective)
+    {
+        var provider = new NeedActivityConflictProvider();
+        var npc = new Character
+        {
+            Id = $"chars/npc-{need}",
+            Name = "Test NPC",
+            CurrentActivity = "some task",
+            Needs = new NeedsProfile
+            {
+                ActiveNeeds = new Dictionary<string, float> { [need] = 75f },
+                ActivityConflictActive = true,
+                ActivityConflictNeed = need
+            }
+        };
+
+        var candidates = provider.GetCandidates(BuildCtx(npc));
+
+        Assert.Single(candidates);
+        Assert.Contains(expectedAdjective, candidates[0].FramingPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NeedProvider_UnknownNeed_UsesGenericFallback()
+    {
+        var provider = new NeedActivityConflictProvider();
+        var npc = new Character
+        {
+            Id = "chars/npc-custom",
+            Name = "Test NPC",
+            CurrentActivity = "working",
+            Needs = new NeedsProfile
+            {
+                ActiveNeeds = new Dictionary<string, float> { ["wanderlust"] = 70f },
+                ActivityConflictActive = true,
+                ActivityConflictNeed = "wanderlust"
+            }
+        };
+
+        var candidates = provider.GetCandidates(BuildCtx(npc));
+
+        Assert.Single(candidates);
+        Assert.Contains("Restless", candidates[0].FramingPrompt, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void DispositionProvider_FearMatch_EmitsDispositionDriver()
     {
