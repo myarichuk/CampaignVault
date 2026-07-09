@@ -353,7 +353,7 @@ public class NeedChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Name of the need being adjusted. The system is intentionally open: core needs ('hunger', 'thirst', 'tiredness') + custom ones ('paranoia', 'obsession', 'wanderlust', 'bloodlust', 'guilt', 'despair', 'homesickness', 'vengeance', 'duty', etc.) all get evocative activity-conflict framings.")]
+    [Description("Name of the need being adjusted. UNRESTRICTED — invent any narrative-appropriate need. System provides evocative framings for core needs ('hunger', 'thirst', 'tiredness') + curated custom ones ('paranoia', 'obsession', 'wanderlust', 'bloodlust', 'guilt', 'despair'); unknown needs auto-derive adjectives morphologically (e.g., 'homesickness' → 'homesick', 'vengeance' → 'vengeful').")]
     [JsonPropertyName("need")]
     public string Need { get; set; } = default!;
 
