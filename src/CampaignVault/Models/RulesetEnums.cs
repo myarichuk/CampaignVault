@@ -45,10 +45,7 @@ public enum RulesetActionType
     Recovery,
 
     /// <summary>Target rolls to resist an effect (D&D/PF2e Saving Throw).</summary>
-    SavingThrow,
-
-    /// <summary>Meta-action: rolling initiative, ending a turn, spending Action Points, etc.</summary>
-    Meta
+    SavingThrow
 }
 
 /// <summary>

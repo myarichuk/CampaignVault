@@ -96,8 +96,7 @@ public class LocationCreateHandler : IWorldChangeHandler
                 foreach (var exit in lc.Exits)
                 {
                     var existingExit = newLoc.Exits.FirstOrDefault(e =>
-                        e.TargetLocationId == exit.TargetLocationId &&
-                        e.Direction == exit.Direction);
+                        e.TargetLocationId == exit.TargetLocationId);
                     if (existingExit != null)
                     {
                         newLoc.Exits.Remove(existingExit);

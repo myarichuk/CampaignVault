@@ -193,10 +193,16 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         var damageType = action.DamageType ?? "Physical";
+
+        var drKey = targetStats.DamageResistances.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
+        var flatDr = drKey != null && targetStats.DamageResistances.TryGetValue(drKey, out var dr) ? dr : 0;
+
         if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
         {
             finalDamage = (int)Math.Floor(finalDamage * multiplier);
         }
+
+        finalDamage = Math.Max(0, finalDamage - flatDr);
 
         mutations.Add(new HpChange
         {
@@ -519,8 +525,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = dexMod, Mechanic = DiceMechanic.Standard };
         var outcome = await _rollService.RollAsync(request, ct);
         
-        // Use result + bonus as secondary tie-breaker (e.g. 15 roll + 2 mod = 15.02)
-        // Helps D&D's "dexterity breaks ties" rule slightly without complex structures.
-        return outcome.Result + (dexMod * 0.01f);
+        // Use result + bonus as secondary tie-breaker (e.g. 15 roll + 2 mod = 15.1)
+        // Widens dex-mod scaling to meaningfully break ties without fully dominating roll order
+        return outcome.Result + (dexMod / 20f);
     }
 }

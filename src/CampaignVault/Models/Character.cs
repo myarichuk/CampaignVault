@@ -280,6 +280,12 @@ public class SystemExtension
     public Dictionary<string, float> DamageModifiers { get; set; } = [];
 
     /// <summary>
+    /// Flat damage resistance/reduction per type (e.g., "Fire" -> 5 reduces Fire damage by 5).
+    /// Applied after DamageModifiers. Used by D&D 5e/PF2e flat DR and PF2e weakness/resistance-N.
+    /// </summary>
+    public Dictionary<string, int> DamageResistances { get; set; } = [];
+
+    /// <summary>
     /// Structured status effects replacing the old flat <c>Character.Status: List&lt;string&gt;</c>.
     /// Each effect carries stat modifiers, expiration metadata, and a recovery hint authored by the LLM DM.
     /// See <see cref="StatusEffect"/> for the full design and tool-schema documentation.

@@ -65,6 +65,17 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
 
+        if (apGenerated > 0)
+        {
+            mutations.Add(new ResourceChange
+            {
+                CharacterId = action.CharacterId,
+                PoolName = "action_points",
+                Delta = apGenerated,
+                Reason = $"Surplus from {action.ActionName} ({attribute}+{skill})"
+            });
+        }
+
         return ResolverResult.Ok(
             $"{action.ActionName} ({attribute}+{skill} TN {request.TargetNumber}){relationshipSuffix}: {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
     }
@@ -275,6 +286,17 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var success = outcome.Successes >= difficulty;
         var apGenerated = Math.Max(0, outcome.Successes - difficulty);
         var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
+
+        if (apGenerated > 0)
+        {
+            mutations.Add(new ResourceChange
+            {
+                CharacterId = action.CharacterId,
+                PoolName = "action_points",
+                Delta = apGenerated,
+                Reason = $"Surplus from {action.ActionName}"
+            });
+        }
 
         var damage = 0;
         if (!success && action.Parameters.TryGetValue("damageDice", out var damageDiceStr) && int.TryParse(damageDiceStr, out var diceCount))

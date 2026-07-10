@@ -1,10 +1,10 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 # https://creativecommons.org/licenses/by/4.0/legalcode
-# Warlock uses Pact Magic (short-rest slots) tracked separately via warlock_invocations pool.
+# Warlock uses Pact Magic (short-rest slots) tracked separately via pact_magic pool.
 name: warlock
 system: dnd5e
 hitDie: d8
 casterType: Warlock
 savingThrows: [Wisdom, Charisma]
-pools: [warlock_invocations]
+pools: [pact_magic, warlock_invocations]
 aliases: [warlock]

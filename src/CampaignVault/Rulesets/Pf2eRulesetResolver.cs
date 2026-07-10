@@ -216,10 +216,16 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         var damageType = action.DamageType ?? "Physical";
+
+        var drKey = targetStats.DamageResistances.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
+        var flatDr = drKey != null && targetStats.DamageResistances.TryGetValue(drKey, out var dr) ? dr : 0;
+
         if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
         {
             finalDamage = (int)Math.Floor(finalDamage * multiplier);
         }
+
+        finalDamage = Math.Max(0, finalDamage - flatDr);
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
@@ -521,7 +527,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var outcome = await _rollService.RollAsync(request, ct);
         
         // Use result + bonus as secondary tie-breaker
-        return outcome.Result + (initBonus * 0.01f);
+        // Widens initiative bonus scaling to meaningfully break ties
+        return outcome.Result + (initBonus / 20f);
     }
 
     public override IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
