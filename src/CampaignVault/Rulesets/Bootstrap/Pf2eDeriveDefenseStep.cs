@@ -17,9 +17,9 @@ public sealed class Pf2eDeriveDefenseStep : IBootstrapStep
         var hints = new List<string>();
 
         // PF2e unarmored AC = 10 + DEX mod + Level + Proficiency (Trained=2, Expert=4, Master=6, Legendary=8)
-        var proficiencyBonus = stats.AcProficiency == Pf2eProficiencyRank.Untrained
+        var proficiencyBonus = stats.AcProficiency == Pf2eProficiencyRank.Untrained || !stats.Level.HasValue
             ? 0
-            : (stats.Level ?? 0) + (int)stats.AcProficiency;
+            : stats.Level.Value + (int)stats.AcProficiency;
         stats.ArmorClass = 10 + dexMod + proficiencyBonus;
 
         if (stats.Level.HasValue && stats.AcProficiency != Pf2eProficiencyRank.Trained)

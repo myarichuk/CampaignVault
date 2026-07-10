@@ -43,31 +43,26 @@ public class RumorDecayRule : ISimulationRule
             var daysSinceUpdate = context.Time.TotalDaysElapsed - rumor.LastStateChangeDay;
             var currentState = rumor.State;
 
-            // Allow multiple transitions when DaysPassed is large
-            while (true)
+            // Only allow one transition per AdvanceWorld call to ensure the bell-curve lifecycle is traversed
+            RumorState? nextState = currentState switch
             {
-                RumorState? nextState = currentState switch
-                {
-                    // Escalation: growing rumors advance one step after EscalationDays
-                    RumorState.Nascent when daysSinceUpdate > EscalationDays
-                        => RumorState.Spreading,
-                    RumorState.Spreading when daysSinceUpdate > EscalationDays
-                        => RumorState.Peak,
+                // Escalation: growing rumors advance one step after EscalationDays
+                RumorState.Nascent when daysSinceUpdate > EscalationDays
+                    => RumorState.Spreading,
+                RumorState.Spreading when daysSinceUpdate > EscalationDays
+                    => RumorState.Peak,
 
-                    // Decay: stale rumors fade one step after DecayDays
-                    RumorState.Peak when daysSinceUpdate > DecayDays
-                        => RumorState.Fading,
-                    RumorState.Fading when daysSinceUpdate > DecayDays
-                        => RumorState.Forgotten,
+                // Decay: stale rumors fade one step after DecayDays
+                RumorState.Peak when daysSinceUpdate > DecayDays
+                    => RumorState.Fading,
+                RumorState.Fading when daysSinceUpdate > DecayDays
+                    => RumorState.Forgotten,
 
-                    _ => null // no transition yet
-                };
+                _ => null // no transition yet
+            };
 
-                if (nextState is null)
-                {
-                    break;
-                }
-
+            if (nextState is not null)
+            {
                 currentState = nextState.Value;
 
                 // Escalation transitions (real state changes) persist; decay transitions are routine
@@ -81,16 +76,6 @@ public class RumorDecayRule : ISimulationRule
                     _                    => $"The rumor '{rumor.Subject}' has transitioned to {nextState.Value}."
                 };
                 narratives.Add(new RuleNarrative(narrative, Persist: persist));
-
-                // Advance the thresholds for the next iteration (time passed from one state to the next)
-                if (nextState.Value is RumorState.Spreading or RumorState.Peak)
-                {
-                    daysSinceUpdate -= EscalationDays;
-                }
-                else
-                {
-                    daysSinceUpdate -= DecayDays;
-                }
             }
 
             // Update the final state if it changed

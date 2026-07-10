@@ -93,8 +93,8 @@ public class ResourcePoolStage2Tests
     {
         var actual = Provider.GetPoolsForSystem(RulesetSystem.Dnd5e);
 
-        // 9 spell slot levels + 8 class-specific pools
-        Assert.Equal(17, actual.Count);
+        // 9 spell slot levels + 9 class-specific pools (including gold)
+        Assert.Equal(18, actual.Count);
         Assert.True(actual.ContainsKey("spell_slots_1"));
         Assert.True(actual.ContainsKey("font_of_magic"));
     }
@@ -104,8 +104,8 @@ public class ResourcePoolStage2Tests
     {
         var actual = Provider.GetPoolsForSystem(RulesetSystem.Pathfinder2e);
 
-        // 4 spell slot levels + focus_points + bon_mot (no recall_knowledge — investigator not in ORC set)
-        Assert.Equal(6, actual.Count);
+        // 4 spell slot levels + focus_points + bon_mot + gold (no recall_knowledge — investigator not in ORC set)
+        Assert.Equal(7, actual.Count);
         Assert.False(actual.ContainsKey("recall_knowledge"));
     }
 
