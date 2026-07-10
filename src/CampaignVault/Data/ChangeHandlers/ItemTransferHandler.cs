@@ -32,6 +32,30 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             context.RegisterNewItem(item);
         }
 
+        // Verify destination exists (must be a character, location, or container item)
+        var destinationExists = context.Characters.ContainsKey(transfer.ToHolderId)
+            || context.Locations.ContainsKey(transfer.ToHolderId)
+            || context.Items.ContainsKey(transfer.ToHolderId);
+
+        if (!destinationExists && context.Session != null)
+        {
+            // Try loading from session if not in context
+            try
+            {
+                var dest = await context.Session.LoadAsync<dynamic>(transfer.ToHolderId, ct);
+                destinationExists = dest != null;
+            }
+            catch
+            {
+                destinationExists = false;
+            }
+        }
+
+        if (!destinationExists)
+        {
+            return ChangeHandlerResult.Failure($"Destination {transfer.ToHolderId} does not exist. Item {transfer.ItemId} not transferred.");
+        }
+
         item.HolderId = transfer.ToHolderId;
         item.LastUpdated = DateTime.UtcNow;
         context.RecordMessage($"Item {transfer.ItemId} moved to {transfer.ToHolderId}");

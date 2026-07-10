@@ -41,7 +41,17 @@ public class FactionEcosystemRule : ISimulationRule
                 var diff = faction.EconomicDemand[key] - 1.0f;
                 if (Math.Abs(diff) > 0.01f)
                 {
-                    faction.EconomicDemand[key] -= Math.Sign(diff) * 0.1f * decayCycles;
+                    var decay = Math.Sign(diff) * 0.1f * decayCycles;
+                    faction.EconomicDemand[key] -= decay;
+                    // Clamp toward 1.0 to prevent overshoot
+                    if (diff > 0)
+                    {
+                        faction.EconomicDemand[key] = Math.Max(faction.EconomicDemand[key], 1.0f);
+                    }
+                    else
+                    {
+                        faction.EconomicDemand[key] = Math.Min(faction.EconomicDemand[key], 1.0f);
+                    }
                     if (Math.Abs(faction.EconomicDemand[key] - 1.0f) < 0.05f)
                     {
                         faction.EconomicDemand[key] = 1.0f;

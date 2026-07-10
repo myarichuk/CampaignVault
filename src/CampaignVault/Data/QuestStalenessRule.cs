@@ -92,9 +92,10 @@ public class QuestStalenessRule : ISimulationRule
                 .DefaultIfEmpty(quest.LastUpdatedDay)
                 .Min();
 
-            if (currentDay - oldestDayStarted > 10)
+            var stalenessDays = context.Config?.QuestStalenessDays ?? 10;
+            if (currentDay - oldestDayStarted > stalenessDays)
             {
-                narratives.Add(new RuleNarrative($"Quest '{quest.Title}' has been pending for over 10 days. Consider progressing or failing it.", Persist: false));
+                narratives.Add(new RuleNarrative($"Quest '{quest.Title}' has been pending for over {stalenessDays} days. Consider progressing or failing it.", Persist: false));
             }
         }
 
