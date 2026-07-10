@@ -21,9 +21,10 @@ public class AttackTools : CampaignToolBase
 
     [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMBAT TOOL: Makes an attack (melee, ranged, or attack-mode spell) against one or more targets.
-This is the discoverable, structured entry point for combat — prefer this over the generic commit tool for attacks.
+    [Description(@"COMBAT TOOL: Makes a melee attack against one or more targets.
+This is the discoverable, structured entry point for melee combat — prefer this over the generic commit tool for melee attacks.
 Rolls attack + damage via the active ruleset (never invents numbers), enforces whose turn it is and remaining action economy if combat is active, and validates range/reach if spatial positions are tracked.
+For ranged/spell attacks, use ruleset_action with the appropriate actionCategory.
 Requires campaignName. Example: attack(""characters/valen"", [""characters/goblin1""], ""Longsword"", bonus=""2"")")]
     public async Task<ToolResult<CommitResult>> Attack(
         [Description("ID of the attacking character.")]

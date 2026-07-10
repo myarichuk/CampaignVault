@@ -11,7 +11,7 @@ public class MetaTools
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for commit $type discriminators — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use. Filter by category to reduce output.")]
     public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
-        [Description("Optional category filter: Combat, Narrative, World, PlotThread, Meta. Omit to return all.")]
+        [Description("Optional category filter: Combat, Narrative, World, PlotThread. Omit to return all.")]
         string? category = null)
     {
         var schema = CommitSchemaRegistry.GetAll(category);

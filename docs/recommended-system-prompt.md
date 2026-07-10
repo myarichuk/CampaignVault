@@ -40,11 +40,11 @@ Engine rolls dice; you narrate results. Never invent roll totals. Non-magic skil
 Concentration: `{ "$type":"status", "characterId":"chars/wizard", "effect":{"name":"Concentration: Fireball","category":"Condition"} }`
 
 **Spell examples (copy-paste, replace IDs):**
-Fireball: `{ "$type":"ruleset_action", "actorId":"chars/wizard", "targetIds":["chars/goblin-1","chars/goblin-2"], "actionType":"Spell", "actionCategory":"Spell", "actionName":"Fireball", "damageType":"Fire", "parameters":{"resolution":"save","dc":"15","save":"Dexterity","damageDice":"8d6","halfOnSave":"true"} }`
-Detect Magic: `{ "$type":"ruleset_action", "actorId":"chars/wizard", "actionType":"Spell", "actionName":"Detect Magic", "parameters":{"resolution":"check","dc":"15","skill":"Arcana"} }`
-Healing Word: `{ "$type":"ruleset_action", "actorId":"chars/cleric", "targetIds":["chars/fighter"], "actionType":"Spell", "actionName":"Healing Word", "parameters":{"resolution":"heal","healDice":"1d4","healBonus":"3"} }`
-Fallout grenade: `{ "$type":"ruleset_action", "actorId":"chars/raider", "targetIds":["chars/pc1"], "actionType":"Spell", "actionName":"Frag Grenade", "parameters":{"resolution":"save","dc":"2","saveAttribute":"Endurance","damageDice":"3"} }`
-Stimpak: `{ "$type":"ruleset_action", "actorId":"chars/pc1", "targetIds":["chars/pc1"], "actionType":"UseItem", "actionName":"Stimpak", "parameters":{"healAmount":"8"} }`
+Fireball: `{ "$type":"ruleset_action", "characterId":"chars/wizard", "targetIds":["chars/goblin-1","chars/goblin-2"], "actionType":"Spell", "actionCategory":"Spell", "actionName":"Fireball", "damageType":"Fire", "parameters":{"resolution":"save","dc":"15","save":"Dexterity","damageDice":"8d6","halfOnSave":"true"} }`
+Detect Magic: `{ "$type":"ruleset_action", "characterId":"chars/wizard", "actionType":"Spell", "actionName":"Detect Magic", "parameters":{"resolution":"check","dc":"15","skill":"Arcana"} }`
+Healing Word: `{ "$type":"ruleset_action", "characterId":"chars/cleric", "targetIds":["chars/fighter"], "actionType":"Spell", "actionName":"Healing Word", "parameters":{"resolution":"heal","healDice":"1d4","healBonus":"3"} }`
+Fallout grenade: `{ "$type":"ruleset_action", "characterId":"chars/raider", "targetIds":["chars/pc1"], "actionType":"Spell", "actionName":"Frag Grenade", "parameters":{"resolution":"save","dc":"2","saveAttribute":"Endurance","damageDice":"3"} }`
+Stimpak: `{ "$type":"ruleset_action", "characterId":"chars/pc1", "targetIds":["chars/pc1"], "actionType":"UseItem", "actionName":"Stimpak", "parameters":{"healAmount":"8"} }`
 
 **Social skill bonuses (relationship modifiers):**
 Social skill checks apply a bonus/penalty from the target's relationship to the actor. Gate with `ActionCategory: Social` or native skill names: 5e {Persuasion, Deception, Intimidation, Insight, Performance}; PF2e {Diplomacy, Deception, Intimidation, Performance, Society}; Fallout {Speech, Barter}. Bands: ≥80→+5 (trusted friend), 60–79→+3 (friendly), 40–59→+1 (acquainted), −39..39→0 (neutral), −59..−40→−1 (distrustful), −79..−60→−3 (hostile), ≤−80→−5 (hated enemy). Multi-target: first `targetId` is the relationship source. Narrative oracle mode **does not apply** relationship modifiers.

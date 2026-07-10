@@ -79,7 +79,6 @@ State always starts **Nascent**. Do not pass `newState: Active`.
 |-------|----------------|
 | `urgency` (create) | Low, Normal, Urgent, Critical |
 | `newState` (progress) | Open, InProgress, Complete, Failed, Skipped |
-| `overallState` (create) | Open, InProgress, Complete, Failed, Skipped |
 
 Note: `quest_create.objectives[]` only needs `description` (+ optional `rewardHint`, `deadlineDay`). Objective state is advanced via `quest_progress.newState`.
 
@@ -116,8 +115,7 @@ Note: `quest_create.objectives[]` only needs `description` (+ optional `rewardHi
 ### faction_create (optional metadata)
 | Field | Valid values |
 |-------|----------------|
-| `type` | Guild, Kingdom, Cult, MerchantHouse, MilitaryOrder, Criminal, Religious |
-| `stance` | Neutral, Allied, TradePartner, Hostile, AtWar, Subjugated, Opportunistic |
+| `factionType` | Guild, Kingdom, Cult, MerchantHouse, MilitaryOrder, Criminal, Religious |
 
 ### item_create / item_update
 | Field | Valid values |

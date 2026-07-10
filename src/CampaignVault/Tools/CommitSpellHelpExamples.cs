@@ -175,6 +175,7 @@ internal static class CommitSpellHelpExamples
   {
     "$type": "rest",
     "characterId": "chars/wizard",
+    "locationId": "locations/inn_room",
     "intendedHours": 8,
     "securityModifier": 0
   }

@@ -216,7 +216,7 @@ internal static class CommitSchemaRegistry
         new("item_create", "World",
             "Create a new item in the world.",
             ["itemId", "name", "description", "holderId"],
-            ["tags", "coreCategory", "properties"],
+            ["tags", "coreCategory", "properties", "quantity"],
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: []),

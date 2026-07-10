@@ -248,7 +248,7 @@ Use spell names from this tool in resource commits (spellName field) for slot va
     [McpServerTool(UseStructuredContent = true)]
     [Description(
         @"CAMPAIGN DISCOVERABILITY: Returns campaign context (meta + posture: party roster, entry hint, last event).
-Use this if you need the active ruleset system (e.g., Dnd5e, Pf2e) before using ruleset_actions in combat.
+Use this if you need the active ruleset system (e.g., Dnd5e, Pathfinder2e, Fallout2d20) before using ruleset_actions in combat.
 Requires campaignName.")]
     public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
