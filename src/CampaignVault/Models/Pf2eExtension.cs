@@ -3,6 +3,17 @@ using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
 
+/// <summary>PF2e proficiency rank for a skill, save, or AC.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum Pf2eProficiencyRank
+{
+    Untrained = 0,
+    Trained = 2,
+    Expert = 4,
+    Master = 6,
+    Legendary = 8
+}
+
 public class Pf2eExtension : SystemExtension
 {
     [JsonPropertyName("armorClass")]
@@ -29,9 +40,21 @@ public class Pf2eExtension : SystemExtension
 
     [JsonPropertyName("skillModifiers")]
     public Dictionary<string, int> SkillModifiers { get; set; } = [];
-    
+
     [JsonPropertyName("savingThrowModifiers")]
     public Dictionary<string, int> SavingThrowModifiers { get; set; } = [];
+
+    /// <summary>PF2e proficiency ranks per skill (e.g., "Acrobatics" -> Trained).</summary>
+    [JsonPropertyName("skillProficiencies")]
+    public Dictionary<string, Pf2eProficiencyRank> SkillProficiencies { get; set; } = [];
+
+    /// <summary>PF2e proficiency ranks per saving throw (e.g., "Fortitude" -> Expert).</summary>
+    [JsonPropertyName("saveProficiencies")]
+    public Dictionary<string, Pf2eProficiencyRank> SaveProficiencies { get; set; } = [];
+
+    /// <summary>PF2e proficiency rank for AC (Untrained/Trained/Expert/Master/Legendary).</summary>
+    [JsonPropertyName("acProficiency")]
+    public Pf2eProficiencyRank AcProficiency { get; set; } = Pf2eProficiencyRank.Trained;
 
     [JsonPropertyName("classHpPerLevel")]
     public int? ClassHpPerLevel { get; set; }
@@ -69,4 +92,12 @@ public class Pf2eExtension : SystemExtension
     [Description("General feat template names. References FeatDefinition templates in RulesetData/pf2e/feats/.")]
     [JsonPropertyName("generalFeats")]
     public List<string> GeneralFeats { get; set; } = [];
+
+    [Description("Primary spellcasting ability: Intelligence, Wisdom, Charisma, or Strength. Inferred from ancestry/background/class when omitted.")]
+    [JsonPropertyName("spellcastingAbility")]
+    public string? SpellcastingAbility { get; set; }
+
+    [Description("Spell DC override. Omit to auto-derive (10 + spellcasting ability mod + proficiency bonus) at bootstrap.")]
+    [JsonPropertyName("spellDc")]
+    public int? SpellDc { get; set; }
 }

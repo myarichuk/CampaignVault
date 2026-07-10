@@ -17,13 +17,15 @@ public sealed class Pf2eDeriveDefenseStep : IBootstrapStep
         var hints = new List<string>();
 
         // PF2e unarmored AC = 10 + DEX mod + Level + Proficiency (Trained=2, Expert=4, Master=6, Legendary=8)
-        // Scoped fix: assume Trained proficiency when level is set (will be superseded by full proficiency system in R2)
-        stats.ArmorClass = 10 + dexMod + (stats.Level ?? 0) + (stats.Level.HasValue ? 2 : 0);
+        var proficiencyBonus = stats.AcProficiency == Pf2eProficiencyRank.Untrained
+            ? 0
+            : (stats.Level ?? 0) + (int)stats.AcProficiency;
+        stats.ArmorClass = 10 + dexMod + proficiencyBonus;
 
-        if (stats.Level.HasValue)
+        if (stats.Level.HasValue && stats.AcProficiency != Pf2eProficiencyRank.Trained)
         {
             hints.Add(
-                $"AC assumes Trained proficiency in unarmored defense. If {context.Character.Name} has Expert+ proficiency or wears armor with a different proficiency, correct the AC via system_stats.");
+                $"AC uses {stats.AcProficiency} proficiency. If {context.Character.Name}'s proficiency should be different or they wear armor, correct the AC via system_stats.");
         }
 
         if (context.Session is not null && !await HasWornArmorAsync(context.Session, context.Character.Id, ct))

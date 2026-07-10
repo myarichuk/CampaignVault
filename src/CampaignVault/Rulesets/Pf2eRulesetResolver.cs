@@ -22,7 +22,11 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
     {
         _rollService = rollService;
         var hpStep = new Pf2eDeriveHitPointsStep();
-        _bootstrap = new CharacterBootstrapPipeline([hpStep, new Pf2eDeriveDefenseStep()], [hpStep]);
+        var profStep = new Pf2eDeriveProficiencyStep();
+        var spellStep = new Pf2eDeriveSpellcastingStep();
+        _bootstrap = new CharacterBootstrapPipeline(
+            [hpStep, new Pf2eDeriveDefenseStep(), profStep, spellStep],
+            [hpStep, profStep, spellStep]);
     }
 
     public override RulesetSystem System => RulesetSystem.Pathfinder2e;
