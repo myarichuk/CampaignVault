@@ -1,0 +1,6 @@
+# Fallout 2d20 Skill: Big Guns
+# Mastery of heavy crew-served weapons (miniguns, missile launchers, flamethrowers)
+name: Big Guns
+system: fallout2d20
+attribute: Strength
+description: Operating heavy crew-served weapons (miniguns, missile launchers, flamethrowers)

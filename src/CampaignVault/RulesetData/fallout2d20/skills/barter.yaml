@@ -1,0 +1,6 @@
+# Fallout 2d20 Skill: Barter
+# Used for negotiating prices, trading, and persuading NPCs through commerce
+name: Barter
+system: fallout2d20
+attribute: Charisma
+description: Negotiating prices, trading goods, and leveraging commerce for influence

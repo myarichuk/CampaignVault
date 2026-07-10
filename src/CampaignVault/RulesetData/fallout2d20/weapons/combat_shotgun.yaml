@@ -1,0 +1,8 @@
+﻿name: Combat Shotgun
+system: fallout2d20
+skill: Small Guns
+damage: 4d6
+damageType: Physical
+description: A combat shotgun effective at close range
+weight: 7
+rarity: Uncommon

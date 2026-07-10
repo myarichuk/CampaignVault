@@ -1,0 +1,5 @@
+﻿name: Action Boy
+system: fallout2d20
+description: Gain an additional action point per round in combat
+requirements:
+  - Agility 6+

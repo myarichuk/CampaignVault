@@ -1,0 +1,7 @@
+﻿name: Radiation Poisoning
+system: fallout2d20
+description: Exposure to radiation causing cellular damage and mutation
+recoverType: Medical
+effects:
+  - name: Radiation Damage
+    description: Take 1 damage per day from radiation exposure

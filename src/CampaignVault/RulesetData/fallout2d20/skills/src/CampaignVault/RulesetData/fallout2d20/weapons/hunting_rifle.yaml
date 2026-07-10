@@ -1,0 +1,8 @@
+name: Hunting Rifle
+system: fallout2d20
+skill: Small Guns
+damage: 3d6
+damageType: Physical
+description: A pre-war hunting rifle, reliable and powerful
+weight: 5
+rarity: Common

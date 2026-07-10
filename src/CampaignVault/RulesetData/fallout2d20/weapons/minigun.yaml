@@ -1,0 +1,8 @@
+﻿name: Minigun
+system: fallout2d20
+skill: Big Guns
+damage: 3d6
+damageType: Physical
+description: A rotary machine gun with high fire rate
+weight: 9
+rarity: Uncommon

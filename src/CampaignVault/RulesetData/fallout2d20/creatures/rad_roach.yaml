@@ -1,0 +1,10 @@
+name: Rad Roach
+system: fallout2d20
+description: A giant mutated cockroach, common in post-apocalyptic ruins
+level: 1
+hp: 4
+defense: 1
+skills:
+  - Sneak
+abilities:
+  - Bite (2d6 damage)

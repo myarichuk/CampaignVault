@@ -1,0 +1,8 @@
+name: 10mm Pistol
+system: fallout2d20
+skill: Small Guns
+damage: 2d6
+damageType: Physical
+description: A standard pre-war 10mm semi-automatic pistol
+weight: 2
+rarity: Common

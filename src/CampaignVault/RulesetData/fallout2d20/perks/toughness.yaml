@@ -1,0 +1,5 @@
+﻿name: Toughness
+system: fallout2d20
+description: Gain +2 Damage Resistance to all damage types
+requirements:
+  - Endurance 6+
