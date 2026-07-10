@@ -9,7 +9,7 @@ Design document for closing five feedback gaps where CampaignVault trusts the LL
 
 CampaignVault excels at scene-centric narrative state, pressure nudges, and ruleset rolling — but several world-model loops are incomplete. When the LLM is attentive in a single session, gaps are papered over. Across time skips, rested spellcasters, earned relationships, hand-authored maps, and accumulated events, the world drifts unless the model manually commits every downstream effect.
 
-This document defines implementation for all five items. **Item 1 is now implemented** (architecture differs materially from the original design below — see "Item 1: As-Built"). **Item 4 core work is landed; PR-1.1 closes remaining gaps.** Items 2, 3, and 5 remain designed but not implemented.
+This document defines implementation for all five items. **Items 1, 2, 3, and 5a are now implemented** (Item 1 architecture differs materially from the original design below — see "Item 1: As-Built"). **Item 4 core work is landed; PR-1.1 closes remaining gaps.** Items 5b–5d remain designed but not implemented.
 
 **⚠ PR-DOC gate violation:** Item 1 shipped without the required same-PR/before-merge doc updates. `Tools/DmHelpManual.cs`, `docs/recommended-system-prompt.md`, and `ARCHITECTURE.md` still assert "Engine does not track spell slots" — false as of `d3e466f`. See **PR-DOC gate → Item 1 remediation** below. Treat this as the next required PR before any further Item 1 work.
 
@@ -20,10 +20,11 @@ This document defines implementation for all five items. **Item 1 is now impleme
 | # | Gap | Severity | Status |
 |---|-----|----------|--------|
 | 1 | Spell slots / ability resources not tracked | High | **Implemented** (2026-07-01, as generic cross-ruleset `ResourcePool` system — see rewritten section) — PR-DOC remediation pending |
-| 2 | RelationshipChange has no mechanical bite | Medium | Designed — confirmed not implemented |
-| 3 | One-way location links not auto-repaired | Medium | Designed — confirmed not implemented |
+| 2 | RelationshipChange has no mechanical bite | Medium | **Implemented** (`RelationshipModifierHelper.cs` + resolver integration with tests in `Dnd5eRulesetResolverTests.cs` / `Pf2eRulesetResolverTests.cs` / `Fallout2d20RulesetResolverTests.cs`) |
+| 3 | One-way location links not auto-repaired | Medium | **Implemented** (`LocationConnectivityPressureContributor.cs` + `LocationConnectivityTests.cs` with full coverage) |
 | 4 | TransientEvictionRule silently deletes NPCs | Medium | **Core implemented** — PR-1.1 pending (`RecentlyDepartedPressureContributor` + integration test still absent) |
-| 5 | Events are append-only, not structured state | High | Designed (4 sub-phases) — confirmed not implemented |
+| 5a | Event consequences (suggest-only, templates) | High | **Implemented** (`EventConsequenceRegistry.cs` + tests in `EventConsequenceTests.cs`) |
+| 5b–5d | Event rule application, location decay, faction coupling | High | Designed (sub-phases) — not yet implemented |
 
 ### Honest Item 4 status
 
