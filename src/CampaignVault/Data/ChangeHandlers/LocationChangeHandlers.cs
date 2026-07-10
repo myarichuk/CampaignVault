@@ -91,7 +91,19 @@ public class LocationCreateHandler : IWorldChangeHandler
 
             if (lc.Exits != null)
             {
-                newLoc.Exits = lc.Exits;
+                // Merge exits on partial upsert instead of full replace
+                newLoc.Exits ??= [];
+                foreach (var exit in lc.Exits)
+                {
+                    var existingExit = newLoc.Exits.FirstOrDefault(e =>
+                        e.TargetLocationId == exit.TargetLocationId &&
+                        e.Direction == exit.Direction);
+                    if (existingExit != null)
+                    {
+                        newLoc.Exits.Remove(existingExit);
+                    }
+                    newLoc.Exits.Add(exit);
+                }
             }
         }
         else

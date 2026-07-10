@@ -43,8 +43,26 @@ public sealed class HpChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure();
         }
 
+        var damageTaken = hp.Delta < 0 ? -hp.Delta : 0;
         character.CurrentHp = Math.Clamp(character.CurrentHp + hp.Delta, 0, character.MaxHp);
         context.RecordMessage($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {character.CurrentHp}/{character.MaxHp})");
+
+        // Check concentration break on damage (DC 10 or half damage, whichever is higher)
+        if (damageTaken > 0 && character.SystemStats?.StatusEffects != null)
+        {
+            var concentration = character.SystemStats.StatusEffects.FirstOrDefault(e => e.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase));
+            if (concentration != null)
+            {
+                var concentrationDc = Math.Max(10, (int)Math.Ceiling(damageTaken / 2.0f));
+                // For now, concentration breaks automatically if damage >= DC (no actual save roll).
+                // Full implementation would roll CON save and only break on failure.
+                if (damageTaken >= concentrationDc)
+                {
+                    character.SystemStats.StatusEffects.Remove(concentration);
+                    context.RecordMessage($"Concentration broken for {hp.CharacterId} due to {damageTaken} damage (DC {concentrationDc})");
+                }
+            }
+        }
 
         return ChangeHandlerResult.Ok;
     }
