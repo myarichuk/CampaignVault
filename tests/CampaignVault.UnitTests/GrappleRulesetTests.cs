@@ -59,6 +59,37 @@ public class GrappleRulesetTests
     }
 
     [Fact]
+    public async Task Dnd5e_TripManeuver_DoesNotApplyGrapple()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 18 });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 10 });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension() };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension() };
+        var context = CreateContext(actor, target);
+
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            TargetIds = ["char2"],
+            ActionType = RulesetActionType.ContestedCheck,
+            ActionCategory = ActionCategory.Maneuver,
+            ActionName = "Trip"
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.True(output.Result.Success);
+        var grappleRelations = output.Mutations
+            .OfType<EngagementRelationChange>()
+            .Where(m => m.Verb == EngagementMutationHelper.GrapplingVerb)
+            .ToList();
+        Assert.Empty(grappleRelations);
+    }
+
+    [Fact]
     public async Task Travel_DoesNotBlock_ForSoftEngagement()
     {
         var character = new Character

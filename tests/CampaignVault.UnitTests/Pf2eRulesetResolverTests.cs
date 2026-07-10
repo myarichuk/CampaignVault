@@ -6,6 +6,7 @@ using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Bootstrap;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -42,7 +43,6 @@ public class Pf2eRulesetResolverTests
 
         var resolver = new Pf2eRulesetResolver(mockRollService);
 
-        var CharacterId = "char_1";
         var actor = new Character { Id = "test-char", SystemStats = new Pf2eExtension() };
         var context = CreateContext(actor);
 
@@ -69,7 +69,6 @@ public class Pf2eRulesetResolverTests
 
         var resolver = new Pf2eRulesetResolver(mockRollService);
 
-        var CharacterId = "char_1";
         var targetId = "char_2";
         
         var actor = new Character { Id = "test-char", SystemStats = new Pf2eExtension() };
@@ -173,5 +172,36 @@ public class Pf2eRulesetResolverTests
         Assert.True(ok);
         Assert.Null(error);
         Assert.Equal(0, state.ActionBudget["actions"]);
+    }
+
+    [Fact]
+    public async Task Pf2eDefense_Level1CharacterWithDex2_IncludesLevelAndProficiency()
+    {
+        var character = new Character
+        {
+            Id = "test-char",
+            Name = "Elara",
+            SystemStats = new Pf2eExtension
+            {
+                Level = 1,
+                DexterityMod = 2,
+                ArmorClass = 10
+            }
+        };
+
+        var step = new Pf2eDeriveDefenseStep();
+        var context = new BootstrapContext
+        {
+            Character = character,
+            ActiveSystem = RulesetSystem.Pathfinder2e,
+            Session = null
+        };
+
+        var result = await step.ApplyAsync(context);
+
+        var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
+        // Expected: 10 + DEX 2 + Level 1 + Proficiency (Trained) 2 = 15
+        // Current buggy: 10 + DEX 2 = 12
+        Assert.Equal(15, stats.ArmorClass);
     }
 }

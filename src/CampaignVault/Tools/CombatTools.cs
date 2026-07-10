@@ -269,6 +269,20 @@ Day-based effects remain active. Requires campaignName.")]
                         expiredMessages.Add($"Cleared effect '{effect.Name}' on '{character.Name}'.");
                     }
                 }
+
+                // Recover pools with RecoveryType.EncounterEnd
+                if (character.SystemStats?.ResourcePools != null)
+                {
+                    foreach (var poolEntry in character.SystemStats.ResourcePools)
+                    {
+                        var pool = poolEntry.Value;
+                        if (pool.Recovery == RecoveryType.EncounterEnd && pool.Current < pool.Max)
+                        {
+                            pool.Current = pool.Max;
+                            expiredMessages.Add($"Recovered {character.Name}'s {poolEntry.Key} to {pool.Max}.");
+                        }
+                    }
+                }
             }
 
             encounter.IsActive = false;

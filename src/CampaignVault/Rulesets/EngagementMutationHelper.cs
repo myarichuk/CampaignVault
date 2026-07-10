@@ -7,8 +7,7 @@ public static class EngagementMutationHelper
     public const string GrapplingVerb = "Grappling";
 
     public static bool IsGrappleAction(RulesetAction action) =>
-        action.ActionCategory == ActionCategory.Maneuver
-        || action.ActionName.Contains("grapple", StringComparison.OrdinalIgnoreCase)
+        action.ActionName.Contains("grapple", StringComparison.OrdinalIgnoreCase)
         || (TryGetParameter(action.Parameters, "maneuver", out var maneuver)
             && maneuver.Contains("grapple", StringComparison.OrdinalIgnoreCase));
 

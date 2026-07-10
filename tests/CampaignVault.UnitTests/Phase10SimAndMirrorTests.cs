@@ -365,4 +365,69 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
 
         Assert.Empty(afterShortAdvance.ActiveInitiatives);
     }
+
+    [Fact]
+    public async Task MemorySalienceDecayRule_EvictionCap_RemovesExactCount()
+    {
+        var rule = new MemorySalienceDecayRule();
+        var memories = new Dictionary<string, MemoryNode>();
+
+        // Add 5 core memories
+        for (int i = 0; i < 5; i++)
+        {
+            memories[$"core_{i}"] = new MemoryNode
+            {
+                Topic = $"core_{i}",
+                Details = "Core memory",
+                Salience = 0.5f,
+                Importance = MemoryImportance.Core,
+                DayAcquired = 0
+            };
+        }
+
+        // Add 45 non-core memories with high salience to survive decay and floor-based eviction
+        for (int i = 0; i < 45; i++)
+        {
+            // Create memories with salience 0.6-0.9 (after 5 days decay @ 0.05/day = -0.25, still above 0.1 floor)
+            var salience = 0.6f + (i % 4) * 0.075f;
+            memories[$"non_core_{i}"] = new MemoryNode
+            {
+                Topic = $"non_core_{i}",
+                Details = "Non-core memory",
+                Salience = salience,
+                Importance = MemoryImportance.Important,
+                DayAcquired = 0
+            };
+        }
+
+        var npc = new Character
+        {
+            Id = "chars/mem-test",
+            Name = "Memory Test NPC",
+            Schedule = new Schedule { DefaultLocationId = "locs/1", Routines = [] },
+            Psychology = new PsychologyProfile { Memories = memories }
+        };
+
+        var context = new SimulationContext(
+            new CampaignTime { TotalDaysElapsed = 50 },
+            [],
+            [npc],
+            null!,
+            DaysPassed: 5,
+            Config: new CampaignConfig { MemoryImportantDecayDays = 40 });
+
+        // Initially 50 memories
+        Assert.Equal(50, npc.Psychology.Memories.Count);
+
+        await rule.ApplyAsync(context);
+
+        // After eviction, should be 40 (not 35 which would be the buggy result)
+        Assert.Equal(40, npc.Psychology.Memories.Count);
+
+        // All 5 core memories should remain
+        for (int i = 0; i < 5; i++)
+        {
+            Assert.Contains($"core_{i}", npc.Psychology.Memories.Keys);
+        }
+    }
 }

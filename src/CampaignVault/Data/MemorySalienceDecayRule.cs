@@ -70,12 +70,11 @@ public class MemorySalienceDecayRule : ISimulationRule
             // If still over cap, evict lowest-salience non-Core memories until under cap
             if (memories.Count > maxMemories)
             {
-                var coreMemories = memories.Values.Where(m => m.Importance == MemoryImportance.Core).ToList();
                 var nonCoreMemories = memories.Values.Where(m => m.Importance != MemoryImportance.Core)
                     .OrderBy(m => m.Salience)
                     .ToList();
 
-                var toRemove = memories.Count - maxMemories + coreMemories.Count;
+                var toRemove = memories.Count - maxMemories;
                 for (int i = 0; i < toRemove && i < nonCoreMemories.Count; i++)
                 {
                     memories.Remove(nonCoreMemories[i].Topic);

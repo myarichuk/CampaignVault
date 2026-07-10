@@ -270,6 +270,72 @@ public class SpellDefinitionTests
                 NullLogger<WorldChangeDispatcher>.Instance),
             campaignName: null);
 
+    [Fact]
+    public async Task ResourceChangeHandler_SpendFromEmptyPool_ReturnsFailure()
+    {
+        var handler = new ResourceChangeHandler(Spells);
+        var character = new Character
+        {
+            Id = "chars/test_character",
+            Name = "Test Character",
+            SystemStats = new Dnd5eExtension
+            {
+                ResourcePools = new Dictionary<string, ResourcePool>
+                {
+                    ["test_pool"] = new() { Current = 0, Max = 5 }
+                }
+            }
+        };
+
+        var context = CreateContext(character);
+        var change = new ResourceChange
+        {
+            CharacterId = character.Id,
+            PoolName = "test_pool",
+            Delta = -3,
+            Reason = "Spend from empty pool"
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.False(result.Success);
+        Assert.Contains("Insufficient", result.Message!);
+        Assert.Equal(0, character.SystemStats.ResourcePools["test_pool"].Current);
+    }
+
+    [Fact]
+    public async Task ResourceChangeHandler_SpendMoreThanAvailable_ReturnsFailure()
+    {
+        var handler = new ResourceChangeHandler(Spells);
+        var character = new Character
+        {
+            Id = "chars/test_character",
+            Name = "Test Character",
+            SystemStats = new Dnd5eExtension
+            {
+                ResourcePools = new Dictionary<string, ResourcePool>
+                {
+                    ["test_pool"] = new() { Current = 3, Max = 5 }
+                }
+            }
+        };
+
+        var context = CreateContext(character);
+        var change = new ResourceChange
+        {
+            CharacterId = character.Id,
+            PoolName = "test_pool",
+            Delta = -5,
+            Reason = "Spend more than available"
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.False(result.Success);
+        Assert.Contains("Insufficient", result.Message!);
+        Assert.Equal(3, character.SystemStats.ResourcePools["test_pool"].Current);
+    }
+
     private static Character MakeWizardWithSlots() =>
         new()
         {

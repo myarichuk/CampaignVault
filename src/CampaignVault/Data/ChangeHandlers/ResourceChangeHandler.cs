@@ -61,9 +61,17 @@ public class ResourceChangeHandler : IWorldChangeHandler
         if (spellFailure != null)
             return spellFailure.Value;
 
-        // Clamp the new value to [0, max]
         var oldCurrent = pool.Current;
-        var newCurrent = Math.Clamp(oldCurrent + rc.Delta, 0, pool.Max);
+        var requestedNew = oldCurrent + rc.Delta;
+
+        // Check if spending would go below 0 (insufficient resources)
+        if (requestedNew < 0)
+        {
+            return ChangeHandlerResult.Failure($"Insufficient {rc.PoolName} for {character.Name}: has {oldCurrent}, needs {-rc.Delta}.");
+        }
+
+        // Clamp the new value to [0, max]
+        var newCurrent = Math.Clamp(requestedNew, 0, pool.Max);
         var actualDelta = newCurrent - oldCurrent;
 
         // Update the pool
