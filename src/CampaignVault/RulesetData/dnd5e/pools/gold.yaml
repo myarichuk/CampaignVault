@@ -1,0 +1,7 @@
+# D&D 5e Currency Pool
+# Party wealth tracked as a resource pool so LLM can award/spend gold through standard commits
+name: gold
+description: Gold pieces (party currency, never recovers)
+applicableSystems: [dnd5e]
+recovery: Never
+defaultMax: 0

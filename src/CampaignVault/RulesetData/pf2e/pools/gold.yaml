@@ -1,0 +1,7 @@
+﻿# Pathfinder 2e Currency Pool
+# Party wealth tracked as a resource pool so LLM can award/spend gold through standard commits
+name: gold
+description: Gold pieces (party currency, never recovers)
+applicableSystems: [pf2e]
+recovery: Never
+defaultMax: 0
