@@ -8,7 +8,7 @@ internal static partial class Dnd5eClassProfileResolver
     [GeneratedRegex(@"(\d+)\s*$", RegexOptions.CultureInvariant)]
     private static partial Regex TrailingLevelRegex();
 
-    [GeneratedRegex(@"(?<class>barbarian|fighter|paladin|ranger|bard|cleric|druid|monk|rogue|warlock|artificer|wizard|sorcerer)\s*(?<level>\d+)",
+    [GeneratedRegex(@"(?<class>barbarian|fighter|paladin|ranger|bard|cleric|druid|monk|rogue|warlock|wizard|sorcerer)\s*(?<level>\d+)",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex ClassLevelSegmentRegex();
 
@@ -24,7 +24,6 @@ internal static partial class Dnd5eClassProfileResolver
         ["monk"] = 8,
         ["rogue"] = 8,
         ["warlock"] = 8,
-        ["artificer"] = 8,
         ["wizard"] = 6,
         ["sorcerer"] = 6,
     };

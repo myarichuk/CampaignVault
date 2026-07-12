@@ -6,7 +6,6 @@ internal static class Dnd5eSpellcastingHelper
 {
     private static readonly Dictionary<string, string> ClassSpellcastingAbility = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["artificer"] = "Intelligence",
         ["bard"] = "Charisma",
         ["cleric"] = "Wisdom",
         ["druid"] = "Wisdom",
