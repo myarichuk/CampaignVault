@@ -126,6 +126,17 @@ public class SystemHandbookTests : IClassFixture<RavenDBFixture>
         Assert.True(result.Data.Classes.Count > 0);
     }
 
+    [Fact]
+    public void GetSystemHandbook_Fallout2d20_IncludesSkillsAndCreatures()
+    {
+        var handbook = BuildHandbook(RulesetSystem.Fallout2d20);
+
+        Assert.Contains(handbook.Skills, s => s.Name == "Small Guns" && s.Attribute == "Agility");
+        Assert.NotNull(handbook.Creatures);
+        Assert.True(handbook.Creatures.TotalCount > 0, "Should have creatures");
+        Assert.Contains("Rad Roach", handbook.Creatures.ExampleNames);
+    }
+
     private static SystemHandbookResponse BuildHandbook(
         RulesetSystem system,
         string? rulesetDataDir = null)
@@ -137,6 +148,8 @@ public class SystemHandbookTests : IClassFixture<RavenDBFixture>
             new RaceDefinitionProvider(dir, Assembly),
             new BackgroundDefinitionProvider(dir, Assembly),
             new FeatDefinitionProvider(dir, Assembly),
-            new ConditionDefinitionProvider(dir, Assembly));
+            new ConditionDefinitionProvider(dir, Assembly),
+            new SkillDefinitionProvider(dir, Assembly),
+            new CreatureDefinitionProvider(dir, Assembly));
     }
 }

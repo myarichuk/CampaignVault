@@ -1409,6 +1409,89 @@ public class CampaignRepository
         return result;
     }
 
+    /// <summary>
+    /// Retrieves a specific CustomCreature by ID.
+    /// </summary>
+    public async Task<CustomCreature?> GetCustomCreatureAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var creature = await session.LoadAsync<CustomCreature>(id);
+        return creature != null && !IsVisibleInCampaign(creature.CampaignName, effective) ? null : creature;
+    }
+
+    /// <summary>
+    /// Inserts or updates a CustomCreature, preserving list fields when omitted from the request.
+    /// </summary>
+    public async Task<CustomCreature> UpsertCustomCreatureAsync(IAsyncDocumentSession session, CustomCreatureUpsertRequest creature, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(creature.Id))
+        {
+            throw new ArgumentException("CustomCreature.Id is required for upsert.");
+        }
+
+        var effective = ResolveCampaign(campaignName);
+        var effectiveCampaignName = creature.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
+        {
+            effectiveCampaignName = effective;
+        }
+
+        var existing = await session.LoadAsync<CustomCreature>(creature.Id);
+        CustomCreature result;
+        if (existing != null)
+        {
+            existing.Name = creature.Name;
+            existing.System = creature.System;
+            existing.Description = creature.Description;
+            existing.Level = creature.Level;
+            existing.ChallengeRating = creature.ChallengeRating;
+            existing.Hp = creature.Hp;
+            existing.Defense = creature.Defense;
+            existing.Skills = creature.Skills ?? existing.Skills;
+            existing.Abilities = creature.Abilities ?? existing.Abilities;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
+            result = existing;
+        }
+        else
+        {
+            result = new CustomCreature
+            {
+                Id = creature.Id,
+                Name = creature.Name,
+                System = creature.System,
+                Description = creature.Description,
+                Level = creature.Level,
+                ChallengeRating = creature.ChallengeRating,
+                Hp = creature.Hp,
+                Defense = creature.Defense,
+                Skills = creature.Skills ?? [],
+                Abilities = creature.Abilities ?? [],
+                LastUpdated = DateTime.UtcNow,
+                CampaignName = effectiveCampaignName,
+            };
+            await session.StoreAsync(result);
+        }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
+    }
+
+    /// <summary>
+    /// Retrieves CustomCreatures for a given ruleset system and campaign, with a safety-bounded query.
+    /// Applies campaign visibility filter in memory.
+    /// </summary>
+    public async Task<List<CustomCreature>> GetCustomCreaturesForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var creatures = await session.Query<CustomCreature>()
+            .Where(c => c.System == system)
+            .Take(take)
+            .ToListAsync();
+
+        return creatures.Where(c => IsVisibleInCampaign(c.CampaignName, effective)).ToList();
+    }
+
     public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery,
         string? campaignName = null)
     {

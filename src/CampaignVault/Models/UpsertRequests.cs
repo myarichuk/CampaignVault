@@ -183,3 +183,35 @@ public class PlotThreadUpsertRequest
 
     public string? CampaignName { get; set; }
 }
+
+/// <summary>
+/// Tool-facing request for upsert_creature. Mirrors <see cref="CustomCreature"/>, but declares
+/// Skills/Abilities as nullable so omitting them in a partial-update call preserves the
+/// existing stored values instead of blanking them to defaults.
+/// </summary>
+public class CustomCreatureUpsertRequest
+{
+    public string Id { get; set; } = default!;
+
+    public string Name { get; set; } = default!;
+
+    public RulesetSystem System { get; set; }
+
+    public string? Description { get; set; }
+
+    public int? Level { get; set; }
+
+    public string? ChallengeRating { get; set; }
+
+    public int? Hp { get; set; }
+
+    public int? Defense { get; set; }
+
+    [Description("Omit to preserve the creature's existing skills. Provide to replace them wholesale.")]
+    public List<string>? Skills { get; set; }
+
+    [Description("Omit to preserve the creature's existing abilities. Provide to replace them wholesale.")]
+    public List<string>? Abilities { get; set; }
+
+    public string? CampaignName { get; set; }
+}

@@ -1,0 +1,15 @@
+name: Goblin
+system: dnd5e
+description: Small, green-skinned creatures known for mischief and trickery, often found in small tribes.
+level: 0
+challengeRating: "1/4"
+hp: 7
+defense: 15
+skills:
+  - "Stealth +4"
+  - "Perception +2"
+abilities:
+  - "Speed: 30 ft."
+  - "Nimble Escape (Reaction): The goblin can take the Disengage or Hide action as a reaction on each of its turns."
+  - "Scimitar (Melee Weapon Attack): +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage."
+  - "Shortbow (Ranged Weapon Attack): +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage."

@@ -1,0 +1,16 @@
+name: Goblin Warrior
+system: pf2e
+description: A small, agile humanoid with green skin and sharp teeth. Goblin warriors form the core of most goblin war bands.
+level: 1
+hp: 18
+defense: 15
+skills:
+  - "Acrobatics +5"
+  - "Intimidation +3"
+  - "Stealth +5"
+abilities:
+  - "Speed: 25 ft."
+  - "Senses: Darkvision, Sense Prey."
+  - "Scimitar (Melee): +6 to hit; 1d6+2 slashing."
+  - "Shortbow (Ranged): +6 to hit (range increment 60 ft.); 1d6 piercing."
+  - "Goblin Psyche: Goblins have an intense fear of horses and similarly sized animals, taking a -2 penalty to saving throws against effects that frighten them."

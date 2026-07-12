@@ -134,6 +134,23 @@ During play, prefer commit (location_create, location_update) for incremental ch
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
+        "WORLD BUILDER TOOL: Create or update a homebrew creature stat-block template. These are reusable reference templates (distinct from live NPC/monster instances, which use upsert_character). Homebrew creatures override SRD creatures by name when queried via query_creatures. Omitted fields are preserved: on an existing creature, omitting skills/abilities keeps the stored value; providing one replaces it wholesale.")]
+    public Task<ToolResult<CustomCreature>> UpsertCreature(
+        [Description("The creature to create or update. Strongly typed.")]
+        CustomCreatureUpsertRequest creature,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var merged = await _repository.UpsertCustomCreatureAsync(s, creature, effective);
+            return new ToolResult<CustomCreature>(true, merged, $"Creature upserted (campaign context: {effective}).");
+        });
+    }
+
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
         "WORLD BUILDER TOOL: Create or update a plot thread — DM-scaffolding for a story arc's clues, tension, and resolution condition (usually not player-visible). Use for bulk-seeding clues or bumping tensionLevel without re-sending every clue. Omitted fields are preserved: on an existing thread, omitting clues/involvedEntityIds/foreshadowingHooks keeps the stored value; providing one replaces it wholesale.")]
     public Task<ToolResult<PlotThread>> UpsertPlotThread(
         [Description("The plot thread to create or update. Strongly typed.")]

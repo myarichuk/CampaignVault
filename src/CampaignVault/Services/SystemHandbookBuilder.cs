@@ -31,7 +31,9 @@ public static class SystemHandbookBuilder
         RaceDefinitionProvider raceProvider,
         BackgroundDefinitionProvider backgroundProvider,
         FeatDefinitionProvider featProvider,
-        ConditionDefinitionProvider conditionProvider)
+        ConditionDefinitionProvider conditionProvider,
+        SkillDefinitionProvider? skillProvider = null,
+        CreatureDefinitionProvider? creatureProvider = null)
     {
         var classes = classProvider.GetClassesForSystem(system)
             .Values
@@ -60,6 +62,24 @@ public static class SystemHandbookBuilder
             .Select(ToConditionEntry)
             .ToList();
 
+        var skills = (skillProvider?.GetSkillsForSystem(system) ?? new Dictionary<string, SkillDefinition>())
+            .Values
+            .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(ToSkillEntry)
+            .ToList();
+
+        var creatureList = (creatureProvider?.GetCreaturesForSystem(system) ?? new Dictionary<string, CreatureDefinition>())
+            .Values
+            .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var creatures = new CreatureHandbookSummary
+        {
+            TotalCount = creatureList.Count,
+            ExampleNames = creatureList.Take(5).Select(c => c.Name).ToList(),
+            Hint = "Use query_creatures for the full paginated list (SRD + campaign homebrew merged).",
+        };
+
         var notes = SpellDiscoveryNote;
         if (CoverageNotes.TryGetValue(system, out var coverage))
         {
@@ -74,6 +94,8 @@ public static class SystemHandbookBuilder
             Backgrounds = backgrounds,
             Feats = feats,
             Conditions = conditions,
+            Skills = skills,
+            Creatures = creatures,
             Notes = notes,
         };
     }
@@ -94,5 +116,13 @@ public static class SystemHandbookBuilder
             DurationType = (def.DurationType ?? ConditionDurationType.Manual).ToString(),
             MechanicalSummary = def.MechanicalSummary,
             MoodHint = def.MoodHint,
+        };
+
+    private static SkillHandbookEntry ToSkillEntry(SkillDefinition def) =>
+        new()
+        {
+            Name = def.Name,
+            Attribute = def.Attribute,
+            Description = def.Description,
         };
 }

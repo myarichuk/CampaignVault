@@ -1,0 +1,14 @@
+name: Ogre
+system: pf2e
+description: A large, brutish humanoid standing nearly ten feet tall, with tremendous strength and a simple, aggressive temperament. Often encountered as tribal warriors or mercenaries.
+level: 3
+hp: 52
+defense: 18
+skills:
+  - "Intimidation +8"
+abilities:
+  - "Speed: 30 ft."
+  - "Senses: Darkvision, Perception +7."
+  - "Greatclub (Melee): +10 to hit; 1d10+5 bludgeoning."
+  - "Javelin (Melee or Ranged): +10 to hit (range increment 20 ft.); 1d6+5 piercing."
+  - "Swipe (Two Actions): The ogre makes two greatclub Strikes. If both hit, combines their damage."

@@ -1,0 +1,14 @@
+name: Wolf
+system: pf2e
+description: A wild canine predator found in forests, tundra, and grasslands. Wolves are often encountered in packs.
+level: 0
+hp: 10
+defense: 15
+skills:
+  - "Perception +6"
+  - "Survival +4"
+abilities:
+  - "Speed: 40 ft."
+  - "Senses: Darkvision, Scent (imprecise) 30 ft."
+  - "Jaws (Melee): +7 to hit; 1d8+2 piercing."
+  - "Pack Tactics: The wolf gains a +1 circumstance bonus to attack rolls against a creature if at least one of the wolf's allies is within 30 feet of that creature and the ally isn't incapacitated."

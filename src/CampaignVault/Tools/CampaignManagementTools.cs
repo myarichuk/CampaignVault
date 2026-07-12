@@ -16,7 +16,9 @@ public class CampaignManagementTools(
     RaceDefinitionProvider raceProvider,
     BackgroundDefinitionProvider backgroundProvider,
     FeatDefinitionProvider featProvider,
-    ConditionDefinitionProvider conditionProvider)
+    ConditionDefinitionProvider conditionProvider,
+    SkillDefinitionProvider skillProvider,
+    CreatureDefinitionProvider creatureProvider)
     : CampaignToolBase(repository, keys)
 {
     [ToolCategory("Campaign management")]
@@ -174,9 +176,10 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        @"RULESET DISCOVERY: Returns available classes, races, backgrounds, feats, and conditions for the campaign's active ruleset.
+        @"RULESET DISCOVERY: Returns available classes, races, backgrounds, feats, conditions, skills, and creatures for the campaign's active ruleset.
 Homebrew YAML on disk (RulesetData/{system}/) appears automatically alongside embedded SRD/ORC defaults.
-Call before character_create or when applying typed conditionName values. For spells, see notes → get_spells.")]
+Call before character_create or when applying typed conditionName values. For spells, see notes → get_spells. For creatures, use query_creatures for paginated SRD + homebrew merged results.
+Creature data is available for dnd5e, pf2e, and fallout2d20. Skills are reference data only (fallout2d20 currently — dnd5e/pf2e skills are freeform ability checks with no fixed list).")]
     public Task<ToolResult<SystemHandbookResponse>> GetSystemHandbook(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
@@ -190,7 +193,9 @@ Call before character_create or when applying typed conditionName values. For sp
                 raceProvider,
                 backgroundProvider,
                 featProvider,
-                conditionProvider);
+                conditionProvider,
+                skillProvider,
+                creatureProvider);
 
             return new ToolResult<SystemHandbookResponse>(
                 true,
@@ -243,6 +248,43 @@ Use spell names from this tool in resource commits (spellName field) for slot va
             Concentration = spell.Concentration ?? false,
             CastingTime = spell.CastingTime
         };
+
+    [ToolCategory("Campaign management")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        @"CREATURE DISCOVERY: Returns creature stat-block templates (both SRD reference data and campaign homebrew).
+Paginated results merge SRD and homebrew creatures (homebrew overrides SRD by name). Use for NPC/monster stat-block lookup.
+Note: This surfaces stat-block *templates* (reusable reference data), not live instances. Use upsert_character to place a creature instance in the world.")]
+    public Task<ToolResult<CreatureListResponse>> QueryCreatures(
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName,
+        [Description("Optional creature name substring filter.")]
+        string? nameQuery = null,
+        [Description("Optional minimum level filter (for numeric sorting/range).")]
+        int? levelMin = null,
+        [Description("Optional maximum level filter (for numeric sorting/range).")]
+        int? levelMax = null,
+        [Description("Pagination offset (default 0). Use response.pagination.hasMore and hint for next page.")]
+        int offset = 0,
+        [Description("Page size (default 40, max 100).")]
+        int? limit = null)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var system = config.ActiveSystem;
+            var page = await CreatureQueryBuilder.QueryPageAsync(
+                session, _repository, creatureProvider, system, effective,
+                nameQuery, levelMin, levelMax, offset, limit);
+
+            var response = CreatureQueryBuilder.ToResponse(system, page);
+
+            return new ToolResult<CreatureListResponse>(
+                true,
+                response,
+                response.Hint);
+        }, saveChanges: false);
+    }
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]

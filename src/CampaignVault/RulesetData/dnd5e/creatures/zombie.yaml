@@ -1,0 +1,16 @@
+name: Zombie
+system: dnd5e
+description: The shambling, reanimated corpse of a humanoid creature, devoid of intellect and driven by simple hunger or magical compulsion.
+level: 0
+challengeRating: "1/8"
+hp: 22
+defense: 8
+abilities:
+  - "Speed: 20 ft."
+  - "Vulnerable to Radiant damage."
+  - "Immune to cold, lightning, poison."
+  - "Condition Immunities: Charmed, Exhaustion, Frightened, Poisoned."
+  - "Darkvision: 60 ft."
+  - "Underbelly: The zombie doesn't require air, food, drink, or sleep."
+  - "Undead Fortitude (Reaction): If damage reduces the zombie to 0 hit points, it must make a Constitution saving throw against a DC equal to 5 + the damage taken (unless it's a critical hit), unless the source is radiant damage. On a success, the zombie drops to 1 hit point instead."
+  - "Slam (Melee Weapon Attack): +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) bludgeoning damage."

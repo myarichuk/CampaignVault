@@ -1,0 +1,13 @@
+name: Skeleton Guard
+system: pf2e
+description: The animated skeletal form of a guard or warrior, magically bound to defend a location or serve a master.
+level: 0
+hp: 11
+defense: 16
+abilities:
+  - "Speed: 25 ft."
+  - "Immunities: Cold, Death effects, Disease, Doomed, Drained, Fatigued, Fear, Healing, Necromancy, Nonlethal attacks, Paralyzed, Poison, Sickened."
+  - "Hardness 3 (except magic weapons)."
+  - "Slam (Melee): +8 to hit; 1d4+2 bludgeoning."
+  - "Longsword (Melee): +8 to hit; 1d8+2 slashing."
+  - "Destructible: The skeleton cannot be repaired but can be mended with the mending spell."
