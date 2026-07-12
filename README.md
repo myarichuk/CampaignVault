@@ -2,9 +2,25 @@
 
 A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a persistent, reactive simulation engine for long-running D&D (or other TTRPG) campaigns. It is purpose-built as an MCP to solve the challenges of state tracking, context limits, and hallucination when an LLM performs the DM role over long campaigns, providing reliable world state tracking, NPC psychology, rumor lifecycles, and atomic narrative resolution across many sessions.
 
+## Licensing
+
+**Code**: CampaignVault is **dual-licensed**
+- **Non-Commercial**: Free under PolyForm Noncommercial 1.0.0 (personal use, open-source, education, non-profit)
+- **Commercial**: Requires a separate commercial license. Contact michael.yarichuk@gmail.com to arrange.
+
+See [LICENSE](./LICENSE) and [COMMERCIAL.md](./COMMERCIAL.md) for details.
+
+**Game Content**: 
+- **D&D 5e**: CC-BY-4.0 (SRD 5.1 only)
+- **Pathfinder 2e**: ORC License (core rules only)
+
+See [LICENSING.md](./LICENSING.md) for complete game-content attribution and legal notes.
+
+**Important**: Production deployments must obtain a free RavenDB Community license key (https://ravendb.net/license/request/community) to deploy legally. See [COMMERCIAL.md](./COMMERCIAL.md) for details.
+
 ## Features
 - **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC tiredness, and surface aging unresolved events as pressure via `DefaultSimulationEngine` and its simulation rules.
-- **Multi-System Ruleset Engine**: Full polymorphic support for **D&D 5e**, **Pathfinder 2e**, **Fallout 2d20**, and a brand new **Narrative** ruleset featuring a d6 Oracle. The C# MCP handles math, advantage, 4-degrees of success, and dice pools deterministically.
+- **Multi-System Ruleset Engine**: Full polymorphic support for **D&D 5e**, **Pathfinder 2e**, and a brand new **Narrative** ruleset featuring a d6 Oracle. The C# MCP handles math, advantage, 4-degrees of success, and dice pools deterministically.
 - **Structured Combat Encounters**: Start, advance, and resolve tactical combat with ruleset initiative rolls at `start_combat`, turn-order tracking, and HP/status mutations applied atomically via `commit`.
 - **Scene-Centric Workflow**: Load entire locations, NPCs, rumors, and visible items in a single call (`get_scene`). The LLM instantly receives the `ActiveCombat` state and `SystemStats` (AC, SPECIAL, etc.) for everyone present.
 - **Psychological NPC Minds**: NPCs have Wants, Fears, Moods, and Relationships. The engine synthesizes behavioral summaries to help the LLM roleplay them authentically.
@@ -15,7 +31,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 ## Recent Updates
 - **Engagement Relations & Spatial Positioning**: Pairwise scene anchors (`engagement_relation`: category + freeform verb) vs. relative placement (`spatial_position`: distance band, bearing, zone). Category defaults control travel blocks and scene pressure; ruleset resolvers auto-establish/clear grapple engagements on contested maneuver checks. See `get_help` and `ARCHITECTURE.md`.
 - **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `create_campaign`, `list_campaigns`, and `set_active_system` (with system lock-in). Every campaign-scoped tool requires an explicit **`campaignName`** slug — the MCP HTTP transport is stateless (no session selection). Shared-universe canon (no `CampaignName`) appears in every campaign; campaign-owned entities are slug-tagged.
-- **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Fallout 2d20, Narrative), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
+- **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Narrative), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
 - **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
 - **Character Bootstrap Pipeline**: Per-ruleset HP/defense/proficiency derivation when PCs omit `maxHp` on create/upsert; `level_up` for incremental gains. Put `hitDie`/`level` on typed `systemStats` (not `attributes`). Creature stat blocks use `statBlockHp` or `maxHp` (HP formula only — AC/proficiency still derive).
 
@@ -46,7 +62,7 @@ A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a p
 
 | Tool | Purpose |
 |------|---------|
-| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Fallout 2d20, Narrative) |
+| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Narrative) |
 | `start_combat` / `next_turn` / `end_combat` | Initiative at start, turn tracking, round-based status expiry |
 
 ### Campaign management
