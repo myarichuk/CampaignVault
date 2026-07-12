@@ -1,7 +1,0 @@
-name: Poisoned
-system: fallout2d20
-description: Infected with toxins or venom
-recoverType: Medical
-effects:
-  - name: "Poison Damage"
-    description: "Take damage over time until cured"
