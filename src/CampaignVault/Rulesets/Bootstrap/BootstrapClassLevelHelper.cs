@@ -14,7 +14,6 @@ internal static partial class BootstrapClassLevelHelper
         {
             Dnd5eExtension d => d.Level,
             Pf2eExtension p => p.Level,
-            Fallout2d20Extension f => f.Level,
             _ => null,
         };
 

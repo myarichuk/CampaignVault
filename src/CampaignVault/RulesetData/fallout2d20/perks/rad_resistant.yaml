@@ -1,5 +1,0 @@
-﻿name: Rad Resistant
-system: fallout2d20
-description: Gain +25% radiation resistance and immunity to radiation sickness
-requirements:
-  - Endurance 5+

@@ -43,21 +43,6 @@ public class Dnd5eCasterLevelHelperTests
         Assert.Equal(0, Dnd5eCasterLevelHelper.ComputeCasterLevel(classes));
     }
 
-    [Theory]
-    [InlineData(1, 1)] // RAW rounds UP: (1+1)/2 = 1, not 1/2 = 0
-    [InlineData(2, 1)]
-    [InlineData(3, 2)]
-    [InlineData(20, 10)]
-    public void ComputeCasterLevel_Artificer_RoundsCasterLevelUp(int classLevel, int expectedCasterLevel)
-    {
-        var classes = new List<ClassLevelEntry>
-        {
-            new() { Class = "Artificer", Level = classLevel }
-        };
-
-        Assert.Equal(expectedCasterLevel, Dnd5eCasterLevelHelper.ComputeCasterLevel(classes));
-    }
-
     [Fact]
     public void ComputeCasterLevel_PlainFighter_IsNonCaster()
     {

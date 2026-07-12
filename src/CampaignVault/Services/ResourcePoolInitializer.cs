@@ -163,7 +163,6 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
                     .Concat(pf2.SkillFeats)
                     .Concat(pf2.GeneralFeats)
                     .ToList(),
-            RulesetSystem.Fallout2d20 when stats is Fallout2d20Extension fallout => fallout.Perks,
             _ => [],
         };
 
@@ -264,11 +263,6 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         if (character.SystemStats is Pf2eExtension pf2e && pf2e.Level.HasValue)
         {
             return pf2e.Level.Value;
-        }
-
-        if (character.SystemStats is Fallout2d20Extension fallout && fallout.Level.HasValue)
-        {
-            return fallout.Level.Value;
         }
 
         var classLevels = CharacterClassResolver.ResolveClassLevels(character);

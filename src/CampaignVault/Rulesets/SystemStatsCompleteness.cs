@@ -18,7 +18,6 @@ public static class SystemStatsCompleteness
         {
             RulesetSystem.Dnd5e => IsDnd5eComplete(character.SystemStats as Dnd5eExtension),
             RulesetSystem.Pathfinder2e => IsPf2eComplete(character.SystemStats as Pf2eExtension),
-            RulesetSystem.Fallout2d20 => IsFalloutComplete(character.SystemStats as Fallout2d20Extension),
             _ => character.SystemStats is not SystemExtension || HasAnyCustomAttributes(character.SystemStats)
         };
     }
@@ -34,7 +33,6 @@ public static class SystemStatsCompleteness
         {
             RulesetSystem.Dnd5e => GetDnd5eMissing(character.SystemStats as Dnd5eExtension),
             RulesetSystem.Pathfinder2e => GetPf2eMissing(character.SystemStats as Pf2eExtension),
-            RulesetSystem.Fallout2d20 => GetFalloutMissing(character.SystemStats as Fallout2d20Extension),
             _ => ["systemStats"]
         };
     }
@@ -53,10 +51,6 @@ public static class SystemStatsCompleteness
             RulesetSystem.Pathfinder2e =>
                 $$"""
                 [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "keepAlive": true, "classLevel": "Human Fighter 2", "systemStats": { "$system": "pf2e", "classHpPerLevel": 10, "ancestryHp": 8, "level": 2, "constitutionMod": 2, "dexterityMod": 2, "skillModifiers": { "Perception": 7, "Athletics": 5 } } } ]
-                """,
-            RulesetSystem.Fallout2d20 =>
-                $$"""
-                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "fallout2d20", "endurance": 6, "luck": 5, "level": 2, "agility": 7, "perception": 6, "skills": { "SmallGuns": 2 }, "tagSkills": ["SmallGuns"] } } ]
                 """,
             _ =>
                 $$"""[ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "attributes": { "attackBonus": 4 } } } ]"""
@@ -77,10 +71,6 @@ public static class SystemStatsCompleteness
             RulesetSystem.Pathfinder2e =>
                 $$"""
                 [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "pf2e", "statBlockHp": 20, "armorClass": 16, "dexterityMod": 2, "skillModifiers": { "Perception": 7 } } } ]
-                """,
-            RulesetSystem.Fallout2d20 =>
-                $$"""
-                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "fallout2d20", "statBlockHp": 10, "endurance": 5, "agility": 7, "skills": { "SmallGuns": 2 } } } ]
                 """,
             _ =>
                 BuildExampleCommit(character, activeSystem)
@@ -132,32 +122,6 @@ public static class SystemStatsCompleteness
         }
 
         if (stats.SkillModifiers.Count > 0 || stats.SavingThrowModifiers.Count > 0)
-        {
-            return true;
-        }
-
-        return HasAnyCustomAttributes(stats);
-    }
-
-    private static bool IsFalloutComplete(Fallout2d20Extension? stats)
-    {
-        if (stats is null)
-        {
-            return false;
-        }
-
-        if (stats.Strength != 5 || stats.Perception != 5 || stats.Endurance != 5
-            || stats.Charisma != 5 || stats.Intelligence != 5 || stats.Agility != 5 || stats.Luck != 5)
-        {
-            return true;
-        }
-
-        if (stats.Defense != 1)
-        {
-            return true;
-        }
-
-        if (stats.Skills.Count > 0 || stats.TagSkills.Count > 0 || stats.DamageResistance.Count > 0)
         {
             return true;
         }
@@ -224,31 +188,4 @@ public static class SystemStatsCompleteness
         return missing;
     }
 
-    private static List<string> GetFalloutMissing(Fallout2d20Extension? stats)
-    {
-        var missing = new List<string>();
-        if (stats is null)
-        {
-            missing.Add("systemStats ($system: fallout2d20)");
-            return missing;
-        }
-
-        if (stats.Strength == 5 && stats.Perception == 5 && stats.Endurance == 5
-            && stats.Charisma == 5 && stats.Intelligence == 5 && stats.Agility == 5 && stats.Luck == 5)
-        {
-            missing.Add("SPECIAL attributes");
-        }
-
-        if (stats.Defense == 1)
-        {
-            missing.Add("defense");
-        }
-
-        if (stats.Skills.Count == 0)
-        {
-            missing.Add("skills (at least one relevant skill)");
-        }
-
-        return missing;
-    }
 }

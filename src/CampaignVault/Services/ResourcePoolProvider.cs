@@ -6,7 +6,7 @@ namespace CampaignVault.Services;
 
 /// <summary>
 /// Loads resource pool templates from per-system YAML files, resolves inheritance, and caches results.
-/// Each system (dnd5e, pf2e, fallout2d20) has its own loader to prevent name collisions between systems
+/// Each system (dnd5e, pf2e) has its own loader to prevent name collisions between systems
 /// (e.g. dnd5e and pf2e both define "spell_slots_1" with different tables).
 /// </summary>
 public class ResourcePoolProvider : IRulesetYamlProvider
@@ -21,7 +21,6 @@ public class ResourcePoolProvider : IRulesetYamlProvider
         _logger = logger;
         Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", embeddedAssembly, logger);
         Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", embeddedAssembly, logger);
-        Register(RulesetSystem.Fallout2d20, rulesetDataDirectory, "fallout2d20", embeddedAssembly, logger);
     }
 
     private void Register(

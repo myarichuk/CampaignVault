@@ -37,9 +37,6 @@ public sealed class DefaultRollService : IRollService
         return Task.FromResult(results);
     }
 
-    public Task<FalloutCombatDiceResult> RollFalloutCombatDiceAsync(
-        int count, CancellationToken ct = default)
-        => Task.FromResult(RollFalloutCombatDice(count));
 
     // ── Core evaluation ───────────────────────────────────────────────────────
 
@@ -232,41 +229,6 @@ public sealed class DefaultRollService : IRollService
             Summary =
                 $"{successes} success(es) (pool: [{string.Join(", ", dice)}] vs TN {tn}{(critThreshold > 0 ? $", tag ≤{critThreshold}" : "")}){(hasComplication ? " ⚠ COMPLICATION" : "")}"
         };
-    }
-
-    // ── Fallout combat dice ───────────────────────────────────────────────────
-
-    private FalloutCombatDiceResult RollFalloutCombatDice(int count)
-    {
-        // Fallout 2d20 combat die faces (d6 reskin):
-        // 1 = 1 damage,  2 = 2 damage,  3 & 4 = blank,  5 & 6 = 1 damage + 1 effect
-        int damage = 0, effects = 0;
-        var hasCritical = false;
-
-        for (var i = 0; i < count; i++)
-        {
-            var face = _rng.Next(1, 7);
-            switch (face)
-            {
-                case 1:
-                    damage++;
-                    break;
-                case 2:
-                    damage += 2;
-                    hasCritical = true;
-                    break;
-                case 3:
-                case 4:
-                    break; // blank
-                case 5:
-                case 6:
-                    damage++;
-                    effects++;
-                    break;
-            }
-        }
-
-        return new FalloutCombatDiceResult(damage, effects, hasCritical);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

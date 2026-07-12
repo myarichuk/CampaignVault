@@ -12,7 +12,7 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
         CancellationToken ct = default)
     {
         var act = (ActivityChange)change;
-
+        
         if (!context.Characters.TryGetValue(act.CharacterId, out var character))
         {
             character = context.Session != null ? await context.Session.LoadAsync<Character>(act.CharacterId, ct) : null;

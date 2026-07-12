@@ -305,7 +305,7 @@ Multiclass level-up (specify which class gained a level):
 D&D 5e reference (level 1, max hit die + CON modifier):
 - Fighter / Paladin / Ranger: d10 → 10 + CON mod
 - Cleric / Druid / Monk / Warlock / Bard: d8 → 8 + CON mod
-- Rogue / Artificer: d8 → 8 + CON mod
+- Rogue: d8 → 8 + CON mod
 - Wizard / Sorcerer: d6 → 6 + CON mod
 - Barbarian: d12 → 12 + CON mod
 

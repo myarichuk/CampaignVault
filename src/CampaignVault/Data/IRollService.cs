@@ -100,18 +100,6 @@ public class RollOutcome
 }
 
 /// <summary>
-/// Result of a Fallout 2d20 combat dice roll.
-/// Fallout combat dice use non-numeric symbol faces; this record captures the semantic result.
-/// </summary>
-public record FalloutCombatDiceResult(
-    /// <summary>Total damage pips rolled across all dice.</summary>
-    int Damage,
-    /// <summary>Number of effect (star) symbols rolled — triggers weapon-specific effects.</summary>
-    int Effects,
-    /// <summary>True if at least one die showed the critical symbol.</summary>
-    bool HasCritical);
-
-/// <summary>
 /// Dice rolling service. All randomness in CampaignVault flows through here so that:
 /// (a) the LLM never generates numbers (it only calls the MCP),
 /// (b) tests can inject a seeded/deterministic implementation.
@@ -133,10 +121,4 @@ public interface IRollService
         IEnumerable<RollRequest> requests,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Roll Fallout 2d20 custom combat dice.
-    /// These dice use non-numeric symbol faces (damage pip, effect star, blank, critical).
-    /// Kept separate because the face mapping is unique to this system.
-    /// </summary>
-    Task<FalloutCombatDiceResult> RollFalloutCombatDiceAsync(int count, CancellationToken ct = default);
 }

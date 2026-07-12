@@ -208,7 +208,6 @@ public class NeedsProfile
 [System.Text.Json.Serialization.JsonPolymorphic(TypeDiscriminatorPropertyName = "$system", UnknownDerivedTypeHandling = System.Text.Json.Serialization.JsonUnknownDerivedTypeHandling.FallBackToBaseType)]
 [System.Text.Json.Serialization.JsonDerivedType(typeof(Dnd5eExtension), "dnd5e")]
 [System.Text.Json.Serialization.JsonDerivedType(typeof(Pf2eExtension), "pf2e")]
-[System.Text.Json.Serialization.JsonDerivedType(typeof(Fallout2d20Extension), "fallout2d20")]
 public class SystemExtension
 {
     // ── Cross-cutting stats present in virtually every TTRPG ──────────────────
@@ -255,7 +254,7 @@ public class SystemExtension
 
     /// <summary>
     /// Base movement speed in system-native units.
-    /// D&amp;D/PF2e: feet (30). Fallout: null (uses range bands instead).
+    /// D&amp;D/PF2e: feet (30).
     /// Nullable — leave null for systems that do not use numeric movement.
     /// </summary>
     public float? Movement { get; set; }

@@ -91,8 +91,6 @@ public class RelationshipModifierTests
     [InlineData(RulesetSystem.Dnd5e, "Athletics", false)]
     [InlineData(RulesetSystem.Pathfinder2e, "Diplomacy", true)]
     [InlineData(RulesetSystem.Pathfinder2e, "Persuasion", false)]
-    [InlineData(RulesetSystem.Fallout2d20, "Speech", true)]
-    [InlineData(RulesetSystem.Fallout2d20, "SmallGuns", false)]
     public void SocialSkillGating_UsesPerRulesetSkillLists(RulesetSystem system, string skill, bool expected)
     {
         var action = new RulesetAction

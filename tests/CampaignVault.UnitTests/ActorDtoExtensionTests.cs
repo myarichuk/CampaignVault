@@ -124,52 +124,6 @@ public class ActorDtoExtensionTests
     }
 
     [Fact]
-    public void Fallout2d20Extension_Perks_RoundtripThroughJson()
-    {
-        // Arrange
-        var ext = new Fallout2d20Extension
-        {
-            Perks = ["better_criticals", "bloody_mess", "toughness"],
-            Strength = 7,
-            Endurance = 8
-        };
-
-        // Act
-        var json = JsonSerializer.Serialize(ext, _options);
-        var deserialized = JsonSerializer.Deserialize<Fallout2d20Extension>(json, _options);
-
-        // Assert
-        Assert.NotNull(deserialized);
-        Assert.Equal(3, deserialized.Perks.Count);
-        Assert.Contains("better_criticals", deserialized.Perks);
-        Assert.Contains("bloody_mess", deserialized.Perks);
-        Assert.Contains("toughness", deserialized.Perks);
-        Assert.Equal(7, deserialized.Strength);
-        Assert.Equal(8, deserialized.Endurance);
-    }
-
-    [Fact]
-    public void Fallout2d20Extension_EmptyPerks_DefaultsToEmptyList()
-    {
-        // Arrange
-        var json = """
-                   {
-                     "strength": 6,
-                     "perception": 5
-                   }
-                   """;
-
-        // Act
-        var ext = JsonSerializer.Deserialize<Fallout2d20Extension>(json, _options);
-
-        // Assert
-        Assert.NotNull(ext);
-        Assert.Empty(ext.Perks);
-        Assert.Equal(6, ext.Strength);
-        Assert.Equal(5, ext.Perception);
-    }
-
-    [Fact]
     public void CharacterCreate_WithDnd5eSystemStats_PreservesIdentityFields()
     {
         // Arrange

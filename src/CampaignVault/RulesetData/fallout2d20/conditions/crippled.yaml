@@ -1,6 +1,0 @@
-name: crippled
-system: fallout2d20
-durationType: Manual
-mechanicalSummary: A limb is broken or severely damaged. Movement and actions with the affected limb are impaired. Requires medical treatment to recover.
-immunities: []
-suppresses: []

@@ -140,32 +140,6 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task Fallout_DerivesHp_FromEnduranceLuckAndLevel()
-    {
-        var orchestrator = BootstrapTestHelper.CreateOrchestrator();
-        var character = new Character
-        {
-            Id = "chars/vault-dweller",
-            Name = "Vault Dweller",
-            SystemStats = new Fallout2d20Extension
-            {
-                Endurance = 6,
-                Luck = 5,
-                Level = 3,
-            },
-        };
-
-        await orchestrator.ApplyCreationAsync(new BootstrapContext
-        {
-            Character = character,
-            ActiveSystem = RulesetSystem.Fallout2d20,
-        });
-
-        Assert.Equal(23, character.MaxHp);
-        Assert.Equal(23, character.CurrentHp);
-    }
-
-    [Fact]
     public async Task LevelUp_GainsHp_AndRefreshesProficiency_ForDnd5eBarbarian()
     {
         var orchestrator = BootstrapTestHelper.CreateOrchestrator();
@@ -456,47 +430,6 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
         Assert.Equal(14, stats.ArmorClass);
         Assert.Contains(report.Steps, s => s.StepName == "pf2e.derive_defense");
-    }
-
-    [Fact]
-    public async Task Fallout_ReDerivesDefense_WhenAgilityPatched()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-        var keys = new CampaignDocumentKeys();
-        await session.StoreAsync(new CampaignConfig
-        {
-            Id = keys.Config("fallout-agi-patch"),
-            ActiveSystem = RulesetSystem.Fallout2d20,
-        });
-
-        var existing = new Character
-        {
-            Id = "chars/wastelander",
-            Name = "Wastelander",
-            MaxHp = 11,
-            CurrentHp = 11,
-            SystemStats = new Fallout2d20Extension
-            {
-                Endurance = 5,
-                Luck = 6,
-                Agility = 9,
-                Defense = 2,
-            },
-        };
-        await session.StoreAsync(existing);
-        await session.SaveChangesAsync();
-
-        var handler = new SystemStatsChangeHandler(keys, BootstrapTestHelper.CreateOrchestrator());
-        var ctx = CreateContext(session, "fallout-agi-patch", []);
-        var result = await handler.ApplyAsync(new SystemStatsChange
-        {
-            CharacterId = "chars/wastelander",
-            SystemStats = new Fallout2d20Extension { Agility = 7 },
-        }, ctx);
-
-        Assert.True(result.Success);
-        var stats = Assert.IsType<Fallout2d20Extension>(existing.SystemStats);
-        Assert.Equal(1, stats.Defense);
     }
 
     [Fact]

@@ -1,9 +1,0 @@
-name: Radroach Swarm
-system: fallout2d20
-description: A swarm of irradiated insects
-level: 2
-hp: 8
-defense: 1
-abilities:
-  - Swarm Attack (2d6 damage)
-  - Scatter (half damage on area attacks)

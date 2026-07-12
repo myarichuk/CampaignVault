@@ -54,7 +54,7 @@ internal static partial class McpToolErrorFilter
             ("create_campaign", "name") =>
                 "Provide a unique campaign slug (spaces become hyphens). Pass campaignName on subsequent tool calls.",
             ("create_campaign", "initialSystem") =>
-                "Use a RulesetSystem value: Dnd5e, Pathfinder2e, Fallout2d20, or Narrative.",
+                "Use a RulesetSystem value: Dnd5e, Pathfinder2e, or Narrative.",
             ("commit", "changes") =>
                 "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
             ("commit", "narrative") =>
@@ -84,7 +84,7 @@ internal static partial class McpToolErrorFilter
             ("define_need_descriptor", "needName") or ("define_need_descriptor", "descriptor") =>
                 "Both needName and descriptor are required.",
             ("set_active_system", "activeSystem") =>
-                "Use a RulesetSystem value: Dnd5e, Pathfinder2e, Fallout2d20, or Narrative.",
+                "Use a RulesetSystem value: Dnd5e, Pathfinder2e, or Narrative.",
             ("get_current_campaign", "campaignName") =>
                 "Pass the campaign slug (e.g. dragon-heist). Call list_campaigns to discover slugs.",
             _ =>

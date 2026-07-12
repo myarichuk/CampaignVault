@@ -15,9 +15,6 @@ public static class SocialSkillGating
     private static readonly string[] Pf2eSocialSkills =
         ["Diplomacy", "Deception", "Intimidation", "Performance", "Society"];
 
-    private static readonly string[] FalloutSocialSkills =
-        ["Speech", "Barter", "Persuasion", "Deception", "Intimidation", "Insight", "Performance"];
-
     public static bool ShouldApplyRelationshipModifier(RulesetSystem system, RulesetAction action, string skillName)
     {
         if (action.ActionCategory == ActionCategory.Social)
@@ -29,7 +26,6 @@ public static class SocialSkillGating
         {
             RulesetSystem.Dnd5e => Dnd5eSocialSkills,
             RulesetSystem.Pathfinder2e => Pf2eSocialSkills,
-            RulesetSystem.Fallout2d20 => FalloutSocialSkills,
             _ => Dnd5eSocialSkills
         };
 

@@ -51,7 +51,6 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
         var selector = new RulesetModuleSelector([
             new Dnd5eRulesetResolver(rollSvc),
             new Pf2eRulesetResolver(rollSvc),
-            new Fallout2d20RulesetResolver(rollSvc),
             new NarrativeRulesetResolver(rollSvc)
         ]);
         var pm = new PressureManager(new CampaignDocumentKeys());

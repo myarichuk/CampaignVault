@@ -1,6 +1,0 @@
-name: radiation_poisoning
-system: fallout2d20
-durationType: Manual
-mechanicalSummary: Exposure to radiation causing cellular damage and mutation. Takes 1 damage per day from radiation exposure until treated. Requires medical treatment to recover.
-immunities: []
-suppresses: []

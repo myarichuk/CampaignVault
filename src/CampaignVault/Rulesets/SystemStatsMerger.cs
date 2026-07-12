@@ -17,7 +17,6 @@ public static class SystemStatsMerger
     {
         RulesetSystem.Dnd5e => new Dnd5eExtension(),
         RulesetSystem.Pathfinder2e => new Pf2eExtension(),
-        RulesetSystem.Fallout2d20 => new Fallout2d20Extension(),
         _ => new SystemExtension()
     };
 
@@ -42,7 +41,6 @@ public static class SystemStatsMerger
     {
         _ when type == typeof(Dnd5eExtension) => RulesetSystem.Dnd5e,
         _ when type == typeof(Pf2eExtension) => RulesetSystem.Pathfinder2e,
-        _ when type == typeof(Fallout2d20Extension) => RulesetSystem.Fallout2d20,
         _ => RulesetSystem.Dnd5e
     };
 
@@ -52,7 +50,6 @@ public static class SystemStatsMerger
         {
             RulesetSystem.Dnd5e => typeof(Dnd5eExtension),
             RulesetSystem.Pathfinder2e => typeof(Pf2eExtension),
-            RulesetSystem.Fallout2d20 => typeof(Fallout2d20Extension),
             _ => typeof(SystemExtension)
         };
 

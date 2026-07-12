@@ -16,7 +16,6 @@ public class FakeRollService : IRollService
 {
     public Queue<RollOutcome> NextRolls { get; } = new();
     public Queue<IReadOnlyList<RollOutcome>> NextBatches { get; } = new();
-    public Queue<FalloutCombatDiceResult> NextFalloutRolls { get; } = new();
     public List<RollRequest> RecordedRequests { get; } = [];
 
     public Task<RollOutcome> RollAsync(RollRequest request, CancellationToken ct = default)
@@ -29,11 +28,6 @@ public class FakeRollService : IRollService
         CancellationToken ct = default)
     {
         return Task.FromResult(NextBatches.Dequeue());
-    }
-
-    public Task<FalloutCombatDiceResult> RollFalloutCombatDiceAsync(int count, CancellationToken ct = default)
-    {
-        return Task.FromResult(NextFalloutRolls.Dequeue());
     }
 }
 

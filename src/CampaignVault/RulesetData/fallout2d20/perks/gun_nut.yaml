@@ -1,5 +1,0 @@
-﻿name: Gun Nut
-system: fallout2d20
-description: +1 bonus to Small Guns and repair of firearms
-requirements:
-  - Intelligence 5+

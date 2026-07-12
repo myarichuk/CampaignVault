@@ -54,12 +54,6 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
 
             return outcomes;
         }
-
-        public Task<FalloutCombatDiceResult> RollFalloutCombatDiceAsync(int count,
-            System.Threading.CancellationToken ct = default)
-        {
-            return Task.FromResult(new FalloutCombatDiceResult(0, 0, false));
-        }
     }
 
     private CampaignTools CreateTools() =>

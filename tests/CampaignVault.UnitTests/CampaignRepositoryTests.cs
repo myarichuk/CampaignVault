@@ -1657,7 +1657,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // 4. Locked campaigns reject ruleset changes; options can still be updated on the active system
         var setOptions = new Dictionary<string, string> { { "difficulty", "2" } };
-        var lockedResult = await tools.SetActiveSystem(RulesetSystem.Fallout2d20, setOptions);
+        var lockedResult = await tools.SetActiveSystem(RulesetSystem.Narrative, setOptions);
         Assert.False(lockedResult.Success);
         Assert.Equal("SystemLocked", lockedResult.Error);
 

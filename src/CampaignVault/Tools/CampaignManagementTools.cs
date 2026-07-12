@@ -39,7 +39,7 @@ public class CampaignManagementTools(
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"RULES CONFIG TOOL: Set the active ruleset system for a campaign.
 Respects lock-in (cannot change system once locked). Use this to define house rules or system options.
-Available Systems: Dnd5e, Pathfinder2e, Fallout2d20, Narrative
+Available Systems: Dnd5e, Pathfinder2e, Narrative
 
 Example: set_active_system(RulesetSystem.Pathfinder2e, { ""mapEnabled"": ""true"" })")]
     public Task<ToolResult<CampaignConfig>> SetActiveSystem(
@@ -84,7 +84,7 @@ Example: set_active_system(RulesetSystem.Pathfinder2e, { ""mapEnabled"": ""true"
     [Description(@"CAMPAIGN TOOL: Creates a new campaign with a slug and initial ruleset (locked immediately).
 Pass campaignName on subsequent calls.
 Slugs are canonicalized ('Dragon Heist' → dragon-heist).
-Available Systems: Dnd5e, Pathfinder2e, Fallout2d20, Narrative
+Available Systems: Dnd5e, Pathfinder2e, Narrative
 
 Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dragon Heist"")")]
     public Task<ToolResult<Campaign>> CreateCampaign(
@@ -290,7 +290,7 @@ Note: This surfaces stat-block *templates* (reusable reference data), not live i
     [McpServerTool(UseStructuredContent = true)]
     [Description(
         @"CAMPAIGN DISCOVERABILITY: Returns campaign context (meta + posture: party roster, entry hint, last event).
-Use this if you need the active ruleset system (e.g., Dnd5e, Pathfinder2e, Fallout2d20) before using ruleset_actions in combat.
+Use this if you need the active ruleset system (e.g., Dnd5e, Pathfinder2e) before using ruleset_actions in combat.
 Requires campaignName.")]
     public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]

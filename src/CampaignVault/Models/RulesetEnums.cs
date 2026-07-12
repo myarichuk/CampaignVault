@@ -11,7 +11,6 @@ public enum RulesetSystem
 {
     Dnd5e,
     Pathfinder2e,
-    Fallout2d20,
     Narrative
 }
 
@@ -32,7 +31,7 @@ public enum RulesetActionType
     /// <summary>Single-actor check against a static DC (e.g. Athletics DC 15).</summary>
     SkillCheck,
 
-    /// <summary>Both actor and target roll; the higher success total wins (D&D both roll d20, Fallout both roll pools).</summary>
+    /// <summary>Both actor and target roll; the higher success total wins.</summary>
     ContestedCheck,
 
     /// <summary>Actor rolls against target's static defence value (e.g. PF2e AC, Fallout static difficulty).</summary>
@@ -77,7 +76,7 @@ public enum ActionCategory
 
 /// <summary>
 /// Body part targeted by a localized attack or injury.
-/// Used by hit-location systems (Fallout 2d20) and for structured StatusEffect debuffs.
+/// Used by systems with hit-location mechanics and for structured StatusEffect debuffs.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum BodyPart
@@ -135,7 +134,6 @@ public enum DiceMechanic
     /// <summary>
     /// Count dice whose result &lt;= TargetNumber as successes (1 each).
     /// If CriticalThreshold is set, dice &lt;= CriticalThreshold count as 2 successes.
-    /// Used by Fallout 2d20 (tag skills double-success on dice &lt;= skill rank).
     /// </summary>
     SuccessCount
 }
@@ -154,7 +152,7 @@ public enum RecoveryType
     /// <summary>Recovers after 1 hour of short rest (D&D Warlocks, PF2e Focus Points). Includes PerTurn recovery.</summary>
     ShortRest,
 
-    /// <summary>Recovers at the start of each combat turn (Fallout 2d20 Action Points). LLM manually resets via resource commits.</summary>
+    /// <summary>Recovers at the start of each combat turn. LLM manually resets via resource commits.</summary>
     PerTurn,
 
     /// <summary>Recovers at the end of an encounter (rarely used; most systems use PerTurn or ShortRest instead).</summary>
@@ -180,6 +178,6 @@ public enum RestType
     /// <summary>1-8 hours of rest. Recovers ShortRest and PerTurn pools (not LongRest).</summary>
     ShortRest,
 
-    /// <summary>Combat turn start (Fallout AP reset). Recovers only PerTurn pools.</summary>
+    /// <summary>Combat turn start. Recovers only PerTurn pools.</summary>
     PerTurn
 }

@@ -9,7 +9,6 @@ public static class RulesetSystemExtensions
     {
         RulesetSystem.Dnd5e => "dnd5e",
         RulesetSystem.Pathfinder2e => "pf2e",
-        RulesetSystem.Fallout2d20 => "fallout2d20",
         RulesetSystem.Narrative => "narrative",
         _ => system.ToString().ToLowerInvariant()
     };

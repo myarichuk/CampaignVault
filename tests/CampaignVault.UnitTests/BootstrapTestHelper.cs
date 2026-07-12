@@ -14,7 +14,6 @@ internal static class BootstrapTestHelper
         [
             new Dnd5eRulesetResolver(roll),
             new Pf2eRulesetResolver(roll),
-            new Fallout2d20RulesetResolver(roll),
             new NarrativeRulesetResolver(roll),
         ];
         return new CharacterBootstrapOrchestrator(new RulesetModuleSelector(modules));

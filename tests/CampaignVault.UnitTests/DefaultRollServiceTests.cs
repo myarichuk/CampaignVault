@@ -356,50 +356,6 @@ public class DefaultRollServiceTests
     }
 
     [Fact]
-    public async Task RollFalloutCombatDiceAsync_CalculatesCorrectly()
-    {
-        // Arrange
-        var testRng = new Random(Seed);
-        var serviceRng = new Random(Seed);
-        var service = new DefaultRollService(serviceRng);
-
-        // Act
-        var result = await service.RollFalloutCombatDiceAsync(5);
-
-        // Assert
-        var expectedDamage = 0;
-        var expectedEffects = 0;
-        var expectedCrit = false;
-
-        for (var i = 0; i < 5; i++)
-        {
-            var face = testRng.Next(1, 7);
-            switch (face)
-            {
-                case 1:
-                    expectedDamage++;
-                    break;
-                case 2:
-                    expectedDamage += 2;
-                    expectedCrit = true;
-                    break;
-                case 3:
-                case 4:
-                    break;
-                case 5:
-                case 6:
-                    expectedDamage++;
-                    expectedEffects++;
-                    break;
-            }
-        }
-
-        Assert.Equal(expectedDamage, result.Damage);
-        Assert.Equal(expectedEffects, result.Effects);
-        Assert.Equal(expectedCrit, result.HasCritical);
-    }
-
-    [Fact]
     public async Task RollBatchAsync_EvaluatesInOrder()
     {
         var service = new DefaultRollService();

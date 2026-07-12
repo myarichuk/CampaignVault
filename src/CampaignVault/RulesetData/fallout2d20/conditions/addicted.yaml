@@ -1,6 +1,0 @@
-name: addicted
-system: fallout2d20
-durationType: Manual
-mechanicalSummary: Dependent on a drug or substance. Suffer a penalty until the addiction is satisfied or treated by a doctor. Requires medical treatment to recover.
-immunities: []
-suppresses: []

@@ -1,7 +1,0 @@
-﻿# Fallout 2d20 Currency Pool
-# Party wealth tracked as a resource pool so LLM can award/spend caps through standard commits
-name: caps
-description: Bottle caps (party currency, never recovers)
-applicableSystems: [fallout2d20]
-recovery: Never
-defaultMax: 1000000

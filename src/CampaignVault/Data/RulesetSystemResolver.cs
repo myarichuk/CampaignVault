@@ -13,11 +13,10 @@ public static class RulesetSystemResolver
         {
             Dnd5eExtension => RulesetSystem.Dnd5e,
             Pf2eExtension => RulesetSystem.Pathfinder2e,
-            Fallout2d20Extension => RulesetSystem.Fallout2d20,
             _ => default
         };
 
-        return stats is Dnd5eExtension or Pf2eExtension or Fallout2d20Extension;
+        return stats is Dnd5eExtension or Pf2eExtension;
     }
 
     public static RulesetSystem FromStats(SystemExtension stats)
