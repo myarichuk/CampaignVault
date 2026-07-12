@@ -100,10 +100,10 @@ internal static partial class McpToolErrorFilter
         {
             ("create_campaign", "name") => "create_campaign(name: \"dragon-heist\", initialSystem: \"Dnd5e\")",
             ("get_scene", "locationId") => "get_scene(\"locations/tavern\")",
-            ("get_npc_context", "characterId") => "get_npc_context(\"characters/innkeeper\")",
+            ("get_npc_context", "characterId") => "get_npc_context(\"chars/innkeeper\")",
             ("get_faction_context", "factionId") => "get_faction_context(\"factions/thieves-guild\")",
             ("get_quest_details", "questId") => "get_quest_details(\"quests/rats_01\")",
-            ("start_combat", "locationId") => "start_combat(\"locations/tavern\", [\"characters/hero\"])",
+            ("start_combat", "locationId") => "start_combat(\"locations/tavern\", [\"chars/hero\"])",
             ("define_need_descriptor", _) =>
                 "define_need_descriptor(\"homesickness\", \"Longing for home and family.\")",
             _ => null

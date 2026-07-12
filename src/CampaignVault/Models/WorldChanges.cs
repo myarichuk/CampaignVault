@@ -119,7 +119,7 @@ public class SceneInterruptCheck : WorldChange
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
 public class HpChange : WorldChange
 {
-    [Description("ID of the character whose HP to modify (e.g. 'characters/grog' or 'characters/elara-voss'). Must exist.")]
+    [Description("ID of the character whose HP to modify (e.g. 'chars/grog' or 'chars/elara-voss'). Must exist.")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
@@ -135,7 +135,7 @@ public class ItemTransfer : WorldChange
     [JsonPropertyName("itemId")]
     public string ItemId { get; set; } = default!;
 
-    [Description("New holder ID. Can be a character ('characters/xxx'), a location ('locations/xxx'), or another item acting as container.")]
+    [Description("New holder ID. Can be a character ('chars/xxx'), a location ('locations/xxx'), or another item acting as container.")]
     [JsonPropertyName("toHolderId")]
     public string ToHolderId { get; set; } = default!;
 }
@@ -151,7 +151,7 @@ public class ItemTransfer : WorldChange
 /// </summary>
 public class StatusChange : WorldChange
 {
-    [Description("ID of the character receiving the status (e.g. 'characters/grog').")]
+    [Description("ID of the character receiving the status (e.g. 'chars/grog').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
@@ -176,7 +176,7 @@ public class StatusChange : WorldChange
 /// <summary>Remove a named status/condition from a character (case-insensitive match). Removes all matching entries.</summary>
 public class StatusRemove : WorldChange
 {
-    [Description("ID of the character whose status to remove (e.g. 'characters/grog').")]
+    [Description("ID of the character whose status to remove (e.g. 'chars/grog').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
@@ -269,11 +269,11 @@ public class RumorCreate : WorldChange
 /// <summary>Apply a numeric delta to the relationship score between two characters. Range is typically -100 to +100.</summary>
 public class RelationshipChange : WorldChange
 {
-    [Description("ID of the character whose opinion of the target is changing (e.g. 'characters/elara-voss').")]
+    [Description("ID of the character whose opinion of the target is changing (e.g. 'chars/elara-voss').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("ID of the target character being evaluated (e.g. 'characters/bram-ironarm').")]
+    [Description("ID of the target character being evaluated (e.g. 'chars/bram-ironarm').")]
     [JsonPropertyName("targetId")]
     public string TargetId { get; set; } = default!;
 
@@ -292,11 +292,11 @@ public class RelationshipChange : WorldChange
 /// </summary>
 public class EngagementRelationChange : WorldChange
 {
-    [Description("ID of the character initiating or anchoring the relation (e.g. 'characters/bard').")]
+    [Description("ID of the character initiating or anchoring the relation (e.g. 'chars/bard').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("ID of the target character or object (e.g. 'characters/archivist').")]
+    [Description("ID of the target character or object (e.g. 'chars/archivist').")]
     [JsonPropertyName("targetId")]
     public string TargetId { get; set; } = default!;
 
@@ -325,11 +325,11 @@ public class EngagementRelationChange : WorldChange
 /// </summary>
 public class SpatialPositionChange : WorldChange
 {
-    [Description("ID of the character whose position is being set (e.g. 'characters/drunk').")]
+    [Description("ID of the character whose position is being set (e.g. 'chars/drunk').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("ID of the reference entity (e.g. 'characters/pc', 'locations/tavern_bar').")]
+    [Description("ID of the reference entity (e.g. 'chars/pc', 'locations/tavern_bar').")]
     [JsonPropertyName("targetId")]
     public string TargetId { get; set; } = default!;
 
@@ -349,7 +349,7 @@ public class SpatialPositionChange : WorldChange
 /// <summary>Adjust one of a character's open-ended psychological or physical needs (hunger, thirst, tiredness; paranoia, obsession, wanderlust, bloodlust, guilt, despair, or other custom needs).</summary>
 public class NeedChange : WorldChange
 {
-    [Description("ID of the character whose need is changing (e.g. 'characters/grog').")]
+    [Description("ID of the character whose need is changing (e.g. 'chars/grog').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
@@ -404,7 +404,7 @@ public class MoodChange : WorldChange
 /// </summary>
 public class ActivityChange : WorldChange
 {
-    [Description("ID of the character whose activity/location is changing (e.g. 'characters/bram-ironarm').")]
+    [Description("ID of the character whose activity/location is changing (e.g. 'chars/bram-ironarm').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
@@ -831,7 +831,7 @@ public class ItemCreate : WorldChange
 /// </summary>
 public class TravelChange : WorldChange
 {
-    [Description("ID of the character traveling (e.g. 'characters/grog').")]
+    [Description("ID of the character traveling (e.g. 'chars/grog').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
     
@@ -1339,11 +1339,11 @@ public class PlotThreadClueDiscovered : WorldChange
 /// </summary>
 public class ResourceChange : WorldChange
 {
-    [Description("Character ID whose resource is changing (e.g. 'characters/wizard-1').")]
+    [Description("Character ID whose resource is changing (e.g. 'chars/wizard-1').")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Pool name (e.g., 'spell_slots_3', 'font_of_magic', 'focus_points', 'action_points'). Must match an existing pool in character.systemStats.resourcePools.")]
+    [Description("Pool name (e.g., 'spell_slots_3', 'font_of_magic', 'focus_points', 'action_points', 'gold' [dnd5e/pf2e currency], 'caps' [fallout2d20 currency]). Must match an existing pool in character.systemStats.resourcePools.")]
     [JsonPropertyName("poolName")]
     public string PoolName { get; set; } = default!;
 

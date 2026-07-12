@@ -1,0 +1,19 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: pact_magic
+description: >
+  Warlock Pact Magic slots (short-rest recovery). All slots share one spell level that rises with
+  warlock level (1st until 3, 2nd until 5(cont.), 3rd until 11, 4th until 17, 5th at 17+ — see Pact
+  Magic table). This pool tracks slot COUNT only; unlike spell_slots_N pools, the engine does not
+  separately enforce which spell level each slot may cast at — treat all slots in this pool as
+  castable at the warlock's current pact slot level (documented simplification, no plumbing exists
+  for a shared variable slot level outside the spell_slots_N naming convention).
+applicableSystems: [dnd5e]
+applicableClasses: [warlock]
+recovery: ShortRest
+defaultMax: 1
+levelToMaxMap:
+  "1": 1
+  "3": 2
+  "11": 3
+  "17": 4

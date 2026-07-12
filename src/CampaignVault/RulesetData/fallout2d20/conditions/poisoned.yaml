@@ -1,0 +1,6 @@
+name: poisoned
+system: fallout2d20
+durationType: Manual
+mechanicalSummary: Infected with toxins or venom. Takes damage over time until cured. Requires medical treatment to recover.
+immunities: []
+suppresses: []

@@ -147,7 +147,7 @@ public sealed class VaultSyncPushPullTests : IDisposable
         _mockClient.ClearReceivedCalls();
         await _session.PushAsync();
 
-        _mockClient.Received(1).GetCampaignEntitiesAsync(
+        _ = _mockClient.Received(1).GetCampaignEntitiesAsync(
             Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>());
     }
 
@@ -169,7 +169,7 @@ public sealed class VaultSyncPushPullTests : IDisposable
 
         await _session.PushAsync();
 
-        _mockClient.Received(1).DeleteCampaignEntityAsync(
+        _ = _mockClient.Received(1).DeleteCampaignEntityAsync(
             Arg.Is<DeleteCampaignEntityRequest>(r =>
                 r.Id == "characters/grog" && r.Type == "character"),
             Arg.Any<Metadata>(),

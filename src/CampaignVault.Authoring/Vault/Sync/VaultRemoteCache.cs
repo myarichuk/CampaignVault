@@ -114,7 +114,7 @@ public sealed class VaultRemoteCache
 
             return new RemoteCacheManifestReadResult(manifest, false, null);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return new RemoteCacheManifestReadResult(
                 null,

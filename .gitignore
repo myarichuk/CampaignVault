@@ -38,3 +38,6 @@ conductor/
 docs/
 terminals/
 agent-tools/
+
+*.md
+*.pdf

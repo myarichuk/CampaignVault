@@ -11,7 +11,7 @@ public class MetaTools
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for commit $type discriminators — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use. Filter by category to reduce output.")]
     public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
-        [Description("Optional category filter: Combat, Narrative, World, PlotThread. Omit to return all.")]
+        [Description("Optional commit-schema category filter (groups $type discriminators, not tools): Combat, Narrative, World, PlotThread. Omit to return all. Unrelated to list_tools' category parameter, which groups tools instead.")]
         string? category = null)
     {
         var schema = CommitSchemaRegistry.GetAll(category);
@@ -24,7 +24,7 @@ public class MetaTools
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"TOOL CATALOG: Returns the complete list of CampaignVault MCP tools (name, category, one-line description). Call this if search-based discovery only surfaced a subset. Optional category filter available.")]
     public Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(
-        [Description("Optional category filter. Omit to return all tools. Values: Session & exploration, Mutation & time, Combat & rulesets, Campaign management, Deep dives, World builder, System.")] string? category = null)
+        [Description("Optional tool-grouping category filter (groups tools, not $type discriminators). Omit to return all tools. Values: Session & exploration, Mutation & time, Combat & rulesets, Campaign management, Deep dives, World builder, System. Unrelated to get_commit_schema's category parameter, which groups commit $types instead.")] string? category = null)
     {
         var tools = ToolCatalog.GetByCategory(category);
         var summary = string.IsNullOrWhiteSpace(category)

@@ -198,18 +198,18 @@ public class McpServerTests : IDisposable
         await tools.WriteWorkspaceEntity("characters/test.md", "---\nid: characters/test\nname: Test\n---");
 
         var statusBefore = await tools.GetVaultStatus();
-        var headBefore = ((System.Collections.Generic.Dictionary<string, object>)statusBefore.summary)["headCommitSha"];
+        var headBefore = ((System.Collections.Generic.Dictionary<string, object>)statusBefore.summary!)["headCommitSha"];
 
         // Commit
         var commitResult = await tools.CommitVault("Test commit");
         Assert.True(commitResult.success);
-        var headAfter = ((System.Collections.Generic.Dictionary<string, object>)commitResult.summary)["headCommitSha"];
+        var headAfter = ((System.Collections.Generic.Dictionary<string, object>)commitResult.summary!)["headCommitSha"];
 
         Assert.NotEqual(headBefore, headAfter);
 
         // Verify working tree is clean
         var statusAfter = await tools.GetVaultStatus();
-        var isDirty = ((System.Collections.Generic.Dictionary<string, object>)statusAfter.summary)["isDirty"];
+        var isDirty = ((System.Collections.Generic.Dictionary<string, object>)statusAfter.summary!)["isDirty"];
         Assert.False((bool)isDirty);
     }
 

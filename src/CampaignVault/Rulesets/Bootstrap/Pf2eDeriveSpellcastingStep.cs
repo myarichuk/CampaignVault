@@ -43,9 +43,7 @@ public sealed class Pf2eDeriveSpellcastingStep : IBootstrapStep, ILevelGainStep
             _ => 0
         };
 
-        var proficiencyRank = stats.SaveProficiencies.TryGetValue(ability, out var rank)
-            ? rank
-            : Pf2eProficiencyRank.Trained;
+        var proficiencyRank = stats.SpellcastingProficiency ?? Pf2eProficiencyRank.Trained;
 
         var proficiencyBonus = proficiencyRank == Pf2eProficiencyRank.Untrained
             ? 0

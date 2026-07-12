@@ -36,7 +36,7 @@ Engine rolls dice; you narrate results. Never invent roll totals. Non-magic skil
 
 `SavingThrow` = **actor** resists one effect. `Spell`+`save` = **each target** in one commit.
 
-**After every spell:** commit `status` for concentration/charm/etc. Spell slots tracked via `resource` commit: `{ "$type":"resource", "characterId":"chars/wizard", "poolName":"spell_slots_3", "delta":-1, "spellName":"fireball", "reason":"Cast Fireball" }`. Engine validates spell level; clamps (never hard-fails) on empty pool — watch for `(Clamped: ...)` in narrative.
+**After every spell:** commit `status` for concentration/charm/etc. Spell slots tracked via `resource` commit: `{ "$type":"resource", "characterId":"chars/wizard", "poolName":"spell_slots_3", "delta":-1, "spellName":"fireball", "reason":"Cast Fireball" }`. Engine validates spell level; spending below 0 HARD-FAILS the commit (`"Insufficient spell_slots_3 for Valen: has 0, needs 1."`) — check the pool via get_scene/get_npc_context before spending, or catch the error and pick a different spell/slot. Grants above max still clamp silently.
 Concentration: `{ "$type":"status", "characterId":"chars/wizard", "effect":{"name":"Concentration: Fireball","category":"Condition"} }`
 
 **Spell examples (copy-paste, replace IDs):**
@@ -50,7 +50,7 @@ Stimpak: `{ "$type":"ruleset_action", "characterId":"chars/pc1", "targetIds":["c
 Social skill checks apply a bonus/penalty from the target's relationship to the actor. Gate with `ActionCategory: Social` or native skill names: 5e {Persuasion, Deception, Intimidation, Insight, Performance}; PF2e {Diplomacy, Deception, Intimidation, Performance, Society}; Fallout {Speech, Barter}. Bands: ≥80→+5 (trusted friend), 60–79→+3 (friendly), 40–59→+1 (acquainted), −39..39→0 (neutral), −59..−40→−1 (distrustful), −79..−60→−3 (hostile), ≤−80→−5 (hated enemy). Multi-target: first `targetId` is the relationship source. Narrative oracle mode **does not apply** relationship modifiers.
 
 **Engagements (non-combat RP):**
-- `engagement_relation` — pairwise state (`actorId`, `targetId`, `category`, `verb`). Physical/Medical=Hard, Social=Soft.
+- `engagement_relation` — pairwise state (`characterId`, `targetId`, `category`, `verb`). Physical/Medical=Hard, Social=Soft.
 - `spatial_position` — placement (`characterId`, `targetId`, `distanceBand`, `zone`).
 Combat grapples: ruleset handles. RP hugs/tending wounds: commit `engagement_relation` yourself.
 

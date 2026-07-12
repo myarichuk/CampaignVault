@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -13,15 +13,15 @@
                      HorizontalAlignment="Stretch" 
                      Height="4" 
                      Margin="0,0,0,0"
-                     Foreground="#2563EB" />
+                     Foreground="{StaticResource AccentColor}" />
 
         <!-- Left: Recent Campaigns -->
-        <Border Grid.Row="1" Grid.Column="0" Background="#18181F" Padding="40">
+        <Border Grid.Row="1" Grid.Column="0" Background="{StaticResource BackgroundColor}" Padding="40">
             <StackPanel Spacing="25">
-                <TextBlock Text="CampaignVault Authoring" FontSize="28" FontWeight="Bold" Foreground="#E4E4EB" />
+                <TextBlock Text="CampaignVault Authoring" FontSize="28" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
                 
                 <StackPanel Spacing="10">
-                    <TextBlock Text="Recent Campaigns" FontSize="14" FontWeight="Bold" Foreground="#71717A" />
+                    <TextBlock Text="Recent Campaigns" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextSecondaryColor}" />
                     <ScrollViewer Height="300">
                         <ItemsControl ItemsSource="{Binding Hub.RecentCampaigns}">
                             <ItemsControl.ItemTemplate>
@@ -39,12 +39,12 @@
                                                     <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
                                                         <TextBlock Grid.Column="0"
                                                                    Text="{Binding DisplayName}"
-                                                                   FontSize="12" FontWeight="SemiBold" Foreground="#E4E4EB"
+                                                                   FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryColor}"
                                                                    VerticalAlignment="Center" />
-                                                        <Border Grid.Column="1" Background="#2D2D3A" Padding="6,2" CornerRadius="2"
+                                                        <Border Grid.Column="1" Background="{StaticResource SurfaceColor}" Padding="6,2" CornerRadius="2"
                                                                 VerticalAlignment="Center"
                                                                 IsVisible="{Binding Ruleset, Converter={x:Static vm:NotEmptyConverter.Instance}}">
-                                                            <TextBlock Text="{Binding Ruleset}" FontSize="9" Foreground="#999" />
+                                                            <TextBlock Text="{Binding Ruleset}" FontSize="9" Foreground="{StaticResource TextSecondaryColor}" />
                                                         </Border>
                                                     </Grid>
 
@@ -58,8 +58,8 @@
                                                         </ItemsControl.ItemsPanel>
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Border Background="#2D3A4A" BorderBrush="#3F4A5A" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
-                                                                    <TextBlock Text="{Binding}" FontSize="9" Foreground="#A0A0AB" />
+                                                                <Border Background="{StaticResource SurfaceColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
+                                                                    <TextBlock Text="{Binding}" FontSize="9" Foreground="{StaticResource TextSecondaryColor}" />
                                                                 </Border>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
@@ -77,7 +77,7 @@
                                                 CommandParameter="{Binding}"
                                                 VerticalAlignment="Top">
                                             <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
-                                                      Width="12" Height="12" Foreground="#71717A" />
+                                                      Width="12" Height="12" Foreground="{StaticResource TextSecondaryColor}" />
                                         </Button>
                                     </Grid>
                                 </DataTemplate>
@@ -91,10 +91,10 @@
         </Border>
 
         <!-- Right: Actions -->
-        <Border Grid.Row="1" Grid.Column="1" Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1,0,0,0" Padding="30">
+        <Border Grid.Row="1" Grid.Column="1" Background="{StaticResource SurfaceColor}" BorderBrush="{StaticResource SurfaceColor}" BorderThickness="1,0,0,0" Padding="30">
             <ScrollViewer>
                 <StackPanel Spacing="20">
-                    <TextBlock Text="Actions" FontSize="16" FontWeight="Bold" Foreground="#E4E4EB" Margin="0,0,0,10" />
+                    <TextBlock Text="Actions" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" Margin="0,0,0,10" />
 
                     <Button Command="{Binding Hub.CreateNewCampaignCommand}"
                             Background="#10B981" Foreground="White"
@@ -106,7 +106,7 @@
                     </Button>
 
                     <Button Command="{Binding OpenCampaignFolderCommand}"
-                            Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
+                            Background="#27272A" BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
                             HorizontalAlignment="Stretch" Padding="15,12" CornerRadius="6">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <PathIcon Data="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z" Width="16" Height="16" />
@@ -114,16 +114,16 @@
                         </StackPanel>
                     </Button>
 
-                    <Separator Background="#2D2D3A" Margin="0,10" />
+                    <Separator Background="{StaticResource SurfaceColor}" Margin="0,10" />
 
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Campaigns Folder" FontSize="12" FontWeight="Bold" Foreground="#71717A" />
+                        <TextBlock Text="Campaigns Folder" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryColor}" />
                         <TextBlock Text="Optional: Set a folder containing all campaign subdirectories for easier access." FontSize="10" Foreground="#52525B" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding Hub.MainViewModel.Settings.CampaignsRootPath, StringFormat='Current: {0}'}"
-                                   FontSize="9" Foreground="#71717A" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                   FontSize="9" Foreground="{StaticResource TextSecondaryColor}" MaxLines="2" TextTrimming="CharacterEllipsis"
                                    IsVisible="{Binding Hub.MainViewModel.Settings.CampaignsRootPath, Converter={x:Static vm:NotEmptyConverter.Instance}}" />
                         <Button Command="{Binding Hub.SetCampaignsFolderCommand}"
-                                Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
+                                Background="#27272A" BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
                                 HorizontalAlignment="Stretch" Padding="12,10" CornerRadius="4" FontSize="11">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <PathIcon Data="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z" Width="14" Height="14" />
@@ -138,9 +138,9 @@
                         </Button>
                     </StackPanel>
 
-                    <Separator Background="#2D2D3A" Margin="0,10" />
+                    <Separator Background="{StaticResource SurfaceColor}" Margin="0,10" />
 
-                    <TextBlock Text="Cloud Discovery" FontSize="14" FontWeight="Bold" Foreground="#71717A" />
+                    <TextBlock Text="Cloud Discovery" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextSecondaryColor}" />
 
                     <ListBox ItemsSource="{Binding Hub.RemoteCampaigns}"
                              Background="Transparent" BorderThickness="0"
@@ -153,7 +153,7 @@
                                         CommandParameter="{Binding}">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <PathIcon Data="M6,2Q4.34,2 3.17,3.17Q2,4.34 2,6V18Q2,19.66 3.17,20.83Q4.34,22 6,22H18Q19.66,22 20.83,20.83Q22,19.66 22,18V6Q22,4.34 20.83,3.17Q19.66,2 18,2H6M6,4H18Q18.83,4 19.41,4.59Q20,5.17 20,6V18Q20,18.83 19.41,19.41Q18.83,20 18,20H6Q5.17,20 4.59,19.41Q4,18.83 4,18V6Q4,5.17 4.59,4.59Q5.17,4 6,4M12,9L7,14H10V17H14V14H17L12,9Z" Width="12" Height="12" Foreground="#3B82F6" />
-                                        <TextBlock Text="{Binding}" FontSize="11" Foreground="#E4E4EB" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource TextPrimaryColor}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </DataTemplate>
@@ -194,3 +194,4 @@
         </Style>
     </UserControl.Styles>
 </UserControl>
+

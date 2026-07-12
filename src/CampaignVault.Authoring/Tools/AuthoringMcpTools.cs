@@ -37,14 +37,14 @@ public class AuthoringMcpTools
 
         var payload = new Dictionary<string, object>
         {
-            { "vaultPath", session.VaultPath },
-            { "headCommitSha", session.HeadCommitSha },
-            { "syncedCommitSha", session.SyncedCommitSha },
+            { "vaultPath", session.VaultPath ?? "" },
+            { "headCommitSha", session.HeadCommitSha ?? "" },
+            { "syncedCommitSha", session.SyncedCommitSha ?? "" },
             { "isDirty", gitStatus.IsDirty },
-            { "modifiedPaths", gitStatus.ModifiedPaths },
-            { "addedPaths", gitStatus.AddedPaths },
-            { "removedPaths", gitStatus.RemovedPaths },
-            { "untrackedPaths", gitStatus.UntrackedPaths },
+            { "modifiedPaths", gitStatus.ModifiedPaths ?? [] },
+            { "addedPaths", gitStatus.AddedPaths ?? [] },
+            { "removedPaths", gitStatus.RemovedPaths ?? [] },
+            { "untrackedPaths", gitStatus.UntrackedPaths ?? [] },
             { "sync", BuildSyncSummaryPayload(summary) }
         };
 
@@ -267,7 +267,7 @@ public class AuthoringMcpTools
             await session.CommitAsync(message);
             AuthoringMcpSessionHelper.RefreshUiIfAvailable();
             return new AuthoringToolResult(success: true,
-                summary: new Dictionary<string, object> { { "headCommitSha", session.HeadCommitSha } });
+                summary: new Dictionary<string, object> { { "headCommitSha", session.HeadCommitSha ?? "" } });
         }
         catch (VaultException ex)
         {
@@ -387,8 +387,8 @@ public class AuthoringMcpTools
         { "behindCount", summary.BehindCount },
         { "conflictCount", summary.ConflictCount },
         { "connection", summary.Connection.State.ToString() },
-        { "connectionMessage", summary.Connection.Message },
+        { "connectionMessage", summary.Connection.Message ?? "" },
         { "remoteCacheCorrupt", summary.RemoteCacheCorrupt },
-        { "lastFetchedAt", summary.LastFetchedAt }
+        { "lastFetchedAt", summary.LastFetchedAt?.ToString() ?? "" }
     };
 }

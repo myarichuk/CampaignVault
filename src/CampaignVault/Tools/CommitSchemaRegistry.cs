@@ -36,9 +36,10 @@ internal static class CommitSchemaRegistry
 
         new("ruleset_action", "Combat",
             "ENGINE SIDE EFFECTS: Rolls dice and auto-applies HpChange, StatusChange, EngagementRelationChange. " +
-            "Do NOT add separate hp/status commits for the same action — double-application will occur.",
-            ["characterId", "actionName", "actionType", "actionCategory"],
-            ["targetIds", "parameters", "advantageState", "damageType"],
+            "Do NOT add separate hp/status commits for the same action — double-application will occur. " +
+            "actionCategory defaults to Melee if omitted — set it explicitly for Spell/Ranged/Social/Survival/Maneuver actions.",
+            ["characterId", "actionName", "actionType"],
+            ["targetIds", "parameters", "advantageState", "damageType", "actionCategory"],
             HasSideEffects: true,
             SideEffects: ["hp", "status", "engagement_relation"],
             CoCommitHints: ["event"],
@@ -75,7 +76,7 @@ internal static class CommitSchemaRegistry
             "Applies need recovery automatically. Resource pool recovery (spell slots/focus points) is deferred " +
             "to the next advance_world call — call advance_world after resting to refill pools.",
             ["characterId", "locationId", "intendedHours"],
-            ["securityModifier", "narrativeNote"],
+            ["securityModifier", "restType", "narrativeNote"],
             HasSideEffects: true,
             SideEffects: ["need", "event"],
             CoCommitHints: ["event"],
@@ -146,7 +147,7 @@ internal static class CommitSchemaRegistry
         new("knowledge_update", "Narrative",
             "Store a memory in an NPC's psychology (topic, details, importance).",
             ["characterId", "topic", "details"],
-            ["importance", "source", "valence", "salience", "urgency", "relatedEntityIds", "sourceEventIds"],
+            ["importance", "createMemory", "source", "valence", "salience", "urgency", "relatedEntityIds", "sourceEventIds"],
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: []),
@@ -198,7 +199,8 @@ internal static class CommitSchemaRegistry
             "Create a new location. Use connectedFromLocationId to auto-link with two-way exits.",
             ["locationId", "name", "description", "type"],
             ["parentLocationId", "connectedFromLocationId", "connectionDescription",
-             "pointsOfInterest", "ambientCrowd", "exits", "dangerModifier"],
+             "pointsOfInterest", "pointOfInterestDetails", "materializePointOfInterest",
+             "removePointOfInterest", "poiDetails", "ambientCrowd", "exits", "dangerModifier"],
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: []),
@@ -207,7 +209,7 @@ internal static class CommitSchemaRegistry
             "Granular updates to an existing location (exits, PoIs, tags, state).",
             ["locationId"],
             ["addExit", "removeExitTarget", "addPointOfInterest", "removePointOfInterest",
-             "materializePointOfInterest", "poiDetails", "ambientCrowd", "name", "description",
+             "materializePointOfInterest", "poiDetails", "pointOfInterestDetails", "ambientCrowd", "name", "description",
              "newState", "tagsToAdd", "tagsToRemove", "featuresToAdd", "featuresToRemove", "dangerModifier"],
             HasSideEffects: false,
             SideEffects: [],
@@ -347,8 +349,11 @@ internal static class CommitSchemaRegistry
 
         // ── Resources (Spells, Focus Points, Action Points) ────────────────────────────
         new("resource", "World",
-            "Spend or recover a resource pool (spell slots, sorcerer points, focus points, action points). " +
-            "Negative delta = spend (cast spell, use ability), positive = recover. Clamped to [0, max]. " +
+            "Spend or recover a resource pool (spell slots, sorcerer points, focus points, action points, " +
+            "party currency). Negative delta = spend (cast spell, use ability, pay for goods), positive = " +
+            "recover/award. Currency pools: 'gold' (dnd5e/pf2e), 'caps' (fallout2d20) — never recover, capped " +
+            "at a large finite max (not literally unlimited). Grants clamp to max; spends that would go " +
+            "below 0 HARD-FAIL with an 'Insufficient <pool>' error instead of clamping. " +
             "Set spellName when spending spell_slots_* for slot-level validation (call get_spells for names).",
             ["characterId", "poolName", "delta"],
             ["reason", "spellName"],

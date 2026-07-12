@@ -290,7 +290,6 @@ public class Dnd5eRulesetResolverTests
 
         var resolver = new Dnd5eRulesetResolver(mockRollService);
 
-        var CharacterId = "char_1";
         var actor = new Character { Id = "test-char", SystemStats = new Dnd5eExtension { Dexterity = 14 } };
         var context = CreateContext(actor);
 
@@ -322,7 +321,6 @@ public class Dnd5eRulesetResolverTests
 
         var resolver = new Dnd5eRulesetResolver(mockRollService);
 
-        var CharacterId = "char_1";
         var targetId = "char_2";
         var context = CreateContext(
             new Character { Id = "test-char", SystemStats = new Dnd5eExtension() },

@@ -21,6 +21,7 @@ public class ConditionDefinitionProvider : IRulesetYamlProvider
         _logger = logger;
         Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", embeddedAssembly, logger);
         Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", embeddedAssembly, logger);
+        Register(RulesetSystem.Fallout2d20, rulesetDataDirectory, "fallout2d20", embeddedAssembly, logger);
     }
 
     private void Register(

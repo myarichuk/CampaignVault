@@ -1,0 +1,11 @@
+name: action_boy_ap
+description: >
+  Action Boy perk: +1 action point per round. Tracked as a separate spendable pool alongside
+  action_points — the engine does not currently merge this into the base action_points Max (that
+  would require an "additive bonus to an existing pool" concept ResourcePoolInitializer.BuildPool
+  doesn't have yet), so it will not raise GetTurnActionBudget's per-turn cap. Spend it the same way
+  as action_points via $type: resource. Documented simplification, not full RAW behavior.
+applicableSystems: [fallout2d20]
+featGrantedOnly: true
+recovery: PerTurn
+defaultMax: 1

@@ -1,15 +1,18 @@
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
 public sealed class RulesetActionHandler(
     IRulesetModuleSelector selector,
-    CampaignDocumentKeys keys)
+    CampaignDocumentKeys keys,
+    WeaponDefinitionProvider? weaponDefs = null)
     : IWorldChangeHandler
 {
     private readonly IRulesetModuleSelector _selector = selector ?? throw new ArgumentNullException(nameof(selector));
     private readonly CampaignDocumentKeys _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+    private readonly WeaponDefinitionProvider? _weaponDefs = weaponDefs;
 
     public bool ShouldHandle(WorldChange change) => change is RulesetAction;
 
@@ -69,7 +72,7 @@ public sealed class RulesetActionHandler(
         // so weapon-based range enforcement (the documented, primary path) actually has data to check.
         if (action.ActionType == RulesetActionType.Attack)
         {
-            await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct);
+            await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct, _weaponDefs, module.System);
         }
 
         // Pre-check: range/AoE validation (only if the ruleset enforces it)
@@ -116,15 +119,12 @@ public sealed class RulesetActionHandler(
             allInvolvedIds?.Add(ra.CharacterId);
         }
 
-        if (ra.TargetIds != null)
+        foreach (var targetId in ra.TargetIds)
         {
-            foreach (var targetId in ra.TargetIds)
+            if (!string.IsNullOrEmpty(targetId))
             {
-                if (!string.IsNullOrEmpty(targetId))
-                {
-                    characterIds?.Add(targetId);
-                    allInvolvedIds?.Add(targetId);
-                }
+                characterIds?.Add(targetId);
+                allInvolvedIds?.Add(targetId);
             }
         }
 

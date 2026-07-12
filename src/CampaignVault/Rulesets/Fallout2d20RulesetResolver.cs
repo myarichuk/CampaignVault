@@ -2,6 +2,7 @@ using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets;
 
@@ -10,7 +11,8 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
     private readonly IRollService _rollService;
     private readonly ICharacterBootstrapPipeline _bootstrap;
 
-    public Fallout2d20RulesetResolver(IRollService rollService)
+    public Fallout2d20RulesetResolver(IRollService rollService, WeaponDefinitionProvider? weaponDefs = null)
+        : base(weaponDefs)
     {
         _rollService = rollService;
         var hpStep = new FalloutDeriveHitPointsStep();
@@ -24,6 +26,17 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
     public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
 
     protected override IRollService? GetRollService() => _rollService;
+
+    /// <summary>
+    /// Whether this character has an action_points pool to credit surplus successes into.
+    /// NPCs/creatures not bootstrapped through character_create may lack it — crediting AP to a
+    /// missing pool would hard-fail the ResourceChange (post-B1) and roll back the entire commit
+    /// batch, including the attack/skill-check result itself. Skip the credit instead.
+    /// </summary>
+    private static bool HasActionPointsPool(ChangeContext context, string characterId) =>
+        context.Characters.TryGetValue(characterId, out var character)
+        && character.SystemStats?.ResourcePools != null
+        && character.SystemStats.ResourcePools.ContainsKey("action_points");
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(
         RulesetAction action,
@@ -65,19 +78,28 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
 
+        var apMsg = "";
         if (apGenerated > 0)
         {
-            mutations.Add(new ResourceChange
+            if (HasActionPointsPool(context, action.CharacterId))
             {
-                CharacterId = action.CharacterId,
-                PoolName = "action_points",
-                Delta = apGenerated,
-                Reason = $"Surplus from {action.ActionName} ({attribute}+{skill})"
-            });
+                mutations.Add(new ResourceChange
+                {
+                    CharacterId = action.CharacterId,
+                    PoolName = "action_points",
+                    Delta = apGenerated,
+                    Reason = $"Surplus from {action.ActionName} ({attribute}+{skill})"
+                });
+                apMsg = $" Generated {apGenerated} AP.";
+            }
+            else
+            {
+                apMsg = $" Generated {apGenerated} AP (not tracked — no action_points pool on this character).";
+            }
         }
 
         return ResolverResult.Ok(
-            $"{action.ActionName} ({attribute}+{skill} TN {request.TargetNumber}){relationshipSuffix}: {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{compMsg} {outcome.Summary}");
+            $"{action.ActionName} ({attribute}+{skill} TN {request.TargetNumber}){relationshipSuffix}: {(success ? "Success" : "Failure")}.{apMsg}{compMsg} {outcome.Summary}");
     }
 
     protected override async Task<ResolverResult> ResolveAttackAsync(
@@ -287,15 +309,24 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
         var apGenerated = Math.Max(0, outcome.Successes - difficulty);
         var compMsg = outcome.HasComplication ? " COMPLICATION ROLLED!" : "";
 
+        var apMsg = "";
         if (apGenerated > 0)
         {
-            mutations.Add(new ResourceChange
+            if (HasActionPointsPool(context, action.CharacterId))
             {
-                CharacterId = action.CharacterId,
-                PoolName = "action_points",
-                Delta = apGenerated,
-                Reason = $"Surplus from {action.ActionName}"
-            });
+                mutations.Add(new ResourceChange
+                {
+                    CharacterId = action.CharacterId,
+                    PoolName = "action_points",
+                    Delta = apGenerated,
+                    Reason = $"Surplus from {action.ActionName}"
+                });
+                apMsg = $" Generated {apGenerated} AP.";
+            }
+            else
+            {
+                apMsg = $" Generated {apGenerated} AP (not tracked — no action_points pool on this character).";
+            }
         }
 
         var damage = 0;
@@ -311,7 +342,7 @@ public class Fallout2d20RulesetResolver : RulesetResolverBase<Fallout2d20Extensi
 
         var damageMsg = damage > 0 ? $" Took {damage} damage." : string.Empty;
         return ResolverResult.Ok(
-            $"{action.ActionName} ({attribute}{(skill != null ? "+" + skill : "")} TN {request.TargetNumber}): {(success ? "Success" : "Failure")}. Generated {apGenerated} AP.{damageMsg}{compMsg} {outcome.Summary}");
+            $"{action.ActionName} ({attribute}{(skill != null ? "+" + skill : "")} TN {request.TargetNumber}): {(success ? "Success" : "Failure")}.{apMsg}{damageMsg}{compMsg} {outcome.Summary}");
     }
 
     protected override async Task<ResolverResult> ResolveSpellSaveAsync(

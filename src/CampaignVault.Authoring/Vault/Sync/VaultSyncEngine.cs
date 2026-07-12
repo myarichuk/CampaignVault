@@ -175,7 +175,7 @@ public sealed class VaultSyncEngine
             var refreshResponse = await client.GetCampaignEntitiesAsync(
                 new GetCampaignEntitiesRequest { CampaignName = _campaignName },
                 cancellationToken: cancellationToken);
-            await _remoteCache.WriteFetchResultAsync(_campaignName, refreshResponse.Entities);
+            await _remoteCache.WriteFetchResultAsync(_campaignName!, refreshResponse.Entities);
             RefreshManifestState();
 
             currentPlanById = EvaluateAllPlans()

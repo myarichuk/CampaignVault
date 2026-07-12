@@ -98,6 +98,19 @@ public class ConditionDefinitionTests
     }
 
     [Fact]
+    public void Provider_LoadsFallout2d20Conditions_FromEmbeddedResources()
+    {
+        var conditions = Provider.GetConditionsForSystem(RulesetSystem.Fallout2d20);
+
+        Assert.Equal(4, conditions.Count);
+        Assert.True(conditions.ContainsKey("addicted"));
+        Assert.True(conditions.ContainsKey("crippled"));
+        Assert.True(conditions.ContainsKey("poisoned"));
+        Assert.True(conditions.ContainsKey("radiation_poisoning"));
+        Assert.All(conditions.Values, def => Assert.NotEmpty(def.MechanicalSummary ?? string.Empty));
+    }
+
+    [Fact]
     public void Provider_Dnd5eExhaustion_IsStacking()
     {
         var conditions = Provider.GetConditionsForSystem(RulesetSystem.Dnd5e);

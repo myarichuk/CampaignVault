@@ -89,6 +89,6 @@ public class RecentlyDepartedPressureTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(departedPressure!.SuggestedCommitJson);
         Assert.Contains(charId, departedPressure.SuggestedCommitJson);
 
-        Assert.Contains(result.Data.SuggestedCommitExamples, s => s.Contains(charId));
+        Assert.Contains(result.Data.SuggestedCommitExamples ?? [], s => s.Contains(charId));
     }
 }

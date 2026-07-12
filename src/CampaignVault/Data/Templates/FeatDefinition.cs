@@ -7,6 +7,13 @@ public record FeatDefinition : RulesetTemplate
     public string? MechanicalSummary { get; init; }
     public List<string> ExtraPools { get; init; } = [];
 
+    /// <summary>
+    /// Freeform prerequisite strings (e.g. "Agility 6+"). Data round-trip only — not enforced at
+    /// grant time. No attribute-comparator parser or grant-time validation hook exists yet; the
+    /// LLM DM is responsible for honoring these when narrating a character taking the perk.
+    /// </summary>
+    public List<string> Requirements { get; init; } = [];
+
     public static FeatDefinition Merge(FeatDefinition child, FeatDefinition parent) =>
         child with
         {
@@ -15,5 +22,6 @@ public record FeatDefinition : RulesetTemplate
             Prerequisite = child.Prerequisite ?? parent.Prerequisite,
             MechanicalSummary = child.MechanicalSummary ?? parent.MechanicalSummary,
             ExtraPools = child.ExtraPools.Count > 0 ? child.ExtraPools : parent.ExtraPools,
+            Requirements = child.Requirements.Count > 0 ? child.Requirements : parent.Requirements,
         };
 }

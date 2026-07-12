@@ -375,7 +375,7 @@ public record SpatialPosition
 [System.Text.Json.Serialization.JsonConverter(typeof(EngagementRelationJsonConverter))]
 public record EngagementRelation
 {
-    /// <summary>ID of the target character or object (e.g. 'characters/archivist').</summary>
+    /// <summary>ID of the target character or object (e.g. 'chars/archivist').</summary>
     [System.Text.Json.Serialization.JsonPropertyName("targetId")]
     public string TargetId { get; init; } = default!;
 

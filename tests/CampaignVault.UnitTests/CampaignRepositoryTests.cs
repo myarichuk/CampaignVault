@@ -1439,7 +1439,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task RumorDecayRule_Escalates_Nascent_Or_Spreading_Rumors_To_Peak()
+    public async Task RumorDecayRule_LargeTimeSkip_EscalatesNascentRumorToPeakInOneAdvanceWorldCall()
     {
         var engine = new DefaultSimulationEngine(
             [new RumorDecayRule()],
@@ -1471,18 +1471,13 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             await Task.Delay(50);
         }
 
-        // The RumorDecayRule only advances one lifecycle step per AdvanceWorld call.
-        // Do two advances to guarantee Nascent → Spreading → Peak.
-        await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon, TestCampaignDefaults.Slug);
-        var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon, TestCampaignDefaults.Slug);
+        // 20 days in a single call crosses both the Nascent->Spreading (7d) and Spreading->Peak (7d)
+        // thresholds — the rule traverses every intermediate state within one AdvanceWorld call.
+        var result = await repo.AdvanceWorldAsync(session, 20, TimeOfDay.Noon, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         var reloaded = await session.LoadAsync<Rumor>("rumors/nascent-test");
-        // The rule only does one transition per AdvanceWorld call. Two calls should get us to Peak,
-        // but to be robust across timing/index variations in CI-like environments we accept Spreading or Peak.
-        Assert.True(
-            reloaded.State == RumorState.Peak || reloaded.State == RumorState.Spreading,
-            $"Expected Peak or Spreading after escalation advances. Actual: {reloaded.State}");
+        Assert.Equal(RumorState.Peak, reloaded.State);
 
         // Soft secondary check — we do not fail on exact narrative wording.
         if (result.SimulatorEvents.Count > 0)

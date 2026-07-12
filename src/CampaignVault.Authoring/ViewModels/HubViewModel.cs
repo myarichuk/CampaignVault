@@ -244,7 +244,7 @@ public partial class HubViewModel : ViewModelBase
                 ? desktop.MainWindow
                 : null;
 
-            var result = await dialog.ShowDialog<bool?>(mainWindow as Window);
+            var result = await dialog.ShowDialog<bool?>(mainWindow as Window ?? throw new InvalidOperationException("Main window not found"));
             if (result != true)
             {
                 StatusMessage = "Create cancelled: wizard closed.";

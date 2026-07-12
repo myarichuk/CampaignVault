@@ -93,7 +93,7 @@ The NPC "Mind" system is intentionally open-ended. There is no closed list of ne
 - **Invent any need.** The system is completely unrestricted: `paranoia`, `wanderlust`, `obsession`, `debt_pressure`, `homesickness`, `vengeance`, whatever fits the narrative. Custom needs automatically get evocative activity-conflict framings.
 - Discover needs at runtime via `get_npc_needs`, `get_scene`, `get_npc_context`, and `get_need_descriptors`.
 - Use `define_need_descriptor` to create **per-campaign** shared descriptions for custom needs. These are automatically merged into NPC views (per-NPC descriptors override).
-- For initial world building, the `upsert_*` tools exist. In practice, many users find `commit` (with rich `EventOccurred` + `RelationshipChange` + `ActivityChange` + `NeedChange`) to be the more reliable way to evolve the world during play.
+- For initial world building, the `upsert_*` tools exist. In practice, many users find `commit` (with rich `event` + `relationship` + `activity` + `need` changes — the `$type` discriminators `commit` actually expects, backed by the `EventOccurred`/`RelationshipChange`/`ActivityChange`/`NeedChange` C# types) to be the more reliable way to evolve the world during play.
 
 Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom needs + descriptors, Schedule + Routines, equipment via Items). The simulation and behavioral synthesis will make much better use of that data than shallow characters.
 
@@ -206,7 +206,7 @@ See `ARCHITECTURE.md` for the full system design. Key code locations:
 ## Client Compatibility Notes (as of latest testing)
 
 - `commit` is the most reliable mutation tool across clients.
-- The `upsert_*` tools are now strongly typed (`UpsertCharacter(Character)`, `UpsertLocation(Location)`, `UpsertLore(Lore)`). They remain less reliable with Grok Web because the client still sends calls using the original legacy parameter names (`c` and `l`) from an early version of this server (likely due to client-side caching when the connector was first added). For Grok Web users, prefer `commit` (especially `ActivityChange`) for most work.
+- The `upsert_*` tools are now strongly typed (`UpsertCharacter(Character)`, `UpsertLocation(Location)`, `UpsertLore(Lore)`). They remain less reliable with Grok Web because the client still sends calls using the original legacy parameter names (`c` and `l`) from an early version of this server (likely due to client-side caching when the connector was first added). For Grok Web users, prefer `commit` (especially `activity` changes) for most work.
 - `commit` now exposes the full discriminated-union `WorldChange[]` shape directly (with rich per-variant and per-field `[Description]` annotations + `$type` discriminators). This is the clean .NET / STJ polymorphic form Gemini and similar models recommend. A non-exposed `Commit(string json)` fallback remains for clients that still struggle with complex input schemas.
 - Use the `activity` change type inside `commit` when narrative implies an NPC should have a new `CurrentActivity` / `CurrentLocationId` (this keeps `get_scene` consistent without requiring `advance_world`).
 

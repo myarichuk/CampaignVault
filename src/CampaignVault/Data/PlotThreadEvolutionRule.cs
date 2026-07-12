@@ -30,13 +30,18 @@ public class PlotThreadEvolutionRule : ISimulationRule
             var tensionGain = thread.State == PlotThreadState.Escalating ? 10 : 5;
             var newTension = Math.Clamp(thread.TensionLevel + (int)(tensionGain * context.DaysPassed), 0, 100);
 
+            // A large tension jump (big time skip) can cross both thresholds in one tick — cascade
+            // through every state the new tension level actually qualifies for, not just the first.
             PlotThreadState? newState = null;
-            if (thread.State == PlotThreadState.Active && newTension >= 60)
+            var effectiveState = thread.State;
+            if (effectiveState == PlotThreadState.Active && newTension >= 60)
             {
                 newState = PlotThreadState.Escalating;
+                effectiveState = PlotThreadState.Escalating;
                 narratives.Add(new RuleNarrative($"Plot thread '{thread.Title}' has escalated — tension reached {newTension}. Consequences are becoming imminent."));
             }
-            else if (thread.State == PlotThreadState.Escalating && newTension >= 80)
+
+            if (effectiveState == PlotThreadState.Escalating && newTension >= 80)
             {
                 newState = PlotThreadState.Climax;
                 narratives.Add(new RuleNarrative($"Plot thread '{thread.Title}' has reached CLIMAX — tension {newTension}/100. Resolution or disaster must occur soon."));

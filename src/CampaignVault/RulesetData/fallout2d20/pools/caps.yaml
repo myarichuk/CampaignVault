@@ -4,4 +4,4 @@ name: caps
 description: Bottle caps (party currency, never recovers)
 applicableSystems: [fallout2d20]
 recovery: Never
-defaultMax: 0
+defaultMax: 1000000

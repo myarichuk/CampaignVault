@@ -1,6 +1,8 @@
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Initiative;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets;
 
@@ -28,7 +30,9 @@ internal static class WeaponParameterResolver
     public static async Task ApplyHeldWeaponDefaultsAsync(
         RulesetAction action,
         ChangeContext context,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        WeaponDefinitionProvider? weaponDefs = null,
+        RulesetSystem? system = null)
     {
         if (action.ActionType != RulesetActionType.Attack)
         {
@@ -36,12 +40,40 @@ internal static class WeaponParameterResolver
         }
 
         var weapon = await ResolveWeaponItemAsync(action, context, ct);
-        if (weapon == null)
+        if (weapon != null)
         {
+            ApplyWeaponItemProperties(action, weapon);
             return;
         }
 
-        ApplyWeaponItemProperties(action, weapon);
+        // No matching Item (e.g. a quick NPC-vs-NPC fight where nobody authored the weapon as an
+        // Item) — fall back to a reference weapon definition by name, if the active system ships
+        // weapons/*.yaml content for it.
+        if (weaponDefs != null && system.HasValue && !string.IsNullOrWhiteSpace(action.ActionName)
+            && weaponDefs.TryGet(system.Value, action.ActionName, out var weaponDef))
+        {
+            ApplyWeaponDefinitionDefaults(action, weaponDef);
+        }
+    }
+
+    private static void ApplyWeaponDefinitionDefaults(RulesetAction action, WeaponDefinition weaponDef)
+    {
+        if (!string.IsNullOrWhiteSpace(weaponDef.Damage) && !action.Parameters.ContainsKey("damageDice"))
+        {
+            action.Parameters["damageDice"] = weaponDef.Damage;
+        }
+
+        if (!string.IsNullOrWhiteSpace(weaponDef.Skill) && !action.Parameters.ContainsKey("skill"))
+        {
+            // Reference weapon data is authored human-readable ("Small Guns"); the engine's skill-key
+            // convention is space-free ("SmallGuns", see character_create examples) — normalize here.
+            action.Parameters["skill"] = weaponDef.Skill.Replace(" ", "", StringComparison.Ordinal);
+        }
+
+        if (string.IsNullOrWhiteSpace(action.DamageType) && !string.IsNullOrWhiteSpace(weaponDef.DamageType))
+        {
+            action.DamageType = weaponDef.DamageType;
+        }
     }
 
     public static async Task<Item?> ResolveWeaponItemAsync(

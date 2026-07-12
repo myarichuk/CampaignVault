@@ -78,6 +78,42 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         };
     }
 
+    /// <summary>
+    /// Resolves the DC for a check: an explicit 'dc' parameter always wins. For Spell actions with
+    /// no explicit dc, falls back to the actor's bootstrap-derived SpellDc so casters don't have to
+    /// pass a DC the engine already computed. SkillCheck/SavingThrow DCs are inherently GM-set and
+    /// have no derivable fallback, so they still hard-fail without an explicit dc.
+    /// </summary>
+    private static bool TryResolveDc(RulesetAction action, Pf2eExtension actorStats, string context, out int dc, out string? error)
+    {
+        if (action.Parameters.TryGetValue("dc", out var dcStr))
+        {
+            if (int.TryParse(dcStr, out dc))
+            {
+                error = null;
+                return true;
+            }
+
+            dc = 0;
+            error = $"Error: invalid dc value '{dcStr}'.";
+            return false;
+        }
+
+        if (action.ActionType == RulesetActionType.Spell && actorStats.SpellDc.HasValue)
+        {
+            dc = actorStats.SpellDc.Value;
+            error = null;
+            return true;
+        }
+
+        dc = 0;
+        error = $"Error: {context} requires a 'dc' parameter" +
+            (action.ActionType == RulesetActionType.Spell
+                ? " (no derived spellDc — ensure spellcastingAbility and level are bootstrapped for this caster, or pass dc explicitly)."
+                : ".");
+        return false;
+    }
+
     private Pf2eDegreeOfSuccess CalculateDegreeOfSuccess(RollOutcome roll, int dc)
     {
         Pf2eDegreeOfSuccess degree;
@@ -238,9 +274,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
+        if (!TryResolveDc(action, actorStats, "Skill check", out var dc, out var dcError))
         {
-            return ResolverResult.Fail("InvalidParameter", "Error: Skill check requires a 'dc' parameter.");
+            return ResolverResult.Fail("InvalidParameter", dcError!);
         }
 
         var skillName = action.Parameters.GetValueOrDefault("skill", "Strength");
@@ -385,9 +421,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
-        if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
+        if (!TryResolveDc(action, actorStats, "Saving throw", out var dc, out var dcError))
         {
-            return ResolverResult.Fail("InvalidParameter", "Error: Saving throw requires a 'dc' parameter.");
+            return ResolverResult.Fail("InvalidParameter", dcError!);
         }
 
         var saveName = action.Parameters.GetValueOrDefault("save", "Constitution");
@@ -416,9 +452,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidTarget", "Error: Spell save requires at least one target in targetIds.");
         }
 
-        if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
+        if (!TryResolveDc(action, actorStats, "Spell save", out var dc, out var dcError))
         {
-            return ResolverResult.Fail("InvalidParameter", "Error: Spell save requires a 'dc' parameter.");
+            return ResolverResult.Fail("InvalidParameter", dcError!);
         }
 
         var saveName = action.Parameters.GetValueOrDefault("save", "Reflex");

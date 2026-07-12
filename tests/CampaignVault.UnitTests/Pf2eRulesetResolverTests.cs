@@ -98,6 +98,56 @@ public class Pf2eRulesetResolverTests
     }
 
     [Fact]
+    public async Task ResolveSpellSaveAsync_NoDcParameter_FallsBackToActorSpellDc()
+    {
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Result = 10, Summary = "Rolled 10" }));
+
+        var resolver = new Pf2eRulesetResolver(mockRollService);
+
+        var actor = new Character { Id = "caster", SystemStats = new Pf2eExtension { SpellDc = 18 } };
+        var target = new Character { Id = "target", SystemStats = new Pf2eExtension() };
+        var context = CreateContext(actor, target);
+
+        var action = new RulesetAction
+        {
+            CharacterId = "caster",
+            TargetIds = ["target"],
+            ActionType = RulesetActionType.Spell,
+            ActionName = "Fireball",
+            Parameters = new Dictionary<string, string> { { "resolution", "save" }, { "save", "Reflex" } }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.True(output.Result.Success, output.Result.Narrative);
+        Assert.Contains("DC 18", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveSkillCheckAsync_NoDcParameterAndNoSpellDc_StillFails()
+    {
+        var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());
+
+        var actor = new Character { Id = "test-char", SystemStats = new Pf2eExtension() };
+        var context = CreateContext(actor);
+
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            ActionType = RulesetActionType.SkillCheck,
+            ActionName = "Athletics",
+            Parameters = new Dictionary<string, string>()
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.False(output.Result.Success);
+        Assert.Contains("requires a 'dc' parameter", output.Result.Narrative);
+    }
+
+    [Fact]
     public void GetTurnActionBudget_ReturnsThreeActions()
     {
         var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());

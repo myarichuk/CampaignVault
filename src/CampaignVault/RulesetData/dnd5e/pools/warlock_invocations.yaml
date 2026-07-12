@@ -1,7 +1,7 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 # https://creativecommons.org/licenses/by/4.0/legalcode
 name: warlock_invocations
-description: Warlock Spell Slot (short-rest recovery)
+description: Eldritch Invocations known (not a spell slot — tracks how many invocations the warlock has selected)
 applicableSystems: [dnd5e]
 applicableClasses: [warlock]
 recovery: ShortRest

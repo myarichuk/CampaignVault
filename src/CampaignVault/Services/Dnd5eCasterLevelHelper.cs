@@ -32,6 +32,7 @@ public static class Dnd5eCasterLevelHelper
                 CasterType.Warlock => 0, // Pact Magic does not contribute to standard slots
                 CasterType.Full => entry.Level,
                 CasterType.Half => entry.Level / 2,
+                CasterType.HalfRoundUp => (entry.Level + 1) / 2, // Artificer: RAW rounds UP, not down
                 CasterType.Third => entry.Level / 3,
                 _ => 0
             };

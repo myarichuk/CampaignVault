@@ -26,7 +26,7 @@ public class CombatTools : CampaignToolBase
     [Description(@"COMBAT TOOL: Starts a new combat encounter at the specified location.
 Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Requires campaignName.
 
-Parameter name is combatantIds (not combatants). Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""monsters/goblin1""])")]
+Parameter name is combatantIds (not combatants). Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""chars/goblin1""])")]
     public Task<ToolResult<CombatEncounter>> StartCombat(
         [Description("The location ID where combat is happening.")]
         string locationId,
@@ -40,7 +40,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
             return ToolArgumentErrors.Missing<CombatEncounter>(
                 "locationId",
                 "Pass where combat occurs.",
-                exampleCall: "start_combat(\"locations/tavern\", [\"characters/hero\"])");
+                exampleCall: "start_combat(\"locations/tavern\", [\"chars/hero\"])");
         }
 
         if (combatantIds.Length == 0)

@@ -1,7 +1,6 @@
-﻿name: Crippled
+name: crippled
 system: fallout2d20
-description: A limb is broken or severely damaged
-recoverType: Medical
-effects:
-  - name: Mobility Penalty
-    description: Movement and actions with affected limb are impaired
+durationType: Manual
+mechanicalSummary: A limb is broken or severely damaged. Movement and actions with the affected limb are impaired. Requires medical treatment to recover.
+immunities: []
+suppresses: []

@@ -1,0 +1,94 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    <!-- Solarized Dark Color Palette -->
+    <Color x:Key="SolBase03">#002b36</Color>
+    <Color x:Key="SolBase02">#073642</Color>
+    <Color x:Key="SolBase01">#586e75</Color>
+    <Color x:Key="SolBase00">#657b83</Color>
+    <Color x:Key="SolBase0">#839496</Color>
+    <Color x:Key="SolBase1">#93a1a1</Color>
+    <Color x:Key="SolBase2">#eee8d5</Color>
+    <Color x:Key="SolBase3">#fdf6e3</Color>
+
+    <Color x:Key="SolYellow">#b58900</Color>
+    <Color x:Key="SolOrange">#cb4b16</Color>
+    <Color x:Key="SolRed">#dc322f</Color>
+    <Color x:Key="SolMagenta">#d33682</Color>
+    <Color x:Key="SolViolet">#6c71c4</Color>
+    <Color x:Key="SolBlue">#268bd2</Color>
+    <Color x:Key="SolCyan">#2aa198</Color>
+    <Color x:Key="SolGreen">#859900</Color>
+
+    <!-- Semantic color mappings for dark theme -->
+    <Color x:Key="BackgroundColor">#002b36</Color>
+    <Color x:Key="SurfaceColor">#073642</Color>
+    <Color x:Key="BorderColor">#586e75</Color>
+    <Color x:Key="TextPrimaryColor">#93a1a1</Color>
+    <Color x:Key="TextSecondaryColor">#657b83</Color>
+    <Color x:Key="AccentColor">#268bd2</Color>
+    <Color x:Key="ErrorColor">#dc322f</Color>
+    <Color x:Key="SuccessColor">#859900</Color>
+    <Color x:Key="WarningColor">#b58900</Color>
+
+    <!-- Fluent Theme Color Overrides -->
+    <Color x:Key="SystemAccentColor">#268bd2</Color>
+    <Color x:Key="SystemAccentColorLight1">#2aa198</Color>
+    <Color x:Key="SystemAccentColorLight2">#b58900</Color>
+    <Color x:Key="SystemAccentColorLight3">#859900</Color>
+    <Color x:Key="SystemAccentColorDark1">#6c71c4</Color>
+    <Color x:Key="SystemAccentColorDark2">#d33682</Color>
+    <Color x:Key="SystemAccentColorDark3">#cb4b16</Color>
+
+    <!-- Fluent Dark Theme Colors -->
+    <Color x:Key="SystemAltHighColor">#073642</Color>
+    <Color x:Key="SystemAltLowColor">#002b36</Color>
+    <Color x:Key="SystemAltMediumColor">#073642</Color>
+    <Color x:Key="SystemAltMediumHighColor">#586e75</Color>
+    <Color x:Key="SystemAltMediumLowColor">#073642</Color>
+
+    <Color x:Key="SystemBaseHighColor">#93a1a1</Color>
+    <Color x:Key="SystemBaseLowColor">#657b83</Color>
+    <Color x:Key="SystemBaseMediumColor">#839496</Color>
+    <Color x:Key="SystemBaseMediumHighColor">#93a1a1</Color>
+    <Color x:Key="SystemBaseMediumLowColor">#657b83</Color>
+
+    <Color x:Key="SystemChromeAltLowColor">#073642</Color>
+    <Color x:Key="SystemChromeDisabledHighColor">#586e75</Color>
+    <Color x:Key="SystemChromeDisabledLowColor">#073642</Color>
+    <Color x:Key="SystemChromeHighColor">#073642</Color>
+    <Color x:Key="SystemChromeLowColor">#002b36</Color>
+    <Color x:Key="SystemChromeMediumColor">#073642</Color>
+    <Color x:Key="SystemChromeMediumLowColor">#002b36</Color>
+
+    <Color x:Key="SystemChromeWhiteColor">#93a1a1</Color>
+    <Color x:Key="SystemErrorTextColor">#dc322f</Color>
+
+    <Color x:Key="ControlAltCharacterHighColor">#93a1a1</Color>
+    <Color x:Key="ControlAltCharacterMediumHighColor">#839496</Color>
+    <Color x:Key="ControlAltCharacterMediumLowColor">#657b83</Color>
+    <Color x:Key="ControlAltCharacterLowColor">#586e75</Color>
+    <Color x:Key="ControlAltFillColorSecondary">#073642</Color>
+    <Color x:Key="ControlAltFillColorTertiary">#002b36</Color>
+    <Color x:Key="ControlAltTransparentColor">Transparent</Color>
+    <Color x:Key="ControlBorderColorDefault">#586e75</Color>
+    <Color x:Key="ControlElevationBorderColor">#586e75</Color>
+    <Color x:Key="ControlFillColorDefault">#073642</Color>
+    <Color x:Key="ControlFillColorInputActive">#002b36</Color>
+    <Color x:Key="ControlFillColorSecondary">#002b36</Color>
+    <Color x:Key="ControlFillColorTertiary">#073642</Color>
+    <Color x:Key="ControlFillColorDisabled">#073642</Color>
+
+    <Color x:Key="TextOnAccentFillColorPrimary">White</Color>
+    <Color x:Key="TextOnAccentFillColorSecondary">#fdf6e3</Color>
+    <Color x:Key="TextOnAccentFillColorDisabled">White</Color>
+    <Color x:Key="TextFillColorPrimary">#93a1a1</Color>
+    <Color x:Key="TextFillColorSecondary">#657b83</Color>
+    <Color x:Key="TextFillColorTertiary">#586e75</Color>
+    <Color x:Key="TextFillColorDisabled">#586e75</Color>
+    <Color x:Key="TextFillColorInverse">#002b36</Color>
+
+    <Color x:Key="AccentTextFillColorPrimary">#268bd2</Color>
+    <Color x:Key="AccentTextFillColorSecondary">#268bd2</Color>
+    <Color x:Key="AccentTextFillColorDisabled">White</Color>
+</ResourceDictionary>

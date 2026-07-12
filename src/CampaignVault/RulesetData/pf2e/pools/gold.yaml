@@ -4,4 +4,4 @@ name: gold
 description: Gold pieces (party currency, never recovers)
 applicableSystems: [pf2e]
 recovery: Never
-defaultMax: 0
+defaultMax: 1000000

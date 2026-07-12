@@ -119,6 +119,17 @@ public class IdentityDefinitionTests
     }
 
     [Fact]
+    public void FeatDefinitionProvider_ActionBoyPerk_LoadsRequirementsAndExtraPools()
+    {
+        var found = Services.Feats.TryGet(RulesetSystem.Fallout2d20, "Action Boy", out var actionBoy);
+
+        Assert.True(found);
+        Assert.NotNull(actionBoy);
+        Assert.Contains("Agility 6+", actionBoy.Requirements);
+        Assert.Contains("action_boy_ap", actionBoy.ExtraPools);
+    }
+
+    [Fact]
     public void FeatDefinition_Merge_ExtraPools_ChildWins()
     {
         var parent = new FeatDefinition { Name = "base_feat", ExtraPools = ["pool_a"] };

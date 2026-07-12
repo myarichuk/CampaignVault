@@ -1,22 +1,22 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:CampaignVault.Authoring.ViewModels"
              x:Class="CampaignVault.Authoring.Views.SourceControlView"
              x:DataType="vm:SourceControlViewModel">
     <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="8">
-        <TextBlock Grid.Row="0" Text="Source Control" FontSize="13" FontWeight="Bold" Foreground="#A0A0AB" Margin="0,0,0,8" />
+        <TextBlock Grid.Row="0" Text="Source Control" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextSecondaryColor}" Margin="0,0,0,8" />
         <StackPanel Grid.Row="1" Spacing="4" Margin="0,0,0,10">
-            <TextBlock FontSize="11" Foreground="#71717A">
+            <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryColor}">
                 <Run Text="HEAD: " />
-                <Run Text="{Binding HeadCommitShort}" FontWeight="Bold" Foreground="#E4E4EB" />
+                <Run Text="{Binding HeadCommitShort}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
             </TextBlock>
-            <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="#A0A0AB" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="{StaticResource TextSecondaryColor}" TextWrapping="Wrap" />
         </StackPanel>
         <ListBox Grid.Row="2" ItemsSource="{Binding ChangedPaths}"
                  Background="Transparent" BorderThickness="0" MaxHeight="200">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <TextBlock Text="{Binding}" FontSize="10" Foreground="#E4E4EB" FontFamily="Consolas" />
+                    <TextBlock Text="{Binding}" FontSize="10" Foreground="{StaticResource TextPrimaryColor}" FontFamily="Consolas" />
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
@@ -25,7 +25,7 @@
                      FontSize="11" AcceptsReturn="False" />
             <Button Content="Commit" Command="{Binding CommitCommand}"
                     IsEnabled="{Binding CanCommit}"
-                    Background="#2563EB" Foreground="White"
+                    Background="{StaticResource AccentColor}" Foreground="White"
                     HorizontalAlignment="Stretch" Padding="10,8" />
         </StackPanel>
     </Grid>

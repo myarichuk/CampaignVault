@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:CampaignVault.Authoring.ViewModels"
              x:Class="CampaignVault.Authoring.Views.SyncView"
@@ -13,23 +13,23 @@
 
         <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#3F1D1D" Padding="10,6"
                 IsVisible="{Binding ShowConnectionBanner}">
-            <TextBlock Text="{Binding ConnectionBanner}" FontSize="11" Foreground="#FCA5A5" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding ConnectionBanner}" FontSize="11" Foreground="{StaticResource ErrorColor}" TextWrapping="Wrap" />
         </Border>
 
-        <Border Grid.Row="2" Grid.Column="0" BorderBrush="#2D2D3A" BorderThickness="0,0,1,0" Background="#1C1C24" Padding="8" IsEnabled="{Binding !IsBusy}">
+        <Border Grid.Row="2" Grid.Column="0" BorderBrush="{StaticResource SurfaceColor}" BorderThickness="0,0,1,0" Background="{StaticResource SurfaceColor}" Padding="8" IsEnabled="{Binding !IsBusy}">
             <Grid RowDefinitions="Auto, Auto, *, Auto">
                 <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,10">
-                    <TextBlock Text="Vault Sync" FontSize="11" FontWeight="Bold" Foreground="#71717A" />
-                    <TextBlock FontSize="10" Foreground="#A0A0AB">
+                    <TextBlock Text="Vault Sync" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBlock FontSize="10" Foreground="{StaticResource TextSecondaryColor}">
                         <Run Text="{Binding AheadCount}" />
-                        <Run Text=" ahead · " />
+                        <Run Text=" ahead Â· " />
                         <Run Text="{Binding BehindCount}" />
-                        <Run Text=" behind · " />
+                        <Run Text=" behind Â· " />
                         <Run Text="{Binding ConflictCount}" />
                         <Run Text=" conflicts" />
                     </TextBlock>
-                    <Button Content="↻ Fetch" Command="{Binding FetchCommand}"
-                            Background="#27272A" BorderBrush="#3F3F46" BorderThickness="1"
+                    <Button Content="â†» Fetch" Command="{Binding FetchCommand}"
+                            Background="#27272A" BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
                             HorizontalAlignment="Stretch" FontSize="11" Padding="6,5" />
                 </StackPanel>
 
@@ -41,7 +41,7 @@
                             <Grid ColumnDefinitions="*, Auto" Height="36">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Bold" />
-                                    <TextBlock Text="{Binding Plan.EntityId}" FontSize="10" Foreground="#71717A" />
+                                    <TextBlock Text="{Binding Plan.EntityId}" FontSize="10" Foreground="{StaticResource TextSecondaryColor}" />
                                 </StackPanel>
                                 <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="4" Padding="6,2" Margin="5,0,0,0"
                                         Background="{Binding Plan.State, Converter={x:Static vm:VaultSyncStateColorConverter.Instance}}"
@@ -55,7 +55,7 @@
                 </ListBox>
 
                 <StackPanel Grid.Row="3" Spacing="8" Margin="0,10,0,0">
-                    <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="#A0A0AB" TextWrapping="Wrap" Margin="5,0,5,5" />
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{StaticResource TextSecondaryColor}" TextWrapping="Wrap" Margin="5,0,5,5" />
                     <Button Content="Push All" Command="{Binding PushAllCommand}"
                             Background="#10B981" Foreground="White"
                             HorizontalAlignment="Stretch" Padding="12,8" />
@@ -72,9 +72,9 @@
             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="{Binding SelectedPlan.DisplayName}" FontSize="18" FontWeight="Bold" />
-                    <TextBlock Text="{Binding SelectedPlan.Plan.EntityId, StringFormat='ID: \{0\}'}" FontSize="11" Foreground="#71717A" />
+                    <TextBlock Text="{Binding SelectedPlan.Plan.EntityId, StringFormat='ID: \{0\}'}" FontSize="11" Foreground="{StaticResource TextSecondaryColor}" />
                     <TextBlock Text="{Binding SelectedPlan.Plan.ParseError}"
-                               FontSize="10" Foreground="#DC2626" TextWrapping="Wrap"
+                               FontSize="10" Foreground="{StaticResource ErrorColor}" TextWrapping="Wrap"
                                IsVisible="{Binding SelectedPlan.Plan.ParseError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                Margin="0,8,0,0" />
                 </StackPanel>
@@ -101,17 +101,17 @@
                 <Grid Grid.Column="0" RowDefinitions="Auto, *" Margin="0,0,8,0">
                     <TextBlock Grid.Row="0" Text="Local" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,5" />
                     <TextBox Grid.Row="1" Text="{Binding SelectedPlan.LocalContent}" IsReadOnly="True"
-                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource SurfaceColor}" AcceptsReturn="True" TextWrapping="Wrap"/>
                 </Grid>
                 <Grid Grid.Column="1" RowDefinitions="Auto, *" Margin="8,0,8,0">
                     <TextBlock Grid.Row="0" Text="Remote (cache)" FontSize="12" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,5" />
                     <TextBox Grid.Row="1" Text="{Binding SelectedPlan.RemoteContent}" IsReadOnly="True"
-                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource SurfaceColor}" AcceptsReturn="True" TextWrapping="Wrap"/>
                 </Grid>
                 <Grid Grid.Column="2" RowDefinitions="Auto, *" Margin="8,0,0,0">
                     <TextBlock Grid.Row="0" Text="Merged (editable)" FontSize="12" FontWeight="Bold" Foreground="#8B5CF6" Margin="0,0,0,5" />
                     <TextBox Grid.Row="1" Text="{Binding SelectedPlan.MergedContent}" IsReadOnly="False"
-                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#8B5CF6" AcceptsReturn="True" TextWrapping="Wrap"/>
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="#8B5CF6" AcceptsReturn="True" TextWrapping="Wrap"/>
                 </Grid>
             </Grid>
 
@@ -119,12 +119,12 @@
                 <Grid Grid.Column="0" RowDefinitions="Auto, *" Margin="0,0,8,0">
                     <TextBlock Grid.Row="0" Text="Local" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,5" />
                     <TextBox Grid.Row="1" Text="{Binding SelectedPlan.LocalContent}" IsReadOnly="True"
-                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource SurfaceColor}" AcceptsReturn="True" TextWrapping="Wrap"/>
                 </Grid>
                 <Grid Grid.Column="1" RowDefinitions="Auto, *" Margin="8,0,0,0">
                     <TextBlock Grid.Row="0" Text="Remote (cache)" FontSize="12" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,5" />
                     <TextBox Grid.Row="1" Text="{Binding SelectedPlan.RemoteContent}" IsReadOnly="True"
-                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="#E4E4EB" BorderBrush="#2D2D3A" AcceptsReturn="True" TextWrapping="Wrap"/>
+                             FontFamily="Consolas" FontSize="11" Background="#1A1A24" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource SurfaceColor}" AcceptsReturn="True" TextWrapping="Wrap"/>
                 </Grid>
             </Grid>
         </Grid>

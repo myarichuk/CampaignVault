@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:CampaignVault.Authoring.ViewModels"
              x:Class="CampaignVault.Authoring.Views.ExplorerView"
@@ -6,7 +6,7 @@
              x:Name="ExplorerRoot">
     <Grid RowDefinitions="Auto, *">
         <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto" Margin="5,0,0,8">
-            <TextBlock Grid.Column="0" Text="Campaign Explorer" FontSize="13" FontWeight="Bold" Foreground="#A0A0AB" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="0" Text="Campaign Explorer" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextSecondaryColor}" VerticalAlignment="Center" />
             <Button Grid.Column="1" Command="{Binding CreateNewEntityCommand}" ToolTip.Tip="Create new entity"
                     Background="Transparent" BorderThickness="0" Padding="4" Margin="0,0,4,0">
                 <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="14" Height="14" Foreground="#10B981" />
@@ -19,10 +19,10 @@
             <Button Grid.Column="3" Command="{Binding RefreshExplorerCommand}" ToolTip.Tip="Refresh entity list"
                     Background="Transparent" BorderThickness="0" Padding="4">
                 <PathIcon Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"
-                          Width="14" Height="14" Foreground="#71717A" />
+                          Width="14" Height="14" Foreground="{StaticResource TextSecondaryColor}" />
             </Button>
         </Grid>
-        <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="2" Margin="0,0,0,4" Foreground="#2563EB" VerticalAlignment="Top"/>
+        <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="2" Margin="0,0,0,4" Foreground="{StaticResource AccentColor}" VerticalAlignment="Top"/>
         <TreeView Grid.Row="1" ItemsSource="{Binding Categories}"
                   SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                   IsEnabled="{Binding !IsLoading}"
@@ -38,8 +38,8 @@
                             </ContextMenu>
                         </StackPanel.ContextMenu>
                         <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
-                                  Width="14" Height="14" Foreground="#71717A" />
-                        <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#A0A0AB" FontSize="12" />
+                                  Width="14" Height="14" Foreground="{StaticResource TextSecondaryColor}" />
+                        <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="{StaticResource TextSecondaryColor}" FontSize="12" />
                     </StackPanel>
                 </TreeDataTemplate>
                 <TreeDataTemplate DataType="vm:FolderNodeViewModel" ItemsSource="{Binding Children}">
@@ -53,7 +53,7 @@
                         </StackPanel.ContextMenu>
                         <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
                                   Width="14" Height="14" Foreground="#52525B" />
-                        <TextBlock Text="{Binding Title}" Foreground="#A0A0AB" FontSize="11" />
+                        <TextBlock Text="{Binding Title}" Foreground="{StaticResource TextSecondaryColor}" FontSize="11" />
                     </StackPanel>
                 </TreeDataTemplate>
                 <DataTemplate DataType="vm:EntityNodeViewModel">
@@ -66,7 +66,7 @@
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                             <Panel Width="12" Height="12">
                                 <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z"
-                                          Width="12" Height="12" Foreground="#71717A"
+                                          Width="12" Height="12" Foreground="{StaticResource TextSecondaryColor}"
                                           IsVisible="{Binding HasLocalFile}"/>
                                 <PathIcon Data="M17.5,15C19.38,15 21,13.38 21,11.5C21,9.62 19.38,8 17.5,8C17.15,8 16.81,8.05 16.5,8.14C15.86,5.77 13.68,4 11,4C8.24,4 6,6.24 6,9C6,9.15 6.02,9.3 6.05,9.44C4.26,9.88 3,11.54 3,13.5C3,15.93 4.97,17.9 7.4,18H17.5V15Z"
                                           Width="12" Height="12" Foreground="#38BDF8"
@@ -75,7 +75,7 @@
                             <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="11"
                                        Opacity="{Binding HasLocalFile, Converter={x:Static vm:WorkspaceViewModel.NullToOpacityConverter}}"/>
                         </StackPanel>
-                        <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="3" Padding="4,1" Background="#2A2A35" Margin="4,0,0,0">
+                        <Border Grid.Column="1" VerticalAlignment="Center" CornerRadius="3" Padding="4,1" Background="{StaticResource SurfaceColor}" Margin="4,0,0,0">
                             <TextBlock FontSize="8" Foreground="#A0A0B0">
                                 <TextBlock.Text>
                                     <MultiBinding Converter="{x:Static vm:ExplorerBadgeConverter.Instance}">

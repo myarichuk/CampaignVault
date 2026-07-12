@@ -25,13 +25,13 @@ public class AttackTools : CampaignToolBase
 This is the discoverable, structured entry point for melee combat — prefer this over the generic commit tool for melee attacks.
 Rolls attack + damage via the active ruleset (never invents numbers), enforces whose turn it is and remaining action economy if combat is active, and validates range/reach if spatial positions are tracked.
 For ranged/spell attacks, use ruleset_action with the appropriate actionCategory.
-Requires campaignName. Example: attack(""characters/valen"", [""characters/goblin1""], ""Longsword"", bonus=""2"")")]
+Requires campaignName. Example: attack(""chars/valen"", [""chars/goblin1""], ""Longsword"", bonus=""2"")")]
     public async Task<ToolResult<CommitResult>> Attack(
         [Description("ID of the attacking character.")]
         string characterId,
         [Description("List of target character IDs.")]
         string[] targetIds,
-        [Description("Weapon, spell name, or action label (e.g. 'Longsword', 'Fireball', 'Unarmed Strike').")]
+        [Description("Weapon or melee action label (e.g. 'Longsword', 'Unarmed Strike'). For spells/ranged attacks, use ruleset_action instead.")]
         string actionName,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
@@ -90,7 +90,7 @@ Requires campaignName. Example: attack(""characters/valen"", [""characters/gobli
 Opportunity attacks typically occur when a foe disengages, moves away, or provokes by other means.
 The reactor must have a reaction available (checked during turn tracking).
 Uses the same attack resolution as the Attack tool but consumes the reaction slot instead of an action.
-Requires campaignName. Example: trigger_opportunity_attack(""characters/fighter"", ""characters/goblin1"", campaignName=""campaign1"")")]
+Requires campaignName. Example: trigger_opportunity_attack(""chars/fighter"", ""chars/goblin1"", campaignName=""campaign1"")")]
     public async Task<ToolResult<CommitResult>> TriggerOpportunityAttack(
         [Description("ID of the character making the opportunity attack (the reactor).")]
         string reactorId,

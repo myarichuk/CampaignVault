@@ -196,6 +196,113 @@ public class ResourcePoolInitializerTests
     }
 
     [Theory]
+    [InlineData(RulesetSystem.Dnd5e)]
+    [InlineData(RulesetSystem.Pathfinder2e)]
+    public void InitializePools_Dnd5eOrPf2e_GrantsGoldPool(RulesetSystem system)
+    {
+        var character = new Character
+        {
+            Id = "chars/pc1",
+            ClassLevel = "Human Fighter 1",
+            SystemStats = system == RulesetSystem.Dnd5e
+                ? new Dnd5eExtension { Level = 1 }
+                : new Pf2eExtension { Level = 1 }
+        };
+
+        _sut.InitializePools(character, system, null);
+
+        Assert.True(character.SystemStats.ResourcePools.ContainsKey("gold"));
+        Assert.Equal(1000000, character.SystemStats.ResourcePools["gold"].Max);
+    }
+
+    [Fact]
+    public void InitializePools_Fallout2d20_GrantsCapsPool()
+    {
+        var character = new Character
+        {
+            Id = "chars/vault-dweller",
+            ClassLevel = "Survivor 1",
+            SystemStats = new Fallout2d20Extension { Level = 1 }
+        };
+
+        _sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
+
+        Assert.True(character.SystemStats.ResourcePools.ContainsKey("caps"));
+        Assert.Equal(1000000, character.SystemStats.ResourcePools["caps"].Max);
+    }
+
+    [Fact]
+    public void InitializePools_Warlock_GrantsPactMagicByWarlockLevel()
+    {
+        var character = new Character
+        {
+            Id = "chars/warlock",
+            ClassLevel = "Warlock 11",
+            SystemStats = new Dnd5eExtension { Level = 11 }
+        };
+
+        _sut.InitializePools(character, RulesetSystem.Dnd5e, null);
+
+        Assert.True(character.SystemStats.ResourcePools.ContainsKey("pact_magic"));
+        Assert.Equal(3, character.SystemStats.ResourcePools["pact_magic"].Max);
+    }
+
+    [Fact]
+    public void InitializePools_WarlockFighterMulticlass_PactMagicUsesWarlockClassLevelOnly()
+    {
+        var character = new Character
+        {
+            Id = "chars/warlock-fighter",
+            ClassLevel = "Warlock 3 / Fighter 5",
+            SystemStats = new Dnd5eExtension
+            {
+                Level = 8,
+                ClassLevels =
+                [
+                    new ClassLevelEntry { Class = "Warlock", Level = 3 },
+                    new ClassLevelEntry { Class = "Fighter", Level = 5 }
+                ]
+            }
+        };
+
+        _sut.InitializePools(character, RulesetSystem.Dnd5e, null);
+
+        // Pact Magic scales with warlock class level (3), not total character level (8).
+        Assert.Equal(2, character.SystemStats.ResourcePools["pact_magic"].Max);
+    }
+
+    [Fact]
+    public void InitializePools_Fallout2d20CharacterWithActionBoyPerk_GrantsActionBoyApPool()
+    {
+        var character = new Character
+        {
+            Id = "chars/action-boy",
+            ClassLevel = "Survivor 1",
+            SystemStats = new Fallout2d20Extension { Level = 1, Perks = ["Action Boy"] }
+        };
+
+        _sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
+
+        Assert.True(character.SystemStats.ResourcePools.ContainsKey("action_boy_ap"));
+        Assert.Equal(1, character.SystemStats.ResourcePools["action_boy_ap"].Max);
+    }
+
+    [Fact]
+    public void InitializePools_Fallout2d20CharacterWithoutActionBoyPerk_DoesNotGrantActionBoyApPool()
+    {
+        var character = new Character
+        {
+            Id = "chars/no-perk",
+            ClassLevel = "Survivor 1",
+            SystemStats = new Fallout2d20Extension { Level = 1 }
+        };
+
+        _sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
+
+        Assert.False(character.SystemStats.ResourcePools.ContainsKey("action_boy_ap"));
+    }
+
+    [Theory]
     [InlineData(RulesetSystem.Dnd5e, "dnd5e")]
     [InlineData(RulesetSystem.Pathfinder2e, "pf2e")]
     [InlineData(RulesetSystem.Fallout2d20, "fallout2d20")]

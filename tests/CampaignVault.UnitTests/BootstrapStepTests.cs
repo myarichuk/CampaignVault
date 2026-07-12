@@ -195,6 +195,59 @@ public class BootstrapStepTests
         Assert.Equal(13, stats.ArmorClass);
     }
 
+    [Theory]
+    [InlineData(1, Pf2eProficiencyRank.Trained)]
+    [InlineData(7, Pf2eProficiencyRank.Expert)]
+    [InlineData(15, Pf2eProficiencyRank.Master)]
+    public async Task Pf2eDeriveSpellcastingStep_DerivesProficiencyFromLevel(int level, Pf2eProficiencyRank expectedRank)
+    {
+        var profStep = new Pf2eDeriveProficiencyStep();
+        var spellStep = new Pf2eDeriveSpellcastingStep();
+        var character = new Character
+        {
+            Id = "chars/caster",
+            Name = "Caster",
+            ClassLevel = "Wizard " + level,
+            SystemStats = new Pf2eExtension { Level = level, IntelligenceMod = 4 },
+        };
+        var context = CreateContext(character, RulesetSystem.Pathfinder2e);
+
+        await profStep.ApplyAsync(context);
+        await spellStep.ApplyAsync(context);
+        var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
+
+        Assert.Equal(expectedRank, stats.SpellcastingProficiency);
+        var expectedProficiencyBonus = expectedRank == Pf2eProficiencyRank.Untrained ? 0 : level + (int)expectedRank;
+        Assert.Equal(10 + 4 + expectedProficiencyBonus, stats.SpellDc);
+    }
+
+    [Fact]
+    public async Task Pf2eDeriveSpellcastingStep_ExplicitSpellcastingProficiency_IsRespectedNotOverwritten()
+    {
+        var profStep = new Pf2eDeriveProficiencyStep();
+        var spellStep = new Pf2eDeriveSpellcastingStep();
+        var character = new Character
+        {
+            Id = "chars/caster",
+            Name = "Caster",
+            ClassLevel = "Wizard 1",
+            SystemStats = new Pf2eExtension
+            {
+                Level = 1,
+                IntelligenceMod = 4,
+                SpellcastingProficiency = Pf2eProficiencyRank.Legendary,
+            },
+        };
+        var context = CreateContext(character, RulesetSystem.Pathfinder2e);
+
+        await profStep.ApplyAsync(context);
+        await spellStep.ApplyAsync(context);
+        var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
+
+        Assert.Equal(Pf2eProficiencyRank.Legendary, stats.SpellcastingProficiency);
+        Assert.Equal(10 + 4 + (1 + 8), stats.SpellDc);
+    }
+
     [Fact]
     public async Task FalloutDeriveHitPointsStep_ComputesFromEnduranceLuckLevel()
     {

@@ -135,7 +135,6 @@ public class Dnd5eSavingThrowTests
 
         var resolver = new Dnd5eRulesetResolver(mockRollService);
 
-        var CharacterId = "char_1";
         // Dexterity 10 (mod +0) + StatusEffect with 'AllRolls' (+2.0) = Total Bonus +2
         var actor = new Character
         {

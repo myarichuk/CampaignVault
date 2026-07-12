@@ -5,14 +5,16 @@ namespace CampaignVault.Data;
 /// <summary>
 /// Rumor lifecycle rule.
 ///
-/// Advances rumors one step at a time through the full lifecycle:
+/// Advances rumors through the full lifecycle, one threshold-crossing step at a time:
 ///   Nascent → Spreading (after 7 days of silence)
 ///   Spreading → Peak    (after another 7 days, 14 cumulative)
 ///   Peak → Fading       (after 14 days of silence at Peak or higher)
 ///   Fading → Forgotten  (after 14 days of silence at Fading)
 ///
-/// Advancing one step per tick ensures the bell-curve lifecycle is actually traversed
-/// instead of jumping directly from Nascent to Peak (the previous bug).
+/// A single AdvanceWorld call can cross multiple thresholds (e.g. a 30-day time skip pushes a
+/// Nascent rumor through Spreading and on to Peak in one tick) — the loop below traverses every
+/// intermediate state instead of jumping directly from Nascent to Peak (which would skip the
+/// "spreading" beat) or stalling at one step per call regardless of how much time passed.
 ///
 /// Future expansions: escalation based on NPC density, party involvement pressure, etc.
 /// </summary>
@@ -43,26 +45,31 @@ public class RumorDecayRule : ISimulationRule
             var daysSinceUpdate = context.Time.TotalDaysElapsed - rumor.LastStateChangeDay;
             var currentState = rumor.State;
 
-            // Only allow one transition per AdvanceWorld call to ensure the bell-curve lifecycle is traversed
-            RumorState? nextState = currentState switch
+            // Traverse every threshold crossed by this time skip, not just the first.
+            while (true)
             {
-                // Escalation: growing rumors advance one step after EscalationDays
-                RumorState.Nascent when daysSinceUpdate > EscalationDays
-                    => RumorState.Spreading,
-                RumorState.Spreading when daysSinceUpdate > EscalationDays
-                    => RumorState.Peak,
+                RumorState? nextState = currentState switch
+                {
+                    // Escalation: growing rumors advance one step after EscalationDays
+                    RumorState.Nascent when daysSinceUpdate > EscalationDays
+                        => RumorState.Spreading,
+                    RumorState.Spreading when daysSinceUpdate > EscalationDays
+                        => RumorState.Peak,
 
-                // Decay: stale rumors fade one step after DecayDays
-                RumorState.Peak when daysSinceUpdate > DecayDays
-                    => RumorState.Fading,
-                RumorState.Fading when daysSinceUpdate > DecayDays
-                    => RumorState.Forgotten,
+                    // Decay: stale rumors fade one step after DecayDays
+                    RumorState.Peak when daysSinceUpdate > DecayDays
+                        => RumorState.Fading,
+                    RumorState.Fading when daysSinceUpdate > DecayDays
+                        => RumorState.Forgotten,
 
-                _ => null // no transition yet
-            };
+                    _ => null // no transition yet
+                };
 
-            if (nextState is not null)
-            {
+                if (nextState is null)
+                {
+                    break;
+                }
+
                 currentState = nextState.Value;
 
                 // Escalation transitions (real state changes) persist; decay transitions are routine
@@ -76,6 +83,11 @@ public class RumorDecayRule : ISimulationRule
                     _                    => $"The rumor '{rumor.Subject}' has transitioned to {nextState.Value}."
                 };
                 narratives.Add(new RuleNarrative(narrative, Persist: persist));
+
+                // Consume the days spent on this transition before checking the next threshold.
+                daysSinceUpdate -= nextState.Value is RumorState.Spreading or RumorState.Peak
+                    ? EscalationDays
+                    : DecayDays;
             }
 
             // Update the final state if it changed

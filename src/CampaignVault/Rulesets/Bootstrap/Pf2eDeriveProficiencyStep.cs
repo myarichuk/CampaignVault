@@ -65,6 +65,18 @@ public sealed class Pf2eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
             changed = true;
         }
 
+        // Initialize spellcasting (class DC) proficiency from standard PF2e progression if not set.
+        // Approximation: Trained at 1, Expert at 7, Master at 15 — no Legendary tier (class-specific,
+        // rare, and not derivable from level alone). Unused for non-casters (no SpellDc is consulted
+        // for them), so this is harmless to set unconditionally like AC/skill/save proficiency above.
+        if (stats.SpellcastingProficiency is null)
+        {
+            stats.SpellcastingProficiency = level >= 15 ? Pf2eProficiencyRank.Master
+                : level >= 7 ? Pf2eProficiencyRank.Expert
+                : Pf2eProficiencyRank.Trained;
+            changed = true;
+        }
+
         if (!changed)
         {
             return null;

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,6 +8,7 @@ using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -42,7 +45,6 @@ public class Fallout2d20RulesetResolverTests
 
         var resolver = new Fallout2d20RulesetResolver(mockRollService);
 
-        var CharacterId = "char_1";
         var actor = new Character { Id = "test-char", SystemStats = new Fallout2d20Extension { Endurance = 8 } };
         var context = CreateContext(actor);
 
@@ -62,6 +64,42 @@ public class Fallout2d20RulesetResolverTests
     }
 
     [Fact]
+    public async Task ResolveAttackAsync_NoHeldItem_FallsBackToWeaponDefinitionByName()
+    {
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Successes = 2, Summary = "2 Successes" }));
+        mockRollService.RollFalloutCombatDiceAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new FalloutCombatDiceResult(1, 1, false)));
+
+        var weaponDefs = new WeaponDefinitionProvider(
+            Path.Combine(Path.GetTempPath(), "cv_weapondef_resolver_test_" + Guid.NewGuid()),
+            typeof(WeaponDefinitionProvider).Assembly);
+        var resolver = new Fallout2d20RulesetResolver(mockRollService, weaponDefs);
+
+        var targetId = "char_2";
+        var actor = new Character { Id = "test-char", SystemStats = new Fallout2d20Extension() };
+        var target = new Character { Id = targetId, SystemStats = new Fallout2d20Extension { Defense = 1 } };
+        var context = CreateContext(actor, target);
+
+        // No held Item for "10mm Pistol" exists in context.Items — the resolver must fall back to
+        // the reference weapons/10mm_pistol.yaml definition for damageDice/skill.
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            TargetIds = [targetId],
+            ActionType = RulesetActionType.Attack,
+            ActionName = "10mm Pistol",
+        };
+
+        await resolver.ResolveAsync(context, action);
+
+        Assert.Equal("2d6", action.Parameters["damageDice"]);
+        Assert.Equal("SmallGuns", action.Parameters["skill"]);
+        Assert.Equal("Physical", action.DamageType);
+    }
+
+    [Fact]
     public async Task ResolveAttackAsync_AppliesPiercingAndViciousEffects()
     {
         var mockRollService = Substitute.For<IRollService>();
@@ -73,7 +111,6 @@ public class Fallout2d20RulesetResolverTests
 
         var resolver = new Fallout2d20RulesetResolver(mockRollService);
 
-        var CharacterId = "char_1";
         var targetId = "char_2";
         
         var actor = new Character { Id = "test-char", SystemStats = new Fallout2d20Extension() };
@@ -125,6 +162,64 @@ public class Fallout2d20RulesetResolverTests
 
         Assert.Equal(13f, initiativeResult);
         await mockRollService.DidNotReceiveWithAnyArgs().RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResolveSkillCheckAsync_SurplusSuccessesButNoActionPointsPool_DoesNotFailOrEmitResourceChange()
+    {
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Successes = 3, Summary = "3 Successes" }));
+
+        var resolver = new Fallout2d20RulesetResolver(mockRollService);
+
+        // No ResourcePools set — simulates an NPC/creature not bootstrapped through character_create.
+        var actor = new Character { Id = "test-char", SystemStats = new Fallout2d20Extension() };
+        var context = CreateContext(actor);
+
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            ActionType = RulesetActionType.SkillCheck,
+            ActionName = "Lockpick",
+            Parameters = new Dictionary<string, string> { { "difficulty", "1" } }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.True(output.Result.Success, output.Result.Narrative);
+        Assert.DoesNotContain(output.Mutations, m => m is ResourceChange);
+        Assert.Contains("not tracked", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveSkillCheckAsync_SurplusSuccessesWithActionPointsPool_EmitsResourceChange()
+    {
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Successes = 3, Summary = "3 Successes" }));
+
+        var resolver = new Fallout2d20RulesetResolver(mockRollService);
+
+        var stats = new Fallout2d20Extension();
+        stats.ResourcePools["action_points"] = new ResourcePool { Current = 5, Max = 10 };
+        var actor = new Character { Id = "test-char", SystemStats = stats };
+        var context = CreateContext(actor);
+
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            ActionType = RulesetActionType.SkillCheck,
+            ActionName = "Lockpick",
+            Parameters = new Dictionary<string, string> { { "difficulty", "1" } }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.True(output.Result.Success, output.Result.Narrative);
+        var resourceChange = Assert.Single(output.Mutations.OfType<ResourceChange>());
+        Assert.Equal("action_points", resourceChange.PoolName);
+        Assert.Equal(2, resourceChange.Delta);
     }
 
     [Fact]

@@ -290,7 +290,7 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             if (campaign == null)
                 return new PushResponse { Success = false, Message = $"Campaign '{request.CampaignName}' not found." };
 
-            campaign.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null : request.DisplayName;
+            campaign.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null! : request.DisplayName;
             campaign.NarrativeFocus = request.NarrativeFocus?.ToList() ?? [];
 
             await session.SaveChangesAsync();

@@ -75,6 +75,54 @@ public class CommitChangesParserTests
     }
 
     [Fact]
+    public void TryParse_EngagementRelationWithActorId_ResolvesToCharacterId()
+    {
+        const string payload = """
+                               [
+                                 {
+                                   "$type": "engagement_relation",
+                                   "actorId": "chars/valen",
+                                   "targetId": "chars/lirael",
+                                   "category": "Social",
+                                   "verb": "discussing plans with"
+                                 }
+                               ]
+                               """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.True(ok, error);
+        var change = Assert.IsType<EngagementRelationChange>(parsed!.Single());
+        Assert.Equal("chars/valen", change.CharacterId);
+        Assert.Equal("chars/lirael", change.TargetId);
+    }
+
+    [Fact]
+    public void TryParse_EngagementRelationWithBothActorIdAndCharacterId_PrefersCharacterId()
+    {
+        const string payload = """
+                               [
+                                 {
+                                   "$type": "engagement_relation",
+                                   "actorId": "chars/wrong",
+                                   "characterId": "chars/valen",
+                                   "targetId": "chars/lirael",
+                                   "category": "Social",
+                                   "verb": "discussing plans with"
+                                 }
+                               ]
+                               """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.True(ok, error);
+        var change = Assert.IsType<EngagementRelationChange>(parsed!.Single());
+        Assert.Equal("chars/valen", change.CharacterId);
+    }
+
+    [Fact]
     public void TryParse_RumorCreate_Deserializes()
     {
         const string payload = """

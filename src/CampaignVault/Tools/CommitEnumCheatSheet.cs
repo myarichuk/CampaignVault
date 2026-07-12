@@ -33,6 +33,7 @@ internal static class CommitEnumCheatSheet
 - `engagement_relation.restrictionLevel` → None, Soft, Hard
 - `level_up.levelsGained` → positive integer (default 1); `hpMode` (5e) → average, rolled
 - PCs: omit `maxHp` on create — use `systemStats.hitDie`/`level`/`constitution`; creatures use `statBlockHp` or `maxHp`
+- Party currency → `$type: "resource"`, `poolName`: `gold` (dnd5e/pf2e) or `caps` (fallout2d20), `delta`: ±N
 
 Full enum tables: call `get_help` → section **Commit Enum Values**.
 """;
@@ -135,7 +136,7 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 ### character_create.systemStats / system_stats
 | Field | Valid values |
 |-------|----------------|
-| `$system` | Dnd5e, Pathfinder2e, Fallout2d20 |
+| `$system` | dnd5e, pf2e, fallout2d20 (lowercase, exact — wrong casing silently falls back to untyped stats) |
 | `hpMode` (5e) | average, rolled |
 | `hitDie` (5e) | String on extension root — e.g. `"d12"` (NOT in `attributes`) |
 | `level` | Integer on extension root (total character level) |

@@ -2,11 +2,19 @@ using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets;
 
 public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResolution, ICombatRuleset where TStats : SystemExtension, new()
 {
+    private readonly WeaponDefinitionProvider? _weaponDefs;
+
+    protected RulesetResolverBase(WeaponDefinitionProvider? weaponDefs = null)
+    {
+        _weaponDefs = weaponDefs;
+    }
+
     public abstract RulesetSystem System { get; }
     public IActionResolution Actions => this;
     public ICombatRuleset Combat => this;
@@ -49,7 +57,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         switch (action.ActionType)
         {
             case RulesetActionType.Attack:
-                await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct);
+                await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct, _weaponDefs, System);
                 result = await ResolveAttackAsync(action, context, actorStats, mutations, ct);
                 break;
 

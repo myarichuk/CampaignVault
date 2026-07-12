@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:CampaignVault.Authoring.ViewModels"
              xmlns:services="using:CampaignVault.Authoring.Services"
@@ -12,22 +12,22 @@
             <Grid dock:ProportionalStackPanel.Proportion="0.5" RowDefinitions="Auto, *, Auto" Margin="12,12,6,12" MinWidth="300">
                 <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" Margin="5,0,0,10">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" Width="14" Height="14" Foreground="#2563EB" VerticalAlignment="Center" />
-                        <TextBlock Text="Editor" FontSize="12" FontWeight="SemiBold" Foreground="#A0A0AB" VerticalAlignment="Center" />
+                        <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" Width="14" Height="14" Foreground="{StaticResource AccentColor}" VerticalAlignment="Center" />
+                        <TextBlock Text="Editor" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryColor}" VerticalAlignment="Center" />
                     </StackPanel>
                     <Button Grid.Column="1" Content="Save Changes" Command="{Binding SaveActiveFileCommand}" 
-                            Background="#2563EB" Foreground="White" Padding="12,6" FontSize="11" CornerRadius="4" 
+                            Background="{StaticResource AccentColor}" Foreground="White" Padding="12,6" FontSize="11" CornerRadius="4" 
                             IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     <Button Grid.Column="2" Content="Delete" Command="{Binding DeleteSelectedEntityCommand}" 
                             Background="#7F1D1D" Foreground="White" Padding="12,6" FontSize="11" CornerRadius="4" Margin="6,0,0,0"
                             IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </Grid>
-                <Border Grid.Row="1" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="4" ClipToBounds="True">
+                <Border Grid.Row="1" BorderBrush="{StaticResource SurfaceColor}" BorderThickness="1" CornerRadius="4" ClipToBounds="True">
                     <ae:TextEditor Name="Editor" 
                                    FontFamily="Consolas"
                                    FontSize="13"
-                                   Background="#1F1F28"
-                                   Foreground="#E4E4EB"
+                                   Background="{StaticResource BackgroundColor}"
+                                   Foreground="{StaticResource TextPrimaryColor}"
                                    HorizontalScrollBarVisibility="Auto"
                                    VerticalScrollBarVisibility="Visible"
                                    ShowLineNumbers="True" />
@@ -39,7 +39,7 @@
                         <ItemsControl ItemsSource="{Binding YamlDiagnostics}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="services:YamlDiagnostic">
-                                    <TextBlock FontSize="11" Foreground="#FCA5A5" TextWrapping="Wrap">
+                                    <TextBlock FontSize="11" Foreground="{StaticResource ErrorColor}" TextWrapping="Wrap">
                                         <Run Text="Line " />
                                         <Run Text="{Binding Line}" />
                                         <Run Text=": " />
@@ -48,7 +48,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Text="Hover squiggles in the editor for details." FontSize="10" Foreground="#71717A" />
+                        <TextBlock Text="Hover squiggles in the editor for details." FontSize="10" Foreground="{StaticResource TextSecondaryColor}" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -59,15 +59,15 @@
             <Grid dock:ProportionalStackPanel.Proportion="0.5" RowDefinitions="Auto, *" Margin="6,12,12,12" MinWidth="250">
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="5,0,0,10">
                     <PathIcon Data="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" Width="14" Height="14" Foreground="#10B981" VerticalAlignment="Center" />
-                    <TextBlock Text="Preview &amp; Properties" FontSize="12" FontWeight="SemiBold" Foreground="#A0A0AB" VerticalAlignment="Center" />
+                    <TextBlock Text="Preview &amp; Properties" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryColor}" VerticalAlignment="Center" />
                 </StackPanel>
                 
-                <Border Grid.Row="1" Background="#1C1C24" BorderBrush="#2D2D3A" BorderThickness="1" CornerRadius="4" Padding="0">
+                <Border Grid.Row="1" Background="{StaticResource SurfaceColor}" BorderBrush="{StaticResource SurfaceColor}" BorderThickness="1" CornerRadius="4" Padding="0">
                     <Panel>
                         <ScrollViewer IsVisible="{Binding !HasParseError}">
                             <StackPanel Spacing="0">
                                 <!-- Metadata / Form Section -->
-                                <Border Background="#23232D" Padding="16" BorderBrush="#2D2D3A" BorderThickness="0,0,0,1">
+                                <Border Background="#23232D" Padding="16" BorderBrush="{StaticResource SurfaceColor}" BorderThickness="0,0,0,1">
                                     <StackPanel Spacing="12">
                                         <TextBlock Text="ENTITY PROPERTIES" FontSize="10" FontWeight="Bold" Foreground="#52525B" LetterSpacing="0.5" />
                                         <WrapPanel Orientation="Horizontal">
@@ -75,21 +75,21 @@
                                             <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="Type" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" />
-                                                    <TextBlock Text="{Binding EntityTypeDisplay}" Foreground="#E4E4EB" FontSize="11" />
+                                                    <TextBlock Text="{Binding EntityTypeDisplay}" Foreground="{StaticResource TextPrimaryColor}" FontSize="11" />
                                                 </StackPanel>
                                             </Border>
                                             <!-- ID Badge -->
                                             <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="ID" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" />
-                                                    <TextBlock Text="{Binding ParsedCharacter.Id}" Foreground="#A0A0AB" FontSize="11" />
+                                                    <TextBlock Text="{Binding ParsedCharacter.Id}" Foreground="{StaticResource TextSecondaryColor}" FontSize="11" />
                                                 </StackPanel>
                                             </Border>
                                             <!-- Name Field -->
                                             <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="Name" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" VerticalAlignment="Center" />
-                                                    <TextBox Text="{Binding FormName, Mode=TwoWay}" FontSize="11" Padding="4,2" MinWidth="80" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
+                                                    <TextBox Text="{Binding FormName, Mode=TwoWay}" FontSize="11" Padding="4,2" MinWidth="80" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="2" />
                                                 </StackPanel>
                                             </Border>
                                         </WrapPanel>
@@ -100,21 +100,21 @@
                                                 <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
                                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                                         <TextBlock Text="HP" FontWeight="Bold" Foreground="#F43F5E" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormCurrentHp, Mode=TwoWay}" Minimum="0" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="32" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
-                                                        <TextBlock Text="/" Foreground="#71717A" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormMaxHp, Mode=TwoWay}" Minimum="1" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="32" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
+                                                        <NumericUpDown Value="{Binding FormCurrentHp, Mode=TwoWay}" Minimum="0" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="32" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="2" />
+                                                        <TextBlock Text="/" Foreground="{StaticResource TextSecondaryColor}" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Value="{Binding FormMaxHp, Mode=TwoWay}" Minimum="1" Maximum="9999" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="32" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="2" />
                                                     </StackPanel>
                                                 </Border>
                                                 <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
                                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                                         <TextBlock Text="Will" FontWeight="Bold" Foreground="#10B981" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormWillpower, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="28" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
+                                                        <NumericUpDown Value="{Binding FormWillpower, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="28" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="2" />
                                                     </StackPanel>
                                                 </Border>
                                                 <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
                                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                                         <TextBlock Text="Stress" FontWeight="Bold" Foreground="#F59E0B" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormStress, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="28" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2" />
+                                                        <NumericUpDown Value="{Binding FormStress, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="28" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="2" />
                                                     </StackPanel>
                                                 </Border>
                                             </WrapPanel>
@@ -130,7 +130,7 @@
                                                              TextWrapping="Wrap" 
                                                              FontSize="14" 
                                                              LineHeight="22"
-                                                             Foreground="#E4E4EB" />
+                                                             Foreground="{StaticResource TextPrimaryColor}" />
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -141,9 +141,9 @@
                             <PathIcon Data="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z" Width="48" Height="48" Foreground="#F43F5E" HorizontalAlignment="Center" />
                             <TextBlock Text="YAML Parse Error" FontSize="16" FontWeight="Bold" Foreground="#F43F5E" HorizontalAlignment="Center" />
                             <TextBlock Text="{Binding PrimaryYamlError}"
-                                       TextWrapping="Wrap" TextAlignment="Center" FontSize="12" Foreground="#A0A0AB" MaxWidth="320" HorizontalAlignment="Center" />
+                                       TextWrapping="Wrap" TextAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondaryColor}" MaxWidth="320" HorizontalAlignment="Center" />
                             <Expander Header="View Error Details" HorizontalAlignment="Stretch" Margin="0,10,0,0">
-                                <TextBox Text="{Binding ParseErrorMessage}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="250" FontFamily="Consolas" FontSize="11" Background="#262630" Foreground="#E4E4EB" BorderBrush="#3F3F46" BorderThickness="1" />
+                                <TextBox Text="{Binding ParseErrorMessage}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="250" FontFamily="Consolas" FontSize="11" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" />
                             </Expander>
                         </StackPanel>
                     </Panel>
@@ -154,10 +154,11 @@
         <!-- Empty State Overlay -->
         <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
             <PathIcon Data="M19,20H5V4H12V9H17V20M13,3.5L17.5,8H13V3.5M18.5,8H13A1,1 0 0,1 12,7V1.5H4.5A1.5,1.5 0 0,0 3,3V21A1.5,1.5 0 0,0 4.5,22H18.5A1.5,1.5 0 0,0 20,20.5V9.5A1.5,1.5 0 0,0 18.5,8Z" 
-                      Width="64" Height="64" Foreground="#3F3F46" />
-            <TextBlock Text="No Entity Selected" FontSize="20" FontWeight="Bold" Foreground="#71717A" HorizontalAlignment="Center"/>
+                      Width="64" Height="64" Foreground="{StaticResource BorderColor}" />
+            <TextBlock Text="No Entity Selected" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextSecondaryColor}" HorizontalAlignment="Center"/>
             <TextBlock Text="Select an entity or click + in Explorer to create one." 
                        FontSize="14" Foreground="#52525B" HorizontalAlignment="Center"/>
         </StackPanel>
     </Panel>
 </UserControl>
+

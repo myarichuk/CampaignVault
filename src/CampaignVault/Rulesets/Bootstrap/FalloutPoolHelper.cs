@@ -6,7 +6,7 @@ namespace CampaignVault.Rulesets.Bootstrap;
 internal static class FalloutPoolHelper
 {
     public static bool IsTaggedSkill(Fallout2d20Extension stats, string skill) =>
-        stats.TagSkills.Any(t => string.Equals(t, skill, StringComparison.OrdinalIgnoreCase));
+        stats.TagSkills.Any(t => SkillNamesMatch(t, skill));
 
     public static int ResolvePoolSize(
         Fallout2d20Extension stats,
@@ -67,6 +67,17 @@ internal static class FalloutPoolHelper
         return Math.Max(0, defense + modifier);
     }
 
+    /// <summary>
+    /// Skill-name equality that ignores case AND whitespace, so content-authored names like
+    /// "Small Guns" (human-readable, e.g. from weapons/*.yaml) reconcile with the engine's
+    /// space-free key convention ("SmallGuns", e.g. character_create examples in DmHelpManual).
+    /// </summary>
+    private static bool SkillNamesMatch(string a, string b) =>
+        string.Equals(
+            a.Replace(" ", "", StringComparison.Ordinal),
+            b.Replace(" ", "", StringComparison.Ordinal),
+            StringComparison.OrdinalIgnoreCase);
+
     public static int BuildTargetNumber(
         Fallout2d20Extension stats,
         string attribute,
@@ -75,7 +86,7 @@ internal static class FalloutPoolHelper
         params string[] modifierTags)
     {
         var attrVal = GetAttributeValue(stats, attribute);
-        var skillKey = stats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase));
+        var skillKey = stats.Skills.Keys.FirstOrDefault(k => SkillNamesMatch(k, skill));
         var skillVal = skillKey != null && stats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
         var targetNumber = attrVal + skillVal;
         return applyModifiers(stats, targetNumber, modifierTags);
@@ -93,7 +104,7 @@ internal static class FalloutPoolHelper
         var poolKey = tag is "target" ? "targetPool" : "pool";
         var poolSize = ResolvePoolSize(stats, parameters, poolKey);
         var targetNumber = BuildTargetNumber(stats, attribute, skill, applyModifiers, modifierTags);
-        var skillKey = stats.Skills.Keys.FirstOrDefault(k => string.Equals(k, skill, StringComparison.OrdinalIgnoreCase));
+        var skillKey = stats.Skills.Keys.FirstOrDefault(k => SkillNamesMatch(k, skill));
         var skillVal = skillKey != null && stats.Skills.TryGetValue(skillKey, out var s) ? s : 0;
 
         return new RollRequest

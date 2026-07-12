@@ -7,15 +7,15 @@
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="CampaignVault Authoring App"
-        Background="#18181F"
-        Foreground="#E4E4EB">
+        Background="{StaticResource BackgroundColor}"
+        Foreground="{StaticResource TextPrimaryColor}">
 
     <Window.Resources>
         <vm:EnumToBoolConverter x:Key="EnumToBoolConverter" />
     </Window.Resources>
 
     <Grid RowDefinitions="Auto, Auto, *, 32">
-        <Menu Grid.Row="0" Background="#1C1C24" Foreground="#E4E4EB">
+        <Menu Grid.Row="0" Background="{StaticResource SurfaceColor}" Foreground="{StaticResource TextPrimaryColor}">
             <MenuItem Header="_File">
                 <MenuItem Header="_Open Folder..." Command="{Binding OpenCampaignFolderCommand}" />
                 <Separator />
@@ -28,13 +28,13 @@
             </MenuItem>
         </Menu>
 
-        <Border Grid.Row="1" Background="#3F1D1D" Padding="12,6"
+        <Border Grid.Row="1" Background="{StaticResource SolRed}" Opacity="0.15" Padding="12,6"
                 IsVisible="{Binding ShowStatusBanner}">
-            <TextBlock Text="{Binding StatusBannerMessage}" FontSize="11" Foreground="#FCA5A5" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding StatusBannerMessage}" FontSize="11" Foreground="{StaticResource SolRed}" TextWrapping="Wrap" />
         </Border>
 
         <DockPanel Grid.Row="2">
-            <Border DockPanel.Dock="Top" Background="#2D2D3A" Padding="15,5">
+            <Border DockPanel.Dock="Top" Background="{StaticResource SurfaceColor}" Padding="15,5">
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <Button Content="Campaign Hub"
                             Command="{Binding BackToHubCommand}"
@@ -57,29 +57,29 @@
             </Grid>
         </DockPanel>
 
-        <Border Grid.Row="3" Background="#111115" BorderBrush="#2D2D3A" BorderThickness="0,1,0,0" Padding="15,0">
+        <Border Grid.Row="3" Background="{StaticResource BackgroundColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,1,0,0" Padding="15,0">
             <Grid ColumnDefinitions="Auto, Auto, *, Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="0,0,20,0" VerticalAlignment="Center">
                     <Ellipse Width="8" Height="8" Fill="{Binding Settings.McpStatusColor}" />
-                    <TextBlock Text="MCP: " FontSize="11" Foreground="#71717A" />
-                    <TextBlock Text="{Binding Settings.McpStatusText}" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                    <TextBlock Text="MCP: " FontSize="11" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBlock Text="{Binding Settings.McpStatusText}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <TextBlock Text="main " FontSize="11" Foreground="#71717A" />
-                    <TextBlock Text="{Binding StatusBarGit}" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
-                    <TextBlock Text=" · " FontSize="11" Foreground="#71717A" />
-                    <TextBlock Text="{Binding StatusBarSync}" FontSize="11" Foreground="#A0A0AB" />
-                    <TextBlock Text=" · Vault " FontSize="11" Foreground="#71717A" />
-                    <TextBlock Text="{Binding StatusBarConnection}" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                    <TextBlock Text="main " FontSize="11" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBlock Text="{Binding StatusBarGit}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
+                    <TextBlock Text=" · " FontSize="11" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBlock Text="{Binding StatusBarSync}" FontSize="11" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBlock Text=" · Vault " FontSize="11" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBlock Text="{Binding StatusBarConnection}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
                 </StackPanel>
 
-                <TextBlock Grid.Column="2" Text="{Binding Sync.StatusMessage}" FontSize="11" Foreground="#A0A0AB"
+                <TextBlock Grid.Column="2" Text="{Binding Sync.StatusMessage}" FontSize="11" Foreground="{StaticResource TextSecondaryColor}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
 
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                    <TextBlock Text="Last sync: " FontSize="11" Foreground="#71717A" />
-                    <TextBlock Text="{Binding Sync.LastSyncTime}" FontSize="11" FontWeight="Bold" Foreground="#E4E4EB" />
+                    <TextBlock Text="Last sync: " FontSize="11" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBlock Text="{Binding Sync.LastSyncTime}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
                 </StackPanel>
             </Grid>
         </Border>

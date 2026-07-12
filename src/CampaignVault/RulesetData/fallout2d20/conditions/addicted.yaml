@@ -1,7 +1,6 @@
-﻿name: Addicted
+name: addicted
 system: fallout2d20
-description: Dependent on a drug or substance
-recoverType: Medical
-effects:
-  - name: Withdrawal
-    description: Suffer penalty until addiction is satisfied or treated
+durationType: Manual
+mechanicalSummary: Dependent on a drug or substance. Suffer a penalty until the addiction is satisfied or treated by a doctor. Requires medical treatment to recover.
+immunities: []
+suppresses: []
