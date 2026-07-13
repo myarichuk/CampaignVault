@@ -28,6 +28,9 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         var currentTime = await context.GetCurrentTimeAsync();
         var id = await ResolveEventIdAsync(ev.EventId, context, ct);
 
+        // Resolve importance: explicit > Deliberate floor > category default
+        var importance = ev.Importance ?? ResolveImportanceForCategory(ev.Category, ev.RecordingMode);
+
         var e = new Event
         {
             Id = id,
@@ -39,7 +42,7 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             RelatedEntityId = ev.RelatedEntityId,
             LocationId = ev.LocationId,
             RelatedLocationIds = ev.RelatedLocationIds,
-            Importance = ev.Importance ?? DefaultImportanceFor(ev.Category)
+            Importance = importance
         };
 
         e.CampaignName = context.CampaignName;
@@ -75,6 +78,23 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             or EventCategory.SceneInterrupt or EventCategory.Test => MemoryImportance.Trivial,
         _ => MemoryImportance.Important
     };
+
+    /// <summary>
+    /// Resolves importance accounting for Deliberate recording mode: when Deliberate, floors at Important
+    /// unless the default was already Important or higher.
+    /// </summary>
+    private static MemoryImportance ResolveImportanceForCategory(EventCategory category, RecordingMode? recordingMode)
+    {
+        var defaultImportance = DefaultImportanceFor(category);
+
+        // Deliberate recording floors at Important (e.g., intentional wilderness landmark discovery marked deliberately)
+        if (recordingMode == RecordingMode.Deliberate && defaultImportance == MemoryImportance.Trivial)
+        {
+            return MemoryImportance.Important;
+        }
+
+        return defaultImportance;
+    }
 
     /// <summary>
     /// Resolves the ID for a newly logged event. Honors a client-supplied EventId (normalized to the

@@ -37,6 +37,13 @@ public class SceneView
     /// The parallel ToolResult.WorldPressure contains the human-prefixed display strings (with JSONs appended).
     /// </summary>
     public List<WorldPressureItem> WorldPressureItems { get; set; } = [];
+
+    /// <summary>
+    /// Narrative hints for PCs who would recognize features in this location based on their skills/background.
+    /// E.g., "Valen (ranger, Survival +5) would likely notice: the wolf tracks circling the campsite are too orderly to be natural."
+    /// Purely read-time guidance; no persisted state. Empty if no PC skills/background match location features.
+    /// </summary>
+    public List<string>? RecognitionHints { get; set; }
 }
 
 /// <summary>

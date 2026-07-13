@@ -227,6 +227,11 @@ public class EventOccurred : WorldChange
     [Description("Optional. How narratively important this event is to THIS campaign's story (Trivial/Important/Core) — see the campaign's narrativeFocus. If omitted, the engine defaults it from category (Betrayal/Discovery/Combat/Arrival -> Important, bookkeeping categories -> Trivial). Core = load-bearing to the plot; always survives retrieval budgets.")]
     [JsonPropertyName("importance")]
     public MemoryImportance? Importance { get; set; }
+
+    [Description("Optional. Whether this event is a deliberate player act (Deliberate) or passive narrative element (Passive). Deliberate events lock in high importance and skip heuristic inference; Passive events infer tone/importance from context and decay naturally. Omit or set to Passive for most ambient events.")]
+    [JsonPropertyName("recordingMode")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public RecordingMode? RecordingMode { get; set; }
 }
 
 /// <summary>Change the state of an existing rumor and optionally rewrite its current text.</summary>
@@ -1188,6 +1193,11 @@ public class KnowledgeUpdate : WorldChange
     [Description("Optional ground-truth event ID(s) this memory derives from (e.g. ['events/tavern-bar-fight-001']). Reference a prior event's ID (returned in its commit response, or found via recall_history), or an 'eventId' you set explicitly on an 'event' change in THIS SAME commit batch. Populating this lets the engine/DM later compare what this NPC believes against what actually happened — useful for detecting/narrating misremembering or rumor distortion.")]
     [JsonPropertyName("sourceEventIds")]
     public List<string>? SourceEventIds { get; set; }
+
+    [Description("Optional. Whether this memory is a deliberate recording (Deliberate) or passive absorption (Passive). Set to Deliberate when the player performs an explicit act of recording — marking a map, writing a name in a journal, deliberately memorizing a fact. Deliberate memories lock in high salience/importance and skip heuristic inference; Passive memories infer emotional tone and importance from details and decay naturally. Omit or set to Passive for ambient observations.")]
+    [JsonPropertyName("recordingMode")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public RecordingMode? RecordingMode { get; set; }
 }
 
 /// <summary>
@@ -1378,4 +1388,16 @@ public class RestRecoveryAck : WorldChange
 
     [JsonPropertyName("restSequence")]
     public int RestSequence { get; set; }
+}
+
+/// <summary>
+/// Indicates whether a memory/event commit is a passive absorption or deliberate act of recording.
+/// Passive: ambient, incidental exposure (overhearing, wandering past something). Decays naturally.
+/// Deliberate: explicit player act (marking a map, writing a name down, memorizing a fact). Locked at high salience/importance, skips heuristic inference.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum RecordingMode
+{
+    Passive,
+    Deliberate
 }

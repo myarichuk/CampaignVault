@@ -282,6 +282,21 @@ Party reports back. Quest closes, territory adjusts, maybe a new rumor seeds:
 
 After Beat 4: `get_world_state` will show the quest as resolved, both factions at updated standing, the original rumor as Resolved (no longer nagging), and a new active rumor seeding the next hook. Faction pressure contributors will start surfacing new opportunistic moves from the now-stronger River Merchants Guild if their influence crossed the threshold. The engine does the bookkeeping; you drive the story.
 
+**Wilderness Landmark Promotion (turning vague travel into persistent geography):**
+When the party explicitly marks a wilderness location (""We carve our names into this stone and mark it on the map""), promote it from transient narration to a real `Location`. Fire a 3-commit batch in order (so each commit can reference the prior one's IDs):
+1. **event** — category `Discovery`, recordingMode `Deliberate`, importance `Core` (this is a deliberate, load-bearing act).
+2. **location_create** — type `Wilderness`, connectedFromLocationId set to the location they came from (auto-links with two-way exits).
+3. **knowledge_update** — on the recording PC, recordingMode `Deliberate`, importance `Core`, relatedEntityIds = [new location id], sourceEventIds = [event id from step 1].
+
+Example (party finds and marks a distinctive ridge):
+[
+  { ""$type"": ""event"", ""summary"": ""Party discovered and marked the Raven's Ridge on their map."", ""category"": ""Discovery"", ""involved"": [""chars/pc1"", ""chars/pc2""], ""locationId"": ""locations/wilderness-foothills"", ""eventId"": ""events/ravens-ridge-marked"", ""recordingMode"": ""Deliberate"", ""importance"": ""Core"" },
+  { ""$type"": ""location_create"", ""locationId"": ""locations/ravens-ridge"", ""name"": ""Raven's Ridge"", ""description"": ""A distinctive sandstone outcrop overlooking the foothills. Deep claw marks scar the rocks, as if something massive has climbed here often. A weathered bone is wedged in a crevice."", ""type"": ""Wilderness"", ""connectedFromLocationId"": ""locations/wilderness-foothills"", ""connectionDescription"": ""A winding trail up the ridge"", ""pointsOfInterest"": [""Claw marks"", ""Weathered bone""], ""dangerModifier"": 15 },
+  { ""$type"": ""knowledge_update"", ""characterId"": ""chars/pc1"", ""topic"": ""Raven's Ridge"", ""details"": ""A distinctive ridge we found and marked on our map. Distinctive sandstone formations and old claw marks. Seemed like a creature's haunt."", ""recordingMode"": ""Deliberate"", ""importance"": ""Core"", ""relatedEntityIds"": [""locations/ravens-ridge""], ""sourceEventIds"": [""events/ravens-ridge-marked""] }
+]
+
+On a failed Survival/Nature check before marking (optional flavor: represent the party's uncertainty), fire the same sequence but narrate the location's details as partially inaccurate (distance off, misidentified feature, etc.). The Location is still created and persistent; the inaccuracy is in your narration, not a schema field.
+
 **Character Combat Bootstrap — required for all combatants (KeepAlive OR maxHp > 0):**
 The engine emits ENGINE WARNING until BOTH are set:
 1. **HP**: `maxHp` (+ optional `currentHp`) — or omit `maxHp` and let the ruleset bootstrap pipeline derive it

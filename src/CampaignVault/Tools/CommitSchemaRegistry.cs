@@ -94,9 +94,9 @@ internal static class CommitSchemaRegistry
 
         // ── Narrative ────────────────────────────────────────────────────────────────
         new("event", "Narrative",
-            "Record a noteworthy occurrence. Required after combat rounds, conversations, and discoveries to populate recall_history and get_npc_context.",
+            "Record a noteworthy occurrence. Required after combat rounds, conversations, and discoveries to populate recall_history and get_npc_context. Set recordingMode to 'Deliberate' when the player performs an explicit, in-fiction act of recording (marking a map, writing a name down, deliberately memorizing a landmark). Leave as 'Passive' (or omit) for ambient narrative elements. Deliberate events lock in high importance and skip heuristic inference; Passive events infer tone/importance from context and decay naturally.",
             ["summary"],
-            ["category", "involved", "emotionalBeat", "relatedEntityId", "locationId", "relatedLocationIds", "eventId"],
+            ["category", "involved", "emotionalBeat", "relatedEntityId", "locationId", "relatedLocationIds", "eventId", "importance", "recordingMode"],
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: [],
@@ -145,9 +145,9 @@ internal static class CommitSchemaRegistry
             CoCommitHints: []),
 
         new("knowledge_update", "Narrative",
-            "Store a memory in an NPC's psychology (topic, details, importance).",
+            "Store a memory in an NPC's psychology (topic, details, importance). Set recordingMode to 'Deliberate' when the character performs an explicit, in-fiction act of recording — marking a map, writing a name in a journal, deliberately memorizing a face/route/detail. Leave as 'Passive' (or omit) for ambient absorption. Deliberate memories lock in high salience/importance and skip heuristic inference; Passive memories infer emotional tone and importance from details and decay naturally.",
             ["characterId", "topic", "details"],
-            ["importance", "createMemory", "source", "valence", "salience", "urgency", "relatedEntityIds", "sourceEventIds"],
+            ["importance", "createMemory", "source", "valence", "salience", "urgency", "relatedEntityIds", "sourceEventIds", "recordingMode"],
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: []),
@@ -196,7 +196,7 @@ internal static class CommitSchemaRegistry
             CoCommitHints: []),
 
         new("location_create", "World",
-            "Create a new location. Use connectedFromLocationId to auto-link with two-way exits.",
+            "Create a new location. Use connectedFromLocationId to auto-link with two-way exits. For wilderness landmarks explicitly recorded by the party (e.g., 'We mark this clearing on our map'), fire a 3-commit batch in order: (1) event with recordingMode='Deliberate', importance='Core', (2) location_create with type='Wilderness' and connectedFromLocationId set, (3) knowledge_update on the recording PC with recordingMode='Deliberate', importance='Core', relatedEntityIds=[new location id], sourceEventIds=[event id]. This turns an ambient wilderness feature into a persistent, navigable location with skips to decay.",
             ["locationId", "name", "description", "type"],
             ["parentLocationId", "connectedFromLocationId", "connectionDescription",
              "pointsOfInterest", "pointOfInterestDetails", "materializePointOfInterest",

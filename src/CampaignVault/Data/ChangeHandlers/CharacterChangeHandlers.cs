@@ -660,12 +660,22 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         else
         {
             // Existing memory: nudge salience up instead of resetting DayAcquired (so decay tracking stays honest)
-            memory.Salience = Math.Clamp(memory.Salience + 0.1, 0.0, 1.0);
+            // UNLESS this is a Deliberate re-recording, which reasserts full salience
+            if (ku.RecordingMode != RecordingMode.Deliberate)
+            {
+                memory.Salience = Math.Clamp(memory.Salience + 0.1, 0.0, 1.0);
+            }
         }
 
+        // Handle Importance: explicit value takes precedence, then Deliberate floor, then defaults
         if (ku.Importance.HasValue)
         {
             memory.Importance = ku.Importance.Value;
+        }
+        else if (ku.RecordingMode == RecordingMode.Deliberate && memory.Importance == MemoryImportance.Trivial)
+        {
+            // Deliberate recording floors at Important unless explicitly set lower
+            memory.Importance = MemoryImportance.Important;
         }
 
         ApplyEnrichment(memory, ku, isNew);
@@ -676,14 +686,22 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
 
     private static void ApplyEnrichment(MemoryNode memory, KnowledgeUpdate ku, bool isNew)
     {
-        if (isNew)
+        var isDeliberate = ku.RecordingMode == RecordingMode.Deliberate;
+
+        if (isNew && !isDeliberate)
         {
+            // Only infer defaults from text for Passive mode (Deliberate act is the strong signal)
             InferDefaultsFromDetails(memory, ku.Details);
         }
 
         if (ku.Source.HasValue)
         {
             memory.Source = ku.Source.Value;
+        }
+        else if (isDeliberate && !ku.Source.HasValue)
+        {
+            // Deliberate recording defaults to first-person experience when no Source is explicit
+            memory.Source = MemorySource.Experienced;
         }
 
         if (ku.Valence.HasValue)
@@ -694,6 +712,11 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         if (ku.Salience.HasValue)
         {
             memory.Salience = Math.Clamp(ku.Salience.Value, 0.0, 1.0);
+        }
+        else if (isDeliberate)
+        {
+            // Deliberate recording locks in maximum salience
+            memory.Salience = 1.0;
         }
 
         if (ku.Urgency.HasValue)

@@ -69,6 +69,9 @@ public sealed class SceneAssembler
             Campaign = context.Campaign
         });
 
+        // Generate recognition hints for PCs based on their skills/background vs. location/NPC features
+        var recognitionHints = SceneRecognitionHintFactory.Create(context.Location, presenceSummaries);
+
         if (context.MarkVisited)
         {
             context.Location.LastVisitedDay = context.Time.TotalDaysElapsed;
@@ -86,6 +89,7 @@ public sealed class SceneAssembler
             ActiveQuests = context.ActiveQuests.Select(CampaignRepository.ToActiveQuestSummary).ToList(),
             RelevantFactions = _factionSummaryFactory.Create(context.RelevantFactions, presentNpcs),
             LastKnownTravel = SceneTravelSummaryExtractor.GetLastKnownTravel(context.Events),
+            RecognitionHints = recognitionHints.Count > 0 ? recognitionHints : null,
             SuggestedCommitExamples = []
         };
     }
