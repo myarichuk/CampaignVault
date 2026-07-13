@@ -1,6 +1,8 @@
-# D&D Campaign Vault - Living World DM Engine
+# CampaignVault - Living World DM Engine
 
-A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a persistent, reactive simulation engine for long-running D&D (or other TTRPG) campaigns. It is purpose-built as an MCP to solve the challenges of state tracking, context limits, and hallucination when an LLM performs the DM role over long campaigns, providing reliable world state tracking, NPC psychology, rumor lifecycles, and atomic narrative resolution across many sessions.
+A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a persistent, reactive simulation engine for long-running TTRPG campaigns. It is purpose-built as an MCP to solve the challenges of state tracking, context limits, and hallucination when an LLM performs the DM role over long campaigns, providing reliable world state tracking, NPC psychology, rumor lifecycles, and atomic narrative resolution across many sessions.
+
+**Compatible with:** 5th Edition (D&D 5e SRD), Pathfinder 2e (ORC License), and Narrative rulesets.
 
 ## Licensing
 

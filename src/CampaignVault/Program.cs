@@ -134,7 +134,7 @@ if (!string.IsNullOrEmpty(bearerToken))
 // Do not use RequireHost() — Grok Web and other MCP clients often send Host headers
 // without a port suffix (e.g. "localhost"), which still 404s with *:port patterns.
 app.MapMcp("/").RequireLocalPort(mcpPort);
-app.MapGet("/info", () => "D&D Campaign Vault MCP Server (RavenDB) is running.")
+app.MapGet("/info", () => "CampaignVault MCP Server (RavenDB) is running.")
     .RequireLocalPort(mcpPort);
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
     .RequireLocalPort(mcpPort);
