@@ -588,10 +588,14 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             await session.StoreAsync(new Location
             {
                 Id = "locations/start-mt", Name = "Start", CampaignName = campaignSlug,
-                Type = LocationType.Settlement
+                Type = LocationType.Settlement,
+                Exits = [new LocationExit(destId, "Road to Far Town")]
             });
             await session.StoreAsync(new Location
-                { Id = destId, Name = "Far Town", CampaignName = campaignSlug, Type = LocationType.Settlement });
+            {
+                Id = destId, Name = "Far Town", CampaignName = campaignSlug, Type = LocationType.Settlement,
+                Exits = [new LocationExit("locations/start-mt", "Road back to Start")]
+            });
             await session.StoreAsync(new Character
             {
                 Id = pcId,
