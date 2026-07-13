@@ -152,14 +152,6 @@ internal static class CommitSchemaRegistry
             SideEffects: [],
             CoCommitHints: []),
 
-        new("rumor_create", "Narrative",
-            "Seed a new rumor. Starts at Nascent state.",
-            ["rumorId", "subject", "text"],
-            ["relatedLocationIds"],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: []),
-
         new("rumor", "Narrative",
             "Advance or retire an existing rumor's lifecycle state.",
             ["rumorId", "newState"],
@@ -169,15 +161,6 @@ internal static class CommitSchemaRegistry
             CoCommitHints: []),
 
         // ── World ────────────────────────────────────────────────────────────────────
-        new("character_create", "World",
-            "Create a new character. PCs should omit maxHp — bootstrap derives it from systemStats.",
-            ["characterId", "name"],
-            ["notes", "currentLocationId", "currentActivity", "keepAlive", "isPc", "isPartyCompanion",
-             "schedule", "psychology", "maxHp", "currentHp", "systemStats", "classLevel"],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: []),
-
         new("character_update", "World",
             "Patch visual appearance, tags, features, or party flags on an existing character.",
             ["characterId"],
@@ -195,30 +178,12 @@ internal static class CommitSchemaRegistry
             SideEffects: [],
             CoCommitHints: []),
 
-        new("location_create", "World",
-            "Create a new location. Use connectedFromLocationId to auto-link with two-way exits. For wilderness landmarks explicitly recorded by the party (e.g., 'We mark this clearing on our map'), fire a 3-commit batch in order: (1) event with recordingMode='Deliberate', importance='Core', (2) location_create with type='Wilderness' and connectedFromLocationId set, (3) knowledge_update on the recording PC with recordingMode='Deliberate', importance='Core', relatedEntityIds=[new location id], sourceEventIds=[event id]. This turns an ambient wilderness feature into a persistent, navigable location with skips to decay.",
-            ["locationId", "name", "description", "type"],
-            ["parentLocationId", "connectedFromLocationId", "connectionDescription",
-             "pointsOfInterest", "pointOfInterestDetails", "materializePointOfInterest",
-             "removePointOfInterest", "poiDetails", "ambientCrowd", "exits", "dangerModifier"],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: []),
-
         new("location_update", "World",
             "Granular updates to an existing location (exits, PoIs, tags, state).",
             ["locationId"],
             ["addExit", "removeExitTarget", "addPointOfInterest", "removePointOfInterest",
              "materializePointOfInterest", "poiDetails", "pointOfInterestDetails", "ambientCrowd", "name", "description",
              "newState", "tagsToAdd", "tagsToRemove", "featuresToAdd", "featuresToRemove", "dangerModifier"],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: []),
-
-        new("item_create", "World",
-            "Create a new item in the world.",
-            ["itemId", "name", "description", "holderId"],
-            ["tags", "coreCategory", "properties", "quantity"],
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: []),
@@ -273,15 +238,6 @@ internal static class CommitSchemaRegistry
             SideEffects: [],
             CoCommitHints: []),
 
-        new("faction_create", "World",
-            "Create a new faction.",
-            ["factionId", "name"],
-            ["description", "factionType", "controllingTerritory", "territoryLocationIds",
-             "knownLeaderIds", "initialInfluenceLevel"],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: []),
-
         new("faction_reputation", "World",
             "Adjust a character's reputation with a faction.",
             ["characterId", "factionId", "delta"],
@@ -298,15 +254,6 @@ internal static class CommitSchemaRegistry
             SideEffects: [],
             CoCommitHints: ["event"]),
 
-        new("quest_create", "World",
-            "Create a new structured quest with objectives.",
-            ["questId", "title"],
-            ["giverId", "objectives", "category", "urgency", "relatedLocationIds",
-             "relatedFactionIds", "dmNotes", "deadlineDay"],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: ["event"]),
-
         new("quest_progress", "World",
             "Advance or fail a quest objective.",
             ["questId", "newState"],
@@ -316,17 +263,6 @@ internal static class CommitSchemaRegistry
             CoCommitHints: ["event"]),
 
         // ── PlotThread ───────────────────────────────────────────────────────────────
-        new("plot_thread_create", "PlotThread",
-            "Seed a DM-facing narrative arc. Unlike quests, plot threads tick forward invisibly. " +
-            "Tension auto-escalates via simulation: Active→Escalating at 60, Escalating→Climax at 80.",
-            ["plotThreadId", "title"],
-            ["summary", "state", "tensionLevel", "clues", "involvedEntityIds", "resolutionCondition",
-             "foreshadowingHooks", "dmNotes", "deadlineDay", "isPlayerVisible"],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: [],
-            Example: """{"$type":"plot_thread_create","plotThreadId":"plot-threads/guild-infiltration","title":"Guild Infiltration","summary":"Thieves guild is buying off city watch captains.","clues":[{"id":"clue-1","description":"Captain Maren's unusual wealth"}]}"""),
-
         new("plot_thread_progress", "PlotThread",
             "Update state, tension, notes, resolution condition, or involved entities of a plot thread.",
             ["plotThreadId"],

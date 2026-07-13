@@ -34,7 +34,7 @@ public sealed class LocationFlavorPressureContributor : IPressureContributor
         {
             pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, loc.Id,
                 $"This location lacks flavor details (no PointsOfInterest, no AmbientCrowd). " +
-                "For a lively scene without DB bloat, use location_update (or include in location_create) to add PoIs/AmbientCrowd. Example:\n" +
+                "For a lively scene without DB bloat, use location_update (or include in upsert_location on create) to add PoIs/AmbientCrowd. Example:\n" +
                 "[ { \"$type\": \"location_update\", \"locationId\": \"" + loc.Id + "\", " +
                 "\"addPointOfInterest\": \"A half-empty mug on the bar\", \"ambientCrowd\": \"3-6 locals nursing drinks\" } ]",
                 FlavorVacuumGroupingKey));

@@ -19,29 +19,24 @@ public sealed class LocationHallucinationPressureContributor : IPressureContribu
 
         var locationId = ctx.RequestedLocationId;
         var suggestions = await PressureHelpers.SuggestLocationsAsync(ctx.Session, locationId, ctx.CampaignName);
+        var upsertBody = "{\n  \"location\": {\n    \"id\": \"" + locationId + "\",\n    " +
+            "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
+            "\"connectionDescription\": \"...\"\n  }\n}";
+
         if (suggestions.Any())
         {
             var names = string.Join(", ", suggestions.Select(s => $"'{s.Id}' ({s.Name})"));
             pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, locationId,
                 $"Location '{locationId}' not found. Did you mean one of these: {names}? " +
-                "If so, use the correct ID. If it is truly new, use `location_create`:\n" +
-                "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
-                "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
-                "\"connectionDescription\": \"...\"\n  }\n]",
+                "If so, use the correct ID. If it is truly new, call `upsert_location`:\n" + upsertBody,
                 GroupingKey));
         }
         else
         {
-            var suggested = "[\n  {\n    \"$type\": \"location_create\",\n    \"locationId\": \"" + locationId + "\",\n    " +
-                "\"name\": \"...\",\n    \"description\": \"...\",\n    \"connectedFromLocationId\": \"...\",\n    " +
-                "\"connectionDescription\": \"...\"\n  }\n]";
             pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, locationId,
                 $"You requested '{locationId}' but it does not exist in the database! " +
-                "You are hallucinating. Use the `commit` tool immediately:\n" + suggested,
-                GroupingKey)
-            {
-                SuggestedCommitJson = suggested
-            });
+                "You are hallucinating. Call the `upsert_location` tool immediately:\n" + upsertBody,
+                GroupingKey));
         }
 
         return pressures;

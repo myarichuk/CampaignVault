@@ -1,6 +1,6 @@
 namespace CampaignVault.Models;
 
-public class Item : ICampaignScopedEntity
+public class Item : ICampaignScopedEntity, IArchivable
 {
     public string Id { get; set; } = default!;
     
@@ -35,6 +35,11 @@ public class Item : ICampaignScopedEntity
     /// (No legacy BC requirement per review feedback; always set for new data. Items may be shareable across camps in some designs.)
     /// </summary>
     public string? CampaignName { get; set; }
+
+    /// <summary>
+    /// When true, hidden from default search/scene results (soft delete). Does not remove history.
+    /// </summary>
+    public bool IsArchived { get; set; }
 }
 
 public enum ItemCategory

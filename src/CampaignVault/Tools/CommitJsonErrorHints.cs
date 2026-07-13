@@ -91,15 +91,6 @@ internal static partial class CommitJsonErrorHints
             return true;
         }
 
-        if (path.EndsWith(".type", StringComparison.OrdinalIgnoreCase)
-            && source is { } root
-            && TryReadChangeTypeAtPath(root, path, out var changeType)
-            && string.Equals(changeType, "location_create", StringComparison.OrdinalIgnoreCase))
-        {
-            enumType = typeof(LocationType);
-            return true;
-        }
-
         if (path.EndsWith(".newState", StringComparison.OrdinalIgnoreCase))
         {
             if (source is { } rootNode

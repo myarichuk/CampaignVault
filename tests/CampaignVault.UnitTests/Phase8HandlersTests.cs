@@ -53,27 +53,6 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task ItemCreate_SetsCoreCategory()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-        var ctx = CreateContext(session);
-        var handler = new ItemCreateHandler();
-
-        var result = await handler.ApplyAsync(new ItemCreate
-        {
-            ItemId = "items/shield",
-            Name = "Shield",
-            Description = "A sturdy shield",
-            HolderId = "chars/pc1",
-            CoreCategory = ItemCategory.Armor
-        }, ctx);
-
-        Assert.True(result.Success);
-        var loaded = await session.LoadAsync<Item>("items/shield");
-        Assert.Equal(ItemCategory.Armor, loaded.CoreCategory);
-    }
-
-    [Fact]
     public async Task ItemUpdate_PatchesFieldsCorrectly()
     {
         using var session = _fixture.Store.OpenAsyncSession();

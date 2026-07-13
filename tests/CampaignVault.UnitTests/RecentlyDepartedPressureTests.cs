@@ -46,10 +46,9 @@ public class RecentlyDepartedPressureTests : IClassFixture<RavenDBFixture>
         var pressure = Assert.Single(pressures);
         Assert.Equal(PressureSeverity.NarrativePrompt, pressure.Severity);
         Assert.Contains("Mira the Bard", pressure.Text);
-        Assert.NotNull(pressure.SuggestedCommitJson);
-        Assert.Contains("character_create", pressure.SuggestedCommitJson);
-        Assert.Contains("chars/mira", pressure.SuggestedCommitJson);
-        Assert.Contains("keepAlive", pressure.SuggestedCommitJson);
+        Assert.Contains("upsert_character", pressure.Text);
+        Assert.Contains("chars/mira", pressure.Text);
+        Assert.Contains("keepAlive", pressure.Text);
     }
 
     [Fact]
@@ -86,9 +85,6 @@ public class RecentlyDepartedPressureTests : IClassFixture<RavenDBFixture>
         var departedPressure = pressureItems.FirstOrDefault(p =>
             p.GroupingKey == RecentlyDepartedPressureContributor.RecentlyDepartedGroupingKey);
         Assert.NotNull(departedPressure);
-        Assert.NotNull(departedPressure!.SuggestedCommitJson);
-        Assert.Contains(charId, departedPressure.SuggestedCommitJson);
-
-        Assert.Contains(result.Data.SuggestedCommitExamples ?? [], s => s.Contains(charId));
+        Assert.Contains(charId, departedPressure!.Text);
     }
 }

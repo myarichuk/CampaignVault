@@ -66,6 +66,12 @@ public class LocationUpsertRequest
 
     public string? ParentLocationId { get; set; }
 
+    [Description("Only used when creating a new location. The ID of the location you are coming from — the engine automatically creates two-way exits linking them. Ignored on update.")]
+    public string? ConnectedFromLocationId { get; set; }
+
+    [Description("Only used together with connectedFromLocationId. Describes the exit from the connected location into this one (e.g., 'A wooden trapdoor leading down').")]
+    public string? ConnectionDescription { get; set; }
+
     [Description("Omit to preserve the location's existing exits. Provide to replace them wholesale.")]
     public List<LocationExit>? Exits { get; set; }
 
@@ -86,6 +92,12 @@ public class LocationUpsertRequest
     public string? ControllingFactionId { get; set; }
 
     public string? CurrentState { get; set; }
+
+    [Description("Narrative danger modifier (-50 to +50), used to seed random encounters. Omit to preserve the existing value on update.")]
+    public int? DangerModifier { get; set; }
+
+    [Description("Set true to hide this location from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
 
     public string? CampaignName { get; set; }
 }
@@ -144,6 +156,9 @@ public class ItemUpsertRequest
     [Description("Omit to preserve the item's existing properties. Provide to replace them wholesale.")]
     public Dictionary<string, object>? Properties { get; set; }
 
+    [Description("Set true to hide this item from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
+
     public string? CampaignName { get; set; }
 }
 
@@ -181,6 +196,9 @@ public class PlotThreadUpsertRequest
 
     public bool IsPlayerVisible { get; set; }
 
+    [Description("Set true to hide this plot thread from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
+
     public string? CampaignName { get; set; }
 }
 
@@ -212,6 +230,152 @@ public class CustomCreatureUpsertRequest
 
     [Description("Omit to preserve the creature's existing abilities. Provide to replace them wholesale.")]
     public List<string>? Abilities { get; set; }
+
+    [Description("Set true to hide this creature template from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
+
+    public string? CampaignName { get; set; }
+}
+
+/// <summary>
+/// Tool-facing request for upsert_faction. Mirrors <see cref="Faction"/>, but declares
+/// list/dictionary fields as nullable so omitting them in a partial-update call preserves
+/// the existing stored values instead of blanking them to defaults.
+/// </summary>
+public class FactionUpsertRequest
+{
+    public string Id { get; set; } = default!;
+
+    public string Name { get; set; } = default!;
+
+    public string? Description { get; set; }
+
+    public FactionType FactionType { get; set; } = FactionType.Guild;
+
+    public string? ControllingTerritory { get; set; }
+
+    [Description("Omit to preserve the faction's existing territory location IDs. Provide to replace them wholesale.")]
+    public List<string>? TerritoryLocationIds { get; set; }
+
+    [Description("Omit to preserve the faction's existing known leader IDs. Provide to replace them wholesale.")]
+    public List<string>? KnownLeaderIds { get; set; }
+
+    [Description("Influence level (0-100). Defaults to 50 for a new faction; omit on update to preserve the existing value.")]
+    public int? InfluenceLevel { get; set; }
+
+    [Description("Set true to hide this faction from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
+
+    public string? CampaignName { get; set; }
+}
+
+/// <summary>
+/// Tool-facing request for upsert_quest. Mirrors <see cref="Quest"/>, but declares
+/// list fields as nullable so omitting them in a partial-update call preserves
+/// the existing stored values instead of blanking them to defaults.
+/// </summary>
+public class QuestUpsertRequest
+{
+    public string Id { get; set; } = default!;
+
+    public string Title { get; set; } = default!;
+
+    public string? GiverId { get; set; }
+
+    [Description("Omit to preserve the quest's existing objectives. Provide to replace them wholesale.")]
+    public List<QuestObjective>? Objectives { get; set; }
+
+    public string? Category { get; set; }
+
+    public QuestUrgency Urgency { get; set; } = QuestUrgency.Normal;
+
+    [Description("Omit to preserve the quest's existing related location IDs. Provide to replace them wholesale.")]
+    public List<string>? RelatedLocationIds { get; set; }
+
+    [Description("Omit to preserve the quest's existing related faction IDs. Provide to replace them wholesale.")]
+    public List<string>? RelatedFactionIds { get; set; }
+
+    public string? DmNotes { get; set; }
+
+    public int? DeadlineDay { get; set; }
+
+    [Description("Set true to hide this quest from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
+
+    public string? CampaignName { get; set; }
+}
+
+/// <summary>
+/// Tool-facing request for upsert_spell. Mirrors <see cref="CustomSpell"/>, but declares
+/// Classes as nullable so omitting it in a partial-update call preserves the existing stored value.
+/// </summary>
+public class CustomSpellUpsertRequest
+{
+    public string Id { get; set; } = default!;
+
+    public string Name { get; set; } = default!;
+
+    public RulesetSystem System { get; set; }
+
+    public string? Description { get; set; }
+
+    public int? Level { get; set; }
+
+    [Description("Omit to preserve the spell's existing class list. Provide to replace it wholesale.")]
+    public List<string>? Classes { get; set; }
+
+    public bool? Concentration { get; set; }
+
+    public string? CastingTime { get; set; }
+
+    [Description("Set true to hide this spell from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
+
+    public string? CampaignName { get; set; }
+}
+
+/// <summary>
+/// Tool-facing request for upsert_feat. Mirrors <see cref="CustomFeat"/>.
+/// </summary>
+public class CustomFeatUpsertRequest
+{
+    public string Id { get; set; } = default!;
+
+    public string Name { get; set; } = default!;
+
+    public RulesetSystem System { get; set; }
+
+    public string? Description { get; set; }
+
+    public string? Prerequisite { get; set; }
+
+    public string? MechanicalSummary { get; set; }
+
+    [Description("Set true to hide this feat from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
+
+    public string? CampaignName { get; set; }
+}
+
+/// <summary>
+/// Tool-facing request for upsert_rumor. Mirrors <see cref="Rumor"/>.
+/// </summary>
+public class RumorUpsertRequest
+{
+    public string Id { get; set; } = default!;
+
+    public string? RegionLocationId { get; set; }
+
+    public string Subject { get; set; } = default!;
+
+    public string CurrentText { get; set; } = default!;
+
+    public RumorState State { get; set; } = RumorState.Nascent;
+
+    public RumorTruth TruthValue { get; set; } = RumorTruth.True;
+
+    [Description("Set true to hide this rumor from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
 
     public string? CampaignName { get; set; }
 }

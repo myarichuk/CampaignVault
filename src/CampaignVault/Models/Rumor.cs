@@ -1,6 +1,6 @@
 namespace CampaignVault.Models;
 
-public class Rumor : ICampaignScopedEntity
+public class Rumor : ICampaignScopedEntity, IArchivable
 {
     public string Id { get; set; } = default!;
     
@@ -35,6 +35,11 @@ public class Rumor : ICampaignScopedEntity
     /// (No legacy BC requirement per review feedback; always set for new data. Rumors are campaign-specific and should not be global.)
     /// </summary>
     public string? CampaignName { get; set; }
+
+    /// <summary>
+    /// When true, hidden from default search/scene results (soft delete). Does not remove history.
+    /// </summary>
+    public bool IsArchived { get; set; }
 }
 
 public enum RumorState

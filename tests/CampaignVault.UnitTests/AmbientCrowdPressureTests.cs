@@ -128,6 +128,6 @@ public class AmbientCrowdPressureContributorTests
 
         Assert.Contains(pressures, p =>
             p.GroupingKey == AmbientCrowdPressureContributor.UnanchoredBeatGroupingKey
-            && p.Text.Contains("character_create", StringComparison.OrdinalIgnoreCase));
+            && p.Text.Contains("upsert_character", StringComparison.OrdinalIgnoreCase));
     }
 }

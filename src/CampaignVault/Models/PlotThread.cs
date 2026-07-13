@@ -1,6 +1,6 @@
 namespace CampaignVault.Models;
 
-public class PlotThread : ICampaignScopedEntity
+public class PlotThread : ICampaignScopedEntity, IArchivable
 {
     public string Id { get; set; } = default!;
     public float[]? SemanticVector { get; set; }
@@ -45,6 +45,11 @@ public class PlotThread : ICampaignScopedEntity
     public bool IsPlayerVisible { get; set; }
 
     public string? CampaignName { get; set; }
+
+    /// <summary>
+    /// When true, hidden from default search/scene results (soft delete). Does not remove history.
+    /// </summary>
+    public bool IsArchived { get; set; }
 }
 
 public record PlotClue(

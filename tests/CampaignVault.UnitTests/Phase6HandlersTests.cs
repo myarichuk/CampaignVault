@@ -19,7 +19,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task LocationCreate_AutoLinksToParent_BothWays()
+    public async Task UpsertLocation_AutoLinksToParent_BothWays()
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
@@ -27,39 +27,30 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(parent);
         await session.SaveChangesAsync();
 
-        var handler = new LocationCreateHandler();
-        var change = new LocationCreate
+        var repository = _fixture.CreateRepository();
+        var request = new LocationUpsertRequest
         {
-            LocationId = "locations/child",
+            Id = "locations/child",
             Name = "Child",
+            Description = "",
             ConnectedFromLocationId = "locations/parent",
             ConnectionDescription = "A sturdy oak door"
         };
 
-        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
-            NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(),
-            new Dictionary<string, Location> { { parent.Id, parent } }, new Dictionary<string, Faction>(),
-            new Dictionary<string, Quest>(), NullLogger.Instance,
-            [], dispatcher, null, "test-camp");
-
-        var result = await handler.ApplyAsync(change, ctx);
-        Assert.True(result.Success);
-
-        // Check if parent got the exit to the child (forward uses the connectionDescription)
-        Assert.Single(parent.Exits);
-        Assert.Equal("locations/child", parent.Exits[0].TargetLocationId);
-        Assert.Equal("A sturdy oak door", parent.Exits[0].Description);
-
-        // Save changes so we can load the child and verify
+        var child = await repository.UpsertLocationAsync(session, request, "test-camp");
         await session.SaveChangesAsync();
 
         // Check if child got the reverse exit to the parent (derived)
-        var child = await session.LoadAsync<Location>("locations/child");
-        Assert.NotNull(child);
         Assert.Single(child.Exits);
         Assert.Equal("locations/parent", child.Exits[0].TargetLocationId);
         Assert.Equal("Leads back toward Parent (A sturdy oak door)", child.Exits[0].Description);
+
+        using var verifySession = _fixture.Store.OpenAsyncSession();
+        var reloadedParent = await verifySession.LoadAsync<Location>("locations/parent");
+        Assert.NotNull(reloadedParent);
+        Assert.Single(reloadedParent.Exits);
+        Assert.Equal("locations/child", reloadedParent.Exits[0].TargetLocationId);
+        Assert.Equal("A sturdy oak door", reloadedParent.Exits[0].Description);
     }
 
     [Fact]

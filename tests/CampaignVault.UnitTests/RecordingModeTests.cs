@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
@@ -79,7 +81,7 @@ public class RecordingModeTests
     }
 
     [Fact]
-    public void RecognitionRuleCatalog_MeetsSkillThreshold_Returns True_For_Sufficient_Modifier()
+    public void RecognitionRuleCatalog_MeetsSkillThreshold_ReturnsTrueForSufficientModifier()
     {
         // Verify skill threshold check
         Assert.True(RecognitionRuleCatalog.MeetsSkillThreshold(3));

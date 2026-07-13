@@ -197,42 +197,6 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task FactionCreate_CreatesFaction_AndSetsCampaignName()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-
-        var handler = new FactionCreateHandler();
-        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
-            NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher);
-
-        var change = new FactionCreate
-        {
-            FactionId = "factions/thieves",
-            Name = "Thieves Guild",
-            Description = "A guild of thieves",
-            FactionType = FactionType.Guild,
-            ControllingTerritory = "locations/city"
-        };
-
-        var result = await handler.ApplyAsync(change, ctx);
-        Assert.True(result.Success);
-
-        var newlyCreated = ctx.Factions.Values.FirstOrDefault();
-        Assert.NotNull(newlyCreated);
-        Assert.Equal("factions/thieves", newlyCreated!.Id);
-        Assert.Equal("test-camp", newlyCreated.CampaignName);
-        Assert.Equal("locations/city", newlyCreated.ControllingTerritory);
-        Assert.Equal(50, newlyCreated.InfluenceLevel); // Check bug 1 fix (InitialInfluenceLevel fallback)
-
-        // Regression test for Bug 2: ensure it was persisted
-        await session.SaveChangesAsync();
-        using var readSession = _fixture.Store.OpenAsyncSession();
-        var fromDb = await readSession.LoadAsync<Faction>("factions/thieves");
-        Assert.NotNull(fromDb);
-    }
-
-    [Fact]
     public async Task FactionReputationChange_UpdatesCharacterSocialProfile()
     {
         using var session = _fixture.Store.OpenAsyncSession();
@@ -287,42 +251,6 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Equal(45, faction.InfluenceLevel);
         Assert.True(faction.StanceToward.ContainsKey(targetFaction.Id));
         Assert.Equal(FactionStance.Hostile, faction.StanceToward[targetFaction.Id]);
-    }
-
-    [Fact]
-    public async Task QuestCreate_CreatesQuest_AndSetsCampaignName()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-
-        var handler = new QuestCreateHandler();
-        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
-            NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher);
-
-        var change = new QuestCreate
-        {
-            QuestId = "quests/rats_01",
-            Title = "Clear the Rats",
-            GiverId = "characters/bram",
-            Objectives = [new QuestObjectiveDto { Description = "Kill rats" }]
-        };
-
-        var result = await handler.ApplyAsync(change, ctx);
-        Assert.True(result.Success);
-
-        var newlyCreated = ctx.Quests.Values.FirstOrDefault();
-        Assert.NotNull(newlyCreated);
-        Assert.Equal("quests/rats_01", newlyCreated!.Id);
-        Assert.Equal("test-camp", newlyCreated.CampaignName);
-        Assert.Equal(10, newlyCreated.LastUpdatedDay);
-        Assert.Single(newlyCreated.Objectives);
-        Assert.Equal("Kill rats", newlyCreated.Objectives[0].Description);
-
-        // Regression test for Bug 2: ensure it was persisted
-        await session.SaveChangesAsync();
-        using var readSession = _fixture.Store.OpenAsyncSession();
-        var fromDb = await readSession.LoadAsync<Quest>("quests/rats_01");
-        Assert.NotNull(fromDb);
     }
 
     [Fact]
@@ -616,26 +544,4 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Equal("locations/start", char1.CurrentLocationId);
     }
 
-    [Fact]
-    public async Task FactionCreate_DuplicateFactionId_ReturnsFailure()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-
-        var existing = new Faction { Id = "factions/thieves", Name = "Thieves Guild", CampaignName = "test-camp" };
-        var handler = new FactionCreateHandler();
-        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
-            NullLogger<WorldChangeDispatcher>.Instance);
-        var ctx = CreateTestContext(session, dispatcher, null, null, [existing]);
-
-        var change = new FactionCreate
-        {
-            FactionId = "factions/thieves", // Same ID
-            Name = "Impostors",
-            FactionType = FactionType.Guild
-        };
-
-        var result = await handler.ApplyAsync(change, ctx);
-        Assert.False(result.Success);
-        Assert.Contains("already exists", result.Message ?? "");
-    }
 }

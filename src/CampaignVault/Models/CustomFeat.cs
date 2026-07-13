@@ -1,11 +1,10 @@
 namespace CampaignVault.Models;
 
 /// <summary>
-/// Campaign-scoped homebrew creature stat-block template. Authored by LLM DMs via MCP tools
-/// for reuse across encounters. Distinct from Character (which represents live PC/NPC/monster instances).
-/// Implements semantic indexing for potential future fuzzy search.
+/// Campaign-scoped homebrew feat/perk definition. Authored by LLM DMs via MCP tools;
+/// overrides SRD feats of the same name when queried via get_system_handbook.
 /// </summary>
-public class CustomCreature : ICampaignScopedEntity, IArchivable
+public class CustomFeat : ICampaignScopedEntity, IArchivable
 {
     public string Id { get; set; } = default!;
 
@@ -20,22 +19,14 @@ public class CustomCreature : ICampaignScopedEntity, IArchivable
 
     public string? Description { get; set; }
 
-    public int? Level { get; set; }
+    public string? Prerequisite { get; set; }
 
-    public string? ChallengeRating { get; set; }
-
-    public int? Hp { get; set; }
-
-    public int? Defense { get; set; }
-
-    public List<string> Skills { get; set; } = [];
-
-    public List<string> Abilities { get; set; } = [];
+    public string? MechanicalSummary { get; set; }
 
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Associates the creature with a specific campaign for multi-campaign isolation.
+    /// Associates the feat with a specific campaign for multi-campaign isolation.
     /// </summary>
     public string? CampaignName { get; set; }
 

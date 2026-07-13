@@ -23,7 +23,7 @@ Before creating PCs or applying typed `conditionName` values, call **`get_system
 
 For spell lists by class and level, call **`get_spells(campaignName, class, level?)`** — spell metadata is kept separate because full lists are large.
 
-Use handbook `name` values in `character_create` / `system_stats` (race, background, feats) and in `status` commits (`conditionName`). Use `get_spells` names in `resource` commits (`spellName` when spending `spell_slots_*`).
+Use handbook `name` values in `upsert_character` / `system_stats` (race, background, feats) and in `status` commits (`conditionName`). Use `get_spells` names in `resource` commits (`spellName` when spending `spell_slots_*`). Homebrew feats and spells can be authored directly via `upsert_feat` / `upsert_spell`.
 
 ## Campaign slug scoping
 
@@ -69,7 +69,7 @@ The server performs a *minimal* set of transparent rewrites on incoming tool arg
 
 Call `list_tools` for the full machine-readable catalog (same entries, filterable by category).
 
-**During play, strongly prefer `commit` (especially `activity` changes) over world-builder upserts.**
+**The one-door rule: a new entity or a full replace always goes through its `upsert_*` tool (`upsert_character`, `upsert_location`, `upsert_item`, `upsert_faction`, `upsert_quest`, `upsert_rumor`, `upsert_plot_thread`, `upsert_creature`, `upsert_spell`, `upsert_feat`, `upsert_lore`) — there is no `_create` `$type` in `commit` for these. A change to something that already exists (numeric/state deltas, tag/exit add-remove, progress) goes through `commit`. During play, strongly prefer `commit` (especially `activity` changes) for everything except creating a brand-new entity.**
 
 {{COMMIT_ENUM_VALUES}}
 
@@ -116,10 +116,10 @@ Bar fight spilling into the alley (one event, two locations):
 ]
 
 **Creating on the fly (the laziness countermeasure - use these instead of pure narration for anything that might matter later):**
-[
-  { ""$type"": ""location_create"", ""locationId"": ""locations/tavern_cellar"", ""name"": ""Dank Cellar"", ""description"": ""Smells of damp earth..."", ""type"": ""Room"", ""connectedFromLocationId"": ""locations/tavern"", ""connectionDescription"": ""A wooden trapdoor leading down"", ""pointsOfInterest"": [""Suspicious crate"", ""Rat gnawing bone""], ""ambientCrowd"": ""2-3 rats and a drunk sleeping it off"" },
-  { ""$type"": ""character_create"", ""characterId"": ""chars/cloaked_figure"", ""name"": ""Cloaked Figure"", ""currentLocationId"": ""locations/tavern_cellar"", ""currentActivity"": ""Watching the party"", ""keepAlive"": false, ""notes"": ""Offered a map for coin."" }
-]
+Call `upsert_location` (creates the room, auto-links exits via `connectedFromLocationId`):
+{ ""location"": { ""id"": ""locations/tavern_cellar"", ""name"": ""Dank Cellar"", ""description"": ""Smells of damp earth..."", ""type"": ""Room"", ""connectedFromLocationId"": ""locations/tavern"", ""connectionDescription"": ""A wooden trapdoor leading down"", ""pointsOfInterest"": [""Suspicious crate"", ""Rat gnawing bone""], ""ambientCrowd"": ""2-3 rats and a drunk sleeping it off"" } }
+Then call `upsert_character` (creates the NPC):
+{ ""character"": { ""id"": ""chars/cloaked_figure"", ""name"": ""Cloaked Figure"", ""currentLocationId"": ""locations/tavern_cellar"", ""currentActivity"": ""Watching the party"", ""keepAlive"": false, ""notes"": ""Offered a map for coin."" } }
 
 Later promote a transient (so it survives GC and participates in AdvanceWorld):
 [
@@ -184,9 +184,9 @@ Item + transfer patterns, status with modifiers, ruleset_action (see below), etc
 **After you see a pressure in get_scene/get_world_state, your *next* action should usually be a `commit` using the exact snippet provided (adapted with real IDs/names).** Then narrate the outcome. The engine will clear the pressure on subsequent reads.
 
 ## Schrödinger's World + Transient / Open-World Patterns (Critical for Laziness Mitigation)
-- **Flavor without bloat**: When narrating a crowded tavern, a bustling market, rats in a cellar, or ""a bard playing a lute in the corner"", **do not** immediately `character_create` 20 people. Instead:
-  - On initial `location_create` or via `location_update`: populate `pointsOfInterest` (light list of strings returned in get_scene) and/or `ambientCrowd` (string hint, e.g. ""8-15 rough sailors and dockworkers"").
-  - The engine surfaces `NARRATIVE PROMPT` pressures when ambientCrowd expects people but few/no NPCs are anchored, or when a recent beat sounds like someone stepping out of the crowd (drunk approaches, spear-bearer, witness) without a `chars/...` id. **Promote only that individual** via `character_create` — not the whole crowd. After `advance_world`, refresh `ambientCrowd` via `location_update` if the mood should have shifted.
+- **Flavor without bloat**: When narrating a crowded tavern, a bustling market, rats in a cellar, or ""a bard playing a lute in the corner"", **do not** immediately `upsert_character` 20 people. Instead:
+  - On initial `upsert_location` or via `location_update`: populate `pointsOfInterest` (light list of strings returned in get_scene) and/or `ambientCrowd` (string hint, e.g. ""8-15 rough sailors and dockworkers"").
+  - The engine surfaces `NARRATIVE PROMPT` pressures when ambientCrowd expects people but few/no NPCs are anchored, or when a recent beat sounds like someone stepping out of the crowd (drunk approaches, spear-bearer, witness) without a `chars/...` id. **Promote only that individual** via `upsert_character` — not the whole crowd. After `advance_world`, refresh `ambientCrowd` via `location_update` if the mood should have shifted.
 - **Points of Interest — add / modify details / remove**: `pointsOfInterest` are lightweight strings. The LLM decides when interaction (reading, spell effect, combat damage, deliberate act like ripping a poster or torching the board) makes one worth persisting or changing. Supported via `location_update`:
   - `addPointOfInterest` (light string; pair with `pointOfInterestDetails` map to add with details)
   - `materializePointOfInterest` + `poiDetails` (creates or **updates** current state of a PoI)
@@ -200,11 +200,11 @@ Item + transfer patterns, status with modifiers, ruleset_action (see below), etc
   Details are visible in future get_scene. You control the evolution.
 - **PoI / location state decay over time**: After combat, vandalism, or other changes, record the mayhem using `addPointOfInterest`/`materializePointOfInterest` or location `featuresToAdd` + `CurrentState`. On `advance_world` + later `get_scene`, the engine surfaces suggestions to evolve or clean up the state (owners tidy up after a few days, scorch marks get painted over, temporary marks fade). Use `location_update` to reflect cleanup in progress the next day or back to normal after several days. The LLM narrates the rate of decay realistically.
 - **Crowd vulnerability (visual tags + interrupt roll)**: When narration establishes how a PC looks (bloodied, wanted, disheveled, unarmed), persist it via `character_update` with `appearanceOverride` and `tagsToAdd` (e.g. `[""bloody"", ""wanted"", ""disheveled""]`). In crowded or opportunistic-faction scenes, `get_scene` scores these tags and may nudge a crowd reaction. **Optional roll**: after a tense beat (not every dialog line), commit `scene_interrupt_check` with `riskModifier` (-50..+50, like `encounterRiskModifier` on travel) — omit `riskModifier` to auto-derive from tags. On success the engine promotes ONE transient from `ambientCrowd`; cooldown is one interrupt per location per day. Protective tags (`well_armed`, `escorted`, `uniform`) reduce the score.
-- **Transients auto-GC**: Any character created (or moved via activity) with `schedule: null` AND `keepAlive: false` is transient. When the party leaves the area (get_scene on another loc + `advance_world` days later) and `LastVisitedDay` on the loc is old (> grace period), `TransientEvictionRule` clears `CurrentLocationId`, logs a `Departure` event, records the NPC on `location.recentlyDeparted`, sets `departedAtDay`/`departedFromLocationId` on the character doc, and transfers held items to the location (not deleted). `advance_world` returns `evictedNpcs` with names + source locations. Re-promote via `character_create` + `activity` or `keepAlive: true` / `schedule_change` for favorites.
-- **Auto-Linking prevents soft-locks**: Always supply `connectedFromLocationId` + `connectionDescription` on `location_create`. Engine appends forward + reverse exits (and sets parent). If you forget, next get_scene on the child will give ENGINE WARNING + exact `location_update` JSON to add the missing exit.
-- **Promotion path**: Use `schedule_change` (or supply schedule at `character_create` time) to make a transient permanent (it now runs in simulation, ignored by GC).
+- **Transients auto-GC**: Any character created (or moved via activity) with `schedule: null` AND `keepAlive: false` is transient. When the party leaves the area (get_scene on another loc + `advance_world` days later) and `LastVisitedDay` on the loc is old (> grace period), `TransientEvictionRule` clears `CurrentLocationId`, logs a `Departure` event, records the NPC on `location.recentlyDeparted`, sets `departedAtDay`/`departedFromLocationId` on the character doc, and transfers held items to the location (not deleted). `advance_world` returns `evictedNpcs` with names + source locations. Re-promote via `activity` + `keepAlive: true` / `schedule_change` for favorites (the character already exists; no need to re-`upsert_character`).
+- **Auto-Linking prevents soft-locks**: Always supply `connectedFromLocationId` + `connectionDescription` on `upsert_location` when creating a new location. Engine appends forward + reverse exits (and sets parent). If you forget, next get_scene on the child will give ENGINE WARNING + exact `location_update` JSON to add the missing exit.
+- **Promotion path**: Use `schedule_change` (or supply schedule at `upsert_character` time) to make a transient permanent (it now runs in simulation, ignored by GC).
 - **Dead-ends / broken maps**: get_scene will nag with ready `location_update` + `addExit`. Use it.
-- **Hallucinated locations**: get_scene never throws for bad ID. Returns stub + strong ENGINE WARNING with ready `location_create` JSON (including connectedFrom suggestion). Paste it.
+- **Hallucinated locations**: get_scene never throws for bad ID. Returns stub + strong ENGINE WARNING with ready `upsert_location` JSON (including connectedFrom suggestion). Paste it.
 
 **Full ""Lazy LLM Tavern"" Walkthrough Example (copy this pattern):**
 You (LLM): ""You push open the door to the Rusty Nail. The common room is full of sailors and dockworkers. A one-eyed bard in the corner is singing a shanty about lost ships while plucking a battered lute. The air smells of salt, sweat, and cheap ale. A toothless barman named Bram wipes a mug...""
@@ -214,10 +214,11 @@ You (LLM): ""You push open the door to the Rusty Nail. The common room is full o
 Later, party talks to the bard or barman engages:
 - Call `get_scene ""locations/rusty-nail""` first (authoritative state).
 - Suppose it returns empty PresentNPCs but AmbientCrowd hint (or prior you set none) + NARRATIVE PROMPT pressure: it will literally give you the JSON array.
-- Then: `commit` the create for the interactable ones only:
+- Then: `upsert_character` the interactable ones only:
+  { ""character"": { ""id"": ""chars/bram-the-barkeep"", ""name"": ""Bram Ironarm"", ""currentLocationId"": ""locations/rusty-nail"", ""currentActivity"": ""Wiping mugs and watching the door"", ""notes"": ""Toothless, one good eye, ex-sailor. Knows harbor gossip."", ""psychology"": { ""wants"": [""quiet night"", ""coin""], ""fears"": [""trouble in his bar""] } } }
+  { ""character"": { ""id"": ""chars/one-eyed-bard"", ... similar ... } }
+- Then `commit` the beat:
   [
-    { ""$type"": ""character_create"", ""characterId"": ""chars/bram-the-barkeep"", ""name"": ""Bram Ironarm"", ""currentLocationId"": ""locations/rusty-nail"", ""currentActivity"": ""Wiping mugs and watching the door"", ""notes"": ""Toothless, one good eye, ex-sailor. Knows harbor gossip."", ""psychology"": { ""wants"": [""quiet night"", ""coin""], ""fears"": [""trouble in his bar""] } },
-    { ""$type"": ""character_create"", ""characterId"": ""chars/one-eyed-bard"", ... similar ... },
     { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party met Bram and the bard at the Rusty Nail."", ""involved"": [""chars/pc1"", ""chars/bram-the-barkeep"", ""chars/one-eyed-bard""] }
   ] ""The party enters and interacts with the locals.""
 
@@ -243,17 +244,19 @@ This safely moves the party (with time + fatigue), updates the quest, modifies s
 A complete arc — from seeded rumor through investigation, faction reaction, and resolution — spans several commits. Here is the canonical pattern. Adapt IDs to your campaign prefix.
 
 **Beat 1 — Seed the thread (tavern, session start):**
-Bram the barkeep mentions the Nightshade gang has been raiding river barges. Commit the rumor and the quest hook, and flag Bram as the quest giver:
+Bram the barkeep mentions the Nightshade gang has been raiding river barges. Create the rumor and the quest hook via their upsert tools, and flag Bram as the quest giver:
+{ ""rumor"": { ""id"": ""rumors/nightshade-gang"", ""regionLocationId"": ""locations/ashford-docks"", ""subject"": ""Nightshade Gang"", ""currentText"": ""Nightshade pirates have raided three barges on the Ashford River this month — cargo vanishing, crews turning up dead."" } } (upsert_rumor)
+{ ""quest"": { ""id"": ""quests/stop-nightshade"", ""title"": ""Cut Out the Nightshade"", ""giverId"": ""chars/bram-the-barkeep"", ""dmNotes"": ""River merchants desperate; disrupt Nightshade operations on the Ashford."", ""objectives"": [ { ""description"": ""Locate the Nightshade hideout"" }, { ""description"": ""Destroy or scatter the gang"" }, { ""description"": ""Report back to the River Merchants' Guild"" } ], ""deadlineDay"": 14 } } (upsert_quest)
+Then `commit` the beat:
 [
-  { ""$type"": ""rumor_create"", ""rumorId"": ""rumors/nightshade-gang"", ""subject"": ""Nightshade Gang"", ""text"": ""Nightshade pirates have raided three barges on the Ashford River this month — cargo vanishing, crews turning up dead."" },
-  { ""$type"": ""quest_create"", ""questId"": ""quests/stop-nightshade"", ""title"": ""Cut Out the Nightshade"", ""giverId"": ""chars/bram-the-barkeep"", ""dmNotes"": ""River merchants desperate; disrupt Nightshade operations on the Ashford."", ""objectives"": [ { ""description"": ""Locate the Nightshade hideout"" }, { ""description"": ""Destroy or scatter the gang"" }, { ""description"": ""Report back to the River Merchants' Guild"" } ], ""deadlineDay"": 14 },
   { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Bram Ironarm told the party about the Nightshade Gang's river raids. Quest: Cut Out the Nightshade accepted."", ""involved"": [""chars/pc1"", ""chars/bram-the-barkeep""] }
 ]
 
 **Beat 2 — Investigation (party scouting the docks):**
-Party discovers the gang uses a hidden canal warehouse. Create the location, advance the quest, record the discovery:
+Party discovers the gang uses a hidden canal warehouse. Create the location via `upsert_location`:
+{ ""location"": { ""id"": ""locations/nightshade-warehouse"", ""name"": ""Nightshade Canal Warehouse"", ""description"": ""A damp, low-ceilinged warehouse reachable only by flat-bottomed barge. Crates of stolen cargo line the walls."", ""type"": ""Building"", ""connectedFromLocationId"": ""locations/ashford-docks"", ""connectionDescription"": ""A concealed canal lock, invisible at high tide"" } }
+Then advance the quest and record the discovery via `commit`:
 [
-  { ""$type"": ""location_create"", ""locationId"": ""locations/nightshade-warehouse"", ""name"": ""Nightshade Canal Warehouse"", ""description"": ""A damp, low-ceilinged warehouse reachable only by flat-bottomed barge. Crates of stolen cargo line the walls."", ""type"": ""Building"", ""connectedFromLocationId"": ""locations/ashford-docks"", ""connectionDescription"": ""A concealed canal lock, invisible at high tide"" },
   { ""$type"": ""quest_progress"", ""questId"": ""quests/stop-nightshade"", ""objectiveIndex"": 0, ""newState"": ""Complete"", ""narrativeNote"": ""Party located the warehouse via the canal lock at low tide."" },
   { ""$type"": ""knowledge_update"", ""characterId"": ""chars/pc1"", ""topic"": ""Nightshade Gang"", ""details"": ""Hideout is the canal warehouse south of Ashford Docks, accessible only at low tide."" },
   { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Party found the Nightshade Gang hideout: a canal warehouse south of Ashford Docks."" }
@@ -272,26 +275,32 @@ Party raids the warehouse, kills the gang leader, frees hostages. Faction standi
 ]
 
 **Beat 4 — Resolution + world state shift (report to the guild):**
-Party reports back. Quest closes, territory adjusts, maybe a new rumor seeds:
+Party reports back. Quest closes, territory adjusts. Commit the quest/faction/event beat:
 [
   { ""$type"": ""quest_progress"", ""questId"": ""quests/stop-nightshade"", ""objectiveIndex"": 2, ""newState"": ""Complete"", ""narrativeNote"": ""Party reported to the River Merchants Guild. Reward collected."" },
   { ""$type"": ""faction_state"", ""factionId"": ""factions/river-merchants-guild"", ""influenceDelta"": 10, ""narrative"": ""Guild influence rising now the river route is open; trade caravans resuming."" },
-  { ""$type"": ""rumor_create"", ""rumorId"": ""rumors/ashford-river-trade"", ""subject"": ""Ashford River"", ""text"": ""Merchants are saying the Ashford route is profitable again. Caravans are reforming for the first time in weeks."" },
   { ""$type"": ""event"", ""category"": ""Discovery"", ""summary"": ""Quest complete. River Merchants Guild paid the reward. Trade caravans reforming on the Ashford."", ""involved"": [""chars/pc1"", ""factions/river-merchants-guild""] }
 ]
+A new rumor seeds separately via `upsert_rumor`:
+{ ""rumor"": { ""id"": ""rumors/ashford-river-trade"", ""regionLocationId"": ""locations/ashford-docks"", ""subject"": ""Ashford River"", ""currentText"": ""Merchants are saying the Ashford route is profitable again. Caravans are reforming for the first time in weeks."" } }
 
 After Beat 4: `get_world_state` will show the quest as resolved, both factions at updated standing, the original rumor as Resolved (no longer nagging), and a new active rumor seeding the next hook. Faction pressure contributors will start surfacing new opportunistic moves from the now-stronger River Merchants Guild if their influence crossed the threshold. The engine does the bookkeeping; you drive the story.
 
 **Wilderness Landmark Promotion (turning vague travel into persistent geography):**
-When the party explicitly marks a wilderness location (""We carve our names into this stone and mark it on the map""), promote it from transient narration to a real `Location`. Fire a 3-commit batch in order (so each commit can reference the prior one's IDs):
-1. **event** — category `Discovery`, recordingMode `Deliberate`, importance `Core` (this is a deliberate, load-bearing act).
-2. **location_create** — type `Wilderness`, connectedFromLocationId set to the location they came from (auto-links with two-way exits).
-3. **knowledge_update** — on the recording PC, recordingMode `Deliberate`, importance `Core`, relatedEntityIds = [new location id], sourceEventIds = [event id from step 1].
+When the party explicitly marks a wilderness location (""We carve our names into this stone and mark it on the map""), promote it from transient narration to a real `Location`. Do this in order (so later steps can reference the prior ones' IDs):
+1. **commit an event** — category `Discovery`, recordingMode `Deliberate`, importance `Core` (this is a deliberate, load-bearing act).
+2. **upsert_location** — type `Wilderness`, connectedFromLocationId set to the location they came from (auto-links with two-way exits).
+3. **commit a knowledge_update** — on the recording PC, recordingMode `Deliberate`, importance `Core`, relatedEntityIds = [new location id], sourceEventIds = [event id from step 1].
 
 Example (party finds and marks a distinctive ridge):
+Commit the event:
 [
-  { ""$type"": ""event"", ""summary"": ""Party discovered and marked the Raven's Ridge on their map."", ""category"": ""Discovery"", ""involved"": [""chars/pc1"", ""chars/pc2""], ""locationId"": ""locations/wilderness-foothills"", ""eventId"": ""events/ravens-ridge-marked"", ""recordingMode"": ""Deliberate"", ""importance"": ""Core"" },
-  { ""$type"": ""location_create"", ""locationId"": ""locations/ravens-ridge"", ""name"": ""Raven's Ridge"", ""description"": ""A distinctive sandstone outcrop overlooking the foothills. Deep claw marks scar the rocks, as if something massive has climbed here often. A weathered bone is wedged in a crevice."", ""type"": ""Wilderness"", ""connectedFromLocationId"": ""locations/wilderness-foothills"", ""connectionDescription"": ""A winding trail up the ridge"", ""pointsOfInterest"": [""Claw marks"", ""Weathered bone""], ""dangerModifier"": 15 },
+  { ""$type"": ""event"", ""summary"": ""Party discovered and marked the Raven's Ridge on their map."", ""category"": ""Discovery"", ""involved"": [""chars/pc1"", ""chars/pc2""], ""locationId"": ""locations/wilderness-foothills"", ""eventId"": ""events/ravens-ridge-marked"", ""recordingMode"": ""Deliberate"", ""importance"": ""Core"" }
+]
+Call `upsert_location`:
+{ ""location"": { ""id"": ""locations/ravens-ridge"", ""name"": ""Raven's Ridge"", ""description"": ""A distinctive sandstone outcrop overlooking the foothills. Deep claw marks scar the rocks, as if something massive has climbed here often. A weathered bone is wedged in a crevice."", ""type"": ""Wilderness"", ""connectedFromLocationId"": ""locations/wilderness-foothills"", ""connectionDescription"": ""A winding trail up the ridge"", ""pointsOfInterest"": [""Claw marks"", ""Weathered bone""], ""dangerModifier"": 15 } }
+Commit the knowledge_update:
+[
   { ""$type"": ""knowledge_update"", ""characterId"": ""chars/pc1"", ""topic"": ""Raven's Ridge"", ""details"": ""A distinctive ridge we found and marked on our map. Distinctive sandstone formations and old claw marks. Seemed like a creature's haunt."", ""recordingMode"": ""Deliberate"", ""importance"": ""Core"", ""relatedEntityIds"": [""locations/ravens-ridge""], ""sourceEventIds"": [""events/ravens-ridge-marked""] }
 ]
 
@@ -300,16 +309,16 @@ On a failed Survival/Nature check before marking (optional flavor: represent the
 **Character Combat Bootstrap — required for all combatants (KeepAlive OR maxHp > 0):**
 The engine emits ENGINE WARNING until BOTH are set:
 1. **HP**: `maxHp` (+ optional `currentHp`) — or omit `maxHp` and let the ruleset bootstrap pipeline derive it
-2. **systemStats**: ruleset-specific combat stats via `systemStats` on `character_create` or `system_stats` patch
+2. **systemStats**: ruleset-specific combat stats via `systemStats` on `upsert_character` or `system_stats` patch
 
-**Auto-bootstrap (omit maxHp for PCs):** Pipeline runs at `character_create`, `upsert_character`, `system_stats` patch, and `level_up`. PCs: omit `maxHp` — supply typed bootstrap fields. Creature stat blocks: `systemStats.statBlockHp` or `maxHp` (skips HP formula only; AC/proficiency still derive). `currentHp` alone = wounded at create.
+**Auto-bootstrap (omit maxHp for PCs):** Pipeline runs at `upsert_character`, `system_stats` patch, and `level_up`. PCs: omit `maxHp` — supply typed bootstrap fields. Creature stat blocks: `systemStats.statBlockHp` or `maxHp` (skips HP formula only; AC/proficiency still derive). `currentHp` alone = wounded at create.
 
 **Typed bootstrap fields (NOT in `attributes` — numbers only there):**
 - **5e**: `hitDie` (e.g. ""d12""), `level`, `constitution`, `hpMode` (`average` | `rolled`), `classLevel` fallback; **multiclass**: `classLevels` array; **casters**: `spellcastingAbility`, optional `spellSaveDc`/`spellAttackBonus`
 - **PF2e**: `classHpPerLevel`, `ancestryHp`, `level`, `constitutionMod`
 - **Fallout**: `endurance`, `luck`, `level`, optional `hpPerLevel` (defaults to endurance)
 
-5e also derives `armorClass` (unarmored 10 + DEX), `attributes.proficiencyBonus`, `attributes.passivePerception`, `spellSaveDc`/`spellAttackBonus` for casters, and emits `[BOOTSTRAP HINT]` with `item_create` armor JSON when no worn armor is detected.
+5e also derives `armorClass` (unarmored 10 + DEX), `attributes.proficiencyBonus`, `attributes.passivePerception`, `spellSaveDc`/`spellAttackBonus` for casters, and emits `[BOOTSTRAP HINT]` with `upsert_item` armor JSON when no worn armor is detected.
 
 5e multiclass (prefer structured `classLevels` on systemStats):
 " + CommitSpellHelpExamples.MulticlassBootstrap + @"
@@ -327,31 +336,31 @@ D&D 5e reference (level 1, max hit die + CON modifier):
 For NPCs/creatures: use the stat block value (e.g. Goblin = 7 HP, AC 15, DEX 14).
 Infer from class+level for PCs. Pure flavor transients (no HP, not KeepAlive) skip this.
 
-5e auto-bootstrap (no maxHp — engine derives HP, AC, proficiency):
-{ ""$type"": ""character_create"", ""characterId"": ""chars/kergil"", ""name"": ""Kergil"", ""isPc"": true, ""keepAlive"": true, ""classLevel"": ""Human Barbarian 10"", ""systemStats"": { ""$system"": ""dnd5e"", ""hitDie"": ""d12"", ""level"": 10, ""constitution"": 16, ""hpMode"": ""average"", ""dexterity"": 14, ""skillModifiers"": { ""Athletics"": 9, ""Perception"": 5 } } }
+5e auto-bootstrap (no maxHp — engine derives HP, AC, proficiency), via `upsert_character`:
+{ ""character"": { ""id"": ""chars/kergil"", ""name"": ""Kergil"", ""isPc"": true, ""keepAlive"": true, ""classLevel"": ""Human Barbarian 10"", ""systemStats"": { ""$system"": ""dnd5e"", ""hitDie"": ""d12"", ""level"": 10, ""constitution"": 16, ""hpMode"": ""average"", ""dexterity"": 14, ""skillModifiers"": { ""Athletics"": 9, ""Perception"": 5 } } } }
 
-5e creature stat block (statBlockHp — HP formula skipped, AC still bootstrapped if omitted):
-{ ""$type"": ""character_create"", ""characterId"": ""chars/goblin-scout"", ""name"": ""Goblin Scout"", ""classLevel"": ""Goblin 1"", ""systemStats"": { ""$system"": ""dnd5e"", ""statBlockHp"": 7, ""dexterity"": 14, ""strength"": 8, ""skillModifiers"": { ""Stealth"": 6, ""Perception"": 2 }, ""savingThrowModifiers"": { ""Dexterity"": 2 } } }
+5e creature stat block (statBlockHp — HP formula skipped, AC still bootstrapped if omitted), via `upsert_character`:
+{ ""character"": { ""id"": ""chars/goblin-scout"", ""name"": ""Goblin Scout"", ""classLevel"": ""Goblin 1"", ""systemStats"": { ""$system"": ""dnd5e"", ""statBlockHp"": 7, ""dexterity"": 14, ""strength"": 8, ""skillModifiers"": { ""Stealth"": 6, ""Perception"": 2 }, ""savingThrowModifiers"": { ""Dexterity"": 2 } } } }
 
 **Level up:** The engine does not track XP. When a milestone is earned in narration, commit `level_up` for the PC or party companion (`isPartyCompanion: true`). Applies HP gains, re-syncs spell/resource pools, and runs bootstrap. Optional `reason` is logged in the commit summary.
 { ""$type"": ""level_up"", ""characterId"": ""chars/kergil"", ""levelsGained"": 1, ""hpMode"": ""rolled"", ""healToMatch"": false, ""reason"": ""cleared the goblin warrens"" }
 Party companion:
 { ""$type"": ""level_up"", ""characterId"": ""chars/wolf-companion"", ""levelsGained"": 1, ""reason"": ""bonded after the siege"" }
 
-PF2e auto-bootstrap:
-{ ""$type"": ""character_create"", ""characterId"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""classHpPerLevel"": 10, ""ancestryHp"": 8, ""level"": 2, ""constitutionMod"": 2, ""armorClass"": 19, ""strengthMod"": 4, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 } } }
+PF2e auto-bootstrap, via `upsert_character`:
+{ ""character"": { ""id"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""classHpPerLevel"": 10, ""ancestryHp"": 8, ""level"": 2, ""constitutionMod"": 2, ""armorClass"": 19, ""strengthMod"": 4, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 } } } }
 
-Fallout auto-bootstrap:
-{ ""$type"": ""character_create"", ""characterId"": ""chars/raider"", ""name"": ""Raider"", ""systemStats"": { ""$system"": ""fallout2d20"", ""endurance"": 6, ""luck"": 5, ""level"": 3, ""agility"": 7, ""perception"": 6, ""skills"": { ""SmallGuns"": 2 }, ""tagSkills"": [""SmallGuns""] } }
+Fallout auto-bootstrap, via `upsert_character`:
+{ ""character"": { ""id"": ""chars/raider"", ""name"": ""Raider"", ""systemStats"": { ""$system"": ""fallout2d20"", ""endurance"": 6, ""luck"": 5, ""level"": 3, ""agility"": 7, ""perception"": 6, ""skills"": { ""SmallGuns"": 2 }, ""tagSkills"": [""SmallGuns""] } } }
 
 Patch stats on existing character:
 { ""$type"": ""system_stats"", ""characterId"": ""chars/campaign-thorin"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 16, ""strength"": 16, ""skillModifiers"": { ""Athletics"": 5 } } }
 
 **The Visual / Physics Sandbox (Tags & Appearance) & Knowledge:**
 You (the LLM) author narrative state; the engine scores a fixed set of **visualTags** for crowd-pressure and `scene_interrupt_check` (bloody, wanted, disheveled, well_armed, etc.). Ad-hoc tags like ""wet"" still rely on your judgment for physics (e.g. lightning in rain) — only the crowd-vulnerability tag vocabulary is auto-scored.
-- Use `$type: ""item_create""` with `coreCategory` (e.g., ""Weapon"", ""Armor"", ""Document"") when looting or discovering items. Set `holderId` to a PC character ID (or ""party"") for inventory. Use `quantity` for multiples (e.g., 5 potions = 1 item with quantity: 5, not 5 separate items).
+- Use `upsert_item` with `coreCategory` (e.g., ""Weapon"", ""Armor"", ""Document"") when looting or discovering items. Set `holderId` to a PC character ID (or ""party"") for inventory. Use `quantity` for multiples (e.g., 5 potions = 1 item with quantity: 5, not 5 separate items).
 - Use `$type: ""item_update""` to add temporary `TagsToAdd` (e.g., `[""wet"", ""muddy""]`) and a narrative `NewState` (e.g., ""Covered in mud"") to items. You can also add permanent `FeaturesToAdd` (e.g., ""Leather wrapped handle"") or change `coreCategory`.
-- Use `$type: ""item""` (`itemId` + `toHolderId`) to move an *existing* item to a new holder (a character, location, or container item) — e.g. a PC hands off a torch, or loot gets dropped in a location. Not for creating or editing item properties; use `item_create`/`item_update` for that.
+- Use `$type: ""item""` (`itemId` + `toHolderId`) to move an *existing* item to a new holder (a character, location, or container item) — e.g. a PC hands off a torch, or loot gets dropped in a location. Not for creating or editing item properties; use `upsert_item`/`item_update` for that.
 - Use `$type: ""character_update""` to do the same for characters. Give them temporary `TagsToAdd` (`[""soot_covered""]`), narrative `AppearanceOverride`, or permanent `FeaturesToAdd` (`[""Scar over left eye""]`).
 - Use `$type: ""location_update""` with `newState`, `tagsToAdd`, and `featuresToAdd` to persistently change the environment (e.g., ""On fire"", `[""smoky""]`, `[""collapsed roof""]`).
 - Use `$type: ""knowledge_update""` to record an important memory for a character (e.g., `""topic"": ""The Dragon"", ""details"": ""Lives in the mountain.""`). Memories naturally decay and generate prompt pressure over time to simulate epistemic drift! When the memory stems from a logged event, also set `sourceEventIds` (e.g. `[""events/valen-lirael-caravans""]`) — this lets you later compare the NPC's retelling against what actually happened (via `recall_history`), which is exactly what makes a good rumor: a memory that has quietly drifted from its source.
@@ -384,7 +393,7 @@ Use `ruleset_action` inside `commit` for attacks, spells, skills, grapples, and 
 
 **Relationship-based social roll bonuses:** Social skill checks (Persuasion, Deception, Intimidation, Insight, Performance, or `ActionCategory: Social`) automatically apply modifiers based on the target NPC's relationship opinion of the actor. Relationship bands: ≥80 trusted friend (+5), 60–79 friendly (+3), 40–59 acquainted (+1), −39..39 neutral (0), −59..−40 distrustful (−1), −79..−60 hostile (−3), ≤−80 hated enemy (−5). The engine includes the relationship label (e.g., ""(trusted friend)"") in the roll narrative. Non-social skills (Athletics, Perception, etc.) are unaffected by relationships. **Note: NarrativeRulesetResolver (pure oracle mode) does not apply relationship modifiers.**
 
-**Multi-shot into a crowd:** AmbientCrowd mercs are not combatants until `character_create`d. Spawn 2–5 hostile transients with HP/systemStats, then one `ruleset_action` with multiple `targetIds` (and optional `attackCount` from the weapon). Example spray with Schlag (attackCount 3):
+**Multi-shot into a crowd:** AmbientCrowd mercs are not combatants until created via `upsert_character`. Spawn 2–5 hostile transients with HP/systemStats, then one `ruleset_action` with multiple `targetIds` (and optional `attackCount` from the weapon). Example spray with Schlag (attackCount 3):
 ```json
 {
   ""$type"": ""ruleset_action"",
@@ -396,7 +405,7 @@ Use `ruleset_action` inside `commit` for attacks, spells, skills, grapples, and 
 }
 ```
 
-**Existing PCs:** `upsert_character` creates the full PC document (`isPc: true`). During play use `activity` + `travel` to move PCs — do NOT `character_create` them again (the engine merges but warns). Call `get_party` first to list `isPc` / `isPartyCompanion` roster members.
+**Existing PCs:** `upsert_character` creates the full PC document (`isPc: true`). During play use `activity` + `travel` to move PCs — do NOT re-`upsert_character` them to move them (the engine merges but it's the wrong tool for a routine move). Call `get_party` first to list `isPc` / `isPartyCompanion` roster members.
 
 Melee attack example:
 ```json
@@ -439,7 +448,7 @@ Additional pressures come from character distress contributors (HP, bad statuses
 - `get_npc_context` / `get_npc_needs`: Use before deep roleplay. Merge descriptors happen automatically.
 - `search_world`, `recall_history`: For discovery without hallucinating duplicates.
 - `define_need_descriptor` + `get_need_descriptors`: For custom needs vocabulary (wanderlust, debt_pressure, etc.).
-- World-builder upserts (`upsert_character`, `upsert_location`, `upsert_lore`, `upsert_item`, `upsert_creature`, `upsert_plot_thread`): Fine for initial seeding / major PoIs / bulk-seeding plot clues. Omitted rich fields (psychology, exits, tags, clues, etc.) are preserved on an existing entity, not blanked — only fields you provide replace anything. During play, prefer `commit` + the runtime creates. Note `upsert_creature` is distinct from `upsert_character`: a creature is a reusable stat-block *template* (queried via `query_creatures`), not a live instance in the world — to place an NPC/monster instance, use `upsert_character` or `character_create`.
+- World-builder upserts (`upsert_character`, `upsert_location`, `upsert_lore`, `upsert_item`, `upsert_creature`, `upsert_plot_thread`, `upsert_faction`, `upsert_quest`, `upsert_rumor`, `upsert_spell`, `upsert_feat`): the only way to create any of these entities, whether seeding at session start or on the fly mid-play. Omitted rich fields (psychology, exits, tags, clues, etc.) are preserved on an existing entity, not blanked — only fields you provide replace anything. Set `isArchived: true` to hide an entity from default search/scene results without deleting its history. During play, use `commit` for everything *except* creating a brand-new entity. Note `upsert_creature` is distinct from `upsert_character`: a creature is a reusable stat-block *template* (queried via `query_creatures`), not a live instance in the world — to place an NPC/monster instance, use `upsert_character`.
 - Combat: start_combat, next_turn, end_combat + ruleset_action inside commit. Statuses applied via commit survive and modify future rolls.
 
 ## Common Laziness Traps & How the Engine Helps

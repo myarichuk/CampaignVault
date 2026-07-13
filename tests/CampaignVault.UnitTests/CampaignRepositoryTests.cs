@@ -1675,7 +1675,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     public async Task GetScene_ViaTools_OnMissingLocation_ReturnsStub_And_Pressure_WithReadyCommitJson()
     {
         // Verifies the full tool + pressure path for the key anti-laziness feature:
-        // hallucinated location -> immediate copy-pasteable location_create example in WorldPressure.
+        // hallucinated location -> immediate copy-pasteable upsert_location example in WorldPressure.
         var repo = _fixture.CreateRepository();
         var tools = TestCampaignToolsFactory.Create(_fixture);
 
@@ -1694,7 +1694,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var pressureText = string.Join(" ", result.WorldPressure);
         Assert.Contains("ENGINE WARNING", pressureText);
         Assert.Contains("You are hallucinating", pressureText);
-        Assert.Contains("$type\": \"location_create\"", pressureText);
+        Assert.Contains("upsert_location", pressureText);
         Assert.Contains(missingId, pressureText);
     }
 

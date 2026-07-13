@@ -17,25 +17,19 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(StatusRemove), "statusremove")]
 [JsonDerivedType(typeof(EventOccurred), "event")]
 [JsonDerivedType(typeof(RumorEvolves), "rumor")]
-[JsonDerivedType(typeof(RumorCreate), "rumor_create")]
 [JsonDerivedType(typeof(RelationshipChange), "relationship")]
 [JsonDerivedType(typeof(NeedChange), "need")]
 [JsonDerivedType(typeof(AttributeChange), "attribute")]
 [JsonDerivedType(typeof(MoodChange), "mood")]
 [JsonDerivedType(typeof(ActivityChange), "activity")]
 [JsonDerivedType(typeof(RulesetAction), "ruleset_action")]
-[JsonDerivedType(typeof(LocationCreate), "location_create")]
 [JsonDerivedType(typeof(LocationUpdate), "location_update")]
-[JsonDerivedType(typeof(CharacterCreate), "character_create")]
 [JsonDerivedType(typeof(LevelUpChange), "level_up")]
 [JsonDerivedType(typeof(ScheduleChange), "schedule_change")]
-[JsonDerivedType(typeof(ItemCreate), "item_create")]
 [JsonDerivedType(typeof(TravelChange), "travel")]
 [JsonDerivedType(typeof(FactionReputationChange), "faction_reputation")]
 [JsonDerivedType(typeof(FactionStateChange), "faction_state")]
-[JsonDerivedType(typeof(QuestCreate), "quest_create")]
 [JsonDerivedType(typeof(QuestProgress), "quest_progress")]
-[JsonDerivedType(typeof(FactionCreate), "faction_create")]
 [JsonDerivedType(typeof(RestChange), "rest")]
 [JsonDerivedType(typeof(ItemUpdate), "item_update")]
 [JsonDerivedType(typeof(CharacterUpdate), "character_update")]
@@ -44,7 +38,6 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(EngagementRelationChange), "engagement_relation")]
 [JsonDerivedType(typeof(SpatialPositionChange), "spatial_position")]
 [JsonDerivedType(typeof(SceneInterruptCheck), "scene_interrupt_check")]
-[JsonDerivedType(typeof(PlotThreadCreate), "plot_thread_create")]
 [JsonDerivedType(typeof(PlotThreadProgress), "plot_thread_progress")]
 [JsonDerivedType(typeof(PlotThreadClueDiscovered), "plot_thread_clue")]
 [JsonDerivedType(typeof(ResourceChange), "resource")]
@@ -525,70 +518,6 @@ public class RulesetAction : WorldChange
 /// Create a new location and automatically link it to an existing location.
 /// This prevents orphaned locations and counters LLM laziness.
 /// </summary>
-public class LocationCreate : WorldChange
-{
-    [Description("The unique ID of the new location (e.g., 'locations/tavern_cellar').")]
-    [JsonPropertyName("locationId")]
-    public string LocationId { get; set; } = default!;
-
-    [Description("The human-readable name of the location (e.g., 'Dank Cellar').")]
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = default!;
-
-    [Description("A narrative description of the location.")]
-    [JsonPropertyName("description")]
-    public string Description { get; set; } = default!;
-
-    [Description("The type of location (e.g., 'Room', 'Building', 'Settlement').")]
-    [JsonPropertyName("type")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public LocationType Type { get; set; }
-
-    [Description("Optional. The ID of the parent location that physically contains this one.")]
-    [JsonPropertyName("parentLocationId")]
-    public string? ParentLocationId { get; set; }
-
-    [Description("Optional but highly recommended. The ID of the location you are coming from. If provided, the engine automatically creates two-way exits linking them.")]
-    [JsonPropertyName("connectedFromLocationId")]
-    public string? ConnectedFromLocationId { get; set; }
-
-    [Description("Required if connectedFromLocationId is used. Describes the exit from the connected location into this one (e.g., 'A wooden trapdoor leading down').")]
-    [JsonPropertyName("connectionDescription")]
-    public string? ConnectionDescription { get; set; }
-
-    [Description("Flavor items to return in get_scene (e.g., ['A suspicious crate', 'Rat gnawing on a bone']).")]
-    [JsonPropertyName("pointsOfInterest")]
-    public List<string> PointsOfInterest { get; set; } = [];
-
-    [Description("Optional richer details for specific PoIs (keyed by the PoI string). Use when seeding known details about examinable things.")]
-    [JsonPropertyName("pointOfInterestDetails")]
-    public Dictionary<string, string> PointOfInterestDetails { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-
-    [Description("(Optional on create) Materialize a PoI with details at creation time.")]
-    [JsonPropertyName("materializePointOfInterest")]
-    public string? MaterializePointOfInterest { get; set; }
-
-    [Description("(Optional) Remove a PoI when creating/updating via location_create.")]
-    [JsonPropertyName("removePointOfInterest")]
-    public string? RemovePointOfInterest { get; set; }
-
-    [Description("(Optional) Details to attach when materializing on create.")]
-    [JsonPropertyName("poiDetails")]
-    public string? PoiDetails { get; set; }
-
-    [Description("Hint for the expected crowd when empty (e.g., '2-3 rats and the occasional drunk').")]
-    [JsonPropertyName("ambientCrowd")]
-    public string? AmbientCrowd { get; set; }
-    
-    [Description("Explicit exits. Usually you can leave this empty and rely on connectedFromLocationId instead.")]
-    [JsonPropertyName("exits")]
-    public List<LocationExit> Exits { get; set; } = [];
-
-    [Description("Set the narrative danger modifier of this location (-50 to +50). Used to seed random encounters.")]
-    [JsonPropertyName("dangerModifier")]
-    public int DangerModifier { get; set; } = 0;
-}
-
 /// <summary>
 /// Apply granular updates to an existing location.
 /// Useful for opening new paths without full upserts.
@@ -794,43 +723,6 @@ public class ScheduleChange : WorldChange
 /// <summary>
 /// Create a new item (spontaneous loot, generated artifacts) in the world.
 /// </summary>
-public class ItemCreate : WorldChange
-{
-    [Description("The unique ID of the new item (e.g., 'items/rusty_locket_19').")]
-    [JsonPropertyName("itemId")]
-    public string ItemId { get; set; } = default!;
-
-    [Description("The name of the item.")]
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = default!;
-
-    [Description("The description of the item.")]
-    [JsonPropertyName("description")]
-    public string Description { get; set; } = default!;
-
-    [Description("Where the item currently is (a location ID, character ID, or another item container).")]
-    [JsonPropertyName("holderId")]
-    public string HolderId { get; set; } = default!;
-
-    [Description("Quantity of identical items to create (e.g., 5 for 'several potions'). Defaults to 1.")]
-    [JsonPropertyName("quantity")]
-    public int Quantity { get; set; } = 1;
-
-    [Description("List of structural tags (e.g., ['quest', 'clue']).")]
-    [JsonPropertyName("tags")]
-    public List<string> Tags { get; set; } = [];
-
-    [Description("Structural item category (Weapon, Armor, Clothing, etc.). Defaults to Other.")]
-    [JsonPropertyName("coreCategory")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public ItemCategory? CoreCategory { get; set; }
-
-    [Description("Key-value attributes for mechanics (e.g., {'value': '5', 'material': 'silver'}).")]
-    [JsonPropertyName("properties")]
-    [JsonConverter(typeof(FlexibleStringDictionaryConverter))]
-    public Dictionary<string, string> Properties { get; set; } = [];
-}
-
 /// <summary>
 /// Record a party or character travel between two connected locations.
 /// </summary>
@@ -912,62 +804,6 @@ public class FactionStateChange : WorldChange
 /// <summary>
 /// Create a new structured quest.
 /// </summary>
-public class QuestCreate : WorldChange
-{
-    [Description("The unique ID of the quest (e.g. 'quests/rats_01').")]
-    [JsonPropertyName("questId")]
-    public string QuestId { get; set; } = default!;
-
-    [Description("The title of the quest.")]
-    [JsonPropertyName("title")]
-    public string Title { get; set; } = default!;
-
-    [Description("The ID of the quest giver (character or faction ID).")]
-    [JsonPropertyName("giverId")]
-    public string? GiverId { get; set; }
-
-    [Description("Initial list of objectives.")]
-    [JsonPropertyName("objectives")]
-    public List<QuestObjectiveDto> Objectives { get; set; } = [];
-
-    [Description("Optional quest category.")]
-    [JsonPropertyName("category")]
-    public string? Category { get; set; }
-
-    [Description("Quest urgency level (Low, Normal, Urgent, Critical).")]
-    [JsonPropertyName("urgency")]
-    public QuestUrgency Urgency { get; set; } = QuestUrgency.Normal;
-
-    [Description("IDs of related locations.")]
-    [JsonPropertyName("relatedLocationIds")]
-    public List<string> RelatedLocationIds { get; set; } = [];
-
-    [Description("IDs of related factions.")]
-    [JsonPropertyName("relatedFactionIds")]
-    public List<string> RelatedFactionIds { get; set; } = [];
-
-    [Description("DM-only notes for tracking.")]
-    [JsonPropertyName("dmNotes")]
-    public string? DmNotes { get; set; }
-
-    [Description("Optional ABSOLUTE campaign day (TotalDaysElapsed) by which this quest must be completed to avoid failure consequences.")]
-    [JsonPropertyName("deadlineDay")]
-    public int? DeadlineDay { get; set; }
-}
-
-public class QuestObjectiveDto
-{
-    [JsonPropertyName("description")]
-    public string Description { get; set; } = default!;
-
-    [JsonPropertyName("rewardHint")]
-    public string? RewardHint { get; set; }
-
-    [Description("Optional ABSOLUTE campaign day (TotalDaysElapsed) deadline for this objective.")]
-    [JsonPropertyName("deadlineDay")]
-    public int? DeadlineDay { get; set; }
-}
-
 /// <summary>
 /// Advance or fail an objective in a quest.
 /// </summary>
@@ -1001,41 +837,6 @@ public class QuestProgress : WorldChange
 /// <summary>
 /// Create a new faction.
 /// </summary>
-public class FactionCreate : WorldChange
-{
-    [Description("The unique ID of the faction (e.g. 'factions/thieves-guild').")]
-    [JsonPropertyName("factionId")]
-    public string FactionId { get; set; } = default!;
-
-    [Description("Name of the faction.")]
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = default!;
-
-    [Description("Description of the faction.")]
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
-
-    [Description("Type of the faction.")]
-    [JsonPropertyName("factionType")]
-    public FactionType FactionType { get; set; } = FactionType.Guild;
-
-    [Description("Optional location ID of the controlling territory.")]
-    [JsonPropertyName("controllingTerritory")]
-    public string? ControllingTerritory { get; set; }
-
-    [Description("Initial list of territory location IDs controlled.")]
-    [JsonPropertyName("territoryLocationIds")]
-    public List<string> TerritoryLocationIds { get; set; } = [];
-
-    [Description("Initial list of known leader character IDs.")]
-    [JsonPropertyName("knownLeaderIds")]
-    public List<string> KnownLeaderIds { get; set; } = [];
-
-    [Description("Optional initial influence level (0-100). Defaults to 50.")]
-    [JsonPropertyName("initialInfluenceLevel")]
-    public int? InitialInfluenceLevel { get; set; }
-}
-
 public class ItemUpdate : WorldChange
 {
     [Description("ID of the item being updated.")]
@@ -1205,58 +1006,6 @@ public class KnowledgeUpdate : WorldChange
 /// Unlike Quests (player-facing objectives), PlotThreads are world-state scaffolding: mysteries, conspiracies,
 /// slow-burn conflicts, rising threats. The simulation engine escalates tension automatically.
 /// </summary>
-public class PlotThreadCreate : WorldChange
-{
-    [Description("Unique ID for this thread (e.g. 'plot-threads/guild-infiltration'). Use kebab-case.")]
-    [JsonPropertyName("plotThreadId")]
-    public string PlotThreadId { get; set; } = default!;
-
-    [Description("Short title for DM reference (e.g. 'Guild Infiltration of the City Watch').")]
-    [JsonPropertyName("title")]
-    public string Title { get; set; } = default!;
-
-    [Description("DM-facing summary of what this arc is about. Not shown to players.")]
-    [JsonPropertyName("summary")]
-    public string? Summary { get; set; }
-
-    [Description("Initial state. Defaults to Active (tension accumulates). Use Dormant to seed an arc that hasn't started yet.")]
-    [JsonPropertyName("state")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public PlotThreadState State { get; set; } = PlotThreadState.Active;
-
-    [Description("Initial tension level 0–100. Usually 0 at creation; simulation escalates it.")]
-    [JsonPropertyName("tensionLevel")]
-    public int TensionLevel { get; set; } = 0;
-
-    [Description("Ordered or unordered clues the players might discover. Each has an Id, Description, and optional InvolvedEntityIds.")]
-    [JsonPropertyName("clues")]
-    public List<PlotClueDto> Clues { get; set; } = [];
-
-    [Description("Character, faction, location, or item IDs that are part of this arc (e.g. the conspirators, the hidden evidence location).")]
-    [JsonPropertyName("involvedEntityIds")]
-    public List<string> InvolvedEntityIds { get; set; } = [];
-
-    [Description("What must happen for this thread to resolve (e.g. 'Guild leader arrested or killed', 'Conspiracy exposed publicly').")]
-    [JsonPropertyName("resolutionCondition")]
-    public string? ResolutionCondition { get; set; }
-
-    [Description("Hooks already planted in the world — things the DM seeded earlier that connect back to this arc (e.g. 'The guard captain's signet ring the party found').")]
-    [JsonPropertyName("foreshadowingHooks")]
-    public List<string> ForeshadowingHooks { get; set; } = [];
-
-    [Description("DM-only notes. Never visible to players.")]
-    [JsonPropertyName("dmNotes")]
-    public string? DmNotes { get; set; }
-
-    [Description("Optional absolute campaign day (TotalDaysElapsed) by which this thread must resolve or consequences trigger.")]
-    [JsonPropertyName("deadlineDay")]
-    public int? DeadlineDay { get; set; }
-
-    [Description("Set true if players already know this arc exists (they named the conspiracy, etc.). Usually false.")]
-    [JsonPropertyName("isPlayerVisible")]
-    public bool IsPlayerVisible { get; set; }
-}
-
 public class PlotClueDto
 {
     [JsonPropertyName("id")]

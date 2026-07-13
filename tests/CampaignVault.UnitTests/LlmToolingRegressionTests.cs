@@ -21,24 +21,28 @@ public class LlmToolingRegressionTests
     }
 
     [Fact]
-    public void CommitEnumCheatSheet_IncludesRumorCreateAndHpGuidance()
+    public void CommitEnumCheatSheet_IncludesRumorEvolveAndHpGuidance()
     {
-        Assert.Contains("rumor_create", CommitEnumCheatSheet.Compact);
-        Assert.Contains("rumor_create", CommitEnumCheatSheet.Full);
+        Assert.Contains("upsert_rumor", CommitEnumCheatSheet.Compact);
+        Assert.Contains("upsert_rumor", CommitEnumCheatSheet.Full);
         Assert.Contains("duplicate `hp`", CommitEnumCheatSheet.Compact);
         Assert.Contains("SkillCheck", CommitEnumCheatSheet.Compact);
     }
 
     [Fact]
-    public void CommitTypesReference_IncludesRumorCreate()
+    public void CommitTypesReference_DoesNotAdvertiseRemovedCreateDiscriminators()
     {
-        Assert.Contains("rumor_create", CommitTypesReference.SupportedTypesList);
+        Assert.DoesNotContain("rumor_create", CommitTypesReference.SupportedTypesList);
+        Assert.DoesNotContain("quest_create", CommitTypesReference.SupportedTypesList);
+        Assert.DoesNotContain("faction_create", CommitTypesReference.SupportedTypesList);
+        Assert.DoesNotContain("location_create", CommitTypesReference.SupportedTypesList);
+        Assert.DoesNotContain("item_create", CommitTypesReference.SupportedTypesList);
+        Assert.DoesNotContain("plot_thread_create", CommitTypesReference.SupportedTypesList);
+        Assert.DoesNotContain("character_create", CommitTypesReference.SupportedTypesList);
     }
 
     [Theory]
-    [InlineData(CommitRumorHelpExamples.RumorCreate, typeof(RumorCreate))]
     [InlineData(CommitRumorHelpExamples.RumorEvolve, typeof(RumorEvolves))]
-    [InlineData(CommitRumorHelpExamples.QuestCreateHook, typeof(QuestCreate))]
     public void DocumentedCommitExamples_ParseSuccessfully(string json, Type expectedType)
     {
         var wrapped = $"[{json}]";
@@ -60,7 +64,7 @@ public class LlmToolingRegressionTests
     }
 
     [Fact]
-    public void TryNormalize_LegacyRumorCreate_RewritesToRumorCreate()
+    public void TryNormalize_RumorEvolve_FixesActiveStateTypoAndStripsLegacyField()
     {
         var args = new JsonObject
         {
@@ -69,7 +73,7 @@ public class LlmToolingRegressionTests
                 new JsonObject
                 {
                     ["$type"] = "rumor",
-                    ["subject"] = "Nightshade Gang",
+                    ["rumorId"] = "rumors/nightshade-gang",
                     ["newText"] = "Pirates raided barges.",
                     ["newState"] = "Active",
                     ["sourceCharacterId"] = "chars/bram-the-barkeep",
@@ -80,24 +84,19 @@ public class LlmToolingRegressionTests
         var modified = ToolCallExamples.TryNormalize("commit", args, out var rewrites);
 
         Assert.True(modified);
-        Assert.Contains("rumor→rumor_create", rewrites);
-        Assert.Contains("rumor.newText→text", rewrites);
-        Assert.Contains("rumor.newState(Active)→removed", rewrites);
+        Assert.Contains("rumor.newState(Active)→Nascent", rewrites);
+        Assert.Contains("rumor.removed sourceCharacterId", rewrites);
 
         var change = args["changes"]![0]!.AsObject();
-        Assert.Equal("rumor_create", change["$type"]!.GetValue<string>());
-        Assert.Equal("rumors/nightshade-gang", change["rumorId"]!.GetValue<string>());
-        Assert.Equal("Pirates raided barges.", change["text"]!.GetValue<string>());
-        Assert.False(change.ContainsKey("newText"));
-        Assert.False(change.ContainsKey("newState"));
+        Assert.Equal("rumor", change["$type"]!.GetValue<string>());
+        Assert.Equal("Nascent", change["newState"]!.GetValue<string>());
         Assert.False(change.ContainsKey("sourceCharacterId"));
 
         using var doc = JsonDocument.Parse(args["changes"]!.ToJsonString());
         var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
         Assert.True(ok, error);
-        var rumorCreate = Assert.IsType<RumorCreate>(parsed![0]);
-        Assert.Equal("rumors/nightshade-gang", rumorCreate.RumorId);
-        Assert.Equal("Nightshade Gang", rumorCreate.Subject);
+        var rumorEvolve = Assert.IsType<RumorEvolves>(parsed![0]);
+        Assert.Equal("rumors/nightshade-gang", rumorEvolve.RumorId);
     }
 
     [Fact]
@@ -128,38 +127,6 @@ public class LlmToolingRegressionTests
     }
 
     [Fact]
-    public void TryNormalize_QuestCreate_FixesDeadlineDaysAndObjectiveState()
-    {
-        var args = new JsonObject
-        {
-            ["changes"] = new JsonArray
-            {
-                new JsonObject
-                {
-                    ["$type"] = "quest_create",
-                    ["questId"] = "quests/test",
-                    ["title"] = "Test Quest",
-                    ["deadlineDays"] = 14,
-                    ["objectives"] = new JsonArray
-                    {
-                        new JsonObject { ["description"] = "Step 1", ["state"] = "Active" },
-                    },
-                },
-            },
-        };
-
-        var modified = ToolCallExamples.TryNormalize("commit", args, out var rewrites);
-
-        Assert.True(modified);
-        Assert.Contains("quest_create.deadlineDays→deadlineDay", rewrites);
-
-        var change = args["changes"]![0]!.AsObject();
-        Assert.Equal(14, change["deadlineDay"]!.GetValue<int>());
-        Assert.False(change.ContainsKey("deadlineDays"));
-        Assert.False(change["objectives"]![0]!.AsObject().ContainsKey("state"));
-    }
-
-    [Fact]
     public void CommitJsonErrorHints_SuggestsNascentForActiveRumorState()
     {
         var ex = new JsonException(
@@ -183,7 +150,7 @@ public class LlmToolingRegressionTests
 
         var prompt = content[(start + 7)..end].Trim();
         Assert.InRange(prompt.Length, 1, 12_000);
-        Assert.Contains("rumor_create", prompt);
+        Assert.Contains("upsert_rumor", prompt);
         Assert.Contains("do NOT also commit", prompt, StringComparison.OrdinalIgnoreCase);
     }
 

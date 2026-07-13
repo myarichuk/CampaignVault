@@ -28,7 +28,8 @@ public static class PointOfInterestHeuristics
         {
             var targetId = $"locations/{Guid.NewGuid().ToString("N")[..8]}";
             detailsPlaceholder = "Detailed description of what lies beyond or the revealed path.";
-            extra = $", {{ \"$type\": \"location_create\", \"locationId\": \"{targetId}\", \"name\": \"Revealed or connected area\", \"description\": \"...\", \"type\": \"Room\", \"connectedFromLocationId\": \"{locationId}\", \"connectionDescription\": \"{normalizedPoi}\" }}";
+            extra = $"\nIf this reveals a new connected area, call upsert_location separately: " +
+                     $"{{ \"location\": {{ \"id\": \"{targetId}\", \"name\": \"Revealed or connected area\", \"description\": \"...\", \"type\": \"Room\", \"connectedFromLocationId\": \"{locationId}\", \"connectionDescription\": \"{normalizedPoi}\" }} }}";
         }
         else if (lower.Contains("board") || lower.Contains("poster") || lower.Contains("notice") || lower.Contains("sign") || lower.Contains("job"))
         {
@@ -46,8 +47,8 @@ public static class PointOfInterestHeuristics
             "\"poiDetails\": \"" + detailsPlaceholder + "\" }, " +
             "{ \"$type\": \"knowledge_update\", \"characterId\": \"chars/REPLACE_WITH_EXAMINER_ID\", \"topic\": \"" + normalizedPoi.Replace("\"", "\\\"") + "\", " +
             "\"details\": \"" + detailsPlaceholder + "\", \"source\": \"Observed\", \"importance\": \"Important\" }" +
-            extra +
-            " ]";
+            " ]" +
+            extra;
         return true;
     }
 

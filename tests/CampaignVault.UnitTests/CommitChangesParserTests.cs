@@ -15,28 +15,14 @@ public class CommitChangesParserTests
         const string payload = """
                                [
                                  {
-                                   "$type": "location_create",
-                                   "locationId": "locations/aurelia",
-                                   "name": "Aurelia, the City of Gold",
-                                   "description": "A sprawling marketplace city.",
-                                   "type": "Settlement"
-                                 },
-                                 {
-                                   "$type": "location_create",
+                                   "$type": "location_update",
                                    "locationId": "locations/aurelia-golden-tavern",
-                                   "name": "The Gilded Rose",
-                                   "description": "A renowned tavern.",
-                                   "type": "Building",
-                                   "connectedFromLocationId": "locations/aurelia",
-                                   "connectionDescription": "Oak door with golden rose emblem."
+                                   "ambientCrowd": "A handful of regulars nursing drinks"
                                  },
                                  {
-                                   "$type": "character_create",
+                                   "$type": "character_update",
                                    "characterId": "chars/barkeep-thorne",
-                                   "name": "Thorne Ironkeg",
-                                   "currentLocationId": "locations/aurelia-golden-tavern",
-                                   "currentActivity": "Wiping mugs behind the bar",
-                                   "keepAlive": false
+                                   "appearanceOverride": "Wiping mugs behind the bar"
                                  },
                                  {
                                    "$type": "travel",
@@ -71,7 +57,7 @@ public class CommitChangesParserTests
 
         Assert.True(ok, error);
         Assert.NotNull(parsed);
-        Assert.Equal(7, parsed!.Length);
+        Assert.Equal(6, parsed!.Length);
     }
 
     [Fact]
@@ -120,55 +106,6 @@ public class CommitChangesParserTests
         Assert.True(ok, error);
         var change = Assert.IsType<EngagementRelationChange>(parsed!.Single());
         Assert.Equal("chars/valen", change.CharacterId);
-    }
-
-    [Fact]
-    public void TryParse_RumorCreate_Deserializes()
-    {
-        const string payload = """
-                               [
-                                 {
-                                   "$type": "rumor_create",
-                                   "rumorId": "rumors/nightshade-gang",
-                                   "subject": "Nightshade Gang",
-                                   "text": "Pirates raided three barges."
-                                 }
-                               ]
-                               """;
-
-        using var doc = JsonDocument.Parse(payload);
-        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
-
-        Assert.True(ok, error);
-        var rumorCreate = Assert.IsType<RumorCreate>(parsed!.Single());
-        Assert.Equal("rumors/nightshade-gang", rumorCreate.RumorId);
-        Assert.Equal("Nightshade Gang", rumorCreate.Subject);
-        Assert.Equal("Pirates raided three barges.", rumorCreate.Text);
-    }
-
-    [Fact]
-    public void TryParse_ItemCreate_DeserializesStringCoreCategory()
-    {
-        const string payload = """
-                               [
-                                 {
-                                   "$type": "item_create",
-                                   "itemId": "items/greataxe",
-                                   "name": "Greataxe",
-                                   "description": "A heavy two-handed axe.",
-                                   "holderId": "characters/kergil",
-                                   "coreCategory": "Weapon"
-                                 }
-                               ]
-                               """;
-
-        using var doc = JsonDocument.Parse(payload);
-        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
-
-        Assert.True(ok, error);
-        Assert.NotNull(parsed);
-        var itemCreate = Assert.IsType<ItemCreate>(parsed![0]);
-        Assert.Equal(ItemCategory.Weapon, itemCreate.CoreCategory);
     }
 
     [Fact]

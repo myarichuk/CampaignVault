@@ -30,29 +30,28 @@ public sealed class RecentlyDepartedPressureContributor : IPressureContributor
 
         var names = string.Join(", ", loc.RecentlyDeparted.Select(d => d.Name));
 
-        // Build suggested commit JSON to re-anchor departed NPCs.
-        var suggests = new JsonArray();
-        foreach (var departed in loc.RecentlyDeparted)
+        // Build suggested upsert_character calls to re-anchor departed NPCs.
+        var suggests = string.Join("\n", loc.RecentlyDeparted.Select(departed =>
         {
-            suggests.Add(new JsonObject
+            var body = new JsonObject
             {
-                ["$type"] = "character_create",
-                ["characterId"] = departed.CharacterId,
-                ["name"] = departed.Name,
-                ["keepAlive"] = true,
-                ["currentLocationId"] = loc.Id,
-                ["currentActivity"] = $"Returning to {loc.Name}"
-            });
-        }
+                ["character"] = new JsonObject
+                {
+                    ["id"] = departed.CharacterId,
+                    ["name"] = departed.Name,
+                    ["keepAlive"] = true,
+                    ["currentLocationId"] = loc.Id,
+                    ["currentActivity"] = $"Returning to {loc.Name}"
+                }
+            };
+            return body.ToJsonString();
+        }));
 
         pressures.Add(new WorldPressureItem(
             PressureSeverity.NarrativePrompt,
             loc.Id,
-            $"Recently departed NPCs at '{loc.Name}': {names}. If the party encounters them again and you wish to reintroduce them, use the suggested commit below to re-anchor them at this location.",
-            RecentlyDepartedGroupingKey)
-        {
-            SuggestedCommitJson = suggests.ToJsonString()
-        });
+            $"Recently departed NPCs at '{loc.Name}': {names}. If the party encounters them again and you wish to reintroduce them, call upsert_character to re-anchor them at this location:\n{suggests}",
+            RecentlyDepartedGroupingKey));
 
         return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
     }

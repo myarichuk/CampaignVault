@@ -32,7 +32,8 @@ public static class SystemHandbookBuilder
         BackgroundDefinitionProvider backgroundProvider,
         FeatDefinitionProvider featProvider,
         ConditionDefinitionProvider conditionProvider,
-        CreatureDefinitionProvider? creatureProvider = null)
+        CreatureDefinitionProvider? creatureProvider = null,
+        IReadOnlyList<CustomFeat>? homebrewFeats = null)
     {
         var classes = classProvider.GetClassesForSystem(system)
             .Values
@@ -52,6 +53,7 @@ public static class SystemHandbookBuilder
 
         var feats = featProvider.GetFeatsForSystem(system)
             .Keys
+            .Union((homebrewFeats ?? []).Where(f => !f.IsArchived).Select(f => f.Name), StringComparer.OrdinalIgnoreCase)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 

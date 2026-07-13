@@ -40,17 +40,16 @@ public static class SystemStatsCompleteness
     public static string BuildExampleCommit(Character character, RulesetSystem activeSystem)
     {
         var id = character.Id;
-        var name = character.Name;
 
         return activeSystem switch
         {
             RulesetSystem.Dnd5e =>
                 $$"""
-                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "keepAlive": true, "classLevel": "Human Fighter 2", "systemStats": { "$system": "dnd5e", "hitDie": "d10", "level": 2, "constitution": 14, "dexterity": 14, "skillModifiers": { "Athletics": 5, "Perception": 2 } } } ]
+                [ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "$system": "dnd5e", "hitDie": "d10", "level": 2, "constitution": 14, "dexterity": 14, "skillModifiers": { "Athletics": 5, "Perception": 2 } } } ]
                 """,
             RulesetSystem.Pathfinder2e =>
                 $$"""
-                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "keepAlive": true, "classLevel": "Human Fighter 2", "systemStats": { "$system": "pf2e", "classHpPerLevel": 10, "ancestryHp": 8, "level": 2, "constitutionMod": 2, "dexterityMod": 2, "skillModifiers": { "Perception": 7, "Athletics": 5 } } } ]
+                [ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "$system": "pf2e", "classHpPerLevel": 10, "ancestryHp": 8, "level": 2, "constitutionMod": 2, "dexterityMod": 2, "skillModifiers": { "Perception": 7, "Athletics": 5 } } } ]
                 """,
             _ =>
                 $$"""[ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "attributes": { "attackBonus": 4 } } } ]"""
@@ -60,17 +59,16 @@ public static class SystemStatsCompleteness
     public static string BuildStatBlockExampleCommit(Character character, RulesetSystem activeSystem)
     {
         var id = character.Id;
-        var name = character.Name;
 
         return activeSystem switch
         {
             RulesetSystem.Dnd5e =>
                 $$"""
-                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "dnd5e", "statBlockHp": 7, "armorClass": 15, "dexterity": 14, "strength": 8, "skillModifiers": { "Stealth": 6, "Perception": 2 } } } ]
+                [ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "$system": "dnd5e", "statBlockHp": 7, "armorClass": 15, "dexterity": 14, "strength": 8, "skillModifiers": { "Stealth": 6, "Perception": 2 } } } ]
                 """,
             RulesetSystem.Pathfinder2e =>
                 $$"""
-                [ { "$type": "character_create", "characterId": "{{id}}", "name": "{{name}}", "systemStats": { "$system": "pf2e", "statBlockHp": 20, "armorClass": 16, "dexterityMod": 2, "skillModifiers": { "Perception": 7 } } } ]
+                [ { "$type": "system_stats", "characterId": "{{id}}", "systemStats": { "$system": "pf2e", "statBlockHp": 20, "armorClass": 16, "dexterityMod": 2, "skillModifiers": { "Perception": 7 } } } ]
                 """,
             _ =>
                 BuildExampleCommit(character, activeSystem)

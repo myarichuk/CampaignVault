@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 
 namespace CampaignVault.Tools;
 
@@ -144,19 +143,9 @@ internal static class ToolCallExamples
                 continue;
             }
 
-            if (changeType is "rumor" or "rumor_create")
+            if (string.Equals(changeType, "rumor", StringComparison.OrdinalIgnoreCase))
             {
                 if (NormalizeRumorChange(changeObj, applied))
-                {
-                    modified = true;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(changeType, "quest_create", StringComparison.OrdinalIgnoreCase))
-            {
-                if (NormalizeQuestCreate(changeObj, applied))
                 {
                     modified = true;
                 }
@@ -268,83 +257,19 @@ internal static class ToolCallExamples
             modified = true;
         }
 
-        if (changeObj.TryGetPropertyValue("newState", out var newStateNode)
-            && newStateNode is JsonValue newStateValue
-            && string.Equals(newStateValue.GetValue<string>(), "Active", StringComparison.OrdinalIgnoreCase))
+        if (changeObj.Remove("subject"))
         {
-            changeObj.Remove("newState");
-            applied.Add("rumor.newState(Active)→removed");
-            modified = true;
-        }
-
-        var looksLikeCreate = changeObj.ContainsKey("text")
-            || (changeObj.ContainsKey("newText") && !changeObj.ContainsKey("newState"));
-
-        if (changeObj.ContainsKey("newText") && !changeObj.ContainsKey("text"))
-        {
-            if (looksLikeCreate)
-            {
-                changeObj["text"] = changeObj["newText"]!.DeepClone();
-                changeObj.Remove("newText");
-                applied.Add("rumor.newText→text");
-                modified = true;
-            }
-        }
-
-        if (looksLikeCreate
-            || (changeObj.ContainsKey("subject") && changeObj.ContainsKey("text") && !changeObj.ContainsKey("newState")))
-        {
-            if (!string.Equals(changeObj["$type"]?.GetValue<string>(), "rumor_create", StringComparison.OrdinalIgnoreCase))
-            {
-                changeObj["$type"] = "rumor_create";
-                applied.Add("rumor→rumor_create");
-                modified = true;
-            }
-
-            if (changeObj.ContainsKey("subject") && changeObj.ContainsKey("newState"))
-            {
-                changeObj.Remove("newState");
-                applied.Add("rumor.removed newState on create");
-                modified = true;
-            }
-        }
-        else if (changeObj.ContainsKey("subject") && changeObj.ContainsKey("newState"))
-        {
-            changeObj.Remove("subject");
             applied.Add("rumor.removed subject (evolve)");
             modified = true;
         }
 
-        return modified;
-    }
-
-    private static bool NormalizeQuestCreate(JsonObject changeObj, List<string> applied)
-    {
-        var modified = false;
-
-        if (changeObj.ContainsKey("deadlineDays") && !changeObj.ContainsKey("deadlineDay"))
+        if (changeObj.TryGetPropertyValue("newState", out var newStateNode)
+            && newStateNode is JsonValue newStateValue
+            && string.Equals(newStateValue.GetValue<string>(), "Active", StringComparison.OrdinalIgnoreCase))
         {
-            changeObj["deadlineDay"] = JsonNode.Parse(changeObj["deadlineDays"]!.ToJsonString());
-            changeObj.Remove("deadlineDays");
-            applied.Add("quest_create.deadlineDays→deadlineDay");
+            changeObj["newState"] = "Nascent";
+            applied.Add("rumor.newState(Active)→Nascent");
             modified = true;
-        }
-
-        if (changeObj.TryGetPropertyValue("objectives", out var objectivesNode) && objectivesNode is JsonArray objectives)
-        {
-            foreach (var objective in objectives)
-            {
-                if (objective is not JsonObject objectiveObj)
-                {
-                    continue;
-                }
-
-                if (objectiveObj.Remove("state"))
-                {
-                    applied.Add("quest_create.objectives.removed state");
-                    modified = true;
-                }
-            }
         }
 
         return modified;
@@ -352,7 +277,7 @@ internal static class ToolCallExamples
 
     private static string SlugifyRumorId(string subject)
     {
-        var slug = Regex.Replace(subject.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        var slug = System.Text.RegularExpressions.Regex.Replace(subject.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
         return string.IsNullOrEmpty(slug) ? "rumors/unnamed" : $"rumors/{slug}";
     }
 
@@ -529,7 +454,7 @@ internal static class ToolCallExamples
                     + "5e casters: bootstrap spellcastingAbility on systemStats; omit dc/bonus if spellSaveDc/spellAttackBonus derived. "
                     + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points/gold/caps; validates spell level, and spending below 0 HARD-FAILS the commit (\"Insufficient <pool> for <name>: has X, needs Y.\") — grants above max still clamp silently. Recovery on NEXT advance_world after rest, not at rest time. "
                     + "Fallout: dc aliases difficulty; Stimpak = UseItem + healAmount. "
-                    + "RUMORS: seed with $type rumor_create (rumorId, subject, text); evolve with $type rumor (rumorId, newState). "
+                    + "RUMORS: create with the upsert_rumor tool (id, regionLocationId, subject, text); evolve an existing one with $type rumor (rumorId, newState). "
                     + "Engine auto-applies hp from ruleset_action — no duplicate hp commits. "
                     + "See get_help → Ruleset Actions for copy-paste JSON.",
                 ArgumentsTemplate = JsonNode.Parse(
@@ -579,7 +504,7 @@ internal static class ToolCallExamples
                     + "Put hitDie on the dnd5e extension root (systemStats.hitDie), not in attributes. "
                     + "Omit maxHp to auto-derive HP from hitDie/level/constitution; explicit maxHp always wins. "
                     + "Multiclass: systemStats.classLevels array. Casters: spellcastingAbility (derives spellSaveDc/spellAttackBonus). "
-                    + "During play prefer commit with character_create.",
+                    + "This is the only tool that creates a new character; use commit (activity/character_update/etc.) for incremental changes to an existing one.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
@@ -613,7 +538,8 @@ internal static class ToolCallExamples
                 FlattenedFieldDetector = obj =>
                     obj.ContainsKey("id") || obj.ContainsKey("name") || obj.ContainsKey("type"),
                 DeserializationHint =
-                    "Location.type must be one of: Region, Settlement, District, Building, Room, Wilderness (not Tavern). During play prefer commit with location_update instead.",
+                    "Location.type must be one of: Region, Settlement, District, Building, Room, Wilderness (not Tavern). "
+                    + "This is the only tool that creates a new location; use commit's location_update for incremental changes to an existing one.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {

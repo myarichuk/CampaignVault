@@ -8,15 +8,15 @@ internal static class CommitEnumCheatSheet
     internal const string Compact = """
 
 **COMMIT ENUM VALUES (use these exact strings — case-sensitive):**
-- `location_create.type` → Region, Settlement, District, Building, Room, Wilderness
+- `upsert_location.type` → Region, Settlement, District, Building, Room, Wilderness
   - Common mistakes: City/Town → **Settlement**; Tavern/Inn/Shop → **Building**
 - `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure
   - Common mistake: Narrative/Roleplay → **Conversation**
   - **Conversation events MUST include `involved`: [`chars/pc`, `chars/npc`]** (every speaker). NOT `participants`.
-- `rumor_create` → seed rumor: `rumorId`, `subject`, `text` (starts Nascent). NOT `newState: Active`
-- `rumor` (evolve) → `rumorId`, `newState`: Nascent, Spreading, Peak, Fading, Resolved, Forgotten
+- New rumor → use the `upsert_rumor` tool (`id`, `regionLocationId`, `subject`, `text`; starts Nascent)
+- `rumor` (evolve, via commit) → `rumorId`, `newState`: Nascent, Spreading, Peak, Fading, Resolved, Forgotten
 - `quest_progress.newState` / quest overall → Open, InProgress, Complete, Failed, Skipped
-- `quest_create.urgency` → Low, Normal, Urgent, Critical
+- `upsert_quest.urgency` → Low, Normal, Urgent, Critical
 - `ruleset_action.actionType` → Attack, Spell, SkillCheck, ContestedCheck, OpposedCheck (alias), UseItem, Recovery, SavingThrow
 - `ruleset_action.parameters.resolution` (Spell) → attack, save, check, utility, heal
 - `ruleset_action.parameters.save` → 5e: Strength/Dexterity/Constitution/Intelligence/Wisdom/Charisma; PF2e: Fortitude/Reflex/Will
@@ -44,7 +44,7 @@ Full enum tables: call `get_help` → section **Commit Enum Values**.
 
 JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid values fail deserialization; the engine returns valid options and common-alias hints (e.g. City → Settlement).
 
-### location_create / location_update
+### upsert_location / location_update
 | Field | Valid values | LLM alias hints |
 |-------|----------------|-----------------|
 | `type` | Region, Settlement, District, Building, Room, Wilderness | City, Town → **Settlement**; Tavern, Inn, Shop → **Building** |
@@ -58,30 +58,30 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 **Conversation commit template (copy-paste):**
 { "$type": "event", "category": "Conversation", "summary": "Valen asked Lirael about the missing caravans.", "involved": ["chars/valen", "chars/lirael-goldvein"] }
 
-### rumor_create (`$type: rumor_create`)
+### upsert_rumor (creates or replaces a rumor — NOT a commit $type)
 | Field | Notes |
 |-------|--------|
-| `rumorId` | Required. e.g. `rumors/nightshade-gang` |
+| `id` | Required. e.g. `rumors/nightshade-gang` |
+| `regionLocationId` | Required on create |
 | `subject` | Short topic label |
-| `text` | Initial rumor body (NOT `newText`) |
-| `relatedLocationIds` | Optional location ties |
+| `text` (`currentText`) | Initial rumor body |
 
-State always starts **Nascent**. Do not pass `newState: Active`.
+State always starts **Nascent** unless set explicitly.
 
-### rumor (`$type: rumor` — evolve existing)
+### rumor (`$type: rumor` — evolve an EXISTING rumor via commit)
 | Field | Valid values |
 |-------|----------------|
 | `rumorId` | Required — must already exist |
 | `newState` | Nascent, Spreading, Peak, Fading, Resolved, Forgotten |
 | `newText` | Optional updated text |
 
-### quest_create / quest_progress
+### upsert_quest / quest_progress
 | Field | Valid values |
 |-------|----------------|
-| `urgency` (create) | Low, Normal, Urgent, Critical |
+| `urgency` (upsert_quest) | Low, Normal, Urgent, Critical |
 | `newState` (progress) | Open, InProgress, Complete, Failed, Skipped |
 
-Note: `quest_create.objectives[]` only needs `description` (+ optional `rewardHint`, `deadlineDay`). Objective state is advanced via `quest_progress.newState`.
+Note: `upsert_quest.objectives[]` only needs `description` (+ optional `rewardHint`, `deadlineDay`). Objective state is advanced via `quest_progress.newState`.
 
 ### ruleset_action
 | Field | Valid values |
@@ -113,12 +113,12 @@ Note: `quest_create.objectives[]` only needs `description` (+ optional `rewardHi
 | `category` | Physical, Social, Medical, Attention, Proximity |
 | `restrictionLevel` | None, Soft, Hard |
 
-### faction_create (optional metadata)
+### upsert_faction (optional metadata)
 | Field | Valid values |
 |-------|----------------|
 | `factionType` | Guild, Kingdom, Cult, MerchantHouse, MilitaryOrder, Criminal, Religious |
 
-### item_create / item_update
+### upsert_item / item_update
 | Field | Valid values |
 |-------|----------------|
 | `coreCategory` | Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other |
@@ -133,7 +133,7 @@ Note: `quest_create.objectives[]` only needs `description` (+ optional `rewardHi
 
 Cooldown: one successful interrupt per location per in-game day. Do not use during active combat or on every dialog line.
 
-### character_create.systemStats / system_stats
+### upsert_character.systemStats / system_stats
 | Field | Valid values |
 |-------|----------------|
 | `$system` | dnd5e, pf2e, fallout2d20 (lowercase, exact — wrong casing silently falls back to untyped stats) |

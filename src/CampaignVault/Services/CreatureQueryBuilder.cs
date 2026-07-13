@@ -53,6 +53,11 @@ public static class CreatureQueryBuilder
         // Overlay homebrew creatures (these will override SRD entries with same name)
         foreach (var homebrew in homebrewList)
         {
+            if (homebrew.IsArchived)
+            {
+                continue;
+            }
+
             merged[homebrew.Name] = (true, homebrew);
         }
 

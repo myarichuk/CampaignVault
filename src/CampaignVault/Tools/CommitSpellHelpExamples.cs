@@ -145,12 +145,13 @@ internal static class CommitSpellHelpExamples
 """;
 
     internal const string MulticlassBootstrap = """
-{ "$type": "character_create", "characterId": "chars/gish", "name": "Aldric", "isPc": true, "keepAlive": true,
+Via upsert_character:
+{ "character": { "id": "chars/gish", "name": "Aldric", "isPc": true, "keepAlive": true,
   "classLevel": "Fighter 5 / Wizard 5",
   "systemStats": { "$system": "dnd5e", "constitution": 16, "intelligence": 16,
     "classLevels": [{ "class": "Fighter", "level": 5 }, { "class": "Wizard", "level": 5 }],
     "spellcastingAbility": "Intelligence",
-    "skillModifiers": { "Arcana": 5, "Athletics": 7 } } }
+    "skillModifiers": { "Arcana": 5, "Athletics": 7 } } } }
 """;
 
     internal const string MulticlassLevelUp = """

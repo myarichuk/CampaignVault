@@ -42,79 +42,6 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task LocationCreate_UpdatesExistingLocation_WhenIdCollision()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-        var locId = "locations/collision-" + Guid.NewGuid();
-        
-        var existing = new Location
-        {
-            Id = locId,
-            Name = "Old Name",
-            Description = "Old Desc",
-            Type = LocationType.Settlement
-        };
-        await session.StoreAsync(existing);
-        await session.SaveChangesAsync();
-
-        var handler = new LocationCreateHandler();
-        var change = new LocationCreate
-        {
-            LocationId = locId,
-            Name = "New Name",
-            Description = "New Desc",
-            Type = LocationType.Building, // Use Building (non-Room) so it overrides Settlement
-            PointsOfInterest = ["PoI 1"],
-            AmbientCrowd = "Noisy",
-            Exits = [new LocationExit("locations/other", "An exit")]
-        };
-
-        var ctx = CreateContext(session);
-        var result = await handler.ApplyAsync(change, ctx);
-
-        Assert.True(result.Success);
-        
-        await session.SaveChangesAsync();
-
-        var reloaded = await session.LoadAsync<Location>(locId);
-        Assert.Equal("New Name", reloaded.Name);
-        Assert.Equal("New Desc", reloaded.Description);
-        Assert.Equal(LocationType.Building, reloaded.Type);
-        Assert.Contains("PoI 1", reloaded.PointsOfInterest);
-        Assert.Equal("Noisy", reloaded.AmbientCrowd);
-        Assert.Single(reloaded.Exits);
-    }
-
-    [Fact]
-    public async Task LocationCreate_ClampsDangerModifier_AndOrphanWarning()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-        var locId = "locations/clamp-" + Guid.NewGuid();
-        var handler = new LocationCreateHandler();
-
-        var change = new LocationCreate
-        {
-            LocationId = locId,
-            Name = "Clamp Location",
-            DangerModifier = 120, // Should be clamped to 50
-            ConnectedFromLocationId = "locations/non-existent"
-        };
-
-        var summaryList = new List<string>();
-        var ctx = CreateContext(session, summaryList: summaryList);
-        var result = await handler.ApplyAsync(change, ctx);
-        Assert.True(result.Success);
-        
-        Assert.Contains(summaryList, m => m.Contains("created as orphan"));
-
-        await session.SaveChangesAsync();
-
-        var reloaded = await session.LoadAsync<Location>(locId);
-        Assert.Equal(50, reloaded.DangerModifier);
-        Assert.Equal("test-campaign", reloaded.CampaignName);
-    }
-
-    [Fact]
     public async Task LocationUpdate_Fails_WhenLocationNotFound_AndSuggestsFuzzyMatches()
     {
         using var session = _fixture.Store.OpenAsyncSession();
@@ -207,27 +134,6 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
         Assert.DoesNotContain("tag-remove", reloaded.VisualTags);
         Assert.Contains("feat-add", reloaded.DistinctiveFeatures);
         Assert.DoesNotContain("feat-remove", reloaded.DistinctiveFeatures);
-    }
-
-    [Fact]
-    public void CommitParser_RumorCreate_DeserializesRumorCreateType()
-    {
-        const string payload = """
-                               [
-                                 {
-                                   "$type": "rumor_create",
-                                   "rumorId": "rumors/parser-test",
-                                   "subject": "Parser Test",
-                                   "text": "Created via commit parser."
-                                 }
-                               ]
-                               """;
-
-        using var doc = System.Text.Json.JsonDocument.Parse(payload);
-        var ok = CampaignVault.Tools.CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
-
-        Assert.True(ok, error);
-        Assert.IsType<RumorCreate>(parsed![0]);
     }
 
     [Fact]

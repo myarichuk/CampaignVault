@@ -96,9 +96,9 @@ public static partial class AmbientCrowdHeuristics
     {
         var id = $"chars/crowd-figure-{Guid.NewGuid().ToString("N")[..6]}";
         exampleJson =
-            "[ { \"$type\": \"character_create\", \"characterId\": \"" + id + "\", \"name\": \"Figure from the Crowd\", "
+            "Call upsert_character: { \"character\": { \"id\": \"" + id + "\", \"name\": \"Figure from the Crowd\", "
             + "\"currentLocationId\": \"" + locationId + "\", \"currentActivity\": \"Stepping forward from the crowd\", "
-            + "\"keepAlive\": false, \"notes\": \"Promoted from ambientCrowd when they became interactable.\" } ]";
+            + "\"keepAlive\": false, \"notes\": \"Promoted from ambientCrowd when they became interactable.\" } }";
         return true;
     }
 

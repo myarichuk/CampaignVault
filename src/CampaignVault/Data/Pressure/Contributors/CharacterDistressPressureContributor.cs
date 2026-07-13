@@ -38,9 +38,9 @@ public sealed class CharacterDistressPressureContributor : IPressureContributor
                     PressureSeverity.EngineWarning,
                     c.Id,
                     $"[ENGINE] {c.Name} has no MaxHp set (created with 0 or omitted). "
-                    + $"PCs: omit maxHp and supply bootstrap fields — engine derives HP. Example: "
-                    + $"[ {{ \"$type\": \"character_create\", \"characterId\": \"{c.Id}\", \"name\": \"{c.Name}\", \"keepAlive\": true, "
-                    + $"\"classLevel\": \"Human Fighter 1\", \"systemStats\": {{ \"$system\": \"dnd5e\", \"hitDie\": \"d10\", \"level\": 1, \"constitution\": 14 }} }} ] "
+                    + $"PCs: omit maxHp and supply bootstrap fields — engine derives HP. Fix via commit's system_stats: "
+                    + $"{{ \"$type\": \"system_stats\", \"characterId\": \"{c.Id}\", "
+                    + $"\"systemStats\": {{ \"$system\": \"dnd5e\", \"hitDie\": \"d10\", \"level\": 1, \"constitution\": 14 }} }} "
                     + "Creature stat blocks: set systemStats.statBlockHp or maxHp (e.g. Goblin statBlockHp: 7). "
                     + "Optional currentHp alone for wounded state at create.",
                     UninitializedHpGroupingKey));

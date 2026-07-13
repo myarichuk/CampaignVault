@@ -1,6 +1,6 @@
 namespace CampaignVault.Models;
 
-public class Quest : ICampaignScopedEntity
+public class Quest : ICampaignScopedEntity, IArchivable
 {
     public string Id { get; set; } = default!;
     public float[]? SemanticVector { get; set; }
@@ -38,6 +38,11 @@ public class Quest : ICampaignScopedEntity
     /// Associates the entity with a specific campaign for multi-campaign isolation.
     /// </summary>
     public string? CampaignName { get; set; }
+
+    /// <summary>
+    /// When true, hidden from default search/scene results (soft delete). Does not remove history.
+    /// </summary>
+    public bool IsArchived { get; set; }
 }
 
 public record QuestObjective(

@@ -33,9 +33,9 @@ public class CommitEnumCheatSheetTests
     }
 
     [Fact]
-    public void Compact_IncludesRumorCreate_AndOmitsMeta()
+    public void Compact_IncludesUpsertRumor_AndOmitsMeta()
     {
-        Assert.Contains("rumor_create", CommitEnumCheatSheet.Compact);
+        Assert.Contains("upsert_rumor", CommitEnumCheatSheet.Compact);
         Assert.DoesNotContain(", Meta", CommitEnumCheatSheet.Compact);
     }
 }

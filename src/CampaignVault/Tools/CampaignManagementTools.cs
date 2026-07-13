@@ -176,8 +176,8 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
     [McpServerTool(UseStructuredContent = true)]
     [Description(
         @"RULESET DISCOVERY: Returns available classes, races, backgrounds, feats, conditions, skills, and creatures for the campaign's active ruleset.
-Homebrew YAML on disk (RulesetData/{system}/) appears automatically alongside embedded SRD/ORC defaults.
-Call before character_create or when applying typed conditionName values. For spells, see notes → get_spells. For creatures, use query_creatures for paginated SRD + homebrew merged results.
+Homebrew YAML on disk (RulesetData/{system}/) and feats authored via upsert_feat appear automatically alongside embedded SRD/ORC defaults.
+Call before upsert_character or when applying typed conditionName values. For spells, see notes → get_spells. For creatures, use query_creatures for paginated SRD + homebrew merged results.
 Creature data is available for dnd5e and pf2e. Skills are freeform ability checks with no fixed reference list for either system.")]
     public Task<ToolResult<SystemHandbookResponse>> GetSystemHandbook(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -186,6 +186,7 @@ Creature data is available for dnd5e and pf2e. Skills are freeform ability check
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var homebrewFeats = await _repository.GetCustomFeatsForSystemAsync(session, config.ActiveSystem, effective);
             var handbook = SystemHandbookBuilder.Build(
                 config.ActiveSystem,
                 classProvider,
@@ -193,7 +194,8 @@ Creature data is available for dnd5e and pf2e. Skills are freeform ability check
                 backgroundProvider,
                 featProvider,
                 conditionProvider,
-                creatureProvider);
+                creatureProvider,
+                homebrewFeats);
 
             return new ToolResult<SystemHandbookResponse>(
                 true,
@@ -208,7 +210,7 @@ Creature data is available for dnd5e and pf2e. Skills are freeform ability check
     [Description(
         @"SPELL DISCOVERY: Returns spell metadata (level, concentration, casting time) for the campaign's active ruleset.
 Filter by class and optional spell level. Results are paginated (default 40 per page) — use offset/limit or level filter for large lists.
-Homebrew spells in RulesetData/{system}/spells/ on disk appear automatically.
+Homebrew spells authored via upsert_spell appear automatically (override SRD by name); RulesetData/{system}/spells/ on disk also appears.
 Use spell names from this tool in resource commits (spellName field) for slot validation.")]
     public Task<ToolResult<SpellListResponse>> GetSpells(
         [Description("Class name for list filtering (e.g. 'Wizard', 'Cleric'). Required.")]
@@ -226,8 +228,9 @@ Use spell names from this tool in resource commits (spellName field) for slot va
         {
             var config = await _repository.GetCampaignConfigAsync(session, effective);
             var system = config.ActiveSystem;
+            var homebrew = await _repository.GetCustomSpellsForSystemAsync(session, system, effective);
             var page = SpellQueryBuilder.QueryPage(
-                spellProvider, system, @class, classProvider, level, offset, limit);
+                spellProvider, system, @class, classProvider, level, offset, limit, homebrew);
 
             var response = SpellQueryBuilder.ToResponse(system, @class, level, page, ToSpellSummary);
 

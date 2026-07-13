@@ -2,68 +2,7 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
-public class PlotThreadCreateHandler : IWorldChangeHandler
-{
-    public bool ShouldHandle(WorldChange change) => change is PlotThreadCreate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
-    {
-        var ptc = (PlotThreadCreate)change;
-
-        if (string.IsNullOrWhiteSpace(ptc.PlotThreadId) || string.IsNullOrWhiteSpace(ptc.Title))
-            return ChangeHandlerResult.Failure("PlotThreadId and Title are required.");
-
-        var existing = await context.Session.LoadAsync<PlotThread>(ptc.PlotThreadId, ct);
-        if (existing != null)
-            return ChangeHandlerResult.Failure($"PlotThread '{ptc.PlotThreadId}' already exists. Use plot_thread_progress to update it.");
-
-        var time = await context.GetCurrentTimeAsync();
-
-        var thread = new PlotThread
-        {
-            Id = ptc.PlotThreadId,
-            Title = ptc.Title,
-            Summary = ptc.Summary,
-            State = ptc.State,
-            TensionLevel = Math.Clamp(ptc.TensionLevel, 0, 100),
-            ResolutionCondition = ptc.ResolutionCondition,
-            ForeshadowingHooks = ptc.ForeshadowingHooks ?? [],
-            InvolvedEntityIds = ptc.InvolvedEntityIds ?? [],
-            DmNotes = ptc.DmNotes,
-            DeadlineDay = ptc.DeadlineDay,
-            IsPlayerVisible = ptc.IsPlayerVisible,
-            CampaignName = context.CampaignName,
-            DayCreated = time.TotalDaysElapsed,
-            LastUpdatedDay = time.TotalDaysElapsed,
-            Clues = ptc.Clues?.Select(c => new PlotClue(c.Id, c.Description, InvolvedEntityIds: c.InvolvedEntityIds)).ToList() ?? []
-        };
-
-        await context.Session.StoreAsync(thread, ct);
-        context.RecordMessage($"Created plot thread: '{ptc.Title}' (state: {ptc.State}, tension: {thread.TensionLevel}).");
-
-        return ChangeHandlerResult.Ok;
-    }
-
-    public bool ExtractInvolvedEntities(
-        WorldChange change,
-        HashSet<string>? characterIds = null,
-        HashSet<string>? locationIds = null,
-        HashSet<string>? factionIds = null,
-        HashSet<string>? questIds = null,
-        HashSet<string>? itemIds = null,
-        HashSet<string>? allInvolvedIds = null)
-    {
-        if (change is not PlotThreadCreate ptc) return false;
-        foreach (var id in ptc.InvolvedEntityIds)
-        {
-            allInvolvedIds?.Add(id);
-            if (id.StartsWith("characters/") || id.StartsWith("chars/")) characterIds?.Add(id);
-            else if (id.StartsWith("locations/")) locationIds?.Add(id);
-            else if (id.StartsWith("factions/")) factionIds?.Add(id);
-        }
-        return true;
-    }
-}
 
 public class PlotThreadProgressHandler : IWorldChangeHandler
 {

@@ -2,46 +2,6 @@ using CampaignVault.Models;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
-public class FactionCreateHandler : IWorldChangeHandler
-{
-    public bool ShouldHandle(WorldChange change) => change is FactionCreate;
-
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
-    {
-        var fc = (FactionCreate)change;
-
-        if (string.IsNullOrWhiteSpace(fc.FactionId) || string.IsNullOrWhiteSpace(fc.Name))
-        {
-            return ChangeHandlerResult.Failure("FactionId and Name are required.");
-        }
-
-        if (context.Factions.ContainsKey(fc.FactionId))
-        {
-            return ChangeHandlerResult.Failure($"Faction {fc.FactionId} already exists.");
-        }
-
-        var faction = new Faction
-        {
-            Id = fc.FactionId,
-            Name = fc.Name,
-            Description = fc.Description,
-            FactionType = fc.FactionType,
-            ControllingTerritory = fc.ControllingTerritory,
-            TerritoryLocationIds = fc.TerritoryLocationIds ?? [],
-            KnownLeaderIds = fc.KnownLeaderIds ?? [],
-            InfluenceLevel = fc.InitialInfluenceLevel ?? 50,
-            CampaignName = context.CampaignName,
-            LastUpdated = DateTime.UtcNow
-        };
-
-        context.RegisterNewFaction(faction);
-        await context.Session.StoreAsync(faction, ct);
-        context.RecordMessage($"Created new faction: {fc.Name}");
-
-        return ChangeHandlerResult.Ok;
-    }
-}
-
 public class FactionReputationChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is FactionReputationChange;

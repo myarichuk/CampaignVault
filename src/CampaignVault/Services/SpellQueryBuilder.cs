@@ -21,12 +21,54 @@ public static class SpellQueryBuilder
         ClassDefinitionProvider classProvider,
         int? level = null,
         int offset = 0,
-        int? limit = null)
+        int? limit = null,
+        IReadOnlyList<CustomSpell>? homebrew = null)
     {
         var pageLimit = Math.Clamp(limit ?? DefaultPageLimit, 1, MaxPageLimit);
         var offsetClamped = Math.Max(0, offset);
 
-        var all = provider.QuerySpells(system, className, level, classProvider);
+        var srd = provider.QuerySpells(system, className, level, classProvider);
+
+        // Merge: homebrew overrides SRD entries of the same name (case-insensitive).
+        var merged = new Dictionary<string, SpellDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var def in srd)
+        {
+            merged[def.Name] = def;
+        }
+
+        if (homebrew != null)
+        {
+            foreach (var custom in homebrew)
+            {
+                if (custom.IsArchived)
+                {
+                    continue;
+                }
+
+                if (!custom.Classes.Any(c => string.Equals(c, className, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                if (level.HasValue && custom.Level != level.Value)
+                {
+                    continue;
+                }
+
+                merged[custom.Name] = new SpellDefinition
+                {
+                    Name = custom.Name,
+                    System = system.ToSlug(),
+                    Description = custom.Description,
+                    Level = custom.Level,
+                    Classes = custom.Classes,
+                    Concentration = custom.Concentration,
+                    CastingTime = custom.CastingTime,
+                };
+            }
+        }
+
+        var all = merged.Values.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
         var page = all.Skip(offsetClamped).Take(pageLimit).ToList();
 
         return new SpellQueryPage(page, all.Count, offsetClamped, pageLimit);

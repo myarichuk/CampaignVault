@@ -36,27 +36,23 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
     public void CharacterCreate_DeserializesEmbeddedSystemStats()
     {
         var json = """
-        [
-          {
-            "$type": "character_create",
-            "characterId": "chars/goblin-scout",
-            "name": "Goblin Scout",
-            "maxHp": 7,
-            "currentHp": 7,
-            "classLevel": "Goblin 1",
-            "systemStats": {
-              "$system": "dnd5e",
-              "armorClass": 15,
-              "dexterity": 14,
-              "skillModifiers": { "Stealth": 6 }
-            }
+        {
+          "characterId": "chars/goblin-scout",
+          "name": "Goblin Scout",
+          "maxHp": 7,
+          "currentHp": 7,
+          "classLevel": "Goblin 1",
+          "systemStats": {
+            "$system": "dnd5e",
+            "armorClass": 15,
+            "dexterity": 14,
+            "skillModifiers": { "Stealth": 6 }
           }
-        ]
+        }
         """;
 
-        var changes = JsonSerializer.Deserialize<WorldChange[]>(json, JsonOptions);
-        var create = Assert.IsType<CharacterCreate>(Assert.Single(changes!));
-        var stats = Assert.IsType<Dnd5eExtension>(create.SystemStats);
+        var create = JsonSerializer.Deserialize<CharacterCreate>(json, JsonOptions);
+        var stats = Assert.IsType<Dnd5eExtension>(create!.SystemStats);
         Assert.Equal(15, stats.ArmorClass);
         Assert.Equal(14, stats.Dexterity);
         Assert.Equal(6, stats.SkillModifiers["Stealth"]);

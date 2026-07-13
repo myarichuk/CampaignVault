@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
 
-public class Location : ICampaignScopedEntity
+public class Location : ICampaignScopedEntity, IArchivable
 {
     public string Id { get; set; } = default!;
     
@@ -28,7 +28,7 @@ public class Location : ICampaignScopedEntity
     /// Keys match (case-insensitive) entries from PointsOfInterest. Values are the persistent,
     /// recallable description/content discovered through interaction/examination.
     /// This turns lightweight PoI strings into anchored world knowledge (analogous to
-    /// promoting an ambient NPC via character_create).
+    /// promoting an ambient NPC via upsert_character).
     /// </summary>
     [JsonPropertyName("pointOfInterestDetails")]
     public Dictionary<string, string> PointOfInterestDetails { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -54,7 +54,7 @@ public class Location : ICampaignScopedEntity
 
     /// <summary>
     /// Optional faction ID that controls or "owns" this location.
-    /// Set via faction_create or faction_state changes. Null = unclaimed/independent.
+    /// Set via upsert_faction or faction_state changes. Null = unclaimed/independent.
     /// Used by GetScene to surface faction presence and by EncounterResolver for encounter bias.
     /// </summary>
     public string? ControllingFactionId { get; set; }
@@ -72,6 +72,11 @@ public class Location : ICampaignScopedEntity
     /// Used by EncounterResolver to dynamically scale threat chances based on narrative events.
     /// </summary>
     public int DangerModifier { get; set; } = 0;
+
+    /// <summary>
+    /// When true, hidden from default search/scene results (soft delete). Does not remove history.
+    /// </summary>
+    public bool IsArchived { get; set; }
 }
 
 public enum LocationType

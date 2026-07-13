@@ -269,7 +269,7 @@ public class CampaignRepository
     {
         var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
         items = items
-            .Where(i => IsVisibleInCampaign(i.CampaignName, effectiveCampaign))
+            .Where(i => IsVisibleInCampaign(i.CampaignName, effectiveCampaign) && !i.IsArchived)
             .ToList();
 
         foreach (var item in items)
@@ -602,12 +602,12 @@ public class CampaignRepository
         var results = new List<object>();
         results.AddRange(chars);
         results.AddRange(lore);
-        results.AddRange(locs);
-        results.AddRange(rumors);
-        results.AddRange(factions);
-        results.AddRange(quests);
+        results.AddRange(locs.Where(l => !l.IsArchived));
+        results.AddRange(rumors.Where(r => !r.IsArchived));
+        results.AddRange(factions.Where(f => !f.IsArchived));
+        results.AddRange(quests.Where(q => !q.IsArchived));
         results.AddRange(events);
-        results.AddRange(items);
+        results.AddRange(items.Where(i => !i.IsArchived));
         return results;
     }
 
@@ -1154,6 +1154,7 @@ public class CampaignRepository
         }
 
         var existing = await session.LoadAsync<Location>(location.Id);
+        var isNew = existing == null;
         Location result;
         if (existing != null)
         {
@@ -1174,6 +1175,14 @@ public class CampaignRepository
             existing.CampaignName = effectiveCampaignName;
             existing.ControllingFactionId = location.ControllingFactionId; // Phase 7.1
             existing.CurrentState = location.CurrentState;
+            if (location.DangerModifier.HasValue)
+            {
+                existing.DangerModifier = Math.Clamp(location.DangerModifier.Value, -50, 50);
+            }
+            if (location.IsArchived.HasValue)
+            {
+                existing.IsArchived = location.IsArchived.Value;
+            }
             result = existing;
         }
         else
@@ -1197,8 +1206,34 @@ public class CampaignRepository
                 CampaignName = effectiveCampaignName,
                 ControllingFactionId = location.ControllingFactionId,
                 CurrentState = location.CurrentState,
+                DangerModifier = Math.Clamp(location.DangerModifier ?? 0, -50, 50),
+                IsArchived = location.IsArchived ?? false,
             };
             await session.StoreAsync(result);
+        }
+
+        if (isNew && !string.IsNullOrEmpty(location.ConnectedFromLocationId))
+        {
+            var parentLoc = await session.LoadAsync<Location>(location.ConnectedFromLocationId);
+            if (parentLoc != null)
+            {
+                // Per design: forward exit (on parent) uses the supplied connectionDescription.
+                // Reverse exit (on child) uses derived "Leads back toward..." including the connection text.
+                var connDesc = location.ConnectionDescription ?? $"Leads back to {parentLoc.Name}";
+
+                parentLoc.Exits ??= [];
+                if (!parentLoc.Exits.Any(e => e.TargetLocationId == result.Id))
+                {
+                    parentLoc.Exits.Add(new LocationExit(result.Id, connDesc));
+                }
+
+                result.Exits ??= [];
+                if (!result.Exits.Any(e => e.TargetLocationId == parentLoc.Id))
+                {
+                    var revDesc = $"Leads back toward {parentLoc.Name} ({connDesc})";
+                    result.Exits.Add(new LocationExit(parentLoc.Id, revDesc));
+                }
+            }
         }
 
         SanitizeLocation(result);
@@ -1291,6 +1326,64 @@ public class CampaignRepository
     }
 
     /// <summary>
+    /// Creates or updates a Rumor from a tool-facing request.
+    /// </summary>
+    public async Task<Rumor> UpsertRumorAsync(IAsyncDocumentSession session, RumorUpsertRequest rumor, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(rumor.Id))
+        {
+            throw new ArgumentException("Rumor.Id is required for upsert.");
+        }
+
+        var effective = ResolveCampaign(campaignName);
+        var effectiveCampaignName = rumor.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
+        {
+            effectiveCampaignName = effective; // strict for rumors (campaign-specific)
+        }
+
+        var existing = await session.LoadAsync<Rumor>(rumor.Id);
+        Rumor result;
+        if (existing != null)
+        {
+            existing.Subject = rumor.Subject;
+            existing.CurrentText = rumor.CurrentText;
+            existing.State = rumor.State;
+            existing.TruthValue = rumor.TruthValue;
+            existing.RegionLocationId = rumor.RegionLocationId ?? existing.RegionLocationId;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
+            if (rumor.IsArchived.HasValue)
+            {
+                existing.IsArchived = rumor.IsArchived.Value;
+            }
+            result = existing;
+        }
+        else
+        {
+            var t = await GetTimeAsync(session, effective);
+            result = new Rumor
+            {
+                Id = rumor.Id,
+                Subject = rumor.Subject,
+                CurrentText = rumor.CurrentText,
+                State = rumor.State,
+                TruthValue = rumor.TruthValue,
+                RegionLocationId = rumor.RegionLocationId!,
+                DayCreated = t.TotalDaysElapsed,
+                LastStateChangeDay = t.TotalDaysElapsed,
+                CampaignName = effectiveCampaignName,
+                LastUpdated = DateTime.UtcNow,
+                IsArchived = rumor.IsArchived ?? false,
+            };
+            await session.StoreAsync(result);
+        }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
+    }
+
+    /// <summary>
     /// Queries active Rumors by fuzzy subject/text, or strictly by region and state.
     /// </summary>
     public async Task<IEnumerable<Rumor>> QueryRumorsAsync(IAsyncDocumentSession session, string? query,
@@ -1320,7 +1413,7 @@ public class CampaignRepository
             list = list.Where(r => r.CampaignName == effective).ToList();
         }
 
-        return list;
+        return list.Where(r => !r.IsArchived).ToList();
     }
 
     /// <summary>
@@ -1382,6 +1475,10 @@ public class CampaignRepository
             existing.Properties = item.Properties ?? existing.Properties;
             existing.LastUpdated = DateTime.UtcNow;
             existing.CampaignName = effectiveCampaignName;
+            if (item.IsArchived.HasValue)
+            {
+                existing.IsArchived = item.IsArchived.Value;
+            }
             result = existing;
         }
         else
@@ -1400,6 +1497,7 @@ public class CampaignRepository
                 Properties = item.Properties ?? [],
                 LastUpdated = DateTime.UtcNow,
                 CampaignName = effectiveCampaignName,
+                IsArchived = item.IsArchived ?? false,
             };
             await session.StoreAsync(result);
         }
@@ -1451,6 +1549,10 @@ public class CampaignRepository
             existing.Abilities = creature.Abilities ?? existing.Abilities;
             existing.LastUpdated = DateTime.UtcNow;
             existing.CampaignName = effectiveCampaignName;
+            if (creature.IsArchived.HasValue)
+            {
+                existing.IsArchived = creature.IsArchived.Value;
+            }
             result = existing;
         }
         else
@@ -1469,6 +1571,7 @@ public class CampaignRepository
                 Abilities = creature.Abilities ?? [],
                 LastUpdated = DateTime.UtcNow,
                 CampaignName = effectiveCampaignName,
+                IsArchived = creature.IsArchived ?? false,
             };
             await session.StoreAsync(result);
         }
@@ -1490,6 +1593,136 @@ public class CampaignRepository
             .ToListAsync();
 
         return creatures.Where(c => IsVisibleInCampaign(c.CampaignName, effective)).ToList();
+    }
+
+    public async Task<CustomSpell> UpsertCustomSpellAsync(IAsyncDocumentSession session, CustomSpellUpsertRequest spell, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(spell.Id))
+        {
+            throw new ArgumentException("CustomSpell.Id is required for upsert.");
+        }
+
+        var effective = ResolveCampaign(campaignName);
+        var effectiveCampaignName = spell.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
+        {
+            effectiveCampaignName = effective;
+        }
+
+        var existing = await session.LoadAsync<CustomSpell>(spell.Id);
+        CustomSpell result;
+        if (existing != null)
+        {
+            existing.Name = spell.Name;
+            existing.System = spell.System;
+            existing.Description = spell.Description;
+            existing.Level = spell.Level;
+            existing.Classes = spell.Classes ?? existing.Classes;
+            existing.Concentration = spell.Concentration;
+            existing.CastingTime = spell.CastingTime;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
+            if (spell.IsArchived.HasValue)
+            {
+                existing.IsArchived = spell.IsArchived.Value;
+            }
+            result = existing;
+        }
+        else
+        {
+            result = new CustomSpell
+            {
+                Id = spell.Id,
+                Name = spell.Name,
+                System = spell.System,
+                Description = spell.Description,
+                Level = spell.Level,
+                Classes = spell.Classes ?? [],
+                Concentration = spell.Concentration,
+                CastingTime = spell.CastingTime,
+                CampaignName = effectiveCampaignName,
+                LastUpdated = DateTime.UtcNow,
+                IsArchived = spell.IsArchived ?? false,
+            };
+            await session.StoreAsync(result);
+        }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
+    }
+
+    public async Task<List<CustomSpell>> GetCustomSpellsForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var spells = await session.Query<CustomSpell>()
+            .Where(s => s.System == system)
+            .Take(take)
+            .ToListAsync();
+
+        return spells.Where(s => IsVisibleInCampaign(s.CampaignName, effective)).ToList();
+    }
+
+    public async Task<CustomFeat> UpsertCustomFeatAsync(IAsyncDocumentSession session, CustomFeatUpsertRequest feat, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(feat.Id))
+        {
+            throw new ArgumentException("CustomFeat.Id is required for upsert.");
+        }
+
+        var effective = ResolveCampaign(campaignName);
+        var effectiveCampaignName = feat.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
+        {
+            effectiveCampaignName = effective;
+        }
+
+        var existing = await session.LoadAsync<CustomFeat>(feat.Id);
+        CustomFeat result;
+        if (existing != null)
+        {
+            existing.Name = feat.Name;
+            existing.System = feat.System;
+            existing.Description = feat.Description;
+            existing.Prerequisite = feat.Prerequisite;
+            existing.MechanicalSummary = feat.MechanicalSummary;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
+            if (feat.IsArchived.HasValue)
+            {
+                existing.IsArchived = feat.IsArchived.Value;
+            }
+            result = existing;
+        }
+        else
+        {
+            result = new CustomFeat
+            {
+                Id = feat.Id,
+                Name = feat.Name,
+                System = feat.System,
+                Description = feat.Description,
+                Prerequisite = feat.Prerequisite,
+                MechanicalSummary = feat.MechanicalSummary,
+                IsArchived = feat.IsArchived ?? false,
+                CampaignName = effectiveCampaignName,
+                LastUpdated = DateTime.UtcNow,
+            };
+            await session.StoreAsync(result);
+        }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
+    }
+
+    public async Task<List<CustomFeat>> GetCustomFeatsForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var feats = await session.Query<CustomFeat>()
+            .Where(f => f.System == system)
+            .Take(take)
+            .ToListAsync();
+
+        return feats.Where(f => IsVisibleInCampaign(f.CampaignName, effective)).ToList();
     }
 
     public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery,
@@ -1877,6 +2110,68 @@ public class CampaignRepository
     }
 
     /// <summary>
+    /// Creates or updates a Faction from a tool-facing request. List fields are preserved when omitted.
+    /// </summary>
+    public async Task<Faction> UpsertFactionAsync(IAsyncDocumentSession session, FactionUpsertRequest faction, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(faction.Id))
+        {
+            throw new ArgumentException("Faction.Id is required for upsert.");
+        }
+
+        var effective = ResolveCampaign(campaignName);
+        var effectiveCampaignName = faction.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
+        {
+            effectiveCampaignName = effective;
+        }
+
+        var existing = await session.LoadAsync<Faction>(faction.Id);
+        Faction result;
+        if (existing != null)
+        {
+            existing.Name = faction.Name;
+            existing.Description = faction.Description;
+            existing.FactionType = faction.FactionType;
+            existing.ControllingTerritory = faction.ControllingTerritory;
+            existing.TerritoryLocationIds = faction.TerritoryLocationIds ?? existing.TerritoryLocationIds;
+            existing.KnownLeaderIds = faction.KnownLeaderIds ?? existing.KnownLeaderIds;
+            if (faction.InfluenceLevel.HasValue)
+            {
+                existing.InfluenceLevel = faction.InfluenceLevel.Value;
+            }
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.CampaignName = effectiveCampaignName;
+            if (faction.IsArchived.HasValue)
+            {
+                existing.IsArchived = faction.IsArchived.Value;
+            }
+            result = existing;
+        }
+        else
+        {
+            result = new Faction
+            {
+                Id = faction.Id,
+                Name = faction.Name,
+                Description = faction.Description,
+                FactionType = faction.FactionType,
+                ControllingTerritory = faction.ControllingTerritory,
+                TerritoryLocationIds = faction.TerritoryLocationIds ?? [],
+                KnownLeaderIds = faction.KnownLeaderIds ?? [],
+                InfluenceLevel = faction.InfluenceLevel ?? 50,
+                CampaignName = effectiveCampaignName,
+                LastUpdated = DateTime.UtcNow,
+                IsArchived = faction.IsArchived ?? false,
+            };
+            await session.StoreAsync(result);
+        }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
+    }
+
+    /// <summary>
     /// Retrieves a specific Quest by ID.
     /// </summary>
     public async Task<Quest?> GetQuestAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
@@ -1935,6 +2230,10 @@ public class CampaignRepository
             existing.IsPlayerVisible = thread.IsPlayerVisible;
             existing.CampaignName = effectiveCampaignName;
             existing.LastUpdatedDay = currentDay;
+            if (thread.IsArchived.HasValue)
+            {
+                existing.IsArchived = thread.IsArchived.Value;
+            }
             result = existing;
         }
         else
@@ -1956,6 +2255,7 @@ public class CampaignRepository
                 CampaignName = effectiveCampaignName,
                 DayCreated = currentDay,
                 LastUpdatedDay = currentDay,
+                IsArchived = thread.IsArchived ?? false,
             };
             await session.StoreAsync(result);
         }
@@ -2010,6 +2310,73 @@ public class CampaignRepository
     }
 
     /// <summary>
+    /// Creates or updates a Quest from a tool-facing request. List fields are preserved when omitted.
+    /// </summary>
+    public async Task<Quest> UpsertQuestAsync(IAsyncDocumentSession session, QuestUpsertRequest quest, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(quest.Id))
+        {
+            throw new ArgumentException("Quest.Id is required for upsert.");
+        }
+
+        var effective = ResolveCampaign(campaignName);
+        var effectiveCampaignName = quest.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
+        {
+            effectiveCampaignName = effective;
+        }
+
+        var currentDay = (await GetTimeAsync(session, effective)).TotalDaysElapsed;
+
+        var existing = await session.LoadAsync<Quest>(quest.Id);
+        Quest result;
+        if (existing != null)
+        {
+            existing.Title = quest.Title;
+            existing.GiverId = quest.GiverId;
+            existing.Objectives = quest.Objectives ?? existing.Objectives;
+            existing.Category = quest.Category;
+            existing.Urgency = quest.Urgency;
+            existing.RelatedLocationIds = quest.RelatedLocationIds ?? existing.RelatedLocationIds;
+            existing.RelatedFactionIds = quest.RelatedFactionIds ?? existing.RelatedFactionIds;
+            existing.DmNotes = quest.DmNotes;
+            existing.DeadlineDay = quest.DeadlineDay;
+            existing.LastUpdated = DateTime.UtcNow;
+            existing.LastUpdatedDay = currentDay;
+            existing.CampaignName = effectiveCampaignName;
+            if (quest.IsArchived.HasValue)
+            {
+                existing.IsArchived = quest.IsArchived.Value;
+            }
+            result = existing;
+        }
+        else
+        {
+            result = new Quest
+            {
+                Id = quest.Id,
+                Title = quest.Title,
+                GiverId = quest.GiverId,
+                Objectives = quest.Objectives ?? [],
+                Category = quest.Category,
+                Urgency = quest.Urgency,
+                RelatedLocationIds = quest.RelatedLocationIds ?? [],
+                RelatedFactionIds = quest.RelatedFactionIds ?? [],
+                DmNotes = quest.DmNotes,
+                DeadlineDay = quest.DeadlineDay,
+                CampaignName = effectiveCampaignName,
+                LastUpdated = DateTime.UtcNow,
+                LastUpdatedDay = currentDay,
+                IsArchived = quest.IsArchived ?? false,
+            };
+            await session.StoreAsync(result);
+        }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
+    }
+
+    /// <summary>
     /// Queries active quests relevant to a specific location (RelatedLocationIds overlap).
     /// Used by GetScene to surface quest summaries.
     /// </summary>
@@ -2024,6 +2391,7 @@ public class CampaignRepository
 
         return quests
             .Where(q => IsVisibleInCampaign(q.CampaignName, effective)
+                        && !q.IsArchived
                         && q.RelatedLocationIds.Contains(locationId))
             .ToList();
     }
@@ -2042,6 +2410,7 @@ public class CampaignRepository
 
         return factions
             .Where(f => IsVisibleInCampaign(f.CampaignName, effective)
+                        && !f.IsArchived
                         && (f.ControllingTerritory == locationId || f.TerritoryLocationIds.Contains(locationId)))
             .ToList();
     }

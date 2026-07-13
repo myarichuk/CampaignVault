@@ -31,13 +31,13 @@ STRONGLY encouraged to populate:
 - Detailed backstory in notes
 - Schedule + Routines + StateModifiers
 - needs.needDescriptors (human-readable explanations for any custom needs)
-- Equipment via item_create in commit (set holderId to the character)
+- Equipment via upsert_item (set holderId to the character)
 
 HP bootstrap: omit maxHp for PCs — engine derives from typed systemStats (hitDie, level, constitution, etc.).
 Creature stat blocks: set maxHp OR systemStats.statBlockHp (not both needed). currentHp alone sets wounded state.
 Put hitDie on dnd5e systemStats root (NOT in attributes). Class flavor goes in notes.
 
-During play, prefer commit (character_create, level_up, activity) over repeated upserts.
+This is the only tool that creates a new character. During play, use commit (level_up, activity, character_update, etc.) for changes to an existing one — do not re-call this to move or tweak a character you already created.
 
 Omitted fields are preserved: on an existing character, omitting psychology/social/needs/systemStats keeps the stored value; providing one replaces it wholesale.")]
     public Task<ToolResult<Character>> UpsertCharacter(
@@ -83,7 +83,7 @@ Use for seeding new areas or replacing/updating full location documents — exit
 
 Omitted fields are preserved: on an existing location, omitting exits/pointsOfInterest/pointOfInterestDetails/metadata keeps the stored value; providing one replaces it wholesale.
 
-During play, prefer commit (location_create, location_update) for incremental changes; use upsert_location for bulk world-building or full replacements.")]
+This is the only tool that creates a new location. During play, use commit's location_update for incremental changes to an existing one.")]
     public Task<ToolResult<Location>> UpsertLocation(
         [Description("The location to create or update. Strongly typed.")]
         LocationUpsertRequest location,
@@ -117,7 +117,7 @@ During play, prefer commit (location_create, location_update) for incremental ch
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). Use for seeding or bulk world-building. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale. During play, prefer commit (item_create) for incremental changes.")]
+        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). This is the only tool that creates a new item. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale. During play, use commit's item_update/item for incremental changes to an existing item.")]
     public Task<ToolResult<Item>> UpsertItem(
         [Description("The item to create or update. Strongly typed.")]
         ItemUpsertRequest item,
@@ -162,6 +162,91 @@ During play, prefer commit (location_create, location_update) for incremental ch
         {
             var merged = await _repository.UpsertPlotThreadAsync(s, plotThread, effective);
             return new ToolResult<PlotThread>(true, merged, $"PlotThread upserted (campaign context: {effective}).");
+        });
+    }
+
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "WORLD BUILDER TOOL: Create or update a homebrew spell. Overrides SRD spells by name when queried via get_spells. Omitted fields are preserved: on an existing spell, omitting classes keeps the stored value; providing one replaces it wholesale.")]
+    public Task<ToolResult<CustomSpell>> UpsertSpell(
+        [Description("The spell to create or update. Strongly typed.")]
+        CustomSpellUpsertRequest spell,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var merged = await _repository.UpsertCustomSpellAsync(s, spell, effective);
+            return new ToolResult<CustomSpell>(true, merged, $"Spell upserted (campaign context: {effective}).");
+        });
+    }
+
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via get_system_handbook.")]
+    public Task<ToolResult<CustomFeat>> UpsertFeat(
+        [Description("The feat to create or update. Strongly typed.")]
+        CustomFeatUpsertRequest feat,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var merged = await _repository.UpsertCustomFeatAsync(s, feat, effective);
+            return new ToolResult<CustomFeat>(true, merged, $"Feat upserted (campaign context: {effective}).");
+        });
+    }
+
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "WORLD BUILDER TOOL: Create or update a faction. Omitted fields are preserved: on an existing faction, omitting territoryLocationIds/knownLeaderIds keeps the stored value; providing one replaces it wholesale. For reputation/stance changes to an existing faction, prefer commit (faction_reputation, faction_state).")]
+    public Task<ToolResult<Faction>> UpsertFaction(
+        [Description("The faction to create or update. Strongly typed.")]
+        FactionUpsertRequest faction,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var merged = await _repository.UpsertFactionAsync(s, faction, effective);
+            return new ToolResult<Faction>(true, merged, $"Faction upserted (campaign context: {effective}).");
+        });
+    }
+
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "WORLD BUILDER TOOL: Create or update a quest. Omitted fields are preserved: on an existing quest, omitting objectives/relatedLocationIds/relatedFactionIds keeps the stored value; providing one replaces it wholesale. For objective-state or narrative progress on an existing quest, prefer commit (quest_progress).")]
+    public Task<ToolResult<Quest>> UpsertQuest(
+        [Description("The quest to create or update. Strongly typed.")]
+        QuestUpsertRequest quest,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var merged = await _repository.UpsertQuestAsync(s, quest, effective);
+            return new ToolResult<Quest>(true, merged, $"Quest upserted (campaign context: {effective}).");
+        });
+    }
+
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "WORLD BUILDER TOOL: Create or update a rumor. regionLocationId is required when creating a new rumor. For rumor evolution over time on an existing rumor, prefer commit (rumor).")]
+    public Task<ToolResult<Rumor>> UpsertRumor(
+        [Description("The rumor to create or update. Strongly typed.")]
+        RumorUpsertRequest rumor,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var merged = await _repository.UpsertRumorAsync(s, rumor, effective);
+            return new ToolResult<Rumor>(true, merged, $"Rumor upserted (campaign context: {effective}).");
         });
     }
 

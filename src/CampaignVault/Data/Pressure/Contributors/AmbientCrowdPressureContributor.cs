@@ -53,7 +53,7 @@ public sealed class AmbientCrowdPressureContributor : IPressureContributor
                 loc.Id,
                 $"NARRATIVE PROMPT: Location expects '{loc.AmbientCrowd}' but PresentNPCs is empty. "
                 + "When someone from the crowd becomes interactable (approaches, speaks, picks up a weapon, offers a quest), "
-                + "promote only that individual via character_create — not the whole crowd. Example:\n" + example,
+                + "promote only that individual via upsert_character — not the whole crowd. Example:\n" + example,
                 SparseCrowdGroupingKey);
         }
         else if (dense && implied >= 6 && presentCount < Math.Max(2, implied / 8))
