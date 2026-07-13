@@ -28,6 +28,53 @@ public class ResourcePoolInitializerTests
     }
 
     [Fact]
+    public void InitializePools_Pathfinder2eLowLevelWizard_HasNoHighRankSlots()
+    {
+        var character = new Character
+        {
+            Id = "chars/pc1",
+            ClassLevel = "Human Wizard 3",
+            SystemStats = new Pf2eExtension { Level = 3 }
+        };
+
+        _sut.InitializePools(character, RulesetSystem.Pathfinder2e, null);
+
+        Assert.False(character.SystemStats.ResourcePools.ContainsKey("spell_slots_5"));
+        Assert.False(character.SystemStats.ResourcePools.ContainsKey("spell_slots_10"));
+    }
+
+    [Fact]
+    public void InitializePools_Pathfinder2eLevel9Wizard_GainsRank5Slot()
+    {
+        var character = new Character
+        {
+            Id = "chars/pc1",
+            ClassLevel = "Human Wizard 9",
+            SystemStats = new Pf2eExtension { Level = 9 }
+        };
+
+        _sut.InitializePools(character, RulesetSystem.Pathfinder2e, null);
+
+        Assert.Equal(1, character.SystemStats.ResourcePools["spell_slots_5"].Max);
+        Assert.False(character.SystemStats.ResourcePools.ContainsKey("spell_slots_6"));
+    }
+
+    [Fact]
+    public void InitializePools_Pathfinder2eLevel19Wizard_GainsRank10Slot()
+    {
+        var character = new Character
+        {
+            Id = "chars/pc1",
+            ClassLevel = "Human Wizard 19",
+            SystemStats = new Pf2eExtension { Level = 19 }
+        };
+
+        _sut.InitializePools(character, RulesetSystem.Pathfinder2e, null);
+
+        Assert.Equal(1, character.SystemStats.ResourcePools["spell_slots_10"].Max);
+    }
+
+    [Fact]
     public void InitializePools_Pathfinder2eFighter_HasNoSpellSlots()
     {
         var character = new Character
@@ -179,22 +226,6 @@ public class ResourcePoolInitializerTests
         Assert.True(character.SystemStats.ResourcePools.ContainsKey("action_surge"));
     }
 
-    [Fact]
-    public void InitializePools_Fallout2d20_CreatesActionPoints()
-    {
-        var character = new Character
-        {
-            Id = "chars/vault-dweller",
-            ClassLevel = "Survivor 1",
-            SystemStats = new Fallout2d20Extension { Level = 1 }
-        };
-
-        _sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
-
-        Assert.Equal(10, character.SystemStats.ResourcePools["action_points"].Max);
-        Assert.Equal(10, character.SystemStats.ResourcePools["action_points"].Current);
-    }
-
     [Theory]
     [InlineData(RulesetSystem.Dnd5e)]
     [InlineData(RulesetSystem.Pathfinder2e)]
@@ -213,22 +244,6 @@ public class ResourcePoolInitializerTests
 
         Assert.True(character.SystemStats.ResourcePools.ContainsKey("gold"));
         Assert.Equal(1000000, character.SystemStats.ResourcePools["gold"].Max);
-    }
-
-    [Fact]
-    public void InitializePools_Fallout2d20_GrantsCapsPool()
-    {
-        var character = new Character
-        {
-            Id = "chars/vault-dweller",
-            ClassLevel = "Survivor 1",
-            SystemStats = new Fallout2d20Extension { Level = 1 }
-        };
-
-        _sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
-
-        Assert.True(character.SystemStats.ResourcePools.ContainsKey("caps"));
-        Assert.Equal(1000000, character.SystemStats.ResourcePools["caps"].Max);
     }
 
     [Fact]
@@ -271,41 +286,9 @@ public class ResourcePoolInitializerTests
         Assert.Equal(2, character.SystemStats.ResourcePools["pact_magic"].Max);
     }
 
-    [Fact]
-    public void InitializePools_Fallout2d20CharacterWithActionBoyPerk_GrantsActionBoyApPool()
-    {
-        var character = new Character
-        {
-            Id = "chars/action-boy",
-            ClassLevel = "Survivor 1",
-            SystemStats = new Fallout2d20Extension { Level = 1, Perks = ["Action Boy"] }
-        };
-
-        _sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
-
-        Assert.True(character.SystemStats.ResourcePools.ContainsKey("action_boy_ap"));
-        Assert.Equal(1, character.SystemStats.ResourcePools["action_boy_ap"].Max);
-    }
-
-    [Fact]
-    public void InitializePools_Fallout2d20CharacterWithoutActionBoyPerk_DoesNotGrantActionBoyApPool()
-    {
-        var character = new Character
-        {
-            Id = "chars/no-perk",
-            ClassLevel = "Survivor 1",
-            SystemStats = new Fallout2d20Extension { Level = 1 }
-        };
-
-        _sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
-
-        Assert.False(character.SystemStats.ResourcePools.ContainsKey("action_boy_ap"));
-    }
-
     [Theory]
     [InlineData(RulesetSystem.Dnd5e, "dnd5e")]
     [InlineData(RulesetSystem.Pathfinder2e, "pf2e")]
-    [InlineData(RulesetSystem.Fallout2d20, "fallout2d20")]
     [InlineData(RulesetSystem.Narrative, "narrative")]
     public void ToSlug_ReturnsCanonicalSlug(RulesetSystem system, string expected)
     {

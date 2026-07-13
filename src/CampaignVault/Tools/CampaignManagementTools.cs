@@ -17,7 +17,6 @@ public class CampaignManagementTools(
     BackgroundDefinitionProvider backgroundProvider,
     FeatDefinitionProvider featProvider,
     ConditionDefinitionProvider conditionProvider,
-    SkillDefinitionProvider skillProvider,
     CreatureDefinitionProvider creatureProvider)
     : CampaignToolBase(repository, keys)
 {
@@ -179,7 +178,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
         @"RULESET DISCOVERY: Returns available classes, races, backgrounds, feats, conditions, skills, and creatures for the campaign's active ruleset.
 Homebrew YAML on disk (RulesetData/{system}/) appears automatically alongside embedded SRD/ORC defaults.
 Call before character_create or when applying typed conditionName values. For spells, see notes → get_spells. For creatures, use query_creatures for paginated SRD + homebrew merged results.
-Creature data is available for dnd5e, pf2e, and fallout2d20. Skills are reference data only (fallout2d20 currently — dnd5e/pf2e skills are freeform ability checks with no fixed list).")]
+Creature data is available for dnd5e and pf2e. Skills are freeform ability checks with no fixed reference list for either system.")]
     public Task<ToolResult<SystemHandbookResponse>> GetSystemHandbook(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
@@ -194,7 +193,6 @@ Creature data is available for dnd5e, pf2e, and fallout2d20. Skills are referenc
                 backgroundProvider,
                 featProvider,
                 conditionProvider,
-                skillProvider,
                 creatureProvider);
 
             return new ToolResult<SystemHandbookResponse>(

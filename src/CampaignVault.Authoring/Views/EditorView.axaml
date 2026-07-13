@@ -85,11 +85,18 @@
                                                     <TextBlock Text="{Binding ParsedCharacter.Id}" Foreground="{StaticResource TextSecondaryColor}" FontSize="11" />
                                                 </StackPanel>
                                             </Border>
-                                            <!-- Name Field -->
-                                            <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
+                                            <!-- Name Field (editable for Character; read-only display for other types,
+                                                 since the form write-back path only round-trips Character today) -->
+                                            <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8" IsVisible="{Binding IsCharacter}">
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="Name" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" VerticalAlignment="Center" />
                                                     <TextBox Text="{Binding FormName, Mode=TwoWay}" FontSize="11" Padding="4,2" MinWidth="80" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="2" />
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8" IsVisible="{Binding !IsCharacter}">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="Name" FontWeight="Bold" Foreground="#38BDF8" FontSize="11" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding ParsedCharacter.Name}" FontSize="11" Foreground="{StaticResource TextPrimaryColor}" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Border>
                                         </WrapPanel>

@@ -80,6 +80,22 @@ public class WorkspaceParser
         return item;
     }
 
+    public CustomCreature ParseCustomCreature(string fileContent)
+    {
+        var (yamlBlock, markdownBody) = ExtractFrontmatter(fileContent);
+        var creature = _yamlDeserializer.Deserialize<CustomCreature>(yamlBlock);
+        creature.Description = markdownBody;
+        return creature;
+    }
+
+    public PlotThread ParsePlotThread(string fileContent)
+    {
+        var (yamlBlock, markdownBody) = ExtractFrontmatter(fileContent);
+        var plotThread = _yamlDeserializer.Deserialize<PlotThread>(yamlBlock);
+        plotThread.DmNotes = markdownBody;
+        return plotThread;
+    }
+
     /// <summary>
     /// Extracts the YAML frontmatter block and the remaining markdown body from
     /// a file that uses the standard <c>---</c> fence convention.

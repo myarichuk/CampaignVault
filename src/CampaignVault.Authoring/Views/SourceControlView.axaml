@@ -27,6 +27,10 @@
                     IsEnabled="{Binding CanCommit}"
                     Background="{StaticResource AccentColor}" Foreground="White"
                     HorizontalAlignment="Stretch" Padding="10,8" />
+            <Button Content="Discard Local Changes" Command="{Binding DiscardChangesCommand}"
+                    IsEnabled="{Binding CanDiscard}"
+                    Background="#DC2626" Foreground="White"
+                    HorizontalAlignment="Stretch" Padding="10,8" />
         </StackPanel>
     </Grid>
 </UserControl>

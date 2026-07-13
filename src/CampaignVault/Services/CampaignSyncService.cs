@@ -145,6 +145,32 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
+        var creatures = await session.Query<CustomCreature>()
+            .Where(cc => cc.CampaignName == campaignName)
+            .ToListAsync();
+        foreach (var cc in creatures)
+        {
+            response.Entities.Add(new EntityItem
+            {
+                Id = cc.Id,
+                Type = "customcreature",
+                Content = JsonSerializer.Serialize(cc)
+            });
+        }
+
+        var plotThreads = await session.Query<PlotThread>()
+            .Where(pt => pt.CampaignName == campaignName)
+            .ToListAsync();
+        foreach (var pt in plotThreads)
+        {
+            response.Entities.Add(new EntityItem
+            {
+                Id = pt.Id,
+                Type = "plotthread",
+                Content = JsonSerializer.Serialize(pt)
+            });
+        }
+
         return response;
     }
 
@@ -234,6 +260,26 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
                 {
                     itemData.CampaignName = campaignName;
                     await session.StoreAsync(itemData, itemData.Id);
+                }
+            }
+            else if (request.Type == "customcreature")
+            {
+                var creatureData = JsonSerializer.Deserialize<CustomCreature>(request.Content, JsonOptions);
+                stored = creatureData != null;
+                if (creatureData != null)
+                {
+                    creatureData.CampaignName = campaignName;
+                    await session.StoreAsync(creatureData, creatureData.Id);
+                }
+            }
+            else if (request.Type == "plotthread")
+            {
+                var plotThreadData = JsonSerializer.Deserialize<PlotThread>(request.Content, JsonOptions);
+                stored = plotThreadData != null;
+                if (plotThreadData != null)
+                {
+                    plotThreadData.CampaignName = campaignName;
+                    await session.StoreAsync(plotThreadData, plotThreadData.Id);
                 }
             }
             else

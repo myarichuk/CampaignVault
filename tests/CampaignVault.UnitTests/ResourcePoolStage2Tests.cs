@@ -104,19 +104,9 @@ public class ResourcePoolStage2Tests
     {
         var actual = Provider.GetPoolsForSystem(RulesetSystem.Pathfinder2e);
 
-        // 4 spell slot levels + focus_points + bon_mot + gold (no recall_knowledge — investigator not in ORC set)
-        Assert.Equal(7, actual.Count);
+        // 10 spell slot ranks + focus_points + bon_mot + gold (no recall_knowledge — investigator not in ORC set)
+        Assert.Equal(13, actual.Count);
         Assert.False(actual.ContainsKey("recall_knowledge"));
-    }
-
-    [Fact]
-    public void Provider_Fallout2d20_LoadsActionPoints()
-    {
-        var pools = Provider.GetPoolsForSystem(RulesetSystem.Fallout2d20);
-
-        Assert.True(pools.ContainsKey("action_points"));
-        Assert.Equal(10, pools["action_points"].DefaultMax);
-        Assert.Equal(RecoveryType.PerTurn, pools["action_points"].Recovery);
     }
 
     [Fact]
@@ -175,19 +165,4 @@ public class ResourcePoolStage2Tests
         Assert.Contains("ResourcePoolProvider", ex.Message);
     }
 
-    [Fact]
-    public void Initializer_YamlPools_Fallout2d20_CreatesActionPoints()
-    {
-        var character = new Character
-        {
-            Id = "chars/test-fallout",
-            ClassLevel = "Survivor 5",
-            SystemStats = new Fallout2d20Extension { Level = 5 }
-        };
-
-        var sut = new ResourcePoolInitializer(Provider);
-        sut.InitializePools(character, RulesetSystem.Fallout2d20, null);
-
-        Assert.Equal(11, character.SystemStats.ResourcePools["action_points"].Max);
-    }
 }

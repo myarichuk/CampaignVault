@@ -15,7 +15,10 @@ public partial class SourceControlViewModel : ObservableObject
 
     [ObservableProperty] private string _commitMessage = string.Empty;
 
-    [ObservableProperty] private bool _isDirty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCommit))]
+    [NotifyPropertyChangedFor(nameof(CanDiscard))]
+    private bool _isDirty;
 
     [ObservableProperty] private string _headCommitShort = "—";
 
@@ -25,9 +28,12 @@ public partial class SourceControlViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanCommit))]
+    [NotifyPropertyChangedFor(nameof(CanDiscard))]
     private bool _isBusy;
 
     public bool CanCommit => IsDirty && !IsBusy;
+
+    public bool CanDiscard => IsDirty && !IsBusy;
 
     public void Bind(CampaignVaultSession? session, Action? refreshExplorer = null)
     {
@@ -96,6 +102,52 @@ public partial class SourceControlViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"Commit failed: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DiscardChangesAsync()
+    {
+        if (IsBusy) return;
+
+        if (_session is not { IsOpen: true })
+        {
+            StatusMessage = "No vault open.";
+            return;
+        }
+
+        var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+
+        if (owner != null)
+        {
+            var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                owner,
+                "Discard Local Changes",
+                $"Discard all {ChangedPaths.Count} uncommitted change(s)? This permanently reverts tracked files to HEAD and deletes untracked files. This cannot be undone.",
+                "Discard",
+                isDestructive: true);
+
+            if (!confirmed)
+                return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            await _session.DiscardChangesAsync();
+            RefreshStatus();
+            _refreshExplorer?.Invoke();
+            StatusMessage = $"Discarded local changes at {DateTime.Now:HH:mm:ss}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Discard failed: {ex.Message}";
         }
         finally
         {

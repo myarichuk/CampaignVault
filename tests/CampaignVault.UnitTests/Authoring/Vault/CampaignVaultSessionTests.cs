@@ -81,6 +81,47 @@ public sealed class CampaignVaultSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateMetadataAsync_PersistsDisplayNameAndNarrativeFocus()
+    {
+        await _session.CreateAsync(_tempDirectory, "test-campaign", "Dnd5e", "Original Name");
+
+        await _session.UpdateMetadataAsync("New Name", ["heist", "intrigue"]);
+
+        Assert.Equal("New Name", _session.Metadata!.DisplayName);
+        Assert.Equal(["heist", "intrigue"], _session.Metadata.NarrativeFocus);
+
+        using var reopened = new CampaignVaultSession();
+        await reopened.OpenAsync(_tempDirectory);
+        Assert.Equal("New Name", reopened.Metadata!.DisplayName);
+        Assert.Equal(["heist", "intrigue"], reopened.Metadata.NarrativeFocus);
+    }
+
+    [Fact]
+    public async Task RenameEntityAsync_MovesFileAndUpdatesId()
+    {
+        await _session.CreateAsync(_tempDirectory, "test-campaign");
+
+        var grogPath = Path.Combine(_tempDirectory, "characters", "grog.md");
+        await File.WriteAllTextAsync(grogPath, """
+            ---
+            id: characters/grog
+            name: Grog
+            ---
+
+            A brave warrior.
+            """);
+
+        var newRelativePath = await _session.RenameEntityAsync("characters/grog.md", "Groggan the Bold");
+
+        Assert.Equal("characters/groggan-the-bold.md", newRelativePath);
+        Assert.False(File.Exists(grogPath));
+
+        var newContent = await _session.ReadFileAsync(newRelativePath);
+        Assert.Contains("id: characters/groggan-the-bold", newContent);
+        Assert.Contains("A brave warrior.", newContent);
+    }
+
+    [Fact]
     public async Task ScanEntities_FindsMarkdownEntitiesAndHashes()
     {
         await _session.CreateAsync(_tempDirectory, "test-campaign");

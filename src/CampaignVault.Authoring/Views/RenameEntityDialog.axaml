@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CampaignVault.Authoring.Views.RenameEntityDialog"
+        Title="Rename Entity"
+        Width="420" Height="220"
+        MinWidth="380" MinHeight="200"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource SurfaceColor}" Foreground="{StaticResource TextPrimaryColor}"
+        CanResize="False">
+    <DockPanel Margin="24">
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16" Spacing="4">
+            <TextBlock Text="Rename Entity" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
+            <TextBlock Text="Renaming moves the file and updates its id. Sync will treat this as a delete + create."
+                       FontSize="11" Foreground="{StaticResource TextSecondaryColor}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
+            <Button Content="Cancel" Click="Cancel_Click"
+                    Background="{StaticResource SurfaceColor}" Foreground="{StaticResource TextSecondaryColor}"
+                    BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
+                    CornerRadius="4" Padding="18,8" />
+            <Button Name="RenameButton" Content="Rename" Click="Rename_Click"
+                    Background="{StaticResource AccentColor}" Foreground="White"
+                    BorderThickness="0" CornerRadius="4" Padding="18,8" />
+        </StackPanel>
+
+        <StackPanel Spacing="6">
+            <TextBlock Text="New Name" FontSize="11" Foreground="{StaticResource TextSecondaryColor}" />
+            <TextBox Name="NameTextBox"
+                      Background="{StaticResource BackgroundColor}" Foreground="{StaticResource TextPrimaryColor}"
+                      BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
+                      CornerRadius="3" Padding="8,6"
+                      KeyDown="NameTextBox_KeyDown" />
+        </StackPanel>
+    </DockPanel>
+</Window>

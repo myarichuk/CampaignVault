@@ -252,6 +252,24 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     }
 
     [RelayCommand]
+    private async Task EditCampaignMetadataAsync()
+    {
+        if (!Session.IsOpen || Session.Metadata == null) return;
+
+        var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+        if (owner == null) return;
+
+        var dialog = new Views.EditCampaignMetadataDialog(Session.Metadata.DisplayName, Session.Metadata.NarrativeFocus);
+        var result = await dialog.ShowDialog<bool?>(owner);
+        if (result != true) return;
+
+        await Session.UpdateMetadataAsync(dialog.DisplayName, dialog.NarrativeFocus);
+        WorkspaceStatusMessage = $"Updated campaign metadata for '{dialog.DisplayName ?? Session.Metadata.CampaignName}'.";
+    }
+
+    [RelayCommand]
     private void Exit()
     {
         var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
@@ -446,6 +464,39 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     }
 
     [RelayCommand]
+    private async Task RenameSelectedEntityAsync()
+    {
+        if (Workspace.SelectedNode is not EntityNodeViewModel entityNode || !Session.IsOpen)
+            return;
+
+        var owner = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+        if (owner == null) return;
+
+        var dialog = new Views.RenameEntityDialog(entityNode.Title);
+        var result = await dialog.ShowDialog<bool?>(owner);
+        if (result != true || string.IsNullOrWhiteSpace(dialog.NewName))
+            return;
+
+        try
+        {
+            var newRelativePath = await Session.RenameEntityAsync(entityNode.Entity.RelativePath, dialog.NewName);
+            RefreshAll();
+
+            var found = FindEntityNodeByPath(Workspace.Categories, newRelativePath);
+            if (found != null)
+                Workspace.SelectedNode = found;
+
+            WorkspaceStatusMessage = $"Renamed to {newRelativePath}. Commit the change to record it.";
+        }
+        catch (Exception ex)
+        {
+            WorkspaceStatusMessage = $"Rename failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private async Task CreateNewEntityAsync(CreateEntityRequest? request)
     {
         if (request == null || !Session.IsOpen)
@@ -626,6 +677,30 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
                 Badge1Value = it.CoreCategory.ToString();
                 Badge2Label = "Holder:";
                 Badge2Value = it.HolderId ?? "";
+            }
+            else if (type == "customcreature")
+            {
+                var cc = _parser.ParseCustomCreature(value);
+                ParsedCharacter = new Character { Id = cc.Id, Name = cc.Name, Notes = cc.Description };
+                PreviewNotes = cc.Description ?? string.Empty;
+                EntityTypeDisplay = "Creature";
+                IsCharacter = false;
+                Badge1Label = "System:";
+                Badge1Value = cc.System.ToString();
+                Badge2Label = "CR:";
+                Badge2Value = cc.ChallengeRating ?? "";
+            }
+            else if (type == "plotthread")
+            {
+                var pt = _parser.ParsePlotThread(value);
+                ParsedCharacter = new Character { Id = pt.Id, Name = pt.Title, Notes = pt.DmNotes };
+                PreviewNotes = pt.DmNotes ?? string.Empty;
+                EntityTypeDisplay = "Plot Thread";
+                IsCharacter = false;
+                Badge1Label = "State:";
+                Badge1Value = pt.State.ToString();
+                Badge2Label = "Tension:";
+                Badge2Value = pt.TensionLevel.ToString();
             }
             else
             {

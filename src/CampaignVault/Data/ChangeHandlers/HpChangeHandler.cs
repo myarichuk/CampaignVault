@@ -1,3 +1,4 @@
+using System.Linq;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -5,8 +6,10 @@ namespace CampaignVault.Data.ChangeHandlers;
 /// <summary>
 /// Handles HpChange using the pre-loaded character (safe pattern).
 /// </summary>
-public sealed class HpChangeHandler : IWorldChangeHandler
+public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHandler
 {
+    private readonly IRollService _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
+
     public bool ShouldHandle(WorldChange change) => change is HpChange;
 
     public async Task<ChangeHandlerResult> ApplyAsync(
@@ -47,23 +50,48 @@ public sealed class HpChangeHandler : IWorldChangeHandler
         character.CurrentHp = Math.Clamp(character.CurrentHp + hp.Delta, 0, character.MaxHp);
         context.RecordMessage($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {character.CurrentHp}/{character.MaxHp})");
 
-        // Check concentration break on damage (DC 10 or half damage, whichever is higher)
+        // Concentration break check: DC = max(10, half damage taken), CON save vs DC.
         if (damageTaken > 0 && character.SystemStats?.StatusEffects != null)
         {
             var concentration = character.SystemStats.StatusEffects.FirstOrDefault(e => e.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase));
             if (concentration != null)
             {
-                var concentrationDc = Math.Max(10, (int)Math.Ceiling(damageTaken / 2.0f));
-                // For now, concentration breaks automatically if damage >= DC (no actual save roll).
-                // Full implementation would roll CON save and only break on failure.
-                if (damageTaken >= concentrationDc)
+                var dc = Math.Max(10, (int)Math.Ceiling(damageTaken / 2.0f));
+                var conMod = GetConstitutionSaveModifier(character.SystemStats);
+                var outcome = await _rollService.RollAsync(
+                    new RollRequest { Tag = "concentration", Expression = "1d20", Bonus = conMod }, ct);
+
+                if (outcome.Result < dc)
                 {
                     character.SystemStats.StatusEffects.Remove(concentration);
-                    context.RecordMessage($"Concentration broken for {hp.CharacterId} due to {damageTaken} damage (DC {concentrationDc})");
+                    context.RecordMessage(
+                        $"Concentration broken for {hp.CharacterId}: {damageTaken} damage (DC {dc}), CON save {outcome.Result} failed.");
+                }
+                else
+                {
+                    context.RecordMessage(
+                        $"Concentration held for {hp.CharacterId}: {damageTaken} damage (DC {dc}), CON save {outcome.Result} succeeded.");
                 }
             }
         }
 
         return ChangeHandlerResult.Ok;
+    }
+
+    private static int GetConstitutionSaveModifier(SystemExtension stats)
+    {
+        if (stats is Dnd5eExtension dnd5e)
+        {
+            var matchedKey = dnd5e.SavingThrowModifiers.Keys
+                .FirstOrDefault(k => string.Equals(k, "Constitution", StringComparison.OrdinalIgnoreCase));
+            if (matchedKey != null && dnd5e.SavingThrowModifiers.TryGetValue(matchedKey, out var saveMod))
+            {
+                return saveMod;
+            }
+
+            return dnd5e.GetAbilityModifier(dnd5e.Constitution);
+        }
+
+        return 0;
     }
 }

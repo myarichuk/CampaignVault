@@ -1,18 +1,15 @@
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
-using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
 public sealed class RulesetActionHandler(
     IRulesetModuleSelector selector,
-    CampaignDocumentKeys keys,
-    WeaponDefinitionProvider? weaponDefs = null)
+    CampaignDocumentKeys keys)
     : IWorldChangeHandler
 {
     private readonly IRulesetModuleSelector _selector = selector ?? throw new ArgumentNullException(nameof(selector));
     private readonly CampaignDocumentKeys _keys = keys ?? throw new ArgumentNullException(nameof(keys));
-    private readonly WeaponDefinitionProvider? _weaponDefs = weaponDefs;
 
     public bool ShouldHandle(WorldChange change) => change is RulesetAction;
 
@@ -72,7 +69,7 @@ public sealed class RulesetActionHandler(
         // so weapon-based range enforcement (the documented, primary path) actually has data to check.
         if (action.ActionType == RulesetActionType.Attack)
         {
-            await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct, _weaponDefs, module.System);
+            await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct);
         }
 
         // Pre-check: range/AoE validation (only if the ruleset enforces it)

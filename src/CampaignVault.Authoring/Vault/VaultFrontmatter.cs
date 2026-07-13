@@ -33,6 +33,18 @@ public static partial class VaultFrontmatter
         return !string.IsNullOrWhiteSpace(id);
     }
 
+    /// <summary>
+    /// Replaces the value of the frontmatter <c>id:</c> line, preserving everything else
+    /// in the document verbatim (formatting, comments, unrelated fields).
+    /// </summary>
+    public static string ReplaceIdLine(string content, string newId)
+    {
+        if (!HasFrontmatterFence(content))
+            throw new VaultException("Cannot replace id: content has no frontmatter fence.");
+
+        return IdLineRegex().Replace(content, $"id: {newId}", count: 1);
+    }
+
     public static string InferIdFromRelativePath(string relativePath, string entityType)
     {
         var normalized = relativePath.Replace('\\', '/');

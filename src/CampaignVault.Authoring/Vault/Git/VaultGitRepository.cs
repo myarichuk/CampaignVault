@@ -103,6 +103,32 @@ public sealed class VaultGitRepository : IDisposable
         return commit.Sha;
     }
 
+    /// <summary>
+    /// Discards all uncommitted local changes: hard-resets tracked files to HEAD and deletes
+    /// untracked files/directories, leaving the working tree clean and pushable/pullable again.
+    /// </summary>
+    public void DiscardChanges()
+    {
+        EnsureOpen();
+        if (_repository!.Head.Tip == null)
+            return;
+
+        _repository.Reset(ResetMode.Hard, _repository.Head.Tip);
+
+        var status = _repository.RetrieveStatus(new StatusOptions
+        {
+            IncludeUntracked = true,
+            RecurseUntrackedDirs = true
+        });
+
+        foreach (var entry in status.Untracked)
+        {
+            var fullPath = System.IO.Path.Combine(RepositoryPath, entry.FilePath);
+            if (System.IO.File.Exists(fullPath))
+                System.IO.File.Delete(fullPath);
+        }
+    }
+
     public GitWorkingTreeStatus GetWorkingTreeStatus()
     {
         EnsureOpen();

@@ -27,7 +27,7 @@ message CampaignListResponse {
 
 message CampaignItem {
     string name = 1;
-    string ruleset = 2; // e.g., "Dnd5e", "Pf2e", "Fallout2d20"
+    string ruleset = 2; // e.g., "Dnd5e", "Pf2e", "Narrative"
 }
 
 message GetCampaignEntitiesRequest {

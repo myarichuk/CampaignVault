@@ -26,6 +26,9 @@
                 <Separator />
                 <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
             </MenuItem>
+            <MenuItem Header="_Campaign">
+                <MenuItem Header="Edit Metadata..." Command="{Binding EditCampaignMetadataCommand}" />
+            </MenuItem>
         </Menu>
 
         <Border Grid.Row="1" Background="{StaticResource SolRed}" Opacity="0.15" Padding="12,6"
@@ -43,6 +46,8 @@
                             IsVisible="{Binding ApplicationState.CurrentState, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Editor}" />
                     <Button Content="Open Folder" Command="{Binding OpenCampaignFolderCommand}" FontSize="11" Padding="8,4" />
                     <Button Content="Save" Command="{Binding SaveActiveFileCommand}" FontSize="11" Padding="8,4"
+                            IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <Button Content="Rename" Command="{Binding RenameSelectedEntityCommand}" FontSize="11" Padding="8,4"
                             IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     <Button Content="Delete" Command="{Binding DeleteSelectedEntityCommand}" FontSize="11" Padding="8,4"
                             IsEnabled="{Binding Workspace.SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}" />

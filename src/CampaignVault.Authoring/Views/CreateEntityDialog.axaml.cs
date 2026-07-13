@@ -55,6 +55,11 @@ public partial class CreateEntityDialog : Window
     private string? SelectedType() =>
         (TypeListBox.SelectedItem as ListBoxItem)?.Tag?.ToString();
 
-    private static string GetDefaultName(string type) =>
-        type.Length == 0 ? "New Entity" : $"New {char.ToUpper(type[0])}{type[1..]}";
+    private static string GetDefaultName(string type) => type switch
+    {
+        "customcreature" => "New Creature",
+        "plotthread" => "New Plot Thread",
+        "" => "New Entity",
+        _ => $"New {char.ToUpper(type[0])}{type[1..]}"
+    };
 }

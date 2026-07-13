@@ -1,0 +1,57 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CampaignVault.Authoring.Views.EditCampaignMetadataDialog"
+        Title="Edit Campaign Metadata"
+        Width="520" Height="420"
+        MinWidth="480" MinHeight="380"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource SurfaceColor}" Foreground="{StaticResource TextPrimaryColor}">
+    <DockPanel Margin="24">
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,20" Spacing="4">
+            <TextBlock Text="Edit Campaign Metadata" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
+            <TextBlock Text="Update the display name and narrative focus tags for this campaign." FontSize="12" Foreground="{StaticResource TextSecondaryColor}" />
+        </StackPanel>
+
+        <!-- Footer: buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
+            <Button Content="Cancel" Click="Cancel_Click"
+                    Background="{StaticResource SurfaceColor}" Foreground="{StaticResource TextSecondaryColor}"
+                    BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
+                    CornerRadius="4" Padding="18,8" />
+            <Button Name="SaveButton" Content="Save" Click="Save_Click"
+                    Background="{StaticResource AccentColor}" Foreground="White"
+                    BorderThickness="0" CornerRadius="4" Padding="18,8" />
+        </StackPanel>
+
+        <!-- Content -->
+        <StackPanel Spacing="18">
+            <!-- Display Name -->
+            <Border Background="{StaticResource SurfaceColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="14,12">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Display Name" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
+                    <TextBlock Text="Human-friendly title for your campaign" FontSize="10" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBox Name="DisplayNameTextBox"
+                             PlaceholderText="Waterdeep: Dragon Heist"
+                             Background="{StaticResource BackgroundColor}" Foreground="{StaticResource TextPrimaryColor}"
+                             BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
+                             CornerRadius="3" Padding="8,6" />
+                </StackPanel>
+            </Border>
+
+            <!-- Narrative Focus / Tags -->
+            <Border Background="{StaticResource SurfaceColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="14,12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Narrative Focus" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryColor}" />
+                    <TextBlock Text="Tags to guide the LLM's story direction (comma-separated, e.g., 'political intrigue, dungeon crawl, mystery')" FontSize="10" Foreground="{StaticResource TextSecondaryColor}" />
+                    <TextBox Name="NarrativeFocusTextBox"
+                             PlaceholderText="political intrigue, heist, urban adventure"
+                             Background="{StaticResource BackgroundColor}" Foreground="{StaticResource TextPrimaryColor}"
+                             BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
+                             CornerRadius="3" Padding="8,6"
+                             AcceptsReturn="True" Height="60" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </DockPanel>
+</Window>

@@ -32,18 +32,6 @@ public record ConditionHandbookEntry
     public string? MoodHint { get; init; }
 }
 
-public record SkillHandbookEntry
-{
-    [JsonPropertyName("name")]
-    public string Name { get; init; } = default!;
-
-    [JsonPropertyName("attribute")]
-    public string? Attribute { get; init; }
-
-    [JsonPropertyName("description")]
-    public string? Description { get; init; }
-}
-
 public record CreatureHandbookSummary
 {
     [JsonPropertyName("totalCount")]
@@ -75,9 +63,6 @@ public record SystemHandbookResponse
 
     [JsonPropertyName("conditions")]
     public List<ConditionHandbookEntry> Conditions { get; init; } = [];
-
-    [JsonPropertyName("skills")]
-    public List<SkillHandbookEntry> Skills { get; init; } = [];
 
     [JsonPropertyName("creatures")]
     public CreatureHandbookSummary? Creatures { get; init; }

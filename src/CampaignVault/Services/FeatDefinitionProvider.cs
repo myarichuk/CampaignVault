@@ -6,8 +6,8 @@ using CampaignVault.Models;
 namespace CampaignVault.Services;
 
 /// <summary>
-/// Loads feat/perk definitions from per-system YAML files, resolves inheritance, and caches results.
-/// D&amp;D 5e and PF2e use <c>feats/</c>; Fallout 2d20 uses <c>perks/</c>.
+/// Loads feat definitions from per-system YAML files, resolves inheritance, and caches results.
+/// D&amp;D 5e and PF2e use <c>feats/</c>.
 /// </summary>
 public class FeatDefinitionProvider : IRulesetYamlProvider
 {
@@ -21,7 +21,6 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
         _logger = logger;
         Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", "feats", embeddedAssembly, logger);
         Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", "feats", embeddedAssembly, logger);
-        Register(RulesetSystem.Fallout2d20, rulesetDataDirectory, "fallout2d20", "perks", embeddedAssembly, logger);
     }
 
     private void Register(

@@ -32,7 +32,6 @@ public static class SystemHandbookBuilder
         BackgroundDefinitionProvider backgroundProvider,
         FeatDefinitionProvider featProvider,
         ConditionDefinitionProvider conditionProvider,
-        SkillDefinitionProvider? skillProvider = null,
         CreatureDefinitionProvider? creatureProvider = null)
     {
         var classes = classProvider.GetClassesForSystem(system)
@@ -62,12 +61,6 @@ public static class SystemHandbookBuilder
             .Select(ToConditionEntry)
             .ToList();
 
-        var skills = (skillProvider?.GetSkillsForSystem(system) ?? new Dictionary<string, SkillDefinition>())
-            .Values
-            .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(ToSkillEntry)
-            .ToList();
-
         var creatureList = (creatureProvider?.GetCreaturesForSystem(system) ?? new Dictionary<string, CreatureDefinition>())
             .Values
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
@@ -94,7 +87,6 @@ public static class SystemHandbookBuilder
             Backgrounds = backgrounds,
             Feats = feats,
             Conditions = conditions,
-            Skills = skills,
             Creatures = creatures,
             Notes = notes,
         };
@@ -118,11 +110,4 @@ public static class SystemHandbookBuilder
             MoodHint = def.MoodHint,
         };
 
-    private static SkillHandbookEntry ToSkillEntry(SkillDefinition def) =>
-        new()
-        {
-            Name = def.Name,
-            Attribute = def.Attribute,
-            Description = def.Description,
-        };
 }

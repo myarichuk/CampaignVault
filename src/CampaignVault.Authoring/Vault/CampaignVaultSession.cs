@@ -133,6 +133,14 @@ public sealed class CampaignVaultSession : IDisposable
     private Task WithLockAsync(Func<Task> action) =>
         WithLockAsync(async () => { await action(); return true; });
 
+    public Task DiscardChangesAsync() =>
+        WithLockAsync(() =>
+        {
+            EnsureOpen();
+            _git!.DiscardChanges();
+            return Task.CompletedTask;
+        });
+
     public Task CommitAsync(string message) =>
         WithLockAsync(async () =>
         {
@@ -200,6 +208,55 @@ public sealed class CampaignVaultSession : IDisposable
             return (relativePath, template);
         });
 
+    public Task<string> RenameEntityAsync(string relativePath, string newName) =>
+        WithLockAsync(async () =>
+        {
+            EnsureOpen();
+            if (string.IsNullOrWhiteSpace(relativePath))
+                throw new ArgumentException("Relative path is required.", nameof(relativePath));
+            if (string.IsNullOrWhiteSpace(newName))
+                throw new ArgumentException("New name is required.", nameof(newName));
+
+            var normalizedOld = relativePath.Replace('\\', '/');
+            var entityType = VaultPaths.EntityTypeFromRelativePath(normalizedOld)
+                ?? throw new VaultException($"Could not determine entity type for '{normalizedOld}'.");
+
+            var content = await ReadFileAsync(normalizedOld);
+            if (!VaultFrontmatter.TryReadId(content, out var oldId) || oldId == null)
+                throw new VaultException($"Could not read id from '{normalizedOld}'.");
+
+            var lastSlash = oldId.LastIndexOf('/');
+            var idPrefix = lastSlash >= 0 ? oldId[..(lastSlash + 1)] : string.Empty;
+
+            var folder = EntityCreation.GetFolderForType(entityType);
+            var prefix = folder + "/";
+            var withinFolder = normalizedOld.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                ? normalizedOld[prefix.Length..]
+                : normalizedOld;
+            var subfolder = Path.GetDirectoryName(withinFolder)?.Replace('\\', '/');
+            subfolder = string.IsNullOrEmpty(subfolder) ? null : subfolder;
+
+            var (newRelativePath, newSlug) = EntityCreation.BuildNewEntityPath(
+                entityType, newName, DateTime.Now,
+                relativePathExists: rel => rel != normalizedOld
+                    && File.Exists(Path.Combine(VaultPath!, rel.Replace('/', Path.DirectorySeparatorChar))),
+                targetSubfolder: subfolder);
+
+            if (string.Equals(newRelativePath, normalizedOld, StringComparison.OrdinalIgnoreCase))
+                return newRelativePath;
+
+            var newId = idPrefix + newSlug;
+            var newContent = VaultFrontmatter.ReplaceIdLine(content, newId);
+
+            await WriteEntityFileUnlockedAsync(newRelativePath, newContent);
+
+            var oldAbsolute = Path.Combine(VaultPath!, normalizedOld.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(oldAbsolute))
+                File.Delete(oldAbsolute);
+
+            return newRelativePath;
+        });
+
     public Task DeleteEntityFileAsync(string relativePath) =>
         WithLockAsync(async () =>
         {
@@ -218,6 +275,16 @@ public sealed class CampaignVaultSession : IDisposable
         EnsureOpen();
         await _syncEngine.SyncCampaignMetadataAsync();
     }
+
+    public Task UpdateMetadataAsync(string? displayName, List<string> narrativeFocus) =>
+        WithLockAsync(async () =>
+        {
+            EnsureOpen();
+            Metadata!.DisplayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim();
+            Metadata.NarrativeFocus = narrativeFocus;
+            await _metadataService.SaveMetadataAsync(VaultPath!, Metadata);
+            return true;
+        });
 
     public Task CloseAsync()
     {

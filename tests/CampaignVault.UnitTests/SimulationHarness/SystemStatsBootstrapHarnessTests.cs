@@ -107,47 +107,6 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
             });
     }
 
-    [Fact]
-    public async Task Scenario_Fallout2d20_PressureThenBootstrapThenCombat()
-    {
-        var campaign = "harness-fallout-" + Guid.NewGuid().ToString("N")[..8];
-        var tools = CreateHarnessTools();
-        await TestCampaignDefaults.EnsureExistsAsync(tools, campaign, RulesetSystem.Fallout2d20);
-
-        var locId = $"locations/highway-ruins-{Guid.NewGuid():N}";
-        var pcId = "chars/vault-dweller-1";
-        var enemyId = "chars/raider-scout-1";
-
-        await RunPressureThenPatchAsync(tools, campaign, locId, pcId, enemyId, RulesetSystem.Fallout2d20,
-            bootstrapChanges: BuildFalloutBootstrapCommit(locId, pcId, enemyId));
-
-        await RunCombatLoopAsync(tools, campaign, locId, pcId, enemyId,
-            attack: new RulesetAction
-            {
-                CharacterId = pcId,
-                TargetIds = [enemyId],
-                ActionType = RulesetActionType.Attack,
-                ActionName = "10mm Pistol",
-                ActionCategory = ActionCategory.Ranged,
-                DamageType = "Physical",
-                Parameters = new Dictionary<string, string>
-                {
-                    { "attribute", "Agility" },
-                    { "skill", "SmallGuns" },
-                    { "pool", "2" },
-                    { "damageDice", "3" },
-                    { "difficulty", "1" }
-                }
-            },
-            assertStoredStats: c =>
-            {
-                var stats = Assert.IsType<Fallout2d20Extension>(c.SystemStats);
-                Assert.Equal(7, stats.Agility);
-                Assert.Equal(2, stats.Skills["SmallGuns"]);
-                Assert.Contains("SmallGuns", stats.TagSkills);
-            });
-    }
-
     private async Task RunPressureThenPatchAsync(
         CampaignTools tools,
         string campaign,
@@ -331,38 +290,6 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         new ActivityChange { CharacterId = enemyId, NewLocationId = locId, NewActivity = "Rattling its blade" }
     ];
 
-    private static WorldChange[] BuildFalloutBootstrapCommit(string locId, string pcId, string enemyId) =>
-    [
-        new SystemStatsChange
-        {
-            CharacterId = pcId,
-            SystemStats = new Fallout2d20Extension
-            {
-                Agility = 7,
-                Perception = 6,
-                Endurance = 6,
-                Defense = 1,
-                Skills = new Dictionary<string, int> { { "SmallGuns", 2 }, { "Sneak", 1 } },
-                TagSkills = ["SmallGuns"]
-            }
-        },
-        new SystemStatsChange
-        {
-            CharacterId = enemyId,
-            SystemStats = new Fallout2d20Extension
-            {
-                Agility = 6,
-                Perception = 5,
-                Endurance = 5,
-                Defense = 1,
-                Skills = new Dictionary<string, int> { { "SmallGuns", 1 } },
-                DamageResistance = new Dictionary<string, int> { { "Physical", 0 } }
-            }
-        },
-        new ActivityChange { CharacterId = pcId, NewLocationId = locId, NewActivity = "Taking cover behind rubble" },
-        new ActivityChange { CharacterId = enemyId, NewLocationId = locId, NewActivity = "Popping up to shoot" }
-    ];
-
     private async Task WaitForCombatantsIndexedAsync(string campaign, params string[] characterIds)
     {
         for (var attempt = 0; attempt < 50; attempt++)
@@ -387,7 +314,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         IRulesetModuleSelector selector,
         CampaignDocumentKeys keys) =>
     [
-        new HpChangeHandler(),
+        new HpChangeHandler(new HarnessPredictableRollService()),
         new ItemTransferHandler(),
         RulesetDataTestHelper.CreateStatusChangeHandler(),
         new EventOccurredHandler(),
@@ -458,8 +385,5 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
 
             return outcomes;
         }
-
-        public Task<FalloutCombatDiceResult> RollFalloutCombatDiceAsync(int count, CancellationToken ct = default) =>
-            Task.FromResult(new FalloutCombatDiceResult(Damage: 4, Effects: 0, HasCritical: false));
     }
 }

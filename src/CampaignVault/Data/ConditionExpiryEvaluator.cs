@@ -64,8 +64,9 @@ public static class ConditionExpiryEvaluator
         return definition.DurationType == ConditionDurationType.UntilLongRest;
     }
 
-    // Concentration (DurationType.Concentration) intentionally has no auto-expiry here.
-    // TODO: break on damage — CON save vs DC 10 or half damage taken; also break when casting another concentration spell.
+    // Concentration break checks (damage → CON save; recasting another concentration effect)
+    // are handled inline in HpChangeHandler/StatusChangeHandler via StatusEffect.Name matching,
+    // not here — no shipped condition YAML currently sets DurationType.Concentration.
 
     /// <summary>
     /// UntilLongRest effects that fully clear on long rest (non-stacking conditions).

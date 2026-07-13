@@ -1,3 +1,4 @@
+using System.Linq;
 using CampaignVault.Models;
 using CampaignVault.Services;
 
@@ -86,6 +87,20 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
                 Category = "Legacy",
                 AppliedBy = "legacy-status-change"
             };
+        }
+
+        // A character can only concentrate on one effect at a time — casting a new
+        // concentration effect breaks whatever it was previously concentrating on.
+        if (effect.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase))
+        {
+            var broken = character.SystemStats.StatusEffects
+                .Where(e => e.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            foreach (var priorEffect in broken)
+            {
+                character.SystemStats.StatusEffects.Remove(priorEffect);
+                context.RecordMessage($"Concentration on '{priorEffect.Name}' broken for {add.CharacterId} by casting '{effect.Name}'.");
+            }
         }
 
         character.SystemStats.StatusEffects.Add(effect);

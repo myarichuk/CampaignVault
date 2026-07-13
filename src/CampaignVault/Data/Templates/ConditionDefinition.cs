@@ -57,8 +57,10 @@ public enum ConditionDurationType
     UntilLongRest,
 
     /// <summary>
-    /// Spell/ability concentration. Does not auto-expire by day or rest.
-    /// TODO: break on damage (CON save DC 10 or half damage) — wire when combat damage pipeline can dispatch concentration checks.
+    /// Spell/ability concentration. Does not auto-expire by day or rest; breaks on damage
+    /// (CON save vs max(10, half damage)) or when casting another concentration effect —
+    /// see HpChangeHandler/StatusChangeHandler, which key off StatusEffect.Name containing
+    /// "Concentration" rather than this enum value (no shipped condition YAML uses it yet).
     /// </summary>
     Concentration,
 

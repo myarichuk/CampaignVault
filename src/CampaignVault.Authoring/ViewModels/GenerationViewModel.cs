@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Authoring.Services;
@@ -12,6 +14,9 @@ namespace CampaignVault.Authoring.ViewModels;
 public partial class GenerationViewModel : ObservableObject, IDisposable
 {
     private readonly SettingsViewModel _settingsViewModel;
+
+    public IReadOnlyList<string> EntityTypes { get; } =
+        VaultPaths.EntityFolders.Select(f => f.EntityType).ToList();
 
     [ObservableProperty] private string _userPrompt = string.Empty;
 

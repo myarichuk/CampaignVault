@@ -18,6 +18,8 @@ public sealed class EntityCanonicalizerTests
     [InlineData("lore")]
     [InlineData("rumor")]
     [InlineData("event")]
+    [InlineData("customcreature")]
+    [InlineData("plotthread")]
     public void RoundTrip_AllEntityTypes_ProducesStableCanonicalHash(string entityType)
     {
         var markdown = MinimalMarkdown(entityType);
@@ -155,6 +157,25 @@ public sealed class EntityCanonicalizerTests
                 dayLogged: 3
                 ---
                 Party ambushed on the road.
+                """,
+            "customcreature" => """
+                ---
+                id: creatures/giant-rat-swarm
+                name: Giant Rat Swarm
+                system: dnd5e
+                challengeRating: "1/4"
+                hp: 7
+                ---
+                A swarm of oversized vermin.
+                """,
+            "plotthread" => """
+                ---
+                id: plotthreads/the-hidden-cult
+                title: The Hidden Cult
+                state: active
+                tensionLevel: 10
+                ---
+                DM notes on the cult's plans.
                 """,
             _ => throw new ArgumentOutOfRangeException(nameof(entityType))
         };

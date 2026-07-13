@@ -66,6 +66,35 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
         Assert.False(response.Success);
     }
 
+    [Theory]
+    [InlineData("customcreature")]
+    [InlineData("plotthread")]
+    public async Task PushCampaignEntity_ThenGetCampaignEntities_RoundTripsNewEntityTypes(string type)
+    {
+        var service = CreateService();
+        var campaignName = "campaign-" + Guid.NewGuid();
+        var id = type == "customcreature" ? "creatures/goblin-" + Guid.NewGuid() : "plotthreads/cult-" + Guid.NewGuid();
+
+        var content = type == "customcreature"
+            ? JsonSerializer.Serialize(new CustomCreature { Id = id, Name = "Goblin" })
+            : JsonSerializer.Serialize(new PlotThread { Id = id, Title = "The Cult" });
+
+        var pushResponse = await service.PushCampaignEntity(new PushCampaignEntityRequest
+        {
+            CampaignName = campaignName,
+            Id = id,
+            Type = type,
+            Content = content
+        }, CreateContext());
+
+        Assert.True(pushResponse.Success, pushResponse.Message);
+
+        var listResponse = await service.GetCampaignEntities(
+            new GetCampaignEntitiesRequest { CampaignName = campaignName }, CreateContext());
+
+        Assert.Contains(listResponse.Entities, e => e.Id == id && e.Type == type);
+    }
+
     [Fact]
     public async Task DeleteCampaignEntity_WrongCampaign_DoesNotDelete()
     {

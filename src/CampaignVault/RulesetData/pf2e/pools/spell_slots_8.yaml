@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+# See https://paizo.com/orclicense — certain elements are Paizo's Reserved Material under the ORC License.
+name: spell_slots_8
+description: 8th-rank spell slots (recovers on long rest)
+applicableSystems: [pf2e]
+recovery: LongRest
+defaultMax: 1
+levelToMaxMap:
+  "15": 1

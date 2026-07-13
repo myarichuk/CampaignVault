@@ -10,18 +10,9 @@
         <!-- Entity Type Selector -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
             <TextBlock Text="Entity Type:" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryColor}" />
-            <ComboBox Name="EntityTypeCombo" SelectedItem="{Binding SelectedEntityType}" Width="120"
+            <ComboBox Name="EntityTypeCombo" ItemsSource="{Binding EntityTypes}" SelectedItem="{Binding SelectedEntityType}" Width="120"
                      Background="{StaticResource SurfaceColor}" Foreground="{StaticResource TextPrimaryColor}"
-                     BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="4" Padding="8,4">
-                <ComboBoxItem>character</ComboBoxItem>
-                <ComboBoxItem>location</ComboBoxItem>
-                <ComboBoxItem>quest</ComboBoxItem>
-                <ComboBoxItem>item</ComboBoxItem>
-                <ComboBoxItem>faction</ComboBoxItem>
-                <ComboBoxItem>lore</ComboBoxItem>
-                <ComboBoxItem>rumor</ComboBoxItem>
-                <ComboBoxItem>event</ComboBoxItem>
-            </ComboBox>
+                     BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="4" Padding="8,4" />
         </StackPanel>
 
         <!-- User Prompt -->

@@ -16,6 +16,8 @@ public class EntityCreationTests
     [InlineData("rumor", true)]
     [InlineData("event", true)]
     [InlineData("item", true)]
+    [InlineData("customcreature", true)]
+    [InlineData("plotthread", true)]
     [InlineData("unknown", false)]
     [InlineData("spell", false)]
     [InlineData("", false)]
@@ -36,6 +38,8 @@ public class EntityCreationTests
     [InlineData("rumor", "rumors")]
     [InlineData("event", "events")]
     [InlineData("item", "items")]
+    [InlineData("customcreature", "creatures")]
+    [InlineData("plotthread", "plotthreads")]
     public void GetFolderForType_ReturnsCorrectFolder(string type, string expectedFolder)
     {
         var result = EntityCreation.GetFolderForType(type);

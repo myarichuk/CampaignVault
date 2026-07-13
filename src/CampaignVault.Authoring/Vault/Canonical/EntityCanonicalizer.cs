@@ -116,6 +116,13 @@ public sealed class EntityCanonicalizer
                 i.CampaignName = campaignName;
                 i.LastUpdated = DateTime.UtcNow;
                 break;
+            case CustomCreature cc:
+                cc.CampaignName = campaignName;
+                cc.LastUpdated = DateTime.UtcNow;
+                break;
+            case PlotThread pt:
+                pt.CampaignName = campaignName;
+                break;
         }
     }
 
@@ -136,6 +143,8 @@ public sealed class EntityCanonicalizer
             "rumor" => _parser.ParseRumor(markdown),
             "event" => _parser.ParseEvent(markdown),
             "item" => _parser.ParseItem(markdown),
+            "customcreature" => _parser.ParseCustomCreature(markdown),
+            "plotthread" => _parser.ParsePlotThread(markdown),
             _ => throw new VaultException($"Unsupported entity type '{entityType}'.")
         };
 
@@ -150,6 +159,8 @@ public sealed class EntityCanonicalizer
             "rumor" => JsonSerializer.Deserialize<Rumor>(json, JsonOptions),
             "event" => JsonSerializer.Deserialize<Event>(json, JsonOptions),
             "item" => JsonSerializer.Deserialize<Item>(json, JsonOptions),
+            "customcreature" => JsonSerializer.Deserialize<CustomCreature>(json, JsonOptions),
+            "plotthread" => JsonSerializer.Deserialize<PlotThread>(json, JsonOptions),
             _ => throw new VaultException($"Unsupported entity type '{entityType}'.")
         };
 
@@ -165,6 +176,8 @@ public sealed class EntityCanonicalizer
             "rumor" => BuildRumor((Rumor)model),
             "event" => BuildEvent((Event)model),
             "item" => BuildItem((Item)model),
+            "customcreature" => BuildCustomCreature((CustomCreature)model),
+            "plotthread" => BuildPlotThread((PlotThread)model),
             _ => throw new VaultException($"Unsupported entity type '{entityType}'.")
         };
 
@@ -210,6 +223,13 @@ public sealed class EntityCanonicalizer
             case Item i:
                 i.CampaignName = null;
                 i.LastUpdated = default;
+                break;
+            case CustomCreature cc:
+                cc.CampaignName = null;
+                cc.LastUpdated = default;
+                break;
+            case PlotThread pt:
+                pt.CampaignName = null;
                 break;
         }
     }
@@ -341,6 +361,39 @@ public sealed class EntityCanonicalizer
             Properties = i.Properties
         }, i.Description ?? string.Empty);
 
+    private static (object frontmatter, string body) BuildCustomCreature(CustomCreature cc) =>
+        (new CustomCreature
+        {
+            Id = cc.Id,
+            Name = cc.Name,
+            System = cc.System,
+            Level = cc.Level,
+            ChallengeRating = cc.ChallengeRating,
+            Hp = cc.Hp,
+            Defense = cc.Defense,
+            Skills = cc.Skills,
+            Abilities = cc.Abilities
+        }, cc.Description ?? string.Empty);
+
+    private static (object frontmatter, string body) BuildPlotThread(PlotThread pt) =>
+        (new PlotThread
+        {
+            Id = pt.Id,
+            Title = pt.Title,
+            Summary = pt.Summary,
+            State = pt.State,
+            TensionLevel = pt.TensionLevel,
+            Clues = pt.Clues,
+            InvolvedEntityIds = pt.InvolvedEntityIds,
+            ResolutionCondition = pt.ResolutionCondition,
+            ForeshadowingHooks = pt.ForeshadowingHooks,
+            DayCreated = pt.DayCreated,
+            LastUpdatedDay = pt.LastUpdatedDay,
+            DeadlineDay = pt.DeadlineDay,
+            ClimaxEnteredDay = pt.ClimaxEnteredDay,
+            IsPlayerVisible = pt.IsPlayerVisible
+        }, pt.DmNotes ?? string.Empty);
+
     /// <summary>
     /// Returns a canonical markdown template for a new entity with all meaningful fields populated
     /// at sensible defaults. Uses the same field whitelist as the sync serializer, guaranteeing
@@ -359,6 +412,8 @@ public sealed class EntityCanonicalizer
             "rumor"     => BuildRumor((Rumor)model),
             "event"     => BuildEvent((Event)model),
             "item"      => BuildItem((Item)model),
+            "customcreature" => BuildCustomCreature((CustomCreature)model),
+            "plotthread"     => BuildPlotThread((PlotThread)model),
             _ => throw new VaultException($"Unsupported entity type '{entityType}'.")
         };
 
@@ -410,6 +465,16 @@ public sealed class EntityCanonicalizer
         {
             Id = id, Name = name, CoreCategory = ItemCategory.Other, HolderId = "",
             Description = "Item description and details."
+        },
+        "customcreature" => new CustomCreature
+        {
+            Id = id, Name = name, System = RulesetSystem.Dnd5e,
+            Description = "Creature stat-block description and abilities."
+        },
+        "plotthread" => new PlotThread
+        {
+            Id = id, Title = name, State = PlotThreadState.Dormant,
+            DmNotes = "DM-only notes for this plot thread."
         },
         _ => throw new VaultException($"Unsupported entity type '{entityType}'.")
     };

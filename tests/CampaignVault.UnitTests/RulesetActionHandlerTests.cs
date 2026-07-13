@@ -34,7 +34,6 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
         [
             new Dnd5eRulesetResolver(rollService),
             new Pf2eRulesetResolver(rollService),
-            new Fallout2d20RulesetResolver(rollService),
             new NarrativeRulesetResolver(rollService),
         ];
         return new RulesetModuleSelector(modules);
@@ -238,42 +237,4 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
         Assert.Contains("NoActionAvailable", result.Message);
     }
 
-    [Fact]
-    public async Task ApplyAsync_Fallout_ActionEconomy_BlocksWhenOutOfAp()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-        await StoreConfigAsync(session, RulesetSystem.Fallout2d20);
-
-        var actor = new Character { Id = "chars/actor", SystemStats = new Fallout2d20Extension() };
-        var characters = new Dictionary<string, Character> { [actor.Id] = actor };
-
-        var activeCombat = new CombatEncounter
-        {
-            Id = _keys.CombatCurrent(_campaign),
-            IsActive = true,
-            ActiveTurnId = actor.Id,
-            Combatants =
-            [
-                new CombatantState { CharacterId = actor.Id, ActionBudget = new Dictionary<string, int> { { "ap", 0 } }, ReactionAvailable = true }
-            ]
-        };
-
-        var context = CreateContext(session, characters, activeCombat: activeCombat);
-        var selector = CreateSelector(Substitute.For<IRollService>());
-        var handler = new RulesetActionHandler(selector, _keys);
-
-        var action = new RulesetAction
-        {
-            CharacterId = actor.Id,
-            TargetIds = [],
-            ActionType = RulesetActionType.SkillCheck,
-            ActionName = "Sneak",
-            Parameters = new Dictionary<string, string> { { "difficulty", "1" }, { "attribute", "Agility" } }
-        };
-
-        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
-
-        Assert.False(result.Success);
-        Assert.Contains("NoActionAvailable", result.Message);
-    }
 }

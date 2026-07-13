@@ -25,7 +25,9 @@ public static class VaultPaths
         ("lore", "lore"),
         ("rumors", "rumor"),
         ("events", "event"),
-        ("items", "item")
+        ("items", "item"),
+        ("creatures", "customcreature"),
+        ("plotthreads", "plotthread")
     ];
 
     public static bool IsEntityRelativePath(string relativePath)

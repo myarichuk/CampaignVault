@@ -51,6 +51,28 @@ public class SourceControlViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task DiscardChangesAsync_ClearsDirtyStateAndRevertsFile()
+    {
+        await _session.CreateAsync(_tempDirectory, "test-campaign");
+
+        var entityPath = Path.Combine(_tempDirectory, "characters", "grog.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(entityPath)!);
+        await File.WriteAllTextAsync(entityPath, "---\nid: characters/grog\nname: Grog\n---\n\nUncommitted notes.");
+
+        _sourceControl.Bind(_session);
+        _sourceControl.RefreshStatus();
+        Assert.True(_sourceControl.IsDirty);
+
+        // No owner window in a headless test run, so the confirmation dialog is skipped and
+        // DiscardChangesAsync proceeds directly.
+        await _sourceControl.DiscardChangesCommand.ExecuteAsync(null);
+
+        _sourceControl.RefreshStatus();
+        Assert.False(_sourceControl.IsDirty);
+        Assert.False(File.Exists(entityPath));
+    }
+
+    [Fact]
     public async Task CommitAsync_ClearsDirtyState()
     {
         await _session.CreateAsync(_tempDirectory, "test-campaign");

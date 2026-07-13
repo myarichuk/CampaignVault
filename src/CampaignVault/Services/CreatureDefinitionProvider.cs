@@ -7,7 +7,7 @@ namespace CampaignVault.Services;
 
 /// <summary>
 /// Loads reference creature definitions from per-system YAML files, resolves inheritance, and
-/// caches results. Creature data is available for dnd5e, pf2e, and fallout2d20 rulesets.
+/// caches results. Creature data is available for dnd5e and pf2e rulesets.
 /// </summary>
 public class CreatureDefinitionProvider : IRulesetYamlProvider
 {
@@ -21,7 +21,6 @@ public class CreatureDefinitionProvider : IRulesetYamlProvider
         _logger = logger;
         Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", embeddedAssembly, logger);
         Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", embeddedAssembly, logger);
-        Register(RulesetSystem.Fallout2d20, rulesetDataDirectory, "fallout2d20", embeddedAssembly, logger);
     }
 
     private void Register(
