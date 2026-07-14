@@ -10,7 +10,7 @@ using ModelContextProtocol.Server;
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
-public class MutationTools : CampaignToolBase
+public class MutationTools : CampaignToolBase, IMcpServerTool
 {
     private readonly IPressureManager _pressureManager;
     private readonly IPressureOrchestrator _pressureOrchestrator;

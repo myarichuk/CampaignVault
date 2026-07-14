@@ -7,7 +7,7 @@ using ModelContextProtocol.Server;
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
-public class AttackTools : CampaignToolBase
+public class AttackTools : CampaignToolBase, IMcpServerTool
 {
     private readonly MutationTools _mutationTools;
 

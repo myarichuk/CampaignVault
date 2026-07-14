@@ -7,7 +7,7 @@ using ModelContextProtocol.Server;
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
-public class DeepDiveTools : CampaignToolBase
+public class DeepDiveTools : CampaignToolBase, IMcpServerTool
 {
     public DeepDiveTools(
         CampaignRepository repository,

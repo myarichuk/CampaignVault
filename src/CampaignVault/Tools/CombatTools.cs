@@ -9,7 +9,7 @@ using Raven.Client.Documents.Session;
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
-public class CombatTools : CampaignToolBase
+public class CombatTools : CampaignToolBase, IMcpServerTool
 {
     private readonly IRulesetModuleSelector _rulesetSelector;
 

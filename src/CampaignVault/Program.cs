@@ -182,7 +182,11 @@ if (enableStdioTransport)
 mcpServerBuilder
     .WithHttpTransport(options => { options.Stateless = true; })
     .WithToolsFromAssembly()
-    .WithRequestFilters(McpToolErrorFilter.Register);
+    .WithRequestFilters(filters =>
+    {
+        McpToolErrorFilter.Register(filters);
+        McpResponseCleaner.Register(filters);
+    });
 
 builder.Services.AddGrpc();
 

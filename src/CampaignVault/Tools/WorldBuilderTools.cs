@@ -8,7 +8,7 @@ using ModelContextProtocol.Server;
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
-public class WorldBuilderTools : CampaignToolBase
+public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 {
     private readonly CharacterBootstrapOrchestrator _bootstrap;
 

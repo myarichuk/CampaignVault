@@ -39,7 +39,7 @@ internal enum HelpTopic
 }
 
 [McpServerToolType]
-public class MetaTools
+public class MetaTools : IMcpServerTool
 {
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]

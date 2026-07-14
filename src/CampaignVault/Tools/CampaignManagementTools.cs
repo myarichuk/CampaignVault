@@ -21,7 +21,7 @@ public class CampaignManagementTools(
     ConditionDefinitionProvider conditionProvider,
     CreatureDefinitionProvider creatureProvider,
     ILogger<CampaignManagementTools>? logger = null)
-    : CampaignToolBase(repository, keys, logger)
+    : CampaignToolBase(repository, keys, logger), IMcpServerTool
 {
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]

@@ -9,7 +9,7 @@ using ModelContextProtocol.Server;
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
-public class ExplorationTools : CampaignToolBase
+public class ExplorationTools : CampaignToolBase, IMcpServerTool
 {
 
     public const string UrgentGroupingKey = "NpcInitiative:Urgent";

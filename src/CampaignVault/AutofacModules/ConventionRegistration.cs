@@ -45,6 +45,7 @@ internal static class ConventionRegistration
         RegisterCollection<IPressureContributor>(builder, assembly);
         RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
         RegisterCollection<IRulesetModule>(builder, assembly);
+        RegisterCollection<IMcpServerTool>(builder, assembly);
 
         builder.RegisterAssemblyTypes(assembly)
             .Where(t => t.IsAssignableTo<IWorldChangeHandler>() && !t.IsAbstract)
@@ -120,7 +121,6 @@ internal static class ConventionRegistration
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
         builder.RegisterType<EncounterResolver>().InstancePerLifetimeScope();
         builder.RegisterType<CharacterBootstrapOrchestrator>().InstancePerLifetimeScope();
-        builder.RegisterType<MutationTools>().InstancePerLifetimeScope();
     }
 
     private static void RegisterStartupValidation(ContainerBuilder builder)
