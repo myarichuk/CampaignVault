@@ -862,7 +862,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var rollSvc = new DefaultRollService();
 
 
-        var result = await tools.GetHelp();
+        var result = await tools.GetHelp("patterns");
         Assert.True(result.Success);
         Assert.Contains("Travel, Faction, Quest & Rumor", result.Data);
         Assert.Contains("faction_reputation", result.Data);
@@ -877,7 +877,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var rollSvc = new DefaultRollService();
 
 
-        var result = await tools.GetHelp();
+        var result = await tools.GetHelp("visual-sandbox");
         Assert.True(result.Success);
         Assert.Contains("The Visual / Physics Sandbox", result.Data);
         Assert.Contains("item_update", result.Data);

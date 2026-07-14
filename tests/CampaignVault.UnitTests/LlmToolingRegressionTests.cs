@@ -151,7 +151,7 @@ public class LlmToolingRegressionTests
         var prompt = content[(start + 7)..end].Trim();
         Assert.InRange(prompt.Length, 1, 12_000);
         Assert.Contains("upsert_rumor", prompt);
-        Assert.Contains("do NOT also commit", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("do NOT commit HP separately", prompt, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FindRepoRoot()

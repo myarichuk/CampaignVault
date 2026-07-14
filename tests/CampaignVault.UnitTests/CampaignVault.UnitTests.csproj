@@ -17,6 +17,7 @@
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="RavenDB.Embedded" Version="7.2.2" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.11" />
+    <PackageReference Include="Testcontainers" Version="3.7.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

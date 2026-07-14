@@ -89,12 +89,14 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
     public async Task GetHelp_IncludesToolIndexAndCommitEnumSections()
     {
         var meta = new MetaTools();
-        var result = await meta.GetHelp();
+        var quickstart = await meta.GetHelp();
+        var commitEnum = await meta.GetHelp("commit-enum");
+        var combat = await meta.GetHelp("combat");
 
-        Assert.True(result.Success);
-        Assert.Contains("get_party", result.Data!, StringComparison.Ordinal);
-        Assert.Contains("Commit Enum Values", result.Data!, StringComparison.Ordinal);
-        Assert.Contains(CommitTypesReference.SupportedTypesList, result.Data!, StringComparison.Ordinal);
-        Assert.Contains("chars/valen", result.Data!, StringComparison.Ordinal);
+        Assert.True(quickstart.Success);
+        Assert.Contains("get_party", quickstart.Data!, StringComparison.Ordinal);
+        Assert.Contains("Commit Enum Values", commitEnum.Data!, StringComparison.Ordinal);
+        Assert.Contains("Region, Settlement, District, Building, Room, Wilderness", commitEnum.Data!, StringComparison.Ordinal);
+        Assert.Contains("chars/valen", combat.Data!, StringComparison.Ordinal);
     }
 }

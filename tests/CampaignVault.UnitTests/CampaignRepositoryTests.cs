@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -13,7 +12,6 @@ using CampaignVault.Models;
 using CampaignVault.Tools;
 using Microsoft.Extensions.Logging;
 using Raven.Client.Documents;
-using Raven.Embedded;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -34,54 +32,13 @@ public class RavenDBFixture : IDisposable
 {
     public IDocumentStore Store { get; }
     public IContainer Container { get; private set; }
-    private readonly string _dataDir;
+    private readonly bool _isSharedStore;
 
-    public RavenDBFixture()
+    public RavenDBFixture(RavenDbTestEnvironment environment)
     {
-        _dataDir = Path.Combine(Path.GetTempPath(), $"RavenDBTest_{Guid.NewGuid()}");
-        Directory.CreateDirectory(_dataDir);
-        File.WriteAllText(Path.Combine(_dataDir, "settings.json"), "{\"Indexing.Static.SearchEngineType\": \"Corax\", \"Indexing.Auto.SearchEngineType\": \"Corax\"}");
-        try
-        {
-            Environment.SetEnvironmentVariable("RAVEN_Indexing_Static_SearchEngineType", "Corax");
-            Environment.SetEnvironmentVariable("RAVEN_Indexing_Auto_SearchEngineType", "Corax");
-            EmbeddedServer.Instance.StartServer(new ServerOptions
-            {
-                DataDirectory = _dataDir,
-                ServerUrl = "http://127.0.0.1:0",
-                CommandLineArgs = ["--Indexing.Static.SearchEngineType=Corax", "--Indexing.Auto.SearchEngineType=Corax"]
-            });
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("already started"))
-        {
-        }
-
-        Store = EmbeddedServer.Instance.GetDocumentStore(new DatabaseOptions(new Raven.Client.ServerWide.DatabaseRecord("TestDB")
-        {
-            Settings = new Dictionary<string, string>
-            {
-                { "Indexing.Static.SearchEngineType", "Corax" },
-                { "Indexing.Auto.SearchEngineType", "Corax" }
-            }
-        }));
-        Store.OnBeforeStore += (sender, args) =>
-        {
-            if (args.Entity != null)
-            {
-                var prop = args.Entity.GetType().GetProperty("CampaignName", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                if (prop != null && prop.PropertyType == typeof(string))
-                {
-                    var val = prop.GetValue(args.Entity) as string;
-                    if (!string.IsNullOrWhiteSpace(val))
-                    {
-                        prop.SetValue(args.Entity, val.Trim().ToLowerInvariant());
-                    }
-                }
-            }
-        };
-        Store.Initialize();
-        Raven.Client.Documents.Indexes.IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, Store);
-        WaitForStaticIndexes(Store);
+        var (store, isSharedStore) = environment.CreateStoreForClass($"TestDB_{Guid.NewGuid():N}");
+        Store = store;
+        _isSharedStore = isSharedStore;
 
         var builder = new ContainerBuilder();
         builder.RegisterInstance(Store).As<IDocumentStore>();
@@ -115,38 +72,15 @@ public class RavenDBFixture : IDisposable
         return scope.Resolve<CampaignRepository>();
     }
 
-    private static void WaitForStaticIndexes(IDocumentStore store, int timeoutSeconds = 30)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
-        while (DateTime.UtcNow < deadline)
-        {
-            var stats = store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.All(i => !i.IsStale && i.State != Raven.Client.Documents.Indexes.IndexState.Error))
-            {
-                return;
-            }
-            if (stats.Indexes.Any(i => i.State == Raven.Client.Documents.Indexes.IndexState.Error))
-            {
-                var errors = store.Maintenance.Send(new Raven.Client.Documents.Operations.Indexes.GetIndexErrorsOperation());
-                throw new Exception("Index errors: " + string.Join("; ", errors.SelectMany(e => e.Errors).Select(e => e.Error)));
-            }
-            Thread.Sleep(100);
-        }
-
-        throw new TimeoutException("Static RavenDB indexes did not become non-stale during test fixture startup.");
-    }
-
     public void Dispose()
     {
+        if (_isSharedStore)
+        {
+            // Owned by RavenDbTestEnvironment; disposed once at the end of the whole run.
+            return;
+        }
+
         Store.Dispose();
-        Thread.Sleep(500);
-        try
-        {
-            Directory.Delete(_dataDir, true);
-        }
-        catch
-        {
-        }
     }
 }
 

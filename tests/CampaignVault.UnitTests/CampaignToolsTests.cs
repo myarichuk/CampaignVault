@@ -769,7 +769,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Campaign slug scoping", result.Data);
         Assert.Contains("campaignName", result.Data);
         Assert.Contains("list_campaigns", result.Data);
-        Assert.Contains("Tool Index by Category", result.Data);
+        Assert.Contains("Tools by Category", result.Data);
         Assert.Contains("`list_tools`", result.Data);
         Assert.Contains("get_quest_details", result.Data);
     }

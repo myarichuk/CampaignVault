@@ -80,7 +80,8 @@ public class MetaTools : IMcpServerTool
 
     private string GetHelpContent(string? topicStr)
     {
-        if (!Enum.TryParse<HelpTopic>(topicStr, ignoreCase: true, out var topic))
+        var normalized = topicStr?.Replace("-", "", StringComparison.Ordinal);
+        if (!Enum.TryParse<HelpTopic>(normalized, ignoreCase: true, out var topic))
         {
             topic = HelpTopic.None;
         }

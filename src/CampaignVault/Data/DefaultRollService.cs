@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using CampaignVault.Models;
 
@@ -253,9 +254,9 @@ public sealed class DefaultRollService : IRollService
             throw new ArgumentException($"Cannot parse dice expression: '{expr}'");
         }
 
-        var count = m.Groups[1].Success ? int.Parse(m.Groups[1].Value) : 1;
-        var sides = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 0;
-        var flatMod = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0;
+        var count = m.Groups[1].Success ? int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : 1;
+        var sides = m.Groups[2].Success ? int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) : 0;
+        var flatMod = m.Groups[3].Success ? int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture) : 0;
 
         return (count, sides, flatMod);
     }

@@ -140,5 +140,5 @@ public class CampaignTools(
     public Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(string? category = null) =>
         meta.ListTools(category);
 
-    public Task<ToolResult<string>> GetHelp() => meta.GetHelp();
+    public Task<ToolResult<string>> GetHelp(string? topic = null) => meta.GetHelp(topic);
 }
