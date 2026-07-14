@@ -3,6 +3,7 @@ using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -24,8 +25,9 @@ public class ExplorationTools : CampaignToolBase
         IRulesetModuleSelector rulesetSelector,
         CampaignDocumentKeys keys,
         IPressureManager pressureManager,
-        IPressureOrchestrator pressureOrchestrator)
-        : base(repository, keys)
+        IPressureOrchestrator pressureOrchestrator,
+        ILogger<ExplorationTools>? logger = null)
+        : base(repository, keys, logger)
     {
         _behaviorSynthesizer = behaviorSynthesizer;
         _rulesetSelector = rulesetSelector;

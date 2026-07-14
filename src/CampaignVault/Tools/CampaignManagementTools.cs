@@ -3,6 +3,8 @@ using CampaignVault.Data;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -17,8 +19,9 @@ public class CampaignManagementTools(
     BackgroundDefinitionProvider backgroundProvider,
     FeatDefinitionProvider featProvider,
     ConditionDefinitionProvider conditionProvider,
-    CreatureDefinitionProvider creatureProvider)
-    : CampaignToolBase(repository, keys)
+    CreatureDefinitionProvider creatureProvider,
+    ILogger<CampaignManagementTools>? logger = null)
+    : CampaignToolBase(repository, keys, logger)
 {
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]

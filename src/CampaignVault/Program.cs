@@ -16,6 +16,12 @@ var mcpPort = int.TryParse(Environment.GetEnvironmentVariable("MCP_PORT"), out v
 var grpcPort = int.TryParse(Environment.GetEnvironmentVariable("GRPC_PORT"), out var configuredGrpcPort)
     ? configuredGrpcPort
     : 50051;
+var mcpHttpsPort = int.TryParse(Environment.GetEnvironmentVariable("MCP_HTTPS_PORT"), out var configuredMcpHttpsPort)
+    ? configuredMcpHttpsPort
+    : 5443;
+var grpcHttpsPort = int.TryParse(Environment.GetEnvironmentVariable("GRPC_HTTPS_PORT"), out var configuredGrpcHttpsPort)
+    ? configuredGrpcHttpsPort
+    : 50052;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.PreferHostingUrls(false);
@@ -25,6 +31,14 @@ var bindAny = string.Equals(
     "1",
     StringComparison.OrdinalIgnoreCase) || !builder.Environment.IsDevelopment();
 
+var httpsEnabled = string.Equals(
+    Environment.GetEnvironmentVariable("HTTPS_ENABLED"),
+    "1",
+    StringComparison.OrdinalIgnoreCase) || !builder.Environment.IsDevelopment();
+
+var httpsCertPath = Environment.GetEnvironmentVariable("HTTPS_CERT_PATH");
+var httpsCertPassword = Environment.GetEnvironmentVariable("HTTPS_CERT_PASSWORD");
+
 builder.WebHost.ConfigureKestrel(options =>
 {
     // MCP + HTTP health/info
@@ -32,13 +46,67 @@ builder.WebHost.ConfigureKestrel(options =>
     {
         options.ListenAnyIP(mcpPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http1AndHttp2; });
         options.ListenAnyIP(grpcPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
+
+        // HTTPS endpoints
+        if (httpsEnabled)
+        {
+            ConfigureHttpsListener(options, mcpHttpsPort, true, HttpProtocols.Http1AndHttp2, httpsCertPath, httpsCertPassword);
+            ConfigureHttpsListener(options, grpcHttpsPort, true, HttpProtocols.Http2, httpsCertPath, httpsCertPassword);
+        }
     }
     else
     {
         options.ListenLocalhost(mcpPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http1AndHttp2; });
         options.ListenLocalhost(grpcPort, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
+
+        // HTTPS endpoints
+        if (httpsEnabled)
+        {
+            ConfigureHttpsListener(options, mcpHttpsPort, false, HttpProtocols.Http1AndHttp2, httpsCertPath, httpsCertPassword);
+            ConfigureHttpsListener(options, grpcHttpsPort, false, HttpProtocols.Http2, httpsCertPath, httpsCertPassword);
+        }
     }
 });
+
+static void ConfigureHttpsListener(
+    KestrelServerOptions options,
+    int port,
+    bool anyIp,
+    HttpProtocols protocols,
+    string? certPath,
+    string? certPassword)
+{
+    if (anyIp)
+    {
+        options.ListenAnyIP(port, listenOptions =>
+        {
+            listenOptions.Protocols = protocols;
+            if (!string.IsNullOrEmpty(certPath) && File.Exists(certPath))
+            {
+                listenOptions.UseHttps(certPath, certPassword);
+            }
+            else
+            {
+                listenOptions.UseHttps();
+            }
+        });
+    }
+    else
+    {
+        options.ListenLocalhost(port, listenOptions =>
+        {
+            listenOptions.Protocols = protocols;
+            if (!string.IsNullOrEmpty(certPath) && File.Exists(certPath))
+            {
+                listenOptions.UseHttps(certPath, certPassword);
+            }
+            else
+            {
+                listenOptions.UseHttps();
+            }
+        });
+    }
+}
 
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
@@ -130,14 +198,20 @@ if (!string.IsNullOrEmpty(bearerToken))
     app.UseMiddleware<AuthMiddleware>(bearerToken);
 }
 
-// Bind MCP + HTTP utility endpoints exclusively to the MCP listener port.
+// Bind MCP + HTTP utility endpoints to both HTTP and HTTPS MCP ports.
 // Do not use RequireHost() — Grok Web and other MCP clients often send Host headers
 // without a port suffix (e.g. "localhost"), which still 404s with *:port patterns.
-app.MapMcp("/").RequireLocalPort(mcpPort);
+var mcpPorts = new[] { mcpPort };
+if (httpsEnabled)
+{
+    mcpPorts = new[] { mcpPort, mcpHttpsPort };
+}
+
+app.MapMcp("/").RequireLocalPort(mcpPorts);
 app.MapGet("/info", () => "CampaignVault MCP Server (RavenDB) is running.")
-    .RequireLocalPort(mcpPort);
+    .RequireLocalPort(mcpPorts);
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
-    .RequireLocalPort(mcpPort);
+    .RequireLocalPort(mcpPorts);
 
 // Bind gRPC sync exclusively to the dedicated gRPC listener port.
 app.MapGrpcService<CampaignSyncService>().RequireLocalPort(grpcPort);
@@ -164,10 +238,19 @@ app.Lifetime.ApplicationStarted.Register(() =>
     Console.Error.WriteLine($"MCP Version: 0.2.0");
     Console.Error.WriteLine($"Database Path: {dbPathSetting}");
     Console.Error.WriteLine($"Auth Enabled: {authEnabled}");
+    Console.Error.WriteLine($"HTTPS Enabled: {httpsEnabled}");
     Console.Error.WriteLine("MCP HTTP: stateless");
     Console.Error.WriteLine($"MCP Bind: {(bindAny ? "0.0.0.0" : "localhost")}:{mcpPort}");
     Console.Error.WriteLine($"MCP / HTTP:  http://localhost:{mcpPort}");
+    if (httpsEnabled)
+    {
+        Console.Error.WriteLine($"MCP / HTTPS: https://localhost:{mcpHttpsPort}");
+    }
     Console.Error.WriteLine($"gRPC Sync:   http://localhost:{grpcPort}");
+    if (httpsEnabled)
+    {
+        Console.Error.WriteLine($"gRPC / HTTPS: https://localhost:{grpcHttpsPort}");
+    }
     Console.Error.WriteLine("Listening on:");
     foreach (var address in addresses)
     {

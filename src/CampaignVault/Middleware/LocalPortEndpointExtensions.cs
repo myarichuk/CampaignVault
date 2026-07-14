@@ -29,4 +29,28 @@ public static class LocalPortEndpointExtensions
 
         return builder;
     }
+
+    public static TBuilder RequireLocalPort<TBuilder>(this TBuilder builder, params int[] ports)
+        where TBuilder : IEndpointConventionBuilder
+    {
+        var portSet = new HashSet<int>(ports);
+        builder.Add(endpointBuilder =>
+        {
+            endpointBuilder.FilterFactories.Add((_, next) =>
+            {
+                return async invocationContext =>
+                {
+                    if (!portSet.Contains(invocationContext.HttpContext.Connection.LocalPort))
+                    {
+                        invocationContext.HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+                        return Results.Empty;
+                    }
+
+                    return await next(invocationContext);
+                };
+            });
+        });
+
+        return builder;
+    }
 }

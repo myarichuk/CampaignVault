@@ -16,6 +16,12 @@ public static class CampaignPostureBuilder
         bool isNewCampaign,
         CancellationToken cancellationToken = default)
     {
+        // Defensive: guard against null parameters
+        if (session == null) throw new ArgumentNullException(nameof(session));
+        if (repository == null) throw new ArgumentNullException(nameof(repository));
+        if (keys == null) throw new ArgumentNullException(nameof(keys));
+        if (string.IsNullOrWhiteSpace(slug)) throw new ArgumentException("slug cannot be null or empty", nameof(slug));
+
         var campaign = await session.LoadAsync<Campaign>(keys.Meta(slug), cancellationToken)
                        ?? new Campaign
                        {
@@ -42,7 +48,7 @@ public static class CampaignPostureBuilder
             .ToList();
 
         var recentEvents = await repository.QueryEventsAsync(session, null, null, 1, slug);
-        var lastSessionSummary = recentEvents.FirstOrDefault()?.Summary;
+        var lastSessionSummary = recentEvents?.FirstOrDefault()?.Summary ?? null;
 
         var entryHint = ResolveEntryHint(isNewCampaign, pcs.Count, companions.Count);
 

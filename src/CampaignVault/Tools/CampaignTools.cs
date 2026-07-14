@@ -101,7 +101,7 @@ public class CampaignTools(
     // --- Combat ---
     public Task<ToolResult<CombatEncounter>> StartCombat(string locationId, string[] participantIds,
         string? campaignName = TestDefaultCampaignSlug) =>
-        combat.StartCombat(locationId, participantIds, ResolveCampaign(campaignName));
+        combat.StartCombat(locationId, participantIds?.ToList() ?? [], ResolveCampaign(campaignName));
 
     public Task<ToolResult<CombatEncounter>>
         NextTurn(string? expectedActiveTurnId = null, string? campaignName = TestDefaultCampaignSlug) =>

@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -26,8 +27,9 @@ public class MutationTools : CampaignToolBase
         CampaignRepository repository,
         CampaignDocumentKeys keys,
         IPressureManager pressureManager,
-        IPressureOrchestrator pressureOrchestrator)
-        : base(repository, keys)
+        IPressureOrchestrator pressureOrchestrator,
+        ILogger<MutationTools>? logger = null)
+        : base(repository, keys, logger)
     {
         _pressureManager = pressureManager;
         _pressureOrchestrator = pressureOrchestrator;

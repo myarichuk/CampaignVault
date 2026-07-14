@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -10,8 +11,9 @@ public class DeepDiveTools : CampaignToolBase
 {
     public DeepDiveTools(
         CampaignRepository repository,
-        CampaignDocumentKeys keys)
-        : base(repository, keys)
+        CampaignDocumentKeys keys,
+        ILogger<DeepDiveTools>? logger = null)
+        : base(repository, keys, logger)
     {
     }
 

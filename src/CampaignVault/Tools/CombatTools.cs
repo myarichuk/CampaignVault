@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Server;
 using Raven.Client.Documents.Session;
 
@@ -15,8 +16,9 @@ public class CombatTools : CampaignToolBase
     public CombatTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
-        IRulesetModuleSelector rulesetSelector)
-        : base(repository, keys)
+        IRulesetModuleSelector rulesetSelector,
+        ILogger<CombatTools>? logger = null)
+        : base(repository, keys, logger)
     {
         _rulesetSelector = rulesetSelector;
     }
@@ -31,7 +33,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
         [Description("The location ID where combat is happening.")]
         string locationId,
         [Description("List of character IDs participating in combat.")]
-        string[] combatantIds,
+        List<string> combatantIds,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
@@ -43,7 +45,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
                 exampleCall: "start_combat(\"locations/tavern\", [\"chars/hero\"])");
         }
 
-        if (combatantIds.Length == 0)
+        if (combatantIds?.Count == 0)
         {
             return Task.FromResult(new ToolResult<CombatEncounter>(
                 false,
@@ -53,7 +55,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var uniqueIds = combatantIds.Distinct().ToList();
+            var uniqueIds = (combatantIds ?? []).Distinct().ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
             var validCharacters = new List<Character>();
 

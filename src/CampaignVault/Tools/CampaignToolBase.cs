@@ -1,5 +1,7 @@
 using CampaignVault.Data;
 using CampaignVault.Models;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents.Session;
 using Raven.Client.Exceptions;
 
@@ -9,13 +11,16 @@ public abstract class CampaignToolBase
 {
     protected readonly CampaignRepository _repository;
     protected readonly CampaignDocumentKeys _keys;
+    protected readonly ILogger _logger;
 
     protected CampaignToolBase(
         CampaignRepository repository,
-        CampaignDocumentKeys keys)
+        CampaignDocumentKeys keys,
+        ILogger? logger = null)
     {
         _repository = repository;
         _keys = keys;
+        _logger = logger ?? NullLogger.Instance;
     }
 
     protected const string NoCampaignSelectedSummary =
@@ -65,15 +70,22 @@ public abstract class CampaignToolBase
             }
             catch (CampaignNotSelectedException ex)
             {
+                _logger.LogWarning(ex, "Campaign not selected");
                 return new ToolResult<T>(false, Error: ToolErrors.NoCampaignSelected, Summary: ex.Message);
             }
-            catch (ConcurrencyException)
+            catch (ConcurrencyException ex)
             {
-                if (++actionAttempt <= maxRetries) continue;
+                if (++actionAttempt <= maxRetries)
+                {
+                    _logger.LogDebug(ex, "Concurrency conflict on action attempt {Attempt}, retrying", actionAttempt);
+                    continue;
+                }
+                _logger.LogError(ex, "Concurrency conflict after {MaxRetries} retries", maxRetries);
                 return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "State changed mid-operation. Re-fetch and retry.");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled exception in tool action");
                 return new ToolResult<T>(false, Error: ToolErrors.InternalError, Summary: ex.Message);
             }
 
@@ -88,9 +100,14 @@ public abstract class CampaignToolBase
                 {
                     await session.SaveChangesAsync();
                 }
-                catch (ConcurrencyException)
+                catch (ConcurrencyException ex)
                 {
-                    if (++saveAttempt <= maxRetries) continue;
+                    if (++saveAttempt <= maxRetries)
+                    {
+                        _logger.LogDebug(ex, "Concurrency conflict on save attempt {Attempt}, retrying", saveAttempt);
+                        continue;
+                    }
+                    _logger.LogError(ex, "Concurrency conflict after {MaxRetries} save retries", maxRetries);
                     return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "Commit failed due to concurrent modification. Re-fetch and retry.");
                 }
             }

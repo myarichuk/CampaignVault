@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -14,8 +15,9 @@ public class WorldBuilderTools : CampaignToolBase
     public WorldBuilderTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
-        CharacterBootstrapOrchestrator bootstrap)
-        : base(repository, keys)
+        CharacterBootstrapOrchestrator bootstrap,
+        ILogger<WorldBuilderTools>? logger = null)
+        : base(repository, keys, logger)
     {
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
     }

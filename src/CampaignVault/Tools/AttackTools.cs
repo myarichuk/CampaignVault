@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -13,8 +14,9 @@ public class AttackTools : CampaignToolBase
     public AttackTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
-        MutationTools mutationTools)
-        : base(repository, keys)
+        MutationTools mutationTools,
+        ILogger<AttackTools>? logger = null)
+        : base(repository, keys, logger)
     {
         _mutationTools = mutationTools ?? throw new ArgumentNullException(nameof(mutationTools));
     }
