@@ -8,6 +8,7 @@ using CampaignVault.Data.Scenes;
 using CampaignVault.Data.Templates;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Tools;
 
 namespace CampaignVault.AutofacModules;
 
@@ -119,6 +120,7 @@ internal static class ConventionRegistration
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
         builder.RegisterType<EncounterResolver>().InstancePerLifetimeScope();
         builder.RegisterType<CharacterBootstrapOrchestrator>().InstancePerLifetimeScope();
+        builder.RegisterType<MutationTools>().InstancePerLifetimeScope();
     }
 
     private static void RegisterStartupValidation(ContainerBuilder builder)
