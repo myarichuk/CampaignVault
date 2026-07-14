@@ -267,7 +267,10 @@ public class CampaignRepository
         string locationId,
         string effectiveCampaign)
     {
-        var items = await session.Query<Item>().Where(x => x.HolderId == locationId).ToListAsync();
+        var items = await session.Query<Item, Item_Search>()
+            .Where(x => x.HolderId == locationId)
+            .Customize(x => x.WaitForNonStaleResults())
+            .ToListAsync();
         items = items
             .Where(i => IsVisibleInCampaign(i.CampaignName, effectiveCampaign) && !i.IsArchived)
             .ToList();
@@ -319,7 +322,7 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var q = ApplyEventScalarFilters(session.Query<Event, Event_Search>(), effective, null, locationId, involvedCharacterId);
-        var events = await q.OrderByDescending(x => x.Importance).ThenByDescending(x => x.Timestamp).Take(budget).ToListAsync();
+        var events = await q.Customize(x => x.WaitForNonStaleResults()).OrderByDescending(x => x.Importance).ThenByDescending(x => x.Timestamp).Take(budget).ToListAsync();
         SanitizeEventDetails(events);
         return events;
     }
@@ -1390,7 +1393,8 @@ public class CampaignRepository
         string? regionId = null, RumorState? state = null, int limit = 5, string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var q = session.Advanced.AsyncDocumentQuery<Rumor, Rumor_Search>();
+        var q = session.Advanced.AsyncDocumentQuery<Rumor, Rumor_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5));
         if (!string.IsNullOrEmpty(query))
         {
             q = q.AndAlso().Search(x => x.Subject, $"*{query}*").OrElse().Search(x => x.CurrentText, $"*{query}*");
@@ -1654,8 +1658,9 @@ public class CampaignRepository
     public async Task<List<CustomSpell>> GetCustomSpellsForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
     {
         var effective = ResolveCampaign(campaignName);
-        var spells = await session.Query<CustomSpell>()
+        var spells = await session.Query<CustomSpell, CustomSpell_Search>()
             .Where(s => s.System == system)
+            .Customize(x => x.WaitForNonStaleResults())
             .Take(take)
             .ToListAsync();
 
@@ -1717,8 +1722,9 @@ public class CampaignRepository
     public async Task<List<CustomFeat>> GetCustomFeatsForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
     {
         var effective = ResolveCampaign(campaignName);
-        var feats = await session.Query<CustomFeat>()
+        var feats = await session.Query<CustomFeat, CustomFeat_Search>()
             .Where(f => f.System == system)
+            .Customize(x => x.WaitForNonStaleResults())
             .Take(take)
             .ToListAsync();
 

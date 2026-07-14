@@ -184,7 +184,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
             session.Advanced.WaitForIndexesAfterSaveChanges();
             await session.SaveChangesAsync();
         }
-
+        
         var sceneResult = await tools.GetScene(locId, campaignName: campaign, partyPresent: true);
         Assert.True(sceneResult.Success);
 

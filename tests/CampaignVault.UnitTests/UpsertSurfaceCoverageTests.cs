@@ -89,6 +89,7 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
                 System = RulesetSystem.Dnd5e,
                 Level = 1
             }, "test-camp");
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
         await session.SaveChangesAsync();
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
@@ -110,6 +111,7 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
                 Name = "Homebrew Toughness",
                 System = RulesetSystem.Dnd5e
             }, "test-camp");
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
         await session.SaveChangesAsync();
 
         using var verifySession = _fixture.Store.OpenAsyncSession();

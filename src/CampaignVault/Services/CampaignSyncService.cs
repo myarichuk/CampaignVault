@@ -41,8 +41,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
 
         using var session = documentStore.OpenAsyncSession();
         
-        var characters = await session.Query<Character>()
+        var characters = await session.Query<Character, Character_Search>()
             .Where(c => c.CampaignName == campaignName)
+            .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         foreach (var c in characters)
         {
@@ -54,8 +55,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
-        var locations = await session.Query<Location>()
+        var locations = await session.Query<Location, Location_Search>()
             .Where(l => l.CampaignName == campaignName)
+            .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         foreach (var l in locations)
         {
@@ -67,8 +69,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
-        var quests = await session.Query<Quest>()
+        var quests = await session.Query<Quest, Quest_Search>()
             .Where(q => q.CampaignName == campaignName)
+            .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         foreach (var q in quests)
         {
@@ -80,8 +83,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
-        var factions = await session.Query<Faction>()
+        var factions = await session.Query<Faction, Faction_Search>()
             .Where(f => f.CampaignName == campaignName)
+            .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         foreach (var f in factions)
         {
@@ -93,8 +97,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
-        var lore = await session.Query<Lore>()
+        var lore = await session.Query<Lore, Lore_Search>()
             .Where(l => l.CampaignName == campaignName)
+            .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         foreach (var l in lore)
         {
@@ -106,8 +111,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
-        var rumors = await session.Query<Rumor>()
+        var rumors = await session.Query<Rumor, Rumor_Search>()
             .Where(r => r.CampaignName == campaignName)
+            .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         foreach (var r in rumors)
         {

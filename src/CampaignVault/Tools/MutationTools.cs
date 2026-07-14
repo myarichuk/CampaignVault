@@ -232,8 +232,9 @@ Basic + creating on the fly examples are also shown in the tool description and 
         {
             var result = await _repository.AdvanceWorldAsync(session, days, timeOfDay, effective);
 
-            var partyIds = await session.Query<Character>()
+            var partyIds = await session.Query<Character, Character_Search>()
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
+                .Customize(x => x.WaitForNonStaleResults())
                 .Select(c => c.Id)
                 .ToListAsync();
 
