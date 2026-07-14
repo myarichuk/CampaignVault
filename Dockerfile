@@ -1,19 +1,25 @@
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
 
 # Copy solution and project files, then restore
 COPY CampaignVault.slnx .
-COPY src/CampaignVault/CampaignVault.csproj ./src/CampaignVault/
-COPY tests/CampaignVault.Tests/CampaignVault.Tests.csproj ./tests/CampaignVault.Tests/
+COPY src/ ./src/
+COPY tests/ ./tests/
 RUN dotnet restore
 
 # Copy everything else and build
 COPY . .
-RUN dotnet publish src/CampaignVault/CampaignVault.csproj -c Release -o /app
+
+# Publish with trimming enabled to reduce image size
+RUN dotnet publish src/CampaignVault/CampaignVault.csproj -c Release -o /app \
+    -p:PublishTrimmed=true \
+    -p:TrimMode=partial \
+    -p:DebugType=none \
+    -p:DebugSymbols=false
 
 # Final stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
 

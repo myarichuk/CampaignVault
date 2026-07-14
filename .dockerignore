@@ -5,3 +5,14 @@ obj/
 .env
 .vscode/
 .idea/
+.git/
+.gitignore
+.DS_Store
+node_modules/
+.rider/
+.vscode/
+.vs/
+*.user
+*.user.*
+.idea/
+out/
