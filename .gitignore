@@ -41,3 +41,21 @@ agent-tools/
 
 *.md
 *.pdf
+
+# Serena agent files
+/.serena/
+
+# MCP auto-generated descriptors (generated from C# source code)
+/mcps/
+
+# Claude Code runtime (agent state, scheduled tasks, worktrees, etc)
+**/.claude/scheduled_tasks.lock
+**/.claude/scheduled_tasks.json
+**/.claude/routines/.state/
+**/.claude/worktrees/
+**/.claude/checkpoints/
+**/.claude/mailbox/
+**/.claude/agent-registry.json
+**/.claude/agent-memory-local
+**/.claude/first-run
+**/.claude/assistant-daemon-state.json
