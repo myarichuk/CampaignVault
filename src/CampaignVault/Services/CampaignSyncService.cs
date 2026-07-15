@@ -151,8 +151,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
-        var creatures = await session.Query<CustomCreature>()
+        var creatures = await session.Query<CustomCreature, CustomCreature_Search>()
             .Where(cc => cc.CampaignName == campaignName)
+            .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         foreach (var cc in creatures)
         {
@@ -164,8 +165,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             });
         }
 
-        var plotThreads = await session.Query<PlotThread>()
+        var plotThreads = await session.Query<PlotThread, PlotThread_Search>()
             .Where(pt => pt.CampaignName == campaignName)
+            .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         foreach (var pt in plotThreads)
         {
