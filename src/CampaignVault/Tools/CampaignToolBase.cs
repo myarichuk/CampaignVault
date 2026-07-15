@@ -86,7 +86,8 @@ public abstract class CampaignToolBase
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unhandled exception in tool action");
-                return new ToolResult<T>(false, Error: ToolErrors.InternalError, Summary: ex.Message);
+                return new ToolResult<T>(false, Error: ToolErrors.InternalError,
+                    Summary: "An internal error occurred while processing this request. It has been logged for investigation.");
             }
 
             if (!result.Success)
@@ -143,6 +144,13 @@ public abstract class CampaignToolBase
                     ActiveSystem = defaultSystem
                 };
                 await session.StoreAsync(config, configId);
+            }
+            else
+            {
+                // A CampaignConfig may already exist from an implicit ruleset default applied before
+                // this campaign was formally created (e.g. upsert_character before create_campaign —
+                // see A1 in the tool-usage audit). The explicit system chosen here always wins.
+                config.ActiveSystem = defaultSystem;
             }
         }
         return campaign;

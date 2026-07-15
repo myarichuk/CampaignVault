@@ -6,7 +6,7 @@ namespace CampaignVault.Tools;
 internal static class CommitTypesReference
 {
     internal const string SupportedTypesList =
-        "hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, level_up, location_update, character_update, system_stats, knowledge_update, schedule_change, travel, rest, scene_interrupt_check, faction_reputation, faction_state, quest_progress, plot_thread_progress, plot_thread_clue, resource, rest_recovery_ack";
+        "hp, item, item_update, status, statusremove, event, rumor, relationship, engagement_relation, spatial_position, need, attribute, mood, activity, ruleset_action, level_up, location_update, character_update, system_stats, knowledge_update, schedule_change, travel, rest, scene_interrupt_check, faction_reputation, faction_state, quest_progress, plot_thread_progress, plot_thread_clue, resource, rest_recovery_ack, archive_entity";
 
     internal const string SupportedTypesBullet =
         $"Supported `$type`s: {SupportedTypesList}.";

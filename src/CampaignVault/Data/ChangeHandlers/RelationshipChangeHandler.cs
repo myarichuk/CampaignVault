@@ -32,6 +32,25 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
             context.RegisterNewCharacter(source);
         }
 
+        if (!context.Characters.ContainsKey(rel.TargetId))
+        {
+            var target = context.Session != null ? await context.Session.LoadAsync<Character>(rel.TargetId, ct) : null;
+            if (target == null)
+            {
+                var hints = await context.SuggestCharacterMatchAsync(rel.TargetId);
+                var msg = $"Relationship target character {rel.TargetId} not found.";
+                if (hints != null)
+                {
+                    msg += $" Did you mean: {hints}?";
+                }
+
+                context.RecordMessage($"WARNING: {msg}");
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+            context.RegisterNewCharacter(target);
+        }
+
         source.Social ??= new SocialProfile();
         source.Social.Relationships ??= new Dictionary<string, int>();
 

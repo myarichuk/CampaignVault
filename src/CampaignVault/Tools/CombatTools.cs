@@ -58,6 +58,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
             var uniqueIds = (combatantIds ?? []).Distinct().ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
             var validCharacters = new List<Character>();
+            var droppedForZeroHp = new List<string>();
 
             foreach (var id in uniqueIds)
             {
@@ -77,6 +78,10 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
                 if (character.CurrentHp > 0)
                 {
                     validCharacters.Add(character);
+                }
+                else
+                {
+                    droppedForZeroHp.Add(id);
                 }
             }
 
@@ -118,8 +123,13 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
 
             await session.StoreAsync(encounter, encounter.Id);
 
-            return new ToolResult<CombatEncounter>(true, encounter,
-                $"Combat started at {locationId} with {combatants.Count} combatants.");
+            var summary = $"Combat started at {locationId} with {combatants.Count} combatants.";
+            if (droppedForZeroHp.Count > 0)
+            {
+                summary += $" Dropped {droppedForZeroHp.Count} combatant(s) with 0 or negative HP: {string.Join(", ", droppedForZeroHp)}.";
+            }
+
+            return new ToolResult<CombatEncounter>(true, encounter, summary);
         });
     }
 

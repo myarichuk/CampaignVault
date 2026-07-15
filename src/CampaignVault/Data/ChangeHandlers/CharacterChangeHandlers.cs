@@ -134,7 +134,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
             var hint = existing.KeepAlive
                 ? " For existing PCs, prefer commit with activity/character_update instead of character_create. Call get_party to confirm PCs already exist."
                 : string.Empty;
-            context.RecordMessage(
+            context.RecordEntityCollision(cc.CharacterId,
                 $"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.{hint}");
             return ChangeHandlerResult.Ok;
         }

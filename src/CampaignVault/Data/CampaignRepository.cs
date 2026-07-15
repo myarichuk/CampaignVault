@@ -1596,7 +1596,7 @@ public class CampaignRepository
             .Take(take)
             .ToListAsync();
 
-        return creatures.Where(c => IsVisibleInCampaign(c.CampaignName, effective)).ToList();
+        return creatures.Where(c => IsVisibleInCampaign(c.CampaignName, effective) && !c.IsArchived).ToList();
     }
 
     public async Task<CustomSpell> UpsertCustomSpellAsync(IAsyncDocumentSession session, CustomSpellUpsertRequest spell, string? campaignName = null)
@@ -1664,7 +1664,7 @@ public class CampaignRepository
             .Take(take)
             .ToListAsync();
 
-        return spells.Where(s => IsVisibleInCampaign(s.CampaignName, effective)).ToList();
+        return spells.Where(s => IsVisibleInCampaign(s.CampaignName, effective) && !s.IsArchived).ToList();
     }
 
     public async Task<CustomFeat> UpsertCustomFeatAsync(IAsyncDocumentSession session, CustomFeatUpsertRequest feat, string? campaignName = null)
@@ -1728,7 +1728,7 @@ public class CampaignRepository
             .Take(take)
             .ToListAsync();
 
-        return feats.Where(f => IsVisibleInCampaign(f.CampaignName, effective)).ToList();
+        return feats.Where(f => IsVisibleInCampaign(f.CampaignName, effective) && !f.IsArchived).ToList();
     }
 
     public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery,

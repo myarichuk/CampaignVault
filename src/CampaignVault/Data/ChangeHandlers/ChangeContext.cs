@@ -51,6 +51,7 @@ public sealed class ChangeContext
     public WorldChangeDispatcher Dispatcher { get; }
 
     private readonly List<string> _summary;
+    private readonly List<string> _entityCollisions = [];
     private bool _hasFailure;
     private readonly Dictionary<string, Character> _characters;
     private readonly Dictionary<string, Item> _items;
@@ -156,6 +157,24 @@ public sealed class ChangeContext
     }
 
     internal bool HasFailure => _hasFailure;
+
+    /// <summary>
+    /// Records that a create-style change (e.g. character_create) resolved to an ID that already
+    /// existed and was merged into the existing document instead of creating a new one. Surfaced
+    /// structurally via CommitResult.EntityCollisions (in addition to the human-readable
+    /// RecordMessage entry) so a caller can detect this without string-matching Summary.
+    /// </summary>
+    public void RecordEntityCollision(string entityId, string message)
+    {
+        if (!string.IsNullOrWhiteSpace(entityId))
+        {
+            _entityCollisions.Add(entityId);
+        }
+
+        RecordMessage(message);
+    }
+
+    internal IReadOnlyList<string> EntityCollisions => _entityCollisions;
 
     public async Task<string?> SuggestLocationMatchAsync(string? nameQuery)
     {

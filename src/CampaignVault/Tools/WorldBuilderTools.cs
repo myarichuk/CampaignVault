@@ -4,6 +4,7 @@ using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Tools;
 
@@ -51,7 +52,20 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             var config = await s.LoadAsync<CampaignConfig>(_keys.Config(effective));
-            var activeSystem = config?.ActiveSystem ?? RulesetSystem.Dnd5e;
+            var noConfigYet = config is null;
+            if (noConfigYet)
+            {
+                // No ruleset has been configured for this campaign yet (create_campaign/set_active_system
+                // haven't run). Persist the Dnd5e assumption we're about to bootstrap against so it's a
+                // durable, visible fact instead of a throwaway local default — see A1 in the tool-usage audit.
+                config = new CampaignConfig { Id = _keys.Config(effective), ActiveSystem = RulesetSystem.Dnd5e };
+                await s.StoreAsync(config, config.Id);
+            }
+
+            var activeSystem = config!.ActiveSystem;
+            // Session-tracked load; cheap even though UpsertCharacterAsync loads the same ID again below.
+            var existedBefore = !string.IsNullOrWhiteSpace(character.Id)
+                && await s.LoadAsync<Character>(character.Id) is not null;
             var merged = await _repository.UpsertCharacterAsync(s, character, effective);
 
             var hp = BootstrapHpResolver.Resolve(merged, null,
@@ -70,6 +84,29 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
             var extras = report.Messages
                 .Concat(report.LlmHints.Select(h => $"[BOOTSTRAP HINT] {h}"))
                 .ToList();
+            if (noConfigYet)
+            {
+                extras.Add(
+                    $"NOTE: No campaign ruleset is configured yet for '{effective}' — this character was bootstrapped assuming {RulesetSystem.Dnd5e}. " +
+                    "If this campaign should use a different ruleset, call create_campaign or set_active_system BEFORE creating more characters, then re-upsert this one with corrected systemStats.");
+            }
+
+            if (existedBefore)
+            {
+                extras.Add(
+                    $"WARNING: Character '{character.Id}' already existed and was merged/overwritten by this call, not newly created. " +
+                    "Omitted fields on this request were preserved, but every field you DID supply replaced the prior value. " +
+                    "If you intended a small in-play change (HP, activity, location), prefer commit instead of re-calling upsert_character.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(character.CurrentLocationId)
+                && await s.LoadAsync<Location>(character.CurrentLocationId) is null)
+            {
+                extras.Add(
+                    $"WARNING: currentLocationId '{character.CurrentLocationId}' does not currently exist. " +
+                    "This is allowed (create the location before the party reaches it), but verify the ID is correct.");
+            }
+
             var summary = extras.Count > 0
                 ? $"Character upserted (campaign: {effective}). {string.Join(" ", extras)}"
                 : $"Character upserted (campaign context: {effective}).";
@@ -95,7 +132,10 @@ This is the only tool that creates a new location. During play, use commit's loc
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             var merged = await _repository.UpsertLocationAsync(s, location, effective);
-            return new ToolResult<Location>(true, merged, $"Location upserted (campaign context: {effective}).");
+            var warning = await WarnDanglingReferencesAsync(s,
+                ("controllingFactionId", location.ControllingFactionId));
+            var summary = $"Location upserted (campaign context: {effective}).{warning}";
+            return new ToolResult<Location>(true, merged, summary);
         });
     }
 
@@ -163,7 +203,11 @@ This is the only tool that creates a new location. During play, use commit's loc
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             var merged = await _repository.UpsertPlotThreadAsync(s, plotThread, effective);
-            return new ToolResult<PlotThread>(true, merged, $"PlotThread upserted (campaign context: {effective}).");
+            var refs = (plotThread.InvolvedEntityIds ?? [])
+                .Select((id, i) => ($"involvedEntityIds[{i}]", (string?)id));
+            var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
+            var summary = $"PlotThread upserted (campaign context: {effective}).{warning}";
+            return new ToolResult<PlotThread>(true, merged, summary);
         });
     }
 
@@ -214,7 +258,12 @@ This is the only tool that creates a new location. During play, use commit's loc
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             var merged = await _repository.UpsertFactionAsync(s, faction, effective);
-            return new ToolResult<Faction>(true, merged, $"Faction upserted (campaign context: {effective}).");
+            var refs = (faction.TerritoryLocationIds ?? [])
+                .Select((id, i) => ($"territoryLocationIds[{i}]", (string?)id))
+                .Concat((faction.KnownLeaderIds ?? []).Select((id, i) => ($"knownLeaderIds[{i}]", (string?)id)));
+            var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
+            var summary = $"Faction upserted (campaign context: {effective}).{warning}";
+            return new ToolResult<Faction>(true, merged, summary);
         });
     }
 
@@ -231,7 +280,12 @@ This is the only tool that creates a new location. During play, use commit's loc
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             var merged = await _repository.UpsertQuestAsync(s, quest, effective);
-            return new ToolResult<Quest>(true, merged, $"Quest upserted (campaign context: {effective}).");
+            var refs = new List<(string, string?)> { ("giverId", quest.GiverId) }
+                .Concat((quest.RelatedLocationIds ?? []).Select((id, i) => ($"relatedLocationIds[{i}]", (string?)id)))
+                .Concat((quest.RelatedFactionIds ?? []).Select((id, i) => ($"relatedFactionIds[{i}]", (string?)id)));
+            var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
+            var summary = $"Quest upserted (campaign context: {effective}).{warning}";
+            return new ToolResult<Quest>(true, merged, summary);
         });
     }
 
@@ -290,5 +344,34 @@ This is the only tool that creates a new location. During play, use commit's loc
                     ? $"Retrieved {descriptors.Count} need descriptors for campaign '{effective}'."
                     : $"No need descriptors defined yet for campaign '{effective}'.");
         }, saveChanges: false);
+    }
+
+    /// <summary>
+    /// Checks a set of (fieldName, referencedId) pairs for existence and returns a single
+    /// non-blocking warning string (empty if all referenced IDs exist or are unset) to append
+    /// to a tool's Summary. Forward references (e.g. a quest giver not created yet) are allowed
+    /// by design — this only makes the gap visible instead of silent. See C3/C4 in the tool-usage audit.
+    /// </summary>
+    private static async Task<string> WarnDanglingReferencesAsync(
+        IAsyncDocumentSession session, params (string FieldName, string? Id)[] references)
+    {
+        var missing = new List<string>();
+        foreach (var (fieldName, id) in references)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                continue;
+            }
+
+            if (!await session.Advanced.ExistsAsync(id))
+            {
+                missing.Add($"{fieldName}='{id}'");
+            }
+        }
+
+        return missing.Count == 0
+            ? string.Empty
+            : $" WARNING: the following referenced ID(s) do not currently exist: {string.Join(", ", missing)}. " +
+              "This is allowed (create them before they're needed), but verify the ID(s) are correct.";
     }
 }

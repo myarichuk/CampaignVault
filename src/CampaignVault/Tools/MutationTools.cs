@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using CampaignVault.Data;
@@ -15,13 +16,17 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     private readonly IPressureManager _pressureManager;
     private readonly IPressureOrchestrator _pressureOrchestrator;
 
-    private static readonly RateLimiter CommitRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-    {
-        TokenLimit = 50,
-        TokensPerPeriod = 10,
-        ReplenishmentPeriod = TimeSpan.FromSeconds(10),
-        AutoReplenishment = true
-    });
+    // Keyed per-campaign so commits in one campaign never throttle another.
+    private static readonly ConcurrentDictionary<string, RateLimiter> CommitRateLimiters = new(StringComparer.OrdinalIgnoreCase);
+
+    private static RateLimiter GetRateLimiter(string campaignName) =>
+        CommitRateLimiters.GetOrAdd(campaignName, _ => new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 50,
+            TokensPerPeriod = 10,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+            AutoReplenishment = true
+        }));
 
     public MutationTools(
         CampaignRepository repository,
@@ -66,8 +71,10 @@ Basic + creating on the fly examples are also shown in the tool description and 
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
         [Description("Array of world changes. Each item must be a JSON object with a '$type' discriminator.")]
+        [SemanticallyRequired]
         JsonElement? changes,
         [Description("Narrative summary of what happened (for the log and world pressure).")]
+        [SemanticallyRequired]
         string? narrative)
     {
         if (!CommitChangesParser.TryParse(changes, out var parsedChanges, out var parseError))
@@ -127,7 +134,15 @@ Basic + creating on the fly examples are also shown in the tool description and 
                 $"Commit rejected: Too many changes in a single batch ({changes.Length}). Maximum allowed is 50."));
         }
 
-        if (!CommitRateLimiter.AttemptAcquire().IsAcquired)
+        var duplicationConflict = SideEffectDuplicationGuard.FindConflict(changes);
+        if (duplicationConflict != null)
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.InvalidArgument,
+                Summary: $"Commit rejected: {duplicationConflict}"));
+        }
+
+        var rateLimiter = GetRateLimiter(effective);
+        if (!rateLimiter.AttemptAcquire().IsAcquired)
         {
             return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.RateLimitExceeded,
                 Summary: "Commit rate limit exceeded. Please wait a few seconds before making more world changes."));
@@ -165,7 +180,7 @@ Basic + creating on the fly examples are also shown in the tool description and 
             }
 
             // Surface remaining rate-limit budget so the LLM can pace large scenes
-            var stats = CommitRateLimiter.GetStatistics();
+            var stats = rateLimiter.GetStatistics();
             if (stats != null)
                 result.RateLimitTokensRemaining = (int)stats.CurrentAvailablePermits;
 

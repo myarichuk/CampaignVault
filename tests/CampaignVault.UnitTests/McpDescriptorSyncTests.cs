@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using CampaignVault.Tools;
 using Xunit;
@@ -80,6 +81,44 @@ public class McpDescriptorSyncTests
                 : generatedJson;
             File.WriteAllText(path, output);
         }
+    }
+
+    [Theory]
+    [InlineData("upsert_item", "item")]
+    [InlineData("upsert_creature", "creature")]
+    [InlineData("upsert_plot_thread", "plotThread")]
+    [InlineData("upsert_spell", "spell")]
+    [InlineData("upsert_feat", "feat")]
+    [InlineData("upsert_faction", "faction")]
+    [InlineData("upsert_quest", "quest")]
+    [InlineData("upsert_rumor", "rumor")]
+    public void UpsertTool_Descriptor_HasNestedFieldSchema_NotBareObject(string toolName, string paramName)
+    {
+        var path = Path.Combine(DescriptorsDirectory, $"{toolName}.json");
+        var onDisk = File.ReadAllText(path);
+
+        using var doc = JsonDocument.Parse(onDisk);
+        var nested = doc.RootElement.GetProperty("inputSchema").GetProperty("properties").GetProperty(paramName);
+
+        Assert.True(nested.TryGetProperty("properties", out var nestedProps),
+            $"{toolName}'s '{paramName}' parameter has no nested field schema (still a bare object).");
+        Assert.True(nestedProps.EnumerateObject().Any(),
+            $"{toolName}'s '{paramName}' nested schema has no properties.");
+    }
+
+    [Fact]
+    public void Commit_Descriptor_RequiresChangesAndNarrative()
+    {
+        var built = McpDescriptorBuilder.BuildAll();
+        var commitJson = built["commit"];
+
+        using var doc = JsonDocument.Parse(commitJson);
+        var required = doc.RootElement.GetProperty("inputSchema").GetProperty("required")
+            .EnumerateArray().Select(e => e.GetString()).ToList();
+
+        Assert.Contains("campaignName", required);
+        Assert.Contains("changes", required);
+        Assert.Contains("narrative", required);
     }
 
     private static bool JsonSemanticEquals(string left, string right)

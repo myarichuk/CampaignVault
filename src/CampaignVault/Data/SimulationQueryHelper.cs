@@ -167,7 +167,9 @@ internal static class SimulationQueryHelper
             .Customize(x => x.WaitForNonStaleResults(IndexWait))
             .Where(t => t.State != PlotThreadState.Resolved && t.State != PlotThreadState.Abandoned);
 
-        var threads = await query.ToListAsync(ct);
+        // IsArchived is not an indexed field on PlotThread/Search, so filter it post-query
+        // (same pattern already used below for campaign-name scoping).
+        var threads = (await query.ToListAsync(ct)).Where(t => !t.IsArchived).ToList();
 
         if (string.IsNullOrWhiteSpace(campaignName))
             return threads;

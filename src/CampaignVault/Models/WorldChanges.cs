@@ -42,6 +42,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(PlotThreadClueDiscovered), "plot_thread_clue")]
 [JsonDerivedType(typeof(ResourceChange), "resource")]
 [JsonDerivedType(typeof(RestRecoveryAck), "rest_recovery_ack")]
+[JsonDerivedType(typeof(ArchiveEntityChange), "archive_entity")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -1149,4 +1150,45 @@ public enum RecordingMode
 {
     Passive,
     Deliberate
+}
+
+/// <summary>
+/// Entity kind for <see cref="ArchiveEntityChange"/>. Deliberately excludes Character —
+/// the Character model has no IsArchived field, so characters cannot be archived this way
+/// (see the tool-usage audit, C1). Attempting Character fails with an explanatory message.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ArchivableEntityType
+{
+    Character,
+    Location,
+    Item,
+    Faction,
+    Quest,
+    Creature,
+    Spell,
+    Feat,
+    Rumor,
+    PlotThread
+}
+
+/// <summary>
+/// Soft-archives (or restores) an entity created via one of the upsert_* tools, hiding it from
+/// default search/scene/list results without deleting it. This is the play-LLM-reachable
+/// counterpart to the internal IsArchived flag most entity upserts already accept — see C1 in
+/// the tool-usage audit for why this was previously undiscoverable during play.
+/// </summary>
+public class ArchiveEntityChange : WorldChange
+{
+    [Description("The kind of entity being archived/restored. Character is not supported — see this $type's schema description.")]
+    [JsonPropertyName("entityType")]
+    public ArchivableEntityType EntityType { get; set; }
+
+    [Description("The ID of the entity to archive or restore (e.g. 'quests/stop-nightshade').")]
+    [JsonPropertyName("entityId")]
+    public string EntityId { get; set; } = default!;
+
+    [Description("true to archive (hide from default results, soft-delete), false to restore visibility. Defaults to true.")]
+    [JsonPropertyName("archived")]
+    public bool Archived { get; set; } = true;
 }

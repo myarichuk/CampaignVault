@@ -41,6 +41,29 @@ public class LlmToolingRegressionTests
         Assert.DoesNotContain("character_create", CommitTypesReference.SupportedTypesList);
     }
 
+    [Fact]
+    public void ArchiveEntity_IsListedAsSupportedType()
+    {
+        // Regression guard for the exact gap found with character_create: a $type that exists as a
+        // C# WorldChange but has no [JsonDerivedType] mapping is silently unreachable from commit.
+        Assert.Contains("archive_entity", CommitTypesReference.SupportedTypesList);
+    }
+
+    [Fact]
+    public void ArchiveEntity_RawJson_DeserializesToArchiveEntityChange()
+    {
+        const string json = """[{"$type":"archive_entity","entityType":"Quest","entityId":"quests/stop-nightshade","archived":true}]""";
+        using var doc = JsonDocument.Parse(json);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.True(ok, error);
+        Assert.NotNull(parsed);
+        var change = Assert.IsType<ArchiveEntityChange>(Assert.Single(parsed!));
+        Assert.Equal(ArchivableEntityType.Quest, change.EntityType);
+        Assert.Equal("quests/stop-nightshade", change.EntityId);
+        Assert.True(change.Archived);
+    }
+
     [Theory]
     [InlineData(CommitRumorHelpExamples.RumorEvolve, typeof(RumorEvolves))]
     public void DocumentedCommitExamples_ParseSuccessfully(string json, Type expectedType)

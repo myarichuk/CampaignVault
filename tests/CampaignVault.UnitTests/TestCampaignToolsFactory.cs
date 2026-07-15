@@ -43,4 +43,23 @@ internal static class TestCampaignToolsFactory
             scope.Resolve<CampaignManagementTools>(),
             scope.Resolve<MetaTools>());
     }
+
+    /// <summary>
+    /// Resolves WorldBuilderTools directly for tests that exercise tools not wrapped by the
+    /// legacy CampaignTools facade (e.g. upsert_quest, upsert_faction, upsert_plot_thread).
+    /// </summary>
+    public static WorldBuilderTools CreateWorldBuilderTools(RavenDBFixture fixture, CampaignRepository? repository = null)
+    {
+        var repo = repository ?? fixture.CreateRepository();
+
+        var scope = fixture.Container.BeginLifetimeScope(b =>
+        {
+            b.RegisterInstance(repo).As<CampaignRepository>();
+            b.RegisterAssemblyTypes(typeof(ExplorationTools).Assembly)
+                .Where(t => t.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolTypeAttribute>() != null)
+                .InstancePerLifetimeScope();
+        });
+
+        return scope.Resolve<WorldBuilderTools>();
+    }
 }

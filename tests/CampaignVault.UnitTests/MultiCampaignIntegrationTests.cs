@@ -51,6 +51,119 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task UpsertCharacter_BeforeCreateCampaign_PersistsDnd5eConfigAndWarnsInSummary()
+    {
+        var tools = CreateTools();
+        var slug = "out-of-order-world-" + Guid.NewGuid().ToString("N")[..8];
+        var charId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+
+        var upsertResult = await tools.UpsertCharacter(
+            new CharacterUpsertRequest { Id = charId, Name = "Early Bird" }, slug);
+
+        Assert.True(upsertResult.Success);
+        Assert.Contains("No campaign ruleset is configured yet", upsertResult.Summary);
+        Assert.Contains("Dnd5e", upsertResult.Summary);
+
+        var configResult = await tools.GetConfig(slug);
+        Assert.True(configResult.Success);
+        Assert.Equal(RulesetSystem.Dnd5e, configResult.Data!.ActiveSystem);
+    }
+
+    [Fact]
+    public async Task CreateCampaign_AfterEarlyUpsertCharacter_StillSucceedsAndCorrectsConfig()
+    {
+        var tools = CreateTools();
+        var slug = "out-of-order-world-" + Guid.NewGuid().ToString("N")[..8];
+        var charId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+
+        // Out-of-order: character created before the campaign is formally established.
+        await tools.UpsertCharacter(new CharacterUpsertRequest { Id = charId, Name = "Early Bird" }, slug);
+
+        var createResult = await tools.CreateCampaign(slug, RulesetSystem.Pathfinder2e);
+        Assert.True(createResult.Success, $"create_campaign should still succeed: {createResult.Summary}");
+        Assert.Equal(RulesetSystem.Pathfinder2e, createResult.Data!.System);
+
+        // The config document, which is what character bootstrap actually reads, must now agree
+        // with the locked Campaign.System rather than being stuck at the earlier implicit Dnd5e default.
+        var configResult = await tools.GetConfig(slug);
+        Assert.True(configResult.Success);
+        Assert.Equal(RulesetSystem.Pathfinder2e, configResult.Data!.ActiveSystem);
+    }
+
+    [Fact]
+    public async Task UpsertCharacter_OnExistingId_WarnsInSummary_InsteadOfSilentOverwrite()
+    {
+        var tools = CreateTools();
+        var slug = "collision-world-" + Guid.NewGuid().ToString("N")[..8];
+        var charId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+
+        var firstResult = await tools.UpsertCharacter(
+            new CharacterUpsertRequest { Id = charId, Name = "Original", MaxHp = 20, CurrentHp = 20 }, slug);
+        Assert.True(firstResult.Success);
+        Assert.DoesNotContain("already existed", firstResult.Summary);
+
+        var secondResult = await tools.UpsertCharacter(
+            new CharacterUpsertRequest { Id = charId, Name = "Sparse Re-Upsert" }, slug);
+
+        Assert.True(secondResult.Success);
+        Assert.Contains("already existed and was merged/overwritten", secondResult.Summary);
+        Assert.Contains(charId, secondResult.Summary);
+    }
+
+    [Fact]
+    public async Task UpsertCharacter_WithNonexistentCurrentLocationId_WarnsButSucceeds()
+    {
+        var tools = CreateTools();
+        var slug = "dangling-ref-world-" + Guid.NewGuid().ToString("N")[..8];
+        var charId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+
+        var result = await tools.UpsertCharacter(
+            new CharacterUpsertRequest { Id = charId, Name = "Wanderer", CurrentLocationId = "locations/ghost-town" },
+            slug);
+
+        Assert.True(result.Success);
+        Assert.Contains("currentLocationId 'locations/ghost-town' does not currently exist", result.Summary);
+    }
+
+    [Fact]
+    public async Task UpsertQuest_WithNonexistentGiverAndRelatedIds_WarnsButSucceeds()
+    {
+        var repo = _fixture.CreateRepository();
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        var slug = "dangling-ref-world-" + Guid.NewGuid().ToString("N")[..8];
+        var questId = "quests/" + Guid.NewGuid().ToString("N")[..8];
+
+        var result = await worldBuilder.UpsertQuest(new QuestUpsertRequest
+        {
+            Id = questId,
+            Title = "Find the Ghost Giver",
+            GiverId = "chars/nonexistent-giver",
+            RelatedFactionIds = ["factions/nonexistent-faction"]
+        }, slug);
+
+        Assert.True(result.Success);
+        Assert.Contains("giverId='chars/nonexistent-giver'", result.Summary);
+        Assert.Contains("relatedFactionIds[0]='factions/nonexistent-faction'", result.Summary);
+    }
+
+    [Fact]
+    public async Task UpsertQuest_WithExistingReferences_NoWarning()
+    {
+        var repo = _fixture.CreateRepository();
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        var slug = "dangling-ref-world-" + Guid.NewGuid().ToString("N")[..8];
+        var giverId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+        var questId = "quests/" + Guid.NewGuid().ToString("N")[..8];
+
+        await worldBuilder.UpsertCharacter(new CharacterUpsertRequest { Id = giverId, Name = "Real Giver" }, slug);
+        var result = await worldBuilder.UpsertQuest(
+            new QuestUpsertRequest { Id = questId, Title = "Real Quest", GiverId = giverId }, slug);
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain("WARNING", result.Summary);
+    }
+
+    [Fact]
     public async Task LockIn_RejectionPath_PreventsRulesetChange()
     {
         var tools = CreateTools();

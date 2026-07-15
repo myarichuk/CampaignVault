@@ -61,6 +61,19 @@ public class LocationUpdateHandler : IWorldChangeHandler
                 added = true;
             }
 
+            if (added)
+            {
+                var exitTargetId = lu.AddExit.TargetLocationId;
+                var exitTargetExists = context.Locations.ContainsKey(exitTargetId)
+                    || (context.Session != null && await context.Session.LoadAsync<Location>(exitTargetId, ct) != null);
+                if (!exitTargetExists)
+                {
+                    context.RecordMessage(
+                        $"Warning: exit added from '{loc.Id}' to '{exitTargetId}', but '{exitTargetId}' does not currently exist. " +
+                        "This is allowed (create it before the party reaches it), but verify the ID is correct.");
+                }
+            }
+
             if (added
                 && context.Config?.AutoRepairLocationConnectivity == true
                 && !lu.AddExit.OneWay)

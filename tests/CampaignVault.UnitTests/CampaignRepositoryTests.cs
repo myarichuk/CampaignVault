@@ -718,18 +718,24 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 5f } }
         };
         await repo.UpsertCharacterAsync(session, character, TestCampaignDefaults.Slug);
+
+        var targetId = "target-1-" + Guid.NewGuid();
+        await repo.UpsertCharacterAsync(session,
+            new CharacterUpsertRequest { Id = targetId, Name = "Relationship Target" },
+            TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         // Perform V4 operation that touches Mind (RelationshipChange via Commit)
-        await repo.StageChangesAsync(session, [
+        var stageResult = await repo.StageChangesAsync(session, [
             new RelationshipChange
             {
                 CharacterId = charId,
-                TargetId = "target-1",
+                TargetId = targetId,
                 Delta = +10,
                 Reason = "Test V4 only path"
             }
         ], TestCampaignDefaults.Slug);
+        Assert.True(stageResult.Success, string.Join("; ", stageResult.Summary));
         await session.SaveChangesAsync();
 
         // Reload and verify
@@ -738,8 +744,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // V4 data lives exclusively in Mind (legacy top-level fields have been fully removed)
         Assert.NotNull(reloaded.Social);
-        Assert.True(reloaded.Social.Relationships.ContainsKey("target-1"));
-        Assert.Equal(10, reloaded.Social.Relationships["target-1"]);
+        Assert.True(reloaded.Social.Relationships.ContainsKey(targetId));
+        Assert.Equal(10, reloaded.Social.Relationships[targetId]);
         Assert.True(reloaded.Needs.ActiveNeeds.ContainsKey("tiredness"));
     }
 

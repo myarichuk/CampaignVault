@@ -38,7 +38,8 @@ internal static class McpDescriptorBuilder
         {
             foreach (var (key, value) in generatedProps)
             {
-                if (key is "character" or "location" or "lore"
+                if (key is "character" or "location" or "lore" or "item" or "creature" or "plotThread"
+                        or "spell" or "feat" or "faction" or "quest" or "rumor"
                     && existingProps[key] is JsonObject existingNested
                     && value is JsonObject generatedNested)
                 {
@@ -210,7 +211,7 @@ internal static class McpDescriptorBuilder
             ? Enum.GetNames(effective)
             : [];
 
-        var isRequired = kind switch
+        var isRequired = parameter.GetCustomAttribute<SemanticallyRequiredAttribute>() != null || kind switch
         {
             _ when hasDefault => false,
             _ when isNullable => false,

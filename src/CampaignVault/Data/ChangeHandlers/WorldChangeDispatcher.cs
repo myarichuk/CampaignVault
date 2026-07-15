@@ -274,7 +274,8 @@ public sealed class WorldChangeDispatcher(
             Success = overallSuccess,
             ChangesProcessed = changes.Length,
             Summary = summary,
-            InvolvedEntities = context.InvolvedEntities.ToList()
+            InvolvedEntities = context.InvolvedEntities.ToList(),
+            EntityCollisions = context.EntityCollisions.ToList()
         };
     }
 

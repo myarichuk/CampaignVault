@@ -297,5 +297,18 @@ internal static class CommitSchemaRegistry
             SideEffects: [],
             CoCommitHints: ["event", "status"],
             Example: """{"$type":"resource","characterId":"chars/wizard-1","poolName":"spell_slots_3","delta":-1,"spellName":"fireball","reason":"Cast Fireball"}"""),
+
+        // ── Lifecycle ────────────────────────────────────────────────────────────────
+        new("archive_entity", "World",
+            "Soft-delete (or restore) an entity created via an upsert_* tool — hides it from default search/scene/list " +
+            "results without deleting the document. Recoverable: commit again with archived:false to restore. " +
+            "Does NOT support Character (the Character model has no archive field) — for a mistakenly-created NPC, " +
+            "set keepAlive:false and clear its schedule via character_update instead, so transient GC can clean it up.",
+            ["entityType", "entityId"],
+            ["archived"],
+            HasSideEffects: false,
+            SideEffects: [],
+            CoCommitHints: [],
+            Example: """{"$type":"archive_entity","entityType":"Quest","entityId":"quests/stop-nightshade","archived":true}"""),
     ];
 }

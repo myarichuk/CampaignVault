@@ -59,7 +59,7 @@ public class McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormali
             }
             catch (Exception ex)
             {
-                logger.LogDebug(ex,
+                logger.LogWarning(ex,
                     "McpNormalization: failed to parse or rewrite request body; passing through unchanged");
                 context.Request.Body.Position = 0;
             }

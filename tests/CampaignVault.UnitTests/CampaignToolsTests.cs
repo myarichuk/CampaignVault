@@ -41,6 +41,94 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Maximum allowed is 50", result.Summary);
     }
 
+    [Fact]
+    public async Task Commit_RejectsRulesetActionWithManualHpOnSameTarget()
+    {
+        var tools = CreateTools();
+        var changes = new WorldChange[]
+        {
+            new RulesetAction
+            {
+                CharacterId = "chars/attacker", TargetIds = ["chars/defender"],
+                ActionName = "longsword", ActionType = RulesetActionType.Attack
+            },
+            new HpChange { CharacterId = "chars/defender", Delta = -5 }
+        };
+
+        var result = await tools.Commit(changes, "Attack + manual duplicate HP");
+
+        Assert.False(result.Success);
+        Assert.Equal("InvalidArgument", result.Error);
+        Assert.Contains("already auto-applies 'hp'", result.Summary);
+    }
+
+    [Fact]
+    public async Task Commit_AllowsRulesetActionWithManualHpOnDifferentTarget()
+    {
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var slug = "dup-guard-world-" + Guid.NewGuid().ToString("N")[..8];
+        var attackerId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+        var defenderId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+        var bystanderId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+
+        await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, slug);
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        await worldBuilder.UpsertCharacter(new CharacterUpsertRequest
+        {
+            Id = attackerId, Name = "Attacker", MaxHp = 20, CurrentHp = 20, SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+        }, slug);
+        await worldBuilder.UpsertCharacter(new CharacterUpsertRequest
+        {
+            Id = defenderId, Name = "Defender", MaxHp = 20, CurrentHp = 20, SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+        }, slug);
+        await worldBuilder.UpsertCharacter(new CharacterUpsertRequest
+        {
+            Id = bystanderId, Name = "Bystander", MaxHp = 20, CurrentHp = 20, SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+        }, slug);
+
+        var changes = new WorldChange[]
+        {
+            new RulesetAction
+            {
+                CharacterId = attackerId, TargetIds = [defenderId],
+                ActionName = "longsword", ActionType = RulesetActionType.Attack
+            },
+            new HpChange { CharacterId = bystanderId, Delta = -3 }
+        };
+
+        var result = await tools.Commit(changes, "Attack + unrelated bystander HP change", slug);
+
+        Assert.True(result.Success, $"Should not be blocked by unrelated-target HP change: {result.Summary}");
+    }
+
+    [Fact]
+    public async Task Commit_RateLimit_IsScopedPerCampaign_NotSharedGlobally()
+    {
+        var tools = CreateTools();
+        var campaignA = "camp_a_" + Guid.NewGuid();
+        var campaignB = "camp_b_" + Guid.NewGuid();
+        var change = new WorldChange[] { new HpChange { CharacterId = "dummy", Delta = -1 } };
+
+        // Exhaust campaign A's rate-limit bucket (bounded loop; the bucket holds 50 tokens).
+        var exhaustedA = false;
+        for (var i = 0; i < 60 && !exhaustedA; i++)
+        {
+            var res = await tools.Commit(change, "Spamming campaign A", campaignA);
+            if (!res.Success && res.Error == "RateLimitExceeded")
+            {
+                exhaustedA = true;
+            }
+        }
+
+        Assert.True(exhaustedA, "Expected campaign A's rate limit to be exhausted within 60 attempts.");
+
+        // A commit to an unrelated campaign must not be throttled by campaign A's exhausted bucket.
+        var resultB = await tools.Commit(change, "First commit to campaign B", campaignB);
+
+        Assert.NotEqual("RateLimitExceeded", resultB.Error);
+    }
+
     [Fact(Skip =
         "Static rate limit is increased to 10,000 to prevent parallel test suites from failing. Skip this boundary test.")]
     public async Task Commit_RejectsWhenRateLimitExceeded()

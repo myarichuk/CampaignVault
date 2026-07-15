@@ -137,6 +137,31 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task StartCombat_MixOfAliveAndZeroHp_DropsZeroHpAndReportsInSummary()
+    {
+        var store = _store;
+        var tools = CreateTools();
+        var alive = "char1_" + Guid.NewGuid();
+        var downed = "char2_" + Guid.NewGuid();
+        var campaign = "camp_" + Guid.NewGuid();
+
+        using (var session = store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character { Id = alive, Name = "Alice", CurrentHp = 10 });
+            await session.StoreAsync(new Character { Id = downed, Name = "Bob", CurrentHp = 0 });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.StartCombat("loc1", [alive, downed], campaignName: campaign);
+
+        Assert.True(result.Success, $"StartCombat failed. Error: {result.Error}, Summary: {result.Summary}");
+        Assert.Single(result.Data!.Combatants);
+        Assert.Equal(alive, result.Data!.Combatants[0].CharacterId);
+        Assert.Contains("Dropped 1 combatant(s) with 0 or negative HP", result.Summary);
+        Assert.Contains(downed, result.Summary);
+    }
+
+    [Fact]
     public async Task NextTurn_SkipsDeadCharacters()
     {
         var store = _store;

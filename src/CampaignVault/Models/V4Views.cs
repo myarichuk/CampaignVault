@@ -130,6 +130,9 @@ public class CommitResult
     public int ChangesProcessed { get; set; }
     public List<string> Summary { get; set; } = [];
     public List<string> InvolvedEntities { get; set; } = [];
+    /// <summary>IDs of entities whose create-style change (e.g. character_create) resolved to an
+    /// already-existing document and was merged into it instead of creating a new one.</summary>
+    public List<string> EntityCollisions { get; set; } = [];
     /// <summary>Set when the batch contained combat/status changes but no EventOccurred. Reminder to log the narrative.</summary>
     public string? NarrativeReminder { get; set; }
     /// <summary>Remaining commit token budget (approximate). Replenishes 10 tokens/10s up to 50.</summary>
