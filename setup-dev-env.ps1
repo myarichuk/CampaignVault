@@ -43,6 +43,16 @@ if (!(Test-Path ".githooks/pre-commit")) {
     Write-Host "OK - Pre-commit hook is installed" -ForegroundColor Green
 }
 
+# 6. Generate MCP descriptors (needed for running the server)
+Write-Host "`n5. Generating MCP descriptors..." -ForegroundColor Yellow
+$env:REGENERATE_MCP = '1'
+dotnet test --filter RegenerateMcpDescriptors -q 2>$null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "OK - MCP descriptors generated" -ForegroundColor Green
+} else {
+    Write-Host "WARNING: Could not generate descriptors. Run later: REGENERATE_MCP=1 dotnet test --filter RegenerateMcpDescriptors" -ForegroundColor Yellow
+}
+
 Write-Host "`nDone! Development environment ready." -ForegroundColor Green
 Write-Host "`nYou can now:"
 Write-Host "  - Run 'dotnet build' to build the project"
