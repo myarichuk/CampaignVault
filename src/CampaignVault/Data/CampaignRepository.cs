@@ -2049,17 +2049,22 @@ public class CampaignRepository
     {
         var effective = ResolveCampaign(campaignName);
         var quests = await session.Query<Quest, Quest_Search>()
-            .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+                        && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == ""))
             .Take(limit).ToListAsync();
-        return quests.Where(q => string.IsNullOrEmpty(q.CampaignName) || q.CampaignName == effective).ToList();
+        return quests;
     }
 
     public async Task<List<Faction>> GetActiveFactionsAsync(IAsyncDocumentSession session, string? campaignName = null,
         int limit = 20)
     {
         var effective = ResolveCampaign(campaignName);
-        var factions = await session.Query<Faction, Faction_Search>().Take(limit).ToListAsync();
-        return factions.Where(f => string.IsNullOrEmpty(f.CampaignName) || f.CampaignName == effective).ToList();
+        var factions = await session.Query<Faction, Faction_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(f => f.CampaignName == effective || f.CampaignName == null || f.CampaignName == "")
+            .Take(limit).ToListAsync();
+        return factions;
     }
 
     /// <summary>
