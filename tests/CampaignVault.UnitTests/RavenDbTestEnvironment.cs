@@ -45,6 +45,8 @@ public sealed class RavenDbTestEnvironment : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        CleanupOldTestDirectories();
+
         if (await TryStartContainerAsync().ConfigureAwait(false))
         {
             IsRemote = true;
@@ -53,6 +55,31 @@ public sealed class RavenDbTestEnvironment : IAsyncLifetime
 
         IsRemote = false;
         InitializeEmbeddedFallback();
+    }
+
+    private static void CleanupOldTestDirectories()
+    {
+        try
+        {
+            var tempPath = Path.GetTempPath();
+            var testDirs = Directory.EnumerateDirectories(tempPath, "RavenDBTest*", SearchOption.TopDirectoryOnly);
+            foreach (var dir in testDirs)
+            {
+                try
+                {
+                    Directory.Delete(dir, true);
+                    Console.WriteLine($"[RavenDbTestEnvironment] Cleaned up {Path.GetFileName(dir)}");
+                }
+                catch
+                {
+                    // Best effort — skip directories still locked by concurrent or incomplete runs
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[RavenDbTestEnvironment] Cleanup sweep failed: {ex.Message}");
+        }
     }
 
     public (IDocumentStore Store, bool IsSharedStore) CreateStoreForClass(string uniqueDatabaseName)
@@ -240,17 +267,30 @@ public sealed class RavenDbTestEnvironment : IAsyncLifetime
         if (_sharedFallbackStore != null)
         {
             _sharedFallbackStore.Dispose();
-            await Task.Delay(500).ConfigureAwait(false);
+
             if (_embeddedDataDir != null)
             {
-                try
-                {
-                    Directory.Delete(_embeddedDataDir, true);
-                }
-                catch
-                {
-                    // best effort
-                }
+                DeleteDirectoryWithRetry(_embeddedDataDir, retries: 10, delayMs: 200);
+            }
+        }
+    }
+
+    private static void DeleteDirectoryWithRetry(string path, int retries, int delayMs)
+    {
+        for (int i = 0; i < retries; i++)
+        {
+            try
+            {
+                Directory.Delete(path, true);
+                return;
+            }
+            catch when (i < retries - 1)
+            {
+                Thread.Sleep(delayMs);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[RavenDbTestEnvironment] Failed to delete {path}: {ex.Message}");
             }
         }
     }
