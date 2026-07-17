@@ -22,6 +22,15 @@ public class CharacterUpsertRequest
 
     public string? Notes { get; set; }
 
+    [Description("Current transient appearance (e.g. 'blood-streaked, one pauldron strap loose'). Omit to preserve the character's existing appearance.")]
+    public string? CurrentAppearance { get; set; }
+
+    [Description("Short visual state tags (e.g. 'bloody', 'disheveled', 'unarmed'). Omit to preserve the character's existing tags.")]
+    public List<string>? VisualTags { get; set; }
+
+    [Description("Permanent distinguishing features (scars, tattoos). Omit to preserve the character's existing features.")]
+    public List<string>? DistinctiveFeatures { get; set; }
+
     public bool KeepAlive { get; set; }
 
     public bool IsPc { get; set; }

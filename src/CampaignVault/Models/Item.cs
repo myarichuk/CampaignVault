@@ -25,6 +25,13 @@ public class Item : ICampaignScopedEntity, IArchivable
 
     public List<string> Tags { get; set; } = [];
 
+    /// <summary>
+    /// Maps a tag/feature/state text (as it appears in Tags/DistinctiveFeatures/CurrentState) to the
+    /// event ID(s) that established it — objective ground truth. Engine-populated only; not an
+    /// LLM-settable commit field.
+    /// </summary>
+    public Dictionary<string, List<string>> TagProvenance { get; set; } = [];
+
     public Dictionary<string, object> Properties { get; set; } = [];
     
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;

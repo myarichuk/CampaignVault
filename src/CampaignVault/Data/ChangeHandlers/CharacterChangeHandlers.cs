@@ -441,6 +441,10 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure(hidden);
         }
 
+        var appearanceBefore = character.CurrentAppearance;
+        var tagsBefore = new HashSet<string>(character.VisualTags);
+        var featuresBefore = new HashSet<string>(character.DistinctiveFeatures);
+
         if (cu.AppearanceOverride != null) character.CurrentAppearance = cu.AppearanceOverride;
 
         if (cu.TagsToAdd != null)
@@ -451,6 +455,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         if (cu.TagsToRemove != null)
         {
             character.VisualTags.RemoveAll(t => cu.TagsToRemove.Contains(t));
+            foreach (var removed in cu.TagsToRemove) character.TagProvenance.Remove(removed);
         }
 
         if (cu.FeaturesToAdd != null)
@@ -461,6 +466,46 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         if (cu.FeaturesToRemove != null)
         {
             character.DistinctiveFeatures.RemoveAll(f => cu.FeaturesToRemove.Contains(f));
+            foreach (var removed in cu.FeaturesToRemove) character.TagProvenance.Remove(removed);
+        }
+
+        // Appearance/features are otherwise only recoverable from conversation memory, which is lossy
+        // across context compaction. Auto-log a low-weight history entry so recall_history/NpcRecentEvents
+        // can surface *when* this changed, without requiring the caller to issue a second `event` commit.
+        var appearanceChanged = character.CurrentAppearance != appearanceBefore
+            || !tagsBefore.SetEquals(character.VisualTags)
+            || !featuresBefore.SetEquals(character.DistinctiveFeatures);
+
+        if (appearanceChanged)
+        {
+            var eventId = "events/" + Guid.NewGuid();
+            await context.LogEventAsync(new Event
+            {
+                Id = eventId,
+                Summary = $"{character.Name}'s appearance changed: {character.CurrentAppearance ?? "(no override)"}; tags: [{string.Join(", ", character.VisualTags)}]",
+                Category = EventCategory.Interaction,
+                Importance = MemoryImportance.Trivial,
+                Involved = [cu.CharacterId],
+                LocationId = character.CurrentLocationId,
+                DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
+                CampaignName = context.CampaignName,
+            });
+
+            // Ground-truth provenance: which event established this specific fact. Kept separate from
+            // this character's own subjective PsychologyProfile.Memories (which may misremember it).
+            if (character.CurrentAppearance != appearanceBefore)
+            {
+                if (appearanceBefore != null) character.TagProvenance.Remove(appearanceBefore);
+                if (character.CurrentAppearance != null) character.TagProvenance[character.CurrentAppearance] = [eventId];
+            }
+            foreach (var addedTag in character.VisualTags.Except(tagsBefore))
+            {
+                character.TagProvenance[addedTag] = [eventId];
+            }
+            foreach (var addedFeature in character.DistinctiveFeatures.Except(featuresBefore))
+            {
+                character.TagProvenance[addedFeature] = [eventId];
+            }
         }
 
         if (cu.KeepAlive.HasValue)

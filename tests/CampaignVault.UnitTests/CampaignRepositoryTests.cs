@@ -12,6 +12,7 @@ using CampaignVault.Models;
 using CampaignVault.Tools;
 using Microsoft.Extensions.Logging;
 using Raven.Client.Documents;
+using Raven.Client.Documents.Session;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -1913,6 +1914,301 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task UpsertCharacter_Seeds_Appearance_On_Create_And_Preserves_When_Omitted_On_Update()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var id = "npcs/appearance-" + Guid.NewGuid();
+
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+        {
+            Id = id,
+            Name = "Weathered Scout",
+            CurrentAppearance = "mud-caked boots, torn cloak",
+            VisualTags = ["disheveled", "wet"],
+            DistinctiveFeatures = ["scar across left eyebrow"],
+        }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var seeded = await session.LoadAsync<Character>(id);
+        Assert.Equal("mud-caked boots, torn cloak", seeded.CurrentAppearance);
+        Assert.Equal(["disheveled", "wet"], seeded.VisualTags);
+        Assert.Equal(["scar across left eyebrow"], seeded.DistinctiveFeatures);
+
+        // Second upsert omits appearance fields (e.g. an unrelated HP update) -- must not clobber them.
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+        {
+            Id = id,
+            Name = "Weathered Scout",
+            CurrentHp = 5,
+        }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var updated = await session.LoadAsync<Character>(id);
+        Assert.Equal("mud-caked boots, torn cloak", updated.CurrentAppearance);
+        Assert.Equal(["disheveled", "wet"], updated.VisualTags);
+        Assert.Equal(["scar across left eyebrow"], updated.DistinctiveFeatures);
+    }
+
+    private async Task<List<Event>> WaitForEventsInvolvingAsync(IAsyncDocumentSession session, string characterId)
+    {
+        return await session.Query<Event, Event_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
+            .Where(e => e.Involved.Contains(characterId))
+            .ToListAsync();
+    }
+
+    private async Task<List<Event>> WaitForEventsAtLocationAsync(IAsyncDocumentSession session, string locationId)
+    {
+        return await session.Query<Event, Event_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
+            .Where(e => e.LocationId == locationId)
+            .ToListAsync();
+    }
+
+
+    [Fact]
+    public async Task CharacterUpdate_AppearanceChange_AutoLogsTrivialEvent_ButNoOpDoesNot()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var id = "npcs/appearance-event-" + Guid.NewGuid();
+
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = id, Name = "Guard" }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var result = await repo.StageChangesAsync(session, [
+            new CharacterUpdate { CharacterId = id, AppearanceOverride = "green-striped scarf tied around neck", TagsToAdd = ["adorned"] }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(result.Success);
+
+        var events = await WaitForEventsInvolvingAsync(session, id);
+        Assert.Single(events);
+        Assert.Equal(EventCategory.Interaction, events[0].Category);
+        Assert.Equal(MemoryImportance.Trivial, events[0].Importance);
+        Assert.Contains("scarf", events[0].Summary);
+
+        // Re-applying the exact same values is a no-op and must not log a second event.
+        var noOpResult = await repo.StageChangesAsync(session, [
+            new CharacterUpdate { CharacterId = id, AppearanceOverride = "green-striped scarf tied around neck", TagsToAdd = ["adorned"] }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(noOpResult.Success);
+
+        var eventsAfterNoOp = await WaitForEventsInvolvingAsync(session, id);
+        Assert.Single(eventsAfterNoOp);
+
+        var npc = await session.LoadAsync<Character>(id);
+        Assert.Equal([events[0].Id], npc.TagProvenance["green-striped scarf tied around neck"]);
+        Assert.Equal([events[0].Id], npc.TagProvenance["adorned"]);
+    }
+
+    [Fact]
+    public async Task EngagementRelationChange_SocialCategory_DoesNotAutoLogEvent()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var actorId = "npcs/talker-" + Guid.NewGuid();
+        var targetId = "npcs/listener-" + Guid.NewGuid();
+
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = actorId, Name = "Talker" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = targetId, Name = "Listener" }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var establishResult = await repo.StageChangesAsync(session, [
+            new EngagementRelationChange { CharacterId = actorId, TargetId = targetId, Verb = "watching", Category = EngagementCategory.Social }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(establishResult.Success);
+
+        Assert.Empty(await WaitForEventsInvolvingAsync(session, targetId));
+
+        var clearResult = await repo.StageChangesAsync(session, [
+            new EngagementRelationChange { CharacterId = actorId, TargetId = targetId, Verb = null }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(clearResult.Success);
+
+        Assert.Empty(await WaitForEventsInvolvingAsync(session, targetId));
+    }
+
+    [Fact]
+    public async Task EngagementRelationChange_GroupConversationPattern_DoesNotSpamEvents()
+    {
+        // Regression guard for the "PC says 'what's up' to 4 people" scenario: batching pairwise
+        // Social/Attention engagement_relation commits to mark conversation participants must not
+        // auto-log an event per pair.
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var pcId = "npcs/pc-" + Guid.NewGuid();
+        var npc1 = "npcs/patron1-" + Guid.NewGuid();
+        var npc2 = "npcs/patron2-" + Guid.NewGuid();
+        var npc3 = "npcs/patron3-" + Guid.NewGuid();
+
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = pcId, Name = "PC" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = npc1, Name = "Patron 1" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = npc2, Name = "Patron 2" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = npc3, Name = "Patron 3" }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var result = await repo.StageChangesAsync(session, [
+            new EngagementRelationChange { CharacterId = pcId, TargetId = npc1, Verb = "talking to", Category = EngagementCategory.Attention },
+            new EngagementRelationChange { CharacterId = pcId, TargetId = npc2, Verb = "talking to", Category = EngagementCategory.Attention },
+            new EngagementRelationChange { CharacterId = pcId, TargetId = npc3, Verb = "talking to", Category = EngagementCategory.Attention },
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(result.Success);
+
+        Assert.Empty(await WaitForEventsInvolvingAsync(session, pcId));
+    }
+
+    [Fact]
+    public async Task EngagementRelationChange_EstablishAndClear_AutoLogsImportantEvents()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var actorId = "npcs/captor-" + Guid.NewGuid();
+        var targetId = "npcs/captive-" + Guid.NewGuid();
+
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = actorId, Name = "Captor" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = targetId, Name = "Captive" }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var establishResult = await repo.StageChangesAsync(session, [
+            new EngagementRelationChange { CharacterId = actorId, TargetId = targetId, Verb = "Restraining" }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(establishResult.Success);
+
+        var eventsAfterEstablish = await WaitForEventsInvolvingAsync(session, targetId);
+        Assert.Single(eventsAfterEstablish);
+        Assert.Equal(MemoryImportance.Important, eventsAfterEstablish[0].Importance);
+
+        var clearResult = await repo.StageChangesAsync(session, [
+            new EngagementRelationChange { CharacterId = actorId, TargetId = targetId, Verb = null }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(clearResult.Success);
+
+        var eventsAfterClear = await WaitForEventsInvolvingAsync(session, targetId);
+        Assert.Equal(2, eventsAfterClear.Count);
+        Assert.Contains(eventsAfterClear, e => e.Summary.Contains("ended"));
+    }
+
+    [Fact]
+    public async Task StatusChange_AddAndRemove_AutoLogsImportantEvents()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var id = "npcs/status-event-" + Guid.NewGuid();
+
+        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = id, Name = "Shackled Prisoner" }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var addResult = await repo.StageChangesAsync(session, [
+            new StatusChange { CharacterId = id, Status = "Shackled" }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(addResult.Success);
+
+        var eventsAfterAdd = await WaitForEventsInvolvingAsync(session, id);
+        Assert.Single(eventsAfterAdd);
+        Assert.Equal(MemoryImportance.Important, eventsAfterAdd[0].Importance);
+
+        var removeResult = await repo.StageChangesAsync(session, [
+            new StatusRemove { CharacterId = id, Status = "Shackled" }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(removeResult.Success);
+
+        var eventsAfterRemove = await WaitForEventsInvolvingAsync(session, id);
+        Assert.Equal(2, eventsAfterRemove.Count);
+        Assert.Contains(eventsAfterRemove, e => e.Summary.Contains("lost status"));
+    }
+
+    [Fact]
+    public async Task LocationUpdate_TagChange_AutoLogsTrivialEvent_AndPopulatesProvenance()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var id = "locations/tavern-" + Guid.NewGuid();
+
+        await repo.UpsertLocationAsync(session,
+            new LocationUpsertRequest { Id = id, Name = "Tavern", Type = LocationType.Building }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var result = await repo.StageChangesAsync(session, [
+            new LocationUpdate { LocationId = id, TagsToAdd = ["beer-stained floor"] }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(result.Success);
+
+        var events = await WaitForEventsAtLocationAsync(session, id);
+        Assert.Single(events);
+        Assert.Equal(EventCategory.Interaction, events[0].Category);
+        Assert.Equal(MemoryImportance.Trivial, events[0].Importance);
+
+        var loc = await session.LoadAsync<Location>(id);
+        Assert.Equal([events[0].Id], loc.TagProvenance["beer-stained floor"]);
+
+        // No-op re-application must not log a second event.
+        var noOpResult = await repo.StageChangesAsync(session, [
+            new LocationUpdate { LocationId = id, TagsToAdd = ["beer-stained floor"] }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(noOpResult.Success);
+        Assert.Single(await WaitForEventsAtLocationAsync(session, id));
+
+        // Removing the tag clears its provenance entry.
+        var removeResult = await repo.StageChangesAsync(session, [
+            new LocationUpdate { LocationId = id, TagsToRemove = ["beer-stained floor"] }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(removeResult.Success);
+
+        var locAfterRemove = await session.LoadAsync<Location>(id);
+        Assert.False(locAfterRemove.TagProvenance.ContainsKey("beer-stained floor"));
+    }
+
+    [Fact]
+    public async Task ItemUpdate_FeatureChange_AutoLogsTrivialEvent_AndPopulatesProvenance()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var locId = "locations/tower-" + Guid.NewGuid();
+        var itemId = "items/robe-" + Guid.NewGuid();
+
+        await repo.UpsertLocationAsync(session,
+            new LocationUpsertRequest { Id = locId, Name = "Tower", Type = LocationType.Room }, TestCampaignDefaults.Slug);
+        await repo.UpsertItemAsync(session,
+            new ItemUpsertRequest { Id = itemId, Name = "Mage Robe", HolderId = locId }, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var result = await repo.StageChangesAsync(session, [
+            new ItemUpdate { ItemId = itemId, FeaturesToAdd = ["singed cuffs"] }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(result.Success);
+
+        var events = await WaitForEventsInvolvingAsync(session, itemId);
+        Assert.Single(events);
+        Assert.Equal(MemoryImportance.Trivial, events[0].Importance);
+        Assert.Equal(locId, events[0].LocationId);
+
+        var item = await session.LoadAsync<Item>(itemId);
+        Assert.Equal([events[0].Id], item.TagProvenance["singed cuffs"]);
+
+        // No-op re-application must not log a second event.
+        var noOpResult = await repo.StageChangesAsync(session, [
+            new ItemUpdate { ItemId = itemId, FeaturesToAdd = ["singed cuffs"] }
+        ], TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+        Assert.True(noOpResult.Success);
+        Assert.Single(await WaitForEventsInvolvingAsync(session, itemId));
+    }
+
+    [Fact]
     public async Task GetScene_DoesNotStamp_LastVisitedDay_When_MarkVisitedFalse()
     {
         var repo = _fixture.CreateRepository();
@@ -2010,6 +2306,58 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             var npcSummary = scene.PresentNPCs.FirstOrDefault(n => n.Id == charId);
             Assert.NotNull(npcSummary);
             Assert.Equal("Idle at default location", npcSummary.CurrentActivity);
+        }
+    }
+
+    [Fact]
+    public async Task GetScene_Surfaces_NpcTagProvenance_InPresenceSummary()
+    {
+        var repo = _fixture.CreateRepository();
+        var locId = "locations/provenance-test-" + Guid.NewGuid();
+        var charId = "chars/provenance-test-" + Guid.NewGuid();
+        string eventId;
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Provenance Room" }, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            {
+                Id = charId,
+                Name = "Marked NPC",
+                Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
+            }, TestCampaignDefaults.Slug);
+            await session.SaveChangesAsync();
+
+            var result = await repo.StageChangesAsync(session, [
+                new CharacterUpdate { CharacterId = charId, TagsToAdd = ["bloodstained sleeve"] }
+            ], TestCampaignDefaults.Slug);
+            await session.SaveChangesAsync();
+            Assert.True(result.Success);
+
+            var events = await WaitForEventsInvolvingAsync(session, charId);
+            Assert.Single(events);
+            eventId = events[0].Id;
+        }
+
+        var indexWaitStart = DateTime.UtcNow;
+        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        {
+            var stats = _store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
+            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
+            {
+                break;
+            }
+
+            await Task.Delay(100);
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(session, locId, TestCampaignDefaults.Slug);
+            var npcSummary = scene.PresentNPCs.FirstOrDefault(n => n.Id == charId);
+            Assert.NotNull(npcSummary);
+            Assert.NotNull(npcSummary.TagProvenance);
+            Assert.Equal([eventId], npcSummary.TagProvenance!["bloodstained sleeve"]);
         }
     }
 

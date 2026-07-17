@@ -105,7 +105,28 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
 
         character.SystemStats.StatusEffects.Add(effect);
         context.RecordMessage($"Status '{effect.Name}' (category: {effect.Category}) added to {add.CharacterId}");
+
+        await LogStatusEventAsync(context, character, $"{character.Name} gained status '{effect.Name}' ({effect.Category}).");
+
         return ChangeHandlerResult.Ok;
+    }
+
+    // Status effects (restrained, poisoned, etc.) often gate what actions are legal, so their history
+    // is Important, not Trivial. Auto-logged so recall_history/NpcRecentEvents can surface it without a
+    // second, separate `event` commit for the same narrative beat.
+    private static async Task LogStatusEventAsync(ChangeContext context, Character character, string summary)
+    {
+        await context.LogEventAsync(new Event
+        {
+            Id = "events/" + Guid.NewGuid(),
+            Summary = summary,
+            Category = EventCategory.Interaction,
+            Importance = MemoryImportance.Important,
+            Involved = [character.Id],
+            LocationId = character.CurrentLocationId,
+            DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
+            CampaignName = context.CampaignName,
+        });
     }
 
     private void RecordConditionValidationWarning(
@@ -180,6 +201,7 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         if (removedCount > 0)
         {
             context.RecordMessage($"Status '{remove.Status}' removed from {remove.CharacterId} ({removedCount} effect(s))");
+            await LogStatusEventAsync(context, character, $"{character.Name} lost status '{remove.Status}'.");
         }
         else
         {

@@ -849,6 +849,9 @@ public class CampaignRepository
             existing.MaxHp = character.MaxHp;
 
             existing.Notes = character.Notes;
+            existing.CurrentAppearance = character.CurrentAppearance ?? existing.CurrentAppearance;
+            existing.VisualTags = character.VisualTags ?? existing.VisualTags;
+            existing.DistinctiveFeatures = character.DistinctiveFeatures ?? existing.DistinctiveFeatures;
             existing.Schedule = character.Schedule;
             existing.CurrentLocationId = character.CurrentLocationId;
             existing.CurrentActivity = character.CurrentActivity;
@@ -873,6 +876,9 @@ public class CampaignRepository
                 CurrentHp = character.CurrentHp,
                 MaxHp = character.MaxHp,
                 Notes = character.Notes,
+                CurrentAppearance = character.CurrentAppearance,
+                VisualTags = character.VisualTags ?? [],
+                DistinctiveFeatures = character.DistinctiveFeatures ?? [],
                 Schedule = character.Schedule,
                 CurrentLocationId = character.CurrentLocationId,
                 CurrentActivity = character.CurrentActivity,

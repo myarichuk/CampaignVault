@@ -14,6 +14,10 @@ public class ItemUpdateHandler : IWorldChangeHandler
         var item = context.Session != null ? await context.Session.LoadAsync<Item>(iu.ItemId, ct) : null;
         if (item == null) return ChangeHandlerResult.Failure($"Item '{iu.ItemId}' not found. Cannot update.");
 
+        var stateBefore = item.CurrentState;
+        var tagsBefore = new HashSet<string>(item.Tags);
+        var featuresBefore = new HashSet<string>(item.DistinctiveFeatures);
+
         if (iu.NewState != null) item.CurrentState = iu.NewState;
         if (iu.CoreCategory.HasValue) item.CoreCategory = iu.CoreCategory.Value;
 
@@ -24,6 +28,7 @@ public class ItemUpdateHandler : IWorldChangeHandler
         if (iu.TagsToRemove != null)
         {
             item.Tags.RemoveAll(t => iu.TagsToRemove.Contains(t));
+            foreach (var removed in iu.TagsToRemove) item.TagProvenance.Remove(removed);
         }
 
         if (iu.FeaturesToAdd != null)
@@ -33,6 +38,7 @@ public class ItemUpdateHandler : IWorldChangeHandler
         if (iu.FeaturesToRemove != null)
         {
             item.DistinctiveFeatures.RemoveAll(f => iu.FeaturesToRemove.Contains(f));
+            foreach (var removed in iu.FeaturesToRemove) item.TagProvenance.Remove(removed);
         }
 
         if (iu.PropertiesToUpsert != null)
@@ -42,6 +48,46 @@ public class ItemUpdateHandler : IWorldChangeHandler
         if (iu.PropertiesToRemove != null)
         {
             foreach (var k in iu.PropertiesToRemove) item.Properties.Remove(k);
+        }
+
+        // Item condition/appearance (singed cuffs, cracked hilt) is otherwise only recoverable from
+        // conversation memory. Auto-log a low-weight history entry, mirroring Character/LocationUpdateHandler.
+        var stateChanged = item.CurrentState != stateBefore
+            || !tagsBefore.SetEquals(item.Tags)
+            || !featuresBefore.SetEquals(item.DistinctiveFeatures);
+
+        if (stateChanged)
+        {
+            var eventId = "events/" + Guid.NewGuid();
+            await context.LogEventAsync(new Event
+            {
+                Id = eventId,
+                Summary = $"{item.Name}'s state changed: {item.CurrentState ?? "(no override)"}; tags: [{string.Join(", ", item.Tags)}]",
+                Category = EventCategory.Interaction,
+                Importance = MemoryImportance.Trivial,
+                RelatedEntityId = iu.ItemId,
+                // Event_Search indexes Involved but not RelatedEntityId — include the item ID here too
+                // so this event is actually queryable via recall_history/QueryEventsAsync(involvedCharacterId:),
+                // matching the existing pattern where Involved can hold non-character entity IDs.
+                Involved = [iu.ItemId],
+                LocationId = item.HolderId?.StartsWith("locations/", StringComparison.Ordinal) == true ? item.HolderId : null,
+                DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
+                CampaignName = context.CampaignName,
+            });
+
+            if (item.CurrentState != stateBefore)
+            {
+                if (stateBefore != null) item.TagProvenance.Remove(stateBefore);
+                if (item.CurrentState != null) item.TagProvenance[item.CurrentState] = [eventId];
+            }
+            foreach (var addedTag in item.Tags.Except(tagsBefore))
+            {
+                item.TagProvenance[addedTag] = [eventId];
+            }
+            foreach (var addedFeature in item.DistinctiveFeatures.Except(featuresBefore))
+            {
+                item.TagProvenance[addedFeature] = [eventId];
+            }
         }
 
         context.RecordMessage($"Updated state/tags for item '{iu.ItemId}'.");

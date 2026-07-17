@@ -25,7 +25,15 @@ public class Character : ICampaignScopedEntity
     public string? CurrentAppearance { get; set; }
     
     public List<string> VisualTags { get; set; } = [];
-    
+
+    /// <summary>
+    /// Maps a tag/feature/appearance text (as it appears in VisualTags/DistinctiveFeatures/CurrentAppearance)
+    /// to the event ID(s) that established it — objective ground truth, distinct from this character's own
+    /// subjective PsychologyProfile.Memories (which may be wrong/incomplete). Engine-populated only; not
+    /// an LLM-settable commit field.
+    /// </summary>
+    public Dictionary<string, List<string>> TagProvenance { get; set; } = [];
+
     /// <summary>
     /// If true, this character is protected from TransientEvictionRule even if Schedule == null.
     /// Use for player characters (PCs) and major named NPCs without fixed routines.

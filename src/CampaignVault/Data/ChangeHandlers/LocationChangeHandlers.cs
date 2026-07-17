@@ -126,6 +126,10 @@ public class LocationUpdateHandler : IWorldChangeHandler
             }
         }
         
+        var stateBefore = loc.CurrentState;
+        var tagsBefore = new HashSet<string>(loc.VisualTags);
+        var featuresBefore = new HashSet<string>(loc.DistinctiveFeatures);
+
         if (lu.NewState != null)
         {
             loc.CurrentState = lu.NewState;
@@ -142,6 +146,7 @@ public class LocationUpdateHandler : IWorldChangeHandler
         if (lu.TagsToRemove != null)
         {
             loc.VisualTags.RemoveAll(t => lu.TagsToRemove.Contains(t));
+            foreach (var removed in lu.TagsToRemove) loc.TagProvenance.Remove(removed);
         }
 
         if (lu.FeaturesToAdd != null)
@@ -155,6 +160,44 @@ public class LocationUpdateHandler : IWorldChangeHandler
         if (lu.FeaturesToRemove != null)
         {
             loc.DistinctiveFeatures.RemoveAll(f => lu.FeaturesToRemove.Contains(f));
+            foreach (var removed in lu.FeaturesToRemove) loc.TagProvenance.Remove(removed);
+        }
+
+        // Environmental/state changes (a spill, damage, mess) are otherwise only recoverable from
+        // conversation memory. Auto-log a low-weight history entry, mirroring CharacterUpdateHandler,
+        // so recall_history/get_scene's RecentEvents can surface *when* this changed without a second,
+        // separate `event` commit for the same narrative beat.
+        var stateChanged = loc.CurrentState != stateBefore
+            || !tagsBefore.SetEquals(loc.VisualTags)
+            || !featuresBefore.SetEquals(loc.DistinctiveFeatures);
+
+        if (stateChanged)
+        {
+            var eventId = "events/" + Guid.NewGuid();
+            await context.LogEventAsync(new Event
+            {
+                Id = eventId,
+                Summary = $"{loc.Name}'s state changed: {loc.CurrentState ?? "(no override)"}; tags: [{string.Join(", ", loc.VisualTags)}]",
+                Category = EventCategory.Interaction,
+                Importance = MemoryImportance.Trivial,
+                LocationId = lu.LocationId,
+                DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
+                CampaignName = context.CampaignName,
+            });
+
+            if (loc.CurrentState != stateBefore)
+            {
+                if (stateBefore != null) loc.TagProvenance.Remove(stateBefore);
+                if (loc.CurrentState != null) loc.TagProvenance[loc.CurrentState] = [eventId];
+            }
+            foreach (var addedTag in loc.VisualTags.Except(tagsBefore))
+            {
+                loc.TagProvenance[addedTag] = [eventId];
+            }
+            foreach (var addedFeature in loc.DistinctiveFeatures.Except(featuresBefore))
+            {
+                loc.TagProvenance[addedFeature] = [eventId];
+            }
         }
 
         if (lu.RecordDeparture != null)

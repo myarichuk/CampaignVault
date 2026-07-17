@@ -107,6 +107,11 @@ public record NpcPresenceSummary(
     string? CurrentAppearance = null,
     List<string>? VisualTags = null,
     List<string>? DistinctiveFeatures = null,
+    /// <summary>
+    /// Maps a tag/feature/appearance text to the event ID(s) that established it — objective ground
+    /// truth, distinct from this NPC's own subjective Memories below.
+    /// </summary>
+    Dictionary<string, List<string>>? TagProvenance = null,
     Dictionary<string, MemoryNode>? Memories = null,
     /// <summary>
     /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills). 

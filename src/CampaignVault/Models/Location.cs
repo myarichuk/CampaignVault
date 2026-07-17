@@ -49,7 +49,14 @@ public class Location : ICampaignScopedEntity, IArchivable
     public string? CurrentState { get; set; }
     public List<string> VisualTags { get; set; } = [];
     public List<string> DistinctiveFeatures { get; set; } = [];
-    
+
+    /// <summary>
+    /// Maps a tag/feature/state text (as it appears in VisualTags/DistinctiveFeatures/CurrentState) to
+    /// the event ID(s) that established it — objective ground truth, distinct from any NPC's subjective
+    /// PsychologyProfile.Memories. Engine-populated only; not an LLM-settable commit field.
+    /// </summary>
+    public Dictionary<string, List<string>> TagProvenance { get; set; } = [];
+
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     /// <summary>

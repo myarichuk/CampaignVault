@@ -69,6 +69,7 @@ public sealed class SceneNpcPresenceFactory
                 CurrentAppearance: npc.CurrentAppearance,
                 VisualTags: npc.VisualTags,
                 DistinctiveFeatures: npc.DistinctiveFeatures,
+                TagProvenance: npc.TagProvenance,
                 Memories: npc.Psychology.Memories,
                 SystemStats: npc.SystemStats,
                 BehavioralTension: enrichment.BehavioralTension,
