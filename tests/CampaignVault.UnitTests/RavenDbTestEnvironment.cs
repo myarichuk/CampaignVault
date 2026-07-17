@@ -95,6 +95,11 @@ public sealed class RavenDbTestEnvironment : IAsyncLifetime
             Database = uniqueDatabaseName
         };
         ConfigureConventions(store);
+        // Test-only relaxation: several integration-style tests intentionally reuse one session
+        // across many setup + assertion calls, and AdvanceWorld's growing set of independent
+        // per-rule/per-contributor queries adds up quickly. The default 30-request guard exists to
+        // catch N+1 bugs in normal request-scoped code, not this kind of intentional test breadth.
+        store.Conventions.MaxNumberOfRequestsPerSession = 200;
         store.Initialize();
 
         store.Maintenance.Server.Send(new CreateDatabaseOperation(new DatabaseRecord(uniqueDatabaseName)
@@ -190,10 +195,13 @@ public sealed class RavenDbTestEnvironment : IAsyncLifetime
             CommandLineArgs = ["--Indexing.Static.SearchEngineType=Corax", "--Indexing.Auto.SearchEngineType=Corax"]
         });
 
-        var store = EmbeddedServer.Instance.GetDocumentStore(new DatabaseOptions(new DatabaseRecord("TestDB_Shared")
+        var dbOptions = new DatabaseOptions(new DatabaseRecord("TestDB_Shared") { Settings = CoraxSettings })
         {
-            Settings = CoraxSettings
-        }));
+            // See the matching comment in CreateStoreForClass — the embedded store is already
+            // initialized by GetDocumentStore, so conventions must be set here, not after.
+            Conventions = new Raven.Client.Documents.Conventions.DocumentConventions { MaxNumberOfRequestsPerSession = 200 },
+        };
+        var store = EmbeddedServer.Instance.GetDocumentStore(dbOptions);
         ConfigureConventions(store);
         store.Initialize();
         IndexCreation.CreateIndexes(typeof(CampaignRepository).Assembly, store);

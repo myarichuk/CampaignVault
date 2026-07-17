@@ -200,10 +200,41 @@ internal static class CommitSchemaRegistry
             "Update an item's state, category, tags, or properties.",
             ["itemId"],
             ["newState", "coreCategory", "tagsToAdd", "tagsToRemove", "featuresToAdd",
-             "featuresToRemove", "propertiesToUpsert", "propertiesToRemove"],
+             "featuresToRemove", "propertiesToUpsert", "propertiesToRemove",
+             "ambientPersistenceNote", "ambientExpiresAtDay"],
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: []),
+
+        new("item_equip", "World",
+            "Equip a carried item into its EquipZones. HARD-FAILS listing conflicts (same zone+layer, or off-hand for a two-handed weapon) unless replaceConflicts:true. " +
+            "Different EquipLayers on the same zone coexist (e.g. an enchanted robe worn over chainmail). " +
+            "ENGINE SIDE EFFECTS: recomputes ArmorClass and WarmthRating from all equipped items.",
+            ["characterId", "itemId"],
+            ["replaceConflicts"],
+            HasSideEffects: true,
+            SideEffects: ["system_stats"],
+            CoCommitHints: [],
+            Example: """{"$type":"item_equip","characterId":"chars/grog","itemId":"items/chain-shirt","replaceConflicts":false}"""),
+
+        new("item_unequip", "World",
+            "Unequip a currently equipped item. The item stays carried. ENGINE SIDE EFFECTS: recomputes ArmorClass and WarmthRating.",
+            ["characterId", "itemId"],
+            [],
+            HasSideEffects: true,
+            SideEffects: ["system_stats"],
+            CoCommitHints: [],
+            Example: """{"$type":"item_unequip","characterId":"chars/grog","itemId":"items/chain-shirt"}"""),
+
+        new("item_use", "World",
+            "Spend or restore charges/doses on a limited-use item (water gourd, healing ointment, reagent vial). " +
+            "Lazy-initializes CurrentCharges = MaxCharges on first use. HARD-FAILS on insufficient charges (no silent clamping, same precedent as 'resource').",
+            ["itemId"],
+            ["delta", "reason"],
+            HasSideEffects: false,
+            SideEffects: [],
+            CoCommitHints: ["event"],
+            Example: """{"$type":"item_use","itemId":"items/healing-ointment","delta":-1,"reason":"Applied a dose to the wound"}"""),
 
         new("travel", "World",
             "ENGINE SIDE EFFECTS: Auto-applies tiredness NeedChange, time advance, and optional random encounter.",

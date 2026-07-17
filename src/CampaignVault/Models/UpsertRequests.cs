@@ -108,6 +108,9 @@ public class LocationUpsertRequest
     [Description("Set true to hide this location from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
     public bool? IsArchived { get; set; }
 
+    [Description("Climate zone for weather/temperature simulation. Omit to inherit from the nearest ParentLocationId ancestor with one set (defaults to Temperate if none in the chain). Omit on update to preserve the existing value.")]
+    public ClimateZone? ClimateZone { get; set; }
+
     public string? CampaignName { get; set; }
 }
 
@@ -167,6 +170,30 @@ public class ItemUpsertRequest
 
     [Description("Set true to hide this item from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
     public bool? IsArchived { get; set; }
+
+    [Description("Omit to preserve the item's existing equip zones. Provide to replace them wholesale. Empty list = not equippable.")]
+    public List<EquipZone>? EquipZones { get; set; }
+
+    [Description("Which layer this item occupies within its EquipZones (Base/Armor/Outer/Held). Required (alongside EquipZones) for the item to be equippable.")]
+    public EquipLayer? EquipLayer { get; set; }
+
+    [Description("Set true when this item occupies MainHand and should also block OffHand (two-handed weapons). Omit to preserve the existing value on update.")]
+    public bool? TwoHanded { get; set; }
+
+    [Description("Set true to mark starting gear as already worn so AC/WarmthRating reflect it immediately at character creation, without a separate item_equip commit. State changes after creation go through item_equip/item_unequip instead. Omit to preserve the existing value on update.")]
+    public bool? IsEquipped { get; set; }
+
+    [Description("Container capacity (e.g. number of items or volume units). Null = unstructured, unlimited. Omit to preserve the existing value on update.")]
+    public int? Capacity { get; set; }
+
+    [Description("Unit label for Capacity (e.g. \"items\", \"liters\"). Omit to preserve the existing value on update.")]
+    public string? CapacityUnit { get; set; }
+
+    [Description("Maximum charges/doses this item can hold (water gourd, healing ointment, reagent vial). Omit to preserve the existing value on update.")]
+    public int? MaxCharges { get; set; }
+
+    [Description("Unit label for charges (e.g. \"doses\", \"sips\", \"uses\"). Omit to preserve the existing value on update.")]
+    public string? ChargeUnit { get; set; }
 
     public string? CampaignName { get; set; }
 }

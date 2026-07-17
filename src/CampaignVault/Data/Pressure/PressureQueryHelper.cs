@@ -123,6 +123,19 @@ internal static class PressureQueryHelper
         return indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit).ToList();
     }
 
+    public static async Task<List<Character>> QueryPartyAtLocationAsync(
+        IAsyncDocumentSession session, string campaignName, string locationId, int limit, CancellationToken ct = default)
+    {
+        return await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WhereEquals(x => x.CampaignName, campaignName)
+            .AndAlso()
+            .WhereEquals(x => x.CurrentLocationId, locationId)
+            .AndAlso()
+            .WhereEquals(x => x.IsPc, true)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
     public static async Task<List<Item>> QueryCampaignItemsAsync(
         IAsyncDocumentSession session, string campaignName, int limit, CancellationToken ct = default)
     {

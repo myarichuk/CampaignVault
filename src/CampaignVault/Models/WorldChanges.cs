@@ -43,6 +43,10 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(ResourceChange), "resource")]
 [JsonDerivedType(typeof(RestRecoveryAck), "rest_recovery_ack")]
 [JsonDerivedType(typeof(ArchiveEntityChange), "archive_entity")]
+[JsonDerivedType(typeof(ItemEquip), "item_equip")]
+[JsonDerivedType(typeof(ItemUnequip), "item_unequip")]
+[JsonDerivedType(typeof(ItemUse), "item_use")]
+[JsonDerivedType(typeof(ItemPersistenceSurfaced), "item_persistence_surfaced")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -876,6 +880,14 @@ public class ItemUpdate : WorldChange
     [Description("Keys of properties to delete.")]
     [JsonPropertyName("propertiesToRemove")]
     public List<string>? PropertiesToRemove { get; set; }
+
+    [Description("Sets/refreshes a narrative note about why this item was left behind (e.g. 'porridge left on the table, going cold'). Pair with ambientExpiresAtDay so the engine can nag about stale ambient debris — the engine only ever detects and surfaces a pressure hint, it never auto-moves/archives/deletes the item.")]
+    [JsonPropertyName("ambientPersistenceNote")]
+    public string? AmbientPersistenceNote { get; set; }
+
+    [Description("Sets/refreshes the campaign day (CampaignTime.TotalDaysElapsed + N) after which the engine should nag about this item's ambient fate. Setting this also clears any previously-surfaced nag so it fires again fresh at the new day.")]
+    [JsonPropertyName("ambientExpiresAtDay")]
+    public float? AmbientExpiresAtDay { get; set; }
 }
 
 public class CharacterUpdate : WorldChange
@@ -1191,4 +1203,69 @@ public class ArchiveEntityChange : WorldChange
     [Description("true to archive (hide from default results, soft-delete), false to restore visibility. Defaults to true.")]
     [JsonPropertyName("archived")]
     public bool Archived { get; set; } = true;
+}
+
+/// <summary>
+/// Equip a carried item into one of its EquipZones. Layering is enforced by EquipSlotRules: items
+/// in different EquipLayers on the same zone coexist (e.g. an enchanted robe worn over chainmail),
+/// while items in the same zone+layer conflict (two breastplates, or a two-handed weapon vs a shield).
+/// </summary>
+public class ItemEquip : WorldChange
+{
+    [Description("ID of the character equipping the item.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("ID of the item to equip. Must already be carried by (HolderId == ) characterId and have EquipZones/EquipLayer set via upsert_item.")]
+    [JsonPropertyName("itemId")]
+    public string ItemId { get; set; } = default!;
+
+    [Description("If true, auto-unequips whatever conflicts (same zone+layer, or the off-hand item for a two-handed weapon) to make room. If false/omitted, equipping HARD-FAILS when conflicts exist and lists them — never silently swaps gear.")]
+    [JsonPropertyName("replaceConflicts")]
+    public bool ReplaceConflicts { get; set; }
+}
+
+/// <summary>Unequip a currently equipped item. The item remains carried (HolderId unchanged).</summary>
+public class ItemUnequip : WorldChange
+{
+    [Description("ID of the character unequipping the item.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("ID of the item to unequip. Must currently be equipped and carried by characterId.")]
+    [JsonPropertyName("itemId")]
+    public string ItemId { get; set; } = default!;
+}
+
+/// <summary>
+/// Spend or restore charges/doses on a limited-use item (water gourd, healing ointment, reagent vial).
+/// Lazy-initializes CurrentCharges to MaxCharges on first use. Hard-fails on insufficient charges —
+/// same precedent as the 'resource' commit's currency hard-fail, no silent clamping on spends.
+/// Restores (positive delta) clamp to MaxCharges. Reaching 0 charges just logs — the LLM decides via
+/// a follow-up commit (item_update/archive_entity/item_transfer) whether the empty container becomes debris.
+/// </summary>
+public class ItemUse : WorldChange
+{
+    [Description("ID of the item being used. Must have MaxCharges set (via upsert_item).")]
+    [JsonPropertyName("itemId")]
+    public string ItemId { get; set; } = default!;
+
+    [Description("Charge delta. Negative spends a dose/charge (default -1); positive restores/refills (e.g. refilling a water gourd).")]
+    [JsonPropertyName("delta")]
+    public int Delta { get; set; } = -1;
+
+    [Description("Optional narrative reason (e.g. 'drank a dose of healing ointment').")]
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Simulation-internal: marks that an ambient item's expiry pressure has been surfaced to the DM-LLM.
+/// Emitted by AmbientItemDecayRule during advance_world; not intended for LLM commit use. Idempotent —
+/// the item's fate is still decided by the LLM via a follow-up archive_entity/item_transfer/item_update.
+/// </summary>
+public class ItemPersistenceSurfaced : WorldChange
+{
+    [JsonPropertyName("itemId")]
+    public string ItemId { get; set; } = default!;
 }

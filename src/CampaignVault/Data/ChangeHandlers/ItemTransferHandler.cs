@@ -37,13 +37,23 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             || context.Locations.ContainsKey(transfer.ToHolderId)
             || context.Items.ContainsKey(transfer.ToHolderId);
 
+        var destinationItem = context.Items.GetValueOrDefault(transfer.ToHolderId);
+
         if (!destinationExists && context.Session != null)
         {
             // Try loading from session if not in context
             try
             {
-                var dest = await context.Session.LoadAsync<dynamic>(transfer.ToHolderId, ct);
-                destinationExists = dest != null;
+                if (transfer.ToHolderId.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
+                {
+                    destinationItem = await context.Session.LoadAsync<Item>(transfer.ToHolderId, ct);
+                    destinationExists = destinationItem != null;
+                }
+                else
+                {
+                    var dest = await context.Session.LoadAsync<dynamic>(transfer.ToHolderId, ct);
+                    destinationExists = dest != null;
+                }
             }
             catch
             {
@@ -54,6 +64,16 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
         if (!destinationExists)
         {
             return ChangeHandlerResult.Failure($"Destination {transfer.ToHolderId} does not exist. Item {transfer.ItemId} not transferred.");
+        }
+
+        if (destinationItem != null && context.Session != null)
+        {
+            var nestingError = await ContainerResolver.ValidateNestingAsync(context.Session, item, destinationItem, ct);
+            if (nestingError != null)
+            {
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(nestingError);
+            }
         }
 
         item.HolderId = transfer.ToHolderId;

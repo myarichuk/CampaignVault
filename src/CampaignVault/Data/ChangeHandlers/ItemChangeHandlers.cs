@@ -1,4 +1,5 @@
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
@@ -50,6 +51,21 @@ public class ItemUpdateHandler : IWorldChangeHandler
             foreach (var k in iu.PropertiesToRemove) item.Properties.Remove(k);
         }
 
+        if (iu.AmbientPersistenceNote != null || iu.AmbientExpiresAtDay.HasValue)
+        {
+            item.Persistence ??= new AmbientPersistence();
+            if (iu.AmbientPersistenceNote != null)
+            {
+                item.Persistence.Note = iu.AmbientPersistenceNote;
+            }
+            if (iu.AmbientExpiresAtDay.HasValue)
+            {
+                item.Persistence.ExpiresAtDay = iu.AmbientExpiresAtDay.Value;
+                // A fresh expiry means any previously-surfaced nag should fire again at the new day.
+                item.Persistence.PressureSurfaced = false;
+            }
+        }
+
         // Item condition/appearance (singed cuffs, cracked hilt) is otherwise only recoverable from
         // conversation memory. Auto-log a low-weight history entry, mirroring Character/LocationUpdateHandler.
         var stateChanged = item.CurrentState != stateBefore
@@ -91,6 +107,23 @@ public class ItemUpdateHandler : IWorldChangeHandler
         }
 
         context.RecordMessage($"Updated state/tags for item '{iu.ItemId}'.");
+
+        if (item.IsEquipped && (iu.PropertiesToUpsert != null || iu.PropertiesToRemove != null)
+            && !string.IsNullOrEmpty(item.HolderId))
+        {
+            if (!context.Characters.TryGetValue(item.HolderId, out var wearer))
+            {
+                wearer = context.Session != null ? await context.Session.LoadAsync<Character>(item.HolderId, ct) : null;
+                if (wearer != null) context.RegisterNewCharacter(wearer);
+            }
+
+            if (wearer != null)
+            {
+                await ArmorParameterResolver.ApplyAsync(wearer, context, ct);
+                context.RecordMessage($"{wearer.Name}'s ArmorClass and WarmthRating recomputed after '{item.Name}' changed.");
+            }
+        }
+
         return ChangeHandlerResult.Ok;
     }
 }

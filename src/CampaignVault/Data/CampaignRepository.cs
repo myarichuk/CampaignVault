@@ -1192,6 +1192,7 @@ public class CampaignRepository
             {
                 existing.IsArchived = location.IsArchived.Value;
             }
+            existing.ClimateZone = location.ClimateZone ?? existing.ClimateZone;
             result = existing;
         }
         else
@@ -1217,6 +1218,7 @@ public class CampaignRepository
                 CurrentState = location.CurrentState,
                 DangerModifier = Math.Clamp(location.DangerModifier ?? 0, -50, 50),
                 IsArchived = location.IsArchived ?? false,
+                ClimateZone = location.ClimateZone,
             };
             await session.StoreAsync(result);
         }
@@ -1489,6 +1491,14 @@ public class CampaignRepository
             {
                 existing.IsArchived = item.IsArchived.Value;
             }
+            existing.EquipZones = item.EquipZones ?? existing.EquipZones;
+            existing.EquipLayer = item.EquipLayer ?? existing.EquipLayer;
+            if (item.TwoHanded.HasValue) existing.TwoHanded = item.TwoHanded.Value;
+            if (item.IsEquipped.HasValue) existing.IsEquipped = item.IsEquipped.Value;
+            existing.Capacity = item.Capacity ?? existing.Capacity;
+            existing.CapacityUnit = item.CapacityUnit ?? existing.CapacityUnit;
+            existing.MaxCharges = item.MaxCharges ?? existing.MaxCharges;
+            existing.ChargeUnit = item.ChargeUnit ?? existing.ChargeUnit;
             result = existing;
         }
         else
@@ -1508,6 +1518,14 @@ public class CampaignRepository
                 LastUpdated = DateTime.UtcNow,
                 CampaignName = effectiveCampaignName,
                 IsArchived = item.IsArchived ?? false,
+                EquipZones = item.EquipZones ?? [],
+                EquipLayer = item.EquipLayer,
+                TwoHanded = item.TwoHanded ?? false,
+                IsEquipped = item.IsEquipped ?? false,
+                Capacity = item.Capacity,
+                CapacityUnit = item.CapacityUnit,
+                MaxCharges = item.MaxCharges,
+                ChargeUnit = item.ChargeUnit,
             };
             await session.StoreAsync(result);
         }

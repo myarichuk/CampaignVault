@@ -158,6 +158,27 @@ internal static class SimulationQueryHelper
         return indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit).ToList();
     }
 
+    public static async Task<List<Item>> QueryCampaignItemsAsync(
+        IAsyncDocumentSession session,
+        string? campaignName,
+        int limit = 200,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(campaignName))
+        {
+            return await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+                .WaitForNonStaleResults(IndexWait)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
+        return await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+            .WaitForNonStaleResults(IndexWait)
+            .WhereEquals(x => x.CampaignName, campaignName)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
     public static async Task<List<PlotThread>> QueryActivePlotThreadsAsync(
         IAsyncDocumentSession session,
         string? campaignName,

@@ -284,7 +284,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         Assert.Equal(12, character.CurrentHp);
         Assert.Equal(12, stats.ArmorClass);
         Assert.True(stats.Attributes.ContainsKey("proficiencyBonus"));
-        Assert.Contains(summary, m => m.Contains("[BOOTSTRAP HINT]") && m.Contains("item_create"));
+        Assert.Contains(summary, m => m.Contains("[BOOTSTRAP HINT]") && m.Contains("upsert_item"));
     }
 
     [Fact]

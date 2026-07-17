@@ -84,6 +84,13 @@ public class Location : ICampaignScopedEntity, IArchivable
     /// When true, hidden from default search/scene results (soft delete). Does not remove history.
     /// </summary>
     public bool IsArchived { get; set; }
+
+    /// <summary>
+    /// Climate zone for weather/temperature simulation. Null = inherit from the nearest
+    /// ParentLocationId ancestor that has one set (via ClimateResolver); defaults to Temperate
+    /// if none in the chain.
+    /// </summary>
+    public ClimateZone? ClimateZone { get; set; }
 }
 
 public enum LocationType
@@ -96,6 +103,18 @@ public enum LocationType
     Wilderness
 }
 
+/// <summary>Broad climate zone used to derive ambient temperature (see ClimateCycle).</summary>
+public enum ClimateZone
+{
+    Arctic,
+    Tundra,
+    Temperate,
+    Desert,
+    Tropical,
+    Alpine,
+    Subterranean
+}
+
 public record LocationExit(
     string TargetLocationId,
     string Description,
@@ -103,7 +122,9 @@ public record LocationExit(
     int? TravelCostHours = 0,
     string? Terrain = null,
     string? EncounterHint = null,
-    bool OneWay = false
+    bool OneWay = false,
+    /// <summary>Optional microclimate override for this specific route (e.g. a mountain pass exit from a temperate settlement).</summary>
+    ClimateZone? ClimateZoneOverride = null
 )
 {
     public LocationExit() : this(default!, default!) { }
