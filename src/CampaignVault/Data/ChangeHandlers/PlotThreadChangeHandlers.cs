@@ -78,7 +78,6 @@ public class PlotThreadProgressHandler : IWorldChangeHandler
         HashSet<string>? allInvolvedIds = null)
     {
         if (change is not PlotThreadProgress ptp) return false;
-        if (!string.IsNullOrEmpty(ptp.PlotThreadId)) allInvolvedIds?.Add(ptp.PlotThreadId);
         return true;
     }
 }
@@ -135,7 +134,6 @@ public class PlotThreadClueDiscoveredHandler : IWorldChangeHandler
         HashSet<string>? allInvolvedIds = null)
     {
         if (change is not PlotThreadClueDiscovered ptcd) return false;
-        allInvolvedIds?.Add(ptcd.PlotThreadId);
         foreach (var id in ptcd.DiscoveredByCharacterIds)
         {
             characterIds?.Add(id);

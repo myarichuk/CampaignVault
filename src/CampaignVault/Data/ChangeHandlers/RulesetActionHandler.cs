@@ -128,7 +128,6 @@ public sealed class RulesetActionHandler(
         if (WeaponParameterResolver.TryExtractWeaponItemId(ra.Parameters, out var weaponItemId))
         {
             itemIds?.Add(weaponItemId);
-            allInvolvedIds?.Add(weaponItemId);
         }
 
         return true;

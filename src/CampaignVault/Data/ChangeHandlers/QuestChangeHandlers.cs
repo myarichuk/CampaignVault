@@ -117,7 +117,6 @@ public class QuestProgressHandler : IWorldChangeHandler
         if (!string.IsNullOrEmpty(qp.QuestId))
         {
             questIds?.Add(qp.QuestId);
-            allInvolvedIds?.Add(qp.QuestId);
         }
 
         if (qp.InvolvedIds != null)
@@ -126,8 +125,11 @@ public class QuestProgressHandler : IWorldChangeHandler
             {
                 if (!string.IsNullOrEmpty(id))
                 {
-                    if (id.StartsWith("chars/")) characterIds?.Add(id);
-                    allInvolvedIds?.Add(id);
+                    if (id.StartsWith("chars/"))
+                    {
+                        characterIds?.Add(id);
+                        allInvolvedIds?.Add(id);
+                    }
                 }
             }
         }

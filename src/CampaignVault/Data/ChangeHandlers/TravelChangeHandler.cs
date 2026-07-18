@@ -162,7 +162,6 @@ public class TravelChangeHandler : IWorldChangeHandler
         if (!string.IsNullOrEmpty(tc.DestinationLocationId))
         {
             locationIds?.Add(tc.DestinationLocationId);
-            allInvolvedIds?.Add(tc.DestinationLocationId);
         }
 
         return true;
