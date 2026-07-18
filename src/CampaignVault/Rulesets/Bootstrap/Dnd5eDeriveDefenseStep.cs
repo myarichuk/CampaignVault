@@ -35,7 +35,7 @@ public sealed class Dnd5eDeriveDefenseStep : IBootstrapStep
                 + $"{{ \"id\": \"items/{context.Character.Id}-armor\", \"name\": \"Chain Shirt\", "
                 + $"\"holderId\": \"{context.Character.Id}\", \"coreCategory\": \"Armor\", "
                 + "\"equipZones\": [\"Torso\"], \"equipLayer\": \"Armor\", \"isEquipped\": true, "
-                + "\"properties\": { \"acBonus\": \"2\", \"armorType\": \"medium\" } }. "
+                + "\"properties\": { \"acBonus\": \"3\", \"armorType\": \"medium\" } }. "
                 + "For gear equipped mid-campaign, use the item_equip commit instead.");
         }
 

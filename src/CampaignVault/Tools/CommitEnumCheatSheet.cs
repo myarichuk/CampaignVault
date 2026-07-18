@@ -10,6 +10,9 @@ internal static class CommitEnumCheatSheet
 **COMMIT ENUM VALUES (use these exact strings — case-sensitive):**
 - `upsert_location.type` → Region, Settlement, District, Building, Room, Wilderness
   - Common mistakes: City/Town → **Settlement**; Tavern/Inn/Shop → **Building**
+- `upsert_location.climateZone` → Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean
+- `item_equip.equipZones` → Head, Face, Neck, Torso, Back, Waist, Hands, Wrists, Legs, Feet, MainHand, OffHand, Ring, Accessory
+- `item_equip.equipLayer` → Base, Armor, Outer, Held
 - `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure
   - Common mistake: Narrative/Roleplay → **Conversation**
   - **Conversation events MUST include `involved`: [`chars/pc`, `chars/npc`]** (every speaker). NOT `participants`.
@@ -122,6 +125,13 @@ Note: `upsert_quest.objectives[]` only needs `description` (+ optional `rewardHi
 | Field | Valid values |
 |-------|----------------|
 | `coreCategory` | Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other |
+| `equipZones` (equip path) | Head, Face, Neck, Torso, Back, Waist, Hands, Wrists, Legs, Feet, MainHand, OffHand, Ring, Accessory |
+| `equipLayer` (equip path) | Base, Armor, Outer, Held |
+
+### upsert_location / location_update (climate)
+| Field | Valid values |
+|-------|----------------|
+| `climateZone` | Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean |
 
 ### scene_interrupt_check (`$type: scene_interrupt_check`)
 | Field | Notes |

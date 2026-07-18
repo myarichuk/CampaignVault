@@ -34,4 +34,21 @@ Use `addPointOfInterest`, `materializePointOfInterest`+`poiDetails` (also re-use
 Examples: ripping a poster, setting the board on fire, brawl breaking furniture.
 After time passes (`advance_world`), update or remove PoI details to reflect cleanup/repair.
 """ + PoiMaterializeBatch;
+
+    internal const string EquipBatch = """
+[
+  { "$type": "event", "category": "Interaction", "summary": "Valen donned chainmail from the armory.", "involved": ["chars/valen"], "locationId": "locations/stronghold-armory" },
+  { "$type": "item_equip", "characterId": "chars/valen", "itemId": "items/valen-chainmail", "equipZones": ["Torso"], "equipLayer": "Armor", "replaceConflicts": false },
+  { "$type": "item_unequip", "characterId": "chars/valen", "itemId": "items/valen-padded-jerkin" },
+  { "$type": "item_use", "itemId": "items/ration-waybread", "delta": -1 },
+  { "$type": "event", "category": "Interaction", "summary": "Valen ate trail rations to recover strength.", "involved": ["chars/valen"] }
+]
+""";
+
+    internal const string EquipSection = """
+**Equip / Unequip / Use items (outfits, armor AC/warmth, consumables):**
+Equip/unequip mid-combat or narrative—AC and WarmthRating recompute immediately.
+`replaceConflicts: true` silently removes conflicting equipped items (e.g., swap shield for two-hander).
+`item_use` decreases charge/quantity; fires nag if ambient item expires.
+""" + EquipBatch;
 }

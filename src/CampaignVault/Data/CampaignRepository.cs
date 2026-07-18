@@ -2,6 +2,7 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Scenes;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 using CampaignVault.Services;
 using Raven.Client.Documents.Indexes;
 using Raven.Client.Documents.Session;
@@ -1528,6 +1529,31 @@ public class CampaignRepository
                 ChargeUnit = item.ChargeUnit,
             };
             await session.StoreAsync(result);
+        }
+
+        // Validate equip conflicts if being equipped on a character
+        if (result.IsEquipped && result.HolderId?.StartsWith("chars/", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            if (result.EquipZones.Count > 0 && result.EquipLayer != null)
+            {
+                // Query equipped items for conflict detection
+                var equipped = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+                    .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
+                    .WhereEquals(x => x.HolderId, result.HolderId)
+                    .Take(50)
+                    .ToListAsync();
+
+                var equippedList = equipped.Where(i => i.IsEquipped && !i.Id.Equals(result.Id, StringComparison.OrdinalIgnoreCase)).ToList();
+                var conflicts = EquipSlotRules.FindConflicts(result, equippedList);
+
+                if (conflicts.Count > 0)
+                {
+                    var conflictNames = string.Join(", ", conflicts.Select(c => $"{c.Name} ({c.Id})"));
+                    throw new ArgumentException(
+                        $"Cannot equip '{result.Name}': conflicts with {conflictNames}. " +
+                        "Use the item_equip commit with replaceConflicts:true to auto-unequip conflicts.");
+                }
+            }
         }
 
         SanitizeItem(result);

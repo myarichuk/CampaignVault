@@ -38,7 +38,7 @@ public sealed class Pf2eDeriveDefenseStep : IBootstrapStep
                 + $"{{ \"id\": \"items/{context.Character.Id}-armor\", \"name\": \"Chain Shirt\", "
                 + $"\"holderId\": \"{context.Character.Id}\", \"coreCategory\": \"Armor\", "
                 + "\"equipZones\": [\"Torso\"], \"equipLayer\": \"Armor\", \"isEquipped\": true, "
-                + "\"properties\": { \"acBonus\": \"2\", \"armorType\": \"medium\" } }. "
+                + "\"properties\": { \"acBonus\": \"2\", \"dexCap\": \"3\" } }. "
                 + "For gear equipped mid-campaign, use the item_equip commit instead.");
         }
 

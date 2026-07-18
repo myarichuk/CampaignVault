@@ -1,4 +1,5 @@
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
@@ -76,8 +77,45 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             }
         }
 
+        var previousHolderId = item.HolderId;
+        var wasEquipped = item.IsEquipped;
+
+        // Transfer the item
         item.HolderId = transfer.ToHolderId;
         item.LastUpdated = DateTime.UtcNow;
+
+        // If transferring to a character or container, clear ambient-decay persistence
+        // (no longer ambient at a location)
+        if (transfer.ToHolderId.StartsWith("chars/", StringComparison.OrdinalIgnoreCase)
+            || transfer.ToHolderId.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
+        {
+            item.Persistence = null;
+        }
+
+        // If the item was equipped and holder changed, unequip it and recompute AC/warmth for previous holder
+        if (wasEquipped && !string.IsNullOrEmpty(previousHolderId) && previousHolderId != transfer.ToHolderId)
+        {
+            item.IsEquipped = false;
+
+            // Recompute AC/warmth for the previous holder if it's a character
+            if (previousHolderId.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+            {
+                if (context.Characters.TryGetValue(previousHolderId, out var previousHolder))
+                {
+                    await ArmorParameterResolver.ApplyAsync(previousHolder, context, ct);
+                }
+                else if (context.Session != null)
+                {
+                    var prevChar = await context.Session.LoadAsync<Character>(previousHolderId, ct);
+                    if (prevChar != null)
+                    {
+                        await ArmorParameterResolver.ApplyAsync(prevChar, context, ct);
+                        context.RegisterNewCharacter(prevChar);
+                    }
+                }
+            }
+        }
+
         context.RecordMessage($"Item {transfer.ItemId} moved to {transfer.ToHolderId}");
 
         return ChangeHandlerResult.Ok;

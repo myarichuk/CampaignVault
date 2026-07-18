@@ -122,9 +122,7 @@ public record LocationExit(
     int? TravelCostHours = 0,
     string? Terrain = null,
     string? EncounterHint = null,
-    bool OneWay = false,
-    /// <summary>Optional microclimate override for this specific route (e.g. a mountain pass exit from a temperate settlement).</summary>
-    ClimateZone? ClimateZoneOverride = null
+    bool OneWay = false
 )
 {
     public LocationExit() : this(default!, default!) { }

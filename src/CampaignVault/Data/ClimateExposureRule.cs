@@ -51,6 +51,13 @@ public class ClimateExposureRule : ISimulationRule
             var warmth = npc.SystemStats?.WarmthRating ?? 0f;
             var feltTemp = ambientTemp - warmth;
 
+            // Skip emitting if temperature hasn't changed (within epsilon)
+            var currentTemp = npc.SystemStats?.Temperature ?? 0f;
+            if (Math.Abs(feltTemp - currentTemp) < 0.01f)
+            {
+                continue;
+            }
+
             deltas.Add(new AttributeChange
             {
                 CharacterId = npc.Id,

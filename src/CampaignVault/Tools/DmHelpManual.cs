@@ -66,7 +66,7 @@ A **change to something that already exists** (numeric/state deltas, tag/exit ad
 - **Commit patterns & examples**: call `get_help topic=patterns`
 - **Combat & ruleset actions**: call `get_help topic=combat`
 - **World pressure handling**: call `get_help topic=world-pressure`
-- **Tags, items, knowledge**: call `get_help topic=visual-sandbox`
+- **Tags, items, equip, climate & knowledge**: call `get_help topic=visual-sandbox`
 - **Commit type reference**: call `get_help topic=commit-enum`
 - **FAQ & laziness traps**: call `get_help topic=faq`
 
@@ -489,6 +489,20 @@ You (the LLM) author narrative state; the engine scores a fixed set of **visualT
 - Use `upsert_item` with `coreCategory` (e.g., ""Weapon"", ""Armor"", ""Document"") when looting or discovering items. Set `holderId` to a PC character ID (or ""party"") for inventory. Use `quantity` for multiples (e.g., 5 potions = 1 item with quantity: 5, not 5 separate items).
 - Use `$type: ""item_update""` to add temporary `TagsToAdd` (e.g., `[""wet"", ""muddy""]`) and a narrative `NewState` (e.g., ""Covered in mud"") to items. You can also add permanent `FeaturesToAdd` (e.g., ""Leather wrapped handle"") or change `coreCategory`.
 - Use `$type: ""item""` (`itemId` + `toHolderId`) to move an *existing* item to a new holder (a character, location, or container item) — e.g. a PC hands off a torch, or loot gets dropped in a location. Not for creating or editing item properties; use `upsert_item`/`item_update` for that.
+
+## Equip, Outfits & Layers
+
+- Use `$type: ""item_equip""` to equip an existing item on a character, specifying `equipZones` (e.g., `[""Torso""]`, `[""MainHand"", ""OffHand""]`) and `equipLayer` (Base, Armor, Outer, Held). AC and WarmthRating recompute immediately.
+- Set `replaceConflicts: true` to silently unequip conflicting items (same zone+layer). Omit for non-destructive conflicts (error on the call).
+- Use `$type: ""item_unequip""` to remove an item from a character. AC/warmth recompute.
+- Use `$type: ""item_use""` to consume a charge or quantity from an item (`delta: -1`). Fires ambient-decay nag if the item has an expiry.
+- **Layering:** Items on the same zone+layer conflict (two breastplates). Different layers coexist (robe over chainmail). Only Armor-layer and Held items + special ""stacksWithArmor"" items contribute to AC; warmth sums across all layers.
+
+## Climate & Weather
+
+- Set `climateZone` on `upsert_location` (Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean). Zones inherit from parent locations; `get_scene` reports current ambient temperature and time of day.
+- Characters automatically track warmth vs. ambient temperature (SystemStats.Temperature). Equipped items with `warmth` property sum to a WarmthRating; cold climates apply a penalty.
+- Ambient items (provisions, scrolls) with `ambientExpiresAtDay` set decay over time. `get_world_state` nags when expiry passes; resolve via `item_update` with a fresh expiry, `archive_entity`, or `item_transfer` to a character.
 
 ## Character Appearance & Tags
 

@@ -60,18 +60,29 @@ public static class ArmorParameterResolver
         int? dexCap = null;
         var warmth = 0f;
 
-        // 5e Dex-cap: driven by the primary body armor (Torso/Armor layer). light = uncapped,
-        // medium = +2 max, heavy = +0. Unrecognized/absent armorType is treated as uncapped.
+        // Dex-cap: driven by the primary body armor (Torso/Armor layer).
+        // - 5e: light = uncapped, medium = +2 max, heavy = +0 (via "armorType" property)
+        // - PF2e: explicit numeric dexCap property overrides armorType mapping; treat armorType as 5e fallback.
+        // Unrecognized/absent armorType is treated as uncapped.
         var bodyArmor = equippedItems.FirstOrDefault(i =>
             i.EquipLayer == Models.EquipLayer.Armor && i.EquipZones.Contains(EquipZone.Torso));
-        if (bodyArmor != null && TryGetProperty(bodyArmor, "armorType", out var armorType))
+        if (bodyArmor != null)
         {
-            dexCap = armorType.Trim().ToLowerInvariant() switch
+            // Check for explicit numeric dexCap (PF2e style) first
+            if (TryGetProperty(bodyArmor, "dexCap", out var dexCapRaw) && int.TryParse(dexCapRaw, out var dexCapVal))
             {
-                "medium" => 2,
-                "heavy" => 0,
-                _ => (int?)null,
-            };
+                dexCap = dexCapVal;
+            }
+            // Fallback to 5e armorType mapping
+            else if (TryGetProperty(bodyArmor, "armorType", out var armorType))
+            {
+                dexCap = armorType.Trim().ToLowerInvariant() switch
+                {
+                    "medium" => 2,
+                    "heavy" => 0,
+                    _ => (int?)null,
+                };
+            }
         }
 
         foreach (var item in equippedItems)

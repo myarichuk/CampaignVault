@@ -69,6 +69,7 @@ public static class ContainerResolver
         IAsyncDocumentSession session, string containerId, CancellationToken ct = default)
     {
         var contents = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
             .WhereEquals(x => x.HolderId, containerId)
             .Take(256)
             .ToListAsync(ct);
@@ -91,6 +92,7 @@ public static class ContainerResolver
         if (depth >= MaxNestingDepth) return;
 
         var direct = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
             .WhereEquals(x => x.HolderId, holderId)
             .Take(256)
             .ToListAsync(ct);
