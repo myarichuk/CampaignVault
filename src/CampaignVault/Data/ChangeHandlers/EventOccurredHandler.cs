@@ -187,7 +187,6 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         if (!string.IsNullOrEmpty(eo.LocationId))
         {
             locationIds?.Add(eo.LocationId);
-            allInvolvedIds?.Add(eo.LocationId);
         }
 
         if (eo.RelatedLocationIds != null)
@@ -197,7 +196,6 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
                 if (!string.IsNullOrEmpty(id))
                 {
                     locationIds?.Add(id);
-                    allInvolvedIds?.Add(id);
                 }
             }
         }

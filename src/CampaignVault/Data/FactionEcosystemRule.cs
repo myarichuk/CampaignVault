@@ -128,7 +128,7 @@ public class FactionEcosystemRule : ISimulationRule
                     {
                         Category = EventCategory.Simulation,
                         Summary = eventSummary,
-                        Involved = [faction.Id, target.Id]
+                        Involved = []
                     });
 
                     deltas.Add(new RumorCreate
@@ -161,7 +161,7 @@ public class FactionEcosystemRule : ISimulationRule
                     {
                         Category = EventCategory.Simulation,
                         Summary = eventSummary,
-                        Involved = [faction.Id, target.Id]
+                        Involved = []
                     });
 
                     deltas.Add(new RumorCreate
@@ -185,12 +185,12 @@ public class FactionEcosystemRule : ISimulationRule
                         InfluenceDelta = influenceDelta,
                         Narrative = eventSummary
                     });
-                    
+
                     deltas.Add(new EventOccurred
                     {
                         Category = EventCategory.Simulation,
                         Summary = eventSummary,
-                        Involved = [faction.Id]
+                        Involved = []
                     });
 
                     deltas.Add(new RumorCreate

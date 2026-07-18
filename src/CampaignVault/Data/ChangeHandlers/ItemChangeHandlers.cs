@@ -82,10 +82,7 @@ public class ItemUpdateHandler : IWorldChangeHandler
                 Category = EventCategory.Interaction,
                 Importance = MemoryImportance.Trivial,
                 RelatedEntityId = iu.ItemId,
-                // Event_Search indexes Involved but not RelatedEntityId — include the item ID here too
-                // so this event is actually queryable via recall_history/QueryEventsAsync(involvedCharacterId:),
-                // matching the existing pattern where Involved can hold non-character entity IDs.
-                Involved = [iu.ItemId],
+                Involved = [],
                 LocationId = item.HolderId?.StartsWith("locations/", StringComparison.Ordinal) == true ? item.HolderId : null,
                 DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
                 CampaignName = context.CampaignName,

@@ -66,7 +66,7 @@ public sealed class ItemUseHandler : IWorldChangeHandler
                 Category = EventCategory.Interaction,
                 Importance = MemoryImportance.Trivial,
                 RelatedEntityId = item.Id,
-                Involved = [item.Id],
+                Involved = [],
                 LocationId = item.HolderId?.StartsWith("locations/", StringComparison.Ordinal) == true ? item.HolderId : null,
                 DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
                 CampaignName = context.CampaignName,

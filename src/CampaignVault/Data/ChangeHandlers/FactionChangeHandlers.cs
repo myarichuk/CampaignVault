@@ -42,7 +42,7 @@ public class FactionReputationChangeHandler : IWorldChangeHandler
             {
                 Category = EventCategory.Interaction,
                 Summary = $"Reputation with {faction.Name} changed. {frc.Reason}",
-                Involved = [frc.CharacterId, frc.FactionId]
+                Involved = [frc.CharacterId]
             }, ct);
         }
 

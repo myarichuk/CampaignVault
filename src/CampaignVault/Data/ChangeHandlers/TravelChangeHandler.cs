@@ -124,11 +124,12 @@ public class TravelChangeHandler : IWorldChangeHandler
             destination.LastUpdated = DateTime.UtcNow;
             
             var msg = $"Travel: {character.Name} traveled to {destination.Name}. {tc.Narrative}";
-            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred 
-            { 
-                Category = EventCategory.Travel, 
-                Summary = msg, 
-                Involved = [character.Id, destination.Id] 
+            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
+            {
+                Category = EventCategory.Travel,
+                Summary = msg,
+                Involved = [character.Id],
+                LocationId = destination.Id
             }, ct);
         }
         else

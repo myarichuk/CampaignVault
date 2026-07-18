@@ -137,8 +137,11 @@ internal static class WorldChangeHandlerHelpers
 
         if (isIdLike || hasPrefix)
         {
-            allInvolvedIds?.Add(val);
-            if (val.StartsWith("chars/")) characterIds?.Add(val);
+            if (val.StartsWith("chars/"))
+            {
+                characterIds?.Add(val);
+                allInvolvedIds?.Add(val);
+            }
             else if (val.StartsWith("loc")) locationIds?.Add(val);
             else if (val.StartsWith("fac")) factionIds?.Add(val);
             else if (val.StartsWith("que")) questIds?.Add(val);

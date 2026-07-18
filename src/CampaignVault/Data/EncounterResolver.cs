@@ -76,7 +76,8 @@ public class EncounterResolver
                 {
                     Category = EventCategory.Simulation,
                     Summary = encounterMsg,
-                    Involved = [character.Id, location.Id]
+                    Involved = [character.Id],
+                    LocationId = location.Id
                 });
 
                 // Generate seed
@@ -187,7 +188,8 @@ public class EncounterResolver
         {
             Category = EventCategory.SceneInterrupt,
             Summary = interruptMsg,
-            Involved = [character.Id, location.Id]
+            Involved = [character.Id],
+            LocationId = location.Id
         });
 
         var transientId = $"chars/crowd_interrupt_{Guid.NewGuid().ToString("N")[..6]}";
