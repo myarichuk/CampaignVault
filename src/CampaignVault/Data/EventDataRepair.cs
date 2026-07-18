@@ -31,7 +31,7 @@ public class EventDataRepair
         IAsyncDocumentSession session,
         CancellationToken ct = default)
     {
-        var fixed = 0;
+        var fixedCount = 0;
         var details = new List<string>();
 
         try
@@ -68,7 +68,7 @@ public class EventDataRepair
                         }
                     }
 
-                    fixed++;
+                    fixedCount++;
                     var detail = $"Event {FormatEventForLog(@event)}: " +
                                 $"moved {locIds.Count} location(s) from Involved, kept {charIds.Count} character(s)";
                     details.Add(detail);
@@ -77,7 +77,7 @@ public class EventDataRepair
             }
 
             // Persist repairs
-            if (fixed > 0)
+            if (fixedCount > 0)
             {
                 await session.SaveChangesAsync(ct);
             }
@@ -89,7 +89,7 @@ public class EventDataRepair
             throw;
         }
 
-        return (fixed, details);
+        return (fixedCount, details);
     }
 
     /// <summary>
@@ -140,8 +140,8 @@ public class EventDataRepair
 
     private static string FormatEventForLog(Event @event)
     {
-        var category = @event.Category?.ToString() ?? "Unknown";
-        var day = @event.DayLogged.HasValue ? $" (Day {@event.DayLogged})" : "";
+        var category = @event.Category.ToString();
+        var day = @event.DayLogged > 0 ? $" (Day {@event.DayLogged})" : "";
         var summary = string.IsNullOrEmpty(@event.Summary)
             ? "[no summary]"
             : @event.Summary.Length > 60

@@ -66,7 +66,7 @@ public class QuestStalenessRule : ISimulationRule
                     {
                         Category = EventCategory.Simulation,
                         Summary = $"The deadline for '{quest.Title}' has passed. The opportunity was lost.",
-                        Involved = quest.GiverId != null ? new[] { quest.GiverId } : [],
+                        Involved = quest.GiverId != null ? [quest.GiverId] : [],
                         RelatedLocationIds = quest.RelatedLocationIds
                     });
 

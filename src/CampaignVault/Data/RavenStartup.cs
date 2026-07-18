@@ -56,7 +56,7 @@ public static class RavenStartup
         ILoggerFactory loggerFactory,
         CancellationToken ct = default)
     {
-        var logger = loggerFactory.CreateLogger<RavenStartup>();
+        var logger = loggerFactory.CreateLogger(nameof(RavenStartup));
         logger.LogInformation("════════════════════════════════════════════════════════════════");
         logger.LogInformation("Starting data migrations and self-healing routines...");
         logger.LogInformation("════════════════════════════════════════════════════════════════");
