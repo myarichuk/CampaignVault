@@ -35,7 +35,9 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
         [Description("List of character IDs participating in combat.")]
         List<string> combatantIds,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
-        string campaignName)
+        string campaignName,
+        [Description("If true, abandon any active combat and start fresh. Otherwise, fails if combat already active.")]
+        bool overwriteActive = false)
     {
         if (string.IsNullOrWhiteSpace(locationId))
         {
@@ -55,6 +57,13 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
+            var existing = await _repository.GetActiveCombatAsync(session, effective);
+            if (existing?.IsActive == true && !overwriteActive)
+            {
+                return new ToolResult<CombatEncounter>(false,
+                    Error: $"Combat already active at {existing.LocationId} (round {existing.Round}). " +
+                           "Call end_combat to abandon, or pass overwriteActive:true to force restart.");
+            }
             var uniqueIds = (combatantIds ?? []).Distinct().ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
             var validCharacters = new List<Character>();
@@ -310,6 +319,32 @@ Day-based effects remain active. Requires campaignName.")]
 
             return new ToolResult<CombatEncounter>(true, encounter, summary);
         });
+    }
+
+    [ToolCategory("Combat & rulesets")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("COMBAT TOOL: Retrieve the active combat encounter (if any), regardless of location. Returns null if no active combat.")]
+    public Task<ToolResult<object>> GetCombat(
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var encounter = await _repository.GetActiveCombatAsync(session, effective);
+            if (encounter?.IsActive != true)
+            {
+                return new ToolResult<object>(true, new { Status = "No active combat." },
+                    "No active combat encounter.");
+            }
+
+            return new ToolResult<object>(true, new
+            {
+                LocationId = encounter.LocationId,
+                Round = encounter.Round,
+                ActiveTurnId = encounter.ActiveTurnId,
+                ParticipantCount = encounter.Combatants.Count,
+            },
+            $"Active combat at {encounter.LocationId}, round {encounter.Round}.");
+        }, saveChanges: false);
     }
 
     private async Task<IRulesetModule> GetActiveModuleAsync(IAsyncDocumentSession session, string effective)

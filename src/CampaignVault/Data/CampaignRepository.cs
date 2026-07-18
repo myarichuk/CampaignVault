@@ -960,6 +960,14 @@ public class CampaignRepository
         return sessionLog;
     }
 
+    public async Task<CombatEncounter?> GetActiveCombatAsync(IAsyncDocumentSession session, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var id = _keys.CombatCurrent(effective);
+        var encounter = await session.LoadAsync<CombatEncounter>(id);
+        return encounter?.IsActive == true ? encounter : null;
+    }
+
     /// <summary>
     /// Updates the configuration settings (like the active ruleset) for the specified campaign.
     /// </summary>
