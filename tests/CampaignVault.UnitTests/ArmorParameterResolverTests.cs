@@ -9,7 +9,7 @@ public class ArmorParameterResolverTests
 {
     private static Item MakeEquipped(
         string id, EquipZone zone, EquipLayer layer,
-        int? acBonus = null, string? armorType = null, bool stacksWithArmor = false, float? warmth = null) =>
+        int? acBonus = null, string? armorType = null, bool stacksWithArmor = false, float? warmth = null, float? speedModifier = null) =>
         new()
         {
             Id = id,
@@ -19,16 +19,17 @@ public class ArmorParameterResolverTests
             EquipZones = [zone],
             EquipLayer = layer,
             IsEquipped = true,
-            Properties = BuildProperties(acBonus, armorType, stacksWithArmor, warmth),
+            Properties = BuildProperties(acBonus, armorType, stacksWithArmor, warmth, speedModifier),
         };
 
-    private static Dictionary<string, object> BuildProperties(int? acBonus, string? armorType, bool stacksWithArmor, float? warmth)
+    private static Dictionary<string, object> BuildProperties(int? acBonus, string? armorType, bool stacksWithArmor, float? warmth, float? speedModifier)
     {
         var props = new Dictionary<string, object>();
         if (acBonus.HasValue) props["acBonus"] = acBonus.Value.ToString();
         if (armorType != null) props["armorType"] = armorType;
         if (stacksWithArmor) props["stacksWithArmor"] = "true";
         if (warmth.HasValue) props["warmth"] = warmth.Value.ToString();
+        if (speedModifier.HasValue) props["speedModifier"] = speedModifier.Value.ToString();
         return props;
     }
 
@@ -175,5 +176,32 @@ public class ArmorParameterResolverTests
 
         Assert.Equal(12, stats.ArmorClass);
         Assert.Equal(0f, character.SystemStats.WarmthRating);
+        Assert.Equal(0f, character.SystemStats.MovementModifier);
+    }
+
+    [Fact]
+    public void Apply_MovementModifier_SumsAcrossAllEquippedItems()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 10 };
+        var character = MakeCharacter(stats);
+        var shackles = MakeEquipped("items/shackles", EquipZone.Legs, EquipLayer.Base, speedModifier: -15f);
+        var hasteBoots = MakeEquipped("items/haste-boots", EquipZone.Feet, EquipLayer.Outer, speedModifier: 10f);
+
+        ArmorParameterResolver.Apply(character, [shackles, hasteBoots]);
+
+        // -15 + 10 = -5 net movement penalty
+        Assert.Equal(-5f, character.SystemStats.MovementModifier);
+    }
+
+    [Fact]
+    public void Apply_MovementModifier_NegativePenalty()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 10 };
+        var character = MakeCharacter(stats);
+        var heavyChains = MakeEquipped("items/chains", EquipZone.Torso, EquipLayer.Outer, speedModifier: -20f);
+
+        ArmorParameterResolver.Apply(character, [heavyChains]);
+
+        Assert.Equal(-20f, character.SystemStats.MovementModifier);
     }
 }

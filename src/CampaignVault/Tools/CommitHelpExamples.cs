@@ -38,7 +38,7 @@ After time passes (`advance_world`), update or remove PoI details to reflect cle
     internal const string EquipBatch = """
 [
   { "$type": "event", "category": "Interaction", "summary": "Valen donned chainmail from the armory.", "involved": ["chars/valen"], "locationId": "locations/stronghold-armory" },
-  { "$type": "item_equip", "characterId": "chars/valen", "itemId": "items/valen-chainmail", "equipZones": ["Torso"], "equipLayer": "Armor", "replaceConflicts": false },
+  { "$type": "item_equip", "characterId": "chars/valen", "itemId": "items/valen-chainmail", "replaceConflicts": false },
   { "$type": "item_unequip", "characterId": "chars/valen", "itemId": "items/valen-padded-jerkin" },
   { "$type": "item_use", "itemId": "items/ration-waybread", "delta": -1 },
   { "$type": "event", "category": "Interaction", "summary": "Valen ate trail rations to recover strength.", "involved": ["chars/valen"] }

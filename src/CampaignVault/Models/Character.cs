@@ -249,6 +249,15 @@ public class SystemExtension
     public float WarmthRating { get; set; } = 0f;
 
     /// <summary>
+    /// Engine-computed cache of movement modifier from currently equipped items' Properties["speedModifier"].
+    /// Negative = penalty (shackles, armor), positive = bonus (haste, enchanted boots).
+    /// Recomputed by ArmorParameterResolver alongside ArmorClass/WarmthRating on every
+    /// item_equip/item_unequip/item_update. Narrative-only — no travel commit reads this;
+    /// the DM-LLM narrates movement effects (same pattern as Temperature/WarmthRating).
+    /// </summary>
+    public float MovementModifier { get; set; } = 0f;
+
+    /// <summary>
     /// Psychological stress / trauma accumulation (0–100).
     /// Direct analogue: CoC SAN loss, Alien RPG Stress, Delta Green Breaking Point.
     /// NeedsAccumulationRule can emit MoodChanges when this crests thresholds.

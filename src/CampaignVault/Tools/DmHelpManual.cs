@@ -492,11 +492,14 @@ You (the LLM) author narrative state; the engine scores a fixed set of **visualT
 
 ## Equip, Outfits & Layers
 
-- Use `$type: ""item_equip""` to equip an existing item on a character, specifying `equipZones` (e.g., `[""Torso""]`, `[""MainHand"", ""OffHand""]`) and `equipLayer` (Base, Armor, Outer, Held). AC and WarmthRating recompute immediately.
+- Define equippable items via `upsert_item`, specifying `equipZones` (e.g., `[""Torso""]`, `[""MainHand"", ""OffHand""]`) and `equipLayer` (Base, Armor, Outer, Held) once. These define the item's equipment slots; they do not change on each equip.
+- Use `$type: ""item_equip""` to equip an existing item on a character (takes `characterId`, `itemId`, `replaceConflicts` only). AC and WarmthRating recompute immediately.
 - Set `replaceConflicts: true` to silently unequip conflicting items (same zone+layer). Omit for non-destructive conflicts (error on the call).
+- **To swap an entire outfit:** commit multiple `item_equip`/`item_unequip` changes in a single `commit` call (one array, one atomic write) — no separate outfit tool needed.
 - Use `$type: ""item_unequip""` to remove an item from a character. AC/warmth recompute.
 - Use `$type: ""item_use""` to consume a charge or quantity from an item (`delta: -1`). Fires ambient-decay nag if the item has an expiry.
 - **Layering:** Items on the same zone+layer conflict (two breastplates). Different layers coexist (robe over chainmail). Only Armor-layer and Held items + special ""stacksWithArmor"" items contribute to AC; warmth sums across all layers.
+- Set `speedModifier` (float, positive or negative) on items via `upsert_item`: negative for penalties (shackles, heavy chains, waterlogged boots), positive for bonuses (haste, enchanted boots). Cached on `MovementModifier` and recomputed on every equip/unequip, same as warmth. Not enforced by travel — narrate the movement effects.
 
 ## Climate & Weather
 

@@ -4,7 +4,7 @@ using CampaignVault.Models;
 namespace CampaignVault.Rulesets;
 
 /// <summary>
-/// Recomputes a character's ArmorClass and WarmthRating from all currently-equipped items.
+/// Recomputes a character's ArmorClass, WarmthRating, and MovementModifier from all currently-equipped items.
 /// Called synchronously from item_equip/item_unequip (primary path), item_update (when an
 /// already-worn item's relevant properties change), and bootstrap defense steps (pre-equipped
 /// starting gear). Shape cloned from WeaponParameterResolver.cs.
@@ -14,8 +14,8 @@ namespace CampaignVault.Rulesets;
 /// breastplates). Items in other layers (Base/Outer) only add if Properties["stacksWithArmor"] ==
 /// "true" — this is how an enchanted robe can layer meaningfully over chainmail without every
 /// cloak silently stacking with every cuirass. Shields (EquipLayer.Held in the OffHand zone)
-/// always add. Warmth sums across every equipped item regardless of layer (insulation is cumulative,
-/// not a defensive stack).
+/// always add. Warmth and movement modifiers (penalties/buffs) sum across every equipped item regardless
+/// of layer (insulation and speed effects are cumulative, not a defensive stack).
 /// </summary>
 public static class ArmorParameterResolver
 {
@@ -29,7 +29,7 @@ public static class ArmorParameterResolver
     /// <summary>Pure variant for callers that already have the equipped-item list (e.g. bootstrap steps).</summary>
     public static void Apply(Character character, IReadOnlyList<Item> equippedItems)
     {
-        var (acBonus, dexCap, warmth) = ComputeContributions(equippedItems);
+        var (acBonus, dexCap, warmth, movementModifier) = ComputeContributions(equippedItems);
 
         switch (character.SystemStats)
         {
@@ -52,13 +52,15 @@ public static class ArmorParameterResolver
         }
 
         character.SystemStats.WarmthRating = warmth;
+        character.SystemStats.MovementModifier = movementModifier;
     }
 
-    private static (int AcBonus, int? DexCap, float Warmth) ComputeContributions(IReadOnlyList<Item> equippedItems)
+    private static (int AcBonus, int? DexCap, float Warmth, float MovementModifier) ComputeContributions(IReadOnlyList<Item> equippedItems)
     {
         var acBonus = 0;
         int? dexCap = null;
         var warmth = 0f;
+        var movementModifier = 0f;
 
         // Dex-cap: driven by the primary body armor (Torso/Armor layer).
         // - 5e: light = uncapped, medium = +2 max, heavy = +0 (via "armorType" property)
@@ -102,9 +104,14 @@ public static class ArmorParameterResolver
             {
                 warmth += w;
             }
+
+            if (TryGetProperty(item, "speedModifier", out var speedModifierRaw) && float.TryParse(speedModifierRaw, out var sm))
+            {
+                movementModifier += sm;
+            }
         }
 
-        return (acBonus, dexCap, warmth);
+        return (acBonus, dexCap, warmth, movementModifier);
     }
 
     private static bool TryGetProperty(Item item, string key, out string value)
