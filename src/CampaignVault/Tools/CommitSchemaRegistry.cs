@@ -209,7 +209,7 @@ internal static class CommitSchemaRegistry
         new("item_equip", "World",
             "Equip a carried item into its EquipZones. HARD-FAILS listing conflicts (same zone+layer, or off-hand for a two-handed weapon) unless replaceConflicts:true. " +
             "Different EquipLayers on the same zone coexist (e.g. an enchanted robe worn over chainmail). " +
-            "ENGINE SIDE EFFECTS: recomputes ArmorClass and WarmthRating from all equipped items.",
+            "ENGINE SIDE EFFECTS: recomputes ArmorClass, WarmthRating, and MovementModifier from all equipped items.",
             ["characterId", "itemId"],
             ["replaceConflicts"],
             HasSideEffects: true,
@@ -218,7 +218,7 @@ internal static class CommitSchemaRegistry
             Example: """{"$type":"item_equip","characterId":"chars/grog","itemId":"items/chain-shirt","replaceConflicts":false}"""),
 
         new("item_unequip", "World",
-            "Unequip a currently equipped item. The item stays carried. ENGINE SIDE EFFECTS: recomputes ArmorClass and WarmthRating.",
+            "Unequip a currently equipped item. The item stays carried. ENGINE SIDE EFFECTS: recomputes ArmorClass, WarmthRating, and MovementModifier.",
             ["characterId", "itemId"],
             [],
             HasSideEffects: true,
