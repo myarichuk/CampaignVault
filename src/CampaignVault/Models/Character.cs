@@ -250,7 +250,7 @@ public class SystemExtension
 
     /// <summary>
     /// Engine-computed cache of movement modifier from currently equipped items' Properties["speedModifier"].
-    /// Negative = penalty (shackles, armor), positive = bonus (haste, enchanted boots).
+    /// Negative = movement penalty, positive = movement bonus. LLM assigns based on narrative context.
     /// Recomputed by ArmorParameterResolver alongside ArmorClass/WarmthRating on every
     /// item_equip/item_unequip/item_update. Narrative-only — no travel commit reads this;
     /// the DM-LLM narrates movement effects (same pattern as Temperature/WarmthRating).

@@ -19,7 +19,7 @@ namespace CampaignVault.Rulesets;
 /// </summary>
 public static class ArmorParameterResolver
 {
-    /// <summary>Loads the character's equipped items via ChangeContext and applies the resolved AC/warmth.</summary>
+    /// <summary>Loads the character's equipped items via ChangeContext and applies the resolved AC/warmth/movement modifier.</summary>
     public static async Task ApplyAsync(Character character, ChangeContext context, CancellationToken ct = default)
     {
         var equippedItems = await ItemHolderQueryHelper.GetEquippedItemsAsync(context, character.Id, ct: ct);

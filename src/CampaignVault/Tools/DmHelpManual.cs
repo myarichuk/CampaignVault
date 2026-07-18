@@ -499,7 +499,7 @@ You (the LLM) author narrative state; the engine scores a fixed set of **visualT
 - Use `$type: ""item_unequip""` to remove an item from a character. AC/warmth recompute.
 - Use `$type: ""item_use""` to consume a charge or quantity from an item (`delta: -1`). Fires ambient-decay nag if the item has an expiry.
 - **Layering:** Items on the same zone+layer conflict (two breastplates). Different layers coexist (robe over chainmail). Only Armor-layer and Held items + special ""stacksWithArmor"" items contribute to AC; warmth sums across all layers.
-- Set `speedModifier` (float, positive or negative) on items via `upsert_item`: negative for penalties (shackles, heavy chains, waterlogged boots), positive for bonuses (haste, enchanted boots). Cached on `MovementModifier` and recomputed on every equip/unequip, same as warmth. Not enforced by travel — narrate the movement effects.
+- Set `speedModifier` (float, signed) on any item via `upsert_item` if it affects movement: negative values slow (heavy armor, uncomfortable sandals, waterlogged gear), positive values speed up (enchanted boots, lightweight gear). Cached on `MovementModifier` and recomputed on every equip/unequip, same as warmth. Not enforced by travel — narrate the movement effects. The LLM decides which items carry modifiers based on narrative context.
 
 ## Climate & Weather
 
