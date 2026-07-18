@@ -41,8 +41,11 @@ public class MemoryDecayHandler : IWorldChangeHandler
             {
                 if (newSalience.HasValue)
                     memory.Salience = newSalience.Value;
-                if (newUrgency.HasValue && Enum.TryParse<MemoryUrgency>(newUrgency.Value.ToString(), out var urgency))
-                    memory.Urgency = urgency;
+                if (newUrgency.HasValue)
+                {
+                    var ordinal = (int)Math.Round(Math.Clamp(newUrgency.Value, 0, 3));
+                    memory.Urgency = (MemoryUrgency)ordinal;
+                }
             }
         }
 

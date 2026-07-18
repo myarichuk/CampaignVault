@@ -220,7 +220,7 @@ public class CampaignRepository
                     container.Id,
                     container.Name,
                     contents,
-                    maxDepth: 3
+                    MaxDepth: 3
                 ));
             }
         }

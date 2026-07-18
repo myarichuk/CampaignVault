@@ -165,11 +165,67 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             Config: new CampaignConfig { MemoryImportantDecayDays = 40 });
 
         var result = await rule.ApplyAsync(context);
-        var memory = npc.Psychology.Memories["Old"];
 
+        // Rule computes changes without mutating the tracked Character/MemoryNode — the live values
+        // are untouched until MemoryDecayHandler applies the emitted delta.
+        var memory = npc.Psychology.Memories["Old"];
+        Assert.Equal(0.8, memory.Salience);
+        Assert.Equal(MemoryUrgency.Normal, memory.Urgency);
+
+        var decay = Assert.Single(result.Deltas.OfType<MemoryDecay>());
+        Assert.Equal(npc.Id, decay.CharacterId);
+        var entry = decay.EntryChanges["Old"];
+        Assert.True(entry.NewSalience < 0.8f);
+        Assert.Equal((float)MemoryUrgency.High, entry.NewUrgency);
+        Assert.False(entry.Evict);
+        Assert.NotEmpty(result.NarrativeEvents);
+    }
+
+    [Fact]
+    public async Task MemorySalienceDecayRule_EmittedDelta_AppliesThroughAdvanceWorld()
+    {
+        const string campaign = "memory-decay-e2e";
+        await SeedCampaignAsync(campaign, day: 30, configure: c => c.MemoryImportantDecayDays = 40);
+        var repo = CreateSimRepo();
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var charId = "chars/mem-e2e";
+        await session.StoreAsync(new Character
+        {
+            Id = charId,
+            Name = "Mem E2E NPC",
+            CampaignName = campaign,
+            Schedule = new Schedule { DefaultLocationId = "locs/1", Routines = [] },
+            Psychology = new PsychologyProfile
+            {
+                Memories = new Dictionary<string, MemoryNode>
+                {
+                    ["Old"] = new MemoryNode
+                    {
+                        Topic = "Old",
+                        Details = "Stale memory",
+                        Salience = 0.8,
+                        Importance = MemoryImportance.Important,
+                        DayAcquired = 1,
+                        Urgency = MemoryUrgency.Normal
+                    }
+                }
+            }
+        });
+        await session.SaveChangesAsync();
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+
+        await repo.AdvanceWorldAsync(session, 5, TimeOfDay.Dawn, campaign);
+        await session.SaveChangesAsync();
+
+        using var verifySession = _fixture.Store.OpenAsyncSession();
+        var reloaded = await verifySession.LoadAsync<Character>(charId);
+        var memory = reloaded!.Psychology.Memories["Old"];
+
+        // Confirms MemorySalienceDecayRule's emitted MemoryDecay delta was actually dispatched to
+        // MemoryDecayHandler and persisted — not just computed and dropped.
         Assert.True(memory.Salience < 0.8);
         Assert.Equal(MemoryUrgency.High, memory.Urgency);
-        Assert.NotEmpty(result.NarrativeEvents);
     }
 
     [Fact]
@@ -204,8 +260,15 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             DaysPassed: 1,
             Config: new CampaignConfig { MemoryImportantDecayDays = 0 });
 
-        await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context);
 
+        var decay = result.Deltas.OfType<MemoryDecay>().SingleOrDefault(d => d.CharacterId == npc.Id);
+        if (decay != null && decay.EntryChanges.TryGetValue("Fresh", out var entry))
+        {
+            Assert.Null(entry.NewUrgency);
+        }
+
+        // Live value is untouched either way — only the emitted delta reflects the computed change.
         Assert.Equal(MemoryUrgency.Normal, npc.Psychology.Memories["Fresh"].Urgency);
     }
 
@@ -419,15 +482,21 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         // Initially 50 memories
         Assert.Equal(50, npc.Psychology.Memories.Count);
 
-        await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context);
 
-        // After eviction, should be 40 (not 35 which would be the buggy result)
-        Assert.Equal(40, npc.Psychology.Memories.Count);
+        // Rule computes eviction decisions without mutating the tracked dictionary directly.
+        Assert.Equal(50, npc.Psychology.Memories.Count);
 
-        // All 5 core memories should remain
+        var decay = Assert.Single(result.Deltas.OfType<MemoryDecay>());
+        var evictedTopics = decay.EntryChanges.Where(kv => kv.Value.Evict).Select(kv => kv.Key).ToList();
+
+        // 50 total, cap 40 => exactly 10 evictions (not 15, which would be the buggy result).
+        Assert.Equal(10, evictedTopics.Count);
+
+        // All 5 core memories should be exempt from eviction.
         for (int i = 0; i < 5; i++)
         {
-            Assert.Contains($"core_{i}", npc.Psychology.Memories.Keys);
+            Assert.DoesNotContain($"core_{i}", evictedTopics);
         }
     }
 }

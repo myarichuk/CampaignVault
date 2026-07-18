@@ -121,11 +121,10 @@ public static class ContainerResolver
         var direct = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
             .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
             .WhereEquals(x => x.HolderId, holderId)
-            .Where(x => !x.IsArchived)
             .Take(256)
             .ToListAsync(ct);
 
-        foreach (var item in direct)
+        foreach (var item in direct.Where(x => !x.IsArchived))
         {
             var nested = new List<ContainedItemSummary>();
             await CollectSummariesAsync(session, item.Id, nested, depth + 1, maxDepth, ct);

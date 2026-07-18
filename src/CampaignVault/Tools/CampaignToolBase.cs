@@ -83,6 +83,11 @@ public abstract class CampaignToolBase
                 _logger.LogError(ex, "Concurrency conflict after {MaxRetries} retries", maxRetries);
                 return new ToolResult<T>(false, Error: ToolErrors.StateDrift, Summary: "State changed mid-operation. Re-fetch and retry.");
             }
+            catch (ArgumentException ex)
+            {
+                _logger.LogDebug(ex, "Validation failure in tool action");
+                return new ToolResult<T>(false, Error: ToolErrors.InvalidArgument, Summary: ex.Message);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unhandled exception in tool action");
