@@ -22,4 +22,5 @@ public sealed class SceneAssemblyContext
     public required IReadOnlyList<Quest> ActiveQuests { get; init; }
     public required IReadOnlyList<Faction> RelevantFactions { get; init; }
     public bool MarkVisited { get; init; }
+    public IReadOnlyList<ContainerContentsSummary> ContainerContents { get; init; } = [];
 }

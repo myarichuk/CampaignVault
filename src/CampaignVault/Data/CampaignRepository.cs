@@ -209,6 +209,22 @@ public class CampaignRepository
         var activeQuests = await GetActiveQuestsForLocationAsync(session, locationId, effectiveCampaign);
         var relevantFactions = await GetFactionsForLocationAsync(session, locationId, effectiveCampaign);
 
+        var containerContents = new List<ContainerContentsSummary>();
+        var containerItems = items.Where(i => i.CoreCategory == ItemCategory.Container).ToList();
+        foreach (var container in containerItems)
+        {
+            var contents = await ContainerResolver.GetRecursiveContentsSummariesAsync(session, container.Id, maxDepth: 3);
+            if (contents.Count > 0)
+            {
+                containerContents.Add(new ContainerContentsSummary(
+                    container.Id,
+                    container.Name,
+                    contents,
+                    maxDepth: 3
+                ));
+            }
+        }
+
         return new SceneAssemblyContext
         {
             RequestedLocationId = locationId,
@@ -228,7 +244,8 @@ public class CampaignRepository
             ActiveCombat = activeCombat,
             ActiveQuests = activeQuests,
             RelevantFactions = relevantFactions,
-            MarkVisited = markVisited
+            MarkVisited = markVisited,
+            ContainerContents = containerContents
         };
     }
 

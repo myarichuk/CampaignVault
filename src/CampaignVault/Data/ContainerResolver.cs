@@ -86,6 +86,15 @@ public static class ContainerResolver
         return result;
     }
 
+    /// <summary>Recursive contents as ContainedItemSummary with depth tracking and archived filtering.</summary>
+    public static async Task<List<ContainedItemSummary>> GetRecursiveContentsSummariesAsync(
+        IAsyncDocumentSession session, string containerId, int maxDepth = 3, CancellationToken ct = default)
+    {
+        var result = new List<ContainedItemSummary>();
+        await CollectSummariesAsync(session, containerId, result, 0, maxDepth, ct);
+        return result;
+    }
+
     private static async Task CollectAsync(
         IAsyncDocumentSession session, string holderId, List<Item> result, int depth, CancellationToken ct)
     {
@@ -101,6 +110,33 @@ public static class ContainerResolver
         {
             result.Add(item);
             await CollectAsync(session, item.Id, result, depth + 1, ct);
+        }
+    }
+
+    private static async Task CollectSummariesAsync(
+        IAsyncDocumentSession session, string holderId, List<ContainedItemSummary> result, int depth, int maxDepth, CancellationToken ct)
+    {
+        if (depth >= maxDepth) return;
+
+        var direct = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
+            .WhereEquals(x => x.HolderId, holderId)
+            .Where(x => !x.IsArchived)
+            .Take(256)
+            .ToListAsync(ct);
+
+        foreach (var item in direct)
+        {
+            var nested = new List<ContainedItemSummary>();
+            await CollectSummariesAsync(session, item.Id, nested, depth + 1, maxDepth, ct);
+
+            result.Add(new ContainedItemSummary(
+                item.Id,
+                item.Name,
+                Math.Max(item.Quantity, 1),
+                depth,
+                nested.Count > 0 ? nested : null
+            ));
         }
     }
 }

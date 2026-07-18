@@ -90,6 +90,7 @@ public sealed class SceneAssembler
             RelevantFactions = _factionSummaryFactory.Create(context.RelevantFactions, presentNpcs),
             LastKnownTravel = SceneTravelSummaryExtractor.GetLastKnownTravel(context.Events),
             RecognitionHints = recognitionHints.Count > 0 ? recognitionHints : null,
+            ContainerContents = context.ContainerContents.ToList(),
             SuggestedCommitExamples = []
         };
     }

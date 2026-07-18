@@ -49,6 +49,11 @@ public class SceneView
     /// Climate summary for this scene (zone, ambient temperature, time of day).
     /// </summary>
     public SceneClimateSummary? Climate { get; set; }
+
+    /// <summary>
+    /// Nested container contents for visible container items in this scene.
+    /// </summary>
+    public List<ContainerContentsSummary> ContainerContents { get; set; } = [];
 }
 
 /// <summary>
@@ -228,4 +233,17 @@ public record PartyMemberView(
     public bool IsPc => Character.IsPc;
     public bool IsPartyCompanion => Character.IsPartyCompanion;
 }
+
+public record ContainedItemSummary(
+    string Id,
+    string Name,
+    int Quantity,
+    int Depth,
+    List<ContainedItemSummary>? Contents = null);
+
+public record ContainerContentsSummary(
+    string ContainerId,
+    string ContainerName,
+    List<ContainedItemSummary> Contents,
+    int MaxDepth);
 
