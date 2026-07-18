@@ -82,7 +82,7 @@ public sealed class PlotThreadStalenessContributor : IPressureContributor
                 pressures.Add(new WorldPressureItem(
                     PressureSeverity.NarrativePrompt,
                     thread.Id,
-                    $"Plot thread '{thread.Name}' has been quiet for {daysSilent} days with no escalation...",
+                    $"Plot thread '{thread.Title}' has been quiet for {daysSilent} days with no escalation...",
                     StaleGroupingKey));
             }
         }

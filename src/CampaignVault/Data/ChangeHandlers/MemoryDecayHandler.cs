@@ -40,9 +40,9 @@ public class MemoryDecayHandler : IWorldChangeHandler
             else
             {
                 if (newSalience.HasValue)
-                    memory.Saliency = newSalience.Value;
-                if (newUrgency.HasValue)
-                    memory.Urgency = newUrgency.Value;
+                    memory.Salience = newSalience.Value;
+                if (newUrgency.HasValue && Enum.TryParse<MemoryUrgency>(newUrgency.Value.ToString(), out var urgency))
+                    memory.Urgency = urgency;
             }
         }
 
