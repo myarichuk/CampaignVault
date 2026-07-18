@@ -47,6 +47,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(ItemUnequip), "item_unequip")]
 [JsonDerivedType(typeof(ItemUse), "item_use")]
 [JsonDerivedType(typeof(ItemPersistenceSurfaced), "item_persistence_surfaced")]
+[JsonDerivedType(typeof(MemoryDecay), "memory_decay")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -1268,4 +1269,19 @@ public class ItemPersistenceSurfaced : WorldChange
 {
     [JsonPropertyName("itemId")]
     public string ItemId { get; set; } = default!;
+}
+
+/// <summary>
+/// Simulation-internal: adjusts character memory saliencies and urgencies, or evicts memories entirely.
+/// Emitted by MemorySalienceDecayRule; applied by MemoryDecayHandler.
+/// Maps memory entry key to (newSalience, newUrgency, evict) tuples for batch memory mutation.
+/// </summary>
+public class MemoryDecay : WorldChange
+{
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("Map from memory entry key to (newSalience, newUrgency, evict). Null field = no change for that aspect.")]
+    [JsonPropertyName("entryChanges")]
+    public Dictionary<string, (float? NewSalience, float? NewUrgency, bool Evict)> EntryChanges { get; set; } = [];
 }

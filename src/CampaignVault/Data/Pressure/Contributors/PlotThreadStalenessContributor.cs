@@ -77,6 +77,14 @@ public sealed class PlotThreadStalenessContributor : IPressureContributor
                     $"Plot thread '{thread.Title}' (Escalating, tension {thread.TensionLevel}) has had no player engagement in {daysSilent} days.{clueHint}",
                     StaleGroupingKey));
             }
+            else if (daysSilent >= 10 && thread.State == PlotThreadState.Active)
+            {
+                pressures.Add(new WorldPressureItem(
+                    PressureSeverity.NarrativePrompt,
+                    thread.Id,
+                    $"Plot thread '{thread.Name}' has been quiet for {daysSilent} days with no escalation...",
+                    StaleGroupingKey));
+            }
         }
 
         return pressures;
