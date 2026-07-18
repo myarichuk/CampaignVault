@@ -37,7 +37,7 @@ public class CampaignTools(
         string? campaignName = TestDefaultCampaignSlug) =>
         exploration.GetNpcContext(characterId, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<List<Character>>> GetParty(string? campaignName = TestDefaultCampaignSlug) =>
+    public Task<ToolResult<List<PartyMemberView>>> GetParty(string? campaignName = TestDefaultCampaignSlug) =>
         exploration.GetParty(ResolveCampaign(campaignName));
 
     public Task<ToolResult<UnifiedSearchResult>> SearchWorld(string query,

@@ -952,6 +952,14 @@ public class CampaignRepository
         return config;
     }
 
+    public async Task<SessionLog?> GetSessionLogAsync(IAsyncDocumentSession session, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var id = $"{effective}/state/sessions";
+        var sessionLog = await session.LoadAsync<SessionLog>(id);
+        return sessionLog;
+    }
+
     /// <summary>
     /// Updates the configuration settings (like the active ruleset) for the specified campaign.
     /// </summary>

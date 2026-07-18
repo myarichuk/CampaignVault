@@ -44,6 +44,11 @@ public class SceneView
     /// Purely read-time guidance; no persisted state. Empty if no PC skills/background match location features.
     /// </summary>
     public List<string>? RecognitionHints { get; set; }
+
+    /// <summary>
+    /// Climate summary for this scene (zone, ambient temperature, time of day).
+    /// </summary>
+    public SceneClimateSummary? Climate { get; set; }
 }
 
 /// <summary>
@@ -114,7 +119,7 @@ public record NpcPresenceSummary(
     Dictionary<string, List<string>>? TagProvenance = null,
     Dictionary<string, MemoryNode>? Memories = null,
     /// <summary>
-    /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills). 
+    /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills).
     /// Essential for the LLM to understand mechanical capabilities at a glance.
     /// </summary>
     SystemExtension? SystemStats = null,
@@ -124,7 +129,9 @@ public record NpcPresenceSummary(
     /// <summary>
     /// Items held by this character (weapons, gear). Use for attack narration and ruleset_action parameters.
     /// </summary>
-    IReadOnlyList<Item>? HeldItems = null)
+    IReadOnlyList<Item>? HeldItems = null,
+    List<ItemSummaryView>? EquippedItems = null,
+    List<ItemSummaryView>? CarriedItems = null)
 {
     public NpcPresenceSummary() : this(default!, default!, default!, default!, default!, default!, default!) { }
 }
@@ -179,3 +186,46 @@ public record NpcActivitySummary(string Name, string CurrentActivity)
 {
     public NpcActivitySummary() : this(default!, default!) { }
 }
+
+public record ItemSummaryView(
+    string Id,
+    string Name,
+    int Quantity,
+    string CoreCategory,
+    bool IsEquipped,
+    List<string> EquipZones,
+    string? EquipLayer,
+    string? CurrentState,
+    int? CurrentCharges,
+    int? MaxCharges)
+{
+    public static ItemSummaryView From(Item item) => new(
+        item.Id,
+        item.Name,
+        Math.Max(item.Quantity, 1),
+        item.CoreCategory.ToString(),
+        item.IsEquipped,
+        item.EquipZones?.Select(z => z.ToString()).ToList() ?? [],
+        item.EquipLayer?.ToString(),
+        item.CurrentState,
+        item.CurrentCharges,
+        item.MaxCharges
+    );
+}
+
+public record SceneClimateSummary(
+    string EffectiveZone,
+    float AmbientTemperatureC,
+    string TimeOfDay);
+
+public record PartyMemberView(
+    Character Character,
+    List<ItemSummaryView>? Equipped = null,
+    List<ItemSummaryView>? Carried = null)
+{
+    public string Id => Character.Id;
+    public string Name => Character.Name;
+    public bool IsPc => Character.IsPc;
+    public bool IsPartyCompanion => Character.IsPartyCompanion;
+}
+

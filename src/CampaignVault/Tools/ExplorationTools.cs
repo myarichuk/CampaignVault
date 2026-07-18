@@ -5,6 +5,8 @@ using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using static CampaignVault.Data.ClimateCycle;
+using static CampaignVault.Data.ClimateResolver;
 
 namespace CampaignVault.Tools;
 
@@ -165,6 +167,14 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var time = await _repository.GetTimeAsync(session, effective);
             var config = await _repository.GetCampaignConfigAsync(session, effective);
 
+            var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, scene.Location);
+            var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, time.TimeOfDay);
+            scene.Climate = new SceneClimateSummary(
+                zone.ToString(),
+                ambientTemp,
+                time.TimeOfDay.ToString()
+            );
+
             var pressureCtx = new PressureContext(
                 effective,
                 time,
@@ -261,6 +271,12 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 includeTensionBreakdown: true,
                 recentEvents: npcEvents);
 
+            var heldItems = await session.Query<Item>()
+                .Where(i => i.HolderId == characterId && !i.IsArchived)
+                .ToListAsync();
+            var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
+            var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+
             var time = await _repository.GetTimeAsync(session, effective);
             string[]? initiativePressure = null;
             var urgentInitiatives = enrichment.ActiveInitiatives
@@ -296,7 +312,9 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 BehavioralTension = enrichment.BehavioralTension,
                 TensionComponents = enrichment.TensionComponents,
                 ActiveInitiatives = enrichment.ActiveInitiatives.ToList(),
-                RelevantMemories = enrichment.RelevantMemories.ToList()
+                RelevantMemories = enrichment.RelevantMemories.ToList(),
+                Equipped = equipped,
+                Carried = carried
             };
 
             return new ToolResult<NpcContextView>(
@@ -310,7 +328,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description("PARTY TOOL: Returns the active party roster — characters with isPc or isPartyCompanion for this campaign slug. Shared canon NPCs (e.g. Bob) are excluded. Requires campaignName.")]
-    public Task<ToolResult<List<Character>>> GetParty(
+    public Task<ToolResult<List<PartyMemberView>>> GetParty(
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
@@ -319,9 +337,20 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
 
+            var partyMembers = new List<PartyMemberView>();
+            foreach (var member in party)
+            {
+                var heldItems = await session.Query<Item>()
+                    .Where(i => i.HolderId == member.Id && !i.IsArchived)
+                    .ToListAsync();
+                var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
+                var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+                partyMembers.Add(new PartyMemberView(member, equipped, carried));
+            }
+
             var pcCount = party.Count(c => c.IsPc);
             var companionCount = party.Count - pcCount;
-            return new ToolResult<List<Character>>(true, party,
+            return new ToolResult<List<PartyMemberView>>(true, partyMembers,
                 $"Retrieved {party.Count} party member(s) ({pcCount} PC(s), {companionCount} companion(s)) for campaign '{effective}'.");
         }, saveChanges: false);
     }

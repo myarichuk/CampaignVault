@@ -24,6 +24,8 @@ public class NpcContextView
     public TensionBreakdown? TensionComponents { get; set; }
     public List<InitiativeCandidate> ActiveInitiatives { get; set; } = [];
     public List<MemoryNode> RelevantMemories { get; set; } = [];
+    public List<ItemSummaryView>? Equipped { get; set; }
+    public List<ItemSummaryView>? Carried { get; set; }
 }
 
 /// <summary>

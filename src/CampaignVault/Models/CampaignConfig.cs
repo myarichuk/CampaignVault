@@ -81,6 +81,13 @@ public class CampaignConfig
     public float NeedAccumulationRate { get; set; } = 10f;
 
     /// <summary>
+    /// Baseline need level that scheduled activities settle NPCs toward.
+    /// Routines matching "eat" keywords settle hunger to this value; "sleep" settles tiredness, etc.
+    /// Defaults to 20.
+    /// </summary>
+    public int? NeedSatisfactionBaseline { get; set; } = 20;
+
+    /// <summary>
     /// Multiplier applied to thirst need accumulation.
     /// Defaults to 1.2.
     /// </summary>

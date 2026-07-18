@@ -52,6 +52,8 @@ public sealed class SceneNpcPresenceFactory
             var enrichment = _initiativeService.Enrich(initiativeContext, context.Campaign);
 
             var heldItems = context.ItemsByHolder.GetValueOrDefault(npc.Id) ?? [];
+            var equippedItems = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
+            var carriedItems = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
 
             presenceSummaries.Add(new NpcPresenceSummary(
                 Id: npc.Id,
@@ -75,7 +77,9 @@ public sealed class SceneNpcPresenceFactory
                 BehavioralTension: enrichment.BehavioralTension,
                 ActiveInitiatives: enrichment.ActiveInitiatives.ToList(),
                 RelevantMemories: enrichment.RelevantMemories.ToList(),
-                HeldItems: heldItems
+                HeldItems: heldItems,
+                EquippedItems: equippedItems,
+                CarriedItems: carriedItems
             ));
         }
 
