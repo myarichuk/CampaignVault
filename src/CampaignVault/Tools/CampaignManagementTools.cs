@@ -300,8 +300,7 @@ Requires campaignName.")]
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
-        var explicitName = CampaignSlug.Canonicalize(campaignName);
-        return ExecuteAsync(async session =>
+        return ExecuteForCampaignAsync(campaignName, async (explicitName, session) =>
         {
             var campaignId = _keys.Meta(explicitName);
             var campaign = await session.LoadAsync<Campaign>(campaignId);

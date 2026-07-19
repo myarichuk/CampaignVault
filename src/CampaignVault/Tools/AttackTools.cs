@@ -100,7 +100,7 @@ Requires campaignName. Example: trigger_opportunity_attack(""chars/fighter"", ""
         string targetId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
-        [Description("Weapon or action name (e.g. 'Longsword'). If omitted, uses character's held weapon.")]
+        [Description("Weapon or action name (e.g. 'Longsword'). If omitted, resolves to the character's held weapon ONLY when they carry exactly one weapon — with multiple weapons held, pass a name or weaponItemId or the attack resolves unarmed/default damage.")]
         string? actionName = null,
         [Description("Damage dice expression (e.g. '1d8+2'). Optional; weapon defaults apply if omitted.")]
         string? damageDice = null,
