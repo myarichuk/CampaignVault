@@ -254,6 +254,31 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task FactionStateChange_WithStanceButNoTargetFaction_FailsInsteadOfSilentlySkipping()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var faction = new Faction { Id = "factions/thieves", InfluenceLevel = 50 };
+
+        var handler = new FactionStateChangeHandler();
+        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, null, null, [faction]);
+
+        var change = new FactionStateChange
+        {
+            FactionId = faction.Id,
+            NewStance = FactionStance.Hostile,
+            TargetFactionId = null
+        };
+
+        var result = await handler.ApplyAsync(change, ctx);
+        Assert.False(result.Success);
+        Assert.Contains("targetFactionId", result.Message);
+        Assert.Empty(faction.StanceToward ?? []);
+    }
+
+    [Fact]
     public async Task QuestProgress_UpdatesObjective_AndEmitsEventOnComplete()
     {
         using var session = _fixture.Store.OpenAsyncSession();

@@ -72,8 +72,14 @@ public class FactionStateChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Ok;
         }
 
-        if (fsc.NewStance != null && !string.IsNullOrWhiteSpace(fsc.TargetFactionId))
+        if (fsc.NewStance != null)
         {
+            if (string.IsNullOrWhiteSpace(fsc.TargetFactionId))
+            {
+                return ChangeHandlerResult.Failure(
+                    "newStance was set but targetFactionId is missing — stance changes require a target faction.");
+            }
+
             faction.StanceToward ??= new();
             faction.StanceToward[fsc.TargetFactionId] = fsc.NewStance.Value;
         }

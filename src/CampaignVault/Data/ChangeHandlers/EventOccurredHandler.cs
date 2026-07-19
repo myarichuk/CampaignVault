@@ -31,6 +31,18 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         // Resolve importance: explicit > Deliberate floor > category default
         var importance = ev.Importance ?? ResolveImportanceForCategory(ev.Category, ev.RecordingMode);
 
+        // Recover a location ID mistakenly placed in 'involved' instead of 'locationId' — mirrors
+        // ConversationInvolvedResolver's auto-inference for 'involved' itself, so this field has the
+        // same safety net. See EventOccurredHandler's LocationId documentation for the failure mode.
+        var locationId = ev.LocationId
+            ?? ev.Involved?.FirstOrDefault(id2 => id2.StartsWith("locations/", StringComparison.OrdinalIgnoreCase));
+        if (locationId != null && ev.LocationId == null)
+        {
+            context.RecordMessage(
+                $"NOTE: 'locationId' was omitted but '{locationId}' was found in 'involved' — used it as the event's location. " +
+                "Prefer setting 'locationId' explicitly next time.");
+        }
+
         var e = new Event
         {
             Id = id,
@@ -40,7 +52,7 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             DayLogged = currentTime.TotalDaysElapsed,
             EmotionalBeat = ev.EmotionalBeat,
             RelatedEntityId = ev.RelatedEntityId,
-            LocationId = ev.LocationId,
+            LocationId = locationId,
             RelatedLocationIds = ev.RelatedLocationIds,
             Importance = importance
         };

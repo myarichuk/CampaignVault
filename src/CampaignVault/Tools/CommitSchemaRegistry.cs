@@ -94,7 +94,7 @@ internal static class CommitSchemaRegistry
 
         // ── Narrative ────────────────────────────────────────────────────────────────
         new("event", "Narrative",
-            "Record a noteworthy occurrence. Required after combat rounds, conversations, and discoveries to populate recall_history and get_npc_context. Set recordingMode to 'Deliberate' when the player performs an explicit, in-fiction act of recording (marking a map, writing a name down, deliberately memorizing a landmark). Leave as 'Passive' (or omit) for ambient narrative elements. Deliberate events lock in high importance and skip heuristic inference; Passive events infer tone/importance from context and decay naturally.",
+            "Record a noteworthy occurrence. Required after combat rounds, conversations, and discoveries to populate recall_history and get_npc_context. Set recordingMode to 'Deliberate' when the player performs an explicit, in-fiction act of recording (marking a map, writing a name down, deliberately memorizing a landmark). Leave as 'Passive' (or omit) for ambient narrative elements. Deliberate events lock in high importance and skip heuristic inference; Passive events infer tone/importance from context and decay naturally. Do NOT put a location ID inside 'involved' — use 'locationId'/'relatedLocationIds' so recall_history/location-scoped queries can find it.",
             ["summary"],
             ["category", "involved", "emotionalBeat", "relatedEntityId", "locationId", "relatedLocationIds", "eventId", "importance", "recordingMode"],
             HasSideEffects: false,
@@ -286,7 +286,7 @@ internal static class CommitSchemaRegistry
             CoCommitHints: ["event"]),
 
         new("quest_progress", "World",
-            "Advance or fail a quest objective.",
+            "Advance or fail a quest objective. When the quest reaches Complete/Failed, 'involvedIds' becomes the 'involved' list on the auto-generated completion event — omit it and that event will have no 'involved' entries.",
             ["questId", "newState"],
             ["objectiveIndex", "objectiveName", "narrativeNote", "involvedIds"],
             HasSideEffects: false,

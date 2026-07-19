@@ -298,6 +298,46 @@ public class WorldChangeDispatcherTests
     }
 
     [Fact]
+    public async Task EventOccurredHandler_LocationOmitted_ButPresentInInvolved_FallsBackToLocationId()
+    {
+        var handler = new EventOccurredHandler();
+        var dispatcher = CreateDispatcher(handler);
+        var loggedEvents = new List<Event>();
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [
+                new EventOccurred
+                {
+                    Category = EventCategory.Discovery,
+                    Summary = "Party found the hidden stair.",
+                    Involved = ["chars/valen", "locations/cellar"],
+                    LocationId = null
+                }
+            ],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            e =>
+            {
+                loggedEvents.Add(e);
+                return Task.CompletedTask;
+            });
+
+        Assert.True(result.Success);
+        Assert.Single(loggedEvents);
+        Assert.Equal("locations/cellar", loggedEvents[0].LocationId);
+        Assert.Contains(result.Summary, s => s.Contains("locations/cellar") && s.Contains("involved"));
+    }
+
+    [Fact]
     public async Task EventOccurredHandler_ConversationCategory_InfersInvolved_FromEngagementRelationInBatch()
     {
         var handler = new EventOccurredHandler();

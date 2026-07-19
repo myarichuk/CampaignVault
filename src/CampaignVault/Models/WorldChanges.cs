@@ -211,7 +211,7 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("relatedEntityId")]
     public string? RelatedEntityId { get; set; }
 
-    [Description("Optional. Primary location ID where the event occurred (e.g. 'locations/rusty-nail'). Enables recall_history/location-scoped queries.")]
+    [Description("Optional. Primary location ID where the event occurred (e.g. 'locations/rusty-nail'). Enables recall_history/location-scoped queries. Do NOT put a location ID inside 'involved' — use this field so recall_history/location-scoped queries and location-anchored consequences can find it.")]
     [JsonPropertyName("locationId")]
     public string? LocationId { get; set; }
 
@@ -835,7 +835,7 @@ public class QuestProgress : WorldChange
     [JsonPropertyName("narrativeNote")]
     public string? NarrativeNote { get; set; }
 
-    [Description("IDs involved in this progress.")]
+    [Description("Optional. Character/faction/location IDs tied to this progress step. When the quest reaches Complete/Failed, these become the 'involved' list on the auto-generated completion event — omit and that event will have no 'involved' entries.")]
     [JsonPropertyName("involvedIds")]
     public List<string>? InvolvedIds { get; set; }
 }
