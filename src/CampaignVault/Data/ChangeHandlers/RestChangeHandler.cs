@@ -42,6 +42,13 @@ public class RestChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Location {rc.LocationId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
+        if (rc.IntendedHours <= 0 && rc.RestType != RestType.PerTurn)
+        {
+            return ChangeHandlerResult.Failure(
+                "intendedHours is required and must be > 0 (e.g. 1 for a short rest, 8 for a long rest) — " +
+                "it was omitted or 0, which would otherwise silently default to an 8-hour long rest.");
+        }
+
         var time = await context.GetCurrentTimeAsync();
 
         var (interrupted, hoursRested, deltas, narratives) = await _resolver.EvaluateAsync(
@@ -104,7 +111,7 @@ public class RestChangeHandler : IWorldChangeHandler
                 return 0;
             }
 
-            return restChange.IntendedHours > 0 ? restChange.IntendedHours : 8;
+            return restChange.IntendedHours;
         }
     }
 

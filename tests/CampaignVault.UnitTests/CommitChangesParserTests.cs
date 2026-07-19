@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -128,6 +129,51 @@ public class CommitChangesParserTests
         Assert.NotNull(parsed);
         var itemUpdate = Assert.IsType<ItemUpdate>(parsed![0]);
         Assert.Equal(ItemCategory.Armor, itemUpdate.CoreCategory);
+    }
+
+    [Fact]
+    public void TryParse_RulesetAction_MissingActionType_FailsInsteadOfDefaultingToAttack()
+    {
+        const string payload = """
+                               [
+                                 {
+                                   "$type": "ruleset_action",
+                                   "characterId": "chars/valen",
+                                   "actionName": "Perception"
+                                 }
+                               ]
+                               """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.False(ok);
+        Assert.Null(parsed);
+        Assert.NotNull(error);
+        Assert.Contains("actionType", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TryParse_QuestProgress_MissingNewState_FailsInsteadOfDefaultingToOpen()
+    {
+        const string payload = """
+                               [
+                                 {
+                                   "$type": "quest_progress",
+                                   "questId": "quests/rats_01",
+                                   "objectiveIndex": 0,
+                                   "narrativeNote": "Rats spotted"
+                                 }
+                               ]
+                               """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.False(ok);
+        Assert.Null(parsed);
+        Assert.NotNull(error);
+        Assert.Contains("newState", error, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

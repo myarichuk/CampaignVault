@@ -84,6 +84,12 @@ public class QuestProgressHandler : IWorldChangeHandler
 
         if (oldOverallState != quest.OverallState && quest.OverallState is QuestState.Complete or QuestState.Failed)
         {
+            if (qp.InvolvedIds is null or { Count: 0 })
+            {
+                context.RecordMessage(
+                    $"NOTE: 'involvedIds' was omitted — the auto-generated '{quest.OverallState}' event for quest '{quest.Title}' has no 'involved' entries.");
+            }
+
             await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
             {
                 Category = EventCategory.Discovery,

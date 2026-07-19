@@ -278,7 +278,7 @@ internal static class CommitSchemaRegistry
             CoCommitHints: ["event"]),
 
         new("faction_state", "World",
-            "Update a faction's stance toward another faction or its influence level.",
+            "Update a faction's stance toward another faction or its influence level. targetFactionId is conditionally required: setting newStance without it fails the commit.",
             ["factionId"],
             ["newStance", "targetFactionId", "influenceDelta", "narrative"],
             HasSideEffects: false,

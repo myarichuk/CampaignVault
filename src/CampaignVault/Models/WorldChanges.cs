@@ -475,7 +475,7 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Target character IDs. Required for attack/save/heal spells. List ALL AoE targets in one commit. Omit for non-combat utility/check spells.")]
+    [Description("Target character IDs. Required for attack/save spells. Omit for a self-targeted heal (heals characterId) or for non-combat utility/check spells. List ALL AoE targets in one commit.")]
     [JsonPropertyName("targetIds")]
     public List<string> TargetIds { get; set; } = [];
 
@@ -483,10 +483,10 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("actionName")]
     public string ActionName { get; set; } = default!;
 
-    [Description("Attack, Spell, SkillCheck, SavingThrow (single actor save), ContestedCheck, OpposedCheck (alias of ContestedCheck), UseItem, or Recovery.")]
+    [Description("REQUIRED. Attack, Spell, SkillCheck, SavingThrow (single actor save), ContestedCheck, OpposedCheck (alias of ContestedCheck), UseItem, or Recovery. Must be sent explicitly — omitting this key fails the commit rather than silently defaulting to Attack.")]
     [JsonPropertyName("actionType")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public RulesetActionType ActionType { get; set; }
+    public required RulesetActionType ActionType { get; set; }
 
     [Description("Melee, Ranged, Spell, Maneuver, Social, or Survival. Spell recommended for magic; Social/Survival hints non-combat utility.")]
     [JsonPropertyName("actionCategory")]
@@ -827,9 +827,9 @@ public class QuestProgress : WorldChange
     [JsonPropertyName("objectiveName")]
     public string? ObjectiveName { get; set; }
 
-    [Description("The new state of the objective.")]
+    [Description("REQUIRED. The new state of the objective. Must be sent explicitly — omitting this key fails the commit rather than silently resetting the objective to Open.")]
     [JsonPropertyName("newState")]
-    public QuestState NewState { get; set; }
+    public required QuestState NewState { get; set; }
 
     [Description("Narrative summary of progress.")]
     [JsonPropertyName("narrativeNote")]

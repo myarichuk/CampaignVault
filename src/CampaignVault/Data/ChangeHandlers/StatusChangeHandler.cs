@@ -80,6 +80,12 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         }
         else
         {
+            if (string.IsNullOrWhiteSpace(add.Status))
+            {
+                return ChangeHandlerResult.Failure(
+                    "Neither 'effect' nor 'status' was provided — a status change needs one of the two.");
+            }
+
             // Legacy fallback: plain string Status → minimal StatusEffect
             effect = new StatusEffect
             {
