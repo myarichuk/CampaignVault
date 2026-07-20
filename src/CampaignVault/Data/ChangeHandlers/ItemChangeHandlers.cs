@@ -82,7 +82,7 @@ public class ItemUpdateHandler : IWorldChangeHandler
                 Category = EventCategory.Interaction,
                 Importance = MemoryImportance.Trivial,
                 RelatedEntityId = iu.ItemId,
-                Involved = [],
+                Involved = [iu.ItemId],
                 LocationId = item.HolderId?.StartsWith("locations/", StringComparison.Ordinal) == true ? item.HolderId : null,
                 DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
                 CampaignName = context.CampaignName,
