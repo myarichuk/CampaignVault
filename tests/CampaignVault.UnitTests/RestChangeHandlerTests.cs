@@ -271,7 +271,7 @@ public class RestChangeHandlerTests
         Assert.Equal(4, character.SystemStats!.ResourcePools!["spell_slots_1"].Current);
         Assert.Equal(1, character.RestSequence);
         Assert.Equal(1, character.LastRecoveredRestSequence);
-        Assert.Contains("recovered immediately", result.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("recovered immediately", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
