@@ -49,7 +49,7 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
             context.RegisterNewItem(item);
         }
 
-        if (!item.HolderId.Equals(equip.CharacterId, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(item.HolderId, equip.CharacterId, StringComparison.OrdinalIgnoreCase))
         {
             var msg = $"Item '{equip.ItemId}' is not carried by '{equip.CharacterId}' (currently held by '{item.HolderId}'). Transfer it there first.";
             context.RecordFailure();
@@ -58,7 +58,7 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
 
         if (item.EquipZones.Count == 0 || item.EquipLayer == null)
         {
-            var msg = $"Item '{equip.ItemId}' has no EquipZones/EquipLayer set — it is not equippable. Set these via upsert_item.";
+            var msg = $"Item '{equip.ItemId}' has no EquipZones/EquipLayer set — it is not equippable. Set these via world_build.";
             context.RecordFailure();
             return ChangeHandlerResult.Failure(msg);
         }
@@ -134,7 +134,7 @@ public sealed class ItemUnequipHandler : IWorldChangeHandler
             context.RegisterNewItem(item);
         }
 
-        if (!item.HolderId.Equals(unequip.CharacterId, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(item.HolderId, unequip.CharacterId, StringComparison.OrdinalIgnoreCase))
         {
             var msg = $"Item '{unequip.ItemId}' is not carried by '{unequip.CharacterId}'.";
             context.RecordFailure();

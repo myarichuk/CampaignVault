@@ -69,6 +69,53 @@ public interface IWorldChangeHandler
 
 internal static class WorldChangeHandlerHelpers
 {
+    /// <summary>
+    /// Rewrites known ID-alias prefixes (e.g. "characters/" → "chars/") in place across every
+    /// ID-like property of a WorldChange, before the dispatcher extracts/preloads referenced
+    /// entities. This is the single write-boundary choke point for handler-consumed reference
+    /// fields (ItemTransfer.ToHolderId, characterId, targetIds, involved, holderId,
+    /// parentLocationId, ...) — without it, an aliased ID would preload/compare against the wrong
+    /// document key deeper in the pipeline (see CanonicalId).
+    /// </summary>
+    public static void NormalizeIdFields(WorldChange change)
+    {
+        foreach (var prop in change.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!prop.CanRead || !prop.CanWrite)
+            {
+                continue;
+            }
+
+            if (prop.PropertyType == typeof(string))
+            {
+                var val = (string?)prop.GetValue(change);
+                if (string.IsNullOrEmpty(val))
+                {
+                    continue;
+                }
+
+                var normalized = CanonicalId.NormalizeAlias(val);
+                if (normalized != val)
+                {
+                    prop.SetValue(change, normalized);
+                }
+            }
+            else if (typeof(System.Collections.IEnumerable).IsAssignableFrom(prop.PropertyType) && prop.PropertyType != typeof(string))
+            {
+                if (prop.GetValue(change) is List<string> list)
+                {
+                    for (var i = 0; i < list.Count; i++)
+                    {
+                        if (!string.IsNullOrEmpty(list[i]))
+                        {
+                            list[i] = CanonicalId.NormalizeAlias(list[i]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public static void ProcessExtractedString(
         string? val, string propName,
         HashSet<string>? characterIds, HashSet<string>? locationIds,
@@ -81,14 +128,17 @@ internal static class WorldChangeHandlerHelpers
                         propName.EndsWith("Ids", StringComparison.OrdinalIgnoreCase) ||
                         propName.Equals("Involved", StringComparison.OrdinalIgnoreCase);
 
-        bool hasPrefix = val.StartsWith("chars/") || val.StartsWith("characters/") ||
+        // Values reaching this point have already been rewritten to canonical prefixes by
+        // NormalizeIdFields (called before ExtractInvolvedEntities on every dispatch path), so a
+        // single "chars/" check is sufficient here.
+        bool hasPrefix = val.StartsWith("chars/") ||
                          val.StartsWith("loc") || val.StartsWith("fac") ||
                          val.StartsWith("que") || val.StartsWith("item");
 
         if (isIdLike || hasPrefix)
         {
             allInvolvedIds?.Add(val);
-            if (val.StartsWith("chars/") || val.StartsWith("characters/")) characterIds?.Add(val);
+            if (val.StartsWith("chars/")) characterIds?.Add(val);
             else if (val.StartsWith("loc")) locationIds?.Add(val);
             else if (val.StartsWith("fac")) factionIds?.Add(val);
             else if (val.StartsWith("que")) questIds?.Add(val);

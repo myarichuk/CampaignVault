@@ -46,7 +46,7 @@ public class RecentlyDepartedPressureTests : IClassFixture<RavenDBFixture>
         var pressure = Assert.Single(pressures);
         Assert.Equal(PressureSeverity.NarrativePrompt, pressure.Severity);
         Assert.Contains("Mira the Bard", pressure.Text);
-        Assert.Contains("upsert_character", pressure.Text);
+        Assert.Contains("world_build", pressure.Text);
         Assert.Contains("chars/mira", pressure.Text);
         Assert.Contains("keepAlive", pressure.Text);
     }

@@ -4,7 +4,7 @@ namespace CampaignVault.Data.ChangeHandlers;
 
 /// <summary>
 /// Handles archive_entity — the play-LLM-reachable soft-delete/restore for entities created via
-/// upsert_* tools. See ArchiveEntityChange and C1 in the tool-usage audit for background.
+/// world_build. See ArchiveEntityChange and C1 in the tool-usage audit for background.
 /// </summary>
 public sealed class ArchiveEntityChangeHandler : IWorldChangeHandler
 {

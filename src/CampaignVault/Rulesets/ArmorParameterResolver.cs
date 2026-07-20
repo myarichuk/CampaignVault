@@ -97,7 +97,7 @@ public static class ArmorParameterResolver
 
             if (contributesAc && TryGetProperty(item, "acBonus", out var acRaw) && float.TryParse(acRaw, out var ac))
             {
-                acBonus += (int)ac;
+                acBonus += (int)Math.Round(ac, MidpointRounding.AwayFromZero);
             }
 
             if (TryGetProperty(item, "warmth", out var warmthRaw) && float.TryParse(warmthRaw, out var w))

@@ -23,6 +23,17 @@ public class ToolResult<T>
     }
 }
 
+/// <summary>Session-0 signal on GetWorldState: how much of the world is seeded, plus obvious gaps.</summary>
+public class SeedCoverageSummary
+{
+    public int Locations { get; set; }
+    public int PcCharacters { get; set; }
+    public int Factions { get; set; }
+    public int OpenQuests { get; set; }
+    public int ActivePlotThreads { get; set; }
+    public List<string> Gaps { get; set; } = [];
+}
+
 public class WorldStateView
 {
     public CampaignTime Time { get; set; } = default!;
@@ -40,6 +51,13 @@ public class WorldStateView
     /// The string WorldPressure contains the formatted display form (including any suggested JSON inline).
     /// </summary>
     public IEnumerable<WorldPressureItem> WorldPressureItems { get; set; } = [];
+
+    /// <summary>
+    /// Lightweight session-0 signal: how much of the world has been seeded so far, plus a short
+    /// list of obvious gaps. Set by GetWorldState; never blocks — a fresh campaign just shows all
+    /// zeros and a longer gap list. See get_help topic=world-building for the seeding guide.
+    /// </summary>
+    public SeedCoverageSummary? SeedCoverage { get; set; }
 
     public WorldStateView() { }
     public WorldStateView(CampaignTime time, IEnumerable<RumorSummary> rumors, IEnumerable<Event> events, LocationSummary? location = null, IEnumerable<string>? pressure = null, IEnumerable<ActiveQuestSummary>? activeQuests = null, IEnumerable<FactionPresenceSummary>? relevantFactions = null, string? lastKnownTravel = null, IEnumerable<string>? suggestedCommitExamples = null, IEnumerable<WorldPressureItem>? pressureItems = null)

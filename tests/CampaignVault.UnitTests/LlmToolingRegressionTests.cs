@@ -23,8 +23,8 @@ public class LlmToolingRegressionTests
     [Fact]
     public void CommitEnumCheatSheet_IncludesRumorEvolveAndHpGuidance()
     {
-        Assert.Contains("upsert_rumor", CommitEnumCheatSheet.Compact);
-        Assert.Contains("upsert_rumor", CommitEnumCheatSheet.Full);
+        Assert.Contains("world_build", CommitEnumCheatSheet.Compact);
+        Assert.Contains("world_build", CommitEnumCheatSheet.Full);
         Assert.Contains("duplicate `hp`", CommitEnumCheatSheet.Compact);
         Assert.Contains("SkillCheck", CommitEnumCheatSheet.Compact);
     }
@@ -173,7 +173,7 @@ public class LlmToolingRegressionTests
 
         var prompt = content[(start + 7)..end].Trim();
         Assert.InRange(prompt.Length, 1, 12_000);
-        Assert.Contains("upsert_rumor", prompt);
+        Assert.Contains("world_build", prompt);
         Assert.Contains("do NOT commit HP separately", prompt, StringComparison.OrdinalIgnoreCase);
     }
 

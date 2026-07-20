@@ -64,7 +64,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
-        var char1 = new Character { Id = "characters/pc1", CurrentLocationId = "locations/start" };
+        var char1 = new Character { Id = "chars/pc1", CurrentLocationId = "locations/start" };
         var start = new Location { Id = "locations/start", Name = "Start" };
         var dest = new Location { Id = "locations/dest", Name = "Destination" };
 
@@ -106,7 +106,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
-        var char1 = new Character { Id = "characters/pc1", CurrentLocationId = "locations/start" };
+        var char1 = new Character { Id = "chars/pc1", CurrentLocationId = "locations/start" };
         var start = new Location
         {
             Id = "locations/start",
@@ -153,7 +153,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
-        var char1 = new Character { Id = "characters/pc1", CurrentLocationId = "locations/start" };
+        var char1 = new Character { Id = "chars/pc1", CurrentLocationId = "locations/start" };
         var start = new Location
         {
             Id = "locations/start",
@@ -201,7 +201,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
-        var char1 = new Character { Id = "characters/pc1" };
+        var char1 = new Character { Id = "chars/pc1" };
         var faction = new Faction { Id = "factions/thieves" };
 
         var handler = new FactionReputationChangeHandler();
@@ -465,7 +465,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
-        var char1 = new Character { Id = "characters/pc1" };
+        var char1 = new Character { Id = "chars/pc1" };
         char1.Social.FactionReputations["factions/thieves"] = 95;
         var faction = new Faction { Id = "factions/thieves", Name = "Thieves Guild" };
 
@@ -546,7 +546,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
-        var char1 = new Character { Id = "characters/pc1", CurrentLocationId = "locations/start" };
+        var char1 = new Character { Id = "chars/pc1", CurrentLocationId = "locations/start" };
         var start = new Location { Id = "locations/start", Name = "Start" };
 
         var handler = new TravelChangeHandler(new EncounterResolver());

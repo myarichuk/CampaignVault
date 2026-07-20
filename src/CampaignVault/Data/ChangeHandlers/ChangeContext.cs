@@ -236,14 +236,11 @@ public sealed class ChangeContext
             return null;
         }
 
-        var cleanQuery = nameQuery;
+        var normalizedQuery = CanonicalId.NormalizeAlias(nameQuery);
+        var cleanQuery = normalizedQuery;
         if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
         {
             cleanQuery = cleanQuery["chars/".Length..];
-        }
-        else if (cleanQuery.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["characters/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -254,7 +251,7 @@ public sealed class ChangeContext
         var suggestions = await Session.Query<Character, Character_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
             .Where(x => x.CampaignName == CampaignName || x.CampaignName == null)
-            .Where(x => x.Id.StartsWith(nameQuery))
+            .Where(x => x.Id.StartsWith(normalizedQuery))
             .Take(3).ToListAsync();
 
         if (suggestions.Count < 3)

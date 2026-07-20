@@ -100,6 +100,51 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task ApplyAsync_Fails_CleanlyWhenItemHolderIdIsNull_NoNullReferenceException()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = MakeCharacter("chars/equip_null_holder");
+        var item = MakeArmor("items/equip_null_holder_armor", "chars/equip_null_holder");
+        item.HolderId = null!; // Freshly-materialized/ground item — HolderId genuinely unset.
+
+        var context = BuildContext(session,
+            new Dictionary<string, Character> { [character.Id] = character },
+            new Dictionary<string, Item> { [item.Id] = item });
+
+        var handler = new ItemEquipHandler();
+        var change = new ItemEquip { CharacterId = character.Id, ItemId = item.Id };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.False(result.Success);
+        Assert.Contains("not carried by", result.Message);
+        Assert.False(item.IsEquipped);
+    }
+
+    [Fact]
+    public async Task Unequip_ApplyAsync_Fails_CleanlyWhenItemHolderIdIsNull_NoNullReferenceException()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = MakeCharacter("chars/unequip_null_holder");
+        var item = MakeArmor("items/unequip_null_holder_armor", "chars/unequip_null_holder");
+        item.HolderId = null!;
+        item.IsEquipped = true;
+
+        var context = BuildContext(session,
+            new Dictionary<string, Character> { [character.Id] = character },
+            new Dictionary<string, Item> { [item.Id] = item });
+
+        var handler = new ItemUnequipHandler();
+        var change = new ItemUnequip { CharacterId = character.Id, ItemId = item.Id };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.False(result.Success);
+        Assert.Contains("not carried by", result.Message);
+        Assert.True(item.IsEquipped);
+    }
+
+    [Fact]
     public async Task ApplyAsync_Fails_OnConflict_WithoutReplaceConflicts()
     {
         using var session = _fixture.Store.OpenAsyncSession();
@@ -156,6 +201,33 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         Assert.True(result.Success);
         Assert.True(chainmail2.IsEquipped);
         Assert.False(chainmail1.IsEquipped);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_Succeeds_WhenOtherTrackedItemHasNullHolderId_NoNullReferenceExceptionDuringConflictScan()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = MakeCharacter("chars/equip_ground_item_in_context");
+        var item = MakeArmor("items/equip_ground_item_worn", character.Id);
+        var groundItem = MakeArmor("items/equip_ground_item_untouched", character.Id, EquipZone.Feet);
+        groundItem.HolderId = null!; // Ground/unheld item tracked in the same batch context.
+
+        await session.StoreAsync(character);
+        await session.StoreAsync(item);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
+        await session.SaveChangesAsync();
+
+        var context = BuildContext(session,
+            new Dictionary<string, Character> { [character.Id] = character },
+            new Dictionary<string, Item> { [item.Id] = item, [groundItem.Id] = groundItem });
+
+        var handler = new ItemEquipHandler();
+        var change = new ItemEquip { CharacterId = character.Id, ItemId = item.Id };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.True(result.Success);
+        Assert.True(item.IsEquipped);
     }
 
     [Fact]

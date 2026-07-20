@@ -31,7 +31,7 @@ public sealed class Dnd5eDeriveDefenseStep : IBootstrapStep
 
             hints.Add(
                 $"Worn armor not detected for {context.Character.Name}. Base AC is unarmored (10 + DEX). "
-                + "To equip starting armor, upsert_item with equipZones/equipLayer/isEquipped:true so AC applies immediately, e.g.: "
+                + "To equip starting armor, world_build's items[] with equipZones/equipLayer/isEquipped:true so AC applies immediately, e.g.: "
                 + $"{{ \"id\": \"items/{context.Character.Id}-armor\", \"name\": \"Chain Shirt\", "
                 + $"\"holderId\": \"{context.Character.Id}\", \"coreCategory\": \"Armor\", "
                 + "\"equipZones\": [\"Torso\"], \"equipLayer\": \"Armor\", \"isEquipped\": true, "

@@ -331,7 +331,7 @@ internal static class CommitSchemaRegistry
 
         // ── Lifecycle ────────────────────────────────────────────────────────────────
         new("archive_entity", "World",
-            "Soft-delete (or restore) an entity created via an upsert_* tool — hides it from default search/scene/list " +
+            "Soft-delete (or restore) an entity created via world_build — hides it from default search/scene/list " +
             "results without deleting the document. Recoverable: commit again with archived:false to restore. " +
             "Does NOT support Character (the Character model has no archive field) — for a mistakenly-created NPC, " +
             "set keepAlive:false and clear its schedule via character_update instead, so transient GC can clean it up.",

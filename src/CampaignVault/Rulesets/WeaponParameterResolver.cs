@@ -137,7 +137,7 @@ internal static class WeaponParameterResolver
         CancellationToken ct = default)
     {
         var weapons = context.Items.Values
-            .Where(i => i.HolderId.Equals(characterId, StringComparison.OrdinalIgnoreCase)
+            .Where(i => string.Equals(i.HolderId, characterId, StringComparison.OrdinalIgnoreCase)
                         && i.CoreCategory == ItemCategory.Weapon)
             .ToList();
 

@@ -32,7 +32,9 @@ See [LICENSING.md](./LICENSING.md) for complete game-content attribution and leg
 
 ## Recent Updates
 - **Equipment-Derived Movement Modifier**: Characters now track `MovementModifier` computed from equipped items' `speedModifier` properties (negative = penalty, positive = bonus). Same pattern as `WarmthRating`: narrative-only, recomputed on every `item_equip`/`item_unequip`, not enforced by travel. The LLM can assign `speedModifier` to any item based on narrative context (heavy armor, uncomfortable sandals, enchanted boots, etc.) — not hardcoded restraints.
-- **Outfit Batch UX**: Multi-item outfit swaps work by committing multiple `item_equip`/`item_unequip` changes in a single atomic `commit` call (one JSON array). No separate outfit tool needed. Fixed stale documentation that incorrectly listed `equipZones`/`equipLayer` on `item_equip` (they live on `upsert_item` only).
+- **Outfit Batch UX**: Multi-item outfit swaps work by committing multiple `item_equip`/`item_unequip` changes in a single atomic `commit` call (one JSON array). No separate outfit tool needed. `equipZones`/`equipLayer` are set once via `world_build` (or `item_update`), not on `item_equip`.
+- **Climate & Weather**: Locations carry a `climateZone` (Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean, inherited from parent if unset); ambient temperature varies by zone and time of day. Characters' felt temperature = ambient + equipped-item `WarmthRating` — insulation helps in the cold and hurts in the heat (furs are protective in the Arctic, dangerous in the Desert). Sustained extremes surface as narrative pressure; there's no automatic mechanical penalty, the consequence call stays with the DM-LLM.
+- **World Seeding via `world_build`**: One atomic batch call seeds an entire campaign's opening state — locations, factions, characters, items, quests, plot threads, lore, rumors, and homebrew creatures/spells/feats — in a fixed dependency order with all-or-nothing rollback on a bad entry. Replaces the older one-tool-per-entity-kind upsert surface. See `get_help topic=world-building`.
 - **Engagement Relations & Spatial Positioning**: Pairwise scene anchors (`engagement_relation`: category + freeform verb) vs. relative placement (`spatial_position`: distance band, bearing, zone). Category defaults control travel blocks and scene pressure; ruleset resolvers auto-establish/clear grapple engagements on contested maneuver checks. See `get_help` and `ARCHITECTURE.md`.
 - **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `create_campaign`, `list_campaigns`, and `set_active_system` (with system lock-in). Every campaign-scoped tool requires an explicit **`campaignName`** slug — the MCP HTTP transport is stateless (no session selection). Shared-universe canon (no `CampaignName`) appears in every campaign; campaign-owned entities are slug-tagged.
 - **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Narrative), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
@@ -82,12 +84,19 @@ See [LICENSING.md](./LICENSING.md) for complete game-content attribution and leg
 | `get_faction_context` | Full faction document (stances, territory, `EconomicDemand`) |
 | `get_quest_details` | Full quest document (objectives, deadlines, progress timestamps) |
 
-**World Builder tools** (`upsert_character`, `upsert_location`, `upsert_lore`, `define_need_descriptor`): These exist for initial seeding and major structural work. During actual play, strongly prefer `commit` (especially with `activity` changes). Call `get_help` for detailed guidance and copy-paste patterns.
+### World builder
 
-**Open-World Flavor, Transients & Laziness Mitigation**: The system is deliberately designed so an LLM performing the DM role can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted via small `commit` payloads using `location_create` / `character_create` / `item_create` etc. 
+| Tool | Purpose |
+|------|---------|
+| `world_build` | Atomic batch create/update for any entity kind (locations, factions, characters, items, quests, plotThreads, lore, rumors, creatures, spells, feats) — the primary tool for initial seeding and major structural work |
+| `define_need_descriptor` / `get_need_descriptors` | Per-campaign shared descriptions for custom NPC needs |
+
+During actual play, strongly prefer `commit` (especially with `activity` changes) over re-calling `world_build`. Call `get_help topic=world-building` for the seeding-order guide and a copy-paste example.
+
+**Open-World Flavor, Transients & Laziness Mitigation**: The system is deliberately designed so an LLM performing the DM role can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted — new entities via `world_build`, incremental changes via small `commit` payloads.
 
 - `get_scene` returns `PointsOfInterest` (light list) and uses `AmbientCrowd` hints for flavor without creating documents.
-- The engine auto-links maps on `location_create` (supply `connectedFromLocationId`).
+- The engine auto-links maps when a new location's `world_build` entry sets `connectedFromLocationId`.
 - Transients (created without `schedule` + `keepAlive:false`) are auto-evicted by `TransientEvictionRule` during `advance_world` when areas go "cold".
 - **Critical**: `get_scene`, `get_world_state`, and `advance_world` return `WorldPressure` containing `ENGINE WARNING:` and `NARRATIVE PROMPT:` items. These include **exact copy-paste JSON** for the `commit` needed to fix hallucinations, dead-ends, empty-but-expected-crowds, broken links, etc. Treat them as mandatory directives. Call `get_help` for the full "Lazy Tavern" walkthrough and patterns.
 - This directly addresses the "silly factor" of forcing perfect polymorphic JSON arrays for every flavor element the LLM narrates.
@@ -113,7 +122,7 @@ The NPC "Mind" system is intentionally open-ended. There is no closed list of ne
 - **Invent any need.** The system is completely unrestricted: `paranoia`, `wanderlust`, `obsession`, `debt_pressure`, `homesickness`, `vengeance`, whatever fits the narrative. Custom needs automatically get evocative activity-conflict framings.
 - Discover needs at runtime via `get_npc_needs`, `get_scene`, `get_npc_context`, and `get_need_descriptors`.
 - Use `define_need_descriptor` to create **per-campaign** shared descriptions for custom needs. These are automatically merged into NPC views (per-NPC descriptors override).
-- For initial world building, the `upsert_*` tools exist. In practice, many users find `commit` (with rich `event` + `relationship` + `activity` + `need` changes — the `$type` discriminators `commit` actually expects, backed by the `EventOccurred`/`RelationshipChange`/`ActivityChange`/`NeedChange` C# types) to be the more reliable way to evolve the world during play.
+- For initial world building, `world_build` exists. In practice, many users find `commit` (with rich `event` + `relationship` + `activity` + `need` changes — the `$type` discriminators `commit` actually expects, backed by the `EventOccurred`/`RelationshipChange`/`ActivityChange`/`NeedChange` C# types) to be the more reliable way to evolve the world during play.
 
 Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom needs + descriptors, Schedule + Routines, equipment via Items). The simulation and behavioral synthesis will make much better use of that data than shallow characters.
 
@@ -216,7 +225,7 @@ See `ARCHITECTURE.md` for the full system design. Key code locations:
 
 - **Models** — `src/CampaignVault/Models/` (`Character`, `WorldChanges`, `SceneView`, ruleset extensions)
 - **Repository** — `src/CampaignVault/Data/CampaignRepository.cs` + `JsonSanitizer.cs`
-- **Simulation** — `DefaultSimulationEngine` + rules: `ScheduleEvaluationRule`, `NeedsAccumulationRule`, `RumorDecayRule`, `StatusExpiryRule`, `MemorySalienceDecayRule`, `NeedConflictRule`, `FactionEcosystemRule`, `QuestStalenessRule`, `RelationalRearmRule`, `TransientEvictionRule`
+- **Simulation** — `DefaultSimulationEngine` + rules: `ScheduleEvaluationRule`, `NeedsAccumulationRule`, `RumorDecayRule`, `StatusExpiryRule`, `MemorySalienceDecayRule`, `NeedConflictRule`, `ClimateExposureRule`, `FactionEcosystemRule`, `QuestStalenessRule`, `RelationalRearmRule`, `AmbientItemDecayRule`, `TransientEvictionRule`, `ResourceRecoveryRule`
 - **Pressure** — `src/CampaignVault/Data/Pressure/` (orchestrator + contributors)
 - **Rulesets** — `src/CampaignVault/Rulesets/` (D&D 5e, PF2e, Fallout 2d20, Narrative resolvers + `DefaultRollService`)
 - **MCP tools** — `src/CampaignVault/Tools/*Tools.cs` (domain classes; `CampaignTools.cs` is a test-only facade)
@@ -226,13 +235,13 @@ See `ARCHITECTURE.md` for the full system design. Key code locations:
 ## Client Compatibility Notes (as of latest testing)
 
 - `commit` is the most reliable mutation tool across clients.
-- The `upsert_*` tools are now strongly typed (`UpsertCharacter(Character)`, `UpsertLocation(Location)`, `UpsertLore(Lore)`). They remain less reliable with Grok Web because the client still sends calls using the original legacy parameter names (`c` and `l`) from an early version of this server (likely due to client-side caching when the connector was first added). For Grok Web users, prefer `commit` (especially `activity` changes) for most work.
-- `commit` now exposes the full discriminated-union `WorldChange[]` shape directly (with rich per-variant and per-field `[Description]` annotations + `$type` discriminators). This is the clean .NET / STJ polymorphic form Gemini and similar models recommend. A non-exposed `Commit(string json)` fallback remains for clients that still struggle with complex input schemas.
+- The individual `upsert_character`/`upsert_location`/etc. tools were retired in favor of a single `world_build` batch tool (struct-of-typed-arrays: `characters[]`, `locations[]`, etc.) — one call seeds everything atomically instead of one round-trip per entity. See `get_help topic=world-building`.
+- `commit` exposes the full discriminated-union `WorldChange[]` shape directly (with rich per-variant and per-field `[Description]` annotations + `$type` discriminators). This is the clean .NET / STJ polymorphic form Gemini and similar models recommend. A non-exposed `Commit(string json)` fallback remains for clients that still struggle with complex input schemas.
 - Use the `activity` change type inside `commit` when narrative implies an NPC should have a new `CurrentActivity` / `CurrentLocationId` (this keeps `get_scene` consistent without requiring `advance_world`).
 
 **Recommended seeding / world-building pattern**:
 
-When introducing a new significant location or NPC, do as much as possible in a single `commit` call rather than multiple tool invocations. Example batch:
+Use `world_build` for initial seeding (session 0) — one atomic batch call rather than one tool invocation per entity. For incremental changes during play, do as much as possible in a single `commit` call. Example `commit` batch when introducing a new NPC into an existing scene:
 
 - One `event` describing the arrival / introduction
 - One or more `activity` changes to place NPCs where the narrative says they are

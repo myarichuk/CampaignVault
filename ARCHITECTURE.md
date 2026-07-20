@@ -31,7 +31,9 @@ These never cross-contaminate between campaigns.
 
 ### World entities (flat document IDs)
 
-Locations, characters, items, lore, rumors, events, factions, and quests use flat IDs (`characters/grog`, `locations/tavern`, etc.). Each entity has an optional `CampaignName` property set on create/upsert from the active campaign context.
+Locations, characters, items, lore, rumors, events, factions, and quests use flat IDs (`chars/grog`, `locations/tavern`, etc.). Each entity has an optional `CampaignName` property set on create/upsert from the active campaign context.
+
+**Canonical ID prefixes are enforced at the write boundary** (`CanonicalId.Normalize`, `Data/CanonicalId.cs`): the `chars/` prefix is canonical for characters (the `characters/` alias is silently rewritten); a bare ID with no prefix at all gets the canonical prefix for its entity kind prepended at single-entity write sites (e.g. `UpsertCharacterAsync`); `WorldChangeDispatcher` runs the same alias rewrite across every ID-like field of a `commit` batch before dispatch, so `chars/`-prefix checks deeper in the pipeline (e.g. `ItemTransferHandler`) are correct by construction.
 
 Queries apply one of two filters:
 
@@ -60,19 +62,21 @@ Typical read flow: tool → `CampaignRepository` → RavenDB query → optional 
 
 Typical write flow: `commit` → `WorldChangeDispatcher` → handler(s) per change → `session.SaveChangesAsync`.
 
+Typical seed flow: `world_build` (`WorldBuilderTools.WorldBuild`) — one batch call, struct-of-typed-arrays (locations/factions/creatures/spells/feats/characters/items/quests/plotThreads/lore/rumors/needDescriptors), dispatched in that fixed dependency order inside a single session/save. Reuses the same per-kind `Apply*UpsertAsync` helpers and `CampaignRepository.Upsert*Async` methods that back the (non-MCP, internal-only) single-entity upsert paths, so a hard validation failure on any entry rolls back the entire batch atomically — same "resend full batch" model as `commit`.
+
 ## World-Change Dispatch
 
-`commit` accepts a polymorphic `WorldChange[]` (33 `$type` discriminators in `WorldChanges.cs`, including legacy `spatial_relation` and `level_up`). Each change is routed to exactly one `IWorldChangeHandler` via `ShouldHandle`.
+`commit` accepts a polymorphic `WorldChange[]` (`$type` discriminators in `WorldChanges.cs`; canonical list lives in `CommitTypesReference.SupportedTypesList` — don't hardcode a count here, it drifts). Each change is routed to exactly one `IWorldChangeHandler` via `ShouldHandle`.
 
-Registered handlers (via DI in `Program.cs`):
+Registered handlers (via DI in `Program.cs`). Entity *creation* is normally done via `world_build` (batch upsert), not `commit` — `location`/`faction`/`quest`/`item` have no `_create` `$type`. `character_create` is the one exception, kept as a guard: it exists to surface a structured collision error (`EntityCollisions`) if the LLM tries to `commit`-create a character that already exists, not as a primary creation path.
 
-- Combat / stats: `HpChangeHandler`, `AttributeChangeHandler`, `StatusChangeHandler`, `RulesetActionHandler`, `LevelUpChangeHandler`, `SystemStatsChangeHandler`
-- Inventory: `ItemTransferHandler`, `ItemCreateHandler`, `ItemUpdateHandler`
+- Combat / stats: `HpChangeHandler`, `AttributeChangeHandler`, `StatusChangeHandler`, `RulesetActionHandler`, `LevelUpChangeHandler`, `SystemStatsChangeHandler`, `ResourceChangeHandler`
+- Inventory: `ItemTransferHandler`, `ItemUpdateHandler`, `ItemEquipHandler`, `ItemUnequipHandler`, `ItemUseHandler`, `ItemPersistenceSurfacedHandler`
 - Narrative: `EventOccurredHandler`, `RumorEvolvesHandler`, `RelationshipChangeHandler`, `MoodChangeHandler`, `ActivityChangeHandler`
-- NPC mind: `NeedChangeHandler`, `KnowledgeUpdateHandler`, `ScheduleChangeHandler`
-- World building: `LocationCreateHandler`, `LocationUpdateHandler`, `CharacterCreateHandler`, `CharacterUpdateHandler`
-- Scene anchoring: `EngagementRelationChangeHandler`, `SpatialPositionChangeHandler`
-- Macro: `TravelChangeHandler`, `RestChangeHandler`, `FactionCreateHandler`, `FactionReputationChangeHandler`, `FactionStateChangeHandler`, `QuestCreateHandler`, `QuestProgressHandler`
+- NPC mind: `NeedChangeHandler`, `KnowledgeUpdateHandler`, `ScheduleChangeHandler`, `MemoryDecayHandler`
+- World update: `LocationUpdateHandler`, `CharacterCreateHandler` (legacy `character_create` $type, collision-safe), `CharacterUpdateHandler`
+- Scene anchoring: `EngagementRelationChangeHandler`, `SpatialPositionChangeHandler`, `SceneInterruptChangeHandler`
+- Macro: `TravelChangeHandler`, `RestChangeHandler`, `RestRecoveryAckHandler`, `FactionReputationChangeHandler`, `FactionStateChangeHandler`, `QuestProgressHandler`, `PlotThreadProgressHandler`, `PlotThreadClueDiscoveredHandler`, `ArchiveEntityChangeHandler`
 
 `RulesetActionHandler` loads the campaign's `CampaignConfig`, selects the active `IRulesetModule`, calls `IActionResolution.ResolveAsync`, and dispatches any returned follow-up mutations (HP, status, engagement relations from grapple maneuvers, etc.).
 
@@ -137,9 +141,11 @@ Simulation context loading (`SimulationQueryHelper`) is campaign-scoped: charact
 | `StatusExpiryRule` | Day-based status effect expiry |
 | `MemorySalienceDecayRule` | NPC memory salience decay + urgency bumps |
 | `NeedConflictRule` | Need interaction side-effects |
+| `ClimateExposureRule` | Felt temperature per located character = ambient (`ClimateCycle`, per `ClimateZone`/time-of-day) + `WarmthRating` from equipped items — insulation raises felt temp (helps in cold, hurts in heat); writes `SystemStats.Temperature`, no auto-applied mechanical penalty |
 | `FactionEcosystemRule` | Faction influence + `EconomicDemand` shifts |
 | `QuestStalenessRule` | Quest urgency / staleness progression |
 | `RelationalRearmRule` | Relationship cooldown re-arming |
+| `AmbientItemDecayRule` | Flags ambient items past their LLM-authored expiry (never moves/archives/deletes — just flips `PressureSurfaced` once; the pressure-side nag is a separate contributor, see below) |
 | `TransientEvictionRule` | Evict transient NPCs from cold locations |
 | `ResourceRecoveryRule` | Recover `ResourcePools` (spell slots, ki, focus points, etc.) on long/short rest, per pool recovery types and rest hierarchy |
 
@@ -153,7 +159,7 @@ Read-side tools call `PressureOrchestrator.CollectAndCapAsync` with a scope:
 - **Scene** — `get_scene`
 - **Npc** — `get_npc_context` (urgent initiative pressures)
 
-Contributors include rumor aging, unresolved events, character distress, quest deadlines, travel interruptions, engagement locks, location integrity/hallucination/connectivity, faction economy/territory, memory decay, and more. Rulesets can add contributors via `IRulesetPressureContributor` (e.g. D&D 5e exhaustion).
+Contributors include rumor aging, unresolved events, character distress (including temperature extremes from `ClimateExposureRule`'s felt-temp reading), quest deadlines, travel interruptions, engagement locks, location integrity/hallucination/connectivity, faction economy/territory, memory decay, climate/gear mismatch (`ClimateShiftPressureContributor`), ambient item expiry nags (`AmbientItemExpiryPressureContributor` — reads the flag `AmbientItemDecayRule` set, distinct rule vs. contributor split), and more. Rulesets can add contributors via `IRulesetPressureContributor` (e.g. D&D 5e exhaustion).
 
 `PressureManager` deduplicates, caps volume, and escalates repeated nags to `ENGINE WARNING:` after configurable suppression counts (`CampaignConfig.PressureEscalationCount`).
 

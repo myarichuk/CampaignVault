@@ -39,7 +39,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("KICKOFF TOOL: Call at session start for time, active rumors, recent history, and party location. Requires campaignName. partyLocationId is optional — omit if unknown and derive from recent history.")]
+    [Description("KICKOFF TOOL: Call at session start for time, active rumors, recent history, and party location. Requires campaignName. partyLocationId is optional — omit if unknown and derive from recent history. Response includes seedCoverage (entity counts + gap hints) — useful right after world_build to check what's still missing; see get_help topic=world-building.")]
     public Task<ToolResult<WorldStateView>> GetWorldState(
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("The current ID of the location where the party is (string type). Optional. If not provided, you should determine the party's location from recent history or start them at a default location, then call 'get_scene' to load the location's details.")] string? partyLocationId = null)
@@ -141,6 +141,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 suggestedExamples
             );
             view.WorldPressureItems = pressureItems;
+            view.SeedCoverage = await BuildSeedCoverageAsync(session, effective, location);
             var summary = $"Authoritative world state retrieved for session start (campaign: {effective}).";
             if (string.IsNullOrEmpty(partyLocationId))
             {
@@ -152,6 +153,53 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             }
             return new ToolResult<WorldStateView>(true, view, summary);
         }, saveChanges: true);
+    }
+
+    /// <summary>
+    /// Lightweight session-0 signal for GetWorldState: counts + a short gap list. Uses ToListAsync().Count
+    /// (not CountAsync — ambiguous with System.Linq's IAsyncEnumerable.CountAsync on .NET 10, same
+    /// pattern as the rest of the repository) — selects IDs only, never loads full entity sets.
+    /// </summary>
+    private static async Task<SeedCoverageSummary> BuildSeedCoverageAsync(
+        Raven.Client.Documents.Session.IAsyncDocumentSession session, string effective, Location? partyLocation)
+    {
+        var locationCount = (await session.Query<Location>()
+            .Where(l => (l.CampaignName == effective || l.CampaignName == null) && l.IsArchived == false)
+            .Select(l => l.Id)
+            .ToListAsync()).Count;
+        var pcCharacterCount = (await session.Query<Character>()
+            .Where(c => (c.CampaignName == effective || c.CampaignName == null) && c.IsPc == true)
+            .Select(c => c.Id)
+            .ToListAsync()).Count;
+        var factionCount = (await session.Query<Faction>()
+            .Where(f => (f.CampaignName == effective || f.CampaignName == null) && f.IsArchived == false)
+            .Select(f => f.Id)
+            .ToListAsync()).Count;
+        var openQuestCount = (await session.Query<Quest>()
+            .Where(q => (q.CampaignName == effective || q.CampaignName == null)
+                        && (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress))
+            .Select(q => q.Id)
+            .ToListAsync()).Count;
+        var activePlotThreadCount = (await session.Query<PlotThread>()
+            .Where(p => (p.CampaignName == effective || p.CampaignName == null)
+                        && (p.State == PlotThreadState.Active || p.State == PlotThreadState.Escalating || p.State == PlotThreadState.Climax))
+            .Select(p => p.Id)
+            .ToListAsync()).Count;
+
+        var gaps = new List<string>();
+        if (locationCount == 0) gaps.Add("no locations yet");
+        if (pcCharacterCount == 0) gaps.Add("no PC characters yet");
+        if (partyLocation != null && partyLocation.ClimateZone == null) gaps.Add($"starting location '{partyLocation.Id}' has no climateZone set");
+
+        return new SeedCoverageSummary
+        {
+            Locations = locationCount,
+            PcCharacters = pcCharacterCount,
+            Factions = factionCount,
+            OpenQuests = openQuestCount,
+            ActivePlotThreads = activePlotThreadCount,
+            Gaps = gaps,
+        };
     }
 
     [ToolCategory("Session & exploration")]

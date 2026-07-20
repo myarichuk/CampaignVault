@@ -22,54 +22,6 @@ internal static class McpDescriptorBuilder
     public static IReadOnlyDictionary<string, string> BuildAll() =>
         DiscoverTools().ToDictionary(t => t.Name, t => Serialize(t), StringComparer.OrdinalIgnoreCase);
 
-    public static string MergePreservingNestedSchemas(string existingJson, string generatedJson)
-    {
-        var existing = JsonNode.Parse(existingJson) as JsonObject
-                       ?? throw new InvalidOperationException("Existing descriptor is not a JSON object.");
-        var generated = JsonNode.Parse(generatedJson) as JsonObject
-                          ?? throw new InvalidOperationException("Generated descriptor is not a JSON object.");
-
-        existing["description"] = generated["description"]?.DeepClone();
-
-        if (existing["inputSchema"] is JsonObject existingSchema
-            && generated["inputSchema"] is JsonObject generatedSchema
-            && existingSchema["properties"] is JsonObject existingProps
-            && generatedSchema["properties"] is JsonObject generatedProps)
-        {
-            foreach (var (key, value) in generatedProps)
-            {
-                if (key is "character" or "location" or "lore" or "item" or "creature" or "plotThread"
-                        or "spell" or "feat" or "faction" or "quest" or "rumor"
-                    && existingProps[key] is JsonObject existingNested
-                    && value is JsonObject generatedNested)
-                {
-                    var merged = generatedNested.DeepClone() as JsonObject ?? new JsonObject();
-                    if (existingNested["properties"] is JsonObject nestedProps)
-                    {
-                        merged["properties"] = nestedProps.DeepClone();
-                    }
-
-                    existingProps[key] = merged;
-                }
-                else
-                {
-                    existingProps[key] = value?.DeepClone();
-                }
-            }
-
-            if (generatedSchema["required"] is JsonArray required)
-            {
-                existingSchema["required"] = required.DeepClone();
-            }
-        }
-        else
-        {
-            existing["inputSchema"] = generated["inputSchema"]?.DeepClone();
-        }
-
-        return existing.ToJsonString(SerializerOptions) + Environment.NewLine;
-    }
-
     private static string Serialize(ToolDescriptor descriptor)
     {
         var root = new JsonObject

@@ -841,6 +841,8 @@ public class CampaignRepository
             throw new ArgumentException("Character.Id is required for upsert.");
         }
 
+        character.Id = CanonicalId.Normalize(character.Id, CanonicalId.Characters);
+
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = character.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
@@ -1102,6 +1104,8 @@ public class CampaignRepository
             throw new ArgumentException("Lore.Id is required for upsert.");
         }
 
+        lore.Id = CanonicalId.Normalize(lore.Id, CanonicalId.Lore);
+
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = lore.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
@@ -1188,6 +1192,8 @@ public class CampaignRepository
         {
             throw new ArgumentException("Location.Id is required for upsert.");
         }
+
+        location.Id = CanonicalId.Normalize(location.Id, CanonicalId.Locations);
 
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = location.CampaignName;
@@ -1334,6 +1340,8 @@ public class CampaignRepository
             throw new ArgumentException("Rumor.Id is required for upsert.");
         }
 
+        rumor.Id = CanonicalId.Normalize(rumor.Id, CanonicalId.Rumors);
+
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(rumor.CampaignName))
         {
@@ -1379,6 +1387,8 @@ public class CampaignRepository
         {
             throw new ArgumentException("Rumor.Id is required for upsert.");
         }
+
+        rumor.Id = CanonicalId.Normalize(rumor.Id, CanonicalId.Rumors);
 
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = rumor.CampaignName;
@@ -1499,6 +1509,9 @@ public class CampaignRepository
             throw new ArgumentException("Item.Id is required for upsert.");
         }
 
+        item.Id = CanonicalId.Normalize(item.Id, CanonicalId.Items);
+        item.HolderId = CanonicalId.NormalizeAlias(item.HolderId);
+
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = item.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
@@ -1614,6 +1627,8 @@ public class CampaignRepository
             throw new ArgumentException("CustomCreature.Id is required for upsert.");
         }
 
+        creature.Id = CanonicalId.Normalize(creature.Id, CanonicalId.Creatures);
+
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = creature.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
@@ -1689,6 +1704,8 @@ public class CampaignRepository
             throw new ArgumentException("CustomSpell.Id is required for upsert.");
         }
 
+        spell.Id = CanonicalId.Normalize(spell.Id, CanonicalId.Spells);
+
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = spell.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
@@ -1756,6 +1773,8 @@ public class CampaignRepository
         {
             throw new ArgumentException("CustomFeat.Id is required for upsert.");
         }
+
+        feat.Id = CanonicalId.Normalize(feat.Id, CanonicalId.Feats);
 
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = feat.CampaignName;
@@ -1881,15 +1900,11 @@ public class CampaignRepository
         string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var rawQuery = nameQuery.Trim();
+        var rawQuery = CanonicalId.NormalizeAlias(nameQuery.Trim());
         var cleanQuery = rawQuery;
         if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
         {
             cleanQuery = cleanQuery["chars/".Length..];
-        }
-        else if (cleanQuery.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["characters/".Length..];
         }
 
         if (string.IsNullOrWhiteSpace(cleanQuery))
@@ -2170,6 +2185,8 @@ public class CampaignRepository
             throw new ArgumentException("Faction.Id is required for upsert.");
         }
 
+        faction.Id = CanonicalId.Normalize(faction.Id, CanonicalId.Factions);
+
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(faction.CampaignName))
         {
@@ -2212,6 +2229,8 @@ public class CampaignRepository
         {
             throw new ArgumentException("Faction.Id is required for upsert.");
         }
+
+        faction.Id = CanonicalId.Normalize(faction.Id, CanonicalId.Factions);
 
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = faction.CampaignName;
@@ -2298,6 +2317,8 @@ public class CampaignRepository
             throw new ArgumentException("PlotThread.Id is required for upsert.");
         }
 
+        thread.Id = CanonicalId.Normalize(thread.Id, CanonicalId.PlotThreads);
+
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = thread.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
@@ -2368,6 +2389,8 @@ public class CampaignRepository
             throw new ArgumentException("Quest.Id is required for upsert.");
         }
 
+        quest.Id = CanonicalId.Normalize(quest.Id, CanonicalId.Quests);
+
         var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(quest.CampaignName))
         {
@@ -2412,6 +2435,8 @@ public class CampaignRepository
         {
             throw new ArgumentException("Quest.Id is required for upsert.");
         }
+
+        quest.Id = CanonicalId.Normalize(quest.Id, CanonicalId.Quests);
 
         var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = quest.CampaignName;

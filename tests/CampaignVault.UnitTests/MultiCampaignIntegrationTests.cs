@@ -191,11 +191,11 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         {
             await repo.UpsertCharacterAsync(session,
                 new CharacterUpsertRequest
-                    { Id = "characters/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
+                    { Id = "chars/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
                 "campaign-a");
             await repo.UpsertCharacterAsync(session,
                 new CharacterUpsertRequest
-                    { Id = "characters/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
+                    { Id = "chars/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
                 "campaign-b");
             await session.SaveChangesAsync();
         }
@@ -203,12 +203,12 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Setup Campaign A (D&D 5e)
         await TestCampaignDefaults.EnsureExistsAsync(tools, "campaign-a");
         await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, "campaign-a");
-        await tools.StartCombat("loc-1", ["characters/char-1"], "campaign-a");
+        await tools.StartCombat("loc-1", ["chars/char-1"], "campaign-a");
 
         // Setup Campaign B (Pathfinder 2e)
         var createB = await tools.CreateCampaign("campaign-b", RulesetSystem.Pathfinder2e);
         Assert.True(createB.Success, createB.Summary);
-        await tools.StartCombat("loc-2", ["characters/char-2"], "campaign-b");
+        await tools.StartCombat("loc-2", ["chars/char-2"], "campaign-b");
 
         // Verify Campaign B
         var configB = await tools.GetConfig("campaign-b");
@@ -216,7 +216,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Equal(RulesetSystem.Pathfinder2e, configB.Data.ActiveSystem);
         var combatB = await tools.NextTurn(null, "campaign-b");
         Assert.NotNull(combatB.Data);
-        Assert.Equal("characters/char-2", combatB.Data.Combatants[0].CharacterId);
+        Assert.Equal("chars/char-2", combatB.Data.Combatants[0].CharacterId);
 
         // Switch back to Campaign A (explicit campaignName — no session selection)
         var configA = await tools.GetConfig("campaign-a");
@@ -224,7 +224,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Equal(RulesetSystem.Dnd5e, configA.Data.ActiveSystem);
         var combatA = await tools.NextTurn(null, "campaign-a");
         Assert.NotNull(combatA.Data);
-        Assert.Equal("characters/char-1", combatA.Data.Combatants[0].CharacterId);
+        Assert.Equal("chars/char-1", combatA.Data.Combatants[0].CharacterId);
 
         // === Scoping hardening verification (per plan + code_review.md) ===
         // Set high need on both for pressure test (loose filter for shareables, but here per-camp)
@@ -242,9 +242,9 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
                 cfgB.MaxPressuresPerResponse = 50;
             }
 
-            var c1 = await session.LoadAsync<Character>("characters/char-1");
+            var c1 = await session.LoadAsync<Character>("chars/char-1");
             c1.Needs.ActiveNeeds["hunger"] = 95f; // triggers pressure for A
-            var c2 = await session.LoadAsync<Character>("characters/char-2");
+            var c2 = await session.LoadAsync<Character>("chars/char-2");
             c2.Needs.ActiveNeeds["hunger"] = 95f; // triggers for B
             await session.SaveChangesAsync();
 
@@ -282,10 +282,10 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Sim scoping: add schedules to both, set needs, advance only A, verify only A affected
         using (var session = _store.OpenAsyncSession())
         {
-            var c1 = await session.LoadAsync<Character>("characters/char-1");
+            var c1 = await session.LoadAsync<Character>("chars/char-1");
             c1.Schedule = new Schedule { DefaultLocationId = "loc-1", Routines = [] };
             c1.Needs.ActiveNeeds["tiredness"] = 50f;
-            var c2 = await session.LoadAsync<Character>("characters/char-2");
+            var c2 = await session.LoadAsync<Character>("chars/char-2");
             c2.Schedule = new Schedule { DefaultLocationId = "loc-2", Routines = [] };
             c2.Needs.ActiveNeeds["tiredness"] = 50f;
             await session.SaveChangesAsync();
@@ -295,8 +295,8 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
 
         using (var verify = _store.OpenAsyncSession())
         {
-            var c1After = await verify.LoadAsync<Character>("characters/char-1");
-            var c2After = await verify.LoadAsync<Character>("characters/char-2");
+            var c1After = await verify.LoadAsync<Character>("chars/char-1");
+            var c2After = await verify.LoadAsync<Character>("chars/char-2");
             // A should have changed (needs accumulation or schedule), B should not (or at least test no cross)
             // Since needs rule runs, tiredness may increase for scheduled; check A was processed
             // A may or may not have changed depending on rules/time (not strict for this test); main is B untouched by A advance

@@ -153,7 +153,7 @@ public abstract class CampaignToolBase
             else
             {
                 // A CampaignConfig may already exist from an implicit ruleset default applied before
-                // this campaign was formally created (e.g. upsert_character before create_campaign —
+                // this campaign was formally created (e.g. world_build before create_campaign —
                 // see A1 in the tool-usage audit). The explicit system chosen here always wins.
                 config.ActiveSystem = defaultSystem;
             }

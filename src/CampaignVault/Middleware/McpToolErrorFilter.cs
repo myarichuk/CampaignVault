@@ -75,12 +75,10 @@ internal static partial class McpToolErrorFilter
                 "Pass where combat occurs.",
             ("start_combat", "combatantIds") =>
                 "Pass an array of character IDs participating in combat.",
-            ("upsert_character", "character") =>
-                "Pass the full Character object (legacy key 'c' is accepted). systemStats.attributes is numeric-only; put class flavor in notes.",
-            ("upsert_location", "location") =>
-                "Pass the full Location object. Location.type must be Region, Settlement, District, Building, Room, or Wilderness.",
-            ("upsert_lore", "lore") =>
-                "Pass the full Lore object.",
+            ("world_build", "batch") =>
+                "Pass an object with one or more arrays: locations, factions, creatures, spells, feats, characters, items, quests, plotThreads, lore, rumors, needDescriptors. Each array uses the same field shape as its live-play commit type (e.g. characters[] entries mirror character_update fields). See get_help topic=world-building.",
+            ("world_build", "campaignName") =>
+                "Pass the campaign slug (e.g. dragon-heist). Call list_campaigns to discover slugs.",
             ("define_need_descriptor", "needName") or ("define_need_descriptor", "descriptor") =>
                 "Both needName and descriptor are required.",
             ("set_active_system", "activeSystem") =>

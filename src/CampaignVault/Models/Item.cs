@@ -38,7 +38,7 @@ public class Item : ICampaignScopedEntity, IArchivable
 
     /// <summary>
     /// Zones this item can be equipped into (e.g. Torso, MainHand, Ring). Empty = not equippable.
-    /// Set at creation via upsert_item; state changes go through item_equip/item_unequip.
+    /// Set at creation via world_build; state changes go through item_equip/item_unequip.
     /// </summary>
     public List<EquipZone> EquipZones { get; set; } = [];
 

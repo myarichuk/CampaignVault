@@ -235,16 +235,17 @@ public class SystemExtension
     public float Morale { get; set; } = 65f;
 
     /// <summary>
-    /// Felt environmental temperature exposure in degrees C — ambient ClimateCycle reading minus
-    /// WarmthRating. Written every AdvanceWorld tick by ClimateExposureRule; sustained extremes
-    /// narrate (never auto-apply a StatusEffect — that consequence call stays with the DM-LLM).
+    /// Felt environmental temperature exposure in degrees C — ambient ClimateCycle reading plus
+    /// WarmthRating (insulation raises felt temp: helps in the cold, hurts in the heat). Written
+    /// every AdvanceWorld tick by ClimateExposureRule; sustained extremes narrate (never auto-apply
+    /// a StatusEffect — that consequence call stays with the DM-LLM).
     /// </summary>
     public float Temperature { get; set; } = 20f;
 
     /// <summary>
     /// Engine-computed cache of insulation from currently equipped items' Properties["warmth"].
     /// Recomputed by ArmorParameterResolver alongside ArmorClass on every item_equip/item_unequip/item_update.
-    /// Subtracted from ambient temperature by ClimateExposureRule.
+    /// Added to ambient temperature by ClimateExposureRule.
     /// </summary>
     public float WarmthRating { get; set; } = 0f;
 

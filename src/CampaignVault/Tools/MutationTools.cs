@@ -62,11 +62,7 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
 
 " + CommitHelpExamples.ConversationSection + @"
 
-" + CommitHelpExamples.PoiMaterializeSection + @"
-
-(See get_help for the full expanded list including the tavern creation + promotion flow, one-way link fixes, ambient/PoI flavor without bloat, PoI add/materialize/modify/remove + time decay, etc.)
-
-Basic + creating on the fly examples are also shown in the tool description and get_help.")]
+(See get_help for PoI add/materialize/modify/remove + time decay, the tavern creation + promotion flow, one-way link fixes, ambient/PoI flavor without bloat, and more copy-paste examples.)")]
     public Task<ToolResult<CommitResult>> Commit(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,

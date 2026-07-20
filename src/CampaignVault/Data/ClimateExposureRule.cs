@@ -4,7 +4,7 @@ namespace CampaignVault.Data;
 
 /// <summary>
 /// Each AdvanceWorld tick, computes ambient temperature (ClimateCycle, resolved via ClimateResolver)
-/// minus each located character's WarmthRating and writes the result to SystemExtension.Temperature
+/// plus each located character's WarmthRating and writes the result to SystemExtension.Temperature
 /// via the existing "attribute" delta shape. Sustained extremes already narrate through the existing
 /// CharacterDistressPressureContributor (Temperature &lt;= -20 / &gt;= 50) — this rule only ever writes
 /// the reading, it never applies a StatusEffect itself; that consequence call stays with the DM-LLM.
@@ -49,7 +49,7 @@ public class ClimateExposureRule : ISimulationRule
 
             var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, context.Time.TimeOfDay);
             var warmth = npc.SystemStats?.WarmthRating ?? 0f;
-            var feltTemp = ambientTemp - warmth;
+            var feltTemp = ambientTemp + warmth;
 
             // Skip emitting if temperature hasn't changed (within epsilon)
             var currentTemp = npc.SystemStats?.Temperature ?? 0f;

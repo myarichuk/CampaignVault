@@ -1186,7 +1186,7 @@ public enum ArchivableEntityType
 }
 
 /// <summary>
-/// Soft-archives (or restores) an entity created via one of the upsert_* tools, hiding it from
+/// Soft-archives (or restores) an entity created via world_build, hiding it from
 /// default search/scene/list results without deleting it. This is the play-LLM-reachable
 /// counterpart to the internal IsArchived flag most entity upserts already accept — see C1 in
 /// the tool-usage audit for why this was previously undiscoverable during play.
@@ -1217,7 +1217,7 @@ public class ItemEquip : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("ID of the item to equip. Must already be carried by (HolderId == ) characterId and have EquipZones/EquipLayer set via upsert_item.")]
+    [Description("ID of the item to equip. Must already be carried by (HolderId == ) characterId and have EquipZones/EquipLayer set via world_build.")]
     [JsonPropertyName("itemId")]
     public string ItemId { get; set; } = default!;
 
@@ -1247,7 +1247,7 @@ public class ItemUnequip : WorldChange
 /// </summary>
 public class ItemUse : WorldChange
 {
-    [Description("ID of the item being used. Must have MaxCharges set (via upsert_item).")]
+    [Description("ID of the item being used. Must have MaxCharges set (via world_build).")]
     [JsonPropertyName("itemId")]
     public string ItemId { get; set; } = default!;
 

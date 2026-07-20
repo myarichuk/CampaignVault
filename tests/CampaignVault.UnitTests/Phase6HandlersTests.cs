@@ -101,12 +101,14 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         var configId = keys.Config("test-camp-collision");
         var config = new CampaignConfig { Id = configId, ActiveSystem = RulesetSystem.Dnd5e };
         await session.StoreAsync(config);
-        await session.StoreAsync(new Character { Id = "characters/already-there", Name = "Original", MaxHp = 10, CurrentHp = 10 });
+        await session.StoreAsync(new Character { Id = "chars/already-there", Name = "Original", MaxHp = 10, CurrentHp = 10 });
         await session.SaveChangesAsync();
 
         var handler = RulesetDataTestHelper.CreateCharacterCreateHandler();
         var dispatcher = new WorldChangeDispatcher([handler], keys, NullLogger<WorldChangeDispatcher>.Instance);
 
+        // Supplying the "characters/" alias here proves it gets normalized to the canonical "chars/"
+        // form before collision-checking against the already-stored "chars/already-there" entity.
         var result = await dispatcher.DispatchAsync(
             session,
             [new CharacterCreate { CharacterId = "characters/already-there", Name = "Original", MaxHp = 5 }],
@@ -116,7 +118,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             _ => Task.CompletedTask);
 
         Assert.True(result.Success);
-        Assert.Contains("characters/already-there", result.EntityCollisions);
+        Assert.Contains("chars/already-there", result.EntityCollisions);
         Assert.Contains(result.Summary, s => s.Contains("already exists"));
     }
 
@@ -125,13 +127,15 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
 
-        var sourceId = "characters/relationship-source-" + Guid.NewGuid();
+        var sourceId = "chars/relationship-source-" + Guid.NewGuid();
         await session.StoreAsync(new Character { Id = sourceId, Name = "Source" });
         await session.SaveChangesAsync();
 
         var handler = new RelationshipChangeHandler();
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
 
+        // Supplying the "characters/" alias for TargetId proves it gets normalized to "chars/ghost"
+        // (surfaced in the failure message) before the not-found check.
         var result = await dispatcher.DispatchAsync(
             session,
             [new RelationshipChange { CharacterId = sourceId, TargetId = "characters/ghost", Delta = 10, Reason = "test" }],
@@ -141,7 +145,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             _ => Task.CompletedTask);
 
         Assert.False(result.Success);
-        Assert.Contains(result.Summary, s => s.Contains("characters/ghost") && s.Contains("not found"));
+        Assert.Contains(result.Summary, s => s.Contains("chars/ghost") && s.Contains("not found"));
     }
 
     [Fact]

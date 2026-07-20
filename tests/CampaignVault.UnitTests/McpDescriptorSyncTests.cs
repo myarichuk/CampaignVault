@@ -43,13 +43,10 @@ public class McpDescriptorSyncTests
             Assert.True(File.Exists(path), $"Missing MCP descriptor file for tool '{name}' at {path}");
 
             var onDisk = File.ReadAllText(path);
-            var expected = name.StartsWith("upsert_", StringComparison.Ordinal)
-                ? McpDescriptorBuilder.MergePreservingNestedSchemas(onDisk, generatedJson)
-                : generatedJson;
 
-            if (!JsonSemanticEquals(onDisk, expected))
+            if (!JsonSemanticEquals(onDisk, generatedJson))
             {
-                Assert.Fail($"MCP descriptor out of sync for '{name}'.\n\nExpected (memory):\n{expected}\n\nActual (disk):\n{onDisk}\n\nRegenerate with: dotnet test --filter RegenerateMcpDescriptors");
+                Assert.Fail($"MCP descriptor out of sync for '{name}'.\n\nExpected (memory):\n{generatedJson}\n\nActual (disk):\n{onDisk}\n\nRegenerate with: dotnet test --filter RegenerateMcpDescriptors");
             }
         }
     }
@@ -76,34 +73,8 @@ public class McpDescriptorSyncTests
         foreach (var (name, generatedJson) in McpDescriptorBuilder.BuildAll())
         {
             var path = Path.Combine(DescriptorsDirectory, $"{name}.json");
-            var output = name.StartsWith("upsert_", StringComparison.Ordinal) && File.Exists(path)
-                ? McpDescriptorBuilder.MergePreservingNestedSchemas(File.ReadAllText(path), generatedJson)
-                : generatedJson;
-            File.WriteAllText(path, output);
+            File.WriteAllText(path, generatedJson);
         }
-    }
-
-    [Theory]
-    [InlineData("upsert_item", "item")]
-    [InlineData("upsert_creature", "creature")]
-    [InlineData("upsert_plot_thread", "plotThread")]
-    [InlineData("upsert_spell", "spell")]
-    [InlineData("upsert_feat", "feat")]
-    [InlineData("upsert_faction", "faction")]
-    [InlineData("upsert_quest", "quest")]
-    [InlineData("upsert_rumor", "rumor")]
-    public void UpsertTool_Descriptor_HasNestedFieldSchema_NotBareObject(string toolName, string paramName)
-    {
-        var path = Path.Combine(DescriptorsDirectory, $"{toolName}.json");
-        var onDisk = File.ReadAllText(path);
-
-        using var doc = JsonDocument.Parse(onDisk);
-        var nested = doc.RootElement.GetProperty("inputSchema").GetProperty("properties").GetProperty(paramName);
-
-        Assert.True(nested.TryGetProperty("properties", out var nestedProps),
-            $"{toolName}'s '{paramName}' parameter has no nested field schema (still a bare object).");
-        Assert.True(nestedProps.EnumerateObject().Any(),
-            $"{toolName}'s '{paramName}' nested schema has no properties.");
     }
 
     [Fact]

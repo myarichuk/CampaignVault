@@ -23,7 +23,7 @@ internal static class ItemHolderQueryHelper
 
         foreach (var i in context.Items.Values)
         {
-            if (i.HolderId.Equals(holderId, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(i.HolderId, holderId, StringComparison.OrdinalIgnoreCase))
             {
                 result[i.Id] = i;
             }

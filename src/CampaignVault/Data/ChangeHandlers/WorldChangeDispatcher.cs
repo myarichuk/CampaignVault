@@ -99,6 +99,7 @@ public sealed class WorldChangeDispatcher(
 
         foreach (var change in changes)
         {
+            WorldChangeHandlerHelpers.NormalizeIdFields(change);
             ExtractInvolvedIds(change, characterIds, locationIds, factionIds, questIds, itemIds, allInvolved);
             if (change is RulesetAction) needsCombat = true;
             if (change is RulesetAction or LevelUpChange) needsRulesetConfig = true;
@@ -285,6 +286,7 @@ public sealed class WorldChangeDispatcher(
     /// </summary>
     public async Task DispatchMutationAsync(ChangeContext parentContext, WorldChange mutation, CancellationToken ct = default)
     {
+        WorldChangeHandlerHelpers.NormalizeIdFields(mutation);
         var chosen = FindHandler(mutation);
         
         if (chosen == null)

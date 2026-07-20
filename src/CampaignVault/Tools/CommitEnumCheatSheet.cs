@@ -8,18 +8,18 @@ internal static class CommitEnumCheatSheet
     internal const string Compact = """
 
 **COMMIT ENUM VALUES (use these exact strings — case-sensitive):**
-- `upsert_location.type` → Region, Settlement, District, Building, Room, Wilderness
+- `world_build.locations[].type` → Region, Settlement, District, Building, Room, Wilderness
   - Common mistakes: City/Town → **Settlement**; Tavern/Inn/Shop → **Building**
-- `upsert_location.climateZone` → Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean
-- `item_equip.equipZones` → Head, Face, Neck, Torso, Back, Waist, Hands, Wrists, Legs, Feet, MainHand, OffHand, Ring, Accessory
-- `item_equip.equipLayer` → Base, Armor, Outer, Held
+- `world_build.locations[].climateZone` → Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean
+- `world_build.items[].equipZones` (equip path — set once, not on item_equip) → Head, Face, Neck, Torso, Back, Waist, Hands, Wrists, Legs, Feet, MainHand, OffHand, Ring, Accessory
+- `world_build.items[].equipLayer` (equip path — set once, not on item_equip) → Base, Armor, Outer, Held
 - `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure
   - Common mistake: Narrative/Roleplay → **Conversation**
   - **Conversation events MUST include `involved`: [`chars/pc`, `chars/npc`]** (every speaker). NOT `participants`.
-- New rumor → use the `upsert_rumor` tool (`id`, `regionLocationId`, `subject`, `text`; starts Nascent)
+- New rumor → use `world_build` (rumors[]: `id`, `regionLocationId`, `subject`, `text`; starts Nascent)
 - `rumor` (evolve, via commit) → `rumorId`, `newState`: Nascent, Spreading, Peak, Fading, Resolved, Forgotten
 - `quest_progress.newState` / quest overall → Open, InProgress, Complete, Failed, Skipped
-- `upsert_quest.urgency` → Low, Normal, Urgent, Critical
+- `world_build.quests[].urgency` → Low, Normal, Urgent, Critical
 - `ruleset_action.actionType` → Attack, Spell, SkillCheck, ContestedCheck, OpposedCheck (alias), UseItem, Recovery, SavingThrow
 - `ruleset_action.parameters.resolution` (Spell) → attack, save, check, utility, heal
 - `ruleset_action.parameters.save` → 5e: Strength/Dexterity/Constitution/Intelligence/Wisdom/Charisma; PF2e: Fortitude/Reflex/Will
@@ -47,7 +47,7 @@ Full enum tables: call `get_help` → section **Commit Enum Values**.
 
 JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid values fail deserialization; the engine returns valid options and common-alias hints (e.g. City → Settlement).
 
-### upsert_location / location_update
+### world_build.locations[] / location_update
 | Field | Valid values | LLM alias hints |
 |-------|----------------|-----------------|
 | `type` | Region, Settlement, District, Building, Room, Wilderness | City, Town → **Settlement**; Tavern, Inn, Shop → **Building** |
@@ -61,7 +61,7 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 **Conversation commit template (copy-paste):**
 { "$type": "event", "category": "Conversation", "summary": "Valen asked Lirael about the missing caravans.", "involved": ["chars/valen", "chars/lirael-goldvein"] }
 
-### upsert_rumor (creates or replaces a rumor — NOT a commit $type)
+### world_build.rumors[] (creates or replaces a rumor — NOT a commit $type)
 | Field | Notes |
 |-------|--------|
 | `id` | Required. e.g. `rumors/nightshade-gang` |
@@ -78,13 +78,13 @@ State always starts **Nascent** unless set explicitly.
 | `newState` | Nascent, Spreading, Peak, Fading, Resolved, Forgotten |
 | `newText` | Optional updated text |
 
-### upsert_quest / quest_progress
+### world_build.quests[] / quest_progress
 | Field | Valid values |
 |-------|----------------|
-| `urgency` (upsert_quest) | Low, Normal, Urgent, Critical |
+| `urgency` (world_build.quests[]) | Low, Normal, Urgent, Critical |
 | `newState` (progress) | Open, InProgress, Complete, Failed, Skipped |
 
-Note: `upsert_quest.objectives[]` only needs `description` (+ optional `rewardHint`, `deadlineDay`). Objective state is advanced via `quest_progress.newState`.
+Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `rewardHint`, `deadlineDay`). Objective state is advanced via `quest_progress.newState`.
 
 ### ruleset_action
 | Field | Valid values |
@@ -116,19 +116,19 @@ Note: `upsert_quest.objectives[]` only needs `description` (+ optional `rewardHi
 | `category` | Physical, Social, Medical, Attention, Proximity |
 | `restrictionLevel` | None, Soft, Hard |
 
-### upsert_faction (optional metadata)
+### world_build.factions[] (optional metadata)
 | Field | Valid values |
 |-------|----------------|
 | `factionType` | Guild, Kingdom, Cult, MerchantHouse, MilitaryOrder, Criminal, Religious |
 
-### upsert_item / item_update
+### world_build.items[] / item_update
 | Field | Valid values |
 |-------|----------------|
 | `coreCategory` | Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other |
 | `equipZones` (equip path) | Head, Face, Neck, Torso, Back, Waist, Hands, Wrists, Legs, Feet, MainHand, OffHand, Ring, Accessory |
 | `equipLayer` (equip path) | Base, Armor, Outer, Held |
 
-### upsert_location / location_update (climate)
+### world_build.locations[] / location_update (climate)
 | Field | Valid values |
 |-------|----------------|
 | `climateZone` | Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean |
@@ -143,7 +143,7 @@ Note: `upsert_quest.objectives[]` only needs `description` (+ optional `rewardHi
 
 Cooldown: one successful interrupt per location per in-game day. Do not use during active combat or on every dialog line.
 
-### upsert_character.systemStats / system_stats
+### world_build.characters[].systemStats / system_stats
 | Field | Valid values |
 |-------|----------------|
 | `$system` | dnd5e, pf2e, fallout2d20 (lowercase, exact — wrong casing silently falls back to untyped stats) |

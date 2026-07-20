@@ -35,7 +35,7 @@ public sealed class ItemUseHandler : IWorldChangeHandler
 
         if (!item.MaxCharges.HasValue)
         {
-            var msg = $"Item '{use.ItemId}' has no MaxCharges set — it is not a limited-use item. Set maxCharges via upsert_item.";
+            var msg = $"Item '{use.ItemId}' has no MaxCharges set — it is not a limited-use item. Set maxCharges via world_build.";
             context.RecordFailure();
             return ChangeHandlerResult.Failure(msg);
         }

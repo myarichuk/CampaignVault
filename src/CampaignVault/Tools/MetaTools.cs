@@ -13,6 +13,10 @@ internal enum HelpTopic
     [Description("Default")]
     None = 0,
 
+    /// <summary>Initial world-building / session-0 seeding: recommended order, world_build example.</summary>
+    [Description("Initial world-building (session 0) guide")]
+    WorldBuilding,
+
     /// <summary>Commit patterns: tavern walkthrough, quest lifecycle, wilderness, transients.</summary>
     [Description("Commit patterns and narrative examples")]
     Patterns,
@@ -69,9 +73,9 @@ public class MetaTools : IMcpServerTool
 
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: patterns, combat, world-pressure, visual-sandbox, commit-enum, or faq. Each topic is self-contained with copy-paste examples.")]
+    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: world-building, patterns, combat, world-pressure, visual-sandbox, commit-enum, or faq. Each topic is self-contained with copy-paste examples.")]
     public Task<ToolResult<string>> GetHelp(
-        [Description("Optional help topic for focused deep-dive sections: 'patterns' (commit examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox', 'commit-enum', 'faq'. Omit for lean quickstart.")]
+        [Description("Optional help topic for focused deep-dive sections: 'world-building' (session-0 seeding order + world_build example), 'patterns' (commit examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox', 'commit-enum', 'faq'. Omit for lean quickstart.")]
         string? topic = null)
     {
         var content = GetHelpContent(topic);
@@ -88,6 +92,8 @@ public class MetaTools : IMcpServerTool
 
         return topic switch
         {
+            HelpTopic.WorldBuilding => DmHelpManual.WorldBuildingSection,
+
             HelpTopic.Patterns => DmHelpManual.PatternsSection
                 .Replace("{{CONVERSATION_EXAMPLE}}", CommitHelpExamples.ConversationBatch.Trim(), StringComparison.Ordinal),
 

@@ -11,7 +11,7 @@ public class McpToolErrorFilterTests
     [InlineData("get_current_campaign", "campaignName", "campaign slug")]
     [InlineData("commit", "changes", "get_help")]
     [InlineData("get_scene", "locationId", "search_world")]
-    [InlineData("upsert_character", "character", "numeric-only")]
+    [InlineData("world_build", "batch", "arrays")]
     public void BuildMissingParamMessage_IncludesToolSpecificHints(string tool, string param, string expectedHint)
     {
         var message = McpToolErrorFilter.BuildMissingParamMessage(tool, param);

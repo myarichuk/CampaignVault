@@ -587,11 +587,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                     ["loc1"]
             }, TestCampaignDefaults.Slug);
             await repo.UpsertLocationAsync(session,
-                new LocationUpsertRequest { Id = "loc1", Name = "The Shire", Type = LocationType.Region }, TestCampaignDefaults.Slug);
+                new LocationUpsertRequest { Id = "locations/loc1", Name = "The Shire", Type = LocationType.Region }, TestCampaignDefaults.Slug);
             await session.SaveChangesAsync();
         }
 
-        var result = await tools.GetWorldState("loc1", TestCampaignDefaults.Slug);
+        var result = await tools.GetWorldState("locations/loc1", TestCampaignDefaults.Slug);
 
         Assert.True(result.Success);
         Assert.Equal(10, result.Data!.Time.Day);
@@ -720,7 +720,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         };
         await repo.UpsertCharacterAsync(session, character, TestCampaignDefaults.Slug);
 
-        var targetId = "target-1-" + Guid.NewGuid();
+        var targetId = "chars/target-1-" + Guid.NewGuid();
         await repo.UpsertCharacterAsync(session,
             new CharacterUpsertRequest { Id = targetId, Name = "Relationship Target" },
             TestCampaignDefaults.Slug);
@@ -1635,7 +1635,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var pressureText = string.Join(" ", result.WorldPressure);
         Assert.Contains("ENGINE WARNING", pressureText);
         Assert.Contains("You are hallucinating", pressureText);
-        Assert.Contains("upsert_location", pressureText);
+        Assert.Contains("world_build", pressureText);
         Assert.Contains(missingId, pressureText);
     }
 
@@ -2509,7 +2509,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // Setup: character with Needs profile, origin location *with* populated Exit (TravelCostHours + Terrain),
         // and a destination.
-        var charId = "characters/travel-pc-" + Guid.NewGuid().ToString("N");
+        var charId = "chars/travel-pc-" + Guid.NewGuid().ToString("N");
         var originId = "locations/travel-origin-" + Guid.NewGuid().ToString("N");
         var destId = "locations/travel-dest-" + Guid.NewGuid().ToString("N");
 
@@ -2590,7 +2590,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 b.Register(_ => intChangeHandlers.AsEnumerable()).As<IEnumerable<IWorldChangeHandler>>();
             });
 
-        var intCharId = "characters/travel-pc-int-" + Guid.NewGuid().ToString("N");
+        var intCharId = "chars/travel-pc-int-" + Guid.NewGuid().ToString("N");
         var intOriginId = "locations/travel-int-origin-" + Guid.NewGuid().ToString("N");
         var intDestId = "locations/travel-int-dest-" + Guid.NewGuid().ToString("N");
 

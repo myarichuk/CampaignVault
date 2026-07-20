@@ -72,12 +72,12 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
     }
 
     [Fact]
-    public async Task EvaluateAsync_WellDressedForClimate_NoPressure()
+    public async Task EvaluateAsync_NearComfortableTemperature_NoPressure()
     {
         const string campaign = "climate-shift-comfortable";
         using var session = _fixture.Store.OpenAsyncSession();
-        // Temperate at Noon = 15 + 6 = 21; warmth 3 => felt 18, exactly the comfortable reference.
-        var (location, pc) = await SeedAsync(session, campaign, ClimateZone.Temperate, warmthRating: 3f);
+        // Temperate at Noon = 15 + 6 = 21; warmth 0 => felt 21, close to the comfortable reference (18).
+        var (location, pc) = await SeedAsync(session, campaign, ClimateZone.Temperate, warmthRating: 0f);
 
         var contributor = new ClimateShiftPressureContributor();
         var ctx = new PressureContext(
@@ -91,6 +91,30 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
         var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
 
         Assert.DoesNotContain(pressures, p => p.EntityId == pc.Id);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_FursInDesert_EmitsOverdressedForHeatPressure()
+    {
+        const string campaign = "climate-shift-heat";
+        using var session = _fixture.Store.OpenAsyncSession();
+        // Desert at Noon = 25 + 16 = 41; warmth 25 => felt 66, well above the comfortable reference (18).
+        var (location, pc) = await SeedAsync(session, campaign, ClimateZone.Desert, warmthRating: 25f);
+
+        var contributor = new ClimateShiftPressureContributor();
+        var ctx = new PressureContext(
+            campaign,
+            new CampaignTime { TimeOfDay = TimeOfDay.Noon },
+            new CampaignConfig { Id = "config/" + campaign },
+            session,
+            RequestedLocationId: location.Id,
+            PartyPresent: true);
+
+        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+
+        var pressure = Assert.Single(pressures.Where(p => p.EntityId == pc.Id));
+        Assert.Contains("overdressed", pressure.Text);
+        Assert.Equal(ClimateShiftPressureContributor.GroupingKey, pressure.GroupingKey);
     }
 
     [Fact]

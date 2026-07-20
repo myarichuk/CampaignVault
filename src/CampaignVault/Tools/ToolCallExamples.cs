@@ -455,7 +455,7 @@ internal static class ToolCallExamples
                     + "5e casters: bootstrap spellcastingAbility on systemStats; omit dc/bonus if spellSaveDc/spellAttackBonus derived. "
                     + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points/gold/caps; validates spell level, and spending below 0 HARD-FAILS the commit (\"Insufficient <pool> for <name>: has X, needs Y.\") — grants above max still clamp silently. Recovery on NEXT advance_world after rest, not at rest time. "
                     + "Fallout: dc aliases difficulty; Stimpak = UseItem + healAmount. "
-                    + "RUMORS: create with the upsert_rumor tool (id, regionLocationId, subject, text); evolve an existing one with $type rumor (rumorId, newState). "
+                    + "RUMORS: create with world_build (rumors[]: id, regionLocationId, subject, text); evolve an existing one with $type rumor (rumorId, newState). "
                     + "Engine auto-applies hp from ruleset_action — no duplicate hp commits. "
                     + "See get_help → Ruleset Actions for copy-paste JSON.",
                 ArgumentsTemplate = JsonNode.Parse(
@@ -488,68 +488,6 @@ internal static class ToolCallExamples
                         }
                       ],
                       "narrative": "Valen ordered ale and exchanged news with the innkeeper."
-                    }
-                    """)!.AsObject(),
-            },
-            ["upsert_character"] = new ToolCallExample
-            {
-                ToolName = "upsert_character",
-                WrapperKey = "character",
-                LegacyWrapperKey = "c",
-                AllowFlattenedWrapper = true,
-                FlattenedFieldDetector = obj =>
-                    obj.ContainsKey("id") || obj.ContainsKey("name") || obj.ContainsKey("systemStats")
-                    || obj.ContainsKey("psychology") || obj.ContainsKey("maxHp"),
-                DeserializationHint =
-                    "systemStats.attributes accepts numbers only — no strings or booleans (e.g. attributes.hitDie: \"d12\" fails). "
-                    + "Put hitDie on the dnd5e extension root (systemStats.hitDie), not in attributes. "
-                    + "Omit maxHp to auto-derive HP from hitDie/level/constitution; explicit maxHp always wins. "
-                    + "Multiclass: systemStats.classLevels array. Casters: spellcastingAbility (derives spellSaveDc/spellAttackBonus). "
-                    + "This is the only tool that creates a new character; use commit (activity/character_update/etc.) for incremental changes to an existing one.",
-                ArgumentsTemplate = JsonNode.Parse(
-                    """
-                    {
-                      "character": {
-                        "id": "chars/kergil",
-                        "name": "Kergil",
-                        "keepAlive": true,
-                        "classLevel": "Human Barbarian 10",
-                        "notes": "Unarmored Defense active. Rage +3 damage.",
-                        "systemStats": {
-                          "$system": "dnd5e",
-                          "hitDie": "d12",
-                          "level": 10,
-                          "constitution": 16,
-                          "hpMode": "average",
-                          "dexterity": 14,
-                          "strength": 18,
-                          "skillModifiers": { "Athletics": 9, "Perception": 5 },
-                          "attributes": { "rageDamage": 3 }
-                        }
-                      }
-                    }
-                    """)!.AsObject(),
-            },
-            ["upsert_location"] = new ToolCallExample
-            {
-                ToolName = "upsert_location",
-                WrapperKey = "location",
-                LegacyWrapperKey = "l",
-                AllowFlattenedWrapper = true,
-                FlattenedFieldDetector = obj =>
-                    obj.ContainsKey("id") || obj.ContainsKey("name") || obj.ContainsKey("type"),
-                DeserializationHint =
-                    "Location.type must be one of: Region, Settlement, District, Building, Room, Wilderness (not Tavern). "
-                    + "This is the only tool that creates a new location; use commit's location_update for incremental changes to an existing one.",
-                ArgumentsTemplate = JsonNode.Parse(
-                    """
-                    {
-                      "location": {
-                        "id": "locations/tavern",
-                        "name": "The Rusty Nail",
-                        "description": "A lively dockside tavern.",
-                        "type": "Building"
-                      }
                     }
                     """)!.AsObject(),
             },

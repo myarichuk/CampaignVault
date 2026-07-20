@@ -43,7 +43,7 @@ public sealed class ClimateShiftPressureContributor : IPressureContributor
         foreach (var pc in party)
         {
             var warmth = pc.SystemStats?.WarmthRating ?? 0f;
-            var feltTemp = ambientTemp - warmth;
+            var feltTemp = ambientTemp + warmth;
             var mismatch = feltTemp - ComfortableFeltTemp;
 
             if (Math.Abs(mismatch) < MismatchThreshold)

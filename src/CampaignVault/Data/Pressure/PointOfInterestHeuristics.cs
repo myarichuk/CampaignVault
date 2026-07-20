@@ -28,8 +28,8 @@ public static class PointOfInterestHeuristics
         {
             var targetId = $"locations/{Guid.NewGuid().ToString("N")[..8]}";
             detailsPlaceholder = "Detailed description of what lies beyond or the revealed path.";
-            extra = $"\nIf this reveals a new connected area, call upsert_location separately: " +
-                     $"{{ \"location\": {{ \"id\": \"{targetId}\", \"name\": \"Revealed or connected area\", \"description\": \"...\", \"type\": \"Room\", \"connectedFromLocationId\": \"{locationId}\", \"connectionDescription\": \"{normalizedPoi}\" }} }}";
+            extra = $"\nIf this reveals a new connected area, call world_build separately: " +
+                     $"{{ \"locations\": [ {{ \"id\": \"{targetId}\", \"name\": \"Revealed or connected area\", \"description\": \"...\", \"type\": \"Room\", \"connectedFromLocationId\": \"{locationId}\", \"connectionDescription\": \"{normalizedPoi}\" }} ] }}";
         }
         else if (lower.Contains("board") || lower.Contains("poster") || lower.Contains("notice") || lower.Contains("sign") || lower.Contains("job"))
         {

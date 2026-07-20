@@ -28,7 +28,7 @@ public class Location : ICampaignScopedEntity, IArchivable
     /// Keys match (case-insensitive) entries from PointsOfInterest. Values are the persistent,
     /// recallable description/content discovered through interaction/examination.
     /// This turns lightweight PoI strings into anchored world knowledge (analogous to
-    /// promoting an ambient NPC via upsert_character).
+    /// promoting an ambient NPC via world_build).
     /// </summary>
     [JsonPropertyName("pointOfInterestDetails")]
     public Dictionary<string, string> PointOfInterestDetails { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -61,7 +61,7 @@ public class Location : ICampaignScopedEntity, IArchivable
 
     /// <summary>
     /// Optional faction ID that controls or "owns" this location.
-    /// Set via upsert_faction or faction_state changes. Null = unclaimed/independent.
+    /// Set via world_build or faction_state changes. Null = unclaimed/independent.
     /// Used by GetScene to surface faction presence and by EncounterResolver for encounter bias.
     /// </summary>
     public string? ControllingFactionId { get; set; }
