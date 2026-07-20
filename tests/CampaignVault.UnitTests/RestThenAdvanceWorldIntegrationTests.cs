@@ -64,13 +64,17 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
         ], campaign);
         await session.SaveChangesAsync();
 
-        // Pool must still be empty immediately after rest — proves resource pool recovery
-        // is deferred to the next advance_world call, not applied at rest time (P2-3).
+        // Pool recovers immediately when the rest commits — RestChangeHandler applies
+        // RestRecoveryLogic synchronously rather than waiting for the next advance_world call.
         var afterRest = await session.LoadAsync<Character>(charId);
-        Assert.Equal(0, afterRest.SystemStats!.ResourcePools["spell_slots_1"].Current);
+        Assert.Equal(4, afterRest.SystemStats!.ResourcePools["spell_slots_1"].Current);
         Assert.NotNull(afterRest.LastRestedDay);
         Assert.Equal(RestType.LongRest, afterRest.LastRestType);
+        Assert.Equal(afterRest.LastRestedDay, afterRest.LastRestRecoveredDay);
+        Assert.Equal(afterRest.LastRestedDay, afterRest.SystemStats.ResourcePools["spell_slots_1"].LastRecoveredDay);
 
+        // advance_world's ResourceRecoveryRule sweep must be a no-op here — it's a defense-in-depth
+        // fallback guarded by the same idempotency check, not a second source of recovery.
         await repo.AdvanceWorldAsync(session, 0, TimeOfDay.Noon, campaign);
         await session.SaveChangesAsync();
 
