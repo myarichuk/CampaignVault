@@ -167,6 +167,8 @@ See get_help topic=world-building for a full copy-paste example and recommended 
         }
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Directly create or overwrite a character/NPC.
 
 Use this to seed or update full NPC records, including rich psychological data.
@@ -258,6 +260,8 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
         return new ToolResult<Character>(true, merged, summary);
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Create or overwrite a location on the world map.
 
 Use for seeding new areas or replacing/updating full location documents — exits, parent links, ambientCrowd, pointsOfInterest, descriptions, and hierarchy.
@@ -283,6 +287,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<Location>(true, merged, summary);
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update a lore entry. Always use SearchWorld first to check whether similar lore already exists. Omitted fields are preserved: on existing lore, omitting tags/keywords keeps the stored value; providing one replaces it wholesale.")]
     public Task<ToolResult<Lore>> UpsertLore(
@@ -300,6 +306,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<Lore>(true, merged, $"Lore upserted (campaign context: {effective}).");
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). This is the only tool that creates a new item. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale. During play, use commit's item_update/item for incremental changes to an existing item.")]
     public Task<ToolResult<Item>> UpsertItem(
@@ -317,6 +325,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<Item>(true, merged, $"Item upserted (campaign context: {effective}).");
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update a homebrew creature stat-block template. These are reusable reference templates (distinct from live NPC/monster instances, which use world_build's characters[]). Homebrew creatures override SRD creatures by name when queried via query_creatures. Omitted fields are preserved: on an existing creature, omitting skills/abilities keeps the stored value; providing one replaces it wholesale.")]
     public Task<ToolResult<CustomCreature>> UpsertCreature(
@@ -334,6 +344,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<CustomCreature>(true, merged, $"Creature upserted (campaign context: {effective}).");
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update a plot thread — DM-scaffolding for a story arc's clues, tension, and resolution condition (usually not player-visible). Use for bulk-seeding clues or bumping tensionLevel without re-sending every clue. Omitted fields are preserved: on an existing thread, omitting clues/involvedEntityIds/foreshadowingHooks keeps the stored value; providing one replaces it wholesale.")]
     public Task<ToolResult<PlotThread>> UpsertPlotThread(
@@ -355,6 +367,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<PlotThread>(true, merged, summary);
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update a homebrew spell. Overrides SRD spells by name when queried via get_spells. Omitted fields are preserved: on an existing spell, omitting classes keeps the stored value; providing one replaces it wholesale.")]
     public Task<ToolResult<CustomSpell>> UpsertSpell(
@@ -372,6 +386,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<CustomSpell>(true, merged, $"Spell upserted (campaign context: {effective}).");
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via get_system_handbook.")]
     public Task<ToolResult<CustomFeat>> UpsertFeat(
@@ -389,6 +405,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<CustomFeat>(true, merged, $"Feat upserted (campaign context: {effective}).");
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update a faction. Omitted fields are preserved: on an existing faction, omitting territoryLocationIds/knownLeaderIds keeps the stored value; providing one replaces it wholesale. For reputation/stance changes to an existing faction, prefer commit (faction_reputation, faction_state).")]
     public Task<ToolResult<Faction>> UpsertFaction(
@@ -411,6 +429,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<Faction>(true, merged, summary);
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update a quest. Omitted fields are preserved: on an existing quest, omitting objectives/relatedLocationIds/relatedFactionIds keeps the stored value; providing one replaces it wholesale. For objective-state or narrative progress on an existing quest, prefer commit (quest_progress).")]
     public Task<ToolResult<Quest>> UpsertQuest(
@@ -433,6 +453,8 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<Quest>(true, merged, summary);
     }
 
+    [ToolCategory("World builder")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description(
         "WORLD BUILDER TOOL: Create or update a rumor. regionLocationId is required when creating a new rumor. For rumor evolution over time on an existing rumor, prefer commit (rumor).")]
     public Task<ToolResult<Rumor>> UpsertRumor(
