@@ -274,7 +274,15 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
                     DaysAdvanced: days,
                     DisableCooldowns: true));
 
-            var rawPressures = result.SimulatorEvents
+            // Cooldowns are disabled on this path (DisableCooldowns: true above and
+            // disableCooldowns: true below), so content-signature dedupe is the only mechanism that
+            // keeps duplicate-text simulator events from flooding a single advance_world response.
+            var dedupedSimulatorEvents = result.SimulatorEvents
+                .GroupBy(e => PressureHelpers.ComputeContentSignature(e))
+                .Select(g => g.First())
+                .ToList();
+
+            var rawPressures = dedupedSimulatorEvents
                 .Select(e => new WorldPressureItem(PressureSeverity.Simulation, "Simulation", e,
                     WorldPressureItem.SimulationEventGroupingKey))
                 .Concat(result.WorldPressure)

@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using CampaignVault.Models;
 using Raven.Client.Documents.Session;
 
@@ -7,6 +10,23 @@ internal static class PressureHelpers
 {
     private static string BuildCanonicalIdPrefix(string cleanQuery, string prefix) =>
         cleanQuery.Contains('/', StringComparison.Ordinal) ? cleanQuery : prefix + cleanQuery;
+
+    /// <summary>
+    /// Content signature for a pressure item's Text, used to distinguish a genuinely new nag from a
+    /// repeat of the same one. Digits are normalized out first: several contributors (e.g.
+    /// CharacterDistressPressureContributor, MemoryDecayPressureContributor) embed live numeric values
+    /// (morale %, HP, days-old) in Text while GroupingKey/EntityId/Severity stay fixed — hashing raw
+    /// text would treat every tick as brand-new and defeat suppression entirely. Digit-stripped hashing
+    /// keeps "same nag category, value changed" suppressible/escalatable as before, while text that
+    /// differs in its non-numeric part gets a distinct signature and a fresh escalation cycle instead of
+    /// silently inheriting stale state.
+    /// </summary>
+    public static string ComputeContentSignature(string text)
+    {
+        var normalized = Regex.Replace(text ?? string.Empty, "[0-9]+", "#");
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
+        return Convert.ToHexString(bytes)[..16];
+    }
 
     public static bool ItemMatchesEconomicDemand(Item item, string demand) =>
         item.CoreCategory.ToString().Equals(demand, StringComparison.OrdinalIgnoreCase)

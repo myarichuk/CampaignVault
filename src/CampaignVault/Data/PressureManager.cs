@@ -1,3 +1,4 @@
+using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using Raven.Client.Documents.Session;
 
@@ -50,15 +51,21 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
         foreach (var p in pressures)
         {
             var key = $"{p.Severity}:{p.EntityId}";
+            var signature = PressureHelpers.ComputeContentSignature(p.Text);
             if (campaign.PressureCooldowns.TryGetValue(key, out var state))
             {
-                if (currentDay - state.LastSurfacedDay < cooldownDays)
+                // A stored signature that differs from this item's means the underlying nag content
+                // materially changed (not just an embedded numeric value) — treat it as a fresh nag
+                // rather than suppressing it or inheriting the prior escalation cycle.
+                var signatureChanged = state.LastSignature is not null && state.LastSignature != signature;
+
+                if (!signatureChanged && currentDay - state.LastSurfacedDay < cooldownDays)
                 {
                     // Suppressed
                     continue;
                 }
 
-                var newCount = state.SuppressionCount + 1;
+                var newCount = signatureChanged ? 1 : state.SuppressionCount + 1;
                 if (newCount >= escalationCount)
                 {
                     // Escalated
@@ -115,18 +122,21 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
             foreach (var tuple in groups.SelectMany(g => g))
             {
                 var key = tuple.OriginalKey;
+                var signature = PressureHelpers.ComputeContentSignature(tuple.Item.Text);
 
                 if (campaign.PressureCooldowns.TryGetValue(key, out var existingState))
                 {
+                    var signatureChanged = existingState.LastSignature is not null && existingState.LastSignature != signature;
                     campaign.PressureCooldowns[key] = existingState with
                     {
                         LastSurfacedDay = currentDay,
-                        SuppressionCount = existingState.SuppressionCount + 1
+                        SuppressionCount = signatureChanged ? 1 : existingState.SuppressionCount + 1,
+                        LastSignature = signature
                     };
                 }
                 else
                 {
-                    campaign.PressureCooldowns[key] = new PressureState(currentDay, 0);
+                    campaign.PressureCooldowns[key] = new PressureState(currentDay, 0) { LastSignature = signature };
                 }
             }
         }

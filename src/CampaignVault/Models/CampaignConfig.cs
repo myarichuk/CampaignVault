@@ -165,6 +165,13 @@ public class CampaignConfig
     public int InitiativeSuppressionRetentionDays { get; set; } = 30;
 
     /// <summary>
+    /// BehavioralTension (0-100 scale) threshold above which an NPC's top initiative candidate (if
+    /// Urgency is at least High) produces an advisory TurnIntentSignal suggesting the NPC should
+    /// act/speak next. Defaults to 60. Never a hard gate — the player can always act regardless.
+    /// </summary>
+    public double BehavioralTensionSpeakingThreshold { get; set; } = 60;
+
+    /// <summary>
     /// Days after a persistent relationship initiative was surfaced before sim may re-arm it
     /// (affection, resentment, trust bands only).
     /// </summary>

@@ -220,6 +220,105 @@ public class RestChangeHandlerTests
     }
 
     [Fact]
+    public async Task ApplyAsync_LongRest_RecoversResourcePoolsImmediately()
+    {
+        var charId = "chars/wizard";
+        var character = new Character
+        {
+            Id = charId,
+            CurrentLocationId = "loc/1",
+            SystemStats = new Dnd5eExtension
+            {
+                ResourcePools = new Dictionary<string, ResourcePool>
+                {
+                    ["spell_slots_1"] = new() { Current = 0, Max = 4, Recovery = RecoveryType.LongRest }
+                }
+            }
+        };
+
+        var summary = new List<string>();
+        var dispatcher = new WorldChangeDispatcher(
+            [new ResourceChangeHandler(), new RestRecoveryAckHandler()],
+            new CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+
+        var rule = new EncounterResolver(() => 1.0);
+        var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
+
+        var context = new ChangeContext(
+            null!,
+            new Dictionary<string, Character> { [charId] = character },
+            new Dictionary<string, Item>(),
+            new Dictionary<string, Location>
+            {
+                ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
+            },
+            null,
+            null,
+            NullLogger.Instance,
+            summary,
+            dispatcher);
+
+        var result = await handler.ApplyAsync(new RestChange
+        {
+            CharacterId = charId,
+            LocationId = "loc/1",
+            IntendedHours = 8,
+            RestType = RestType.LongRest
+        }, context, CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(4, character.SystemStats!.ResourcePools!["spell_slots_1"].Current);
+        Assert.Equal(1, character.RestSequence);
+        Assert.Equal(1, character.LastRecoveredRestSequence);
+        Assert.Contains("recovered immediately", result.Summary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_Interrupted_DoesNotRecoverResourcePools()
+    {
+        var charId = "chars/wizard-interrupted";
+        var character = new Character
+        {
+            Id = charId,
+            CurrentLocationId = "loc/1",
+            SystemStats = new Dnd5eExtension
+            {
+                ResourcePools = new Dictionary<string, ResourcePool>
+                {
+                    ["spell_slots_1"] = new() { Current = 0, Max = 4, Recovery = RecoveryType.LongRest }
+                }
+            }
+        };
+
+        var rule = new EncounterResolver(() => 0.0); // guarantees interrupt
+        var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
+
+        var context = new ChangeContext(
+            null!,
+            new Dictionary<string, Character> { [charId] = character },
+            new Dictionary<string, Item>(),
+            new Dictionary<string, Location> { ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Wilderness } },
+            new Dictionary<string, Faction>(),
+            new Dictionary<string, Quest>(),
+            NullLogger.Instance,
+            [],
+            new WorldChangeDispatcher([], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance));
+
+        var result = await handler.ApplyAsync(new RestChange
+        {
+            CharacterId = charId,
+            LocationId = "loc/1",
+            IntendedHours = 8,
+            SecurityModifier = -50
+        }, context, CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(0, character.SystemStats!.ResourcePools!["spell_slots_1"].Current);
+        Assert.Null(character.RestSequence);
+    }
+
+    [Fact]
     public async Task StatusChangeHandler_UnknownConditionName_RecordsSoftWarning()
     {
         var charId = "chars/warn-test";

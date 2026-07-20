@@ -362,7 +362,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 ActiveInitiatives = enrichment.ActiveInitiatives.ToList(),
                 RelevantMemories = enrichment.RelevantMemories.ToList(),
                 Equipped = equipped,
-                Carried = carried
+                Carried = carried,
+                TurnIntent = enrichment.TurnIntent
             };
 
             return new ToolResult<NpcContextView>(

@@ -359,4 +359,103 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             // But we can assert 2 are missing.
         }
     }
+
+    [Fact]
+    public async Task FilterAndCapAsync_SameSignature_DifferingOnlyByDigits_StillSuppressedByCooldown()
+    {
+        var campaignName = "pressure-signature-same-" + Guid.NewGuid();
+        var keys = new CampaignDocumentKeys();
+        var pm = new PressureManager(keys);
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) });
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
+            await session.SaveChangesAsync();
+        }
+
+        // Day 1: morale at 8% — surfaces.
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Morale is at 8%.", "Character:Morale") };
+            var items = await pm.FilterAndCapAsync(session, campaignName, 1, pressures);
+            await session.SaveChangesAsync();
+            Assert.Single(items);
+        }
+
+        // Day 2 (within cooldown): morale dropped to 3% — same underlying nag (digits stripped
+        // before hashing), still suppressed rather than surfacing as "new".
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Morale is at 3%.", "Character:Morale") };
+            var items = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
+            await session.SaveChangesAsync();
+            Assert.Empty(items);
+        }
+    }
+
+    [Fact]
+    public async Task FilterAndCapAsync_DifferentSignature_SurfacesDespiteCooldown_AndResetsEscalation()
+    {
+        var campaignName = "pressure-signature-diff-" + Guid.NewGuid();
+        var keys = new CampaignDocumentKeys();
+        var pm = new PressureManager(keys);
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) });
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
+            await session.SaveChangesAsync();
+        }
+
+        // Day 1: "starving" nag surfaces.
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Character is starving.", "Character:Morale") };
+            var items = await pm.FilterAndCapAsync(session, campaignName, 1, pressures);
+            await session.SaveChangesAsync();
+            Assert.Single(items);
+        }
+
+        // Day 2 (within cooldown), same Severity:EntityId key but materially different text ("dehydrated"
+        // instead of "starving") — must NOT be silently suppressed by the stale cooldown, since the
+        // underlying issue changed. Also confirmed non-escalated (fresh cycle, not inheriting count).
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Character is dehydrated.", "Character:Morale") };
+            var items = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
+            await session.SaveChangesAsync();
+            var displayed = PressureManager.ToDisplayStrings(items);
+            Assert.Single(items);
+            Assert.Contains("NARRATIVE PROMPT", displayed[0]);
+            Assert.DoesNotContain("ENGINE WARNING", displayed[0]);
+        }
+    }
+
+    [Fact]
+    public async Task FilterAndCapAsync_PreExistingCooldownWithoutSignature_DeserializesAndBehavesAsSuppressed()
+    {
+        var campaignName = "pressure-signature-legacy-" + Guid.NewGuid();
+        var keys = new CampaignDocumentKeys();
+        var pm = new PressureManager(keys);
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var campaign = new Campaign { Name = campaignName, Id = keys.Meta(campaignName) };
+            // Simulate a pre-existing cooldown entry written before LastSignature existed.
+            campaign.PressureCooldowns[$"{PressureSeverity.NarrativePrompt}:chars/1"] = new PressureState(1, 0);
+            await session.StoreAsync(campaign);
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Character is starving.", "Character:Morale") };
+            var items = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
+            await session.SaveChangesAsync();
+            // Null LastSignature => treated as "no prior signature to compare" => normal cooldown applies.
+            Assert.Empty(items);
+        }
+    }
 }

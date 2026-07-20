@@ -32,7 +32,10 @@ public sealed class PressureOrchestrator : IPressureOrchestrator
                 var items = await contributor.EvaluateAsync(ctx, ct);
                 foreach (var item in items)
                 {
-                    var key = $"{item.GroupingKey}:{item.EntityId}";
+                    // Signature included so a materially different Text under the same GroupingKey:EntityId
+                    // survives as a distinct entry instead of silently overwriting an earlier, different nag.
+                    var signature = PressureHelpers.ComputeContentSignature(item.Text);
+                    var key = $"{item.GroupingKey}:{item.EntityId}:{signature}";
                     merged[key] = item;
                 }
             }

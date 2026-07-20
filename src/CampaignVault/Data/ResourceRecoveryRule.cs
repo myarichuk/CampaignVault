@@ -4,10 +4,12 @@ namespace CampaignVault.Data;
 
 /// <summary>
 /// Recovers resource pools (spell slots, focus points, etc.) after long or short rests.
-/// Runs during advance_world for any character with a completed rest not yet recovered
-/// (LastRecoveredRestSequence != RestSequence, with a legacy day fallback), plus a separate
-/// Daily-recovery pass gated by ResourcePool.LastRecoveredDay.
-/// ResourcePool.LastRecoveredDay.
+/// Rest-based recovery now happens synchronously inside the "rest" commit itself
+/// (see <see cref="RestRecoveryLogic"/>, called from RestChangeHandler); this rule's rest-based
+/// pass is a defense-in-depth fallback for advance_world and is normally a no-op, since
+/// RestRecoveryLogic.IsRestAlreadyRecovered guards both call sites identically. The separate
+/// Daily-recovery pass, gated purely by ResourcePool.LastRecoveredDay, is unrelated to resting
+/// and always runs here only.
 ///
 /// LIMITATION: PerTurn recovery (Fallout 2d20 Action Points) is not automatically handled.
 /// The LLM must manually reset these via resource commits at the start of each turn in combat.
@@ -42,51 +44,7 @@ public class ResourceRecoveryRule : ISimulationRule
 
                 ApplyDailyRecovery(character, currentDay, narratives, deltas);
 
-                if (character.LastRestedDay == null || character.LastRestType == null)
-                {
-                    continue;
-                }
-
-                if (IsRestAlreadyRecovered(character))
-                {
-                    continue;
-                }
-
-                foreach (var (poolName, pool) in character.SystemStats.ResourcePools)
-                {
-                    // Skip if pool is already at max
-                    if (pool.Current == pool.Max)
-                    {
-                        continue;
-                    }
-
-                    // Check if this pool should recover based on rest type hierarchy
-                    if (!ShouldRecoverPool(character.LastRestType.Value, pool.Recovery))
-                    {
-                        continue;
-                    }
-
-                    var recovery = pool.Max - pool.Current;
-                    deltas.Add(new ResourceChange
-                    {
-                        CharacterId = character.Id,
-                        PoolName = poolName,
-                        Delta = recovery,
-                        RecoveredOnDay = character.LastRestedDay.Value,
-                        Reason = $"{character.LastRestType} rest recovery"
-                    });
-
-                    narratives.Add($"{character.Name} recovered {recovery} {poolName} after {character.LastRestType} rest.");
-                    _logger.LogDebug("ResourceRecoveryRule: {CharacterName} recovered {Count} {PoolName} after {RestType} rest",
-                        character.Name, recovery, poolName, character.LastRestType);
-                }
-
-                deltas.Add(new RestRecoveryAck
-                {
-                    CharacterId = character.Id,
-                    RestDay = character.LastRestedDay.Value,
-                    RestSequence = character.RestSequence ?? character.LastRestedDay.Value
-                });
+                deltas.AddRange(RestRecoveryLogic.BuildRecoveryDeltas(character, narratives, _logger));
             }
 
             return Task.FromResult(new RuleResult(narratives, deltas));
@@ -136,36 +94,4 @@ public class ResourceRecoveryRule : ISimulationRule
         }
     }
 
-    private static bool IsRestAlreadyRecovered(Character character)
-    {
-        if (character.RestSequence.HasValue)
-        {
-            return character.LastRecoveredRestSequence == character.RestSequence;
-        }
-
-        // Legacy saves predating RestSequence: fall back to day-only idempotency.
-        return character.LastRestRecoveredDay == character.LastRestedDay;
-    }
-
-    /// <summary>
-    /// Recovery type hierarchy matrix: determines which resource pools recover for a given rest type.
-    /// LongRest ⊃ ShortRest ⊃ PerTurn (each includes lower levels).
-    /// </summary>
-    private static bool ShouldRecoverPool(RestType restTaken, RecoveryType poolRecovery) => (restTaken, poolRecovery) switch
-    {
-        // LongRest recovers everything: LongRest pools, ShortRest pools, PerTurn pools
-        (RestType.LongRest, RecoveryType.LongRest) => true,
-        (RestType.LongRest, RecoveryType.ShortRest) => true,
-        (RestType.LongRest, RecoveryType.PerTurn) => true,
-
-        // ShortRest recovers ShortRest and PerTurn pools (not LongRest)
-        (RestType.ShortRest, RecoveryType.ShortRest) => true,
-        (RestType.ShortRest, RecoveryType.PerTurn) => true,
-
-        // PerTurn only recovers PerTurn pools
-        (RestType.PerTurn, RecoveryType.PerTurn) => true,
-
-        // All other combinations don't recover (Daily is handled separately in ApplyDailyRecovery; EncounterEnd is unimplemented)
-        _ => false
-    };
 }

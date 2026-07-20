@@ -46,6 +46,9 @@ internal static class SideEffectDuplicationGuard
                     case EngagementRelationChange erc when affected.Contains(erc.CharacterId) || affected.Contains(erc.TargetId):
                         return $"'ruleset_action' ({action.ActionName}) on {action.CharacterId} already auto-applies 'engagement_relation' — " +
                                $"remove the separate engagement_relation change between {erc.CharacterId} and {erc.TargetId} (or split it into a second commit if it's an unrelated adjustment).";
+                    case SceneSetupChange ssc when ssc.Engagement is not null && (affected.Contains(ssc.CharacterId) || affected.Contains(ssc.TargetId)):
+                        return $"'ruleset_action' ({action.ActionName}) on {action.CharacterId} already auto-applies 'engagement_relation' — " +
+                               $"remove the scene_setup engagement between {ssc.CharacterId} and {ssc.TargetId} (or split it into a second commit if it's an unrelated adjustment).";
                 }
             }
         }

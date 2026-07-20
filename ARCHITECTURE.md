@@ -75,7 +75,7 @@ Registered handlers (via DI in `Program.cs`). Entity *creation* is normally done
 - Narrative: `EventOccurredHandler`, `RumorEvolvesHandler`, `RelationshipChangeHandler`, `MoodChangeHandler`, `ActivityChangeHandler`
 - NPC mind: `NeedChangeHandler`, `KnowledgeUpdateHandler`, `ScheduleChangeHandler`, `MemoryDecayHandler`
 - World update: `LocationUpdateHandler`, `CharacterCreateHandler` (legacy `character_create` $type, collision-safe), `CharacterUpdateHandler`
-- Scene anchoring: `EngagementRelationChangeHandler`, `SpatialPositionChangeHandler`, `SceneInterruptChangeHandler`
+- Scene anchoring: `EngagementRelationChangeHandler`, `SpatialPositionChangeHandler`, `SceneInterruptChangeHandler`, `SceneSetupChangeHandler`
 - Macro: `TravelChangeHandler`, `RestChangeHandler`, `RestRecoveryAckHandler`, `FactionReputationChangeHandler`, `FactionStateChangeHandler`, `QuestProgressHandler`, `PlotThreadProgressHandler`, `PlotThreadClueDiscoveredHandler`, `ArchiveEntityChangeHandler`
 
 `RulesetActionHandler` loads the campaign's `CampaignConfig`, selects the active `IRulesetModule`, calls `IActionResolution.ResolveAsync`, and dispatches any returned follow-up mutations (HP, status, engagement relations from grapple maneuvers, etc.).
@@ -116,6 +116,8 @@ Two complementary primitives on `SystemExtension` track *who is doing what to wh
 
 - `TravelChangeHandler` blocks travel when any `engagementRelations` entry has Hard restriction.
 - `EngagementRelationPressureContributor` emits `NARRATIVE PROMPT` for Soft and Hard engagements on scene NPCs (`Character:EngagementLock`).
+
+**Composite scene setup (`scene_setup`):** `SceneSetupChange` lets the LLM set engagement and/or spatial position against the same `targetId` in one commit item — e.g. placing two characters in a scene in a single call instead of two. `SceneSetupChangeHandler` is a thin orchestrator: it synthesizes an `EngagementRelationChange`/`SpatialPositionChange` from its `Engagement`/`Spatial` sub-objects and dispatches them via `DispatchMutationAsync` (same pattern `RulesetActionHandler` uses for derived mutations), so all existing validation, bidirectional mirroring, no-op detection, and history logging apply unchanged. No new persisted model — it writes to the same `engagementRelations[]`/`spatialPositions[]` lists. The bare `engagement_relation`/`spatial_position` types remain for single-purpose updates.
 
 **Ruleset integration (grapple):** On successful grapple `ruleset_action` (`ContestedCheck` + `ActionCategory.Maneuver` or grapple name), resolvers emit `EngagementRelationChange` mutations via `EngagementMutationHelper`:
 
@@ -161,7 +163,7 @@ Read-side tools call `PressureOrchestrator.CollectAndCapAsync` with a scope:
 
 Contributors include rumor aging, unresolved events, character distress (including temperature extremes from `ClimateExposureRule`'s felt-temp reading), quest deadlines, travel interruptions, engagement locks, location integrity/hallucination/connectivity, faction economy/territory, memory decay, climate/gear mismatch (`ClimateShiftPressureContributor`), ambient item expiry nags (`AmbientItemExpiryPressureContributor` — reads the flag `AmbientItemDecayRule` set, distinct rule vs. contributor split), and more. Rulesets can add contributors via `IRulesetPressureContributor` (e.g. D&D 5e exhaustion).
 
-`PressureManager` deduplicates, caps volume, and escalates repeated nags to `ENGINE WARNING:` after configurable suppression counts (`CampaignConfig.PressureEscalationCount`).
+`PressureManager` deduplicates, caps volume, and escalates repeated nags to `ENGINE WARNING:` after configurable suppression counts (`CampaignConfig.PressureEscalationCount`). Cooldown/escalation tracking (`Campaign.PressureCooldowns`, keyed `Severity:EntityId`) now also compares a normalized content signature (`PressureHelpers.ComputeContentSignature` — SHA-256 of the pressure `Text` with digits stripped, so "morale 8%" and "morale 3%" still share suppression state as the same underlying nag) against the last-surfaced signature: a materially different `Text` under the same key is treated as a fresh nag (fresh escalation cycle) instead of inheriting stale suppression state or being silently dropped by `PressureOrchestrator`'s merge (which now includes the signature in its dedup key). `advance_world` runs with cooldowns disabled, so it dedupes `SimulatorEvents` directly by content signature before building pressure items, since cooldown-based suppression isn't available on that path.
 
 **Response shape:** `get_scene` and `advance_world` attach formatted pressure strings on `ToolResult.WorldPressure`. `get_world_state` embeds them in `Data.WorldPressure` on the view object.
 
@@ -190,7 +192,7 @@ Implemented and registered at startup:
 
 `ResourcePoolProvider` (`IRulesetYamlProvider`) loads pool templates from `RulesetData/{system}/pools/*.yaml` (e.g. `spell_slots_1..9`, `ki_points`, `focus_points`) — configuration is data-driven, not hardcoded. Each pool tracks `Current` and `Max` (derived at character create/level-up by `ResourcePoolInitializer` via `Dnd5eCasterLevelHelper` for d&d5e multiclass stacking, class-level maps for PF2e, etc.), `Recovery` type (`LongRest`/`ShortRest`/`Daily`), and last-recovered tracking for idempotency.
 
-Consumption goes through `ResourceChangeHandler` via `$type: "resource"` commits — validates spell level vs. slot pool level (hard-fails only for over-level spells), **clamps to [0, Max] without hard-failing on pool depletion** (appends `(Clamped: ...)` narrative note so the LLM sees it), and logs the spend. Recovery happens on the **next `advance_world`** after a rest, not at rest time, via `ResourceRecoveryRule` (Order 38) which applies the rest-type hierarchy (LongRest ⊃ ShortRest ⊃ PerTurn). Narrative rulesets opt out structurally: `ResourcePoolProvider` never registers pool YAML for `RulesetSystem.Narrative`, so Narrative characters skip recovery entirely.
+Consumption goes through `ResourceChangeHandler` via `$type: "resource"` commits — validates spell level vs. slot pool level (hard-fails only for over-level spells), **clamps to [0, Max] without hard-failing on pool depletion** (appends `(Clamped: ...)` narrative note so the LLM sees it), and logs the spend. Recovery happens **immediately when a `rest` commit completes** — `RestChangeHandler` calls the shared `RestRecoveryLogic.BuildRecoveryDeltas` synchronously (applying the rest-type hierarchy LongRest ⊃ ShortRest ⊃ PerTurn) and dispatches the resulting deltas in the same commit, so a quick rest and a long narrative rest both recover pools the instant the rest finishes — no separate `advance_world` call needed, and there is no live-vs-async distinction. `ResourceRecoveryRule` (Order 38) still runs during `advance_world` as a defense-in-depth fallback using the same idempotency guard (`RestSequence`/`LastRecoveredRestSequence`), so it is normally a no-op for characters already recovered synchronously. Narrative rulesets opt out structurally: `ResourcePoolProvider` never registers pool YAML for `RulesetSystem.Narrative`, so Narrative characters skip recovery entirely.
 
 ### Relationship-based social roll modifiers
 
@@ -210,11 +212,13 @@ Consumption goes through `ResourceChangeHandler` via `$type: "resource"` commits
 
 PCs omit `maxHp`; the pipeline derives HP from typed `systemStats` fields. Creature stat blocks use `maxHp` or `systemStats.statBlockHp` — these skip HP formula only; defense/proficiency steps still run. Steps live under `Rulesets/Bootstrap/`. Defense steps emit `[BOOTSTRAP HINT]` messages with copy-paste `item_create` armor JSON when worn armor is missing.
 
-Combat flow: `start_combat` rolls initiative once per combatant, sorts turn order, stores `CombatEncounter` at the campaign key. `next_turn` advances turns and expires round-based status effects. HP and status mutations during combat go through `commit`, not the turn tools. `get_scene` returns `ActiveCombat` when combat is active at that location.
+Combat flow: `start_combat` rolls initiative once per combatant, sorts turn order, stores `CombatEncounter` at the campaign key (`CombatantState.HasActedThisRound` + `CombatEncounter.ActiveTurnId` — a single pointer to whose turn it is, hard-enforced elsewhere via a "NotYourTurn" check). `next_turn` advances turns and expires round-based status effects. HP and status mutations during combat go through `commit`, not the turn tools. `get_scene` returns `ActiveCombat` when combat is active at that location.
 
 ## NPC Initiative (read-side)
 
 `NpcInitiativeService` synthesizes behavioral initiative signals (relational, memory, need/activity conflict, disposition) for `get_npc_context` and scene NPC enrichment. This is narrative prompting, not combat turn order.
+
+**Turn-intent signal:** `Enrich` also computes an advisory `TurnIntentSignal` (`Holder: "npc"`, `Reason`, `Confidence`) when `BehavioralTension >= CampaignConfig.BehavioralTensionSpeakingThreshold` (0-100 scale, default 60) and the top initiative candidate's `Urgency` is at least `High` — pure aggregation of signals already computed by `Enrich`, no new data source. Projected per-NPC into `NpcContextView.TurnIntent` and `NpcPresenceSummary.TurnIntent`; `SceneAssembler.Assemble` aggregates across all present NPCs into `SceneView.TurnIntentCharacterId` (the highest-`BehavioralTension` NPC among those with `Holder == "npc"`, or `null` for "open turn"). Unlike combat's `ActiveTurnId`, this is advisory only — it shares no round/action-budget machinery and is never enforced; the DM should still use judgment.
 
 ## Environmental & Economic Simulation
 

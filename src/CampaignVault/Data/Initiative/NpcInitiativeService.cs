@@ -41,11 +41,19 @@ public sealed class NpcInitiativeService(
             ctx.CurrentDay,
             ctx.Config.InitiativeSuppressionRetentionDays);
 
+        var topCandidate = candidates.FirstOrDefault();
+        var turnIntent = tension >= ctx.Config.BehavioralTensionSpeakingThreshold && topCandidate is { Urgency: >= MemoryUrgency.High }
+            ? new TurnIntentSignal("npc", topCandidate.FramingPrompt, topCandidate.Urgency)
+            : null;
+
         return new NpcInitiativeEnrichment(
             tension,
             ctx.IncludeTensionBreakdown ? breakdown : null,
             candidates,
-            relevantMemories);
+            relevantMemories)
+        {
+            TurnIntent = turnIntent
+        };
     }
 
     private static InitiativeCandidate ApplyPersonalityWeight(InitiativeCandidate candidate, PsychologyProfile psych)

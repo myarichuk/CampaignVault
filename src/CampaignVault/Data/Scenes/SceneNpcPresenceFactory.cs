@@ -79,7 +79,8 @@ public sealed class SceneNpcPresenceFactory
                 RelevantMemories: enrichment.RelevantMemories.ToList(),
                 HeldItems: heldItems,
                 EquippedItems: equippedItems,
-                CarriedItems: carriedItems
+                CarriedItems: carriedItems,
+                TurnIntent: enrichment.TurnIntent
             ));
         }
 

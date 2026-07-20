@@ -54,6 +54,13 @@ public class SceneView
     /// Nested container contents for visible container items in this scene.
     /// </summary>
     public List<ContainerContentsSummary> ContainerContents { get; set; } = [];
+
+    /// <summary>
+    /// Advisory only — never a hard gate, unlike combat's ActiveTurnId/NotYourTurn. Null means "open
+    /// turn": the player can always act. Non-null names the present NPC with the highest
+    /// BehavioralTension among those whose TurnIntent.Holder is "npc" — a hint, not a lock.
+    /// </summary>
+    public string? TurnIntentCharacterId { get; set; }
 }
 
 /// <summary>
@@ -136,7 +143,12 @@ public record NpcPresenceSummary(
     /// </summary>
     IReadOnlyList<Item>? HeldItems = null,
     List<ItemSummaryView>? EquippedItems = null,
-    List<ItemSummaryView>? CarriedItems = null)
+    List<ItemSummaryView>? CarriedItems = null,
+    /// <summary>
+    /// Advisory-only "whose move is it" hint for this NPC — never a hard gate. Null means this NPC has
+    /// no pressing reason to act/speak next.
+    /// </summary>
+    TurnIntentSignal? TurnIntent = null)
 {
     public NpcPresenceSummary() : this(default!, default!, default!, default!, default!, default!, default!) { }
 }

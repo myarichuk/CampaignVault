@@ -36,6 +36,16 @@ public record InitiativeSurfacedState(
     public InitiativeSurfacedState() : this(default!, default!) { }
 }
 
+/// <summary>
+/// Advisory-only "whose move is it" hint for RP scenes — never a hard gate, unlike combat's
+/// ActiveTurnId/NotYourTurn. Holder is "player" or "npc"; Reason mirrors the top initiative
+/// candidate's FramingPrompt when Holder is "npc".
+/// </summary>
+public record TurnIntentSignal(string Holder, string? Reason, MemoryUrgency? Confidence)
+{
+    public TurnIntentSignal() : this(default!, default, default) { }
+}
+
 public record NpcInitiativeEnrichment(
     double BehavioralTension,
     TensionBreakdown? TensionComponents,
@@ -43,4 +53,7 @@ public record NpcInitiativeEnrichment(
     IReadOnlyList<MemoryNode> RelevantMemories)
 {
     public NpcInitiativeEnrichment() : this(default!, default!, default!, default!) { }
+
+    /// <summary>Null means "open turn" — the player can always act. Advisory only.</summary>
+    public TurnIntentSignal? TurnIntent { get; init; }
 }

@@ -45,7 +45,8 @@ public sealed class SceneAssembler
             ActiveQuests = [],
             RelevantFactions = [],
             LastKnownTravel = null,
-            SuggestedCommitExamples = []
+            SuggestedCommitExamples = [],
+            TurnIntentCharacterId = null
         };
     }
 
@@ -77,6 +78,13 @@ public sealed class SceneAssembler
             context.Location.LastVisitedDay = context.Time.TotalDaysElapsed;
         }
 
+        // Advisory only — the present NPC with the most pressing initiative, or null ("open turn") if
+        // none of them currently think it's their move. Never a hard gate, unlike combat's ActiveTurnId.
+        var turnIntentHolder = presenceSummaries
+            .Where(n => n.TurnIntent?.Holder == "npc")
+            .OrderByDescending(n => n.BehavioralTension)
+            .FirstOrDefault();
+
         return new SceneView
         {
             Location = context.Location,
@@ -91,7 +99,8 @@ public sealed class SceneAssembler
             LastKnownTravel = SceneTravelSummaryExtractor.GetLastKnownTravel(context.Events),
             RecognitionHints = recognitionHints.Count > 0 ? recognitionHints : null,
             ContainerContents = context.ContainerContents.ToList(),
-            SuggestedCommitExamples = []
+            SuggestedCommitExamples = [],
+            TurnIntentCharacterId = turnIntentHolder?.Id
         };
     }
 

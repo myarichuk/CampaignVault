@@ -26,6 +26,9 @@ public class NpcContextView
     public List<MemoryNode> RelevantMemories { get; set; } = [];
     public List<ItemSummaryView>? Equipped { get; set; }
     public List<ItemSummaryView>? Carried { get; set; }
+
+    /// <summary>Advisory-only "whose move is it" hint for this NPC — never a hard gate.</summary>
+    public TurnIntentSignal? TurnIntent { get; set; }
 }
 
 /// <summary>

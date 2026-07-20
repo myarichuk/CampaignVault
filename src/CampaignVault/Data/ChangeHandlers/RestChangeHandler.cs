@@ -87,6 +87,18 @@ public class RestChangeHandler : IWorldChangeHandler
                 await ClearUntilLongRestConditionsAsync(rc.CharacterId, character, context, ct);
             }
 
+            // Recover eligible resource pools immediately — don't wait for the next advance_world.
+            var recoveryNarratives = new List<string>();
+            var recoveryDeltas = RestRecoveryLogic.BuildRecoveryDeltas(character, recoveryNarratives);
+            foreach (var recoveryDelta in recoveryDeltas)
+            {
+                await context.Dispatcher.DispatchMutationAsync(context, recoveryDelta, ct);
+            }
+            foreach (var note in recoveryNarratives)
+            {
+                context.RecordMessage(note);
+            }
+
             await context.Dispatcher.DispatchMutationAsync(context, new ActivityChange
             {
                 CharacterId = rc.CharacterId,
@@ -96,9 +108,12 @@ public class RestChangeHandler : IWorldChangeHandler
                 Reason = "Rest complete"
             }, ct);
 
+            var recoverySummary = recoveryNarratives.Count > 0
+                ? "Resource pools recovered immediately."
+                : "No resource pools were eligible to recover.";
+
             return new ChangeHandlerResult(true,
-                $"Rest completed safely. {hoursRested} hours passed ({restType} rest). " +
-                "Resource pools (spell slots, etc.) recover on the NEXT advance_world call, not immediately.");
+                $"Rest completed safely. {hoursRested} hours passed ({restType} rest). {recoverySummary}");
         }
 
         return new ChangeHandlerResult(true, $"Rest INTERRUPTED after {hoursRested} hours! Encounter spawned. Do NOT apply healing commits yet; resolve the encounter first.");

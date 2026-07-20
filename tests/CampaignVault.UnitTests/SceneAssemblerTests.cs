@@ -255,4 +255,90 @@ public class SceneAssemblerTests
         Assert.Single(scene.VisibleItems);
         Assert.Single(scene.ActiveQuests!);
     }
+
+    [Fact]
+    public void SceneAssembler_PicksHighestTensionNpcHolder_ForTurnIntent()
+    {
+        var behavior = Substitute.For<INpcBehaviorSynthesizer>();
+        var initiative = Substitute.For<INpcInitiativeService>();
+        var assembler = new SceneAssembler(behavior, initiative);
+        var location = new Location { Id = "locations/inn", Name = "Inn" };
+
+        var mildNpc = new Character { Id = "chars/mild", Name = "Mild", CampaignName = "camp-a", CurrentLocationId = "locations/inn" };
+        var urgentNpc = new Character { Id = "chars/urgent", Name = "Urgent", CampaignName = "camp-a", CurrentLocationId = "locations/inn" };
+
+        behavior.GenerateSummary(Arg.Any<Character>(), Arg.Any<CampaignTime>(), Arg.Any<IEnumerable<Event>>()).Returns("...");
+        initiative.Enrich(Arg.Is<NpcInitiativeContext>(c => c.Npc.Id == "chars/mild"), Arg.Any<Campaign>()).Returns(
+            new NpcInitiativeEnrichment(BehavioralTension: 30, TensionComponents: null, ActiveInitiatives: [], RelevantMemories: [])
+            {
+                TurnIntent = new TurnIntentSignal("npc", "Mild reason", MemoryUrgency.High)
+            });
+        initiative.Enrich(Arg.Is<NpcInitiativeContext>(c => c.Npc.Id == "chars/urgent"), Arg.Any<Campaign>()).Returns(
+            new NpcInitiativeEnrichment(BehavioralTension: 75, TensionComponents: null, ActiveInitiatives: [], RelevantMemories: [])
+            {
+                TurnIntent = new TurnIntentSignal("npc", "Urgent reason", MemoryUrgency.Urgent)
+            });
+
+        var scene = assembler.Assemble(new SceneAssemblyContext
+        {
+            RequestedLocationId = "locations/inn",
+            EffectiveCampaign = "camp-a",
+            Location = location,
+            NpcsFromIndex = [mildNpc, urgentNpc],
+            NpcsFromSimulation = [mildNpc, urgentNpc],
+            Rumors = [],
+            Items = [],
+            Events = [],
+            Time = new CampaignTime { TotalDaysElapsed = 1 },
+            GlobalNeedDescriptors = new Dictionary<string, string>(),
+            Config = new CampaignConfig(),
+            Campaign = new Campaign { Id = "campaigns/camp-a/meta", Name = "camp-a", DisplayName = "Camp A" },
+            RecentCampaignEvents = [],
+            ItemsByHolder = new Dictionary<string, List<Item>>(),
+            ActiveCombat = null,
+            ActiveQuests = [],
+            RelevantFactions = [],
+            MarkVisited = false
+        });
+
+        Assert.Equal("chars/urgent", scene.TurnIntentCharacterId);
+    }
+
+    [Fact]
+    public void SceneAssembler_NoNpcTurnIntent_DefaultsToNullOpenTurn()
+    {
+        var behavior = Substitute.For<INpcBehaviorSynthesizer>();
+        var initiative = Substitute.For<INpcInitiativeService>();
+        var assembler = new SceneAssembler(behavior, initiative);
+        var location = new Location { Id = "locations/inn", Name = "Inn" };
+        var npc = new Character { Id = "chars/calm", Name = "Calm", CampaignName = "camp-a", CurrentLocationId = "locations/inn" };
+
+        behavior.GenerateSummary(Arg.Any<Character>(), Arg.Any<CampaignTime>(), Arg.Any<IEnumerable<Event>>()).Returns("...");
+        initiative.Enrich(Arg.Any<NpcInitiativeContext>(), Arg.Any<Campaign>()).Returns(
+            new NpcInitiativeEnrichment(BehavioralTension: 5, TensionComponents: null, ActiveInitiatives: [], RelevantMemories: []));
+
+        var scene = assembler.Assemble(new SceneAssemblyContext
+        {
+            RequestedLocationId = "locations/inn",
+            EffectiveCampaign = "camp-a",
+            Location = location,
+            NpcsFromIndex = [npc],
+            NpcsFromSimulation = [npc],
+            Rumors = [],
+            Items = [],
+            Events = [],
+            Time = new CampaignTime { TotalDaysElapsed = 1 },
+            GlobalNeedDescriptors = new Dictionary<string, string>(),
+            Config = new CampaignConfig(),
+            Campaign = new Campaign { Id = "campaigns/camp-a/meta", Name = "camp-a", DisplayName = "Camp A" },
+            RecentCampaignEvents = [],
+            ItemsByHolder = new Dictionary<string, List<Item>>(),
+            ActiveCombat = null,
+            ActiveQuests = [],
+            RelevantFactions = [],
+            MarkVisited = false
+        });
+
+        Assert.Null(scene.TurnIntentCharacterId);
+    }
 }

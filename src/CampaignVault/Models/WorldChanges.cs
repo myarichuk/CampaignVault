@@ -37,6 +37,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(KnowledgeUpdate), "knowledge_update")]
 [JsonDerivedType(typeof(EngagementRelationChange), "engagement_relation")]
 [JsonDerivedType(typeof(SpatialPositionChange), "spatial_position")]
+[JsonDerivedType(typeof(SceneSetupChange), "scene_setup")]
 [JsonDerivedType(typeof(SceneInterruptCheck), "scene_interrupt_check")]
 [JsonDerivedType(typeof(PlotThreadProgress), "plot_thread_progress")]
 [JsonDerivedType(typeof(PlotThreadClueDiscovered), "plot_thread_clue")]
@@ -72,7 +73,7 @@ public class RestChange : WorldChange
     [JsonPropertyName("locationId")]
     public string LocationId { get; set; } = default!;
 
-    [Description("How many hours the character intends to rest. (e.g., 1 for short, 8 for long).")]
+    [Description("How many hours the character intends to rest. (e.g., 1 for short, 8 for long). Eligible resource pools (spell slots, etc.) recover immediately when the rest completes — no separate advance_world call needed.")]
     [JsonPropertyName("intendedHours")]
     public int IntendedHours { get; set; }
 
@@ -337,6 +338,68 @@ public class SpatialPositionChange : WorldChange
     [JsonPropertyName("targetId")]
     public string TargetId { get; set; } = default!;
 
+    [Description("Distance band (Touch, Close, Near, Far, Distant). Use null or empty to remove.")]
+    [JsonPropertyName("distanceBand")]
+    public string? DistanceBand { get; set; }
+
+    [Description("Optional bearing (North, Behind, AtBar, etc.).")]
+    [JsonPropertyName("bearing")]
+    public string? Bearing { get; set; }
+
+    [Description("Optional sub-zone within the scene (bar, doorway, etc.).")]
+    [JsonPropertyName("zone")]
+    public string? Zone { get; set; }
+}
+
+/// <summary>
+/// Composite convenience for setting engagement and/or spatial position against the same target
+/// in a single commit item — e.g. "AI DM sets up a scene" in one call instead of two. Internally
+/// dispatches to the same EngagementRelationChange/SpatialPositionChange handlers, so behavior
+/// (bidirectional mirroring, no-op detection, history logging) is identical either way. Prefer the
+/// bare engagement_relation/spatial_position types for single-purpose updates.
+/// </summary>
+public class SceneSetupChange : WorldChange
+{
+    [Description("ID of the character whose engagement/position is being set (e.g. 'chars/bard').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = default!;
+
+    [Description("ID of the target character or object this scene setup is relative to (e.g. 'chars/archivist'). Shared by both Engagement and Spatial below.")]
+    [JsonPropertyName("targetId")]
+    public string TargetId { get; set; } = default!;
+
+    [Description("Optional pairwise engagement to establish/update/clear against TargetId. Omit to leave engagement untouched.")]
+    [JsonPropertyName("engagement")]
+    public SceneSetupEngagement? Engagement { get; set; }
+
+    [Description("Optional relative spatial placement against TargetId. Omit to leave spatial position untouched.")]
+    [JsonPropertyName("spatial")]
+    public SceneSetupSpatial? Spatial { get; set; }
+}
+
+public class SceneSetupEngagement
+{
+    [Description("Engagement category: Physical, Social, Medical, Attention, or Proximity.")]
+    [JsonPropertyName("category")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public EngagementCategory? Category { get; set; }
+
+    [Description("Freeform verb (e.g. 'grappling', 'ranting at', 'stitching'). Omit or set to null/empty to remove/clear the relation.")]
+    [JsonPropertyName("verb")]
+    public string? Verb { get; set; }
+
+    [Description("Optional restriction override: None, Soft, or Hard.")]
+    [JsonPropertyName("restrictionLevel")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public EngagementRestrictionLevel? RestrictionLevel { get; set; }
+
+    [Description("Whether to automatically establish the inverse relationship on the target. Default true.")]
+    [JsonPropertyName("bidirectional")]
+    public bool Bidirectional { get; set; } = true;
+}
+
+public class SceneSetupSpatial
+{
     [Description("Distance band (Touch, Close, Near, Far, Distant). Use null or empty to remove.")]
     [JsonPropertyName("distanceBand")]
     public string? DistanceBand { get; set; }

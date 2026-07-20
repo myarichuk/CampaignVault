@@ -97,6 +97,10 @@ internal static class ConversationInvolvedResolver
                     AddIfPresent(ids, sp.CharacterId);
                     AddIfPresent(ids, sp.TargetId);
                     break;
+                case SceneSetupChange ss:
+                    AddIfPresent(ids, ss.CharacterId);
+                    AddIfPresent(ids, ss.TargetId);
+                    break;
                 case EventOccurred ev:
                     if (ev.Involved != null)
                     {
@@ -116,7 +120,7 @@ internal static class ConversationInvolvedResolver
 
     private static void AddIfPresent(HashSet<string> ids, string? id)
     {
-        if (!string.IsNullOrWhiteSpace(id))
+        if (!string.IsNullOrWhiteSpace(id) && id.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
         {
             ids.Add(id);
         }

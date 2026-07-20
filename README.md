@@ -1,20 +1,221 @@
 # CampaignVault - Living World DM Engine
 
-A high-bandwidth Model Context Protocol (MCP) server that turns RavenDB into a persistent, reactive simulation engine for long-running TTRPG campaigns. It is purpose-built as an MCP to solve the challenges of state tracking, context limits, and hallucination when an LLM performs the DM role over long campaigns, providing reliable world state tracking, NPC psychology, rumor lifecycles, and atomic narrative resolution across many sessions.
+Turn an LLM into a DM that remembers your world. Track NPCs, time, combat, and consequences across sessions without hallucinations or context limits.
 
-**Compatible with:** 5th Edition (D&D 5e SRD), Pathfinder 2e (ORC License), and Narrative rulesets.
+**Ruleset support:** D&D 5e, Pathfinder 2e, Narrative (d6 Oracle).
+
+---
+
+## Use Case 1: Local Development (Your Computer)
+
+Run CampaignVault on your machine and test locally. Great for building campaigns.
+
+### Quick Start
+
+1. **Install Docker** (if not already installed)
+
+2. **Build the image:**
+   ```bash
+   docker build -t campaignvault:latest -f Dockerfile .
+   ```
+
+3. **Run the server:**
+   ```bash
+   docker run -p 5275:5275 -e CAMPAIGN_DB_PATH=/app/data -v campaign_data:/app/data campaignvault:latest
+   ```
+
+4. **Test it's working:**
+   ```bash
+   curl http://localhost:5275/health
+   ```
+
+5. **Connect your LLM (Claude, Grok, etc.):**
+   - Point it to `http://localhost:5275` (no authentication needed locally)
+   - The LLM will auto-discover all available tools
+
+That's it. Start narrating and use the tools as your LLM encounters them.
+
+---
+
+## Use Case 2: Remote Deployment (Play Anywhere)
+
+Deploy to the cloud and access from any device. Share campaigns with collaborators.
+
+### Option A: ngrok (Easiest, Temporary)
+
+Use ngrok to expose your local server to the internet (good for testing before permanent deployment).
+
+1. **Download ngrok** from https://ngrok.com
+
+2. **Start your local server** (see Use Case 1, step 3)
+
+3. **Expose it with ngrok:**
+   ```bash
+   ngrok http 5275
+   ```
+   ngrok will print a public URL like `https://abc123.ngrok.io`
+
+4. **In your LLM connector**, use that URL
+
+5. **For security**, set a token:
+   ```bash
+   docker run -p 5275:5275 \
+     -e BEARER_TOKEN=your-secure-random-token \
+     -e CAMPAIGN_DB_PATH=/app/data \
+     -v campaign_data:/app/data \
+     campaignvault:latest
+   ```
+   Then pass the token in your LLM connector headers: `Authorization: Bearer your-secure-random-token`
+
+### Option B: Fly.io (Permanent Deployment)
+
+Deploy to Fly.io for a real production setup with persistent storage.
+
+1. **Install Fly CLI:**
+   ```bash
+   # macOS
+   brew install flyctl
+   
+   # Linux / Windows: https://fly.io/docs/hands-on/install-flyctl/
+   ```
+
+2. **Create an app and storage:**
+   ```bash
+   fly apps create my-campaign-vault
+   fly volumes create campaign_data --region ams --size 1
+   ```
+   (Change region and app name to your preference.)
+
+3. **Set a secure token:**
+   ```bash
+   fly secrets set BEARER_TOKEN=your-secure-random-token
+   ```
+
+4. **Deploy:**
+   ```bash
+   fly deploy
+   ```
+
+5. **Your app is live** at `https://my-campaign-vault.fly.dev`
+
+6. **In your LLM connector**, use that URL with the token in headers (see ngrok step 5).
+
+---
+
+## What It Does
+
+### World State That Persists
+
+- **Campaign memory:** NPCs, locations, lore, factions, quests all survive session to session
+- **Time tracks forward:** Days pass, resources recover, rumors decay, factions get impatient
+- **Combat state:** Initiative, turn order, HP, status effects—all tracked and queryable
+- **NPC psychology:** Wants, fears, relationships, mood—the LLM gets behavioral hints to roleplay authentically
+
+### Prevents Hallucination
+
+- All **scenes, NPCs, and events** are pulled from the database, not made up
+- LLM can't accidentally contradict prior decisions
+- You get **proactive warnings** ("This NPC should be tired", "This quest deadline is approaching")
+
+### Atomic Mutations
+
+- Change one NPC's health, another's mood, and move a third—all in one commit
+- No transaction conflicts or partial failures
+- Perfect for resolving combat or complex narrative moments
+
+### Open World Play
+
+- Add flavor on the fly (crowds, one-off details) without cluttering the database
+- System auto-cleans transient content when areas go "cold"
+- No penalty for being "lazy" or exploratory
+
+---
+
+## Core Tools (Sample)
+
+| What you want | Tool |
+|---|---|
+| Start a session | `get_world_state` — time, active quests, NPCs in crisis |
+| Enter a location | `get_scene` — people, items, rumors, combat state |
+| Understand an NPC | `get_npc_context` — psychology, memories, current mood |
+| Resolve an action | `commit` — HP changes, item transfers, time passing, events |
+| Find something | `search_world` — keyword search across everything |
+| Progress time | `advance_world` — days/weeks pass, simulation rules fire |
+
+For full tool list, run `get_help` inside your campaign (built-in DM manual with examples).
+
+---
+
+## Setup: Authentication & Configuration
+
+### Local (no auth):
+```bash
+docker run -p 5275:5275 campaignvault:latest
+```
+
+### Remote (with token):
+```bash
+fly secrets set BEARER_TOKEN=your-token
+# or
+docker run -p 5275:5275 -e BEARER_TOKEN=your-token campaignvault:latest
+```
+
+Pass the token in your LLM connector:
+- **Header (recommended):** `Authorization: Bearer your-token`
+- **Header (alternate):** `X-API-Key: your-token`
+- **Query parameter (fallback):** `?token=your-token` (less secure—logs may capture it)
+
+### All Configuration Options
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `CAMPAIGN_DB_PATH` | Where campaigns live on disk | `{AppBase}/RavenData` |
+| `BEARER_TOKEN` | Auth token (optional) | unset = no auth |
+| `CORS_ALLOWED_ORIGINS` | Allowed client origins | `*` (any) |
+| `MCP_PORT` | HTTP server port | `5275` (or `8080` in Docker) |
+
+---
+
+## Ruleset-Specific Notes
+
+### D&D 5e
+- Uses SRD 5.1 rules (ability checks, saving throws, advantage, etc.)
+- Spell slots auto-recover on rest
+- Hit die for character creation
+
+### Pathfinder 2e
+- Full ORC License support
+- 4-degrees-of-success resolution
+- Conditions and persistent damage
+
+### Narrative
+- d6 Oracle resolution (no classes/levels required)
+- Pure story-focused mechanics
+- Great for experimental or indie rulesets
+
+---
+
+## Next Steps
+
+1. **Start locally** to get familiar with the campaign/session flow
+2. **Try an example flow:** create campaign → load scene → resolve combat → advance time
+3. **Read `ARCHITECTURE.md`** if you want to understand the innards (optional, not needed for play)
+4. **Check `get_help`** for copy-paste patterns and advanced workflows
+
+---
 
 ## Licensing
 
-**Code**: CampaignVault is **dual-licensed**
-- **Non-Commercial**: Free under PolyForm Noncommercial 1.0.0 (personal use, open-source, education, non-profit)
-- **Commercial**: Requires a separate commercial license. Contact michael.yarichuk@gmail.com to arrange.
+**Code:** Dual-licensed
+- **Personal/non-commercial use:** Free (PolyForm Noncommercial 1.0.0)
+- **Commercial use:** Requires a commercial license. See [COMMERCIAL.md](./COMMERCIAL.md)
 
-See [LICENSE](./LICENSE) and [COMMERCIAL.md](./COMMERCIAL.md) for details.
+**Game Content:**
+- D&D 5e uses official SRD (CC-BY-4.0)
+- Pathfinder 2e uses ORC License
+- See [LICENSING.md](./LICENSING.md) for full details
 
-**Game Content**: 
-- **D&D 5e**: CC-BY-4.0 (SRD 5.1 only)
-- **Pathfinder 2e**: ORC License (core rules only)
+**Note:** RavenDB Community Edition (used in local/dev deployments) requires a free license key for production. See [COMMERCIAL.md](./COMMERCIAL.md).
 
 See [LICENSING.md](./LICENSING.md) for complete game-content attribution and legal notes.
 
@@ -221,7 +422,11 @@ Pass **`campaignName`** (campaign slug) on every campaign-scoped tool call. Ther
 
 ## Development
 
-See `ARCHITECTURE.md` for the full system design. Key code locations:
+Code is in `src/CampaignVault/`. Key folders:
+- **Models:** Character, Scene, NPC Mind, ruleset extensions
+- **Tools:** LLM-facing APIs (`get_scene`, `commit`, etc.)
+- **Rulesets:** D&D 5e, Pathfinder 2e, Narrative resolvers
+- **Simulation:** Background rules (time, NPC mood, quest decay, etc.)
 
 - **Models** — `src/CampaignVault/Models/` (`Character`, `WorldChanges`, `SceneView`, ruleset extensions)
 - **Repository** — `src/CampaignVault/Data/CampaignRepository.cs` + `JsonSanitizer.cs`
@@ -231,6 +436,8 @@ See `ARCHITECTURE.md` for the full system design. Key code locations:
 - **MCP tools** — `src/CampaignVault/Tools/*Tools.cs` (domain classes; `CampaignTools.cs` is a test-only facade)
 - **Authoring UI** — connects via gRPC on `GRPC_PORT`; for play/testing against a local MCP server, pass `campaignName` on each tool call
 - **Tests** — `tests/CampaignVault.Tests/`
+
+Test suite: `tests/CampaignVault.Tests/` and `tests/CampaignVault.IntegrationTests/`
 
 ## Client Compatibility Notes (as of latest testing)
 
@@ -250,3 +457,17 @@ Use `world_build` for initial seeding (session 0) — one atomic batch call rath
 See the `commit` tool description and `get_help` for detailed guidance and copy-paste examples.
 
 Full history of robustness improvements lives in the git log and the regression tests in `CampaignRepositoryTests.cs`.
+
+## Troubleshooting
+
+**"Docker daemon is not running"** → Start Docker and try again.
+
+**"campaignvault:latest image not found"** → Run `docker build -t campaignvault:latest -f Dockerfile .` first.
+
+**"Connection refused"** → Make sure the port (5275 local, 8080 in Docker) is exposed and the container is running.
+
+**"Unauthorized" (remote)** → Check your `BEARER_TOKEN` is set and passed in headers or query params.
+
+---
+
+For deeper docs: [ARCHITECTURE.md](./ARCHITECTURE.md) | [System Prompt](./docs/recommended-system-prompt.md)
