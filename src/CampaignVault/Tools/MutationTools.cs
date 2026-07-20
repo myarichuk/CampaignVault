@@ -44,54 +44,34 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
     [Description(
         @"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world.
-Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status add/remove, ruleset_action, and the open-world creates/updates).
-Requires campaignName (see get_help → Campaign slug scoping).
-Use ActivityChange liberally to keep get_scene in sync with your narrative.
+Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status, ruleset_action, and world updates).
 
-**When you see ENGINE WARNING or NARRATIVE PROMPT in any get_scene / get_world_state / advance_world response, your immediate follow-up should be a commit using the exact ready JSON example provided (the primary laziness mitigation).**
+See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, copy-paste examples, and change-type reference.
 
-See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, auto-linking, and many more copy-paste examples.
-
-" + CommitTypesReference.SupportedTypesBullet + @"
-
-**Crowd interrupt roll (`scene_interrupt_check`)**: After a tense beat in a location with `ambientCrowd`, optionally commit a single-roll crowd reaction. Supply `riskModifier` (-50..+50) like `encounterRiskModifier` on travel; omit to auto-derive from `visualTags`/appearance. On success the engine promotes ONE transient from the crowd. Cooldown: one interrupt per location per day. Example:
-[ { ""$type"": ""scene_interrupt_check"", ""locationId"": ""locations/training-hall"", ""characterId"": ""chars/valen"", ""riskModifier"": 25, ""notes"": ""Bloodied wanted face, crowd hostile"" } ]
-" + CommitEnumCheatSheet.Compact + @"
-
-=== RECOMMENDED PATTERNS (copy-paste friendly) ===
-
-" + CommitHelpExamples.ConversationSection + @"
-
-(See get_help for PoI add/materialize/modify/remove + time decay, the tavern creation + promotion flow, one-way link fixes, ambient/PoI flavor without bloat, and more copy-paste examples.)")]
+**When you see ENGINE WARNING or NARRATIVE PROMPT in any get_scene / get_world_state / advance_world response, your immediate follow-up should be a commit using the exact ready JSON example provided.**")]
     public Task<ToolResult<CommitResult>> Commit(
+        [Description("Batch of world changes and narrative summary.")]
+        CommitRequest request,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
-        string campaignName,
-        [Description("Array of world changes. Each item must be a JSON object with a '$type' discriminator.")]
-        [SemanticallyRequired]
-        JsonElement? changes,
-        [Description("Narrative summary of what happened (for the log and world pressure).")]
-        [SemanticallyRequired]
-        string? narrative)
+        string campaignName)
     {
-        if (!CommitChangesParser.TryParse(changes, out var parsedChanges, out var parseError))
+        if (request?.Changes is null || request.Changes.Length == 0)
         {
-            if (parseError is not null)
-            {
-                var (summary, retryExample) = ToolCallExamples.BuildDeserializationErrorResponse("commit", parseError);
-                return Task.FromResult(new ToolResult<CommitResult>(
-                    false,
-                    Error: ToolErrors.InvalidArgument,
-                    Summary: summary,
-                    RetryExample: retryExample));
-            }
-
             return ToolArgumentErrors.Missing<CommitResult>(
                 "changes",
                 "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
                 toolName: "commit");
         }
 
-        return Commit(parsedChanges!, narrative, campaignName);
+        if (string.IsNullOrWhiteSpace(request.Narrative))
+        {
+            return ToolArgumentErrors.Missing<CommitResult>(
+                "narrative",
+                "Provide a short summary of what happened for the event log.",
+                toolName: "commit");
+        }
+
+        return Commit(request.Changes, request.Narrative, campaignName);
     }
 
     public Task<ToolResult<CommitResult>> Commit(
@@ -185,38 +165,6 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
         });
     }
 
-    /// <summary>
-    /// Fallback for callers (or future clients) that can only easily emit a raw JSON string for the changes batch.
-    /// Parses to WorldChange[] and delegates to the primary MCP Commit implementation.
-    /// Not exposed as an MCP tool.
-    /// </summary>
-    public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative, string? campaignName = null)
-    {
-        if (string.IsNullOrWhiteSpace(changesJson))
-        {
-            return ToolArgumentErrors.Missing<CommitResult>(
-                "changes",
-                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
-                toolName: "commit");
-        }
-
-        JsonElement json;
-        try
-        {
-            json = JsonSerializer.Deserialize<JsonElement>(changesJson);
-        }
-        catch (JsonException ex)
-        {
-            var (summary, retryExample) = ToolCallExamples.BuildDeserializationErrorResponse("commit", ex.Message);
-            return Task.FromResult(new ToolResult<CommitResult>(
-                false,
-                Error: ToolErrors.InvalidArgument,
-                Summary: summary,
-                RetryExample: retryExample));
-        }
-
-        return Commit(campaignName ?? string.Empty, json, narrative);
-    }
 
 
     [ToolCategory("Mutation & time")]

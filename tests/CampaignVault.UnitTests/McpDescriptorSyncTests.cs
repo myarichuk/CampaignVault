@@ -78,7 +78,7 @@ public class McpDescriptorSyncTests
     }
 
     [Fact]
-    public void Commit_Descriptor_RequiresChangesAndNarrative()
+    public void Commit_Descriptor_RequiresRequestAndCampaignName()
     {
         var built = McpDescriptorBuilder.BuildAll();
         var commitJson = built["commit"];
@@ -87,9 +87,12 @@ public class McpDescriptorSyncTests
         var required = doc.RootElement.GetProperty("inputSchema").GetProperty("required")
             .EnumerateArray().Select(e => e.GetString()).ToList();
 
+        // After migration to CommitRequest DTO, the top-level required fields are "request" and "campaignName"
+        // Changes and narrative are now nested within the CommitRequest object
         Assert.Contains("campaignName", required);
-        Assert.Contains("changes", required);
-        Assert.Contains("narrative", required);
+        Assert.Contains("request", required);
+        Assert.DoesNotContain("changes", required);
+        Assert.DoesNotContain("narrative", required);
     }
 
     private static bool JsonSemanticEquals(string left, string right)

@@ -66,7 +66,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
 
         var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
 
-        var pressure = Assert.Single(pressures.Where(p => p.EntityId == pc.Id));
+        var pressure = Assert.Single(pressures, p => p.EntityId == pc.Id);
         Assert.Contains("underdressed", pressure.Text);
         Assert.Equal(ClimateShiftPressureContributor.GroupingKey, pressure.GroupingKey);
     }
@@ -112,7 +112,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
 
         var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
 
-        var pressure = Assert.Single(pressures.Where(p => p.EntityId == pc.Id));
+        var pressure = Assert.Single(pressures, p => p.EntityId == pc.Id);
         Assert.Contains("overdressed", pressure.Text);
         Assert.Equal(ClimateShiftPressureContributor.GroupingKey, pressure.GroupingKey);
     }

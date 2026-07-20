@@ -117,6 +117,7 @@ public class QuestProgressHandler : IWorldChangeHandler
         if (!string.IsNullOrEmpty(qp.QuestId))
         {
             questIds?.Add(qp.QuestId);
+            allInvolvedIds?.Add(qp.QuestId);
         }
 
         if (qp.InvolvedIds != null)

@@ -50,7 +50,7 @@ public class AmbientItemExpiryPressureContributorTests : IClassFixture<RavenDBFi
 
         var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
 
-        var pressure = Assert.Single(pressures.Where(p => p.EntityId == item.Id));
+        var pressure = Assert.Single(pressures, p => p.EntityId == item.Id);
         Assert.Contains("left on the tavern table after breakfast", pressure.Text);
         Assert.Equal(AmbientItemExpiryPressureContributor.GroupingKey, pressure.GroupingKey);
     }

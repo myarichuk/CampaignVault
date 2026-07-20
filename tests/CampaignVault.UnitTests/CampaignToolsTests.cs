@@ -439,29 +439,36 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     {
         var repo = _fixture.CreateRepository();
         var tools = CreateTools();
+        var slug = "deadline-nag-test-" + Guid.NewGuid().ToString("N")[..8];
         var qid = "quests/deadline-quest-" + Guid.NewGuid();
         var locId = "locations/valid-loc-" + Guid.NewGuid();
         var charId = "chars/stuck-hero-" + Guid.NewGuid();
 
+        // Create isolated campaign to avoid test pollution
+        await tools.CreateCampaign(slug, RulesetSystem.Dnd5e);
+
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Some Loc" }, TestCampaignDefaults.Slug);
-            var time = await repo.GetTimeAsync(session, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Some Loc" }, slug);
+            var time = await repo.GetTimeAsync(session, slug);
             time.TotalDaysElapsed = 10;
             await session.StoreAsync(time);
 
             // Deadline in 2 days
             await repo.UpsertQuestAsync(session,
-                new Quest { Id = qid, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12 }, TestCampaignDefaults.Slug);
+                new Quest { Id = qid, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12 }, slug);
 
             var npc = new CharacterUpsertRequest
             {
                 Id = charId,
                 Name = "Stuck Hero",
                 CurrentActivity = "Travel interrupted en route to the capital by goblins",
+                MaxHp = 30,
+                CurrentHp = 30,
+                SystemStats = new Dnd5eExtension { ArmorClass = 15 },
                 Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
             };
-            await repo.UpsertCharacterAsync(session, npc, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(session, npc, slug);
 
             await session.SaveChangesAsync();
         }
@@ -489,7 +496,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         var resultWaitStart = DateTime.UtcNow;
         while ((DateTime.UtcNow - resultWaitStart).TotalSeconds < 10)
         {
-            result = await tools.GetWorldState(locId);
+            result = await tools.GetWorldState(locId, slug);
             Assert.True(result.Success, result.Error + ": " + result.Summary);
             view = result.Data;
             Assert.NotNull(view);

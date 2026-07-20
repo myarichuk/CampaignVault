@@ -707,6 +707,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         await TestCampaignDefaults.EnsureExistsAsync(tools, "QuestCooldownTest");
         var questId = "quests/cooldown_q";
         var locId = "locations/cooldown-town";
+        var charId = "chars/cooldown-pc";
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -715,6 +716,14 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 { Id = keys.StateTime("QuestCooldownTest"), TotalDaysElapsed = 20 });
             await session.StoreAsync(new Location
                 { Id = locId, Name = "Town", CampaignName = "QuestCooldownTest", Type = LocationType.Settlement });
+            await session.StoreAsync(new Character
+            {
+                Id = charId,
+                Name = "Test PC",
+                CampaignName = "QuestCooldownTest",
+                IsPc = true,
+                CurrentLocationId = locId
+            });
             await session.StoreAsync(new Quest
             {
                 Id = questId,

@@ -54,17 +54,41 @@ public class CampaignTools(
         exploration.GetNpcNeeds(characterId, ResolveCampaign(campaignName));
 
     // --- Mutation ---
-    public Task<ToolResult<CommitResult>> Commit(JsonElement? changes = null, string? narrative = null,
-        string? campaignName = TestDefaultCampaignSlug) =>
-        mutation.Commit(ResolveCampaign(campaignName), changes, narrative);
-
     public Task<ToolResult<CommitResult>> Commit(WorldChange[]? changes, string? narrative = null,
         string? campaignName = TestDefaultCampaignSlug) =>
         mutation.Commit(changes, narrative, ResolveCampaign(campaignName));
 
     public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative,
-        string? campaignName = TestDefaultCampaignSlug) =>
-        mutation.Commit(changesJson, narrative, ResolveCampaign(campaignName));
+        string? campaignName = TestDefaultCampaignSlug)
+    {
+        if (string.IsNullOrWhiteSpace(changesJson))
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(
+                false, Error: "InvalidArgument",
+                Summary: "Invalid changes format. Expected JSON array of world changes."));
+        }
+
+        JsonElement json;
+        try
+        {
+            json = JsonSerializer.Deserialize<JsonElement>(changesJson);
+        }
+        catch (JsonException ex)
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(
+                false, Error: "InvalidArgument",
+                Summary: $"Failed to parse changes JSON: {ex.Message}"));
+        }
+
+        if (!CommitChangesParser.TryParse(json, out var parsed, out _))
+        {
+            return Task.FromResult(new ToolResult<CommitResult>(
+                false, Error: "InvalidArgument",
+                Summary: "Invalid changes format. Expected JSON array of world changes."));
+        }
+
+        return mutation.Commit(parsed, narrative, ResolveCampaign(campaignName));
+    }
 
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(int days, TimeOfDay timeOfDay, string narrative,
         string? campaignName = TestDefaultCampaignSlug) =>

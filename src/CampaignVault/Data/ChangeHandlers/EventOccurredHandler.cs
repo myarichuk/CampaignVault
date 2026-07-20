@@ -163,10 +163,26 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
                         characterIds?.Add(id);
                         allInvolvedIds?.Add(id);
                     }
-                    else if (id.StartsWith("locations/")) locationIds?.Add(id);
-                    else if (id.StartsWith("factions/")) factionIds?.Add(id);
-                    else if (id.StartsWith("quests/")) questIds?.Add(id);
-                    else if (id.StartsWith("items/")) itemIds?.Add(id);
+                    else if (id.StartsWith("locations/"))
+                    {
+                        locationIds?.Add(id);
+                        allInvolvedIds?.Add(id);
+                    }
+                    else if (id.StartsWith("factions/"))
+                    {
+                        factionIds?.Add(id);
+                        allInvolvedIds?.Add(id);
+                    }
+                    else if (id.StartsWith("quests/"))
+                    {
+                        questIds?.Add(id);
+                        allInvolvedIds?.Add(id);
+                    }
+                    else if (id.StartsWith("items/"))
+                    {
+                        itemIds?.Add(id);
+                        allInvolvedIds?.Add(id);
+                    }
                 }
             }
         }
@@ -178,15 +194,32 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
                 characterIds?.Add(eo.RelatedEntityId);
                 allInvolvedIds?.Add(eo.RelatedEntityId);
             }
-            else if (eo.RelatedEntityId.StartsWith("locations/")) locationIds?.Add(eo.RelatedEntityId);
-            else if (eo.RelatedEntityId.StartsWith("factions/")) factionIds?.Add(eo.RelatedEntityId);
-            else if (eo.RelatedEntityId.StartsWith("quests/")) questIds?.Add(eo.RelatedEntityId);
-            else if (eo.RelatedEntityId.StartsWith("items/")) itemIds?.Add(eo.RelatedEntityId);
+            else if (eo.RelatedEntityId.StartsWith("locations/"))
+            {
+                locationIds?.Add(eo.RelatedEntityId);
+                allInvolvedIds?.Add(eo.RelatedEntityId);
+            }
+            else if (eo.RelatedEntityId.StartsWith("factions/"))
+            {
+                factionIds?.Add(eo.RelatedEntityId);
+                allInvolvedIds?.Add(eo.RelatedEntityId);
+            }
+            else if (eo.RelatedEntityId.StartsWith("quests/"))
+            {
+                questIds?.Add(eo.RelatedEntityId);
+                allInvolvedIds?.Add(eo.RelatedEntityId);
+            }
+            else if (eo.RelatedEntityId.StartsWith("items/"))
+            {
+                itemIds?.Add(eo.RelatedEntityId);
+                allInvolvedIds?.Add(eo.RelatedEntityId);
+            }
         }
 
         if (!string.IsNullOrEmpty(eo.LocationId))
         {
             locationIds?.Add(eo.LocationId);
+            allInvolvedIds?.Add(eo.LocationId);
         }
 
         if (eo.RelatedLocationIds != null)
@@ -196,6 +229,7 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
                 if (!string.IsNullOrEmpty(id))
                 {
                     locationIds?.Add(id);
+                    allInvolvedIds?.Add(id);
                 }
             }
         }
