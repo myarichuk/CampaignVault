@@ -8,23 +8,15 @@
     <NoWarn>$(NoWarn);NU1902</NoWarn>
   </PropertyGroup>
 
-  <!-- Check if Docker is available before attempting to build image -->
-  <Target Name="CheckDockerAvailable" BeforeTargets="BuildDockerImage">
-    <Exec Command="docker --version" ContinueOnError="true" EchoOff="true">
-      <Output TaskParameter="ExitCode" PropertyName="DockerExitCode" />
-    </Exec>
-    <PropertyGroup>
-      <DockerAvailable Condition="'$(DockerExitCode)' == '0'">true</DockerAvailable>
-      <DockerAvailable Condition="'$(DockerExitCode)' != '0'">false</DockerAvailable>
-    </PropertyGroup>
-  </Target>
-
-  <!-- Build Docker image before running tests if Docker is available -->
-  <Target Name="BuildDockerImage" BeforeTargets="Build" DependsOnTargets="CheckDockerAvailable">
-    <Message Condition="'$(DockerAvailable)' == 'true'" Text="[INTEGRATION TESTS] Building Docker image: campaignvault:latest" Importance="high" />
-    <Exec Condition="'$(DockerAvailable)' == 'true'" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" Command="docker build -t campaignvault:latest -f ../../Dockerfile ." WorkingDirectory="$(MSBuildProjectDirectory)/../../.." />
-    <Message Condition="'$(DockerAvailable)' != 'true'" Text="[INTEGRATION TESTS] WARNING: Docker is not available. Integration tests will be skipped. Install Docker to enable them." Importance="high" />
-  </Target>
+  <!--
+    Deliberately no BuildDockerImage/CheckDockerAvailable targets here: a plain build must never
+    shell out to build a Docker image. On a machine with a broken/unresponsive Docker daemon, checking
+    the docker CLI version can still succeed while an image build hangs or stalls for a long time,
+    which used to stall every plain build in the solution. DockerFactAttribute (see
+    DockerFactAttribute.cs) already checks docker installed, daemon running, and image present at
+    test-run time, and skips with a clear reason (including the manual build command to run) when any
+    of those aren't satisfied - that is the only place image availability should be checked.
+  -->
 
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.3.1" />

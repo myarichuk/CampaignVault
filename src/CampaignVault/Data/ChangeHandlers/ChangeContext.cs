@@ -30,6 +30,17 @@ public sealed class ChangeContext
     public HashSet<string> InvolvedEntities { get; }
 
     /// <summary>
+    /// The full commit batch and the current change's index within it, set by WorldChangeDispatcher
+    /// before invoking each handler. Lets a handler peek ahead at later changes in the same batch (e.g.
+    /// ItemEquipHandler's reorder nudge: "this batch also unequips the conflicting item later"). Null
+    /// outside a real dispatch (e.g. isolated handler unit tests using the test constructor).
+    /// </summary>
+    public IReadOnlyList<WorldChange>? Batch { get; internal set; }
+
+    /// <summary>Index of the change currently being handled within <see cref="Batch"/>.</summary>
+    public int BatchIndex { get; internal set; }
+
+    /// <summary>
     /// Resolves the current CampaignTime safely without binding directly to the session implementation.
     /// </summary>
     public Func<Task<CampaignTime>> GetCurrentTimeAsync { get; set; }

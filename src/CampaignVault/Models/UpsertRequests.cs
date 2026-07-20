@@ -195,6 +195,21 @@ public class ItemUpsertRequest
     [Description("Unit label for charges (e.g. \"doses\", \"sips\", \"uses\"). Omit to preserve the existing value on update.")]
     public string? ChargeUnit { get; set; }
 
+    [Description("Null (default) = shares the flat zone+layer capacity pool. Non-null carves out an independent sub-slot within that zone+layer keyed by this value — items with different StackGroups on the same zone+layer coexist (modular armor parts: \"pauldron-left\" + \"pauldron-right\"), while items sharing the same StackGroup still conflict. Omit to preserve the existing value on update.")]
+    public string? StackGroup { get; set; }
+
+    [Description("To equip this item, the character must already have at least one other equipped item carrying each of these tags (AND-across-list). Zone/layer-independent prerequisite/attachment relationship (e.g. pauldrons require a chest-armor-tagged item). Omit to preserve the existing value on update.")]
+    public List<string>? RequiresEquippedTags { get; set; }
+
+    [Description("This item cannot be equipped while any currently-equipped item carries any of these tags (OR-semantics). Zone/layer-independent incompatibility (e.g. a loincloth incompatible with a legwear-outer-tagged item). Omit to preserve the existing value on update.")]
+    public List<string>? IncompatibleWithEquippedTags { get; set; }
+
+    [Description("Purely cosmetic/narrative tags visible to the DM-LLM when narrating or judging social scenes (e.g. \"form-fitting\", \"plunging-neckline\"). Never affects mechanics. Omit to preserve the existing value on update.")]
+    public List<string>? VisualTags { get; set; }
+
+    [Description("Short narrative description of how this item reads on the wearer. Purely descriptive; never affects mechanics. Omit to preserve the existing value on update.")]
+    public string? AppearanceNote { get; set; }
+
     public string? CampaignName { get; set; }
 }
 

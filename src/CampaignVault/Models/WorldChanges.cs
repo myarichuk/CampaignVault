@@ -1273,6 +1273,12 @@ public class ArchiveEntityChange : WorldChange
 /// Equip a carried item into one of its EquipZones. Layering is enforced by EquipSlotRules: items
 /// in different EquipLayers on the same zone coexist (e.g. an enchanted robe worn over chainmail),
 /// while items in the same zone+layer conflict (two breastplates, or a two-handed weapon vs a shield).
+/// An item's optional StackGroup carves out an independent sub-slot within a zone+layer, so
+/// differently-StackGrouped items (or an ungrouped item vs. a StackGrouped one) coexist there too —
+/// this is what lets modular armor parts (left/right pauldron) share Torso/Armor without conflicting.
+/// Equipping also runs EquipSlotRules.FindTagIncompatibilities: RequiresEquippedTags/
+/// IncompatibleWithEquippedTags are zone/layer-independent prerequisite/incompatibility declarations
+/// that always hard-fail (never auto-resolved by ReplaceConflicts, unlike slot conflicts).
 /// </summary>
 public class ItemEquip : WorldChange
 {

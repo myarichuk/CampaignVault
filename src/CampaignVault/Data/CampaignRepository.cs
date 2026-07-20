@@ -1546,6 +1546,11 @@ public class CampaignRepository
             existing.CapacityUnit = item.CapacityUnit ?? existing.CapacityUnit;
             existing.MaxCharges = item.MaxCharges ?? existing.MaxCharges;
             existing.ChargeUnit = item.ChargeUnit ?? existing.ChargeUnit;
+            existing.StackGroup = item.StackGroup ?? existing.StackGroup;
+            existing.RequiresEquippedTags = item.RequiresEquippedTags ?? existing.RequiresEquippedTags;
+            existing.IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags ?? existing.IncompatibleWithEquippedTags;
+            existing.VisualTags = item.VisualTags ?? existing.VisualTags;
+            existing.AppearanceNote = item.AppearanceNote ?? existing.AppearanceNote;
             result = existing;
         }
         else
@@ -1573,6 +1578,11 @@ public class CampaignRepository
                 CapacityUnit = item.CapacityUnit,
                 MaxCharges = item.MaxCharges,
                 ChargeUnit = item.ChargeUnit,
+                StackGroup = item.StackGroup,
+                RequiresEquippedTags = item.RequiresEquippedTags,
+                IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags,
+                VisualTags = item.VisualTags,
+                AppearanceNote = item.AppearanceNote,
             };
             await session.StoreAsync(result);
         }
@@ -1590,11 +1600,11 @@ public class CampaignRepository
                     .ToListAsync();
 
                 var equippedList = equipped.Where(i => i.IsEquipped && !i.Id.Equals(result.Id, StringComparison.OrdinalIgnoreCase)).ToList();
-                var conflicts = EquipSlotRules.FindConflicts(result, equippedList);
+                var conflictResult = EquipSlotRules.FindConflicts(result, equippedList);
 
-                if (conflicts.Count > 0)
+                if (conflictResult.HasConflicts)
                 {
-                    var conflictNames = string.Join(", ", conflicts.Select(c => $"{c.Name} ({c.Id})"));
+                    var conflictNames = string.Join(", ", conflictResult.Items.Select(c => $"{c.Name} ({c.Id})"));
                     throw new ArgumentException(
                         $"Cannot equip '{result.Name}': conflicts with {conflictNames}. " +
                         "Use the item_equip commit with replaceConflicts:true to auto-unequip conflicts.");

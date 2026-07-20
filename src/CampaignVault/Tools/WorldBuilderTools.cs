@@ -322,7 +322,13 @@ This is the only tool that creates a new location. During play, use commit's loc
     private async Task<ToolResult<Item>> ApplyItemUpsertAsync(IAsyncDocumentSession s, ItemUpsertRequest item, string effective)
     {
         var merged = await _repository.UpsertItemAsync(s, item, effective);
-        return new ToolResult<Item>(true, merged, $"Item upserted (campaign context: {effective}).");
+        var message = $"Item upserted (campaign context: {effective}).";
+        var nudges = ItemUpsertSanityChecker.GetNudges(item);
+        if (nudges.Count > 0)
+        {
+            message += " " + string.Join(" ", nudges);
+        }
+        return new ToolResult<Item>(true, merged, message);
     }
 
     [ToolCategory("World builder")]

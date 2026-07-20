@@ -204,4 +204,79 @@ public class ArmorParameterResolverTests
 
         Assert.Equal(-20f, character.SystemStats.MovementModifier);
     }
+
+    // --- dexCapSource disambiguation (StackGroup-enabled multi-piece Torso/Armor) ---
+
+    private static Item MakeTorsoArmorPiece(string id, string? armorType = null, bool dexCapSource = false, string? stackGroup = null)
+    {
+        var props = new Dictionary<string, object>();
+        if (armorType != null) props["armorType"] = armorType;
+        if (dexCapSource) props["dexCapSource"] = "true";
+        return new Item
+        {
+            Id = id, Name = id, HolderId = "chars/hero", CoreCategory = ItemCategory.Armor,
+            EquipZones = [EquipZone.Torso], EquipLayer = EquipLayer.Armor, IsEquipped = true,
+            StackGroup = stackGroup,
+            Properties = props,
+        };
+    }
+
+    [Fact]
+    public void Apply_SingleTorsoArmorPiece_NoMarker_IdenticalToTodaysBehavior_NoMessage()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 20 };
+        var character = MakeCharacter(stats);
+        var armor = MakeTorsoArmorPiece("items/armor", armorType: "medium");
+
+        var messages = ArmorParameterResolver.Apply(character, [armor]);
+
+        Assert.Equal(12, stats.ArmorClass); // 10 + min(5,2) + 0 acBonus
+        Assert.Empty(messages);
+    }
+
+    [Fact]
+    public void Apply_MultipleTorsoArmorPieces_NoneMarked_FallsBackWithNarrativePrompt()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 20 };
+        var character = MakeCharacter(stats);
+        var piece1 = MakeTorsoArmorPiece("items/piece1", armorType: "medium", stackGroup: "a");
+        var piece2 = MakeTorsoArmorPiece("items/piece2", armorType: "heavy", stackGroup: "b");
+
+        var messages = ArmorParameterResolver.Apply(character, [piece1, piece2]);
+
+        var message = Assert.Single(messages);
+        Assert.Contains("NARRATIVE PROMPT", message);
+        Assert.Contains("dexCapSource", message);
+    }
+
+    [Fact]
+    public void Apply_OneMarkedDexCapSource_UsesMarkedItem_NoMessage()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 20 };
+        var character = MakeCharacter(stats);
+        var piece1 = MakeTorsoArmorPiece("items/piece1", armorType: "heavy", dexCapSource: true, stackGroup: "a");
+        var piece2 = MakeTorsoArmorPiece("items/piece2", armorType: "light", stackGroup: "b");
+
+        var messages = ArmorParameterResolver.Apply(character, [piece1, piece2]);
+
+        // heavy caps dex at 0: 10 + min(5,0) + 0 = 10
+        Assert.Equal(10, stats.ArmorClass);
+        Assert.Empty(messages);
+    }
+
+    [Fact]
+    public void Apply_MultipleMarkedDexCapSource_EngineWarningWithDeterministicTieBreak()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 20 };
+        var character = MakeCharacter(stats);
+        var piece1 = MakeTorsoArmorPiece("items/piece1", armorType: "heavy", dexCapSource: true, stackGroup: "a");
+        var piece2 = MakeTorsoArmorPiece("items/piece2", armorType: "light", dexCapSource: true, stackGroup: "b");
+
+        var messages = ArmorParameterResolver.Apply(character, [piece1, piece2]);
+
+        var message = Assert.Single(messages);
+        Assert.Contains("ENGINE WARNING", message);
+        // First-match tie-break: piece1 (heavy) wins, dex capped at 0.
+        Assert.Equal(10, stats.ArmorClass);
+    }
 }

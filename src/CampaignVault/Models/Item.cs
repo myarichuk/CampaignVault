@@ -55,6 +55,47 @@ public class Item : ICampaignScopedEntity, IArchivable
     /// <summary>When true and this item occupies MainHand, it also occupies OffHand (blocks shields/other off-hand items).</summary>
     public bool TwoHanded { get; set; }
 
+    /// <summary>
+    /// Null (default) = shares the flat zone+layer capacity pool (today's behavior: two items in the
+    /// same zone+layer always conflict). Non-null = carves out an independent sub-pool within that
+    /// zone+layer keyed by this value — items with different StackGroups on the same zone+layer
+    /// coexist (modular armor parts: "pauldron-left" + "pauldron-right" both on Torso/Armor), while
+    /// items sharing the same StackGroup still conflict at the zone's capacity (can't wear two
+    /// "pauldron-left"s). A StackGroup-tagged item never competes with an ungrouped (null) item on
+    /// the same zone+layer. Set via world_build; never interpreted by AC/dex-cap math.
+    /// </summary>
+    public string? StackGroup { get; set; }
+
+    /// <summary>
+    /// To equip this item, the character must already have at least one other currently-equipped item
+    /// carrying each of these tags (AND-across-list, OR-within-tag — matches natural "requires chest
+    /// armor AND a belt" phrasing). Zone/layer-independent; used for attachment/prerequisite
+    /// relationships (metal pauldrons need chest armor for their straps). Null/empty = no prerequisite.
+    /// </summary>
+    public List<string>? RequiresEquippedTags { get; set; }
+
+    /// <summary>
+    /// This item cannot be equipped while any currently-equipped item carries any of these tags
+    /// (OR-semantics). Zone/layer-independent — catches cross-zone incompatibilities the slot system
+    /// can never see (a ceremonial robe incompatible with a wielded weapon). Null/empty = no
+    /// incompatibility declared.
+    /// </summary>
+    public List<string>? IncompatibleWithEquippedTags { get; set; }
+
+    /// <summary>
+    /// Purely cosmetic/narrative tags (e.g. "form-fitting", "plunging-neckline") visible to the DM-LLM
+    /// when narrating or judging social scenes. Never read by AC/warmth/movement resolution. May
+    /// overlap the crowd-scoring visualTags vocabulary (e.g. "well_armed") where relevant, but is not
+    /// itself auto-scored.
+    /// </summary>
+    public List<string>? VisualTags { get; set; }
+
+    /// <summary>
+    /// Short narrative description of how this item reads on the wearer ("cut low across the chest,
+    /// clearly tailored for court, not combat"). Purely descriptive; never affects mechanics.
+    /// </summary>
+    public string? AppearanceNote { get; set; }
+
     /// <summary>Container capacity (e.g. number of items or volume units). Null = unstructured, unlimited (current behavior).</summary>
     public int? Capacity { get; set; }
 

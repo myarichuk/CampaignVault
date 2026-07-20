@@ -214,7 +214,9 @@ public record ItemSummaryView(
     string? EquipLayer,
     string? CurrentState,
     int? CurrentCharges,
-    int? MaxCharges)
+    int? MaxCharges,
+    List<string>? VisualTags,
+    string? AppearanceNote)
 {
     public static ItemSummaryView From(Item item) => new(
         item.Id,
@@ -226,7 +228,9 @@ public record ItemSummaryView(
         item.EquipLayer?.ToString(),
         item.CurrentState,
         item.CurrentCharges,
-        item.MaxCharges
+        item.MaxCharges,
+        item.VisualTags,
+        item.AppearanceNote
     );
 }
 

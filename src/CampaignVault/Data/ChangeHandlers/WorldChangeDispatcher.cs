@@ -202,8 +202,11 @@ public sealed class WorldChangeDispatcher(
         }
 
         // 2. Process each change in caller-supplied order
-        foreach (var change in changes)
+        for (var changeIndex = 0; changeIndex < changes.Length; changeIndex++)
         {
+            var change = changes[changeIndex];
+            context.Batch = changes;
+            context.BatchIndex = changeIndex;
             try
             {
                 IWorldChangeHandler? chosen = null;
