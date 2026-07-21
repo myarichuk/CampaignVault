@@ -59,38 +59,8 @@ public class CampaignRepository
         _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
     }
 
-    private async Task EnrichSemanticVectorAsync(IHasSemanticVector entity)
-    {
-        var textToEmbed = entity.BuildEmbeddingText();
-        if (string.IsNullOrWhiteSpace(textToEmbed))
-        {
-            entity.SemanticVector = null;
-            entity.EmbeddingTextHash = null;
-            return;
-        }
-
-        var hash = ComputeEmbeddingHash(textToEmbed);
-        if (hash == entity.EmbeddingTextHash)
-            return;
-
-        try
-        {
-            entity.SemanticVector = await _embeddingService.GenerateEmbeddingAsync(textToEmbed);
-            entity.EmbeddingTextHash = hash;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Embedding generation failed for {EntityType}; semantic search unavailable for this entity.", entity.GetType().Name);
-            entity.SemanticVector = null;
-            entity.EmbeddingTextHash = null;
-        }
-    }
-
-    private static string ComputeEmbeddingHash(string text)
-    {
-        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text));
-        return Convert.ToHexString(bytes);
-    }
+    private Task EnrichSemanticVectorAsync(IHasSemanticVector entity)
+        => SemanticEnrichmentHelper.EnrichAsync(entity, _embeddingService, _logger);
 
     /// <summary>
     public IAsyncDocumentSession OpenSession()

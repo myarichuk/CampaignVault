@@ -952,6 +952,49 @@ public class ItemUpdate : WorldChange
     [Description("Sets/refreshes the campaign day (CampaignTime.TotalDaysElapsed + N) after which the engine should nag about this item's ambient fate. Setting this also clears any previously-surfaced nag so it fires again fresh at the new day.")]
     [JsonPropertyName("ambientExpiresAtDay")]
     public float? AmbientExpiresAtDay { get; set; }
+
+    [Description("Create or update a persistent structured detail on this item (scratches, stains, secret compartments, custom pockets). If id matches an existing detail, that detail is updated; otherwise the engine resolves by semantic similarity against existing details on this item, falling back to creating a new one. Use for durable, examine-able state — not temporary tags (tagsToAdd) or narrative flavor (newState).")]
+    [JsonPropertyName("upsertItemDetail")]
+    public ItemDetailUpsertRequest? UpsertItemDetail { get; set; }
+
+    [Description("Marks an existing ItemDetail (by its id) as retired — sets isRetired=true and a terminal status. Does NOT delete the record, so any memory referencing it stays resolvable. Use when a detail is no longer true (compartment discovered and emptied, stain cleaned) rather than pretending it never existed.")]
+    [JsonPropertyName("retireItemDetailId")]
+    public string? RetireItemDetailId { get; set; }
+}
+
+/// <summary>
+/// Commit-path-only request to create or update a single <see cref="ItemDetail"/> on an item via
+/// <see cref="ItemUpdate.UpsertItemDetail"/>. Never used by world_build — items must already exist.
+/// </summary>
+public class ItemDetailUpsertRequest
+{
+    [Description("Optional. If you already know the detail's id (from a prior commit response or get_item), pass it here for an authoritative, cheap match. Omit for new details or when unsure.")]
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [Description("Short label for the detail (e.g. 'Hidden compartment', 'Scorch mark').")]
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = default!;
+
+    [Description("Full narrative description of the detail's current state.")]
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = default!;
+
+    [Description("Optional short current-status label, distinct from the full description (e.g. 'Concealed', 'Discovered').")]
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [Description("DM-only guidance on how to narrate or adjudicate this detail (e.g. suggested DC, discovery conditions). Never shown to players directly.")]
+    [JsonPropertyName("intent")]
+    public string? Intent { get; set; }
+
+    [Description("Optional origin of this detail — what caused/created it.")]
+    [JsonPropertyName("origin")]
+    public ItemDetailOrigin? Origin { get; set; }
+
+    [Description("Optional list of characters who caused or witnessed this detail coming into being/being discovered. Each entry pushes a memory into that character's memories (Source=Experienced for Caused, Witnessed for Witnessed roles).")]
+    [JsonPropertyName("participants")]
+    public List<ItemDetailParticipant>? Participants { get; set; }
 }
 
 public class CharacterUpdate : WorldChange

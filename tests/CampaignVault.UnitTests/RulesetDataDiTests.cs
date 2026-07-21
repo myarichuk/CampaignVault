@@ -20,6 +20,7 @@ public class RulesetDataDiTests
     {
         var builder = new ContainerBuilder();
         builder.RegisterModule<CampaignVaultModule>();
+        builder.RegisterInstance(new TestFakeEmbeddingService()).As<ILocalEmbeddingService>();
 
         using var container = builder.Build();
         using var scope = container.BeginLifetimeScope();
@@ -43,6 +44,7 @@ public class RulesetDataDiTests
     {
         var builder = new ContainerBuilder();
         builder.RegisterModule<CampaignVaultModule>();
+        builder.RegisterInstance(new TestFakeEmbeddingService()).As<ILocalEmbeddingService>();
 
         using var container = builder.Build();
 
@@ -60,6 +62,7 @@ public class RulesetDataDiTests
     {
         var builder = new ContainerBuilder();
         builder.RegisterModule<CampaignVaultModule>();
+        builder.RegisterInstance(new TestFakeEmbeddingService()).As<ILocalEmbeddingService>();
 
         using var container = builder.Build();
 
@@ -75,6 +78,7 @@ public class RulesetDataDiTests
     {
         var builder = new ContainerBuilder();
         builder.RegisterModule<CampaignVaultModule>();
+        builder.RegisterInstance(new TestFakeEmbeddingService()).As<ILocalEmbeddingService>();
 
         using var container = builder.Build();
         using var scope = container.BeginLifetimeScope();
@@ -129,6 +133,7 @@ public class RulesetDataDiTests
     {
         var builder = new ContainerBuilder();
         builder.RegisterModule<CampaignVaultModule>();
+        builder.RegisterInstance(new TestFakeEmbeddingService()).As<ILocalEmbeddingService>();
 
         using var container = builder.Build();
 
@@ -141,6 +146,7 @@ public class RulesetDataDiTests
     {
         var builder = new ContainerBuilder();
         builder.RegisterModule<CampaignVaultModule>();
+        builder.RegisterInstance(new TestFakeEmbeddingService()).As<ILocalEmbeddingService>();
 
         using var container = builder.Build();
 

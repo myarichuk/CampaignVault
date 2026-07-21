@@ -197,14 +197,18 @@ internal static class CommitSchemaRegistry
             CoCommitHints: []),
 
         new("item_update", "World",
-            "Update an item's state, category, tags, or properties.",
+            "Update an item's state, category, tags, or properties. Also handles persistent granular " +
+            "ItemDetails (scratches, stains, secret compartments) via upsertItemDetail/retireItemDetailId — " +
+            "durable, examine-able state distinct from temporary tags or narrative flavor.",
             ["itemId"],
             ["newState", "coreCategory", "tagsToAdd", "tagsToRemove", "featuresToAdd",
              "featuresToRemove", "propertiesToUpsert", "propertiesToRemove",
-             "ambientPersistenceNote", "ambientExpiresAtDay"],
+             "ambientPersistenceNote", "ambientExpiresAtDay",
+             "upsertItemDetail", "retireItemDetailId"],
             HasSideEffects: false,
             SideEffects: [],
-            CoCommitHints: []),
+            CoCommitHints: [],
+            Example: """{"$type":"item_update","itemId":"items/oak-table","upsertItemDetail":{"name":"secret glyph","description":"three-line elven rune, faintly glowing","origin":{"type":"Actor","id":"chars/rogue"},"participants":[{"id":"chars/rogue","role":"Caused"}]}}"""),
 
         new("item_equip", "World",
             "Equip a carried item into its EquipZones. HARD-FAILS listing conflicts (same zone+layer, or off-hand for a two-handed weapon) unless replaceConflicts:true. " +

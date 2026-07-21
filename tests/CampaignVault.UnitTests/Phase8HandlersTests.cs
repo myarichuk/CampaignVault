@@ -44,7 +44,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var ctx = CreateContext(session);
-        var handler = new ItemUpdateHandler();
+        var handler = new ItemUpdateHandler(new TestFakeEmbeddingService());
 
         var result = await handler.ApplyAsync(new ItemUpdate { ItemId = "items/missing", NewState = "Broken" }, ctx);
 
@@ -66,7 +66,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
 
         var ctx = CreateContext(session);
 
-        var handler = new ItemUpdateHandler();
+        var handler = new ItemUpdateHandler(new TestFakeEmbeddingService());
         var update = new ItemUpdate
         {
             ItemId = "items/1",

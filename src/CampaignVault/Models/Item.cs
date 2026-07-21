@@ -9,7 +9,13 @@ public class Item : ICampaignScopedEntity, IArchivable
     [System.Text.Json.Serialization.JsonIgnore]
     public string? EmbeddingTextHash { get; set; }
 
-    public string BuildEmbeddingText() => $"{Name}\n{Description}";
+    public string BuildEmbeddingText()
+    {
+        var detailLines = ItemDetails
+            .Where(d => !d.IsRetired)
+            .Select(d => $"{d.Name}: {d.Status ?? ""} - {d.Description}");
+        return string.Join("\n", new[] { $"{Name}\n{Description}" }.Concat(detailLines));
+    }
 
     public string Name { get; set; } = default!;
     
@@ -35,6 +41,13 @@ public class Item : ICampaignScopedEntity, IArchivable
     public Dictionary<string, List<string>> TagProvenance { get; set; } = [];
 
     public Dictionary<string, object> Properties { get; set; } = [];
+
+    /// <summary>
+    /// Persistent, granular state on this item (scratches, stains, secret compartments, custom
+    /// pockets) — durable across sessions, unlike Tags/DistinctiveFeatures which are flat labels.
+    /// Upserted via item_update's upsertItemDetail/retireItemDetailId commit fields.
+    /// </summary>
+    public List<ItemDetail> ItemDetails { get; set; } = [];
 
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
@@ -132,6 +145,74 @@ public class Item : ICampaignScopedEntity, IArchivable
     /// When true, hidden from default search/scene results (soft delete). Does not remove history.
     /// </summary>
     public bool IsArchived { get; set; }
+}
+
+/// <summary>
+/// A persistent, granular detail on an Item — a scratch, stain, secret compartment, custom
+/// pocket, glyph, etc. Ground-truth world state; never deleted (see <see cref="IsRetired"/>).
+/// </summary>
+public class ItemDetail : IHasSemanticVector
+{
+    /// <summary>Engine-assigned, e.g. "detail-" + Guid. Canonical identity — never matched by Name.</summary>
+    public string Id { get; set; } = default!;
+
+    /// <summary>Short label, free text (e.g. "Hidden compartment"). Display/LLM-reference only.</summary>
+    public string Name { get; set; } = default!;
+
+    /// <summary>Full narrative description of the detail's current state.</summary>
+    public string Description { get; set; } = default!;
+
+    /// <summary>Optional short current-status label, distinct from the full description.</summary>
+    public string? Status { get; set; }
+
+    /// <summary>
+    /// DM-only guidance on how to narrate or adjudicate this detail (e.g. suggested DC, discovery
+    /// conditions). Never shown to players; excluded from semantic embedding text.
+    /// </summary>
+    public string? Intent { get; set; }
+
+    /// <summary>Soft-delete flag. Retired details are kept (not removed) so memory references stay resolvable.</summary>
+    public bool IsRetired { get; set; }
+
+    /// <summary>What caused/created this detail.</summary>
+    public ItemDetailOrigin? Origin { get; set; }
+
+    /// <summary>Characters who caused or witnessed this detail; each pushes a memory node on upsert.</summary>
+    public List<ItemDetailParticipant> Participants { get; set; } = [];
+
+    /// <summary>In-game day (CampaignTime.TotalDaysElapsed) this detail was first created.</summary>
+    public int CreatedOnDay { get; set; }
+
+    /// <summary>In-game day this detail was last touched.</summary>
+    public int UpdatedOnDay { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public float[]? SemanticVector { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? EmbeddingTextHash { get; set; }
+
+    public string BuildEmbeddingText() => $"{Name}: {Status ?? ""} - {Description}";
+}
+
+public enum ItemDetailOriginType { Actor, Event, Hazard, Item, Environmental, Unknown }
+
+public class ItemDetailOrigin
+{
+    /// <summary>Character/Event/Item id, if the origin resolves to a known entity.</summary>
+    public string? Id { get; set; }
+
+    public ItemDetailOriginType Type { get; set; } = ItemDetailOriginType.Unknown;
+
+    /// <summary>Free-text fallback when Id is absent or the origin is untyped/ephemeral.</summary>
+    public string? Description { get; set; }
+}
+
+public enum ItemDetailParticipantRole { Caused, Witnessed }
+
+public class ItemDetailParticipant
+{
+    public string Id { get; set; } = default!;
+    public ItemDetailParticipantRole Role { get; set; }
 }
 
 public enum ItemCategory

@@ -333,7 +333,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         new FactionReputationChangeHandler(),
         new FactionStateChangeHandler(),
         new QuestProgressHandler(),
-        new ItemUpdateHandler(),
+        new ItemUpdateHandler(new TestFakeEmbeddingService()),
         new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator()),
         new SystemStatsChangeHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator()),
         RulesetDataTestHelper.CreateLevelUpHandler(),
