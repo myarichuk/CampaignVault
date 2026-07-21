@@ -4,7 +4,9 @@ public class SessionLog : ICampaignScopedEntity
 {
     public string Id { get; set; } = default!;
     public string? CampaignName { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
     public string? EmbeddingTextHash { get; set; }
     public List<SessionRecord> Sessions { get; set; } = [];
 

@@ -150,16 +150,97 @@ public class LlmToolingRegressionTests
     }
 
     [Fact]
-    public void CommitJsonErrorHints_SuggestsNascentForActiveRumorState()
+    public void ModelEnumErrorHints_SuggestsNascentForActiveRumorState()
     {
         var ex = new JsonException(
             "The JSON value could not be converted to CampaignVault.Models.RumorState. Path: $[0].newState");
         using var doc = JsonDocument.Parse("""[{ "$type": "rumor", "rumorId": "rumors/x", "newState": "Active" }]""");
 
-        var enriched = CommitJsonErrorHints.Enrich(ex, doc.RootElement);
+        var enriched = ModelEnumErrorHints.Enrich(ex, doc.RootElement);
 
         Assert.Contains("Nascent", enriched);
         Assert.Contains("Did you mean 'Nascent'?", enriched);
+    }
+
+    [Fact]
+    public void TryNormalize_FlattenedUpsertLocation_WrapsIntoLocationKey()
+    {
+        var args = new JsonObject
+        {
+            ["id"] = "locations/rusty-nail",
+            ["name"] = "The Rusty Nail",
+            ["description"] = "A dim tavern near the docks.",
+            ["type"] = "Building",
+            ["campaignName"] = "dragon-heist",
+        };
+
+        var modified = ToolCallExamples.TryNormalize("upsert_location", args, out var rewrites);
+
+        Assert.True(modified);
+        Assert.Contains("flattened→location", rewrites);
+        Assert.True(args.ContainsKey("location"));
+        var location = args["location"]!.AsObject();
+        Assert.Equal("locations/rusty-nail", location["id"]!.GetValue<string>());
+        Assert.Equal("The Rusty Nail", location["name"]!.GetValue<string>());
+        // campaignName is a sibling parameter of the tool, not part of the location payload,
+        // but the flattening repair wraps the whole top-level object — the handler still finds
+        // campaignName inside the wrapper only if it was present at the root before wrapping.
+        Assert.Equal("dragon-heist", args["campaignName"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void TryNormalize_ProperlyWrappedUpsertCharacter_IsLeftUnmodified()
+    {
+        var args = new JsonObject
+        {
+            ["character"] = new JsonObject { ["id"] = "chars/valen", ["name"] = "Valen" },
+            ["campaignName"] = "dragon-heist",
+        };
+
+        var modified = ToolCallExamples.TryNormalize("upsert_character", args, out var rewrites);
+
+        Assert.False(modified);
+        Assert.Empty(rewrites);
+        Assert.True(args.ContainsKey("character"));
+    }
+
+    [Theory]
+    [InlineData("upsert_character")]
+    [InlineData("upsert_location")]
+    [InlineData("upsert_item")]
+    [InlineData("upsert_creature")]
+    [InlineData("upsert_faction")]
+    [InlineData("upsert_quest")]
+    [InlineData("upsert_lore")]
+    [InlineData("upsert_rumor")]
+    [InlineData("upsert_plot_thread")]
+    [InlineData("upsert_spell")]
+    [InlineData("upsert_feat")]
+    [InlineData("world_build")]
+    public void ToolCallExamples_UpsertRegistryEntries_HaveRetryTemplates(string toolName)
+    {
+        Assert.True(ToolCallExamples.TryGet(toolName, out var example));
+        var (summary, retryExample) = ToolCallExamples.BuildDeserializationErrorResponse(toolName, "boom");
+
+        Assert.Contains("boom", summary);
+        Assert.NotNull(retryExample);
+        Assert.Equal(toolName, example.ToolName);
+    }
+
+    [Fact]
+    public void ModelEnumErrorHints_SuggestsSettlementForCityLocationType()
+    {
+        // Object-rooted path (e.g. "$.type"), as System.Text.Json reports it when deserializing a
+        // single upsert entity payload — as opposed to commit's array-rooted "$[0].newState".
+        var ex = new JsonException(
+            "The JSON value could not be converted to CampaignVault.Models.LocationType.",
+            path: "$.type", lineNumber: null, bytePositionInLine: null);
+        using var doc = JsonDocument.Parse("""{ "id": "locations/x", "name": "X", "description": "d", "type": "City" }""");
+
+        var enriched = ModelEnumErrorHints.Enrich(ex, doc.RootElement);
+
+        Assert.Contains("Settlement", enriched);
+        Assert.Contains("Did you mean 'Settlement'?", enriched);
     }
 
     [Fact]

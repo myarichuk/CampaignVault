@@ -6,7 +6,9 @@ public class Location : ICampaignScopedEntity, IArchivable
 {
     public string Id { get; set; } = default!;
 
+    [JsonIgnore]
     public float[]? SemanticVector { get; set; }
+    [JsonIgnore]
     public string? EmbeddingTextHash { get; set; }
 
     public string BuildEmbeddingText() => $"{Name}\n{Description}";

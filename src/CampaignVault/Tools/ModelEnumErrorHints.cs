@@ -6,8 +6,10 @@ namespace CampaignVault.Tools;
 
 /// <summary>
 /// Turns raw System.Text.Json enum failures into LLM-actionable hints (valid values, common aliases).
+/// Scans every enum in <c>CampaignVault.Models</c>, so this applies to any tool's argument
+/// binding failure (commit's polymorphic changes, upsert requests, etc.), not just commit.
 /// </summary>
-internal static partial class CommitJsonErrorHints
+internal static partial class ModelEnumErrorHints
 {
     private static readonly IReadOnlyDictionary<string, Type> EnumTypesByName = BuildEnumLookup();
 
@@ -175,6 +177,13 @@ internal static partial class CommitJsonErrorHints
         var current = root;
         foreach (var segment in path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
+            // Bare "$" is the root marker on an object-rooted path (e.g. "$.type" for a single
+            // upsert entity payload, as opposed to commit's array-rooted "$[0].newState").
+            if (segment == "$")
+            {
+                continue;
+            }
+
             if (TryNavigateArraySegment(segment, ref current))
             {
                 continue;

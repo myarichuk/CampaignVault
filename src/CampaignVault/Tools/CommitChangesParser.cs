@@ -60,7 +60,7 @@ internal static class CommitChangesParser
         catch (JsonException ex)
         {
             var source = el.ValueKind == JsonValueKind.Array ? el : default(JsonElement?);
-            error = CommitJsonErrorHints.Enrich(ex, source);
+            error = ModelEnumErrorHints.Enrich(ex, source);
             return false;
         }
     }

@@ -11,8 +11,12 @@ namespace CampaignVault.Middleware;
 /// </summary>
 internal static class McpResponseCleaner
 {
+    // The MCP SDK serializes StructuredContent with a camelCase naming policy
+    // (ModelContextProtocol.McpJsonUtilities.DefaultOptions), so the wire keys are
+    // "semanticVector"/"embeddingTextHash", not the PascalCase nameof(...) values below.
+    // Ordinal comparison would never match those keys, silently defeating this filter.
     private static readonly HashSet<string> VectorFieldsToStrip =
-        new(IHasSemanticVector.StrippedFields, StringComparer.Ordinal);
+        new(IHasSemanticVector.StrippedFields, StringComparer.OrdinalIgnoreCase);
 
     public static void Register(IMcpRequestFilterBuilder filters)
     {

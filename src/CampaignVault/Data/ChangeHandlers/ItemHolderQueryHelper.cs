@@ -17,7 +17,7 @@ internal static class ItemHolderQueryHelper
 
         if (context.Session != null && !string.IsNullOrWhiteSpace(holderId))
         {
-            var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(context.Session, holderId, ct: ct);
+            var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(context.Session, holderId, waitForNonStale: true, ct: ct);
             foreach (var i in held) result[i.Id] = i;
         }
 

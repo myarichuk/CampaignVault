@@ -3,7 +3,9 @@ namespace CampaignVault.Models;
 public class Faction : ICampaignScopedEntity, IArchivable
 {
     public string Id { get; set; } = default!;
+    [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
     public string? EmbeddingTextHash { get; set; }
 
     public string BuildEmbeddingText() => $"{Name}\n{Description}";

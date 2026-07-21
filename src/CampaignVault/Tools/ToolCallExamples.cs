@@ -10,6 +10,12 @@ internal static class ToolCallExamples
 {
     private static readonly IReadOnlyDictionary<string, ToolCallExample> Registry = BuildRegistry();
 
+    /// <summary>
+    /// Top-level tool parameters that are siblings of the wrapped entity payload, not part of it —
+    /// excluded when repairing a flattened upsert_* call so they stay bound as separate MCP arguments.
+    /// </summary>
+    private static readonly HashSet<string> SiblingParameterKeys = new(StringComparer.Ordinal) { "campaignName" };
+
     public static bool TryGet(string toolName, out ToolCallExample example) =>
         Registry.TryGetValue(toolName, out example!);
 
@@ -44,20 +50,24 @@ internal static class ToolCallExamples
             !arguments.ContainsKey(wrapKey) &&
             example.FlattenedFieldDetector?.Invoke(arguments) == true)
         {
+            // Only the entity's own fields get wrapped — sibling tool parameters (campaignName)
+            // stay at the top level, since they're bound as separate MCP arguments, not part of
+            // the entity payload.
             var wrapped = new JsonObject();
-            var clone = JsonNode.Parse(arguments.ToJsonString()) as JsonObject;
-            if (clone is not null)
+            foreach (var prop in arguments.ToList())
             {
-                wrapped[wrapKey] = clone;
-                arguments.Clear();
-                foreach (var prop in wrapped)
+                if (SiblingParameterKeys.Contains(prop.Key))
                 {
-                    arguments[prop.Key] = prop.Value?.DeepClone();
+                    continue;
                 }
 
-                applied.Add($"flattened→{wrapKey}");
-                modified = true;
+                wrapped[prop.Key] = prop.Value?.DeepClone();
+                arguments.Remove(prop.Key);
             }
+
+            arguments[wrapKey] = wrapped;
+            applied.Add($"flattened→{wrapKey}");
+            modified = true;
         }
 
         foreach (var (canonical, aliases) in example.Synonyms)
@@ -488,6 +498,309 @@ internal static class ToolCallExamples
                         }
                       ],
                       "narrative": "Valen ordered ale and exchanged news with the innkeeper."
+                    }
+                    """)!.AsObject(),
+            },
+            ["world_build"] = new ToolCallExample
+            {
+                ToolName = "world_build",
+                DeserializationHint =
+                    "Each field is an optional array using the same shape as the matching upsert_* tool's entity payload "
+                    + "(locations[] ~ upsert_location's 'location', characters[] ~ upsert_character's 'character', etc.). "
+                    + "Dispatched in a fixed order: locations, factions, creatures/spells/feats, characters, items, quests, "
+                    + "plotThreads, lore, rumors, then needDescriptors — all in ONE call. Capped at 100 total entries; split "
+                    + "larger seeds into multiple calls. A validation failure on any entry rolls back the entire batch and "
+                    + "reports '{kind}[{index}]' — fix that entry and resend the full batch. Forward references to an "
+                    + "entity created later in the same batch are allowed (non-blocking warning only). "
+                    + "See get_help topic=world-building for a full copy-paste example.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "batch": {
+                        "locations": [
+                          { "id": "locations/rusty-nail", "name": "The Rusty Nail", "description": "A dim tavern near the docks.", "type": "Building" }
+                        ],
+                        "characters": [
+                          { "id": "chars/innkeeper", "name": "Old Tam", "isPc": false, "isPartyCompanion": false, "currentLocationId": "locations/rusty-nail" }
+                        ]
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_character"] = new ToolCallExample
+            {
+                ToolName = "upsert_character",
+                WrapperKey = "character",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("id") && args.ContainsKey("name") && !args.ContainsKey("character"),
+                DeserializationHint =
+                    "Required: id, name. This is the only tool that CREATES a character — for changes to an existing "
+                    + "one (HP, activity, location, level-up, status) use commit instead, not another upsert_character call. "
+                    + "Omit maxHp for PCs — the engine derives it from systemStats (hitDie/level/constitution etc.) at "
+                    + "bootstrap; set maxHp directly only for creature stat blocks (or use systemStats.statBlockHp). "
+                    + "systemStats.$system is 'dnd5e' or 'pf2e' (lowercase, exact) — omit the whole systemStats object for "
+                    + "a narrative-only character with no ruleset stats. Omitting psychology/social/needs/systemStats on an "
+                    + "existing character preserves the stored value; providing one replaces it wholesale.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "character": {
+                        "id": "chars/valen",
+                        "name": "Valen",
+                        "isPc": true,
+                        "isPartyCompanion": false,
+                        "systemStats": { "$system": "dnd5e", "level": 3, "hitDie": "d10", "strength": 14, "dexterity": 12, "constitution": 14, "intelligence": 10, "wisdom": 10, "charisma": 12 }
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_location"] = new ToolCallExample
+            {
+                ToolName = "upsert_location",
+                WrapperKey = "location",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("name") && args.ContainsKey("description") && !args.ContainsKey("location"),
+                DeserializationHint =
+                    "Required: id, name, description, type. type must be one of Region, Settlement, District, Building, "
+                    + "Room, Wilderness (City/Town → Settlement; Tavern/Inn/Shop → Building — there is no 'City' or "
+                    + "'Tavern' value). climateZone (Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean) is "
+                    + "optional — omit to inherit from the nearest parentLocationId ancestor. This is the only tool that "
+                    + "CREATES a location — for incremental changes to an existing one use commit's location_update instead.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "location": {
+                        "id": "locations/rusty-nail",
+                        "name": "The Rusty Nail",
+                        "description": "A dim tavern near the docks, smelling of pipe smoke and spilled ale.",
+                        "type": "Building"
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_item"] = new ToolCallExample
+            {
+                ToolName = "upsert_item",
+                WrapperKey = "item",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("name") && args.ContainsKey("holderId") && !args.ContainsKey("item"),
+                DeserializationHint =
+                    "Required: id, name, description, holderId, coreCategory. coreCategory must be one of Weapon, Armor, "
+                    + "Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other. To make an item "
+                    + "equippable, set BOTH equipZones (Head, Face, Neck, Torso, Back, Waist, Hands, Wrists, Legs, Feet, "
+                    + "MainHand, OffHand, Ring, Accessory) and equipLayer (Base, Armor, Outer, Held) — set once at "
+                    + "creation, not on every equip. Set isEquipped:true only for starting gear worn at character "
+                    + "creation; after creation, use commit's item_equip/item_unequip instead of re-calling this tool.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "item": {
+                        "id": "items/chain-shirt",
+                        "name": "Chain Shirt",
+                        "description": "A shirt of interlocking metal rings.",
+                        "holderId": "chars/valen",
+                        "coreCategory": "Armor",
+                        "equipZones": ["Torso"],
+                        "equipLayer": "Armor"
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_creature"] = new ToolCallExample
+            {
+                ToolName = "upsert_creature",
+                WrapperKey = "creature",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("name") && args.ContainsKey("system") && !args.ContainsKey("creature"),
+                DeserializationHint =
+                    "Required: id, name, system (Dnd5e, Pathfinder2e, or Narrative). This defines a reusable homebrew "
+                    + "stat-block TEMPLATE that overrides SRD creatures by name when queried via query_creatures — it is "
+                    + "distinct from a live NPC/monster instance in a scene, which is created via world_build's "
+                    + "characters[] (or upsert_character), not this tool.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "creature": {
+                        "id": "creatures/dire-wolf-alpha",
+                        "name": "Dire Wolf Alpha",
+                        "system": "Dnd5e",
+                        "hp": 45,
+                        "defense": 14
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_faction"] = new ToolCallExample
+            {
+                ToolName = "upsert_faction",
+                WrapperKey = "faction",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("name") && args.ContainsKey("factionType") && !args.ContainsKey("faction"),
+                DeserializationHint =
+                    "Required: id, name. factionType (Guild, Kingdom, Cult, MerchantHouse, MilitaryOrder, Criminal, "
+                    + "Religious) defaults to Guild if omitted. For reputation or stance changes to an existing faction, "
+                    + "use commit's faction_reputation/faction_state instead of re-calling this tool.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "faction": {
+                        "id": "factions/thieves-guild",
+                        "name": "The Thieves' Guild",
+                        "factionType": "Criminal"
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_quest"] = new ToolCallExample
+            {
+                ToolName = "upsert_quest",
+                WrapperKey = "quest",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("title") && args.ContainsKey("objectives") && !args.ContainsKey("quest"),
+                DeserializationHint =
+                    "Required: id, title. urgency (Low, Normal, Urgent, Critical) defaults to Normal. objectives[] only "
+                    + "needs a 'description' per entry (plus optional rewardHint/deadlineDay) — objective STATE is "
+                    + "advanced later via commit's quest_progress, not by re-sending objectives here. For narrative "
+                    + "progress on an existing quest, prefer quest_progress over re-calling this tool.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "quest": {
+                        "id": "quests/stop-nightshade",
+                        "title": "Stop the Nightshade Gang",
+                        "urgency": "Normal",
+                        "objectives": [ { "description": "Find the gang's hideout" } ]
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_lore"] = new ToolCallExample
+            {
+                ToolName = "upsert_lore",
+                WrapperKey = "lore",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("title") && args.ContainsKey("content") && !args.ContainsKey("lore"),
+                DeserializationHint =
+                    "Required: id, title, content. Call search_world first to check whether similar lore already exists "
+                    + "before creating a duplicate entry.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "lore": {
+                        "id": "lore/founding-of-the-city",
+                        "title": "The Founding of the City",
+                        "content": "Three centuries ago, refugees fleeing the war founded this port on the ashes of an older ruin."
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_rumor"] = new ToolCallExample
+            {
+                ToolName = "upsert_rumor",
+                WrapperKey = "rumor",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("subject") && args.ContainsKey("currentText") && !args.ContainsKey("rumor"),
+                DeserializationHint =
+                    "Required: id, subject, currentText; regionLocationId is required when CREATING a new rumor. state "
+                    + "(Nascent, Spreading, Peak, Fading, Resolved, Forgotten) defaults to Nascent — there is no 'Active' "
+                    + "value. truthValue (True, False, PartiallyTrue, Misleading, Unknown) defaults to True. For rumor evolution over time on "
+                    + "an existing rumor, prefer commit's 'rumor' type over re-calling this tool.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "rumor": {
+                        "id": "rumors/nightshade-gang",
+                        "regionLocationId": "locations/docks-district",
+                        "subject": "Nightshade Gang",
+                        "currentText": "They say the Nightshade Gang has been paying off the harbor guards."
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_plot_thread"] = new ToolCallExample
+            {
+                ToolName = "upsert_plot_thread",
+                WrapperKey = "plotThread",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("title") && args.ContainsKey("tensionLevel") && !args.ContainsKey("plotThread"),
+                DeserializationHint =
+                    "Required: id, title. state (Dormant, Active, Escalating, Climax, Resolved, Abandoned) defaults to "
+                    + "Active. Usually DM-scaffolding, not player-visible (isPlayerVisible defaults to false). Omitting "
+                    + "clues/involvedEntityIds/foreshadowingHooks on an existing thread preserves the stored value — use "
+                    + "this to bump tensionLevel or add a clue without re-sending the whole clue list.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "plotThread": {
+                        "id": "plot-threads/guild-infiltration",
+                        "title": "Infiltrate the Thieves' Guild",
+                        "state": "Active",
+                        "tensionLevel": 20
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_spell"] = new ToolCallExample
+            {
+                ToolName = "upsert_spell",
+                WrapperKey = "spell",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("name") && args.ContainsKey("system") && !args.ContainsKey("spell"),
+                DeserializationHint =
+                    "Required: id, name, system (Dnd5e, Pathfinder2e, or Narrative). Homebrew spells override SRD spells "
+                    + "by name when queried via get_spells.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "spell": {
+                        "id": "spells/frostbolt",
+                        "name": "Frostbolt",
+                        "system": "Dnd5e",
+                        "level": 2
+                      },
+                      "campaignName": "dragon-heist"
+                    }
+                    """)!.AsObject(),
+            },
+            ["upsert_feat"] = new ToolCallExample
+            {
+                ToolName = "upsert_feat",
+                WrapperKey = "feat",
+                AllowFlattenedWrapper = true,
+                FlattenedFieldDetector = args =>
+                    args.ContainsKey("name") && args.ContainsKey("system") && !args.ContainsKey("feat"),
+                DeserializationHint =
+                    "Required: id, name, system (Dnd5e, Pathfinder2e, or Narrative). Homebrew feats/perks override SRD "
+                    + "ones by name when queried via get_system_handbook.",
+                ArgumentsTemplate = JsonNode.Parse(
+                    """
+                    {
+                      "feat": {
+                        "id": "feats/river-runner",
+                        "name": "River Runner",
+                        "system": "Dnd5e"
+                      },
+                      "campaignName": "dragon-heist"
                     }
                     """)!.AsObject(),
             },

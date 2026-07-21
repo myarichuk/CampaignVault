@@ -34,14 +34,17 @@ internal static partial class McpToolErrorFilter
             catch (Exception ex) when (TryUnwrapJsonException(ex, out var jsonEx))
             {
                 var toolName = request.Params?.Name ?? "unknown";
+                var source = TryGetEntityPayloadElement(request.Params, toolName);
+                var enrichedMessage = ModelEnumErrorHints.Enrich(jsonEx, source);
+
                 if (ToolCallExamples.TryGet(toolName, out _))
                 {
                     var (summary, retryExample) =
-                        ToolCallExamples.BuildDeserializationErrorResponse(toolName, jsonEx.Message);
+                        ToolCallExamples.BuildDeserializationErrorResponse(toolName, enrichedMessage);
                     return ToErrorResult(summary, retryExample);
                 }
 
-                return ToErrorResult($"Invalid arguments for '{toolName}': {jsonEx.Message}", null);
+                return ToErrorResult($"Invalid arguments for '{toolName}': {enrichedMessage}", null);
             }
         });
     }
@@ -116,6 +119,26 @@ internal static partial class McpToolErrorFilter
 
     internal static string BuildMissingParamMessage(string toolName, string paramName) =>
         BuildMissingParamResponse(toolName, paramName).Summary;
+
+    /// <summary>
+    /// Locates the JsonElement holding the entity/payload argument (e.g. the "location" object
+    /// on upsert_location) so <see cref="ModelEnumErrorHints"/> can echo back the offending value,
+    /// not just the list of valid enum names.
+    /// </summary>
+    private static JsonElement? TryGetEntityPayloadElement(CallToolRequestParams? requestParams, string toolName)
+    {
+        if (requestParams?.Arguments is null)
+        {
+            return null;
+        }
+
+        if (!ToolCallExamples.TryGet(toolName, out var example) || example.WrapperKey is null)
+        {
+            return null;
+        }
+
+        return requestParams.Arguments.TryGetValue(example.WrapperKey, out var element) ? element : null;
+    }
 
     internal static bool TryUnwrapJsonException(Exception ex, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out JsonException? jsonException)
     {
