@@ -40,7 +40,15 @@ public sealed class NeedChangeHandler : IWorldChangeHandler
         }
 
         var current = character.Needs.ActiveNeeds.GetValueOrDefault(nc.Need, 0f);
-        character.Needs.ActiveNeeds[nc.Need] = Math.Clamp(current + nc.Delta, 0f, 100f);
+        var newValue = Math.Clamp(current + nc.Delta, 0f, 100f);
+
+        // Replace the entire ActiveNeeds dictionary to ensure RavenDB tracks the change.
+        // Modifying a nested dictionary in-place doesn't trigger change detection in RavenDB.
+        var updatedNeeds = new Dictionary<string, float>(character.Needs.ActiveNeeds)
+        {
+            [nc.Need] = newValue
+        };
+        character.Needs.ActiveNeeds = updatedNeeds;
 
         context.RecordMessage($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
 

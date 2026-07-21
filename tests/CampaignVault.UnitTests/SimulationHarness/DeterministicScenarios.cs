@@ -100,13 +100,11 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
             new NeedChange { CharacterId = npcId, Need = "tiredness", Delta = -20f }
         ], "The party helps Barliman with the dishes, letting him sit down for a bit.");
         Assert.True(resolve.Success);
-        await simulator.SaveChangesAsync();
         Assert.Equal(NarrativePhase.Downtime, simulator.CurrentPhase);
 
         // 5. Rest (Time passes)
         var rest = await simulator.Rest(1, TimeOfDay.Morning, "A long night's sleep at the inn.");
         Assert.True(rest.Success);
-        await simulator.SaveChangesAsync();
         Assert.Equal(NarrativePhase.Exploration, simulator.CurrentPhase);
 
         // Final Assertion: Verify state survived and simulation applied
