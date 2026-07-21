@@ -16,12 +16,12 @@ public class RumorArchivalRule : ISimulationRule
         var narratives = new List<RuleNarrative>();
         var archiveAfterDays = context.Config?.RumorArchiveAfterDays ?? 30;
         var currentDay = context.Time.TotalDaysElapsed;
+        var archiveThresholdDay = currentDay - archiveAfterDays;
 
-        // Query Forgotten rumors directly (bypassing ActiveRumors, which already excludes them)
         var forgottenRumors = await context.Session.Query<Rumor>()
             .Where(r => r.State == RumorState.Forgotten
                 && r.CampaignName == context.CampaignName
-                && currentDay - r.LastStateChangeDay >= archiveAfterDays)
+                && r.LastStateChangeDay <= archiveThresholdDay)
             .ToListAsync(ct);
 
         foreach (var rumor in forgottenRumors)

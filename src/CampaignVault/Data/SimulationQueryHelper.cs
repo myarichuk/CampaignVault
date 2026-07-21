@@ -193,11 +193,22 @@ internal static class SimulationQueryHelper
         var threads = (await query.ToListAsync(ct)).Where(t => !t.IsArchived).ToList();
 
         if (string.IsNullOrWhiteSpace(campaignName))
-            return threads;
+            return StripSemanticVectors(threads).ToList();
 
-        return threads
+        var result = threads
             .Where(t => string.IsNullOrEmpty(t.CampaignName)
                 || string.Equals(t.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
             .ToList();
+        return StripSemanticVectors(result).ToList();
+    }
+
+    private static IEnumerable<T> StripSemanticVectors<T>(IEnumerable<T> entities) where T : class, IHasSemanticVector
+    {
+        foreach (var entity in entities)
+        {
+            entity.SemanticVector = null;
+            entity.EmbeddingTextHash = null;
+        }
+        return entities;
     }
 }
