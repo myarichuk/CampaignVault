@@ -33,6 +33,8 @@ Dispatched in a fixed dependency order — locations, factions, creatures/spells
 
 Character entries get the full bootstrap treatment (HP/defense derivation). Capped at 100 total entries across all arrays — split larger seeds into multiple calls.
 
+CHARACTERS DO NOT CARRY EQUIPMENT INLINE. A `characters[]` entry has no weapon/armor/gear fields — equipment is always a SEPARATE `items[]` entry in the SAME batch, with `holderId` set to the character's id (and `equipZones`/`equipLayer`/`isEquipped` if it should start worn). Seeding an armed guard, a soldier, a crime boss, or any combat-capable NPC without a matching `items[]` entry leaves them unarmed and unarmored — add the weapon/armor entries in the same call. A non-blocking warning is emitted for any newly-seeded character with no items[] entry (in this batch or already on file) so this is easy to miss but not silent.
+
 See get_help topic=world-building for a full copy-paste example and recommended seeding order.")]
     public Task<ToolResult<WorldBuildResult>> WorldBuild(
         [Description("Batch of entities to create/update, grouped by kind. Each array is optional — include only the kinds you're seeding in this call.")]
@@ -67,6 +69,7 @@ See get_help topic=world-building for a full copy-paste example and recommended 
             await ProcessKindAsync(batch.Feats, "feats", CanonicalId.Feats, r => r.Id, ApplyFeatUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Characters, "characters", CanonicalId.Characters, r => r.Id, ApplyCharacterUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Items, "items", CanonicalId.Items, r => r.Id, ApplyItemUpsertAsync, s, effective, result, warnings);
+            await WarnOnUnequippedCharactersAsync(batch, s, effective, warnings);
             await ProcessKindAsync(batch.Quests, "quests", CanonicalId.Quests, r => r.Id, ApplyQuestUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.PlotThreads, "plotThreads", CanonicalId.PlotThreads, r => r.Id, ApplyPlotThreadUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Lore, "lore", CanonicalId.Lore, r => r.Id, ApplyLoreUpsertAsync, s, effective, result, warnings);
@@ -167,6 +170,52 @@ See get_help topic=world-building for a full copy-paste example and recommended 
         }
     }
 
+    /// <summary>
+    /// Non-blocking nudge: after characters + items dispatch in a world_build batch, flags any
+    /// newly-seeded character with no item[] holding them — neither in this batch's items[] nor
+    /// already on file from a prior call. Equipment is a separate entity (items[].holderId), not
+    /// an inline character field, so this is easy for an LLM seeding a cast to forget silently.
+    /// </summary>
+    private static async Task WarnOnUnequippedCharactersAsync(
+        WorldBuildBatch batch, IAsyncDocumentSession s, string effective, List<string> warnings)
+    {
+        if (batch.Characters is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var itemHolderIds = new HashSet<string>(
+            (batch.Items ?? []).Select(i => i.HolderId).Where(h => !string.IsNullOrEmpty(h)),
+            StringComparer.OrdinalIgnoreCase);
+
+        var candidateIds = batch.Characters
+            .Select(c => c.Id)
+            .Where(id => !string.IsNullOrEmpty(id) && !itemHolderIds.Contains(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (candidateIds.Count == 0)
+        {
+            return;
+        }
+
+        var existingHolders = new HashSet<string>(
+            await s.Query<Item>()
+                .Where(i => (i.CampaignName == effective || i.CampaignName == null) && i.HolderId.In(candidateIds))
+                .Select(i => i.HolderId)
+                .ToListAsync(),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var charId in candidateIds)
+        {
+            if (!existingHolders.Contains(charId))
+            {
+                warnings.Add($"characters: '{charId}' has no items[] entry (holderId) — unarmed/unequipped. " +
+                    $"If this NPC should carry a weapon/armor/gear, add an items[] entry with holderId=\"{charId}\".");
+            }
+        }
+    }
+
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"WORLD BUILDER TOOL: Directly create or overwrite a character/NPC.
@@ -193,7 +242,18 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
-        return ExecuteForCampaignAsync(campaignName, (effective, s) => ApplyCharacterUpsertAsync(s, character, effective));
+        return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var result = await ApplyCharacterUpsertAsync(s, character, effective);
+            if (result.Success && result.Data?.Id is { } charId
+                && !await s.Query<Item>().Where(i => (i.CampaignName == effective || i.CampaignName == null) && i.HolderId == charId).AnyAsync())
+            {
+                var hint = $"HINT: '{charId}' has no items on file (nothing with holderId=\"{charId}\") — unarmed/unequipped. " +
+                    "Use world_build's items[] (or upsert_item) with holderId set to this character's id to give them a weapon/armor/gear.";
+                return new ToolResult<Character>(result.Success, result.Data, $"{result.Summary} {hint}", result.Error, result.WorldPressure, result.RetryExample);
+            }
+            return result;
+        });
     }
 
     private async Task<ToolResult<Character>> ApplyCharacterUpsertAsync(IAsyncDocumentSession s, CharacterUpsertRequest character, string effective)

@@ -628,7 +628,7 @@ Seeding a fresh campaign — the starting region, key NPCs, opening quest — is
 2. **factions** — any powers already active in the region.
 3. **creatures / spells / feats** — only if this campaign has homebrew content; skip otherwise.
 4. **characters** — PCs first (`isPc: true`), then the handful of named NPCs the opening scene actually needs. Don't pre-create a whole cast — most NPCs should stay ambient (`ambientCrowd` on the location) until the party interacts with them.
-5. **items** — starting gear, set `holderId` to the owning character.
+5. **items** — starting gear, set `holderId` to the owning character. **Characters have no inline equipment fields** — a guard, soldier, crime boss, or any combat-capable NPC you seed in step 4 is unarmed/unarmored until you ALSO give them a matching `items[]` entry here in the SAME batch. It's easy to seed a rich cast of NPCs and forget this step entirely since nothing about the character record itself hints at it — `world_build` emits a non-blocking warning per newly-seeded character with no items[] entry (in this batch or already on file) specifically to catch that.
 6. **quests** — the opening hook, if you have one ready.
 7. **plotThreads** — DM-only scaffolding for arcs you're seeding in advance.
 8. **lore** — background/history entries worth being searchable.

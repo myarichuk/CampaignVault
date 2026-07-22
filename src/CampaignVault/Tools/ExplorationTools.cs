@@ -366,10 +366,15 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 TurnIntent = enrichment.TurnIntent
             };
 
+            var equipmentHint = heldItems.Count == 0
+                ? $" HINT: '{characterId}' has no items on file (nothing with holderId=\"{characterId}\") — unarmed/unequipped. " +
+                  "If this NPC should be carrying a weapon/armor/gear, add it via world_build's items[] (or upsert_item)."
+                : "";
+
             return new ToolResult<NpcContextView>(
                 true,
                 context,
-                $"Psychological context for {npc.Name} retrieved (campaign: {effective}).",
+                $"Psychological context for {npc.Name} retrieved (campaign: {effective}).{equipmentHint}",
                 WorldPressure: initiativePressure is { Length: > 0 } ? initiativePressure : null);
         }, saveChanges: true);
     }
