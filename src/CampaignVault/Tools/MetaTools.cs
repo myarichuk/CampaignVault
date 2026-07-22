@@ -30,7 +30,7 @@ internal enum HelpTopic
     WorldPressure,
 
     /// <summary>Tags, items, appearance, knowledge, physics sandbox.</summary>
-    [Description("Visual sandbox, items, and knowledge")]
+    [Description("Visual sandbox: item damage/wear/hidden-feature tracking, tags, appearance, knowledge")]
     VisualSandbox,
 
     /// <summary>Full commit type enum cheat sheet with all discriminators.</summary>
@@ -47,7 +47,7 @@ public class MetaTools : IMcpServerTool
 {
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for commit $type discriminators — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use. Filter by category to reduce output.")]
+    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for commit $type discriminators — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use — e.g. for scratches, stains, secret compartments, or other lasting item damage/wear, look at item_update's upsertItemDetail. Filter by category to reduce output.")]
     public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
         [Description("Optional filter over commit $type categories: Combat, Narrative, World, PlotThread. Omit to return all. This groups commit $type discriminators used inside the 'commit' tool's changes array — it is unrelated to list_tools' category parameter, which groups MCP tools themselves.")]
         string? category = null)
@@ -73,9 +73,9 @@ public class MetaTools : IMcpServerTool
 
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: world-building, patterns, combat, world-pressure, visual-sandbox, commit-enum, or faq. Each topic is self-contained with copy-paste examples.")]
+    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: world-building, patterns, combat, world-pressure, visual-sandbox (item damage/wear/hidden-feature tracking, tags, appearance, knowledge), commit-enum, or faq. Each topic is self-contained with copy-paste examples.")]
     public Task<ToolResult<string>> GetHelp(
-        [Description("Optional help topic for focused deep-dive sections: 'world-building' (session-0 seeding order + world_build example), 'patterns' (commit examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox', 'commit-enum', 'faq'. Omit for lean quickstart.")]
+        [Description("Optional help topic for focused deep-dive sections: 'world-building' (session-0 seeding order + world_build example), 'patterns' (commit examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox' (persistent item details: scratches/stains/secret compartments/damage, tags, appearance, knowledge), 'commit-enum', 'faq'. Omit for lean quickstart.")]
         string? topic = null)
     {
         var content = GetHelpContent(topic);

@@ -180,6 +180,16 @@ public class ItemDetail : IHasSemanticVector
     /// <summary>Characters who caused or witnessed this detail; each pushes a memory node on upsert.</summary>
     public List<ItemDetailParticipant> Participants { get; set; } = [];
 
+    /// <summary>
+    /// Optional id of whatever this detail currently physically anchors the item to — a location
+    /// (a rope's other end lashed to a column), another item (leashed to a stake), or a character
+    /// (tied to a handler). Distinct from Origin: Origin is what caused the detail; TetheredToId is
+    /// what it's currently attached to (may differ, e.g. a snapped tether keeps Origin but clears
+    /// this). Purely descriptive — the engine does not enforce movement/range constraints from it;
+    /// the DM-LLM reads it and adjudicates (e.g. blocking travel beyond tether length).
+    /// </summary>
+    public string? TetheredToId { get; set; }
+
     /// <summary>In-game day (CampaignTime.TotalDaysElapsed) this detail was first created.</summary>
     public int CreatedOnDay { get; set; }
 

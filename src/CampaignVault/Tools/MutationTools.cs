@@ -44,7 +44,7 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
     [Description(
         @"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world.
-Accepts a batch of changes (HP, Items, Events, Rumors, Relationships, Needs, Attributes, Activity, Status, ruleset_action, and world updates).
+Accepts a batch of changes (HP, Items — including persistent damage/wear/hidden-feature details via item_update's upsertItemDetail — Events, Rumors, Relationships, Needs, Attributes, Activity, Status, ruleset_action, and world updates).
 
 See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, copy-paste examples, and change-type reference.
 

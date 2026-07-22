@@ -189,7 +189,11 @@ internal static class CommitSchemaRegistry
             CoCommitHints: []),
 
         new("item", "World",
-            "Move an item to a new holder (character, location, or container item).",
+            "Move an item to a new holder (character, location, or container item). Also how to model " +
+            "worn/carried gear that should visibly hang off another equipped item — a sword in a back " +
+            "sheath, throwing knives on a bandolier, a pouch on a belt: set toHolderId to the sheath/" +
+            "bandolier/belt item's id (not the character's), while that container item is itself equipped " +
+            "on the character via item_equip. The contained item's holder chain resolves through it.",
             ["itemId", "toHolderId"],
             [],
             HasSideEffects: false,
@@ -199,7 +203,9 @@ internal static class CommitSchemaRegistry
         new("item_update", "World",
             "Update an item's state, category, tags, or properties. Also handles persistent granular " +
             "ItemDetails (scratches, stains, secret compartments) via upsertItemDetail/retireItemDetailId — " +
-            "durable, examine-able state distinct from temporary tags or narrative flavor.",
+            "durable, examine-able state distinct from temporary tags or narrative flavor. To seed initial " +
+            "ItemDetails on a brand-new item, pass itemDetails on upsert_item/world_build instead — this " +
+            "$type is for incremental changes to an item that already exists.",
             ["itemId"],
             ["newState", "coreCategory", "tagsToAdd", "tagsToRemove", "featuresToAdd",
              "featuresToRemove", "propertiesToUpsert", "propertiesToRemove",

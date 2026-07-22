@@ -3176,4 +3176,194 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Assert.Equal("Travel was interrupted by an ambush.", scene.LastKnownTravel);
         }
     }
+
+    [Fact]
+    public async Task UpsertItemAsync_WithItemDetails_CreatesDetailsWithFreshIdsAndEmbeddings()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/creation-details-" + Guid.NewGuid();
+        var campaignName = "creation-details-camp-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 7 }, campaignName);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            {
+                Id = itemId,
+                Name = "Battle-Worn Sword",
+                Description = "A well-used blade.",
+                HolderId = "locations/armory",
+                ItemDetails =
+                [
+                    new ItemDetailUpsertRequest { Name = "Notched blade", Description = "A deep notch near the tip." },
+                    new ItemDetailUpsertRequest { Name = "Old bloodstain", Description = "A dark, faded stain near the hilt." },
+                ],
+            }, campaignName);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var item = await session.LoadAsync<Item>(itemId);
+            Assert.Equal(2, item.ItemDetails.Count);
+            foreach (var detail in item.ItemDetails)
+            {
+                Assert.StartsWith("detail-", detail.Id);
+                Assert.NotNull(detail.SemanticVector);
+                Assert.NotEmpty(detail.SemanticVector);
+                Assert.Equal(7, detail.CreatedOnDay);
+                Assert.Equal(7, detail.UpdatedOnDay);
+                Assert.Empty(detail.Participants);
+            }
+            Assert.NotNull(item.SemanticVector);
+            Assert.NotEmpty(item.SemanticVector);
+        }
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_WithItemDetails_TetheredToIdFlowsThroughAtCreation()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/creation-tether-" + Guid.NewGuid();
+        var campaignName = "creation-tether-camp-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            {
+                Id = itemId,
+                Name = "Rope",
+                Description = "A coil of rope.",
+                HolderId = "locations/ruins",
+                ItemDetails =
+                [
+                    new ItemDetailUpsertRequest { Name = "Lashed end", Description = "Tied off.", TetheredToId = "locations/ruins-column" },
+                    new ItemDetailUpsertRequest { Name = "Frayed end", Description = "The other end is frayed." },
+                ],
+            }, campaignName);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var item = await session.LoadAsync<Item>(itemId);
+            Assert.Equal(2, item.ItemDetails.Count);
+            Assert.Equal("locations/ruins-column", item.ItemDetails.Single(d => d.Name == "Lashed end").TetheredToId);
+            Assert.Null(item.ItemDetails.Single(d => d.Name == "Frayed end").TetheredToId);
+        }
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_WithItemDetails_IgnoresSuppliedIdAndParticipants()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/creation-details-ignore-" + Guid.NewGuid();
+        var charId = "chars/creation-details-witness-" + Guid.NewGuid();
+        var campaignName = "creation-details-ignore-camp-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = charId, Name = "Witness" }, campaignName);
+            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            {
+                Id = itemId,
+                Name = "Chest",
+                Description = "A wooden chest.",
+                HolderId = "locations/vault",
+                ItemDetails =
+                [
+                    new ItemDetailUpsertRequest
+                    {
+                        Id = "detail-caller-supplied",
+                        Name = "Hidden compartment",
+                        Description = "A false bottom conceals a small space.",
+                        Participants = [new ItemDetailParticipant { Id = charId, Role = ItemDetailParticipantRole.Witnessed }],
+                    },
+                ],
+            }, campaignName);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var item = await session.LoadAsync<Item>(itemId);
+            var detail = Assert.Single(item.ItemDetails);
+            Assert.NotEqual("detail-caller-supplied", detail.Id);
+            Assert.Empty(detail.Participants);
+
+            var character = await session.LoadAsync<Character>(charId);
+            Assert.Empty(character.Psychology.Memories);
+        }
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_WithItemDetails_OnExistingItem_IgnoresItemDetailsField()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/creation-details-existing-" + Guid.NewGuid();
+        var campaignName = "creation-details-existing-camp-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            {
+                Id = itemId,
+                Name = "Lantern",
+                Description = "A brass lantern.",
+                HolderId = "locations/storeroom",
+            }, campaignName);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            {
+                Id = itemId,
+                Name = "Lantern",
+                Description = "A brass lantern.",
+                HolderId = "locations/storeroom",
+                ItemDetails = [new ItemDetailUpsertRequest { Name = "Cracked glass", Description = "A hairline crack in the glass." }],
+            }, campaignName);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var item = await session.LoadAsync<Item>(itemId);
+            Assert.Empty(item.ItemDetails);
+        }
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_NoItemDetails_Unaffected()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/creation-no-details-" + Guid.NewGuid();
+        var campaignName = "creation-no-details-camp-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            {
+                Id = itemId,
+                Name = "Plain Rope",
+                Description = "Sturdy hemp rope.",
+                HolderId = "locations/storeroom",
+            }, campaignName);
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var item = await session.LoadAsync<Item>(itemId);
+            Assert.NotNull(item.ItemDetails);
+            Assert.Empty(item.ItemDetails);
+        }
+    }
 }

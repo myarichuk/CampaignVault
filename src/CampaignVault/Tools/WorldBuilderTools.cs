@@ -309,7 +309,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). This is the only tool that creates a new item. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale. During play, use commit's item_update/item for incremental changes to an existing item.")]
+        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). This is the only tool that creates a new item. Pass itemDetails to seed persistent, granular state at creation — scratches, stains, secret compartments, existing damage or wear — instead of issuing separate item_update commits afterward. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale [itemDetails is the exception — it is creation-only and is ignored (not replaced/merged) when the item already exists]. During play, use commit's item_update (tags/state) or item_update's upsertItemDetail (persistent damage/wear/hidden features) for incremental changes to an existing item.")]
     public Task<ToolResult<Item>> UpsertItem(
         [Description("The item to create or update. Strongly typed.")]
         ItemUpsertRequest item,
@@ -321,9 +321,10 @@ This is the only tool that creates a new location. During play, use commit's loc
 
     private async Task<ToolResult<Item>> ApplyItemUpsertAsync(IAsyncDocumentSession s, ItemUpsertRequest item, string effective)
     {
+        var alreadyExisted = await s.LoadAsync<Item>(CanonicalId.Normalize(item.Id, CanonicalId.Items)) != null;
         var merged = await _repository.UpsertItemAsync(s, item, effective);
         var message = $"Item upserted (campaign context: {effective}).";
-        var nudges = ItemUpsertSanityChecker.GetNudges(item);
+        var nudges = ItemUpsertSanityChecker.GetNudges(item, alreadyExisted);
         if (nudges.Count > 0)
         {
             message += " " + string.Join(" ", nudges);

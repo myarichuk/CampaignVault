@@ -162,7 +162,10 @@ public class ItemUpsertRequest
 
     public ItemCategory CoreCategory { get; set; }
 
-    [Description("Omit to preserve the item's existing tags. Provide to replace them wholesale.")]
+    [Description("Omit to preserve the item's existing tags. Provide to replace them wholesale. Convention " +
+        "for a container's displayed contents: tag the CONTAINER item (bandolier, sheath, pouch) — not what's " +
+        "inside it — 'open-carry' if contents hang visibly, 'concealed' if tucked away. Narrative-only; also " +
+        "tag the wearing character (well_armed/unarmed) if visibility should affect crowd reactions.")]
     public List<string>? Tags { get; set; }
 
     [Description("Omit to preserve the item's existing properties. Provide to replace them wholesale.")]
@@ -209,6 +212,18 @@ public class ItemUpsertRequest
 
     [Description("Short narrative description of how this item reads on the wearer. Purely descriptive; never affects mechanics. Omit to preserve the existing value on update.")]
     public string? AppearanceNote { get; set; }
+
+    [Description("Optional. Persistent, granular details to seed on a NEW item (scratches, " +
+        "stains, secret compartments, existing damage/wear) — the same durable state normally " +
+        "added via item_update's upsertItemDetail, but available at creation time so you don't " +
+        "need follow-up commits after world-building. IGNORED if the item already exists — use " +
+        "commit's item_update/upsertItemDetail for incremental changes to an existing item's " +
+        "details instead. Each entry's id/participants are ignored if provided: new details " +
+        "always get a fresh engine-assigned id, and creation-time details do not push character " +
+        "memories (there's no in-fiction discovery moment yet). If you need a participant memory " +
+        "push (e.g. an NPC crafting the item with a hidden compartment), follow creation with one " +
+        "item_update commit using the same detail text.")]
+    public List<ItemDetailUpsertRequest>? ItemDetails { get; set; }
 
     public string? CampaignName { get; set; }
 }

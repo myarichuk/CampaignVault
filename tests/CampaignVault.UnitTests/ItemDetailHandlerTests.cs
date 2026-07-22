@@ -113,6 +113,86 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task ApplyAsync_IdMatch_SetsTetheredToId()
+    {
+        const string campaign = "item-detail-test-tether-set";
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var item = new Item
+        {
+            Id = "items/tether_set_test",
+            Name = "Rope",
+            Description = "A length of rope.",
+            HolderId = "locations/ruins",
+            CampaignName = campaign,
+            ItemDetails = [new ItemDetail { Id = "detail-tether", Name = "Lashed end", Description = "Tied off." }],
+        };
+        await session.StoreAsync(item);
+        await session.SaveChangesAsync();
+
+        var handler = new ItemUpdateHandler(new StubEmbeddingService());
+        var context = BuildContext(session, BuildDispatcher(handler), campaign);
+
+        var change = new ItemUpdate
+        {
+            ItemId = item.Id,
+            UpsertItemDetail = new ItemDetailUpsertRequest
+            {
+                Id = "detail-tether",
+                Name = "Lashed end",
+                Description = "Tied off.",
+                TetheredToId = "locations/ruins-column",
+            },
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.True(result.Success);
+        var detail = Assert.Single(item.ItemDetails);
+        Assert.Equal("locations/ruins-column", detail.TetheredToId);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_IdMatch_EmptyStringClearsTetheredToId()
+    {
+        const string campaign = "item-detail-test-tether-clear";
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var item = new Item
+        {
+            Id = "items/tether_clear_test",
+            Name = "Rope",
+            Description = "A length of rope.",
+            HolderId = "locations/ruins",
+            CampaignName = campaign,
+            ItemDetails = [new ItemDetail { Id = "detail-tether", Name = "Lashed end", Description = "Tied off.", TetheredToId = "locations/ruins-column" }],
+        };
+        await session.StoreAsync(item);
+        await session.SaveChangesAsync();
+
+        var handler = new ItemUpdateHandler(new StubEmbeddingService());
+        var context = BuildContext(session, BuildDispatcher(handler), campaign);
+
+        var change = new ItemUpdate
+        {
+            ItemId = item.Id,
+            UpsertItemDetail = new ItemDetailUpsertRequest
+            {
+                Id = "detail-tether",
+                Name = "Lashed end",
+                Description = "Cut free.",
+                TetheredToId = "",
+            },
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.True(result.Success);
+        var detail = Assert.Single(item.ItemDetails);
+        Assert.Null(detail.TetheredToId);
+    }
+
+    [Fact]
     public async Task ApplyAsync_IdMatch_FailsWhenIdNotFound()
     {
         const string campaign = "item-detail-test-id-not-found";

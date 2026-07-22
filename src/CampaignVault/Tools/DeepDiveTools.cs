@@ -112,4 +112,37 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
             return new ToolResult<Quest>(true, quest, $"Quest details for '{quest.Title}' (campaign: {effective}).");
         }, saveChanges: false);
     }
+
+    [ToolCategory("Deep dives")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "DEEP DIVE TOOL: Returns the full Item document by exact ID — including all persistent ItemDetails " +
+        "(scratches, stains, secret compartments, damage/wear) with their ids, useful before retiring a detail " +
+        "via item_update's retireItemDetailId, or before reviewing an item's full history. For fuzzy/semantic " +
+        "item lookup by name, use search_world instead. Requires campaignName.")]
+    public Task<ToolResult<Item>> GetItem(
+        [Description("Exact item ID e.g. 'items/battle-worn-sword' (use search_world first if unsure).")]
+        string itemId,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var item = await _repository.GetItemAsync(session, itemId, effective);
+            if (item == null)
+            {
+                var suggestions = await _repository.SuggestItemsAsync(session, itemId, effective);
+                var hint = suggestions.Any()
+                    ? " Did you mean: " + string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"))
+                    : "";
+                return new ToolResult<Item>(false, Error: "NotFound", Summary: $"Item '{itemId}' not found.{hint}");
+            }
+
+            var activeCount = item.ItemDetails.Count(d => !d.IsRetired);
+            var retiredCount = item.ItemDetails.Count(d => d.IsRetired);
+            return new ToolResult<Item>(true, item,
+                $"Item '{item.Name}' (campaign: {effective}), {activeCount} active detail(s)" +
+                (retiredCount > 0 ? $", {retiredCount} retired." : "."));
+        }, saveChanges: false);
+    }
 }

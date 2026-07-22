@@ -7,11 +7,18 @@ namespace CampaignVault.Models;
 /// </summary>
 public static class ItemUpsertSanityChecker
 {
-    public static List<string> GetNudges(ItemUpsertRequest item)
+    public static List<string> GetNudges(ItemUpsertRequest item, bool itemAlreadyExisted = false)
     {
         var nudges = new List<string>();
         var zones = item.EquipZones;
         var layer = item.EquipLayer;
+
+        if (itemAlreadyExisted && item.ItemDetails is { Count: > 0 })
+        {
+            nudges.Add(
+                $"NARRATIVE PROMPT: '{item.Id}' already existed — the itemDetails you supplied were ignored " +
+                "(itemDetails only seeds a NEW item). Use commit's item_update/upsertItemDetail to modify an existing item's details.");
+        }
 
         if (item.TwoHanded == true && (zones == null || !zones.Contains(EquipZone.MainHand)))
         {

@@ -1531,6 +1531,7 @@ public class CampaignRepository
         }
         else
         {
+            var currentDay = (await GetTimeAsync(session, effectiveCampaignName)).TotalDaysElapsed;
             result = new Item
             {
                 Id = item.Id,
@@ -1559,9 +1560,28 @@ public class CampaignRepository
                 IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags,
                 VisualTags = item.VisualTags,
                 AppearanceNote = item.AppearanceNote,
+                // id/participants from the request are intentionally dropped here: a freshly
+                // created item has no existing details to match by id and no in-fiction moment
+                // to push a participant memory for (see ItemDetailUpsertRequest doc comment).
+                ItemDetails = (item.ItemDetails ?? []).Select(d => new ItemDetail
+                {
+                    Id = "detail-" + Guid.NewGuid(),
+                    Name = d.Name,
+                    Description = d.Description,
+                    Status = d.Status,
+                    Intent = d.Intent,
+                    Origin = d.Origin,
+                    TetheredToId = string.IsNullOrEmpty(d.TetheredToId) ? null : d.TetheredToId,
+                    Participants = [],
+                    CreatedOnDay = currentDay,
+                    UpdatedOnDay = currentDay,
+                }).ToList(),
             };
             await session.StoreAsync(result);
         }
+        // Note: item.ItemDetails is intentionally NOT applied in the existing-item branch above —
+        // creating details at upsert_item/world_build time is creation-only. Use commit's
+        // item_update/upsertItemDetail for incremental changes to an existing item's details.
 
         // Validate equip conflicts if being equipped on a character
         if (result.IsEquipped && result.HolderId?.StartsWith("chars/", StringComparison.OrdinalIgnoreCase) == true)
@@ -1589,6 +1609,10 @@ public class CampaignRepository
         }
 
         SanitizeItem(result);
+        foreach (var detail in result.ItemDetails)
+        {
+            await EnrichSemanticVectorAsync(detail);
+        }
         await EnrichSemanticVectorAsync(result);
         return result;
     }

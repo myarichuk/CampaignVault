@@ -1,5 +1,8 @@
 using System;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CampaignVault.Models;
@@ -273,5 +276,35 @@ public class LlmToolingRegressionTests
         }
 
         throw new InvalidOperationException("Could not locate repository root.");
+    }
+
+    /// <summary>
+    /// Regression guard for ItemDetails discoverability wording: routes an LLM DM from the
+    /// top-level tools it reads first (commit, get_commit_schema, upsert_item) toward
+    /// item_update's upsertItemDetail using natural trigger words, without already knowing the
+    /// field name. See itemdetails-tooling-analysis follow-up.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(MutationTools), nameof(MutationTools.Commit), "upsertItemDetail")]
+    [InlineData(typeof(MutationTools), nameof(MutationTools.Commit), "wear")]
+    [InlineData(typeof(MetaTools), nameof(MetaTools.GetCommitSchema), "upsertItemDetail")]
+    [InlineData(typeof(WorldBuilderTools), nameof(WorldBuilderTools.UpsertItem), "itemDetails")]
+    [InlineData(typeof(WorldBuilderTools), nameof(WorldBuilderTools.UpsertItem), "secret compartments")]
+    public void ToolDescriptions_ContainItemDetailsDiscoverabilityTriggerWords(Type toolType, string methodName, string expectedSubstring)
+    {
+        var method = toolType
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Single(m => m.Name == methodName && m.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>() != null);
+
+        var description = method.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "";
+        Assert.Contains(expectedSubstring, description, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GetItem_IsRegisteredAsAnMcpTool()
+    {
+        var method = typeof(DeepDiveTools).GetMethod(nameof(DeepDiveTools.GetItem), BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+        Assert.NotNull(method);
+        Assert.NotNull(method!.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>());
     }
 }

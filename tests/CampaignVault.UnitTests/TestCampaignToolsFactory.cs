@@ -62,4 +62,23 @@ internal static class TestCampaignToolsFactory
 
         return scope.Resolve<WorldBuilderTools>();
     }
+
+    /// <summary>
+    /// Resolves DeepDiveTools directly for tests that exercise tools not wrapped by the
+    /// legacy CampaignTools facade (e.g. get_item).
+    /// </summary>
+    public static DeepDiveTools CreateDeepDiveTools(RavenDBFixture fixture, CampaignRepository? repository = null)
+    {
+        var repo = repository ?? fixture.CreateRepository();
+
+        var scope = fixture.Container.BeginLifetimeScope(b =>
+        {
+            b.RegisterInstance(repo).As<CampaignRepository>();
+            b.RegisterAssemblyTypes(typeof(ExplorationTools).Assembly)
+                .Where(t => t.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolTypeAttribute>() != null)
+                .InstancePerLifetimeScope();
+        });
+
+        return scope.Resolve<DeepDiveTools>();
+    }
 }

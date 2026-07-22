@@ -921,7 +921,12 @@ public class ItemUpdate : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ItemCategory? CoreCategory { get; set; }
 
-    [Description("Temporary tags to add to the item (e.g. 'muddy', 'wet').")]
+    [Description("Temporary tags to add to the item (e.g. 'muddy', 'wet'). Also the convention for how a " +
+        "carried/contained item is displayed: tag the CONTAINER item (bandolier, sheath, pouch) — not the " +
+        "contained item — 'open-carry' if its contents hang visibly (a sword in a back sheath, knives on a " +
+        "bandolier loop) or 'concealed' if they're tucked away (a dagger in a boot, coins in a belt pouch). " +
+        "This is narrative-only — the engine doesn't derive well_armed/unarmed from it, so also tag the " +
+        "character directly (character_update's tagsToAdd) when what's visible should affect crowd reactions.")]
     [JsonPropertyName("tagsToAdd")]
     public List<string>? TagsToAdd { get; set; }
 
@@ -963,12 +968,15 @@ public class ItemUpdate : WorldChange
 }
 
 /// <summary>
-/// Commit-path-only request to create or update a single <see cref="ItemDetail"/> on an item via
-/// <see cref="ItemUpdate.UpsertItemDetail"/>. Never used by world_build — items must already exist.
+/// Request to create or update a single <see cref="ItemDetail"/> on an item. Used both via
+/// <see cref="ItemUpdate.UpsertItemDetail"/> (commit path, existing items) and via
+/// <c>ItemUpsertRequest.ItemDetails</c> (world_build/upsert_item, creation only — id and
+/// participants are ignored there since a new item has no existing details to match and no
+/// in-fiction moment for a memory push).
 /// </summary>
 public class ItemDetailUpsertRequest
 {
-    [Description("Optional. If you already know the detail's id (from a prior commit response or get_item), pass it here for an authoritative, cheap match. Omit for new details or when unsure.")]
+    [Description("Optional. If you already know the detail's id (from a prior commit response or get_item), pass it here for an authoritative, cheap match. Omit for new details or when unsure. Ignored when used inside upsert_item/world_build's itemDetails (creation always assigns a fresh id).")]
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
@@ -984,7 +992,7 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
-    [Description("DM-only guidance on how to narrate or adjudicate this detail (e.g. suggested DC, discovery conditions). Never shown to players directly.")]
+    [Description("DM-only guidance on how to narrate or adjudicate this detail (e.g. suggested DC, discovery conditions, ongoing effects). Covers active/mechanically-relevant conditions on the item too — not just static damage — e.g. 'corrosive ooze eating through the leather: 1 dmg/round until wiped off (action) or neutralized', 'glued shut: DC 13 Strength or solvent to open', 'tether snaps on DC 15 Athletics or any slashing hit'. Never shown to players directly.")]
     [JsonPropertyName("intent")]
     public string? Intent { get; set; }
 
@@ -992,7 +1000,11 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("origin")]
     public ItemDetailOrigin? Origin { get; set; }
 
-    [Description("Optional list of characters who caused or witnessed this detail coming into being/being discovered. Each entry pushes a memory into that character's memories (Source=Experienced for Caused, Witnessed for Witnessed roles).")]
+    [Description("Optional id of whatever this detail currently physically anchors the item to — a location (a rope's other end lashed to a column), another item (leashed to a stake), or a character (tied to a handler/horse). Distinct from origin, which is what caused the detail rather than what it's currently attached to. No existence validation; purely descriptive for the DM-LLM to read back and adjudicate movement/range consequences (the engine does not enforce them). Omit to leave the existing value unchanged; pass an empty string \"\" to clear it once the tether is cut or the item is freed.")]
+    [JsonPropertyName("tetheredToId")]
+    public string? TetheredToId { get; set; }
+
+    [Description("Optional list of characters who caused or witnessed this detail coming into being/being discovered. Each entry pushes a memory into that character's memories (Source=Experienced for Caused, Witnessed for Witnessed roles). Ignored when used inside upsert_item/world_build's itemDetails — a freshly created item has no in-fiction discovery moment to push; follow up with an item_update commit if you need the memory push.")]
     [JsonPropertyName("participants")]
     public List<ItemDetailParticipant>? Participants { get; set; }
 }
