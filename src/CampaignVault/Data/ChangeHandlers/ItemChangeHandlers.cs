@@ -166,6 +166,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         if (req.Intent != null) detail.Intent = req.Intent;
         if (req.Origin != null) detail.Origin = req.Origin;
         if (req.TetheredToId != null) detail.TetheredToId = req.TetheredToId.Length == 0 ? null : req.TetheredToId;
+        if (req.Participants != null) detail.Participants = req.Participants;
 
         var currentDay = (await context.GetCurrentTimeAsync()).TotalDaysElapsed;
         if (isNew) detail.CreatedOnDay = currentDay;

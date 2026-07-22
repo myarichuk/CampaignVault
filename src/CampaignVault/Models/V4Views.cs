@@ -204,6 +204,11 @@ public record NpcActivitySummary(string Name, string CurrentActivity)
     public NpcActivitySummary() : this(default!, default!) { }
 }
 
+public record ItemDetailSummary(string Id, string Name, string? Status)
+{
+    public ItemDetailSummary() : this(default!, default!, default) { }
+}
+
 public record ItemSummaryView(
     string Id,
     string Name,
@@ -216,7 +221,8 @@ public record ItemSummaryView(
     int? CurrentCharges,
     int? MaxCharges,
     List<string>? VisualTags,
-    string? AppearanceNote)
+    string? AppearanceNote,
+    List<ItemDetailSummary>? ItemDetails)
 {
     public static ItemSummaryView From(Item item) => new(
         item.Id,
@@ -230,7 +236,8 @@ public record ItemSummaryView(
         item.CurrentCharges,
         item.MaxCharges,
         item.VisualTags,
-        item.AppearanceNote
+        item.AppearanceNote,
+        item.ItemDetails.Where(d => !d.IsRetired).Select(d => new ItemDetailSummary(d.Id, d.Name, d.Status)).ToList() is { Count: > 0 } details ? details : null
     );
 }
 

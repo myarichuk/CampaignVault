@@ -7,6 +7,12 @@ namespace CampaignVault.Models;
 /// </summary>
 public static class ItemUpsertSanityChecker
 {
+    private static readonly HashSet<string> RecognizedDefenseKeys =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "acBonus", "warmth", "speedModifier", "armorType", "dexCap", "dexCapSource", "stacksWithArmor",
+        };
+
     public static List<string> GetNudges(ItemUpsertRequest item, bool itemAlreadyExisted = false)
     {
         var nudges = new List<string>();
@@ -41,6 +47,16 @@ public static class ItemUpsertSanityChecker
             nudges.Add(
                 $"NARRATIVE PROMPT: '{item.Id}' has StackGroup set but no EquipZones/EquipLayer — " +
                 "StackGroup only matters once the item is equippable. Set equipZones/equipLayer, or clear StackGroup if unintended.");
+        }
+
+        if ((item.CoreCategory == ItemCategory.Armor || layer == EquipLayer.Held)
+            && item.Properties is { Count: > 0 }
+            && !RecognizedDefenseKeys.Overlaps(item.Properties.Keys))
+        {
+            nudges.Add(
+                $"NARRATIVE PROMPT: '{item.Id}' is Armor/Held-slot but its Properties use none of the recognized defense keys " +
+                "(acBonus, warmth, speedModifier, armorType, dexCap, dexCapSource, stacksWithArmor) — if this item is meant to " +
+                "affect AC/warmth/movement, check the key names via get_help; otherwise ignore.");
         }
 
         return nudges;

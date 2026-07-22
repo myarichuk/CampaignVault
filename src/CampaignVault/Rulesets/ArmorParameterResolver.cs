@@ -26,6 +26,7 @@ public static class ArmorParameterResolver
     /// <summary>Loads the character's equipped items via ChangeContext, applies the resolved AC/warmth/movement modifier, and records any diagnostic messages.</summary>
     public static async Task ApplyAsync(Character character, ChangeContext context, CancellationToken ct = default)
     {
+        character.LastUpdated = DateTime.UtcNow;
         var equippedItems = await ItemHolderQueryHelper.GetEquippedItemsAsync(context, character.Id, ct: ct);
         var messages = Apply(character, equippedItems);
         foreach (var message in messages)

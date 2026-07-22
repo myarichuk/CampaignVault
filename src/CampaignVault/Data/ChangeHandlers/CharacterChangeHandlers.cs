@@ -695,6 +695,7 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         }
 
         memory.Details = ku.Details;
+        character.LastUpdated = DateTime.UtcNow;
         var time = await context.GetCurrentTimeAsync();
 
         if (isNew)

@@ -93,12 +93,13 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
         }
 
         // If the item was equipped and holder changed, unequip it and recompute AC/warmth for previous holder
-        if (wasEquipped && !string.IsNullOrEmpty(previousHolderId) && previousHolderId != transfer.ToHolderId)
+        var autoUnequipped = wasEquipped && !string.IsNullOrEmpty(previousHolderId) && previousHolderId != transfer.ToHolderId;
+        if (autoUnequipped)
         {
             item.IsEquipped = false;
 
             // Recompute AC/warmth for the previous holder if it's a character
-            if (previousHolderId.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+            if (previousHolderId!.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
             {
                 if (context.Characters.TryGetValue(previousHolderId, out var previousHolder))
                 {
@@ -116,7 +117,8 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             }
         }
 
-        context.RecordMessage($"Item {transfer.ItemId} moved to {transfer.ToHolderId}");
+        var unequipNote = autoUnequipped ? $" (auto-unequipped from {previousHolderId})" : "";
+        context.RecordMessage($"Item {transfer.ItemId} moved to {transfer.ToHolderId}{unequipNote}");
 
         return ChangeHandlerResult.Ok;
     }
