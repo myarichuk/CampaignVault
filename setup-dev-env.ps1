@@ -26,35 +26,7 @@ if (!(Test-Path $modelPath)) {
 }
 Write-Host "OK - Embedding model ready at: $modelPath" -ForegroundColor Green
 
-# 4. Configure git to use .githooks directory
-Write-Host "`n4. Configuring git hooks..." -ForegroundColor Yellow
-git config core.hooksPath .githooks
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "OK - Git configured to use .githooks directory" -ForegroundColor Green
-} else {
-    Write-Host "ERROR: Failed to configure git hooks" -ForegroundColor Red
-    exit 1
-}
-
-# 5. Verify pre-commit hook exists
-if (!(Test-Path ".githooks/pre-commit")) {
-    Write-Host "WARNING: .githooks/pre-commit hook not found" -ForegroundColor Yellow
-} else {
-    Write-Host "OK - Pre-commit hook is installed" -ForegroundColor Green
-}
-
-# 6. Generate MCP descriptors (needed for running the server)
-Write-Host "`n5. Generating MCP descriptors..." -ForegroundColor Yellow
-$env:REGENERATE_MCP = '1'
-dotnet test --filter RegenerateMcpDescriptors -q 2>$null
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "OK - MCP descriptors generated" -ForegroundColor Green
-} else {
-    Write-Host "WARNING: Could not generate descriptors. Run later: REGENERATE_MCP=1 dotnet test --filter RegenerateMcpDescriptors" -ForegroundColor Yellow
-}
-
 Write-Host "`nDone! Development environment ready." -ForegroundColor Green
 Write-Host "`nYou can now:"
 Write-Host "  - Run 'dotnet build' to build the project"
 Write-Host "  - Run 'dotnet test' to run tests"
-Write-Host "  - Commit changes (pre-commit hook will auto-regenerate descriptors if needed)"
