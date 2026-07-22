@@ -48,4 +48,32 @@ internal static class NeedActivityConflictHelper
 
         return (false, null, null);
     }
+
+    /// <summary>
+    /// Broader than <see cref="EvaluateConflict"/>: surfaces the NPC's highest unaddressed need once it
+    /// crosses threshold, regardless of whether the current activity keyword-clashes with it — an
+    /// idle/leisure NPC (eating, resting, reading, chatting) whose thirst or tiredness is climbing
+    /// should still register as an initiative candidate even though nothing about "reading a book"
+    /// mechanically conflicts with being thirsty. Skips any need whose current activity already
+    /// satisfies it (<see cref="NeedSatisfyingActivityKeywords"/>) — no point surfacing "wants to nap"
+    /// for someone who is currently resting. Used only by the initiative pipeline for narrative color;
+    /// never by <see cref="NeedConflictRule"/>, which stays duty-specific since it also flips mood to
+    /// Exhausted.
+    /// </summary>
+    public static (bool HasWant, string? Need) EvaluateWant(Character npc, CampaignConfig config)
+    {
+        var needs = npc.Needs;
+        if (needs is null || string.IsNullOrWhiteSpace(npc.CurrentActivity))
+        {
+            return (false, null);
+        }
+
+        var highest = needs.ActiveNeeds
+            .Where(kv => kv.Value >= config.NeedConflictThreshold)
+            .Where(kv => !NeedSatisfyingActivityKeywords.IsSatisfying(kv.Key, npc.CurrentActivity))
+            .OrderByDescending(kv => kv.Value)
+            .FirstOrDefault();
+
+        return highest.Key != null ? (true, highest.Key) : (false, null);
+    }
 }

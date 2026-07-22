@@ -89,6 +89,13 @@ public class CampaignRepository
         _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes for campaign {Campaign}", changes.Length,
             effective);
 
+        // Snapshot the clock before dispatch so we can detect handlers (RestChangeHandler,
+        // TravelChangeHandler) that move CampaignTime.TotalDaysElapsed directly via AdvanceHours.
+        // GetTimeAsync returns the same session-tracked instance handlers mutate, so this reads
+        // whatever value the dispatch left behind — no extra query needed.
+        var time = await GetTimeAsync(session, effective);
+        var daysBefore = time.TotalDaysElapsed;
+
         var result = await _changeDispatcher.DispatchAsync(
             session,
             changes,
@@ -100,6 +107,23 @@ public class CampaignRepository
                 return camp?.SystemOptions ?? new();
             },
             ev => LogEventAsync(session, ev, effective));
+
+        var elapsedDays = 0;
+        if (result.Success)
+        {
+            elapsedDays = time.TotalDaysElapsed - daysBefore;
+            if (elapsedDays > 0)
+            {
+                // A commit (rest, travel, ...) advanced the calendar past a day boundary — run the
+                // same simulation tick AdvanceWorld runs, so needs/decay/staleness can't be outrun by
+                // rest-driven time skips. Sim deltas never move the clock themselves, so the recursive
+                // StageChangesAsync call below for those deltas will see elapsedDays == 0 and stop here.
+                _logger.LogInformation(
+                    "Commit advanced the calendar by {ElapsedDays} day(s) for campaign {Campaign}; running simulation tick",
+                    elapsedDays, effective);
+                await RunSimulationTickAsync(session, effective, time, elapsedDays);
+            }
+        }
 
         if (result.Success && changes.Length > 0)
         {
@@ -122,6 +146,16 @@ public class CampaignRepository
                 }
 
                 result.InvolvedEntities = involvedEntities.ToList();
+
+                // Time-staleness tracking (feeds TimeStalenessPressureContributor): a commit "records
+                // time passage" either by crossing a day boundary or by carrying MinutesElapsed on any
+                // non-rest/travel change (mirrors ApplyMicroTimeNudgeAsync's own filter).
+                var minutesRecorded = changes
+                    .Where(c => c is not RestChange and not TravelChange)
+                    .Sum(c => c.MinutesElapsed ?? 0) > 0;
+                campaign.CommitsSinceTimeRecorded = elapsedDays > 0 || minutesRecorded
+                    ? 0
+                    : campaign.CommitsSinceTimeRecorded + 1;
             }
         }
 
@@ -455,6 +489,55 @@ public class CampaignRepository
 
         await session.StoreAsync(time);
 
+        var simResult = await RunSimulationTickAsync(session, effective, time, days);
+
+        // 4d: Cap PressureCooldowns dictionary size (e.g. 500 entries), evicting oldest-surfaced entries beyond the cap
+        var campaignDoc = await session.LoadAsync<Campaign>(_keys.Meta(effective));
+        if (campaignDoc != null)
+        {
+            // Explicit day-skip always counts as "time recorded", even at days=0 (an explicit sweep).
+            campaignDoc.CommitsSinceTimeRecorded = 0;
+
+            const int maxCooldownEntries = 500;
+            if (campaignDoc.PressureCooldowns.Count > maxCooldownEntries)
+            {
+                var entriesToEvict = campaignDoc.PressureCooldowns.Count - maxCooldownEntries;
+                var oldestEntries = campaignDoc.PressureCooldowns
+                    .OrderBy(kvp => kvp.Value.LastSurfacedDay)
+                    .Take(entriesToEvict)
+                    .ToList();
+
+                foreach (var entry in oldestEntries)
+                {
+                    campaignDoc.PressureCooldowns.Remove(entry.Key);
+                }
+            }
+        }
+
+        // WorldPressure from the engine is surfaced to the caller (AdvanceWorld tool).
+        return new()
+        {
+            NewTime = time,
+            SimulatorEvents = simResult.NarrativeEvents.ToList(),
+            WorldPressure = simResult.WorldPressure.ToList(),
+            EvictedNpcIds = simResult.EvictedNpcIds.ToList(),
+            EvictedNpcs = simResult.EvictedNpcSummaries.ToList()
+        };
+    }
+
+    /// <summary>
+    /// Runs the pluggable simulation engine (needs, decay, staleness, faction/plot evolution, ...) for
+    /// <paramref name="daysPassed"/> days at the given <paramref name="time"/>, persists its narratives,
+    /// and applies its deltas through the unified commit path.
+    ///
+    /// Shared by <see cref="AdvanceWorldAsync"/> (the explicit day-skip tool) and
+    /// <see cref="StageChangesAsync"/> (which calls this whenever a handler — e.g. RestChangeHandler,
+    /// TravelChangeHandler — advances CampaignTime.TotalDaysElapsed directly), so a day passing has the
+    /// same simulation consequences regardless of which tool moved the clock.
+    /// </summary>
+    private async Task<SimulationResult> RunSimulationTickAsync(
+        IAsyncDocumentSession session, string effective, CampaignTime time, double daysPassed)
+    {
         // Scoping hardened: entity queries now filter by CampaignName (see code_review.md and plan).
         // For shareables (NPCs/locs) loose filter allows cross-camp if desired; events/rumors strict.
         // Per user feedback: no BC for play data (none exists), don't support global where doesn't make sense (e.g. no global events).
@@ -468,10 +551,10 @@ public class CampaignRepository
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
         var config = await GetCampaignConfigAsync(session, effective);
-        var simContext = new SimulationContext(time, activeRumors, npcs, session, days, effective, activeFactions,
+        var simContext = new SimulationContext(time, activeRumors, npcs, session, daysPassed, effective, activeFactions,
             activeQuests, config, activePlotThreads);
 
-        _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", days, time);
+        _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", daysPassed, time);
 
         var simResult = await _simulationEngine.RunAsync(simContext);
 
@@ -501,35 +584,7 @@ public class CampaignRepository
             await StageChangesAsync(session, simResult.Deltas.ToArray(), effective);
         }
 
-        // 4d: Cap PressureCooldowns dictionary size (e.g. 500 entries), evicting oldest-surfaced entries beyond the cap
-        var campaignDoc = await session.LoadAsync<Campaign>(_keys.Meta(effective));
-        if (campaignDoc != null)
-        {
-            const int maxCooldownEntries = 500;
-            if (campaignDoc.PressureCooldowns.Count > maxCooldownEntries)
-            {
-                var entriesToEvict = campaignDoc.PressureCooldowns.Count - maxCooldownEntries;
-                var oldestEntries = campaignDoc.PressureCooldowns
-                    .OrderBy(kvp => kvp.Value.LastSurfacedDay)
-                    .Take(entriesToEvict)
-                    .ToList();
-
-                foreach (var entry in oldestEntries)
-                {
-                    campaignDoc.PressureCooldowns.Remove(entry.Key);
-                }
-            }
-        }
-
-        // WorldPressure from the engine is surfaced to the caller (AdvanceWorld tool).
-        return new()
-        {
-            NewTime = time,
-            SimulatorEvents = simResult.NarrativeEvents.ToList(),
-            WorldPressure = simResult.WorldPressure.ToList(),
-            EvictedNpcIds = simResult.EvictedNpcIds.ToList(),
-            EvictedNpcs = simResult.EvictedNpcSummaries.ToList()
-        };
+        return simResult;
     }
 
     // --- Search & Recall ---

@@ -106,4 +106,36 @@ public static class RestRecoveryLogic
 
         return deltas;
     }
+
+    /// <summary>
+    /// Settles tiredness toward <paramref name="baseline"/> after a completed rest — the same
+    /// settle-toward-baseline shape <see cref="ScheduleNeedSatisfactionRule"/> uses for scheduled NPCs,
+    /// applied here because rest is a PC/companion action and rarely comes with a Schedule.Routines
+    /// entry for ScheduleNeedSatisfactionRule to match. LongRest settles fully to baseline; ShortRest
+    /// only settles half that distance (a short rest shouldn't fully erase exhaustion). PerTurn rests
+    /// don't recover tiredness at all.
+    /// </summary>
+    public static WorldChange? BuildTirednessRecoveryDelta(Character character, RestType restType, int baseline)
+    {
+        if (character.Needs == null || restType == RestType.PerTurn)
+        {
+            return null;
+        }
+
+        var current = character.Needs.ActiveNeeds.GetValueOrDefault("tiredness", 0f);
+        var fullDelta = -(current - baseline);
+        if (fullDelta >= -0.0001f)
+        {
+            return null;
+        }
+
+        var delta = restType == RestType.LongRest ? fullDelta : fullDelta / 2f;
+
+        return new NeedChange
+        {
+            CharacterId = character.Id,
+            Need = "tiredness",
+            Delta = delta
+        };
+    }
 }

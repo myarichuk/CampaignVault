@@ -9,6 +9,13 @@ public sealed class NeedActivityConflictProvider : INpcInitiativeSignalProvider
         var (hasConflict, need, _) = NeedActivityConflictHelper.Detect(ctx.Npc, ctx.Config);
         if (!hasConflict || string.IsNullOrWhiteSpace(need))
         {
+            // No duty-clashing conflict — fall back to a broader "high need, any activity" check so
+            // idle/leisure NPCs (eating, resting, reading) still surface as candidates.
+            (hasConflict, need) = NeedActivityConflictHelper.EvaluateWant(ctx.Npc, ctx.Config);
+        }
+
+        if (!hasConflict || string.IsNullOrWhiteSpace(need))
+        {
             return [];
         }
 

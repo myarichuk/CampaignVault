@@ -63,6 +63,15 @@ public class Campaign
     public Dictionary<string, PressureState> PressureCooldowns { get; set; } = [];
 
     /// <summary>
+    /// Counts commits since one last reported time passage (either crossed a day boundary, or a
+    /// change in the batch carried MinutesElapsed). Reset to 0 by StageChangesAsync whenever a commit
+    /// does either, and by AdvanceWorldAsync unconditionally (an explicit day-skip always counts as
+    /// "time recorded"). Read by TimeStalenessPressureContributor to nudge the DM-LLM to record
+    /// narrative time passage once this climbs past CampaignConfig.TimeStalenessNudgeThreshold.
+    /// </summary>
+    public int CommitsSinceTimeRecorded { get; set; }
+
+    /// <summary>
     /// Tracks NPC initiatives surfaced and consumed on read-side tools.
     /// Key format: initiative:{npcId}:{initiativeKey}
     /// </summary>

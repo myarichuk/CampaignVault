@@ -26,11 +26,10 @@ public class NeedsAccumulationRule : ISimulationRule
 
         // Use consistent float math (addresses review point about casts)
         var days = (float)context.DaysPassed;
-        var needRate = context.Config?.NeedAccumulationRate ?? 10f;
-        var thirstMult = context.Config?.ThirstAccumulationMultiplier ?? 1.2f;
         var tiredMult = context.Config?.TirednessAccumulationMultiplier ?? 0.8f;
         var moraleDriftPerDay = context.Config?.MoraleDriftPerDay ?? -0.8f;
-        var amount = needRate * days;
+        var amount = (context.Config?.NeedAccumulationRate ?? 10f) * days;
+        var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, context.DaysPassed);
 
         foreach (var npc in context.ScheduledNpcs)
         {
@@ -51,12 +50,12 @@ public class NeedsAccumulationRule : ISimulationRule
                 }
             }
 
-            AddCappedNeed("hunger", amount);
-            AddCappedNeed("thirst", amount * thirstMult);
             // "tiredness" is narrative fatigue (drives pressure/mood/narration), ruleset-agnostic —
             // distinct from mechanical D&D exhaustion (Attributes["exhaustion_level"], 1-6 scale).
-            AddCappedNeed("tiredness", amount * tiredMult);
-            AddCappedNeed("social_drive", amount * 0.15f); // low rate, was previously dead
+            foreach (var (need, delta) in perDayDeltas)
+            {
+                AddCappedNeed(need, delta);
+            }
 
             // Re-evaluate mood after accumulation (the actual mood value will be applied by the MoodChange we emit below)
             // We compute what the mood *should* become based on the post-delta state.

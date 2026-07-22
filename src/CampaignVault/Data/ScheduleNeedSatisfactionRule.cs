@@ -7,14 +7,6 @@ public class ScheduleNeedSatisfactionRule : ISimulationRule
     public string Name => "Schedule-Driven Need Satisfaction";
     public int Order => 36;
 
-    private static readonly Dictionary<string, List<string>> ActivityKeywords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["hunger"] = new() { "eat", "meal", "dine", "food", "feast", "breakfast", "lunch", "dinner" },
-        ["thirst"] = new() { "drink", "water", "beverage", "ale", "wine" },
-        ["tiredness"] = new() { "sleep", "rest", "nap", "bed", "camp" },
-        ["social_drive"] = new() { "tavern", "socialize", "gather", "party", "celebrate", "mingle" },
-    };
-
     public async Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
         var narratives = new List<RuleNarrative>();
@@ -30,10 +22,10 @@ public class ScheduleNeedSatisfactionRule : ISimulationRule
 
             foreach (var routine in npc.Schedule.Routines)
             {
-                var activity = routine.Activity?.ToLowerInvariant() ?? "";
-                foreach (var (needName, keywords) in ActivityKeywords)
+                var activity = routine.Activity;
+                foreach (var needName in NeedSatisfyingActivityKeywords.Map.Keys)
                 {
-                    if (keywords.Any(kw => activity.Contains(kw, StringComparison.OrdinalIgnoreCase)))
+                    if (NeedSatisfyingActivityKeywords.IsSatisfying(needName, activity))
                     {
                         matchedNeeds.Add(needName);
                     }

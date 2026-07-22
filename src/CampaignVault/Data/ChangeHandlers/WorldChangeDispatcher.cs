@@ -270,6 +270,11 @@ public sealed class WorldChangeDispatcher(
             }
         }
 
+        if (overallSuccess)
+        {
+            await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
+        }
+
         _logger.LogInformation("WorldChangeDispatcher processed {Processed} changes (overall success: {Success})",
             changes.Length, overallSuccess);
 
@@ -281,6 +286,64 @@ public sealed class WorldChangeDispatcher(
             InvolvedEntities = context.InvolvedEntities.ToList(),
             EntityCollisions = context.EntityCollisions.ToList()
         };
+    }
+
+    /// <summary>
+    /// Sums WorldChange.MinutesElapsed across the batch and, if any beat carried a duration, nudges
+    /// needs (hunger/thirst/tiredness/social_drive) for the characters involved in *this* batch —
+    /// not a campaign-wide sweep, since only on-screen characters are narratively relevant at this
+    /// granularity. Sub-hour totals leave TimeOfDay untouched (a few lines of dialogue shouldn't flip
+    /// the clock); an hour or more nudges CampaignTime.AdvanceHours too, which lets StageChangesAsync's
+    /// existing day-boundary check pick it up and run the full simulation tick if enough beats stack up
+    /// across a day.
+    ///
+    /// RestChange/TravelChange are excluded from the sum even if MinutesElapsed is set on them (LLM
+    /// mistake or otherwise) — both already call CampaignTime.AdvanceHours themselves via their own
+    /// handlers, so including them here would double-advance the clock and double-accumulate needs
+    /// for the same stretch of time.
+    /// </summary>
+    private async Task ApplyMicroTimeNudgeAsync(
+        ChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        var minutesElapsed = changes
+            .Where(c => c is not RestChange and not TravelChange)
+            .Sum(c => c.MinutesElapsed ?? 0);
+        if (minutesElapsed <= 0)
+        {
+            return;
+        }
+
+        var days = minutesElapsed / 1440.0;
+        var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, days);
+
+        foreach (var character in context.Characters.Values)
+        {
+            if (character.Needs is null)
+            {
+                continue;
+            }
+
+            foreach (var (need, delta) in perDayDeltas)
+            {
+                var current = character.Needs.ActiveNeeds.GetValueOrDefault(need, 0f);
+                var effective = Math.Min(delta, 100f - current);
+                if (effective > 0.0001f)
+                {
+                    await DispatchMutationAsync(context, new NeedChange
+                    {
+                        CharacterId = character.Id,
+                        Need = need,
+                        Delta = effective
+                    });
+                }
+            }
+        }
+
+        if (minutesElapsed >= 60)
+        {
+            var time = await getCurrentTimeAsync();
+            time.AdvanceHours(minutesElapsed / 60);
+        }
     }
 
     /// <summary>

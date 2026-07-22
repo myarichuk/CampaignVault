@@ -112,6 +112,13 @@ public class CampaignConfig
     public int TransientEvictionGraceDays { get; set; } = 1;
 
     /// <summary>
+    /// Number of commits with no recorded time passage (no day-boundary crossing, no MinutesElapsed
+    /// on any change) before TimeStalenessPressureContributor nudges the DM-LLM to record narrative
+    /// time passage. Defaults to 15.
+    /// </summary>
+    public int TimeStalenessNudgeThreshold { get; set; } = 15;
+
+    /// <summary>
     /// Days a rumor must age without resolution before surfacing world pressure.
     /// Defaults to 5.
     /// </summary>

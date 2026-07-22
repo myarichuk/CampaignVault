@@ -57,6 +57,18 @@ public abstract class WorldChange
     /// </summary>
     [JsonIgnore]
     public bool IsEngineAuthored { get; set; }
+
+    /// <summary>
+    /// Optional: roughly how many minutes of in-game time this specific change's narrative beat took
+    /// (a few lines of dialogue, a lockpicking attempt, a combat round, sharing a meal, ...). Summed
+    /// across every change in the commit batch and applied as a small needs nudge (hunger/thirst/
+    /// tiredness) to the characters involved in the batch — no need to wait for rest or advance_world
+    /// for needs to move during an ordinary scene. Ignored on RestChange/TravelChange — their own
+    /// hour-based duration fields already advance time; use those instead for rest/travel.
+    /// </summary>
+    [Description("Roughly how many minutes this beat took (dialogue, lockpicking, a combat round, a meal...). Summed across the batch to nudge hunger/thirst/tiredness for characters involved. Omit for instantaneous changes. Ignored on rest/travel changes — use their own hour fields instead.")]
+    [JsonPropertyName("minutesElapsed")]
+    public int? MinutesElapsed { get; set; }
 }
 
 /// <summary>

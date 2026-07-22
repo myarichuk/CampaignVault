@@ -99,6 +99,14 @@ public class RestChangeHandler : IWorldChangeHandler
                 context.RecordMessage(note);
             }
 
+            var baseline = context.Config?.NeedSatisfactionBaseline ?? 20;
+            var tirednessDelta = RestRecoveryLogic.BuildTirednessRecoveryDelta(character, restType, baseline);
+            if (tirednessDelta != null)
+            {
+                await context.Dispatcher.DispatchMutationAsync(context, tirednessDelta, ct);
+                context.RecordMessage($"{character.Name} feels rested ({restType} rest).");
+            }
+
             await context.Dispatcher.DispatchMutationAsync(context, new ActivityChange
             {
                 CharacterId = rc.CharacterId,
