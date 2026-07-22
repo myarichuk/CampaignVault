@@ -1019,6 +1019,10 @@ public class ItemDetailUpsertRequest
     [Description("Optional list of characters who caused or witnessed this detail coming into being/being discovered. Each entry pushes a memory into that character's memories (Source=Experienced for Caused, Witnessed for Witnessed roles). Ignored when used inside upsert_item/world_build's itemDetails — a freshly created item has no in-fiction discovery moment to push; follow up with an item_update commit if you need the memory push.")]
     [JsonPropertyName("participants")]
     public List<ItemDetailParticipant>? Participants { get; set; }
+
+    [Description("Optional. Days of no updates before the engine nudges you to reconsider this detail (default 60 if omitted). Set this based on how fast the detail plausibly changes: a punctured waterskin or a fresh wound might warrant 1-3 days; a scorch mark or crater might warrant 60-90+ days. Omit to leave an existing detail's interval unchanged (or use the 60-day default for a new one).")]
+    [JsonPropertyName("reviewIntervalDays")]
+    public int? ReviewIntervalDays { get; set; }
 }
 
 public class CharacterUpdate : WorldChange

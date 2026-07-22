@@ -5,6 +5,10 @@ namespace CampaignVault.Data;
 /// the DM-LLM to reconsider relevance (fade a scratch, discover a compartment, etc.) without ever
 /// auto-mutating or evicting the record itself. Mirrors AmbientItemDecayRule's engine-detects/
 /// LLM-decides split.
+///
+/// The check interval is per-detail (ItemDetail.ReviewIntervalDays, set by whoever authored it —
+/// a punctured waterskin might warrant a 1-day check, a scorch mark 90 days) rather than one global
+/// constant, since how fast a detail plausibly changes varies wildly by what it actually is.
 /// </summary>
 public class ItemDetailStalenessRule : ISimulationRule
 {
@@ -13,7 +17,8 @@ public class ItemDetailStalenessRule : ISimulationRule
     // Runs alongside AmbientItemDecay(90), just before TransientEviction(100).
     public int Order => 91;
 
-    private const int StaleDays = 60;
+    /// <summary>Fallback when a detail doesn't specify its own ReviewIntervalDays.</summary>
+    public const int DefaultStaleDays = 60;
 
     public virtual async Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
@@ -26,10 +31,12 @@ public class ItemDetailStalenessRule : ISimulationRule
         {
             foreach (var detail in item.ItemDetails.Where(d => !d.IsRetired))
             {
-                if (currentDay - detail.UpdatedOnDay >= StaleDays)
+                var interval = detail.ReviewIntervalDays ?? DefaultStaleDays;
+                var daysSince = currentDay - detail.UpdatedOnDay;
+                if (daysSince >= interval)
                 {
                     narratives.Add(new RuleNarrative(
-                        $"'{detail.Name}' on '{item.Name}' hasn't been revisited in a while — consider whether it's still relevant.",
+                        $"'{detail.Name}' on '{item.Name}' hasn't been revisited in {daysSince} days (review interval: {interval}) — consider whether it's still relevant or has changed.",
                         Persist: false));
                 }
             }

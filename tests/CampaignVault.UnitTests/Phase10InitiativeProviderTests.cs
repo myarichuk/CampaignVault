@@ -166,6 +166,72 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Exhausted", candidates[0].FramingPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void NeedProvider_HighNeed_LeisureActivity_SurfacesWant_EvenWithoutKeywordConflict()
+    {
+        // "reading a book" isn't a duty-keyword clash for thirst, and doesn't satisfy it either —
+        // the broader EvaluateWant fallback should still surface it as an initiative candidate.
+        var provider = new NeedActivityConflictProvider();
+        var npc = new Character
+        {
+            Id = "chars/reader",
+            Name = "Reader",
+            CurrentActivity = "reading a book",
+            Needs = new NeedsProfile
+            {
+                ActiveNeeds = new Dictionary<string, float> { ["thirst"] = 85f }
+            }
+        };
+
+        var candidates = provider.GetCandidates(BuildCtx(npc));
+
+        Assert.Single(candidates);
+        Assert.Equal(InitiativeDriver.Need, candidates[0].Driver);
+        Assert.Contains("Parched", candidates[0].FramingPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NeedProvider_HighNeed_ActivityAlreadySatisfiesIt_SuppressesWant()
+    {
+        // "resting" already addresses tiredness — surfacing "wants to nap" while already napping
+        // would just be noise, so EvaluateWant should skip it.
+        var provider = new NeedActivityConflictProvider();
+        var npc = new Character
+        {
+            Id = "chars/napper",
+            Name = "Napper",
+            CurrentActivity = "resting",
+            Needs = new NeedsProfile
+            {
+                ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 85f }
+            }
+        };
+
+        var candidates = provider.GetCandidates(BuildCtx(npc));
+
+        Assert.Empty(candidates);
+    }
+
+    [Fact]
+    public void NeedProvider_HighNeed_BelowThreshold_NoCandidate()
+    {
+        var provider = new NeedActivityConflictProvider();
+        var npc = new Character
+        {
+            Id = "chars/fine",
+            Name = "Fine",
+            CurrentActivity = "reading a book",
+            Needs = new NeedsProfile
+            {
+                ActiveNeeds = new Dictionary<string, float> { ["thirst"] = 40f } // below default threshold of 70
+            }
+        };
+
+        var candidates = provider.GetCandidates(BuildCtx(npc));
+
+        Assert.Empty(candidates);
+    }
+
     [Theory]
     [InlineData("bloodlust", "Bloodthirsty")]
     [InlineData("paranoia", "Paranoid")]

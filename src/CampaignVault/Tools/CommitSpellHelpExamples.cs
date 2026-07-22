@@ -182,7 +182,7 @@ Via world_build:
   }
 ]
 
-After this rest commit, call `advance_world` on the next session day for `ResourceRecoveryRule` to refill the pools per the rest type (LongRest ⊃ ShortRest ⊃ PerTurn hierarchy).
+This rest commit recovers eligible resource pools and settles tiredness immediately, per the rest type (LongRest ⊃ ShortRest ⊃ PerTurn hierarchy) — no separate advance_world call needed.
 """;
 
     internal const string HelpSection = RoutingGuide + """

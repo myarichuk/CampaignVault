@@ -57,7 +57,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
         WorldChangeDispatcher dispatcher,
         string campaignName,
         List<Event>? loggedEvents = null,
-        int currentDay = 10) =>
+        int currentDay = 10,
+        List<string>? summary = null) =>
         new(
             session,
             new Dictionary<string, Character>(),
@@ -69,7 +70,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             () => Task.FromResult(new CampaignTime { TotalDaysElapsed = currentDay }),
             () => Task.FromResult(new Dictionary<string, string>()),
             e => { loggedEvents?.Add(e); return Task.CompletedTask; },
-            [],
+            summary ?? [],
             dispatcher,
             campaignName: campaignName);
 
@@ -110,6 +111,204 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
         var detail = Assert.Single(item.ItemDetails);
         Assert.Equal("detail-existing", detail.Id);
         Assert.Equal("Deep scratch", detail.Name);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_SetsReviewIntervalDays_OnNewDetail()
+    {
+        const string campaign = "item-detail-test-review-interval";
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var item = new Item
+        {
+            Id = "items/review_interval_test",
+            Name = "Waterskin",
+            Description = "A waterskin.",
+            HolderId = "locations/tavern",
+            CampaignName = campaign,
+            ItemDetails = [],
+        };
+        await session.StoreAsync(item);
+        await session.SaveChangesAsync();
+
+        var embeddingService = new StubEmbeddingService();
+        var handler = new ItemUpdateHandler(embeddingService);
+        var context = BuildContext(session, BuildDispatcher(handler), campaign);
+
+        var change = new ItemUpdate
+        {
+            ItemId = item.Id,
+            UpsertItemDetail = new ItemDetailUpsertRequest
+            {
+                Name = "Punctured waterskin",
+                Description = "A hole near the base, slowly leaking.",
+                ReviewIntervalDays = 1,
+            },
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.True(result.Success);
+        var detail = Assert.Single(item.ItemDetails);
+        Assert.Equal(1, detail.ReviewIntervalDays);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_OmittedReviewIntervalDays_LeavesExistingValueUnchanged()
+    {
+        const string campaign = "item-detail-test-review-interval-preserve";
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var item = new Item
+        {
+            Id = "items/review_interval_preserve_test",
+            Name = "Waterskin",
+            Description = "A waterskin.",
+            HolderId = "locations/tavern",
+            CampaignName = campaign,
+            ItemDetails = [new ItemDetail { Id = "detail-hole", Name = "Punctured waterskin", Description = "leaking", ReviewIntervalDays = 1 }],
+        };
+        await session.StoreAsync(item);
+        await session.SaveChangesAsync();
+
+        var embeddingService = new StubEmbeddingService();
+        var handler = new ItemUpdateHandler(embeddingService);
+        var context = BuildContext(session, BuildDispatcher(handler), campaign);
+
+        var change = new ItemUpdate
+        {
+            ItemId = item.Id,
+            UpsertItemDetail = new ItemDetailUpsertRequest { Id = "detail-hole", Name = "Punctured waterskin", Description = "leaking worse now" },
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.True(result.Success);
+        var detail = Assert.Single(item.ItemDetails);
+        Assert.Equal(1, detail.ReviewIntervalDays);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_HazardOrigin_NoReviewInterval_RecordsReminder()
+    {
+        const string campaign = "item-detail-test-review-interval-reminder-hazard";
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var item = new Item
+        {
+            Id = "items/reminder_hazard_test",
+            Name = "Waterskin",
+            Description = "A waterskin.",
+            HolderId = "locations/tavern",
+            CampaignName = campaign,
+            ItemDetails = [],
+        };
+        await session.StoreAsync(item);
+        await session.SaveChangesAsync();
+
+        var summary = new List<string>();
+        var embeddingService = new StubEmbeddingService();
+        var handler = new ItemUpdateHandler(embeddingService);
+        var context = BuildContext(session, BuildDispatcher(handler), campaign, summary: summary);
+
+        var change = new ItemUpdate
+        {
+            ItemId = item.Id,
+            UpsertItemDetail = new ItemDetailUpsertRequest
+            {
+                Name = "Punctured waterskin",
+                Description = "A hole near the base, slowly leaking.",
+                Origin = new ItemDetailOrigin { Type = ItemDetailOriginType.Hazard },
+                // ReviewIntervalDays intentionally omitted.
+            },
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.True(result.Success);
+        Assert.Contains(summary, m => m.Contains("NOTE", StringComparison.Ordinal) && m.Contains("reviewIntervalDays", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_HazardOrigin_WithReviewInterval_NoReminder()
+    {
+        const string campaign = "item-detail-test-review-interval-reminder-set";
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var item = new Item
+        {
+            Id = "items/reminder_set_test",
+            Name = "Waterskin",
+            Description = "A waterskin.",
+            HolderId = "locations/tavern",
+            CampaignName = campaign,
+            ItemDetails = [],
+        };
+        await session.StoreAsync(item);
+        await session.SaveChangesAsync();
+
+        var summary = new List<string>();
+        var embeddingService = new StubEmbeddingService();
+        var handler = new ItemUpdateHandler(embeddingService);
+        var context = BuildContext(session, BuildDispatcher(handler), campaign, summary: summary);
+
+        var change = new ItemUpdate
+        {
+            ItemId = item.Id,
+            UpsertItemDetail = new ItemDetailUpsertRequest
+            {
+                Name = "Punctured waterskin",
+                Description = "A hole near the base, slowly leaking.",
+                Origin = new ItemDetailOrigin { Type = ItemDetailOriginType.Hazard },
+                ReviewIntervalDays = 1,
+            },
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(summary, m => m.Contains("NOTE", StringComparison.Ordinal) && m.Contains("reviewIntervalDays", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_NonPhysicalOrigin_NoReviewInterval_NoReminder()
+    {
+        const string campaign = "item-detail-test-review-interval-reminder-actor";
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var item = new Item
+        {
+            Id = "items/reminder_actor_test",
+            Name = "Old Chest",
+            Description = "A chest.",
+            HolderId = "locations/tavern",
+            CampaignName = campaign,
+            ItemDetails = [],
+        };
+        await session.StoreAsync(item);
+        await session.SaveChangesAsync();
+
+        var summary = new List<string>();
+        var embeddingService = new StubEmbeddingService();
+        var handler = new ItemUpdateHandler(embeddingService);
+        var context = BuildContext(session, BuildDispatcher(handler), campaign, summary: summary);
+
+        var change = new ItemUpdate
+        {
+            ItemId = item.Id,
+            UpsertItemDetail = new ItemDetailUpsertRequest
+            {
+                Name = "Hidden compartment",
+                Description = "A false bottom hides a small pocket.",
+                Origin = new ItemDetailOrigin { Type = ItemDetailOriginType.Actor },
+                // ReviewIntervalDays intentionally omitted — not a physical/hazard origin, no reminder expected.
+            },
+        };
+
+        var result = await handler.ApplyAsync(change, context);
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(summary, m => m.Contains("NOTE", StringComparison.Ordinal) && m.Contains("reviewIntervalDays", StringComparison.Ordinal));
     }
 
     [Fact]

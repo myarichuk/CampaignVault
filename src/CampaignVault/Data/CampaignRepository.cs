@@ -1630,6 +1630,7 @@ public class CampaignRepository
                     Participants = [],
                     CreatedOnDay = currentDay,
                     UpdatedOnDay = currentDay,
+                    ReviewIntervalDays = d.ReviewIntervalDays,
                 }).ToList(),
             };
             await session.StoreAsync(result);

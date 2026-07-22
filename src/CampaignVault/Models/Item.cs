@@ -196,6 +196,14 @@ public class ItemDetail : IHasSemanticVector
     /// <summary>In-game day this detail was last touched.</summary>
     public int UpdatedOnDay { get; set; }
 
+    /// <summary>
+    /// Days of no updates before ItemDetailStalenessRule nudges the DM-LLM to reconsider this detail.
+    /// Set by whoever authored the detail — a punctured waterskin or a scabbing wound plausibly
+    /// changes within a day or two, while a scorch mark or a crater might not be worth revisiting for
+    /// months. Null falls back to ItemDetailStalenessRule's global default (60 days).
+    /// </summary>
+    public int? ReviewIntervalDays { get; set; }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]

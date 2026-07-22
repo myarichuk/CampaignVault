@@ -837,6 +837,150 @@ public class WorldChangeDispatcherTests
     }
 
     [Fact]
+    public async Task Dispatcher_MinutesElapsed_NudgesNeedsForInvolvedCharacters()
+    {
+        var pc = new Character
+        {
+            Id = "chars/pc1",
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 0f } }
+        };
+
+        var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(hpHandler, new NeedChangeHandler());
+
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character> { ["chars/pc1"] = pc });
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 1440 }], // a full day
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        // Default NeedAccumulationRate (10, since no CampaignConfig loaded for a non-ruleset change) * 1 day.
+        Assert.Equal(10f, pc.Needs!.ActiveNeeds["hunger"], precision: 2);
+    }
+
+    [Fact]
+    public async Task Dispatcher_MinutesElapsed_BelowSixty_LeavesTimeOfDayUntouched()
+    {
+        var pc = new Character
+        {
+            Id = "chars/pc1",
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 0f } }
+        };
+
+        var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(hpHandler, new NeedChangeHandler());
+
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character> { ["chars/pc1"] = pc });
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var time = new CampaignTime();
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 20 }],
+            "test_campaign",
+            () => Task.FromResult(time),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        // A few lines of dialogue shouldn't flip TimeOfDay — only needs should move.
+        Assert.Equal(TimeOfDay.Dawn, time.TimeOfDay);
+        Assert.Equal(0, time.TotalDaysElapsed);
+        Assert.True(pc.Needs!.ActiveNeeds["hunger"] > 0f);
+        Assert.True(pc.Needs.ActiveNeeds["hunger"] < 1f); // 10 * (20/1440) ≈ 0.14, much less than a full day's nudge
+    }
+
+    [Fact]
+    public async Task Dispatcher_MinutesElapsed_SixtyOrMore_AdvancesTimeOfDay()
+    {
+        var pc = new Character { Id = "chars/pc1" };
+        var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(hpHandler, new NeedChangeHandler());
+
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character> { ["chars/pc1"] = pc });
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var time = new CampaignTime(); // starts at TimeOfDay.Dawn
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 180 }], // 3 hours
+            "test_campaign",
+            () => Task.FromResult(time),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Equal(TimeOfDay.Morning, time.TimeOfDay);
+    }
+
+    [Fact]
+    public async Task Dispatcher_MinutesElapsedOnRestChange_IsExcludedFromMicroNudge()
+    {
+        var pc = new Character
+        {
+            Id = "chars/pc1",
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 0f } }
+        };
+
+        // RestChange already advances time/needs itself via RestChangeHandler in production; here we
+        // stub it out entirely so any movement observed must have come from the (buggy) micro-nudge.
+        var restStub = new TestHandler("RestStub", c => c is RestChange, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(restStub, new NeedChangeHandler());
+
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character> { ["chars/pc1"] = pc });
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var time = new CampaignTime();
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [new RestChange
+            {
+                CharacterId = "chars/pc1",
+                LocationId = "locations/inn",
+                IntendedHours = 8,
+                MinutesElapsed = 999_999 // should be ignored entirely — RestChange is excluded from the sum
+            }],
+            "test_campaign",
+            () => Task.FromResult(time),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Equal(0f, pc.Needs!.ActiveNeeds["hunger"]);
+        Assert.Equal(0, time.TotalDaysElapsed);
+        Assert.Equal(TimeOfDay.Dawn, time.TimeOfDay);
+    }
+
+    [Fact]
     public async Task DispatchMutationAsync_TracksInvolvedEntities_ForPressureCooldown()
     {
         var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) =>

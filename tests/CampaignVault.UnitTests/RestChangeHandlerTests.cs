@@ -319,6 +319,100 @@ public class RestChangeHandlerTests
     }
 
     [Fact]
+    public async Task ApplyAsync_LongRest_RecoversTirednessTowardBaseline()
+    {
+        var charId = "chars/tired-wizard";
+        var character = new Character
+        {
+            Id = charId,
+            CurrentLocationId = "loc/1",
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 90f } }
+        };
+
+        var summary = new List<string>();
+        var dispatcher = new WorldChangeDispatcher(
+            [new NeedChangeHandler()],
+            new CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+
+        var rule = new EncounterResolver(() => 1.0);
+        var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
+
+        var context = new ChangeContext(
+            null!,
+            new Dictionary<string, Character> { [charId] = character },
+            new Dictionary<string, Item>(),
+            new Dictionary<string, Location>
+            {
+                ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
+            },
+            null,
+            null,
+            NullLogger.Instance,
+            summary,
+            dispatcher);
+
+        var result = await handler.ApplyAsync(new RestChange
+        {
+            CharacterId = charId,
+            LocationId = "loc/1",
+            IntendedHours = 8,
+            RestType = RestType.LongRest
+        }, context, CancellationToken.None);
+
+        Assert.True(result.Success);
+        // Default NeedSatisfactionBaseline (20, since context.Config is null here) — long rest settles fully.
+        Assert.Equal(20f, character.Needs!.ActiveNeeds["tiredness"], precision: 3);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_ShortRest_RecoversHalfTirednessTowardBaseline()
+    {
+        var charId = "chars/tired-fighter";
+        var character = new Character
+        {
+            Id = charId,
+            CurrentLocationId = "loc/1",
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 90f } }
+        };
+
+        var summary = new List<string>();
+        var dispatcher = new WorldChangeDispatcher(
+            [new NeedChangeHandler()],
+            new CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+
+        var rule = new EncounterResolver(() => 1.0);
+        var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
+
+        var context = new ChangeContext(
+            null!,
+            new Dictionary<string, Character> { [charId] = character },
+            new Dictionary<string, Item>(),
+            new Dictionary<string, Location>
+            {
+                ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
+            },
+            null,
+            null,
+            NullLogger.Instance,
+            summary,
+            dispatcher);
+
+        var result = await handler.ApplyAsync(new RestChange
+        {
+            CharacterId = charId,
+            LocationId = "loc/1",
+            IntendedHours = 1,
+            RestType = RestType.ShortRest
+        }, context, CancellationToken.None);
+
+        Assert.True(result.Success);
+        // 90 -> baseline 20 is a distance of 70; short rest only settles half of that: 90 - 35 = 55.
+        Assert.Equal(55f, character.Needs!.ActiveNeeds["tiredness"], precision: 3);
+    }
+
+    [Fact]
     public async Task StatusChangeHandler_UnknownConditionName_RecordsSoftWarning()
     {
         var charId = "chars/warn-test";

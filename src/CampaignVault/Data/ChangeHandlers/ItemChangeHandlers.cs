@@ -167,6 +167,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         if (req.Origin != null) detail.Origin = req.Origin;
         if (req.TetheredToId != null) detail.TetheredToId = req.TetheredToId.Length == 0 ? null : req.TetheredToId;
         if (req.Participants != null) detail.Participants = req.Participants;
+        if (req.ReviewIntervalDays != null) detail.ReviewIntervalDays = req.ReviewIntervalDays;
 
         var currentDay = (await context.GetCurrentTimeAsync()).TotalDaysElapsed;
         if (isNew) detail.CreatedOnDay = currentDay;
@@ -209,6 +210,19 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         }
 
         context.RecordMessage($"{(isNew ? "Created" : "Updated")} detail '{detail.Name}' on item '{item.Id}'.");
+
+        // Hazard/Environmental details plausibly change at wildly different rates (a puncture in days,
+        // a scorch mark in months) — there's no reliable signal to auto-pick the right one, so nudge
+        // the LLM to decide explicitly now, while it has full context, rather than silently defaulting.
+        if (detail.ReviewIntervalDays == null
+            && detail.Origin?.Type is ItemDetailOriginType.Hazard or ItemDetailOriginType.Environmental)
+        {
+            context.RecordMessage(
+                $"NOTE: '{detail.Name}' has no reviewIntervalDays set — defaulting to the engine's 60-day " +
+                "staleness check. Consider setting it explicitly if this detail plausibly changes faster or " +
+                "slower than that (e.g. a leak in a few days, a scorch mark in months).");
+        }
+
         return null;
     }
 

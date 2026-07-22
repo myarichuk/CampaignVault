@@ -73,8 +73,8 @@ internal static class CommitSchemaRegistry
 
         new("rest", "Combat",
             "ENGINE SIDE EFFECTS: Calculates danger of the rest location and may emit encounter events. " +
-            "Applies need recovery automatically. Resource pool recovery (spell slots/focus points) is deferred " +
-            "to the next advance_world call — call advance_world after resting to refill pools.",
+            "Applies need recovery (tiredness settles toward baseline) and resource pool recovery " +
+            "(spell slots/focus points, per the rest type) immediately — no separate advance_world call needed.",
             ["characterId", "locationId", "intendedHours"],
             ["securityModifier", "restType", "narrativeNote"],
             HasSideEffects: true,
