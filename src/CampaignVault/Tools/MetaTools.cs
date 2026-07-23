@@ -47,7 +47,7 @@ public class MetaTools : IMcpServerTool
 {
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for commit $type discriminators — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use — e.g. for scratches, stains, secret compartments, or other lasting item damage/wear, look at item_update's upsertItemDetail. Filter by category to reduce output.")]
+    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for commit $type discriminators — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use — e.g. for scratches, stains, secret compartments, or other lasting item damage/wear, look at item_update's upsertItemDetail. Filter by category to reduce output. NOTE: every $type below (except rest/travel, which have their own hour fields) also accepts an optional 'minutesElapsed' field — not listed per-entry since it's universal — to nudge hunger/thirst/tiredness during an ordinary scene without waiting for rest/advance_world.")]
     public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
         [Description("Optional filter over commit $type categories: Combat, Narrative, World, PlotThread. Omit to return all. This groups commit $type discriminators used inside the 'commit' tool's changes array — it is unrelated to list_tools' category parameter, which groups MCP tools themselves.")]
         string? category = null)
@@ -55,7 +55,7 @@ public class MetaTools : IMcpServerTool
         var schema = CommitSchemaRegistry.GetAll(category);
         return Task.FromResult(new ToolResult<IReadOnlyList<CommitTypeSchema>>(
             true, schema,
-            $"Returned {schema.Count} commit type schemas{(category != null ? $" for category '{category}'" : "")}. Side-effect types are marked hasSideEffects=true — do not duplicate their auto-mutations."));
+            $"Returned {schema.Count} commit type schemas{(category != null ? $" for category '{category}'" : "")}. Side-effect types are marked hasSideEffects=true — do not duplicate their auto-mutations. Reminder: every type here (except rest/travel) also accepts an optional 'minutesElapsed' to nudge needs during ordinary scenes."));
     }
 
     [ToolCategory("System")]

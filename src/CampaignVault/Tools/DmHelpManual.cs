@@ -17,6 +17,7 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 5. **Call `get_scene`** whenever the party enters a location. Action any `ENGINE WARNING` / `NARRATIVE PROMPT` immediately.
 6. **Call `commit`** at the end of every meaningful beat (combat, conversation, discovery, persistence).
 7. **Call `advance_world`** for travel, rests, or downtime skips.
+8. **Never roll dice yourself** (mentally, or via an external script/tool) for anything that should be recorded — not just attacks. Ambient Perception on arrival, Investigation, Stealth, a passive save: all of it goes through `commit`'s `ruleset_action` with `actionType: ""SkillCheck""` (or `SavingThrow`/`ContestedCheck` as appropriate), the same $type used for combat. It is the engine's only dice roller, in or out of combat. Example: `{""$type"":""ruleset_action"",""characterId"":""chars/lyra"",""actionName"":""Perception"",""actionType"":""SkillCheck"",""actionCategory"":""Survival"",""parameters"":{""dc"":""12""}}`.
 
 ## Campaign slug scoping
 
@@ -60,6 +61,12 @@ A **change to something that already exists** (numeric/state deltas, tag/exit ad
 5. **Deep NPC**: `get_npc_context` + `get_npc_needs`.
 
 **Golden Rule:** If you just narrated something that should ""exist"" next time the party returns or is referenced, `commit` it (via create or update). If it's pure color, use PointsOfInterest + AmbientCrowd (lightweight, no docs created until you decide to promote).
+
+## Time During a Scene (not just travel/rest)
+
+Ordinary scenes take in-game time too — a long interrogation or a late-night talk isn't free just because nobody called `advance_world`. Any `commit` change (except `rest`/`travel`, which have their own hour fields) accepts an optional `minutesElapsed`: summed across the batch, it nudges hunger/thirst/tiredness immediately, no day-boundary or `advance_world` required. Set it whenever a beat represents more than a few seconds — a quick exchange ≈2-5 min, a tense negotiation or a multi-hour talk ≈60-180 min.
+
+For tense or crowded scenes (interrogation, stakeout, a heated negotiation — not combat-only), also commit `scene_interrupt_check` after the beat (not every line) to let the engine roll whether someone from the ambient crowd interrupts. Cooldown: once per location per day. See `get_help topic=combat` or `get_commit_schema` for the full field list.
 
 ## For Deep Dives
 

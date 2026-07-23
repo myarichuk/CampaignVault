@@ -35,15 +35,21 @@ internal static class CommitSchemaRegistry
             Example: """{"$type":"hp","characterId":"chars/grog","delta":-8}"""),
 
         new("ruleset_action", "Combat",
-            "ENGINE SIDE EFFECTS: Rolls dice and auto-applies HpChange, StatusChange, EngagementRelationChange. " +
-            "Do NOT add separate hp/status commits for the same action — double-application will occur. " +
-            "actionCategory defaults to Melee if omitted — set it explicitly for Spell/Ranged/Social/Survival/Maneuver actions.",
+            "THE ENGINE'S ONLY DICE ROLLER — used for combat AND every ordinary out-of-combat check (Perception on " +
+            "arrival, Investigation, Stealth, a persuasion attempt, a passive save, etc.). Never invent a die result " +
+            "yourself (mentally, or via an external script/tool) — always resolve uncertainty through this $type so the " +
+            "roll is recorded and reproducible. actionType covers all of it: Attack, Spell, SkillCheck (ordinary skill " +
+            "vs. a DC — this is the one for ambient/exploration checks), SavingThrow, ContestedCheck, OpposedCheck, " +
+            "UseItem, Recovery. ENGINE SIDE EFFECTS: rolls dice and auto-applies HpChange, StatusChange, " +
+            "EngagementRelationChange for Attack/Spell — do NOT add separate hp/status commits for the same action, " +
+            "double-application will occur. actionCategory defaults to Melee if omitted — set it explicitly " +
+            "(Spell/Ranged/Social/Survival/Maneuver) especially for non-combat checks.",
             ["characterId", "actionName", "actionType"],
             ["targetIds", "parameters", "advantageState", "damageType", "actionCategory"],
             HasSideEffects: true,
             SideEffects: ["hp", "status", "engagement_relation"],
             CoCommitHints: ["event"],
-            Example: """{"$type":"ruleset_action","characterId":"chars/asha","targetIds":["chars/bandit"],"actionName":"longsword","actionType":"Attack","actionCategory":"Melee"}"""),
+            Example: """Attack: {"$type":"ruleset_action","characterId":"chars/asha","targetIds":["chars/bandit"],"actionName":"longsword","actionType":"Attack","actionCategory":"Melee"} | Ambient skill check (no targets): {"$type":"ruleset_action","characterId":"chars/lyra","actionName":"Perception","actionType":"SkillCheck","actionCategory":"Survival","parameters":{"dc":"12"}}"""),
 
         new("status", "Combat",
             "Add a structured status effect to a character (preferred: use 'effect' field for full control).",
@@ -82,9 +88,10 @@ internal static class CommitSchemaRegistry
             CoCommitHints: ["event"],
             Example: """{"$type":"rest","characterId":"chars/valen","locationId":"locations/inn_room","intendedHours":8,"securityModifier":10}"""),
 
-        new("scene_interrupt_check", "Combat",
+        new("scene_interrupt_check", "Narrative",
             "ENGINE MACRO: Rolls crowd reaction and may emit an ActivityChange promoting a transient from the ambient crowd. " +
-            "Cooldown: once per location per day. Call after tense beats in crowded locations only.",
+            "Cooldown: once per location per day. Call after tense beats in crowded locations, or any long non-combat scene " +
+            "(interrogation, negotiation, a late-night stakeout/talk) where an ambient interruption is dramatically plausible — not combat-only.",
             ["locationId", "characterId"],
             ["riskModifier", "notes"],
             HasSideEffects: true,
