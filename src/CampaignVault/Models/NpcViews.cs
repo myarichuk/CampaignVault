@@ -41,3 +41,18 @@ public class NpcNeedsView
     public Dictionary<string, float> KnownNeeds { get; set; } = [];
     public Dictionary<string, string> NeedDescriptors { get; set; } = [];
 }
+
+/// <summary>
+/// Lightweight summary of an NPC for quick lookups (get_npc_summary).
+/// Slices the heavier NpcContextView to essential roleplay data: name, behavior, needs, and gear.
+/// </summary>
+public class NpcSummaryView
+{
+    public string CharacterId { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public string CurrentAppearance { get; set; } = default!;
+    public string? BehavioralSummary { get; set; }
+    public Dictionary<string, float> KnownNeeds { get; set; } = [];
+    public List<ItemSummaryView>? Equipped { get; set; }
+    public List<ItemSummaryView>? Carried { get; set; }
+}

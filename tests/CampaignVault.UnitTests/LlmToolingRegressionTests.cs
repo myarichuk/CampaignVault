@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using CampaignVault.Models;
 using CampaignVault.Tools;
 using Xunit;
+using static CampaignVault.Tools.ToolCatalog;
 
 namespace CampaignVault.Tests;
 
@@ -249,7 +250,7 @@ public class LlmToolingRegressionTests
     [Fact]
     public void RecommendedSystemPrompt_Under12kCharacters()
     {
-        var path = Path.Combine(FindRepoRoot(), "docs", "recommended-system-prompt.md");
+        var path = Path.Combine(FindRepoRoot(), "recommended-system-prompt.md");
         var content = File.ReadAllText(path);
         var start = content.IndexOf("```text", StringComparison.Ordinal);
         var end = content.IndexOf("```", start + 7, StringComparison.Ordinal);
@@ -259,6 +260,21 @@ public class LlmToolingRegressionTests
         Assert.InRange(prompt.Length, 1, 12_000);
         Assert.Contains("world_build", prompt);
         Assert.Contains("do NOT commit HP separately", prompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void RegisteredToolSchema_UnderChattynessCap()
+    {
+        // Tracks LLM context cost from tool schema (proxy: descriptions in registered tools).
+        // Phase A retirement of 11 upsert_* tools should reduce this significantly.
+        var tools = ToolCatalog.GetAll();
+        var schemaSize = tools
+            .Sum(t => (t.Name?.Length ?? 0) + (t.Description?.Length ?? 0));
+
+        // After A1 (11 upsert_* tools retired), expect ~48-11=37 tools with ~25-30% smaller schema.
+        // This bound will be tightened as Phase B/C progress.
+        Assert.InRange(schemaSize, 1, 50_000);
+        Assert.InRange(tools.Count, 1, 48);
     }
 
     private static string FindRepoRoot()
@@ -280,16 +296,15 @@ public class LlmToolingRegressionTests
 
     /// <summary>
     /// Regression guard for ItemDetails discoverability wording: routes an LLM DM from the
-    /// top-level tools it reads first (commit, get_commit_schema, upsert_item) toward
+    /// top-level tools it reads first (commit, get_commit_schema) toward
     /// item_update's upsertItemDetail using natural trigger words, without already knowing the
-    /// field name. See itemdetails-tooling-analysis follow-up.
+    /// field name. UpsertItem was retired to world_build in Phase A of tool-surface reduction.
+    /// See itemdetails-tooling-analysis follow-up.
     /// </summary>
     [Theory]
     [InlineData(typeof(MutationTools), nameof(MutationTools.Commit), "upsertItemDetail")]
     [InlineData(typeof(MutationTools), nameof(MutationTools.Commit), "wear")]
     [InlineData(typeof(MetaTools), nameof(MetaTools.GetCommitSchema), "upsertItemDetail")]
-    [InlineData(typeof(WorldBuilderTools), nameof(WorldBuilderTools.UpsertItem), "itemDetails")]
-    [InlineData(typeof(WorldBuilderTools), nameof(WorldBuilderTools.UpsertItem), "secret compartments")]
     public void ToolDescriptions_ContainItemDetailsDiscoverabilityTriggerWords(Type toolType, string methodName, string expectedSubstring)
     {
         var method = toolType
@@ -306,5 +321,24 @@ public class LlmToolingRegressionTests
         var method = typeof(DeepDiveTools).GetMethod(nameof(DeepDiveTools.GetItem), BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
         Assert.NotNull(method);
         Assert.NotNull(method!.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>());
+    }
+
+    [Theory]
+    [InlineData(nameof(WorldBuilderTools.UpsertCharacter))]
+    [InlineData(nameof(WorldBuilderTools.UpsertLocation))]
+    [InlineData(nameof(WorldBuilderTools.UpsertLore))]
+    [InlineData(nameof(WorldBuilderTools.UpsertItem))]
+    [InlineData(nameof(WorldBuilderTools.UpsertCreature))]
+    [InlineData(nameof(WorldBuilderTools.UpsertPlotThread))]
+    [InlineData(nameof(WorldBuilderTools.UpsertSpell))]
+    [InlineData(nameof(WorldBuilderTools.UpsertFeat))]
+    [InlineData(nameof(WorldBuilderTools.UpsertFaction))]
+    [InlineData(nameof(WorldBuilderTools.UpsertQuest))]
+    [InlineData(nameof(WorldBuilderTools.UpsertRumor))]
+    public void RetiredUpsertMethods_AreNotRegisteredAsAnMcpTool(string methodName)
+    {
+        var method = typeof(WorldBuilderTools).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+        Assert.NotNull(method);
+        Assert.Null(method!.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>());
     }
 }

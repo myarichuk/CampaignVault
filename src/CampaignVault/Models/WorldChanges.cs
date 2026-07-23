@@ -167,13 +167,7 @@ public class StatusChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description(
-        "[Preferred] Fully structured StatusEffect authored by the LLM DM. " +
-        "Provide name, category, optional conditionName (SRD template key from get_system_handbook), " +
-        "optional affectedPart (BodyPart enum), statModifiers (key-value penalties/bonuses), " +
-        "and optionally expiresAtDay (CampaignTime.TotalDaysElapsed + N) or expiresAtRound (CombatEncounter.Round + N). " +
-        "Leave both expiration fields null for permanent effects (broken bones, curses). " +
-        "Set recoveryHint to a free-text note for your own future reference about how this effect can be removed.")]
+    [Description("[Preferred] Structured StatusEffect: name, category, optional conditionName/affectedPart/statModifiers, and expiresAtDay/expiresAtRound (omit both for permanent). See get_help topic=combat for the full field reference.")]
     [JsonPropertyName("effect")]
     public StatusEffect? Effect { get; set; }
 
@@ -212,7 +206,7 @@ public class EventOccurred : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EventCategory Category { get; set; } = EventCategory.Unresolved;
 
-    [Description("Character IDs of everyone who participated. REQUIRED when category is 'Conversation' — without this, get_npc_context cannot recall the exchange. Use exact IDs (e.g. ['chars/valen', 'chars/lirael-goldvein']). Field name is 'involved' (NOT 'participants'). If omitted but engagement_relation/activity for the same speakers are in the same commit batch, the engine auto-infers.")]
+    [Description("Character IDs of everyone who participated. REQUIRED when category is 'Conversation'. Field name is 'involved', not 'participants'. See get_help topic=patterns.")]
     [JsonPropertyName("involved")]
     public List<string>? Involved { get; set; }
 
@@ -224,7 +218,7 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("relatedEntityId")]
     public string? RelatedEntityId { get; set; }
 
-    [Description("Optional. Primary location ID where the event occurred (e.g. 'locations/rusty-nail'). Enables recall_history/location-scoped queries. Do NOT put a location ID inside 'involved' — use this field so recall_history/location-scoped queries and location-anchored consequences can find it.")]
+    [Description("Optional. Primary location ID where the event occurred. Never put a location ID inside 'involved' — use this field.")]
     [JsonPropertyName("locationId")]
     public string? LocationId { get; set; }
 
@@ -236,11 +230,11 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("eventId")]
     public string? EventId { get; set; }
 
-    [Description("Optional. How narratively important this event is to THIS campaign's story (Trivial/Important/Core) — see the campaign's narrativeFocus. If omitted, the engine defaults it from category (Betrayal/Discovery/Combat/Arrival -> Important, bookkeeping categories -> Trivial). Core = load-bearing to the plot; always survives retrieval budgets.")]
+    [Description("Optional importance (Trivial/Important/Core; Core always survives retrieval budgets). If omitted, inferred from category.")]
     [JsonPropertyName("importance")]
     public MemoryImportance? Importance { get; set; }
 
-    [Description("Optional. Whether this event is a deliberate player act (Deliberate) or passive narrative element (Passive). Deliberate events lock in high importance and skip heuristic inference; Passive events infer tone/importance from context and decay naturally. Omit or set to Passive for most ambient events.")]
+    [Description("Deliberate (explicit player act, locks in importance) or Passive (ambient, decays naturally). Omit for Passive. See get_help topic=patterns.")]
     [JsonPropertyName("recordingMode")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RecordingMode? RecordingMode { get; set; }
@@ -432,7 +426,7 @@ public class NeedChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = default!;
 
-    [Description("Name of the need being adjusted. UNRESTRICTED — invent any narrative-appropriate need. System provides evocative framings for core needs ('hunger', 'thirst', 'tiredness') + curated custom ones ('paranoia', 'obsession', 'wanderlust', 'bloodlust', 'guilt', 'despair'); unknown needs auto-derive adjectives morphologically (e.g., 'homesickness' → 'homesick', 'vengeance' → 'vengeful').")]
+    [Description("Name of the need (unrestricted — invent any narrative-appropriate need, e.g. 'paranoia', 'bloodlust'; core needs are 'hunger'/'thirst'/'tiredness').")]
     [JsonPropertyName("need")]
     public string Need { get; set; } = default!;
 
@@ -503,7 +497,7 @@ public class ActivityChange : WorldChange
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
 
-    [Description("Optional: name of a Point of Interest to materialize on the destination location (newLocationId) in this same step — for a specific, tactically/narratively notable spot (a hidden camp, a stash, a lookout) inside a broader existing location, not worth a full new Location. Same effect as location_update's materializePointOfInterest, bundled here so the move and its detail are one commit instead of two easily-forgotten ones. Pair with poiDetails. Requires newLocationId/updateLocation to also be set; ignored otherwise.")]
+    [Description("Optional: name of a Point of Interest to materialize on newLocationId in this same step (same effect as location_update's materializePointOfInterest). Pair with poiDetails. Requires newLocationId/updateLocation to also be set.")]
     [JsonPropertyName("poiName")]
     public string? PoiName { get; set; }
 
@@ -566,7 +560,7 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("actionName")]
     public string ActionName { get; set; } = default!;
 
-    [Description("REQUIRED. Attack, Spell, SkillCheck, SavingThrow (single actor save), ContestedCheck, OpposedCheck (alias of ContestedCheck), UseItem, or Recovery. Must be sent explicitly — omitting this key fails the commit rather than silently defaulting to Attack.")]
+    [Description("REQUIRED (no default; omitting fails the commit). Attack, Spell, SkillCheck, SavingThrow, ContestedCheck (alias OpposedCheck), UseItem, or Recovery.")]
     [JsonPropertyName("actionType")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public required RulesetActionType ActionType { get; set; }
@@ -593,11 +587,7 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("reactionTrigger")]
     public string? ReactionTrigger { get; set; }
 
-    [Description(
-        "Resolver hints. Spell: resolution (attack|save|check|utility|heal), dc, save, damageDice, halfOnSave (5e default true), healDice. "
-        + "5e/PF2e: bonus, damageBonus, ac, mapPenalty. Fallout: difficulty/dc, attribute, skill, pool, rangeModifier, cover, targetPart, healAmount. "
-        + "Range/AoE (all rulesets): range (max SpatialDistanceBand for single-target), aoeRadius (max SpatialDistanceBand for AoE targets), originId (anchor for AoE, defaults to characterId). "
-        + "Engine auto-applies hp deltas from ruleset_action — do not duplicate with separate hp commits.")]
+    [Description("Resolver-specific parameters (dc, bonus, damageDice, save, resolution, etc.) — see get_help topic=combat for the full key reference per ruleset. Engine auto-applies hp deltas; don't duplicate with a separate hp commit.")]
     [JsonPropertyName("parameters")]
     [JsonConverter(typeof(FlexibleStringDictionaryConverter))]
     public Dictionary<string, string> Parameters { get; set; } = [];
@@ -735,11 +725,7 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("psychology")]
     public PsychologyProfile? Psychology { get; set; }
 
-    [Description("""
-        Maximum hit points. PCs should OMIT this — the bootstrap pipeline derives HP from systemStats + classLevel.
-        Creature stat blocks: set maxHp here OR systemStats.statBlockHp (preferred for clarity). Both skip formula derivation.
-        If omitted, engine derives when possible; otherwise emits ENGINE WARNING until bootstrapped.
-        """)]
+    [Description("PCs should OMIT — derived from systemStats + classLevel. Creatures: set here or systemStats.statBlockHp to skip formula derivation.")]
     [JsonPropertyName("maxHp")]
     public int? MaxHp { get; set; }
 
@@ -747,15 +733,7 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("currentHp")]
     public int? CurrentHp { get; set; }
 
-    [Description("""
-        Ruleset-specific combat and skill stats. REQUIRED for combatants (KeepAlive or maxHp > 0) — engine emits ENGINE WARNING until bootstrapped.
-        Include the $system discriminator matching the active campaign ruleset: dnd5e, pf2e, or fallout2d20.
-        PC bootstrap (omit maxHp) — engine derives HP, AC, proficiency, etc.:
-        - dnd5e: hitDie (e.g. "d12"), level, constitution, optional hpMode (average|rolled)
-        - pf2e: classHpPerLevel, ancestryHp, level, constitutionMod
-        - fallout2d20: endurance, luck, level, optional hpPerLevel (defaults to endurance)
-        Creature stat blocks: statBlockHp on systemStats (or maxHp on this change). Explicit HP skips formula only; AC/proficiency still derive.
-        """)]
+    [Description("Ruleset-specific stats with $system discriminator (dnd5e/pf2e/fallout2d20). REQUIRED for combatants — engine warns until bootstrapped. See get_help topic=world-building for the per-ruleset bootstrap field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
 
@@ -941,12 +919,7 @@ public class ItemUpdate : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ItemCategory? CoreCategory { get; set; }
 
-    [Description("Temporary tags to add to the item (e.g. 'muddy', 'wet'). Also the convention for how a " +
-        "carried/contained item is displayed: tag the CONTAINER item (bandolier, sheath, pouch) — not the " +
-        "contained item — 'open-carry' if its contents hang visibly (a sword in a back sheath, knives on a " +
-        "bandolier loop) or 'concealed' if they're tucked away (a dagger in a boot, coins in a belt pouch). " +
-        "This is narrative-only — the engine doesn't derive well_armed/unarmed from it, so also tag the " +
-        "character directly (character_update's tagsToAdd) when what's visible should affect crowd reactions.")]
+    [Description("Temporary tags to add (e.g. 'muddy', 'wet'). Convention for open-carry/concealed display: tag the container, not the contents. See get_help topic=visual-sandbox.")]
     [JsonPropertyName("tagsToAdd")]
     public List<string>? TagsToAdd { get; set; }
 
@@ -970,15 +943,15 @@ public class ItemUpdate : WorldChange
     [JsonPropertyName("propertiesToRemove")]
     public List<string>? PropertiesToRemove { get; set; }
 
-    [Description("Sets/refreshes a narrative note about why this item was left behind (e.g. 'porridge left on the table, going cold'). Pair with ambientExpiresAtDay so the engine can nag about stale ambient debris — the engine only ever detects and surfaces a pressure hint, it never auto-moves/archives/deletes the item.")]
+    [Description("Narrative note about why this item was left behind. Pair with ambientExpiresAtDay so the engine can nag about stale debris (never auto-moves/deletes).")]
     [JsonPropertyName("ambientPersistenceNote")]
     public string? AmbientPersistenceNote { get; set; }
 
-    [Description("Sets/refreshes the campaign day (CampaignTime.TotalDaysElapsed + N) after which the engine should nag about this item's ambient fate. Setting this also clears any previously-surfaced nag so it fires again fresh at the new day.")]
+    [Description("Campaign day after which the engine nags about this item's ambient fate. Setting this clears any previously-surfaced nag.")]
     [JsonPropertyName("ambientExpiresAtDay")]
     public float? AmbientExpiresAtDay { get; set; }
 
-    [Description("Create or update a persistent structured detail on this item (scratches, stains, secret compartments, custom pockets). If id matches an existing detail, that detail is updated; otherwise the engine resolves by semantic similarity against existing details on this item, falling back to creating a new one. Use for durable, examine-able state — not temporary tags (tagsToAdd) or narrative flavor (newState).")]
+    [Description("Create or update a durable, examine-able detail on this item (scratches, stains, secret compartments) — not temporary tags or narrative flavor. See get_help topic=visual-sandbox for the full field reference.")]
     [JsonPropertyName("upsertItemDetail")]
     public ItemDetailUpsertRequest? UpsertItemDetail { get; set; }
 
@@ -996,7 +969,7 @@ public class ItemUpdate : WorldChange
 /// </summary>
 public class ItemDetailUpsertRequest
 {
-    [Description("Optional. If you already know the detail's id (from a prior commit response or get_item), pass it here for an authoritative, cheap match. Omit for new details or when unsure. Ignored when used inside upsert_item/world_build's itemDetails (creation always assigns a fresh id).")]
+    [Description("Optional. Pass if known (from a prior commit response or get_item) for a cheap authoritative match. Omit to resolve by semantic similarity or create new.")]
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
@@ -1012,7 +985,7 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
-    [Description("DM-only guidance on how to narrate or adjudicate this detail (e.g. suggested DC, discovery conditions, ongoing effects). Covers active/mechanically-relevant conditions on the item too — not just static damage — e.g. 'corrosive ooze eating through the leather: 1 dmg/round until wiped off (action) or neutralized', 'glued shut: DC 13 Strength or solvent to open', 'tether snaps on DC 15 Athletics or any slashing hit'. Never shown to players directly.")]
+    [Description("DM-only guidance for narrating/adjudicating this detail (suggested DC, discovery conditions, ongoing effects). Never shown to players. See get_help topic=visual-sandbox for examples.")]
     [JsonPropertyName("intent")]
     public string? Intent { get; set; }
 
@@ -1020,15 +993,15 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("origin")]
     public ItemDetailOrigin? Origin { get; set; }
 
-    [Description("Optional id of whatever this detail currently physically anchors the item to — a location (a rope's other end lashed to a column), another item (leashed to a stake), or a character (tied to a handler/horse). Distinct from origin, which is what caused the detail rather than what it's currently attached to. No existence validation; purely descriptive for the DM-LLM to read back and adjudicate movement/range consequences (the engine does not enforce them). Omit to leave the existing value unchanged; pass an empty string \"\" to clear it once the tether is cut or the item is freed.")]
+    [Description("Optional id of whatever this detail is currently physically anchored to (location/item/character) — purely descriptive, not engine-enforced. Pass \"\" to clear once freed. See get_help topic=visual-sandbox.")]
     [JsonPropertyName("tetheredToId")]
     public string? TetheredToId { get; set; }
 
-    [Description("Optional list of characters who caused or witnessed this detail coming into being/being discovered. Each entry pushes a memory into that character's memories (Source=Experienced for Caused, Witnessed for Witnessed roles). Ignored when used inside upsert_item/world_build's itemDetails — a freshly created item has no in-fiction discovery moment to push; follow up with an item_update commit if you need the memory push.")]
+    [Description("Optional characters who caused/witnessed this detail — pushes a memory to each. Ignored inside upsert_item/world_build (no in-fiction moment yet).")]
     [JsonPropertyName("participants")]
     public List<ItemDetailParticipant>? Participants { get; set; }
 
-    [Description("Optional. Days of no updates before the engine nudges you to reconsider this detail (default 60 if omitted). Set this based on how fast the detail plausibly changes: a punctured waterskin or a fresh wound might warrant 1-3 days; a scorch mark or crater might warrant 60-90+ days. Omit to leave an existing detail's interval unchanged (or use the 60-day default for a new one).")]
+    [Description("Optional days of no updates before the engine nudges a review (default 60). Set shorter for fast-changing details, longer for near-permanent ones.")]
     [JsonPropertyName("reviewIntervalDays")]
     public int? ReviewIntervalDays { get; set; }
 }
@@ -1147,11 +1120,11 @@ public class KnowledgeUpdate : WorldChange
     [JsonPropertyName("relatedEntityIds")]
     public List<string>? RelatedEntityIds { get; set; }
 
-    [Description("Optional ground-truth event ID(s) this memory derives from (e.g. ['events/tavern-bar-fight-001']). Reference a prior event's ID (returned in its commit response, or found via recall_history), or an 'eventId' you set explicitly on an 'event' change in THIS SAME commit batch. Populating this lets the engine/DM later compare what this NPC believes against what actually happened — useful for detecting/narrating misremembering or rumor distortion.")]
+    [Description("Optional ground-truth event ID(s) this memory derives from — a prior event's ID or a same-batch eventId. Lets later checks compare belief vs. what actually happened (misremembering, rumor drift).")]
     [JsonPropertyName("sourceEventIds")]
     public List<string>? SourceEventIds { get; set; }
 
-    [Description("Optional. Whether this memory is a deliberate recording (Deliberate) or passive absorption (Passive). Set to Deliberate when the player performs an explicit act of recording — marking a map, writing a name in a journal, deliberately memorizing a fact. Deliberate memories lock in high salience/importance and skip heuristic inference; Passive memories infer emotional tone and importance from details and decay naturally. Omit or set to Passive for ambient observations.")]
+    [Description("Deliberate (explicit player act — marking a map, memorizing a fact — locks in high salience) or Passive (ambient, decays naturally, default).")]
     [JsonPropertyName("recordingMode")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RecordingMode? RecordingMode { get; set; }

@@ -74,3 +74,40 @@ public class WorldStateView
         WorldPressureItems = pressureItems ?? [];
     }
 }
+
+/// <summary>
+/// Session briefing: composed aggregate of world state + active party roster.
+/// Combines GetWorldState and GetParty into one convenient read for kickoff.
+/// </summary>
+public class SessionBriefingView
+{
+    public CampaignTime Time { get; set; } = default!;
+    public IEnumerable<RumorSummary> ActiveRumors { get; set; } = [];
+    public IEnumerable<Event> RecentEvents { get; set; } = [];
+    public LocationSummary? PartyLocation { get; set; }
+    public IEnumerable<string> WorldPressure { get; set; } = [];
+    public IEnumerable<ActiveQuestSummary>? ActiveQuests { get; set; }
+    public IEnumerable<FactionPresenceSummary>? RelevantFactions { get; set; }
+    public string? LastKnownTravel { get; set; }
+    public IEnumerable<WorldPressureItem> WorldPressureItems { get; set; } = [];
+    public SeedCoverageSummary? SeedCoverage { get; set; }
+    public IEnumerable<PartyMemberView> Party { get; set; } = [];
+
+    public SessionBriefingView() { }
+    public SessionBriefingView(
+        WorldStateView worldState,
+        IEnumerable<PartyMemberView> party)
+    {
+        Time = worldState.Time;
+        ActiveRumors = worldState.ActiveRumors;
+        RecentEvents = worldState.RecentEvents;
+        PartyLocation = worldState.PartyLocation;
+        WorldPressure = worldState.WorldPressure;
+        ActiveQuests = worldState.ActiveQuests;
+        RelevantFactions = worldState.RelevantFactions;
+        LastKnownTravel = worldState.LastKnownTravel;
+        WorldPressureItems = worldState.WorldPressureItems;
+        SeedCoverage = worldState.SeedCoverage;
+        Party = party;
+    }
+}

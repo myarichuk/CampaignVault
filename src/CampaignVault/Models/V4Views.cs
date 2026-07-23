@@ -64,6 +64,18 @@ public class SceneView
 }
 
 /// <summary>
+/// Lightweight summary of a scene for quick lookups (get_scene_summary).
+/// Slices the heavier SceneView to essentials: location, NPCs, rumors, and a binary combat flag.
+/// </summary>
+public class SceneSummaryView
+{
+    public Location Location { get; set; } = default!;
+    public IEnumerable<NpcPresenceSummary> PresentNPCs { get; set; } = [];
+    public IEnumerable<RumorSummary> LocalRumors { get; set; } = [];
+    public bool ActiveCombat { get; set; }
+}
+
+/// <summary>
 /// Lightweight summary of an active quest relevant to the current scene/location.
 /// Returned in SceneView so the DM sees stakes without full document bloat.
 /// </summary>

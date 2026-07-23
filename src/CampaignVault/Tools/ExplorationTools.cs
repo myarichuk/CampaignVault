@@ -204,6 +204,36 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
+    [Description("KICKOFF TOOL: Composite briefing at session start — combines world state (time, rumors, pressures, active quests) with the party roster in one call. Equivalent to calling get_world_state and get_party separately, but lighter for LLM context. Requires campaignName. partyLocationId is optional — omit if unknown and derive from recent history.")]
+    public Task<ToolResult<SessionBriefingView>> GetSessionBriefing(
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
+        [Description("The current ID of the location where the party is (string type). Optional. If not provided, you should determine the party's location from recent history or start them at a default location.")] string? partyLocationId = null)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
+            var worldState = await GetWorldState(campaignName, partyLocationId).ConfigureAwait(false);
+            if (!worldState.Success || worldState.Data == null)
+            {
+                return new ToolResult<SessionBriefingView>(false, Error: worldState.Error ?? "Failed to fetch world state");
+            }
+
+            var party = await GetParty(campaignName).ConfigureAwait(false);
+            if (!party.Success || party.Data == null)
+            {
+                return new ToolResult<SessionBriefingView>(false, Error: party.Error ?? "Failed to fetch party roster");
+            }
+
+            var briefing = new SessionBriefingView(worldState.Data, party.Data);
+            var partyText = party.Data.Count > 0
+                ? $"party: {string.Join(", ", party.Data.Select(m => $"{m.Name}"))}"
+                : "no party members";
+            return new ToolResult<SessionBriefingView>(true, briefing,
+                $"Session briefing retrieved for campaign '{effective}' ({partyText}).",
+                WorldPressure: worldState.WorldPressure);
+        }, saveChanges: true);
+    }
+
+    [ToolCategory("Session & exploration")]
+    [McpServerTool(UseStructuredContent = true)]
     [Description("EXPLORATION TOOL: Call when entering a room, building, or region. Returns location, NPCs, items, rumors, ActiveCombat, pressures. Requires campaignName.\nSet partyPresent=true ONLY when the party is physically entering or spending time here.")]
     public Task<ToolResult<SceneView>> GetScene(
         [Description("The unique ID of the location.")] string locationId,
@@ -481,6 +511,67 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             };
 
             return new ToolResult<NpcNeedsView>(true, view, $"Needs for {npc.Name} retrieved (campaign: {effective}).");
+        }, saveChanges: false);
+    }
+
+    [ToolCategory("Session & exploration")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("LIGHTWEIGHT TOOL: Quick scene snapshot (location, NPCs, rumors, combat status) without full event history or quest details. Faster than get_scene for mid-session lookups. Requires campaignName.")]
+    public Task<ToolResult<SceneSummaryView>> GetSceneSummary(
+        [Description("The unique ID of the location.")] string locationId,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
+            var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: false);
+
+            var summary = new SceneSummaryView
+            {
+                Location = scene.Location,
+                PresentNPCs = scene.PresentNPCs ?? [],
+                LocalRumors = scene.LocalRumors ?? [],
+                ActiveCombat = scene.ActiveCombat != null
+            };
+
+            return new ToolResult<SceneSummaryView>(true, summary,
+                $"Scene summary for {locationId} (campaign: {effective}) retrieved.");
+        }, saveChanges: false);
+    }
+
+    [ToolCategory("Session & exploration")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description("LIGHTWEIGHT TOOL: Quick NPC snapshot (name, behavioral summary, needs, equipment) without psychology breakdown or memory tree. Faster than get_npc_context for mid-session lookups. Requires campaignName.")]
+    public Task<ToolResult<NpcSummaryView>> GetNpcSummary(
+        [Description("The unique ID of the character.")] string characterId,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
+            var npc = await _repository.GetCharacterAsync(session, characterId, effective);
+            if (npc == null)
+            {
+                return new ToolResult<NpcSummaryView>(false, Error: "NotFound");
+            }
+
+            var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, []);
+
+            var heldItems = await session.Query<Item>()
+                .Where(i => i.HolderId == characterId && !i.IsArchived)
+                .ToListAsync();
+            var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
+            var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+
+            var summary = new NpcSummaryView
+            {
+                CharacterId = npc.Id,
+                Name = npc.Name,
+                CurrentAppearance = npc.CurrentAppearance ?? "",
+                BehavioralSummary = behavioralSummary,
+                KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
+                Equipped = equipped,
+                Carried = carried
+            };
+
+            return new ToolResult<NpcSummaryView>(true, summary,
+                $"NPC summary for {npc.Name} retrieved (campaign: {effective}).");
         }, saveChanges: false);
     }
 }
