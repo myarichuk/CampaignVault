@@ -1,3 +1,4 @@
+using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents.Session;
@@ -21,11 +22,13 @@ namespace CampaignVault.Data.ChangeHandlers;
 public sealed class WorldChangeDispatcher(
     IEnumerable<IWorldChangeHandler>? handlers,
     CampaignDocumentKeys keys,
-    ILogger<WorldChangeDispatcher>? logger = null)
+    ILogger<WorldChangeDispatcher>? logger = null,
+    EncounterResolver? encounterResolver = null)
 {
     private readonly IReadOnlyList<IWorldChangeHandler> _handlers = handlers?.ToList() ?? [];
     private readonly ILogger<WorldChangeDispatcher> _logger = logger ?? NullLogger<WorldChangeDispatcher>.Instance;
     private readonly CampaignDocumentKeys _keys = keys ?? throw new ArgumentNullException(nameof(keys));
+    private readonly EncounterResolver? _encounterResolver = encounterResolver;
 
 
     /// <summary>
@@ -273,6 +276,7 @@ public sealed class WorldChangeDispatcher(
         if (overallSuccess)
         {
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
+            await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
         }
 
         _logger.LogInformation("WorldChangeDispatcher processed {Processed} changes (overall success: {Success})",
@@ -343,6 +347,106 @@ public sealed class WorldChangeDispatcher(
         {
             var time = await getCurrentTimeAsync();
             time.AdvanceHours(minutesElapsed / 60);
+        }
+    }
+
+    /// <summary>
+    /// Ambient counterpart to the explicit 'rest'/'travel'/'scene_interrupt_check' encounter rolls: an
+    /// ordinary commit batch that carries MinutesElapsed can also be interrupted, so a DM doesn't have
+    /// to remember to separately commit scene_interrupt_check for every long, risky, non-combat beat
+    /// (a search, an interrogation, a stakeout) to get a chance at one. Gated deliberately narrow so it
+    /// stays quiet in safe/empty locations: only rolls where location.DangerModifier &gt; 0 or the
+    /// location's ambientCrowd reads as dense. Skips entirely if the batch already contains an explicit
+    /// rest/travel/scene_interrupt_check (those already roll for themselves) or if combat is active.
+    /// One roll per commit batch, using the first eligible location among characters that received a
+    /// time/needs nudge this batch (i.e. actually on-screen for this beat).
+    /// </summary>
+    private async Task ApplyAmbientInterruptCheckAsync(
+        ChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        if (_encounterResolver is null || context.Session is null || context.ActiveCombat != null)
+        {
+            return;
+        }
+
+        if (changes.Any(c => c is RestChange or TravelChange or SceneInterruptCheck))
+        {
+            return;
+        }
+
+        var minutesElapsed = changes.Sum(c => c.MinutesElapsed ?? 0);
+        if (minutesElapsed <= 0)
+        {
+            return;
+        }
+
+        var candidates = context.Characters.Values
+            .Where(c => !string.IsNullOrEmpty(c.CurrentLocationId))
+            .GroupBy(c => c.CurrentLocationId!, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (LocationId: g.Key, Character: g.First()))
+            .ToList();
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        var time = await getCurrentTimeAsync();
+        var currentDay = (int)time.TotalDaysElapsed;
+        var totalHours = Math.Max(1, (int)Math.Ceiling(minutesElapsed / 60.0));
+
+        foreach (var (locationId, character) in candidates)
+        {
+            if (!context.Locations.TryGetValue(locationId, out var location))
+            {
+                location = await context.Session.LoadAsync<Location>(locationId);
+                if (location is null) continue;
+                context.RegisterNewLocation(location);
+            }
+
+            var isDense = AmbientCrowdHeuristics.IsCrowdDenseEnough(location.AmbientCrowd);
+            var isDangerous = location.DangerModifier > 0;
+            if (!isDense && !isDangerous)
+            {
+                continue;
+            }
+
+            if (await PressureQueryHelper.HasSceneInterruptTodayAsync(
+                    context.Session, context.CampaignName, locationId, currentDay))
+            {
+                continue;
+            }
+
+            bool interrupted;
+            List<WorldChange> deltas;
+            List<string> narratives;
+
+            if (isDense)
+            {
+                (interrupted, deltas, narratives) = await _encounterResolver.EvaluateSceneInterruptAsync(
+                    context, character, location, riskModifier: 0, contextModifier: 0,
+                    notes: $"Ambient check — {minutesElapsed} min elapsed this beat.");
+            }
+            else
+            {
+                (interrupted, _, deltas, narratives) = await _encounterResolver.EvaluateAsync(
+                    context, character, location, totalHours, bucketSizeHours: 4, userModifier: 0,
+                    contextType: "Ambient");
+            }
+
+            if (!interrupted)
+            {
+                continue;
+            }
+
+            foreach (var delta in deltas)
+            {
+                await DispatchMutationAsync(context, delta);
+            }
+
+            context.RecordMessage(
+                $"AMBIENT INTERRUPT at {location.Name}! {string.Join(" ", narratives)} " +
+                "Resolve before continuing.");
+            break;
         }
     }
 

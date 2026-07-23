@@ -119,6 +119,8 @@ Use `travel` (with `destinationLocationId`) to move a character any meaningful d
 
 **Overnight/partial-day spans without full-on resting** (a long watch, waiting out a storm) that aren't a `rest` commit and aren't a `travel`: use `advance_world`'s `hours` parameter (e.g. `hours: 8`) instead of computing `days`/`timeOfDay` by hand — the engine derives the resulting time from the current clock. But `advance_world` itself has no encounter mechanic at all; if the span carries real risk, commit a `rest` (camping) or `travel` (moving) instead so the risk actually gets rolled.
 
+**Ambient interrupts happen automatically, no separate commit needed.** Any ordinary commit carrying `minutesElapsed` (a long search, an interrogation, a stakeout) is itself automatically eligible for an interrupt roll — you don't need to also commit `scene_interrupt_check` for this to work. It only fires where `location.DangerModifier > 0` or the location's `ambientCrowd` reads as dense; a location with neither never rolls (a locked, empty safe-house stays quiet). It's skipped entirely if the batch already contains an explicit `rest`/`travel`/`scene_interrupt_check`, or during active combat. If it fires, the commit response's summary includes an `AMBIENT INTERRUPT` line with a transient NPC/situation to resolve — same non-forced-combat design as the other three mechanisms. Set `dangerModifier` deliberately on your locations (see seeding order above) — it's the only lever that controls whether this happens at all.
+
 ## Conversation Beats (CRITICAL)
 
 Every `Conversation` event needs `involved` (all participants). Use this canonical pattern:
@@ -644,7 +646,7 @@ Seeding a fresh campaign — the starting region, key NPCs, opening quest — is
 
 ## Recommended seeding order (matches world_build's own dispatch order)
 
-1. **locations** — the starting hub/region first, then anywhere it links to (set `connectedFromLocationId` for auto-linked exits, or `exits` directly).
+1. **locations** — the starting hub/region first, then anywhere it links to (set `connectedFromLocationId` for auto-linked exits, or `exits` directly). Set `dangerModifier` (-50 to +50) on each one based on plausible in-fiction threat — it has no automatic/inferred value, defaults to 0 (perfectly safe) if omitted, and directly feeds the probability of `rest`/`travel`/`scene_interrupt_check` encounter rolls there. A guarded inn room might be -20; an unpatrolled wilderness saddle at night, +15 to +25.
 2. **factions** — any powers already active in the region.
 3. **creatures / spells / feats** — only if this campaign has homebrew content; skip otherwise.
 4. **characters** — PCs first (`isPc: true`), then the handful of named NPCs the opening scene actually needs. Don't pre-create a whole cast — most NPCs should stay ambient (`ambientCrowd` on the location) until the party interacts with them.
