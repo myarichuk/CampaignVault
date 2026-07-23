@@ -162,7 +162,8 @@ See the Narrative Focus section in get_help for how this steers event-importance
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"CAMPAIGN TOOL: Lists all existing campaigns (campaigns/*/meta documents only).
-Useful for discovering existing worlds. Pass the slug as campaignName on subsequent calls.")]
+Useful for discovering existing worlds. Pass the slug as campaignName on subsequent calls. Read-only, no side effects
+— call it once to discover/confirm a slug, not repeatedly. A campaignName already known does not need re-discovery.")]
     public Task<ToolResult<List<Campaign>>> ListCampaigns()
     {
         return ExecuteAsync(async session =>
@@ -295,7 +296,9 @@ Note: This surfaces stat-block *templates* (reusable reference data), not live i
     [Description(
         @"CAMPAIGN DISCOVERABILITY: Returns campaign context (meta + posture: party roster, entry hint, last event).
 Use this if you need the active ruleset system (e.g., Dnd5e, Pathfinder2e) before using ruleset_actions in combat.
-Requires campaignName.")]
+Requires campaignName. IDEMPOTENT READ-ONLY LOOKUP, no side effects, no session/lock state changes — call it once at
+session start (or after a summarization gap), not on every turn/beat. A campaignName already known (from your system
+prompt, a prior call, or the current conversation) does not need re-confirmation via this tool.")]
     public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)

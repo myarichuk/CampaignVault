@@ -502,6 +502,14 @@ public class ActivityChange : WorldChange
     [Description("Optional narrative justification for the change. Stored for later behavioral synthesis and debugging.")]
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+
+    [Description("Optional: name of a Point of Interest to materialize on the destination location (newLocationId) in this same step — for a specific, tactically/narratively notable spot (a hidden camp, a stash, a lookout) inside a broader existing location, not worth a full new Location. Same effect as location_update's materializePointOfInterest, bundled here so the move and its detail are one commit instead of two easily-forgotten ones. Pair with poiDetails. Requires newLocationId/updateLocation to also be set; ignored otherwise.")]
+    [JsonPropertyName("poiName")]
+    public string? PoiName { get; set; }
+
+    [Description("The persistent detail/state for poiName — sensory and tactical specifics that matter later (cover, water, tracks, hazards, what's hidden there). Only applied if poiName is also set.")]
+    [JsonPropertyName("poiDetails")]
+    public string? PoiDetails { get; set; }
 }
 
 /// <summary>

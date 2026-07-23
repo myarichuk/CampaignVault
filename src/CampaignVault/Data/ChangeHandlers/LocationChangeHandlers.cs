@@ -110,20 +110,7 @@ public class LocationUpdateHandler : IWorldChangeHandler
 
         if (!string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
         {
-            var poiName = lu.MaterializePointOfInterest;
-            if (!loc.PointsOfInterest.Contains(poiName))
-            {
-                loc.PointsOfInterest.Add(poiName);
-            }
-            if (!string.IsNullOrWhiteSpace(lu.PoiDetails))
-            {
-                loc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);
-                // Case-insensitive key handling for convenience
-                var existingKey = loc.PointOfInterestDetails.Keys
-                    .FirstOrDefault(k => string.Equals(k, poiName, StringComparison.OrdinalIgnoreCase));
-                var key = existingKey ?? poiName;
-                loc.PointOfInterestDetails[key] = lu.PoiDetails!;
-            }
+            LocationPoiMaterializer.Apply(loc, lu.MaterializePointOfInterest, lu.PoiDetails);
         }
         
         var stateBefore = loc.CurrentState;

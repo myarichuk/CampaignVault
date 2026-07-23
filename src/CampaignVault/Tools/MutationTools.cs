@@ -155,6 +155,40 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
                     "Add an EventOccurred to record the narrative beat for future get_npc_context and recall_history queries.";
             }
 
+            // Warn if an activity moved a character somewhere narratively significant with no PoI detail recorded
+            var significantEventLocations = changes.OfType<EventOccurred>()
+                .Where(e => e.Importance is MemoryImportance.Important or MemoryImportance.Core)
+                .SelectMany(e => (e.RelatedLocationIds ?? []).Append(e.LocationId))
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet();
+            if (significantEventLocations.Count > 0)
+            {
+                var poiCoveredLocations = changes.OfType<LocationUpdate>()
+                    .Where(lu => !string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
+                    .Select(lu => lu.LocationId)
+                    .ToHashSet();
+                var uncoveredMoves = changes.OfType<ActivityChange>()
+                    .Where(a => a.UpdateLocation && !string.IsNullOrEmpty(a.NewLocationId)
+                                && string.IsNullOrWhiteSpace(a.PoiName)
+                                && significantEventLocations.Contains(a.NewLocationId!)
+                                && !poiCoveredLocations.Contains(a.NewLocationId!))
+                    .Select(a => a.NewLocationId!)
+                    .Distinct()
+                    .ToList();
+                if (uncoveredMoves.Count > 0)
+                {
+                    var poiReminder =
+                        $"This commit moved a character to {string.Join(", ", uncoveredMoves)} alongside an Important/Core " +
+                        "event referencing that location, but recorded no location detail there. If the narrated spot " +
+                        "(cover, hazards, what's hidden) will matter later, add poiName/poiDetails to the activity change " +
+                        "(or a paired location_update with materializePointOfInterest) — see get_help topic=patterns, " +
+                        "'Ad-Hoc Waypoint Detail'.";
+                    result.NarrativeReminder = result.NarrativeReminder is null
+                        ? poiReminder
+                        : result.NarrativeReminder + " " + poiReminder;
+                }
+            }
+
             // Surface remaining rate-limit budget so the LLM can pace large scenes
             var stats = rateLimiter.GetStatistics();
             if (stats != null)
@@ -170,26 +204,57 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "TIME PASSAGE: Call for travel, long rests, or downtime. Fast-forwards the world clock and runs simulation rules. Requires campaignName.")]
+        "TIME PASSAGE FOR SAFE/UNEVENTFUL DOWNTIME: Fast-forwards the world clock and runs simulation rules (needs, " +
+        "rumor decay, faction/plot evolution, transient GC) — for a multi-day skip (training montage, downtime between " +
+        "arcs, a journey already narrated as uneventful) use days+timeOfDay; for an overnight rest or partial-day span " +
+        "use hours instead (e.g. hours:8) and the engine derives the resulting day/timeOfDay for you — no manual day " +
+        "math needed. NOTE: this tool has NO encounter/interruption mechanic of its own. If the span carries ANY real " +
+        "risk (resting somewhere unsafe, a dangerous overnight, an unescorted journey), commit a 'rest' or 'travel' " +
+        "change instead — those roll for interruptions; this tool silently assumes nothing happens. Requires campaignName.")]
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
-        [Description("Number of days to skip.")]
-        int days,
-        [Description("The resulting time of day.")]
-        TimeOfDay timeOfDay,
-        [Description("Summary of the rest or travel activity.")]
+        [Description("Summary of the rest, travel, or downtime activity.")]
         string narrative,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
-        string campaignName)
+        string campaignName,
+        [Description("Number of whole days to skip for a multi-day time jump. Omit when using 'hours' instead — set one or the other, not both.")]
+        int days = 0,
+        [Description("Resulting time-of-day bucket (Dawn/Morning/Noon/Afternoon/Evening/Dusk/Night). Required when using 'days'. Omit when using 'hours' — derived automatically.")]
+        TimeOfDay? timeOfDay = null,
+        [Description("Alternative to days/timeOfDay: hours to fast-forward from the CURRENT time (e.g. 8 for sleeping through the night, 4 for a half-day trek). The engine computes the resulting day/timeOfDay for you. Mutually exclusive with days/timeOfDay.")]
+        int? hours = null)
     {
-        if (days <= 0)
+        if (hours.HasValue)
+        {
+            if (hours.Value <= 0)
+            {
+                return ToolArgumentErrors.Missing<AdvanceResult>(
+                    "hours",
+                    "hours must be a positive number of hours to fast-forward. Use days+timeOfDay for a multi-day skip instead.",
+                    toolName: "advance_world");
+            }
+
+            if (days != 0 || timeOfDay.HasValue)
+            {
+                return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "InvalidArgument",
+                    Summary: "Pass either 'hours' OR 'days'+'timeOfDay', not both."));
+            }
+        }
+        else if (days <= 0)
         {
             return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "BadRequest",
-                Summary: "Cannot advance zero or a negative number of days."));
+                Summary: "Cannot advance zero or a negative number of days. Use 'hours' instead for a sub-day/overnight span."));
+        }
+        else if (!timeOfDay.HasValue)
+        {
+            return ToolArgumentErrors.Missing<AdvanceResult>(
+                "timeOfDay",
+                "Required when using 'days' for a multi-day skip. Use 'hours' instead for a same-night/partial-day span, which derives timeOfDay automatically.",
+                toolName: "advance_world");
         }
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var result = await _repository.AdvanceWorldAsync(session, days, timeOfDay, effective);
+            var result = await _repository.AdvanceWorldAsync(session, days, timeOfDay, effective, hours);
 
             var partyIds = await session.Query<Character, Character_Search>()
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
@@ -219,7 +284,7 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
                     timeDoc,
                     config,
                     session,
-                    DaysAdvanced: days,
+                    DaysAdvanced: result.DaysAdvanced,
                     DisableCooldowns: true));
 
             // Cooldowns are disabled on this path (DisableCooldowns: true above and
@@ -249,8 +314,12 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
             // Ensure AdvanceResult carries the rich items
             result.WorldPressure = allPressureItems;
 
+            var advancedText = hours.HasValue
+                ? $"Advanced {hours} hour(s) ({result.DaysAdvanced} calendar day(s) crossed)."
+                : $"Advanced {days} day(s).";
+
             return new ToolResult<AdvanceResult>(true, result,
-                $"Advanced {days} days. {result.SimulatorEvents.Count} events and {allPressureItems.Count} structured pressures generated.",
+                $"{advancedText} {result.SimulatorEvents.Count} events and {allPressureItems.Count} structured pressures generated.",
                 WorldPressure: cappedPressure);
         });
     }

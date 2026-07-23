@@ -187,6 +187,10 @@ public class AdvanceResult
     public List<string> EvictedNpcIds { get; set; } = [];
     /// <summary>Structured eviction details (names + source locations). Prefer over bare IDs for narration and recovery.</summary>
     public List<EvictedNpcSummary> EvictedNpcs { get; set; } = [];
+    /// <summary>Set when the call used the 'hours' parameter instead of days/timeOfDay.</summary>
+    public int? HoursAdvanced { get; set; }
+    /// <summary>Whole calendar days actually crossed (may be 0 for a sub-day 'hours' call that doesn't cross midnight).</summary>
+    public int DaysAdvanced { get; set; }
 }
 
 public record RumorSummary(string Subject, string CurrentText, RumorState State)

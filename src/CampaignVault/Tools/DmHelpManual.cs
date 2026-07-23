@@ -113,7 +113,11 @@ ALWAYS call at end of combat/conversation/discovery. Atomic array of `$type` mut
 
 ## Travel and Resting
 
-Use `travel` (with `destinationLocationId`) to safely move the party; it applies time and tiredness, and evaluates encounters based on distance. Use `rest` (with `intendedHours` and `securityModifier`) for camping or sleeping. The engine rolls for interruptions. If `rest` is interrupted, resolve the encounter before committing `hp` recovery! Resource pools (spell slots, focus points, etc.) refill on the following `advance_world`, not at the moment of rest — call `advance_world` to apply recovery.
+Use `travel` (with `destinationLocationId`) to move a character any meaningful distance — it applies time and tiredness AND rolls an encounter check via `encounterRiskModifier` (based on distance/danger). Use `rest` (with `intendedHours` and `securityModifier`) for camping or sleeping — the engine rolls for interruptions there too. If either is interrupted, resolve the encounter before committing `hp` recovery! Resource pools (spell slots, focus points, etc.) and tiredness recover immediately when `rest` completes — no separate `advance_world` call needed for that.
+
+**`activity` is NOT a substitute for either of these.** It's a direct, no-side-effect position/state write — fine for local repositioning already established as safe (settling into a spot the party already occupies, an NPC crossing a room), but it does not roll for encounters. Moving a PC/NPC any real distance, especially with plausible risk (alone, at night, unescorted, hostile or unknown territory), should go through `travel`, not `activity` — otherwise the possibility of an ambush or interruption silently never gets checked.
+
+**Overnight/partial-day spans without full-on resting** (a long watch, waiting out a storm) that aren't a `rest` commit and aren't a `travel`: use `advance_world`'s `hours` parameter (e.g. `hours: 8`) instead of computing `days`/`timeOfDay` by hand — the engine derives the resulting time from the current clock. But `advance_world` itself has no encounter mechanic at all; if the span carries real risk, commit a `rest` (camping) or `travel` (moving) instead so the risk actually gets rolled.
 
 ## Conversation Beats (CRITICAL)
 
@@ -240,6 +244,15 @@ Commit the knowledge_update:
 ]
 
 On a failed Survival/Nature check before marking (optional flavor: represent the party's uncertainty), fire the same sequence but narrate the location's details as partially inaccurate (distance off, misidentified feature, etc.). The Location is still created and persistent; the inaccuracy is in your narration, not a schema field.
+
+## Ad-Hoc Waypoint Detail (arriving somewhere specific, not deliberately marked)
+
+Different from Wilderness Landmark Promotion above: the party isn't naming/marking the spot, they're just narratively arriving somewhere specific inside a broad, already-existing location (a region, a stretch of foothills, ""the woods"") — fleeing to make camp, taking cover, stashing something. Don't reach for a full `world_build` sub-location for this (that's for deliberate, repeat-visit landmarks). Instead, attach the specific detail as a materialized PoI on the broad location — preferably inline on the SAME `activity` change that moves the character there, via its own `poiName`/`poiDetails` fields, so the move and its detail can't be split into two commits and have the second one forgotten:
+[
+  { ""$type"": ""activity"", ""characterId"": ""chars/pc1"", ""newActivity"": ""making a cold camp for the night"", ""newLocationId"": ""locations/mere-of-dead-men"", ""updateLocation"": true, ""reason"": ""fleeing danger, seeking a defensible spot"", ""minutesElapsed"": 45, ""poiName"": ""Sheltered camp saddle"", ""poiDetails"": ""A low rocky saddle behind a tumbled boulder and a stand of pine; wind-blocked, water audible nearby, no tracks crossing the clearing. Cold-camped, no fire."" }
+]
+(A separate `location_update` with `materializePointOfInterest`/`poiDetails` targeting the same location does the same thing and still works — the inline fields on `activity` are just the one-commit version of the exact same mechanism.)
+Ask yourself the same ""will this be referenced again"" test as any other commit: a hidden killer on the loose, a stash, an ambush risk, a tracking check DC — all of that hinges on these details existing somewhere queryable. Skipping the PoI here isn't ""Schrödinger's World flavor,"" it's losing state the story is about to depend on. If the party never returns and nothing hinges on it, a plain `activity` with no PoI is fine — judge by stakes, not habit. If you do skip it and the batch also contains an Important/Core event referencing that location, `commit`'s response will remind you.
 
 ## Schrödinger's World + Transient / Open-World Patterns
 

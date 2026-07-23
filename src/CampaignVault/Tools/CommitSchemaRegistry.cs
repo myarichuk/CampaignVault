@@ -126,12 +126,21 @@ internal static class CommitSchemaRegistry
             CoCommitHints: []),
 
         new("activity", "Narrative",
-            "Update what an NPC is doing and/or where they are. Use liberally to keep get_scene in sync with narration.",
+            "Update what an NPC is doing and/or where they are — a direct position write with NO encounter/interruption " +
+            "check of its own. Use for local repositioning already established as safe (moving within a scene, settling " +
+            "into a spot the party already occupies). For a PC/NPC actually TRAVELING somewhere (crossing distance, " +
+            "especially anywhere risk is plausible — alone, at night, unescorted, hostile territory), use 'travel' " +
+            "instead — it rolls an encounter check via encounterRiskModifier; this $type silently assumes nothing " +
+            "happens en route. When the destination is a specific, notable spot inside a broader existing location " +
+            "(a hidden camp, a stash) that stakes will make matter later, set poiName/poiDetails in the SAME change " +
+            "instead of a separate location_update — bundles the move and its detail into one commit so the detail " +
+            "can't be forgotten.",
             ["characterId"],
-            ["newActivity", "newLocationId", "updateLocation", "reason"],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: []),
+            ["newActivity", "newLocationId", "updateLocation", "reason", "poiName", "poiDetails"],
+            HasSideEffects: true,
+            SideEffects: ["location_update"],
+            CoCommitHints: [],
+            Example: """{"$type":"activity","characterId":"chars/lyra","newActivity":"settling by the hearth to read","newLocationId":"locations/the-tavern","updateLocation":true,"poiName":"Dog-eared journal by the hearth","poiDetails":"Left open to a half-finished entry."}"""),
 
         new("need", "Narrative",
             "Adjust an NPC's named need (hunger, thirst, tiredness, etc.). Negative satisfies, positive increases.",
