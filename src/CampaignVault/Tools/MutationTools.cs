@@ -43,6 +43,272 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
     [Description(
+        @"UNIFIED TURN TOOL: Call this at the end of any narrative beat (combat, conversation, discovery) for atomic mutations + bundled fresh state in one round-trip.
+
+REPLACES the old pattern: get_scene → commit → get_scene again. Instead: one take_turn call with optional mutations and refresh params, getting back the commit outcome + fresh entity summaries in one response.
+
+AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes. Opt out with autoRefreshInvolved: false for bulk/seeding commits.
+
+Pure queries (no Changes): pass just the refresh params with Changes omitted to refresh specific entities without mutations.")]
+    public Task<ToolResult<TurnResult>> TakeTurn(
+        [Description("Bundled turn request: optional mutations (Changes+Narrative) and/or entity refresh requests (AutoRefreshInvolved, ExtraCharacterIds, ExtraLocationIds).")]
+        TakeTurnRequest request,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        if (request?.Changes is not null && request.Changes.Length > 0)
+        {
+            if (string.IsNullOrWhiteSpace(request.Narrative))
+            {
+                return ToolArgumentErrors.Missing<TurnResult>(
+                    "narrative",
+                    "Provide a short summary of what happened for the event log when Changes are provided.",
+                    toolName: "take_turn");
+            }
+
+            if (request.Changes.Length > 50)
+            {
+                return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
+                    Summary: $"Commit rejected: Too many changes in a single batch ({request.Changes.Length}). Maximum is 50."));
+            }
+
+            var duplicationConflict = SideEffectDuplicationGuard.FindConflict(request.Changes);
+            if (duplicationConflict != null)
+            {
+                return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.InvalidArgument,
+                    Summary: $"Commit rejected: {duplicationConflict}"));
+            }
+        }
+
+        if (!TryGetEffectiveCampaign(campaignName, out var effective))
+        {
+            return Task.FromResult(new ToolResult<TurnResult>(
+                false,
+                Error: ToolErrors.NoCampaignSelected,
+                Summary: NoCampaignSelectedSummary));
+        }
+
+        var rateLimiter = GetRateLimiter(effective);
+
+        if (request?.Changes is not null && request.Changes.Length > 0)
+        {
+            if (!rateLimiter.AttemptAcquire().IsAcquired)
+            {
+                return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
+                    Summary: "Commit rate limit exceeded. Please wait a few seconds before making more world changes."));
+            }
+        }
+
+        return ExecuteAsync(async session =>
+        {
+            var result = new TurnResult();
+
+            if (request?.Changes is not null && request.Changes.Length > 0)
+            {
+                var commitResult = await _repository.StageChangesAsync(session, request.Changes, effective);
+                if (!commitResult.Success)
+                {
+                    var errorMsg = "NO CHANGES WERE SAVED — the entire batch was rolled back because at least one " +
+                                   "change failed validation. Fix the error(s) below and resend the FULL batch " +
+                                   "(not just the failed item).\n" + string.Join("\n", commitResult.Summary);
+                    return new ToolResult<TurnResult>(false, new TurnResult(), Summary: errorMsg, Error: "ValidationError");
+                }
+
+                result.Committed = true;
+                result.ChangesProcessed = commitResult.ChangesProcessed;
+                result.Summary = commitResult.Summary;
+                result.InvolvedEntities = commitResult.InvolvedEntities;
+                result.EntityCollisions = commitResult.EntityCollisions;
+                result.NarrativeReminder = commitResult.NarrativeReminder;
+
+                var commitTime = await _repository.GetTimeAsync(session, effective);
+                await _repository.LogEventAsync(session,
+                    new Event
+                    {
+                        Id = "events/" + Guid.NewGuid(),
+                        CampaignName = effective,
+                        Summary = request.Narrative!,
+                        Category = EventCategory.SceneCommit,
+                        Involved = commitResult.InvolvedEntities,
+                        DayLogged = (int)commitTime.TotalDaysElapsed
+                    },
+                    effective);
+
+                var hasCombatMutation = request.Changes.Any(c => c is HpChange or RulesetAction or StatusChange);
+                var hasNarrativeEvent = request.Changes.Any(c => c is EventOccurred);
+                if (hasCombatMutation && !hasNarrativeEvent)
+                {
+                    result.NarrativeReminder =
+                        "This commit included combat/status changes but no 'event' ($type: event). " +
+                        "Add an EventOccurred to record the narrative beat.";
+                }
+
+                var significantEventLocations = request.Changes.OfType<EventOccurred>()
+                    .Where(e => e.Importance is MemoryImportance.Important or MemoryImportance.Core)
+                    .SelectMany(e => (e.RelatedLocationIds ?? []).Append(e.LocationId))
+                    .Where(id => !string.IsNullOrEmpty(id))
+                    .ToHashSet();
+                if (significantEventLocations.Count > 0)
+                {
+                    var poiCoveredLocations = request.Changes.OfType<LocationUpdate>()
+                        .Where(lu => !string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
+                        .Select(lu => lu.LocationId)
+                        .ToHashSet();
+                    var uncoveredMoves = request.Changes.OfType<ActivityChange>()
+                        .Where(a => a.UpdateLocation && !string.IsNullOrEmpty(a.NewLocationId)
+                                    && string.IsNullOrWhiteSpace(a.PoiName)
+                                    && significantEventLocations.Contains(a.NewLocationId!)
+                                    && !poiCoveredLocations.Contains(a.NewLocationId!))
+                        .Select(a => a.NewLocationId!)
+                        .Distinct()
+                        .ToList();
+                    if (uncoveredMoves.Count > 0)
+                    {
+                        var poiReminder =
+                            $"This commit moved a character to {string.Join(", ", uncoveredMoves)} alongside an Important/Core event " +
+                            "but recorded no location detail. If the spot matters, add poiName/poiDetails.";
+                        result.NarrativeReminder = result.NarrativeReminder is null
+                            ? poiReminder
+                            : result.NarrativeReminder + " " + poiReminder;
+                    }
+                }
+
+                await session.SaveChangesAsync();
+            }
+
+            if (request?.AutoRefreshInvolved != false && result.InvolvedEntities.Count > 0)
+            {
+                var toRefresh = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var id in result.InvolvedEntities)
+                {
+                    if (id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase) ||
+                        id.StartsWith(CanonicalId.Locations, StringComparison.OrdinalIgnoreCase))
+                    {
+                        toRefresh.Add(id);
+                    }
+                }
+
+                if (request?.ExtraCharacterIds != null)
+                {
+                    foreach (var id in request.ExtraCharacterIds)
+                    {
+                        toRefresh.Add(id);
+                    }
+                }
+
+                if (request?.ExtraLocationIds != null)
+                {
+                    foreach (var id in request.ExtraLocationIds)
+                    {
+                        toRefresh.Add(id);
+                    }
+                }
+
+                const int NpcCap = 6;
+                const int SceneCap = 3;
+
+                var npcsToFetch = new List<string>();
+                var scenesToFetch = new List<string>();
+                var truncatedIds = new List<string>();
+
+                foreach (var id in toRefresh)
+                {
+                    if (id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (npcsToFetch.Count < NpcCap)
+                            npcsToFetch.Add(id);
+                        else
+                            truncatedIds.Add(id);
+                    }
+                    else if (id.StartsWith(CanonicalId.Locations, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (scenesToFetch.Count < SceneCap)
+                            scenesToFetch.Add(id);
+                        else
+                            truncatedIds.Add(id);
+                    }
+                }
+
+                if (scenesToFetch.Count > 0)
+                {
+                    result.Scenes = [];
+                    foreach (var locationId in scenesToFetch)
+                    {
+                        try
+                        {
+                            var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: false);
+                            if (scene?.Location != null)
+                            {
+                                var summary = new SceneSummaryView
+                                {
+                                    Location = scene.Location,
+                                    PresentNPCs = scene.PresentNPCs ?? [],
+                                    LocalRumors = scene.LocalRumors ?? [],
+                                    ActiveCombat = scene.ActiveCombat != null
+                                };
+                                result.Scenes.Add(summary);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                if (npcsToFetch.Count > 0)
+                {
+                    result.Npcs = [];
+                    foreach (var charId in npcsToFetch)
+                    {
+                        try
+                        {
+                            var npc = await _repository.GetCharacterAsync(session, charId, effective);
+                            if (npc != null)
+                            {
+                                var heldItems = await session.Query<Item>()
+                                    .Where(i => i.HolderId == charId && !i.IsArchived)
+                                    .Customize(x => x.WaitForNonStaleResults())
+                                    .ToListAsync();
+
+                                var summary = new NpcSummaryView
+                                {
+                                    CharacterId = npc.Id,
+                                    Name = npc.Name,
+                                    CurrentAppearance = npc.CurrentAppearance ?? "",
+                                    BehavioralSummary = "",
+                                    KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
+                                    Equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList(),
+                                    Carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList()
+                                };
+                                result.Npcs.Add(summary);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                if (truncatedIds.Count > 0)
+                {
+                    result.RefreshTruncatedIds = truncatedIds;
+                }
+            }
+
+            var stats = rateLimiter.GetStatistics();
+            if (stats != null)
+            {
+                result.RateLimitTokensRemaining = (int)stats.CurrentAvailablePermits;
+            }
+
+            var successMsg = result.Committed
+                ? $"World updated with {result.ChangesProcessed} changes and fresh state echoed."
+                : "State refreshed.";
+
+            return new ToolResult<TurnResult>(true, result, successMsg);
+        }, saveChanges: false);
+    }
+
+    [ToolCategory("Mutation & time")]
+    [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
+    [Description(
         @"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world.
 Accepts a batch of changes (HP, Items — including persistent damage/wear/hidden-feature details via item_update's upsertItemDetail — Events, Rumors, Relationships, Needs, Attributes, Activity, Status, ruleset_action, and world updates).
 
