@@ -39,7 +39,6 @@ docs/
 terminals/
 agent-tools/
 
-*.md
 *.pdf
 
 # Serena agent files
