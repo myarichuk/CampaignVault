@@ -1,5 +1,16 @@
 # Phase C: Composite Tool Bundling Policy Research
 
+## Status Update: Phase C.1 Resolution
+
+The original bundling dilemma ("guess which WorldChanges to auto-bundle on write?") has been resolved on the **read side**, not the write side. `take_turn` (Phase C.1, now live) provides a unified tool that:
+- Accepts any WorldChange batch the DM decides on (no guessing needed on what changes should auto-pair)
+- Echoes fresh ground-truth state for whatever was touched (mutation outcome + auto-refreshed entities in one response)
+- Eliminates the 2-3 RPC pattern (query → commit → query again) that risked AI-DM drift/hallucination
+
+This means **composite write-side tools** (`perform_dialogue`, `update_entity`) are no longer motivated by performance concerns — they were originally deferred to avoid guessing bundling rules. Now we can implement them *if* playtest feedback shows they're useful, without the pressure of "must correctly guess WorldChange bundling."
+
+The bundling patterns below remain valid as **write-side guidance** (which changes to include in a batch), but the research focus shifts from "minimize round-trips" to "clarify DM intent."
+
 ## Overview
 
 Phase C will introduce composite tools like `perform_dialogue` and `update_entity` that wrap multiple `WorldChange` types into single semantic actions. However, these tools require **bundling-policy code** — rules for which `WorldChange` combinations constitute a coherent action.

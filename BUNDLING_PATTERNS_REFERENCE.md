@@ -2,7 +2,7 @@
 
 This document catalogs observed and candidate bundling patterns for Phase C composite tools. Each pattern shows the narrative action, the logical bundle, and the rationale.
 
-**Status**: Research phase — these patterns are based on system design, not yet validated against real playtest transcripts. Phase C.1 will confirm or revise.
+**Status**: Phase C.1 complete — `take_turn` unified tool is now live. This reference remains valid as **write-side guidance** (which changes to include in a changes[] batch), but is no longer driven by performance concerns. The original motivation ("don't make the LLM query for fresh state after every commit") is now solved by `take_turn`'s auto-refresh, not by guessing bundling rules. Future composite tools (if implemented) would focus on **DM intent clarity**, not round-trip reduction.
 
 ## Legend
 

@@ -187,29 +187,16 @@ Valen asks the barkeep "Have you heard of the Shadow Guild?"
 ]
 ```
 
-## When to Use Each Tool
-
-| Scenario | Tool/Approach |
-|----------|---------------|
-| **Simple movement (same location)** | `activity` |
-| **Journey (distance, encounters)** | `travel_to` (Phase B) or `commit` with `travel` |
-| **Long rest (pools recover)** | `rest_at_location` (Phase B) or `commit` with `rest` |
-| **Single skill check (no side effects)** | `ruleset_action` or `get_help` for examples |
-| **Combat attack** | `attack` tool (Phase B-adjacent) or `ruleset_action` + `engage_relation` |
-| **Social action (future)** | `perform_dialogue` (Phase C, TBD) or manual `commit` |
-| **Generic entity update** | `character_update` / `item_update` or `update_entity` (Phase C, TBD) |
-| **Complex multi-beat sequence** | Multiple `commit` calls, one per beat |
-| **Unsure about bundling** | Use raw `commit` with explicit types; tools fill in later |
+| **Unsure about bundling** | Use `take_turn` with explicit changes[] batch — auto-refresh handles follow-up reads |
 
 ## Phase C Roadmap
 
-**Phase C.1**: Collect real playtest transcripts → extract bundling patterns  
-**Phase C.2**: Codify patterns into tool specifications  
-**Phase C.3**: Implement `perform_dialogue` and `update_entity`  
-**Phase C.4**: Update this skill with concrete tool examples  
+**Phase C.1** (✅ active): `take_turn` unified tool — mutations + auto-refresh in one call. Solves AI-DM drift without guessing bundling rules.  
+**Phase C.2** (next): Query tool demotion to internal, full-detail view opt-ins, extensive test coverage.  
+**Phase C.3** (future): Composite write-side tools (`perform_dialogue`, `update_entity`) if playtest feedback warrants.  
 
-Until Phase C tools ship, rely on:
+For bundling decisions, use:
 - This decision tree
 - `DmHelpManual.cs` (get_help topic=patterns)
 - `CommitHelpExamples.cs` (sample JSON)
-- Raw `commit` with explicit WorldChange arrays
+- `take_turn` with explicit WorldChange arrays and auto-refresh
