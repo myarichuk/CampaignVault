@@ -127,6 +127,16 @@ Every `Conversation` event needs `involved` (all participants). Use this canonic
 
 {{CONVERSATION_EXAMPLE}}
 
+## NPC Initiative & TurnIntent
+
+`get_scene`'s `TurnIntentCharacterId` / `get_npc_context`'s `TurnIntent` (advisory only, never a hard gate — see recommended system prompt) aren't static flavor text; they're computed from state that time and play actually move:
+
+- **Needs pressure**: `social_drive` is a tracked need like hunger/thirst/tiredness — it rises the same way, via ordinary `minutesElapsed` on scene commits and `advance_world`/`rest`/`travel` (see ""Time During a Scene"" above). An NPC whose `social_drive` climbs high enough becomes an initiative candidate wanting attention — this is why a long stretch of scenes with no interaction for a present companion can make them start ""wanting"" something, without you doing anything special to cause it.
+- **Conversational staleness**: independently of needs, a party companion (`isPartyCompanion`) who hasn't had a logged `Conversation` category event in `conversationStalenessDaysThreshold` days (default 2, see `get_config`) while a PC is present becomes a candidate too — ""hasn't spoken with the party in N day(s), may bring something up unprompted."" This is why committing `event`/`category: Conversation` for every real exchange matters beyond bookkeeping — it's the signal that resets this clock. It won't fire for a companion with no conversation history yet, or one whose relationship with the present PC(s) is negative (staying quiet is more plausible there).
+- **Reactive relational beats**: gratitude/affection `emotionalBeat` tags on recent events (a gift given, a kindness shown) surface their own candidates independent of time — an NPC who was just helped may want to reciprocate.
+
+None of this forces the NPC to interrupt — `TurnIntent` only actually sets when `BehavioralTension` crosses a configured threshold AND the top candidate's urgency is High. Treat a non-null `TurnIntent` as ""this NPC has a plausible, mechanically-grounded reason to speak next,"" and let the player act freely regardless.
+
 ## Discovery + Activity Sync
 
 [

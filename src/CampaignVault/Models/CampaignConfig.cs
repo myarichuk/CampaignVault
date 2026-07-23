@@ -185,6 +185,14 @@ public class CampaignConfig
     public int RelationalRearmIntervalDays { get; set; } = 7;
 
     /// <summary>
+    /// Days since a party companion's last recorded Conversation event (while a PC is present in the
+    /// scene) before ConversationStalenessInitiativeProvider surfaces a "hasn't spoken up in a while"
+    /// candidate. Only fires when a prior Conversation event exists at all — a companion with no
+    /// conversation history yet (e.g. freshly introduced) doesn't fire on day one.
+    /// </summary>
+    public int ConversationStalenessDaysThreshold { get; set; } = 2;
+
+    /// <summary>
     /// Per-campaign resource pool definitions (spell slots, focus points, action points, etc.).
     /// If empty, built-in defaults are loaded based on ActiveSystem.
     /// Allows homebrew variants and custom systems.

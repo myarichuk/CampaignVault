@@ -33,7 +33,8 @@ internal static class SemanticEnrichmentHelper
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Embedding generation failed for {EntityType}; semantic search unavailable for this entity.", entity.GetType().Name);
+            logger.LogError(ex, "Embedding generation FAILED for {EntityType} (text: {TextPreview}); semantic search unavailable for this entity until it's re-embedded.",
+                entity.GetType().Name, textToEmbed.Length > 80 ? textToEmbed[..80] + "..." : textToEmbed);
             entity.SemanticVector = null;
             entity.EmbeddingTextHash = null;
         }

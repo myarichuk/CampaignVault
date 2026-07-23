@@ -110,8 +110,21 @@ static void ConfigureHttpsListener(
 
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
+var enableStdioTransport = string.Equals(
+    Environment.GetEnvironmentVariable("MCP_STDIO"),
+    "1",
+    StringComparison.OrdinalIgnoreCase);
+
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole(options => { options.LogToStandardErrorThreshold = LogLevel.Trace; });
+builder.Logging.AddConsole(options =>
+{
+    // stdio transport uses stdout as the JSON-RPC channel — logs there would corrupt the protocol
+    // stream, so they must go to stderr instead. HTTP transport (the default) has no such constraint;
+    // route logs to stdout there so a normal `dotnet run` console actually shows them — previously
+    // this unconditionally forced everything to stderr even in HTTP mode, which is why warnings/errors
+    // (e.g. embedding failures) were easy to miss in a terminal only displaying stdout.
+    options.LogToStandardErrorThreshold = enableStdioTransport ? LogLevel.Trace : LogLevel.None;
+});
 builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
 builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
@@ -160,10 +173,6 @@ builder.Services.AddCors(options =>
         }
     });
 });
-var enableStdioTransport = string.Equals(
-    Environment.GetEnvironmentVariable("MCP_STDIO"),
-    "1",
-    StringComparison.OrdinalIgnoreCase);
 
 var mcpServerBuilder = builder.Services.AddMcpServer(options =>
 {
