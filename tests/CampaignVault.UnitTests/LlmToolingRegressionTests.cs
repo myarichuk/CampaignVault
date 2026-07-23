@@ -266,15 +266,17 @@ public class LlmToolingRegressionTests
     public void RegisteredToolSchema_UnderChattynessCap()
     {
         // Tracks LLM context cost from tool schema (proxy: descriptions in registered tools).
-        // Phase A retirement of 11 upsert_* tools should reduce this significantly.
+        // Phase A: retired 11 upsert_* tools, added 3 lightweight (get_session_briefing, get_scene_summary, get_npc_summary).
+        // Phase B: added 2 semantic wrappers (travel_to, rest_at_location).
+        // Cumulative: 48 → 37 (A1) → 40 (A3+A4) → 42 (B).
         var tools = ToolCatalog.GetAll();
         var schemaSize = tools
             .Sum(t => (t.Name?.Length ?? 0) + (t.Description?.Length ?? 0));
 
-        // After A1 (11 upsert_* tools retired), expect ~48-11=37 tools with ~25-30% smaller schema.
-        // This bound will be tightened as Phase B/C progress.
+        // Target: 42 registered tools after Phase A + Phase B.
+        // Bound allows reasonable variation during active development.
         Assert.InRange(schemaSize, 1, 50_000);
-        Assert.InRange(tools.Count, 1, 48);
+        Assert.InRange(tools.Count, 40, 50);
     }
 
     private static string FindRepoRoot()
