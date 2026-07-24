@@ -1,5 +1,6 @@
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Initiative;
+using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Scenes;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
@@ -2254,6 +2255,183 @@ public class CampaignRepository
             .Where(f => f.CampaignName == effective || f.CampaignName == null || f.CampaignName == "")
             .Take(limit).ToListAsync();
         return StripSemanticVectors(factions).ToList();
+    }
+
+    /// <summary>
+    /// Lightweight session-0 signal for GetWorldState: counts + a short gap list. Uses ToListAsync().Count
+    /// (not CountAsync — ambiguous with System.Linq's IAsyncEnumerable.CountAsync on .NET 10, same
+    /// pattern as the rest of the repository) — selects IDs only, never loads full entity sets.
+    /// </summary>
+    private static async Task<SeedCoverageSummary> BuildSeedCoverageAsync(
+        IAsyncDocumentSession session, string effective, Location? partyLocation)
+    {
+        var locationCount = (await session.Query<Location>()
+            .Where(l => (l.CampaignName == effective || l.CampaignName == null) && l.IsArchived == false)
+            .Select(l => l.Id)
+            .ToListAsync()).Count;
+        var pcCharacterCount = (await session.Query<Character>()
+            .Where(c => (c.CampaignName == effective || c.CampaignName == null) && c.IsPc == true)
+            .Select(c => c.Id)
+            .ToListAsync()).Count;
+        var factionCount = (await session.Query<Faction>()
+            .Where(f => (f.CampaignName == effective || f.CampaignName == null) && f.IsArchived == false)
+            .Select(f => f.Id)
+            .ToListAsync()).Count;
+        var openQuestCount = (await session.Query<Quest>()
+            .Where(q => (q.CampaignName == effective || q.CampaignName == null)
+                        && (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress))
+            .Select(q => q.Id)
+            .ToListAsync()).Count;
+        var activePlotThreadCount = (await session.Query<PlotThread>()
+            .Where(p => (p.CampaignName == effective || p.CampaignName == null)
+                        && (p.State == PlotThreadState.Active || p.State == PlotThreadState.Escalating || p.State == PlotThreadState.Climax))
+            .Select(p => p.Id)
+            .ToListAsync()).Count;
+
+        var gaps = new List<string>();
+        if (locationCount == 0) gaps.Add("no locations yet");
+        if (pcCharacterCount == 0) gaps.Add("no PC characters yet");
+        if (partyLocation != null && partyLocation.ClimateZone == null) gaps.Add($"starting location '{partyLocation.Id}' has no climateZone set");
+
+        return new SeedCoverageSummary
+        {
+            Locations = locationCount,
+            PcCharacters = pcCharacterCount,
+            Factions = factionCount,
+            OpenQuests = openQuestCount,
+            ActivePlotThreads = activePlotThreadCount,
+            Gaps = gaps,
+        };
+    }
+
+    /// <summary>
+    /// Builds a consolidated WorldStateView for both GetWorldState kickoff and take_turn's IncludeWorldState path.
+    /// Consolidates duplication previously split between ExplorationTools.GetWorldState and MutationTools.TakeTurn.
+    /// Includes the stuck-party query logic from ExplorationTools, ensuring consistent behavior across call sites.
+    /// Returns full event list; callers decide how much to display (ExplorationTools uses all, take_turn takes first 5).
+    /// </summary>
+    public async Task<WorldStateView> BuildWorldStateAsync(
+        IAsyncDocumentSession session,
+        string? campaignName,
+        string? partyLocationId,
+        IPressureOrchestrator pressureOrchestrator,
+        CancellationToken ct = default)
+    {
+        var effective = ResolveCampaign(campaignName);
+
+        // Core state queries
+        var time = await GetTimeAsync(session, effective);
+        var config = await GetCampaignConfigAsync(session, effective);
+
+        // Rumors: Spreading + Peak (unfiltered by region for kickoff, no location scope at world-state level)
+        var spreading = await QueryRumorsAsync(session, null, null, RumorState.Spreading, 3, effective);
+        var peak = await QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
+        var rumors = peak.Concat(spreading).ToList();
+
+        // Recent events (full list; callers decide truncation)
+        var events = await SelectRecentEventsAsync(session, effective, config.EventContextBudgetAmbient);
+
+        // Party location (optional)
+        Location? location = null;
+        if (!string.IsNullOrEmpty(partyLocationId))
+        {
+            location = await GetLocationAsync(session, partyLocationId, effective);
+        }
+
+        // World-state quests and factions (flat, unscoped for now — Phase 3 will add scoping)
+        var worldActiveQuests = await GetActiveQuestsAsync(session, effective, 10);
+        var worldActiveFactions = await GetActiveFactionsAsync(session, effective, 10);
+
+        // Stuck-party query (from ExplorationTools, consolidating here to fix MutationTools divergence)
+        var stuck = await session.Query<Character>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+            .Where(c => (string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
+                        && c.CurrentActivity != null
+                        && (c.CurrentActivity.StartsWith("Travel interrupted en route") || c.CurrentActivity.StartsWith("interrupted en route")))
+            .Take(5)
+            .ToListAsync();
+
+        // Build pressure context for orchestrator
+        var pressureCtx = new PressureContext(
+            effective,
+            time,
+            config,
+            session,
+            ActiveRumors: rumors,
+            RecentEvents: events.ToList(),
+            QuestDeadlines: worldActiveQuests.Select(q => new QuestDeadlineInfo(q.Id, q.Title, q.DeadlineDay)).ToList());
+
+        var pressureItems = await pressureOrchestrator.CollectAndCapAsync(PressureScope.World, pressureCtx, ct);
+
+        // Build suggested examples from pressure triggers and stuck characters
+        var suggestedExamples = new List<string>();
+
+        // Add quest suggestion if quest deadline pressure detected
+        var questPressureTriggered = pressureItems.Any(p => p.Text.Contains("Quest", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("deadline", StringComparison.OrdinalIgnoreCase));
+        if (questPressureTriggered && worldActiveQuests.Any())
+        {
+            var q = worldActiveQuests.First();
+            suggestedExamples.Add($"[ {{ \"$type\": \"quest_progress\", \"questId\": \"{q.Id}\", \"objectiveIndex\": 0, \"newState\": \"Complete\", \"narrativeNote\": \"We completed the objective.\" }} ]");
+        }
+
+        // Add travel suggestion if stuck character and travel pressure detected
+        var stuckChar = stuck.FirstOrDefault();
+        if (stuckChar != null && pressureItems.Any(p => p.Text.Contains("Travel", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("stuck", StringComparison.OrdinalIgnoreCase) || p.Text.Contains("interrupted", StringComparison.OrdinalIgnoreCase)))
+        {
+            suggestedExamples.Add($"[ {{ \"$type\": \"activity\", \"characterId\": \"{stuckChar.Id}\", \"newActivity\": \"Resolved the ambush and continued\", \"updateLocation\": false }}, {{ \"$type\": \"travel\", \"characterId\": \"{stuckChar.Id}\", \"destinationLocationId\": \"locations/actual-dest\", \"encounterRiskModifier\": -30 }} ]");
+        }
+
+        // Add pressure-suggested examples
+        suggestedExamples.AddRange(
+            pressureItems
+                .Where(p => !string.IsNullOrWhiteSpace(p.SuggestedCommitJson))
+                .Select(p => p.SuggestedCommitJson!)
+                .Distinct());
+
+        // Build faction summaries with stance calculation
+        var factionSummaries = worldActiveFactions.Select(f =>
+        {
+            var overallStance = FactionStance.Neutral;
+            if (f.StanceToward != null && f.StanceToward.Count > 0)
+            {
+                if (f.StanceToward.Values.Contains(FactionStance.AtWar))
+                    overallStance = FactionStance.AtWar;
+                else if (f.StanceToward.Values.Contains(FactionStance.Hostile))
+                    overallStance = FactionStance.Hostile;
+                else if (f.StanceToward.Values.Contains(FactionStance.Allied))
+                    overallStance = FactionStance.Allied;
+            }
+            return new FactionPresenceSummary(f.Id, f.Name, f.InfluenceLevel, overallStance, null, f.TerritoryLocationIds.Count);
+        }).ToList();
+
+        // Find travel event from recent history
+        var travelEvent = events.FirstOrDefault(e =>
+            e.Category == EventCategory.Travel ||
+            (e.Category == EventCategory.Simulation &&
+             (e.Summary.Contains("Travel interrupted", StringComparison.OrdinalIgnoreCase) ||
+              e.Summary.Contains("en route", StringComparison.OrdinalIgnoreCase))));
+
+        // Build location summary
+        var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
+
+        // Build the view
+        var view = new WorldStateView(
+            time,
+            rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
+            events,
+            locSummary,
+            PressureManager.ToDisplayStrings(pressureItems),
+            worldActiveQuests.Select(ToActiveQuestSummary),
+            factionSummaries,
+            travelEvent?.Summary,
+            suggestedExamples
+        );
+
+        // Attach rich pressure items and seed coverage
+        view.WorldPressureItems = pressureItems;
+        view.SeedCoverage = await BuildSeedCoverageAsync(session, effective, location);
+
+        return view;
     }
 
     /// <summary>

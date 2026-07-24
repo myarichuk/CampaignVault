@@ -309,77 +309,20 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
             {
                 try
                 {
-                    var time = await _repository.GetTimeAsync(session, effective);
-                    var config = await _repository.GetCampaignConfigAsync(session, effective);
-                    var spreading = await _repository.QueryRumorsAsync(session, null, null, RumorState.Spreading, 3, effective);
-                    var peak = await _repository.QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
-                    var rumors = peak.Concat(spreading).ToList();
-                    var events = await _repository.SelectRecentEventsAsync(session, effective, config.EventContextBudgetAmbient);
-
-                    Location? location = null;
-                    if (!string.IsNullOrEmpty(request.PartyLocationId))
-                    {
-                        location = await _repository.GetLocationAsync(session, request.PartyLocationId, effective);
-                    }
-
-                    var worldActiveQuests = await _repository.GetActiveQuestsAsync(session, effective, 10);
-                    var worldActiveFactions = await _repository.GetActiveFactionsAsync(session, effective, 10);
-                    var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
-
-                    var travelEvent = events.FirstOrDefault(e =>
-                        e.Category == EventCategory.Travel ||
-                        (e.Category == EventCategory.Simulation &&
-                         (e.Summary.Contains("Travel interrupted", StringComparison.OrdinalIgnoreCase) ||
-                          e.Summary.Contains("en route", StringComparison.OrdinalIgnoreCase))));
-
-                    var factionSummaries = worldActiveFactions.Select(f =>
-                    {
-                        var overallStance = FactionStance.Neutral;
-                        if (f.StanceToward != null && f.StanceToward.Count > 0)
-                        {
-                            if (f.StanceToward.Values.Contains(FactionStance.AtWar))
-                                overallStance = FactionStance.AtWar;
-                            else if (f.StanceToward.Values.Contains(FactionStance.Hostile))
-                                overallStance = FactionStance.Hostile;
-                            else if (f.StanceToward.Values.Contains(FactionStance.Allied))
-                                overallStance = FactionStance.Allied;
-                        }
-                        return new FactionPresenceSummary(f.Id, f.Name, f.InfluenceLevel, overallStance, null, f.TerritoryLocationIds.Count);
-                    }).ToList();
-
-                    // Collect pressure items for suggested examples
-                    var pressureCtx = new PressureContext(
-                        effective,
-                        time,
-                        config,
-                        session,
-                        ActiveRumors: rumors,
-                        RecentEvents: events.ToList(),
-                        QuestDeadlines: worldActiveQuests.Select(q => new QuestDeadlineInfo(q.Id, q.Title, q.DeadlineDay)).ToList());
-
-                    var pressureItems = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.World, pressureCtx);
-                    var pressureStrings = PressureManager.ToDisplayStrings(pressureItems);
-
-                    var suggestedExamples = new List<string>();
-                    // Add pressure-based suggested examples
-                    suggestedExamples.AddRange(
-                        pressureItems
-                            .Where(p => !string.IsNullOrWhiteSpace(p.SuggestedCommitJson))
-                            .Select(p => p.SuggestedCommitJson!)
-                            .Distinct());
-
+                    var worldState = await _repository.BuildWorldStateAsync(session, effective, request.PartyLocationId, _pressureOrchestrator);
+                    // take_turn context uses fewer events (first 5) vs kickoff's full list
                     result.WorldState = new WorldStateView(
-                        time,
-                        rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
-                        events.Take(5),
-                        locSummary,
-                        pressureStrings,
-                        worldActiveQuests.Select(CampaignRepository.ToActiveQuestSummary),
-                        factionSummaries,
-                        travelEvent?.Summary,
-                        suggestedExamples
+                        worldState.Time,
+                        worldState.ActiveRumors,
+                        worldState.RecentEvents.Take(5),
+                        worldState.PartyLocation,
+                        worldState.WorldPressure,
+                        worldState.ActiveQuests,
+                        worldState.RelevantFactions,
+                        worldState.LastKnownTravel,
+                        worldState.SuggestedCommitExamples
                     );
-                    result.WorldState.WorldPressureItems = pressureItems;
+                    result.WorldState.WorldPressureItems = worldState.WorldPressureItems;
                 }
                 catch { }
             }
