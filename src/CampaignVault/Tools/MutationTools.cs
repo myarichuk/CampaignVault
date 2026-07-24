@@ -316,7 +316,29 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
                     }
 
                     var worldActiveQuests = await _repository.GetActiveQuestsAsync(session, effective, 10);
+                    var worldActiveFactions = await _repository.GetActiveFactionsAsync(session, effective, 10);
                     var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
+
+                    var travelEvent = events.FirstOrDefault(e =>
+                        e.Category == EventCategory.Travel ||
+                        (e.Category == EventCategory.Simulation &&
+                         (e.Summary.Contains("Travel interrupted", StringComparison.OrdinalIgnoreCase) ||
+                          e.Summary.Contains("en route", StringComparison.OrdinalIgnoreCase))));
+
+                    var factionSummaries = worldActiveFactions.Select(f =>
+                    {
+                        var overallStance = FactionStance.Neutral;
+                        if (f.StanceToward != null && f.StanceToward.Count > 0)
+                        {
+                            if (f.StanceToward.Values.Contains(FactionStance.AtWar))
+                                overallStance = FactionStance.AtWar;
+                            else if (f.StanceToward.Values.Contains(FactionStance.Hostile))
+                                overallStance = FactionStance.Hostile;
+                            else if (f.StanceToward.Values.Contains(FactionStance.Allied))
+                                overallStance = FactionStance.Allied;
+                        }
+                        return new FactionPresenceSummary(f.Id, f.Name, f.InfluenceLevel, overallStance, null, f.TerritoryLocationIds.Count);
+                    }).ToList();
 
                     result.WorldState = new WorldStateView(
                         time,
@@ -325,8 +347,8 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
                         locSummary,
                         [],
                         worldActiveQuests.Select(CampaignRepository.ToActiveQuestSummary),
-                        null,
-                        null,
+                        factionSummaries,
+                        travelEvent?.Summary,
                         []
                     );
                 }
