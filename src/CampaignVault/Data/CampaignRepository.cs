@@ -2323,7 +2323,7 @@ public class CampaignRepository
         var time = await GetTimeAsync(session, effective);
         var config = await GetCampaignConfigAsync(session, effective);
 
-        // Rumors: Spreading + Peak (unfiltered by region for kickoff, no location scope at world-state level)
+        // Rumors: Spreading + Peak (unfiltered, flat top-N for now)
         var spreading = await QueryRumorsAsync(session, null, null, RumorState.Spreading, 3, effective);
         var peak = await QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
         var rumors = peak.Concat(spreading).ToList();
@@ -2338,7 +2338,7 @@ public class CampaignRepository
             location = await GetLocationAsync(session, partyLocationId, effective);
         }
 
-        // World-state quests and factions (flat, unscoped for now — Phase 3 will add scoping)
+        // World-state quests and factions (flat top-N, scoping to be added in Phase 3b after debugging)
         var worldActiveQuests = await GetActiveQuestsAsync(session, effective, 10);
         var worldActiveFactions = await GetActiveFactionsAsync(session, effective, 10);
 
