@@ -2323,24 +2323,50 @@ public class CampaignRepository
         var time = await GetTimeAsync(session, effective);
         var config = await GetCampaignConfigAsync(session, effective);
 
-        // Rumors: Spreading + Peak (unfiltered, flat top-N for now)
-        var spreading = await QueryRumorsAsync(session, null, null, RumorState.Spreading, 3, effective);
-        var peak = await QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
-        var rumors = peak.Concat(spreading).ToList();
-
-        // Recent events (full list; callers decide truncation)
-        var events = await SelectRecentEventsAsync(session, effective, config.EventContextBudgetAmbient);
-
-        // Party location (optional)
+        // Party location (optional; resolved first for region-scoped queries)
         Location? location = null;
         if (!string.IsNullOrEmpty(partyLocationId))
         {
             location = await GetLocationAsync(session, partyLocationId, effective);
         }
 
-        // World-state quests and factions (flat top-N, scoping to be added in Phase 3b after debugging)
-        var worldActiveQuests = await GetActiveQuestsAsync(session, effective, 10);
-        var worldActiveFactions = await GetActiveFactionsAsync(session, effective, 10);
+        // Resolve region for location-scoped queries (single-hop: location's parent or location itself)
+        var regionId = location?.ParentLocationId ?? partyLocationId;
+
+        // Rumors: Spreading + Peak with location scoping
+        var spreading = await QueryRumorsAsync(session, null, regionId, RumorState.Spreading, 3, effective);
+        var peak = await QueryRumorsAsync(session, null, regionId, RumorState.Peak, 3, effective);
+        var rumors = peak.Concat(spreading).ToList();
+
+        // Recent events (full list; callers decide truncation)
+        var events = await SelectRecentEventsAsync(session, effective, config.EventContextBudgetAmbient);
+
+        // Scoped quests and factions: resolve party affiliations and location context
+        var partyCharacterIds = await session.Query<Character>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+            .Where(c => (string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective)
+                        && (c.IsPc || c.IsPartyCompanion))
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        var partyFactionReputations = await WorldStateScopeResolver.GetPartyFactionReputationsAsync(session, effective);
+
+        // Query scoped quests: imminent-deadline quests always included, then scoped-relevance quests
+        var imminentQuests = await WorldStateScopeResolver.QueryImminentDeadlineQuestsAsync(
+            session, effective, time.TotalDaysElapsed, limit: 10);
+        var scopedQuests = await WorldStateScopeResolver.QueryRelevantQuestsAsync(
+            session, effective, regionId, partyFactionReputations.Keys, partyCharacterIds, limit: 10);
+
+        // Union imminent (prioritized first) with scoped, removing duplicates
+        var worldActiveQuests = imminentQuests
+            .Concat(scopedQuests)
+            .DistinctBy(q => q.Id)
+            .Take(10)
+            .ToList();
+
+        // Query scoped factions with reputation threshold
+        var worldActiveFactions = await WorldStateScopeResolver.QueryRelevantFactionsAsync(
+            session, effective, regionId, partyFactionReputations, reputationThreshold: 10, limit: 6);
 
         // Stuck-party query (from ExplorationTools, consolidating here to fix MutationTools divergence)
         var stuck = await session.Query<Character>()

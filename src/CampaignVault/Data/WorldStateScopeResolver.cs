@@ -69,30 +69,7 @@ internal static class WorldStateScopeResolver
             return [];
         }
 
-        // Build OR query: match quests by ANY of these criteria
-        var baseQuery = session.Query<Quest, Quest_Search>()
-            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
-                        && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == ""));
-
-        // Apply OR conditions dynamically
-        if (hasLocationContext)
-        {
-            baseQuery = baseQuery.Where(q => q.RelatedLocationIds.Contains(regionOrLocationId!));
-        }
-
-        if (hasFactionContext)
-        {
-            baseQuery = baseQuery.Where(q => q.RelatedFactionIds.Any(fId => relevantFactionIds.Contains(fId)));
-        }
-
-        if (hasCharacterContext)
-        {
-            baseQuery = baseQuery.Where(q => q.VisibleToCharacterIds != null && q.VisibleToCharacterIds.Any(cId => partyCharacterIds.Contains(cId)));
-        }
-
-        // If multiple criteria, the above is AND - we need OR. Since RavenDB doesn't support OR in Where,
-        // we query each criteria separately and union the results
+        // Query each criterion separately and union (RavenDB doesn't support OR in Where clauses)
         var questsByLocation = hasLocationContext
             ? await session.Query<Quest, Quest_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -104,24 +81,28 @@ internal static class WorldStateScopeResolver
             : [];
 
         var questsByFaction = hasFactionContext
-            ? await session.Query<Quest, Quest_Search>()
+            ? (await session.Query<Quest, Quest_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
-                            && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == "")
-                            && q.RelatedFactionIds.Any(fId => relevantFactionIds.Contains(fId)))
+                            && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == ""))
+                .Take(limit * 2)  // Fetch extra; client-side filter may reduce
+                .ToListAsync())
+                .Where(q => q.RelatedFactionIds.Any(fId => relevantFactionIds.Contains(fId)))
                 .Take(limit)
-                .ToListAsync()
+                .ToList()
             : [];
 
         var questsByVisibility = hasCharacterContext
-            ? await session.Query<Quest, Quest_Search>()
+            ? (await session.Query<Quest, Quest_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
                             && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == "")
-                            && q.VisibleToCharacterIds != null
-                            && q.VisibleToCharacterIds.Any(cId => partyCharacterIds.Contains(cId)))
+                            && q.VisibleToCharacterIds != null)
+                .Take(limit * 2)  // Fetch extra; client-side filter may reduce
+                .ToListAsync())
+                .Where(q => q.VisibleToCharacterIds!.Any(cId => partyCharacterIds.Contains(cId)))
                 .Take(limit)
-                .ToListAsync()
+                .ToList()
             : [];
 
         var quests = questsByLocation
@@ -141,7 +122,7 @@ internal static class WorldStateScopeResolver
     }
 
     /// <summary>
-    /// Queries quests with imminent deadlines (DeadlineDay - currentDay <= 3).
+    /// Queries quests with imminent deadlines (deadline within 3 days from now).
     /// These are always included in world state regardless of location/faction scoping,
     /// so the DM never misses a time-critical quest due to scope filtering.
     /// Threshold matches QuestDeadlinePressureContributor exactly.
@@ -151,13 +132,14 @@ internal static class WorldStateScopeResolver
         CancellationToken ct = default)
     {
         var effective = campaignName ?? "";
+        var deadlineCutoff = currentDay + 3;
 
         var quests = await session.Query<Quest, Quest_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
             .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
                         && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == "")
                         && q.DeadlineDay != null
-                        && q.DeadlineDay - currentDay <= 3)
+                        && q.DeadlineDay <= deadlineCutoff)
             .Take(limit)
             .ToListAsync();
 

@@ -24,8 +24,10 @@ public class Quest_Search : AbstractIndexCreationTask<Quest>
                 q.OverallState,
                 q.Urgency,
                 q.CampaignName,
+                q.DeadlineDay,
                 RelatedLocationIds = q.RelatedLocationIds,
                 RelatedFactionIds = q.RelatedFactionIds,
+                VisibleToCharacterIds = q.VisibleToCharacterIds,
                 LastUpdatedDay = q.LastUpdatedDay,
                 // Flatten objectives for full-text search across descriptions
                 ObjectiveDescriptions = q.Objectives != null ? q.Objectives.Select(o => o.Description) : new string[0]
@@ -40,7 +42,9 @@ public class Quest_Search : AbstractIndexCreationTask<Quest>
         Index(x => x.GiverId, FieldIndexing.Exact);
         Index(x => x.OverallState, FieldIndexing.Exact);
         Index(x => x.CampaignName, FieldIndexing.Exact);
+        Index(x => x.DeadlineDay, FieldIndexing.Exact);
         Index(x => x.RelatedLocationIds, FieldIndexing.Exact);
         Index(x => x.RelatedFactionIds, FieldIndexing.Exact);
+        Index(x => x.VisibleToCharacterIds, FieldIndexing.Exact);
     }
 }

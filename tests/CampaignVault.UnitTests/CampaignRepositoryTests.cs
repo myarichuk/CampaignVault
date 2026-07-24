@@ -3366,4 +3366,5 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Assert.Empty(item.ItemDetails);
         }
     }
+
 }
