@@ -40,5 +40,7 @@ public class Quest_Search : AbstractIndexCreationTask<Quest>
         Index(x => x.GiverId, FieldIndexing.Exact);
         Index(x => x.OverallState, FieldIndexing.Exact);
         Index(x => x.CampaignName, FieldIndexing.Exact);
+        Index(x => x.RelatedLocationIds, FieldIndexing.Exact);
+        Index(x => x.RelatedFactionIds, FieldIndexing.Exact);
     }
 }

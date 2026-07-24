@@ -36,5 +36,6 @@ public class Faction_Search : AbstractIndexCreationTask<Faction>
         Index(x => x.FactionType, FieldIndexing.Exact);
         Index(x => x.CampaignName, FieldIndexing.Exact);
         Index(x => x.ControllingTerritory, FieldIndexing.Exact);
+        Index(x => x.TerritoryLocationIds, FieldIndexing.Exact);
     }
 }
