@@ -33,6 +33,31 @@ public class TakeTurnRequest
         "Additional location IDs to refresh even if not touched by Changes (e.g. to monitor adjacent rooms).")]
     [JsonPropertyName("extraLocationIds")]
     public string[]? ExtraLocationIds { get; set; }
+
+    [Description(
+        "Include full Party member summaries (all player characters' summary state) in response (default false).")]
+    [JsonPropertyName("includeParty")]
+    public bool IncludeParty { get; set; } = false;
+
+    [Description(
+        "Include WorldState (rumors, quests, factions, time) in response (default false). Set to true when you need overall campaign state context.")]
+    [JsonPropertyName("includeWorldState")]
+    public bool IncludeWorldState { get; set; } = false;
+
+    [Description(
+        "Location ID for PartyLocationId context (only used if IncludeWorldState=true). Defaults to the active location if omitted.")]
+    [JsonPropertyName("partyLocationId")]
+    public string? PartyLocationId { get; set; }
+
+    [Description(
+        "NPC ID to fetch in full detail (NpcContextView with all relationships, history, needs) instead of summary. Use sparingly; only one full detail per call.")]
+    [JsonPropertyName("fullDetailCharacterId")]
+    public string? FullDetailCharacterId { get; set; }
+
+    [Description(
+        "Location ID to fetch in full detail (SceneView with all details) instead of summary. Use sparingly; only one full detail per call.")]
+    [JsonPropertyName("fullDetailLocationId")]
+    public string? FullDetailLocationId { get; set; }
 }
 
 /// <summary>
@@ -70,4 +95,16 @@ public class TurnResult
 
     [Description("Entity IDs that were dropped from Npcs/Scenes due to refresh caps (6 NPCs / 3 scenes). Re-request these explicitly via extraCharacterIds/extraLocationIds if needed.")]
     public List<string>? RefreshTruncatedIds { get; set; }
+
+    [Description("Full party member summaries (if includeParty=true); otherwise null.")]
+    public List<PartyMemberView>? Party { get; set; }
+
+    [Description("World state including rumors, active quests, faction standings, and campaign time (if includeWorldState=true); otherwise null.")]
+    public WorldStateView? WorldState { get; set; }
+
+    [Description("Full NPC context view for the requested NPC (if fullDetailCharacterId was provided); includes all relationships, history, and behavior synthesis. Otherwise null.")]
+    public NpcContextView? FullNpcContext { get; set; }
+
+    [Description("Full scene view for the requested location (if fullDetailLocationId was provided); includes all NPCs, items, and environmental details. Otherwise null.")]
+    public SceneView? FullScene { get; set; }
 }

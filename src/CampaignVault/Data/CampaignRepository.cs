@@ -2669,4 +2669,48 @@ public class CampaignRepository
         }
         return entities;
     }
+
+    internal async Task<NpcSummaryView?> BuildNpcSummaryAsync(IAsyncDocumentSession session, string characterId, string campaignName)
+    {
+        var npc = await GetCharacterAsync(session, characterId, campaignName);
+        if (npc == null)
+            return null;
+
+        var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, []);
+
+        var heldItems = await session.Query<Item>()
+            .Where(i => i.HolderId == characterId && !i.IsArchived)
+            .Customize(x => x.WaitForNonStaleResults())
+            .ToListAsync();
+
+        var summary = new NpcSummaryView
+        {
+            CharacterId = npc.Id,
+            Name = npc.Name,
+            CurrentAppearance = npc.CurrentAppearance ?? "",
+            BehavioralSummary = behavioralSummary,
+            KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
+            Equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList(),
+            Carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList()
+        };
+
+        return summary;
+    }
+
+    internal async Task<SceneSummaryView?> BuildSceneSummaryAsync(IAsyncDocumentSession session, string locationId, string campaignName)
+    {
+        var scene = await GetSceneAsync(session, locationId, campaignName, markVisited: false);
+        if (scene?.Location == null)
+            return null;
+
+        var summary = new SceneSummaryView
+        {
+            Location = scene.Location,
+            PresentNPCs = scene.PresentNPCs ?? [],
+            LocalRumors = scene.LocalRumors ?? [],
+            ActiveCombat = scene.ActiveCombat != null
+        };
+
+        return summary;
+    }
 }

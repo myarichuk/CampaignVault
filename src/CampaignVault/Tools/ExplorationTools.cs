@@ -232,10 +232,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         }, saveChanges: true);
     }
 
-    [ToolCategory("Session & exploration")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description("EXPLORATION TOOL: Call when entering a room, building, or region. Returns location, NPCs, items, rumors, ActiveCombat, pressures. Requires campaignName.\nSet partyPresent=true ONLY when the party is physically entering or spending time here.")]
-    public Task<ToolResult<SceneView>> GetScene(
+    internal Task<ToolResult<SceneView>> GetScene(
         [Description("The unique ID of the location.")] string locationId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false)
@@ -295,10 +292,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         }, saveChanges: true);
     }
 
-    [ToolCategory("Session & exploration")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description("ROLEPLAY TOOL: Deep dive into an NPC's psychology — relationships, goals, fears, knowledge, mood, initiative signals. Psychology.Memories reflects what this NPC SUBJECTIVELY believes, which may have drifted from what actually happened — use recall_history (with involvedCharacterId) instead when you need ground truth, e.g. 'was this NPC actually a witness to X'. Requires campaignName.")]
-    public Task<ToolResult<NpcContextView>> GetNpcContext(
+    internal Task<ToolResult<NpcContextView>> GetNpcContext(
         [Description("The unique ID of the character.")] string characterId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
@@ -514,64 +508,35 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         }, saveChanges: false);
     }
 
-    [ToolCategory("Session & exploration")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description("LIGHTWEIGHT TOOL: Quick scene snapshot (location, NPCs, rumors, combat status) without full event history or quest details. Faster than get_scene for mid-session lookups. Requires campaignName.")]
-    public Task<ToolResult<SceneSummaryView>> GetSceneSummary(
+    internal Task<ToolResult<SceneSummaryView>> GetSceneSummary(
         [Description("The unique ID of the location.")] string locationId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: false);
-
-            var summary = new SceneSummaryView
+            var summary = await _repository.BuildSceneSummaryAsync(session, locationId, effective);
+            if (summary == null)
             {
-                Location = scene.Location,
-                PresentNPCs = scene.PresentNPCs ?? [],
-                LocalRumors = scene.LocalRumors ?? [],
-                ActiveCombat = scene.ActiveCombat != null
-            };
+                return new ToolResult<SceneSummaryView>(false, Error: "NotFound");
+            }
 
             return new ToolResult<SceneSummaryView>(true, summary,
                 $"Scene summary for {locationId} (campaign: {effective}) retrieved.");
         }, saveChanges: false);
     }
 
-    [ToolCategory("Session & exploration")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description("LIGHTWEIGHT TOOL: Quick NPC snapshot (name, behavioral summary, needs, equipment) without psychology breakdown or memory tree. Faster than get_npc_context for mid-session lookups. Requires campaignName.")]
-    public Task<ToolResult<NpcSummaryView>> GetNpcSummary(
+    internal Task<ToolResult<NpcSummaryView>> GetNpcSummary(
         [Description("The unique ID of the character.")] string characterId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var npc = await _repository.GetCharacterAsync(session, characterId, effective);
-            if (npc == null)
+            var summary = await _repository.BuildNpcSummaryAsync(session, characterId, effective);
+            if (summary == null)
             {
                 return new ToolResult<NpcSummaryView>(false, Error: "NotFound");
             }
 
-            var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, []);
-
-            var heldItems = await session.Query<Item>()
-                .Where(i => i.HolderId == characterId && !i.IsArchived)
-                .ToListAsync();
-            var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
-            var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
-
-            var summary = new NpcSummaryView
-            {
-                CharacterId = npc.Id,
-                Name = npc.Name,
-                CurrentAppearance = npc.CurrentAppearance ?? "",
-                BehavioralSummary = behavioralSummary,
-                KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
-                Equipped = equipped,
-                Carried = carried
-            };
-
             return new ToolResult<NpcSummaryView>(true, summary,
-                $"NPC summary for {npc.Name} retrieved (campaign: {effective}).");
+                $"NPC summary for {summary.Name} retrieved (campaign: {effective}).");
         }, saveChanges: false);
     }
 }

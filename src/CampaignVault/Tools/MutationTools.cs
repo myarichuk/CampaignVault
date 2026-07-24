@@ -15,6 +15,7 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
 {
     private readonly IPressureManager _pressureManager;
     private readonly IPressureOrchestrator _pressureOrchestrator;
+    private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
 
     // Keyed per-campaign so commits in one campaign never throttle another.
     private static readonly ConcurrentDictionary<string, RateLimiter> CommitRateLimiters = new(StringComparer.OrdinalIgnoreCase);
@@ -33,11 +34,13 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         CampaignDocumentKeys keys,
         IPressureManager pressureManager,
         IPressureOrchestrator pressureOrchestrator,
+        INpcBehaviorSynthesizer behaviorSynthesizer,
         ILogger<MutationTools>? logger = null)
         : base(repository, keys, logger)
     {
         _pressureManager = pressureManager;
         _pressureOrchestrator = pressureOrchestrator;
+        _behaviorSynthesizer = behaviorSynthesizer;
     }
 
     [ToolCategory("Mutation & time")]
@@ -237,18 +240,9 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
                     {
                         try
                         {
-                            var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: false);
-                            if (scene?.Location != null)
-                            {
-                                var summary = new SceneSummaryView
-                                {
-                                    Location = scene.Location,
-                                    PresentNPCs = scene.PresentNPCs ?? [],
-                                    LocalRumors = scene.LocalRumors ?? [],
-                                    ActiveCombat = scene.ActiveCombat != null
-                                };
+                            var summary = await _repository.BuildSceneSummaryAsync(session, locationId, effective);
+                            if (summary != null)
                                 result.Scenes.Add(summary);
-                            }
                         }
                         catch { }
                     }
@@ -261,26 +255,9 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
                     {
                         try
                         {
-                            var npc = await _repository.GetCharacterAsync(session, charId, effective);
-                            if (npc != null)
-                            {
-                                var heldItems = await session.Query<Item>()
-                                    .Where(i => i.HolderId == charId && !i.IsArchived)
-                                    .Customize(x => x.WaitForNonStaleResults())
-                                    .ToListAsync();
-
-                                var summary = new NpcSummaryView
-                                {
-                                    CharacterId = npc.Id,
-                                    Name = npc.Name,
-                                    CurrentAppearance = npc.CurrentAppearance ?? "",
-                                    BehavioralSummary = "",
-                                    KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
-                                    Equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList(),
-                                    Carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList()
-                                };
+                            var summary = await _repository.BuildNpcSummaryAsync(session, charId, effective);
+                            if (summary != null)
                                 result.Npcs.Add(summary);
-                            }
                         }
                         catch { }
                     }
@@ -290,6 +267,126 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
                 {
                     result.RefreshTruncatedIds = truncatedIds;
                 }
+            }
+
+            if (request?.IncludeParty == true)
+            {
+                try
+                {
+                    var party = await session.Query<Character>()
+                        .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+                        .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
+                        .ToListAsync();
+
+                    var partyMembers = new List<PartyMemberView>();
+                    foreach (var member in party)
+                    {
+                        try
+                        {
+                            var summary = await _repository.BuildNpcSummaryAsync(session, member.Id, effective);
+                            if (summary != null)
+                            {
+                                partyMembers.Add(new PartyMemberView(member, summary.Equipped, summary.Carried));
+                            }
+                        }
+                        catch { }
+                    }
+
+                    if (partyMembers.Count > 0)
+                        result.Party = partyMembers;
+                }
+                catch { }
+            }
+
+            if (request?.IncludeWorldState == true)
+            {
+                try
+                {
+                    var time = await _repository.GetTimeAsync(session, effective);
+                    var config = await _repository.GetCampaignConfigAsync(session, effective);
+                    var spreading = await _repository.QueryRumorsAsync(session, null, null, RumorState.Spreading, 3, effective);
+                    var peak = await _repository.QueryRumorsAsync(session, null, null, RumorState.Peak, 3, effective);
+                    var rumors = peak.Concat(spreading).ToList();
+                    var events = await _repository.SelectRecentEventsAsync(session, effective, config.EventContextBudgetAmbient);
+
+                    Location? location = null;
+                    if (!string.IsNullOrEmpty(request.PartyLocationId))
+                    {
+                        location = await _repository.GetLocationAsync(session, request.PartyLocationId, effective);
+                    }
+
+                    var worldActiveQuests = await _repository.GetActiveQuestsAsync(session, effective, 10);
+                    var locSummary = location != null ? new LocationSummary(location.Id, location.Name, location.Type) : null;
+
+                    result.WorldState = new WorldStateView(
+                        time,
+                        rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
+                        events.Take(5),
+                        locSummary,
+                        [],
+                        worldActiveQuests.Select(CampaignRepository.ToActiveQuestSummary),
+                        null,
+                        null,
+                        []
+                    );
+                }
+                catch { }
+            }
+
+            if (!string.IsNullOrEmpty(request?.FullDetailCharacterId))
+            {
+                try
+                {
+                    var npc = await _repository.GetCharacterAsync(session, request.FullDetailCharacterId, effective);
+                    if (npc != null)
+                    {
+                        var heldItems = await session.Query<Item>()
+                            .Where(i => i.HolderId == npc.Id && !i.IsArchived)
+                            .Customize(x => x.WaitForNonStaleResults())
+                            .ToListAsync();
+                        var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
+                        var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+
+                        var config = await _repository.GetCampaignConfigAsync(session, effective);
+                        var npcEvents = await _repository.SelectRecentEventsAsync(session, effective,
+                            config.EventContextBudgetNpc, involvedCharacterId: request.FullDetailCharacterId);
+
+                        foreach (var ev in npcEvents)
+                        {
+                            _repository.SanitizeEvent(ev);
+                        }
+
+                        var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
+
+                        result.FullNpcContext = new NpcContextView
+                        {
+                            Character = npc,
+                            Psychology = npc.Psychology ?? new PsychologyProfile(),
+                            Social = npc.Social ?? new SocialProfile(),
+                            Needs = npc.Needs ?? new NeedsProfile(),
+                            SystemStats = npc.SystemStats ?? new SystemExtension(),
+                            RecentInteractions = npcEvents,
+                            BehavioralSummary = behavioralSummary,
+                            KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
+                            Equipped = equipped,
+                            Carried = carried
+                        };
+                    }
+                }
+                catch { }
+            }
+
+            if (!string.IsNullOrEmpty(request?.FullDetailLocationId))
+            {
+                try
+                {
+                    var scene = await _repository.GetSceneAsync(session, request.FullDetailLocationId, effective, markVisited: false);
+                    if (scene != null)
+                    {
+                        result.FullScene = scene;
+                    }
+                }
+                catch { }
             }
 
             var stats = rateLimiter.GetStatistics();
