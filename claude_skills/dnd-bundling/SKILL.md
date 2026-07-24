@@ -91,7 +91,7 @@ Valen asks the barkeep "Have you heard of the Shadow Guild?"
 
 ### Combat Action (Attack + Damage)
 
-**Already handled by `attack` tool (Phase B-adjacent)**, but raw example:
+Use `take_turn` with ruleset_action (no separate tool needed — Phase C.8 demoted semantic wrappers):
 ```json
 [
   { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "Attack",

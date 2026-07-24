@@ -270,14 +270,15 @@ public class LlmToolingRegressionTests
         // Phase B: added 2 semantic wrappers (travel_to, rest_at_location).
         // Phase C.1-C.4: added take_turn (unified mutation+refresh). 48 → 37 (A1) → 40 (A3+A4) → 42 (B) → 38 (C.2, demoted 4 query tools) → 39 (C.4, added take_turn).
         // Phase C.5: demoted commit to internal (query tool surface reduction). 39 → 38.
+        // Phase C.8: demoted semantic wrappers (attack, travel_to, rest_at_location) to internal. 38 → 35.
         var tools = ToolCatalog.GetAll();
         var schemaSize = tools
             .Sum(t => (t.Name?.Length ?? 0) + (t.Description?.Length ?? 0));
 
-        // Target: 38 registered tools after Phase C.5 (commit demotion).
+        // Target: 35 registered tools after Phase C.8 (semantic wrapper demotion).
         // Bound allows reasonable variation during active development.
         Assert.InRange(schemaSize, 1, 50_000);
-        Assert.InRange(tools.Count, 35, 50);
+        Assert.InRange(tools.Count, 32, 50);
     }
 
     private static string FindRepoRoot()

@@ -245,3 +245,30 @@ RavenDB static indexes (`Character_Search`, `Location_Search`, `Lore_Search`, `E
 | Pressure | `src/CampaignVault/Data/Pressure/` |
 | Rulesets | `src/CampaignVault/Rulesets/` |
 | DI wiring | `src/CampaignVault/Program.cs` |
+
+## Tool Surface Evolution
+
+The public MCP tool surface has evolved through several phases to reduce LLM confusion and optimize for round-trip efficiency:
+
+| Phase | Focus | Tool Count | Changes |
+|-------|-------|-----------|---------|
+| **Original** | All tools public | 48 | Initial tool set |
+| **Phase A** | Retire legacy upserts | 37 → 40 | Retired 11 single-entity upserts (birth → `world_build`), added 3 lightweight query tools (GetSessionBriefing, GetSceneSummary, GetNpcSummary) |
+| **Phase B** | Semantic wrappers | 42 | Added `travel_to` and `rest_at_location` (thin layers over `commit`'s `travel`/`rest` changes) |
+| **Phase C.1** | Unified mutations | 39 | Added `take_turn` (unified mutation + auto-refresh), subsumes query→commit→query pattern |
+| **Phase C.2** | Query tool demotion | 38 | Demoted `get_scene`, `get_npc_context`, `get_scene_summary`, `get_npc_summary` to internal (still needed internally; `take_turn` now auto-refreshes these) |
+| **Phase C.3** | Enhanced WorldState | 38 | Added rumors/quests/factions/time bundling to auto-refresh; full-detail opt-in views |
+| **Phase C.4** | Pressure + guidance | 38 | Added pressure items and suggested-commit examples in WorldState responses |
+| **Phase C.5** | Commit demotion | 38 | Demoted `commit` to internal (replaced by `take_turn` for routine play) |
+| **Phase C.6** | Guidance alignment | 38 | Updated system prompt and skill files to emphasize `take_turn` as primary pattern |
+| **Phase C.7** | Behavioral synthesis | 38 | Enhanced NPC summaries with recent event context (prevents roundtrips for behavioral context) |
+| **Phase C.8** | Wrapper demotion | 35 | Demoted `attack`, `travel_to`, `rest_at_location` to internal (thin layers now eliminated; `take_turn` is universal for mutations) |
+
+**Current public tool count: 35** (down from original 48). The remaining public tools are:
+
+- **Mutations:** `take_turn` (unified), `start_combat`, `next_turn`, `end_combat`, `advance_world`
+- **Queries:** `get_world_state`, `get_session_briefing`, `get_party`, `search_world`, `recall_history`, `get_npc_needs`, `get_item`, `get_faction_context`, `get_quest_details`
+- **Build:** `world_build`, `get_help`, `get_system_handbook`, `get_spells`, `get_config`, `get_current_campaign`, `create_campaign`, `set_active_system`, `list_campaigns`
+- **Meta:** `list_tools`
+
+**Design principle:** Public tools should reduce LLM decision ambiguity. Retired/demoted tools were either (1) redundant with newer patterns, or (2) thin semantic wrappers that added unnecessary tool-name confusion. Internal tools remain for backward-compatibility and internal choreography but do not clutter the LLM's decision tree.

@@ -21,14 +21,7 @@ public class NavigationTools : CampaignToolBase, IMcpServerTool
         _mutationTools = mutationTools ?? throw new ArgumentNullException(nameof(mutationTools));
     }
 
-    [ToolCategory("Movement & travel")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(@"NAVIGATION TOOL: Move a character to a destination location.
-This is the discoverable, structured entry point for travel — prefer this over the generic commit tool for journeys.
-Rolls encounter checks via the active ruleset (never invents rolls), advances time, and applies terrain/climate effects.
-For local movement without travel time (same location), use commit's activity tool instead.
-Requires campaignName. Example: travel_to(""chars/valen"", ""locations/highpass"", campaignName=""campaign1"")")]
-    public async Task<ToolResult<CommitResult>> TravelTo(
+    internal async Task<ToolResult<CommitResult>> TravelTo(
         [Description("ID of the character traveling (e.g. 'chars/valen').")]
         string characterId,
         [Description("ID of the destination location (e.g. 'locations/highpass').")]
@@ -68,14 +61,7 @@ Requires campaignName. Example: travel_to(""chars/valen"", ""locations/highpass"
         return await _mutationTools.Commit([travel], narrativeText, campaignName);
     }
 
-    [ToolCategory("Movement & travel")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(@"NAVIGATION TOOL: Rest a character at a location to recover pools and reduce needs.
-This is the discoverable, structured entry point for rests — prefer this over the generic commit tool for downtime.
-Rolls encounter/interruption checks via the active ruleset, recovers spell slots/abilities/hit points immediately,
-and applies security modifiers (safe camp vs. dangerous location). Requires campaignName.
-Example: rest_at_location(""chars/valen"", ""locations/campfire"", intendedHours=8, campaignName=""campaign1"")")]
-    public async Task<ToolResult<CommitResult>> RestAtLocation(
+    internal async Task<ToolResult<CommitResult>> RestAtLocation(
         [Description("ID of the character resting (e.g. 'chars/valen').")]
         string characterId,
         [Description("ID of the location where they rest (e.g. 'locations/campfire').")]
