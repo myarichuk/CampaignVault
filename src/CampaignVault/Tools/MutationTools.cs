@@ -347,17 +347,39 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
                         return new FactionPresenceSummary(f.Id, f.Name, f.InfluenceLevel, overallStance, null, f.TerritoryLocationIds.Count);
                     }).ToList();
 
+                    // Collect pressure items for suggested examples
+                    var pressureCtx = new PressureContext(
+                        effective,
+                        time,
+                        config,
+                        session,
+                        ActiveRumors: rumors,
+                        RecentEvents: events.ToList(),
+                        QuestDeadlines: worldActiveQuests.Select(q => new QuestDeadlineInfo(q.Id, q.Title, q.DeadlineDay)).ToList());
+
+                    var pressureItems = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.World, pressureCtx);
+                    var pressureStrings = PressureManager.ToDisplayStrings(pressureItems);
+
+                    var suggestedExamples = new List<string>();
+                    // Add pressure-based suggested examples
+                    suggestedExamples.AddRange(
+                        pressureItems
+                            .Where(p => !string.IsNullOrWhiteSpace(p.SuggestedCommitJson))
+                            .Select(p => p.SuggestedCommitJson!)
+                            .Distinct());
+
                     result.WorldState = new WorldStateView(
                         time,
                         rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
                         events.Take(5),
                         locSummary,
-                        [],
+                        pressureStrings,
                         worldActiveQuests.Select(CampaignRepository.ToActiveQuestSummary),
                         factionSummaries,
                         travelEvent?.Summary,
-                        []
+                        suggestedExamples
                     );
+                    result.WorldState.WorldPressureItems = pressureItems;
                 }
                 catch { }
             }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -1086,5 +1087,117 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(result2.Success);
         var tokensAfterQuery = result2.Data!.RateLimitTokensRemaining;
         Assert.Equal(tokensAfterMutation, tokensAfterQuery);
+    }
+
+    [Fact]
+    public async Task TakeTurn_DifferentialTest_MutationAndRefreshMatchesManualPattern()
+    {
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var charId = "chars/differential-test-" + Guid.NewGuid().ToString("N")[..8];
+
+        // Setup: create a character
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        await worldBuilder.UpsertCharacter(
+            new CharacterUpsertRequest
+            {
+                Id = charId,
+                Name = "Differential Test",
+                MaxHp = 20,
+                CurrentHp = 20,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+            },
+            TestCampaignDefaults.Slug);
+
+        // Path 1: Old pattern - commit then get_npc_context separately
+        var commitResult = await tools.Commit(
+            [new HpChange { CharacterId = charId, Delta = -5 }],
+            "Character takes damage");
+
+        Assert.True(commitResult.Success);
+
+        var contextResult = await tools.GetNpcContext(charId);
+        Assert.True(contextResult.Success);
+        Assert.Equal(15, contextResult.Data!.Character.CurrentHp);
+
+        // Path 2: New pattern - take_turn with auto-refresh
+        var charId2 = "chars/differential-test-2-" + Guid.NewGuid().ToString("N")[..8];
+        await worldBuilder.UpsertCharacter(
+            new CharacterUpsertRequest
+            {
+                Id = charId2,
+                Name = "Differential Test 2",
+                MaxHp = 20,
+                CurrentHp = 20,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+            },
+            TestCampaignDefaults.Slug);
+
+        var turnResult = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new HpChange { CharacterId = charId2, Delta = -5 }],
+            Narrative = "Character takes damage",
+            AutoRefreshInvolved = true
+        });
+
+        Assert.True(turnResult.Success);
+        Assert.True(turnResult.Data!.Committed);
+
+        // Both paths should show reduced HP in the response
+        Assert.NotNull(turnResult.Data.Npcs);
+        var npcSummary = turnResult.Data.Npcs.FirstOrDefault(n => n.CharacterId == charId2);
+        Assert.NotNull(npcSummary);
+
+        // Verify HP reduction persisted in both paths
+        var confirmationResult = await tools.GetNpcContext(charId2);
+        Assert.Equal(15, confirmationResult.Data!.Character.CurrentHp);
+    }
+
+    [Fact]
+    public async Task TakeTurn_EdgeCase_TruncationRespectsCapAndListsDropped()
+    {
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+
+        // Create 10 characters (will exceed 6 NPC cap)
+        var charIds = new List<string>();
+        for (int i = 0; i < 10; i++)
+        {
+            var charId = "chars/truncate-test-" + i + "-" + Guid.NewGuid().ToString("N")[..8];
+            charIds.Add(charId);
+            await worldBuilder.UpsertCharacter(
+                new CharacterUpsertRequest
+                {
+                    Id = charId,
+                    Name = $"Character {i}",
+                    MaxHp = 20,
+                    CurrentHp = 20,
+                    SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+                },
+                TestCampaignDefaults.Slug);
+        }
+
+        // Request refresh of all 10 characters
+        var request = new TakeTurnRequest
+        {
+            Changes = null,
+            ExtraCharacterIds = charIds.ToArray()
+        };
+
+        var result = await tools.TakeTurn(request);
+
+        // Assert: only 6 NPCs returned due to cap
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data!.Npcs);
+        Assert.Equal(6, result.Data.Npcs.Count);
+
+        // Assert: truncated IDs listed
+        Assert.NotNull(result.Data.RefreshTruncatedIds);
+        Assert.Equal(4, result.Data.RefreshTruncatedIds.Count);
+        foreach (var dropped in result.Data.RefreshTruncatedIds)
+        {
+            Assert.Contains(dropped, charIds);
+        }
     }
 }
