@@ -902,4 +902,189 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             Assert.Equal(7, loc.LastVisitedDay);
         }
     }
+
+    [Fact]
+    public async Task TakeTurn_WithMutationAndAutoRefresh_EchoesFreshState()
+    {
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var charId = "chars/refresh-test-" + Guid.NewGuid().ToString("N")[..8];
+
+        // Setup: create a character
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        await worldBuilder.UpsertCharacter(
+            new CharacterUpsertRequest
+            {
+                Id = charId,
+                Name = "Test Character",
+                MaxHp = 20,
+                CurrentHp = 20,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+            },
+            TestCampaignDefaults.Slug);
+
+        // Act: take_turn with HP damage + auto-refresh
+        var request = new TakeTurnRequest
+        {
+            Changes = [new HpChange { CharacterId = charId, Delta = -5 }],
+            Narrative = "Character takes damage",
+            AutoRefreshInvolved = true
+        };
+
+        var result = await tools.TakeTurn(request);
+
+        // Assert: mutation succeeded and fresh state echoed
+        Assert.True(result.Success);
+        Assert.True(result.Data!.Committed);
+        Assert.Equal(1, result.Data.ChangesProcessed);
+        Assert.Contains(charId, result.Data.InvolvedEntities);
+
+        // Assert: auto-refresh contains updated NPC
+        Assert.NotNull(result.Data.Npcs);
+        Assert.Single(result.Data.Npcs);
+        Assert.Equal(charId, result.Data.Npcs[0].CharacterId);
+    }
+
+    [Fact]
+    public async Task TakeTurn_PureQuery_NoMutation_ReturnsRefreshedState()
+    {
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var charId = "chars/query-test-" + Guid.NewGuid().ToString("N")[..8];
+
+        // Setup: create a character
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        await worldBuilder.UpsertCharacter(
+            new CharacterUpsertRequest
+            {
+                Id = charId,
+                Name = "Query Test Character",
+                MaxHp = 20,
+                CurrentHp = 20,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+            },
+            TestCampaignDefaults.Slug);
+
+        // Act: take_turn with no changes, just refresh request
+        var request = new TakeTurnRequest
+        {
+            Changes = null, // Pure query, no mutations
+            ExtraCharacterIds = [charId]
+        };
+
+        var result = await tools.TakeTurn(request);
+
+        // Assert: query succeeded, no mutation
+        Assert.True(result.Success);
+        Assert.False(result.Data!.Committed);
+        Assert.Equal(0, result.Data.ChangesProcessed);
+
+        // Assert: fresh state returned
+        Assert.NotNull(result.Data.Npcs);
+        Assert.Single(result.Data.Npcs);
+        Assert.Equal(charId, result.Data.Npcs[0].CharacterId);
+    }
+
+    [Fact]
+    public async Task TakeTurn_WithIncludeWorldState_ReturnsWorldContext()
+    {
+        var tools = CreateTools();
+
+        // Act: take_turn with world state request
+        var request = new TakeTurnRequest
+        {
+            Changes = null,
+            IncludeWorldState = true
+        };
+
+        var result = await tools.TakeTurn(request);
+
+        // Assert: world state included
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data!.WorldState);
+        Assert.NotNull(result.Data.WorldState.Time);
+        Assert.NotNull(result.Data.WorldState.ActiveRumors);
+        Assert.NotNull(result.Data.WorldState.ActiveQuests);
+    }
+
+    [Fact]
+    public async Task TakeTurn_WithIncludeParty_ReturnsPartyMembers()
+    {
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var pcId = "chars/pc-" + Guid.NewGuid().ToString("N")[..8];
+
+        // Setup: create a PC
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        await worldBuilder.UpsertCharacter(
+            new CharacterUpsertRequest
+            {
+                Id = pcId,
+                Name = "Player Character",
+                IsPc = true,
+                MaxHp = 20,
+                CurrentHp = 20,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+            },
+            TestCampaignDefaults.Slug);
+
+        // Act: take_turn with party inclusion
+        var request = new TakeTurnRequest
+        {
+            Changes = null,
+            IncludeParty = true
+        };
+
+        var result = await tools.TakeTurn(request);
+
+        // Assert: party included
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data!.Party);
+        Assert.NotEmpty(result.Data.Party);
+    }
+
+    [Fact]
+    public async Task TakeTurn_RateLimitingOnlyConsumedForMutations()
+    {
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var charId = "chars/rate-limit-test-" + Guid.NewGuid().ToString("N")[..8];
+
+        // Setup: create a character
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        await worldBuilder.UpsertCharacter(
+            new CharacterUpsertRequest
+            {
+                Id = charId,
+                Name = "Rate Limit Test",
+                MaxHp = 20,
+                CurrentHp = 20,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+            },
+            TestCampaignDefaults.Slug);
+
+        // First mutation consumes a token
+        var mutationRequest = new TakeTurnRequest
+        {
+            Changes = [new HpChange { CharacterId = charId, Delta = -1 }],
+            Narrative = "Character takes damage"
+        };
+
+        var result1 = await tools.TakeTurn(mutationRequest);
+        Assert.True(result1.Success);
+        var tokensAfterMutation = result1.Data!.RateLimitTokensRemaining;
+        Assert.NotNull(tokensAfterMutation);
+
+        // Pure query should not consume a token
+        var queryRequest = new TakeTurnRequest
+        {
+            Changes = null,
+            IncludeWorldState = true
+        };
+
+        var result2 = await tools.TakeTurn(queryRequest);
+        Assert.True(result2.Success);
+        var tokensAfterQuery = result2.Data!.RateLimitTokensRemaining;
+        Assert.Equal(tokensAfterMutation, tokensAfterQuery);
+    }
 }

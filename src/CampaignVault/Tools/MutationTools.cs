@@ -179,16 +179,23 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
                 await session.SaveChangesAsync();
             }
 
-            if (request?.AutoRefreshInvolved != false && result.InvolvedEntities.Count > 0)
+            var shouldRefresh = (request?.AutoRefreshInvolved != false && result.InvolvedEntities.Count > 0) ||
+                                (request?.ExtraCharacterIds != null && request.ExtraCharacterIds.Length > 0) ||
+                                (request?.ExtraLocationIds != null && request.ExtraLocationIds.Length > 0);
+
+            if (shouldRefresh)
             {
                 var toRefresh = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (var id in result.InvolvedEntities)
+                if (request?.AutoRefreshInvolved != false)
                 {
-                    if (id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase) ||
-                        id.StartsWith(CanonicalId.Locations, StringComparison.OrdinalIgnoreCase))
+                    foreach (var id in result.InvolvedEntities)
                     {
-                        toRefresh.Add(id);
+                        if (id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase) ||
+                            id.StartsWith(CanonicalId.Locations, StringComparison.OrdinalIgnoreCase))
+                        {
+                            toRefresh.Add(id);
+                        }
                     }
                 }
 

@@ -90,6 +90,10 @@ public class CampaignTools(
         return mutation.Commit(parsed, narrative, ResolveCampaign(campaignName));
     }
 
+    public Task<ToolResult<TurnResult>> TakeTurn(TakeTurnRequest request,
+        string? campaignName = TestDefaultCampaignSlug) =>
+        mutation.TakeTurn(request, ResolveCampaign(campaignName));
+
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(int days, TimeOfDay timeOfDay, string narrative,
         string? campaignName = TestDefaultCampaignSlug, int? hours = null) =>
         mutation.AdvanceWorld(narrative, ResolveCampaign(campaignName), days, timeOfDay, hours);
