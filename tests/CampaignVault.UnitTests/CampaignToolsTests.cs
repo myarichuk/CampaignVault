@@ -835,7 +835,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.DoesNotContain(result.Data, t => t.Category == "Other");
         Assert.Contains(result.Data, t => t.Name == "get_help" && t.Category == "System");
         Assert.Contains(result.Data, t => t.Name == "list_tools" && t.Category == "System");
-        Assert.Contains(result.Data, t => t.Name == "commit" && t.Category == "Mutation & time");
+        Assert.DoesNotContain(result.Data, t => t.Name == "commit"); // Phase C.5: Commit demoted to internal
         Assert.Contains(result.Data, t => t.Name == "get_quest_details" && t.Category == "Deep dives");
     }
 

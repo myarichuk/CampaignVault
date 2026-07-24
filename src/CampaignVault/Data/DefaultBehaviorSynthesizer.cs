@@ -63,15 +63,26 @@ public sealed class DefaultBehaviorSynthesizer : INpcBehaviorSynthesizer
             parts.Add("in good spirits");
         }
 
-        // Recent events hint (very lightweight)
-        var recentRelevant = recentEvents?
+        // Recent events context (most recent event involving this NPC)
+        var mostRecentEvent = recentEvents?
             .Where(e => e.Involved.Contains(npc.Id))
-            .Take(1)
-            .ToList();
+            .FirstOrDefault();
 
-        if (recentRelevant?.Count > 0)
+        if (mostRecentEvent?.Summary != null)
         {
-            parts.Add("recently involved in notable events");
+            var eventHint = mostRecentEvent.Category switch
+            {
+                EventCategory.Combat => $"recently engaged in combat: {mostRecentEvent.Summary}",
+                EventCategory.Conversation => $"recently talked with someone: {mostRecentEvent.Summary}",
+                EventCategory.Discovery => $"recently discovered something: {mostRecentEvent.Summary}",
+                EventCategory.Betrayal => $"recently betrayed: {mostRecentEvent.Summary}",
+                EventCategory.Arrival => $"recently arrived: {mostRecentEvent.Summary}",
+                EventCategory.Departure => $"recently left: {mostRecentEvent.Summary}",
+                EventCategory.Travel => $"recently traveled: {mostRecentEvent.Summary}",
+                EventCategory.Interaction => $"recently interacted: {mostRecentEvent.Summary}",
+                _ => $"recently: {mostRecentEvent.Summary}"
+            };
+            parts.Add(eventHint);
         }
 
         // Wants / fears teaser (if present)

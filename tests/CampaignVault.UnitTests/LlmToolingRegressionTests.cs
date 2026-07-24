@@ -305,8 +305,6 @@ public class LlmToolingRegressionTests
     /// See itemdetails-tooling-analysis follow-up.
     /// </summary>
     [Theory]
-    [InlineData(typeof(MutationTools), nameof(MutationTools.Commit), "upsertItemDetail")]
-    [InlineData(typeof(MutationTools), nameof(MutationTools.Commit), "wear")]
     [InlineData(typeof(MetaTools), nameof(MetaTools.GetCommitSchema), "upsertItemDetail")]
     public void ToolDescriptions_ContainItemDetailsDiscoverabilityTriggerWords(Type toolType, string methodName, string expectedSubstring)
     {

@@ -2676,7 +2676,8 @@ public class CampaignRepository
         if (npc == null)
             return null;
 
-        var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, []);
+        var recentEvents = await SelectRecentEventsAsync(session, campaignName, budget: 3, involvedCharacterId: characterId);
+        var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, recentEvents);
 
         var heldItems = await session.Query<Item>()
             .Where(i => i.HolderId == characterId && !i.IsArchived)
