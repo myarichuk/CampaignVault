@@ -454,16 +454,7 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
         }, saveChanges: false);
     }
 
-    [ToolCategory("Mutation & time")]
-    [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
-    [Description(
-        @"UNIVERSAL WRITE TOOL: ALWAYS call this at the end of combat, conversation, discovery, or any narrative beat to atomically mutate the world.
-Accepts a batch of changes (HP, Items — including persistent damage/wear/hidden-feature details via item_update's upsertItemDetail — Events, Rumors, Relationships, Needs, Attributes, Activity, Status, ruleset_action, and world updates).
-
-See the full `get_help` manual for Schrödinger's World patterns, the complete Lazy Tavern walkthrough, transient/keepAlive rules, copy-paste examples, and change-type reference.
-
-**When you see ENGINE WARNING or NARRATIVE PROMPT in any get_scene / get_world_state / advance_world response, your immediate follow-up should be a commit using the exact ready JSON example provided.**")]
-    public Task<ToolResult<CommitResult>> Commit(
+    internal Task<ToolResult<CommitResult>> Commit(
         [Description("Batch of world changes and narrative summary.")]
         CommitRequest request,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -488,7 +479,7 @@ See the full `get_help` manual for Schrödinger's World patterns, the complete L
         return Commit(request.Changes, request.Narrative, campaignName);
     }
 
-    public Task<ToolResult<CommitResult>> Commit(
+    internal Task<ToolResult<CommitResult>> Commit(
         WorldChange[]? changes,
         string? narrative = null,
         string? campaignName = null)

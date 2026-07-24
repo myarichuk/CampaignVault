@@ -268,13 +268,13 @@ public class LlmToolingRegressionTests
         // Tracks LLM context cost from tool schema (proxy: descriptions in registered tools).
         // Phase A: retired 11 upsert_* tools, added 3 lightweight (get_session_briefing, get_scene_summary, get_npc_summary).
         // Phase B: added 2 semantic wrappers (travel_to, rest_at_location).
-        // Phase C.2: demoted 4 query tools to internal (get_scene, get_npc_context, get_scene_summary, get_npc_summary).
-        // Cumulative: 48 → 37 (A1) → 40 (A3+A4) → 42 (B) → 38 (C.2).
+        // Phase C.1-C.4: added take_turn (unified mutation+refresh). 48 → 37 (A1) → 40 (A3+A4) → 42 (B) → 38 (C.2, demoted 4 query tools) → 39 (C.4, added take_turn).
+        // Phase C.5: demoted commit to internal (query tool surface reduction). 39 → 38.
         var tools = ToolCatalog.GetAll();
         var schemaSize = tools
             .Sum(t => (t.Name?.Length ?? 0) + (t.Description?.Length ?? 0));
 
-        // Target: 38 registered tools after Phase C.2 (query tool demotion).
+        // Target: 38 registered tools after Phase C.5 (commit demotion).
         // Bound allows reasonable variation during active development.
         Assert.InRange(schemaSize, 1, 50_000);
         Assert.InRange(tools.Count, 35, 50);

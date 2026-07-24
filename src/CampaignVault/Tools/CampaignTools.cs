@@ -54,11 +54,11 @@ public class CampaignTools(
         exploration.GetNpcNeeds(characterId, ResolveCampaign(campaignName));
 
     // --- Mutation ---
-    public Task<ToolResult<CommitResult>> Commit(WorldChange[]? changes, string? narrative = null,
+    internal Task<ToolResult<CommitResult>> Commit(WorldChange[]? changes, string? narrative = null,
         string? campaignName = TestDefaultCampaignSlug) =>
         mutation.Commit(changes, narrative, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative,
+    internal Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative,
         string? campaignName = TestDefaultCampaignSlug)
     {
         if (string.IsNullOrWhiteSpace(changesJson))
