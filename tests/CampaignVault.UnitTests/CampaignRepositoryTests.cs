@@ -598,6 +598,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Equal("The Shire", result.Data.PartyLocation!.Name);
     }
 
+
     [Fact]
     public async Task SanitizeValue_Prevents_JsonElement_Leakage()
     {

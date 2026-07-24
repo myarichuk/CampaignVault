@@ -1,0 +1,5 @@
+Never start overlapping or background builds. Run one build at a time, wait for it to complete, and never schedule wakeups to poll slow builds. If a build hangs, stop and ask the user.
+Always verify a full green test suite before marking work complete; do not declare success on build-only. Explicitly report any remaining test failures (including pre-existing ones) and get confirmation.
+When implementing a phased/multi-stage plan, enumerate every phase up front and check each one off before claiming completion — do not skip stages.
+This is a .NET/C# codebase. Never use C# reserved keywords (e.g. 'fixed') as identifiers, and watch nullable reference types and variable shadowing to avoid build breaks.
+Prefer query-layer/index-based filtering over [JsonIgnore] attributes or in-memory filtering when stripping fields from DTOs.
