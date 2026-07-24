@@ -1,6 +1,6 @@
-# Bundling & Composite Actions (Phase C Guidance)
+# Bundling & Composite Actions (Phase C.5 Guidance)
 
-**Context**: Campaign Vault supports two approaches to multi-change actions: raw `commit` with explicit `WorldChange` arrays, or (future) composite tools that auto-bundle. This skill guides when to use which.
+**Context**: Campaign Vault's `take_turn` tool handles all mutations atomically with bundled auto-refresh. This skill guides which WorldChange types to bundle in one `take_turn` call for cohesion and narrative clarity. No need to choose between tools — `take_turn` is the unified pattern.
 
 ## Core Principle: Bundling Cohesion
 
@@ -21,7 +21,7 @@ A **bundle** is a set of `WorldChange` types that logically belong together — 
 ### 1. **Is this one narrative beat?**
 
 **Yes** → Go to #2  
-**No** (multiple distinct events) → Commit separately for each beat
+**No** (multiple distinct events) → Call `take_turn` separately for each beat
 
 **Example: Yes**
 ```
@@ -62,8 +62,7 @@ Valen asks the barkeep "Have you heard of the Shadow Guild?"
 → Use raw `commit` with the pair; pattern is stable and clear
 
 **Three+ types** (e.g., social success bundles `ruleset_action` + `engagement_relation` + `event` + `item_transfer`)
-→ **Future Phase C composite tools** (when available) — use `perform_dialogue`, `update_entity`  
-→ **Now**: Use raw `commit` with explicit list (reference `DmHelpManual` for bundling examples)
+→ Use `take_turn` with explicit changes[] list (reference `DmHelpManual` for bundling examples). Composite tools (`perform_dialogue`, `update_entity`) are no longer planned — `take_turn` with your chosen changes is the pattern.
 
 ## Common Bundling Patterns
 
@@ -189,14 +188,19 @@ Valen asks the barkeep "Have you heard of the Shadow Guild?"
 
 | **Unsure about bundling** | Use `take_turn` with explicit changes[] batch — auto-refresh handles follow-up reads |
 
-## Phase C Roadmap
+## Phase C Completion (C.5)
 
-**Phase C.1** (✅ active): `take_turn` unified tool — mutations + auto-refresh in one call. Solves AI-DM drift without guessing bundling rules.  
-**Phase C.2** (next): Query tool demotion to internal, full-detail view opt-ins, extensive test coverage.  
-**Phase C.3** (future): Composite write-side tools (`perform_dialogue`, `update_entity`) if playtest feedback warrants.  
+**Phase C.1** (✅): `take_turn` unified tool — mutations + auto-refresh in one call.  
+**Phase C.2** (✅): Query tool demotion to internal (GetScene, GetNpcContext, GetSceneSummary, GetNpcSummary).  
+**Phase C.3** (✅): Enhanced WorldState bundling, full-detail opt-in views, differential test coverage.  
+**Phase C.4** (✅): Pressure items and suggested commit examples in WorldState.  
+**Phase C.5** (✅): Commit tool demotion to internal. Public tool surface stabilized at 38 tools.  
+
+**Resolution**: Composite write-side tools (`perform_dialogue`, `update_entity`, `faction_action`) are no longer planned. The `take_turn` pattern with your chosen changes[] is the preferred approach — it's simpler, more explicit, and already includes atomic bundling + auto-refresh.
 
 For bundling decisions, use:
 - This decision tree
 - `DmHelpManual.cs` (get_help topic=patterns)
+- `recommended-system-prompt.md` (PHASE C UNIFIED TURNS section)
 - `CommitHelpExamples.cs` (sample JSON)
 - `take_turn` with explicit WorldChange arrays and auto-refresh
