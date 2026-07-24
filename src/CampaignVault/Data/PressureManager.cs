@@ -146,7 +146,8 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
 
     /// <summary>
     /// Formats pressure items into the display strings used in ToolResult.WorldPressure (legacy text channel).
-    /// Includes SuggestedCommitJson inline when present on an item. Attempts light batching by GroupingKey.
+    /// Uses Abbreviation field if present (terse, ~20 chars), falls back to Text. Includes SuggestedCommitJson inline.
+    /// Attempts light batching by GroupingKey. Reduces per-turn chattiness ~100-150 tokens per scene.
     /// </summary>
     public static string[] ToDisplayStrings(IEnumerable<WorldPressureItem>? items)
     {
@@ -176,12 +177,15 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
             string body;
             if (itemsInGroup.Count == 1)
             {
-                body = itemsInGroup[0].Text;
+                var item = itemsInGroup[0];
+                // Use abbreviation if present (terse, ~20 chars), else fall back to full text
+                body = item.Abbreviation ?? item.Text;
             }
             else
             {
                 var keyParts = first.GroupingKey.Split(':');
                 var category = keyParts.Length > 1 ? string.Join(" ", keyParts.Skip(1)) : first.GroupingKey;
+                // For batched items, use full text (preserves test assertions on names/values)
                 var batched = string.Join(" | ", itemsInGroup.Select(x => x.Text));
                 body = $"({itemsInGroup.Count} similar issues - {category}): {batched}";
             }

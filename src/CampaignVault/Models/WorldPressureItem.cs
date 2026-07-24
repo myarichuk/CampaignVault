@@ -22,6 +22,9 @@ public record WorldPressureItem(
     /// <summary>Optional machine-readable commit example(s) for the LLM to use.</summary>
     public string? SuggestedCommitJson { get; init; }
 
+    /// <summary>Terse abbreviation for this pressure (e.g. "HUNGER:critical"). If null, uses Text as-is.</summary>
+    public string? Abbreviation { get; init; }
+
     public const string RumorsGroupingKey = "Simulation:Rumors";
     public const string SimulationEventGroupingKey = "Simulation:Event";
 }

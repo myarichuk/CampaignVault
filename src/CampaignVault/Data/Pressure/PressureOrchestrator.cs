@@ -46,11 +46,18 @@ public sealed class PressureOrchestrator : IPressureOrchestrator
         var module = _rulesetSelector.GetModule(ctx.Config.ActiveSystem);
         await CollectFromAsync(module.PressureContributors);
 
-        return await _pressureManager.FilterAndCapAsync(
+        var filtered = await _pressureManager.FilterAndCapAsync(
             ctx.Session,
             ctx.CampaignName,
             (int)ctx.Time.TotalDaysElapsed,
             merged.Values,
             ctx.DisableCooldowns);
+
+        // Abbreviate filtered items to reduce chattiness: terse codes instead of full text
+        var abbreviated = filtered.Select(item =>
+            item with { Abbreviation = PressureAbbreviator.TryAbbreviate(item) ?? item.Abbreviation }
+        ).ToList();
+
+        return abbreviated;
     }
 }
