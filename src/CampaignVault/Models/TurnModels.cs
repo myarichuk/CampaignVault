@@ -45,7 +45,7 @@ public class TakeTurnRequest
     public bool IncludeWorldState { get; set; } = false;
 
     [Description(
-        "Location ID for PartyLocationId context (only used if IncludeWorldState=true). Defaults to the active location if omitted.")]
+        "Location ID anchoring WorldState scoping (only used if IncludeWorldState=true). Omit to skip location-based scoping — rumors/quests/factions are then filtered only by party affiliations, and PartyLocation comes back null.")]
     [JsonPropertyName("partyLocationId")]
     public string? PartyLocationId { get; set; }
 
@@ -107,4 +107,7 @@ public class TurnResult
 
     [Description("Full scene view for the requested location (if fullDetailLocationId was provided); includes all NPCs, items, and environmental details. Otherwise null.")]
     public SceneView? FullScene { get; set; }
+
+    [Description("Non-fatal problems encountered while assembling this response (failed refreshes, missing entities, world-state errors). Null when every requested section succeeded. Check this whenever an expected section came back null.")]
+    public List<string>? Warnings { get; set; }
 }

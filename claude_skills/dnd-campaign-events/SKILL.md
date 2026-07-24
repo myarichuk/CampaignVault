@@ -11,7 +11,7 @@ You are managing campaign-level state: quests, rumors, factions, pressures, and 
 
 ## World Pressure (ENGINE WARNINGs)
 
-When you call `get_world_state` or `get_scene`, check `WorldPressure` immediately. If there's an `ENGINE WARNING`, resolve it atomically **before continuing**:
+Whenever a response carries `WorldPressure` (start_session, a scene fetch via get_entity, take_turn with includeWorldState, advance_world), check it immediately. If there's an `ENGINE WARNING`, resolve it atomically **before continuing**:
 
 ```json
 // Example ENGINE WARNING
@@ -26,7 +26,7 @@ When you call `get_world_state` or `get_scene`, check `WorldPressure` immediatel
 }
 ```
 
-Commit the suggested resolution in the same batch. Do not skip or defer ENGINE WARNINGs. 5+ unresolved warnings cap progress; call `get_help topic=pressure` to drain the backlog.
+Include the suggested resolution in the same take_turn batch. Do not skip or defer ENGINE WARNINGs. 5+ unresolved warnings cap progress; call `get_help topic=world-pressure` to drain the backlog.
 
 ## Quest Progress
 
@@ -58,7 +58,7 @@ Rumors progress through lifecycle:
 
 States: Nascent → Spreading → Peak → Fading → Resolved (or Forgotten).
 
-Create new rumors via `world_build` (batch). Evolve existing rumors via `commit`.
+Create new rumors via `world_build` (batch). Evolve existing rumors via a `rumor` change in `take_turn`.
 
 ## Faction State & Economy
 
@@ -106,7 +106,7 @@ Track multi-beat narrative arcs:
 
 ## Campaign Time
 
-Campaign has a clock: `get_world_state` returns current campaign time (day, hour, weather, season). Most commits accept `minutesElapsed` to tick the clock. Use `advance_world` for larger skips.
+Campaign has a clock: `start_session` (and `take_turn` with `includeWorldState: true`) returns current campaign time (day, hour, weather, season). Most commits accept `minutesElapsed` to tick the clock. Use `advance_world` for larger skips.
 
 ## Pressure-Driven Pacing
 
@@ -119,7 +119,7 @@ Use pressure as a narrative cue: when pressure peaks, events accelerate.
 
 ## Campaign Checklist
 
-- [ ] Did I call `get_world_state` to read campaign time + pressure?
+- [ ] Did I read campaign time + pressure (start_session at kickoff; take_turn includeWorldState mid-play)?
 - [ ] Are there ENGINE WARNINGs? → Resolve atomically before continuing
 - [ ] Did a quest milestone complete? → `quest_progress` commit
 - [ ] Did the party's relationship with a faction shift? → `faction_state`

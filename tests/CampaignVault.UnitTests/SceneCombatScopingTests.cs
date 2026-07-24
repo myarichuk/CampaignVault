@@ -94,7 +94,7 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
         var combat = await meta.GetHelp("combat");
 
         Assert.True(quickstart.Success);
-        Assert.Contains("get_party", quickstart.Data!, StringComparison.Ordinal);
+        Assert.Contains("start_session", quickstart.Data!, StringComparison.Ordinal);
         Assert.Contains("Commit Enum Values", commitEnum.Data!, StringComparison.Ordinal);
         Assert.Contains("Region, Settlement, District, Building, Room, Wilderness", commitEnum.Data!, StringComparison.Ordinal);
         Assert.Contains("chars/valen", combat.Data!, StringComparison.Ordinal);

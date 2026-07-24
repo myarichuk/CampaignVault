@@ -812,7 +812,8 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
             .ToList();
 
-        Assert.True(methods.Count >= 25);
+        // Post-consolidation surface: ~15 public tools (see ARCHITECTURE.md Tool Surface Evolution).
+        Assert.True(methods.Count >= 14);
 
         foreach (var method in methods)
         {
@@ -831,12 +832,14 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
-        Assert.True(result.Data!.Count >= 25);
+        // Consolidated surface: ~15 public tools; the catalog must only list registered ones.
+        Assert.True(result.Data!.Count >= 14);
         Assert.DoesNotContain(result.Data, t => t.Category == "Other");
         Assert.Contains(result.Data, t => t.Name == "get_help" && t.Category == "System");
-        Assert.Contains(result.Data, t => t.Name == "list_tools" && t.Category == "System");
-        Assert.DoesNotContain(result.Data, t => t.Name == "commit"); // Phase C.5: Commit demoted to internal
-        Assert.Contains(result.Data, t => t.Name == "get_quest_details" && t.Category == "Deep dives");
+        Assert.Contains(result.Data, t => t.Name == "get_entity" && t.Category == "Deep dives");
+        Assert.DoesNotContain(result.Data, t => t.Name == "commit");
+        Assert.DoesNotContain(result.Data, t => t.Name == "list_tools"); // absorbed into get_help topic=tools
+        Assert.DoesNotContain(result.Data, t => t.Name == "get_quest_details"); // absorbed into get_entity
     }
 
     [Fact]
@@ -849,7 +852,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
         Assert.All(result.Data!, t => Assert.Equal("Combat & rulesets", t.Category));
-        Assert.Contains(result.Data, t => t.Name == "start_combat");
+        Assert.Contains(result.Data, t => t.Name == "combat");
         Assert.DoesNotContain(result.Data, t => t.Name == "get_help");
     }
 
@@ -866,8 +869,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.Contains("campaignName", result.Data);
         Assert.Contains("list_campaigns", result.Data);
         Assert.Contains("Tools by Category", result.Data);
-        Assert.Contains("`list_tools`", result.Data);
-        Assert.Contains("get_quest_details", result.Data);
+        Assert.Contains("`take_turn`", result.Data);
+        Assert.Contains("`get_entity`", result.Data);
+        Assert.Contains("`start_session`", result.Data);
     }
 
     [Fact]

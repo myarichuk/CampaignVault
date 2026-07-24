@@ -1,4 +1,5 @@
 using CampaignVault.Models;
+using Raven.Client.Documents.Linq;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Data;
@@ -10,7 +11,20 @@ namespace CampaignVault.Data;
 /// </summary>
 internal static class WorldStateScopeResolver
 {
-    private const int RelevantReputationThreshold = 10;
+    /// <summary>
+    /// Minimum |reputation| for a faction to count as "relevant" to the party. Used consistently by
+    /// both quest scoping (via <see cref="GetRelevantFactionIds"/>) and faction scoping.
+    /// </summary>
+    internal const int RelevantReputationThreshold = 10;
+
+    /// <summary>Faction IDs the party has meaningful reputation with (|rep| ≥ threshold).</summary>
+    internal static List<string> GetRelevantFactionIds(
+        IReadOnlyDictionary<string, int> partyFactionReputations,
+        int reputationThreshold = RelevantReputationThreshold) =>
+        partyFactionReputations
+            .Where(kv => Math.Abs(kv.Value) >= reputationThreshold)
+            .Select(kv => kv.Key)
+            .ToList();
 
     /// <summary>
     /// Aggregates FactionReputations across all party characters (PCs and party companions).
@@ -69,7 +83,8 @@ internal static class WorldStateScopeResolver
             return [];
         }
 
-        // Query each criterion separately and union (RavenDB doesn't support OR in Where clauses)
+        // Query each criterion separately (server-side via the Exact-indexed collection fields on
+        // Quest_Search) and union client-side.
         var questsByLocation = hasLocationContext
             ? await session.Query<Quest, Quest_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
@@ -81,28 +96,23 @@ internal static class WorldStateScopeResolver
             : [];
 
         var questsByFaction = hasFactionContext
-            ? (await session.Query<Quest, Quest_Search>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
-                            && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == ""))
-                .Take(limit * 2)  // Fetch extra; client-side filter may reduce
-                .ToListAsync())
-                .Where(q => q.RelatedFactionIds.Any(fId => relevantFactionIds.Contains(fId)))
-                .Take(limit)
-                .ToList()
-            : [];
-
-        var questsByVisibility = hasCharacterContext
-            ? (await session.Query<Quest, Quest_Search>()
+            ? await session.Query<Quest, Quest_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
                             && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == "")
-                            && q.VisibleToCharacterIds != null)
-                .Take(limit * 2)  // Fetch extra; client-side filter may reduce
-                .ToListAsync())
-                .Where(q => q.VisibleToCharacterIds!.Any(cId => partyCharacterIds.Contains(cId)))
+                            && q.RelatedFactionIds.ContainsAny(relevantFactionIds))
                 .Take(limit)
-                .ToList()
+                .ToListAsync()
+            : [];
+
+        var questsByVisibility = hasCharacterContext
+            ? await session.Query<Quest, Quest_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+                            && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == "")
+                            && q.VisibleToCharacterIds!.ContainsAny(partyCharacterIds))
+                .Take(limit)
+                .ToListAsync()
             : [];
 
         var quests = questsByLocation
@@ -165,10 +175,7 @@ internal static class WorldStateScopeResolver
         var effective = campaignName ?? "";
 
         var hasLocationContext = !string.IsNullOrEmpty(regionOrLocationId);
-        var relevantFactionIds = partyFactionReputations
-            .Where(kv => Math.Abs(kv.Value) >= reputationThreshold)
-            .Select(kv => kv.Key)
-            .ToList();
+        var relevantFactionIds = GetRelevantFactionIds(partyFactionReputations, reputationThreshold);
         var hasFactionContext = relevantFactionIds.Count > 0;
 
         // Session-0 fallback: no context, return empty

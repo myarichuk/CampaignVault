@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -108,18 +109,18 @@ public class LlmToolingRegressionTests
             },
         };
 
-        var modified = ToolCallExamples.TryNormalize("commit", args, out var rewrites);
+        var modified = ToolCallExamples.TryNormalize("take_turn", args, out var rewrites);
 
         Assert.True(modified);
         Assert.Contains("rumor.newState(Active)→Nascent", rewrites);
         Assert.Contains("rumor.removed sourceCharacterId", rewrites);
 
-        var change = args["changes"]![0]!.AsObject();
+        var change = args["request"]!["changes"]![0]!.AsObject();
         Assert.Equal("rumor", change["$type"]!.GetValue<string>());
         Assert.Equal("Nascent", change["newState"]!.GetValue<string>());
         Assert.False(change.ContainsKey("sourceCharacterId"));
 
-        using var doc = JsonDocument.Parse(args["changes"]!.ToJsonString());
+        using var doc = JsonDocument.Parse(args["request"]!["changes"]!.ToJsonString());
         var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
         Assert.True(ok, error);
         var rumorEvolve = Assert.IsType<RumorEvolves>(parsed![0]);
@@ -143,9 +144,9 @@ public class LlmToolingRegressionTests
             },
         };
 
-        ToolCallExamples.TryNormalize("commit", args, out _);
+        ToolCallExamples.TryNormalize("take_turn", args, out _);
 
-        var change = args["changes"]![0]!.AsObject();
+        var change = args["request"]!["changes"]![0]!.AsObject();
         Assert.Equal("rumor", change["$type"]!.GetValue<string>());
         Assert.Equal("rumors/nightshade-gang", change["rumorId"]!.GetValue<string>());
         Assert.Equal("Resolved", change["newState"]!.GetValue<string>());
@@ -266,19 +267,123 @@ public class LlmToolingRegressionTests
     public void RegisteredToolSchema_UnderChattynessCap()
     {
         // Tracks LLM context cost from tool schema (proxy: descriptions in registered tools).
-        // Phase A: retired 11 upsert_* tools, added 3 lightweight (get_session_briefing, get_scene_summary, get_npc_summary).
-        // Phase B: added 2 semantic wrappers (travel_to, rest_at_location).
-        // Phase C.1-C.4: added take_turn (unified mutation+refresh). 48 → 37 (A1) → 40 (A3+A4) → 42 (B) → 38 (C.2, demoted 4 query tools) → 39 (C.4, added take_turn).
-        // Phase C.5: demoted commit to internal (query tool surface reduction). 39 → 38.
-        // Phase C.8: demoted semantic wrappers (attack, travel_to, rest_at_location) to internal. 38 → 35.
+        // Phases A–C.8 took the surface 48 → 35 (upsert retirement, take_turn, commit/query/wrapper demotions).
+        // Consolidation phase: merged deep-dives into get_entity, kickoff tools into start_session,
+        // combat lifecycle into combat(action), rules lookups into get_rules_reference, list_tools into
+        // get_help topic=tools, need descriptors into world_build. 35 → ~15.
         var tools = ToolCatalog.GetAll();
         var schemaSize = tools
             .Sum(t => (t.Name?.Length ?? 0) + (t.Description?.Length ?? 0));
 
-        // Target: 35 registered tools after Phase C.8 (semantic wrapper demotion).
-        // Bound allows reasonable variation during active development.
-        Assert.InRange(schemaSize, 1, 50_000);
-        Assert.InRange(tools.Count, 32, 50);
+        Assert.InRange(schemaSize, 1, 30_000);
+        Assert.InRange(tools.Count, 14, 18);
+    }
+
+    private static readonly string[] RetiredToolNames =
+    [
+        "get_scene", "get_npc_context", "get_scene_summary", "get_npc_summary",
+        "get_world_state", "get_party", "get_session_briefing", "get_npc_needs",
+        "get_current_campaign", "set_active_system", "set_narrative_focus",
+        "get_system_handbook", "get_spells", "query_creatures",
+        "get_faction_context", "get_quest_details", "get_plot_thread", "list_plot_threads",
+        "get_item", "list_tools", "start_combat", "next_turn", "end_combat", "get_combat",
+        "trigger_opportunity_attack", "travel_to", "rest_at_location",
+        "define_need_descriptor", "get_need_descriptors",
+        // removed commit discriminators
+        "character_create", "rumor_create", "quest_create", "location_create",
+    ];
+
+    /// <summary>
+    /// The exact consolidated public surface. A tool appearing or disappearing must be a deliberate
+    /// decision that updates this list, the help manual, the system prompt, and the skills together.
+    /// </summary>
+    [Fact]
+    public void RegisteredToolNames_MatchTheConsolidatedSurfaceExactly()
+    {
+        var expected = new[]
+        {
+            "advance_world", "combat", "create_campaign", "end_session", "get_commit_schema",
+            "get_config", "get_entity", "get_help", "get_rules_reference", "list_campaigns",
+            "recall_history", "search_world", "start_session", "take_turn", "world_build",
+        };
+
+        var actual = ToolCatalog.GetAll().Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+
+        Assert.Equal(expected, actual);
+    }
+
+    /// <summary>
+    /// No LLM-visible surface may reference a retired tool name: an LLM following such a reference
+    /// would call a tool that does not exist. Scans registered tool descriptions, every get_help
+    /// section, the recommended system prompt, and every skill file.
+    /// </summary>
+    [Fact]
+    public void LlmVisibleSurfaces_DoNotReferenceRetiredToolNames()
+    {
+        var repoRoot = FindRepoRoot();
+        var surfaces = new List<(string Source, string Text)>();
+
+        foreach (var tool in ToolCatalog.GetAll())
+        {
+            surfaces.Add(($"tool description: {tool.Name}", tool.Description ?? ""));
+        }
+
+        surfaces.Add(("DmHelpManual.Quickstart", CampaignVault.Tools.DmHelpManual.QuickstartSection));
+        surfaces.Add(("DmHelpManual.Patterns", CampaignVault.Tools.DmHelpManual.PatternsSection));
+        surfaces.Add(("DmHelpManual.Combat", CampaignVault.Tools.DmHelpManual.CombatSection));
+        surfaces.Add(("DmHelpManual.WorldPressure", CampaignVault.Tools.DmHelpManual.WorldPressureSection));
+        surfaces.Add(("DmHelpManual.VisualSandbox", CampaignVault.Tools.DmHelpManual.VisualSandboxSection));
+        surfaces.Add(("DmHelpManual.CommitEnum", CampaignVault.Tools.DmHelpManual.CommitEnumSection));
+        surfaces.Add(("DmHelpManual.Faq", CampaignVault.Tools.DmHelpManual.FaqSection));
+        surfaces.Add(("DmHelpManual.WorldBuilding", CampaignVault.Tools.DmHelpManual.WorldBuildingSection));
+
+        surfaces.Add(("recommended-system-prompt.md",
+            File.ReadAllText(Path.Combine(repoRoot, "recommended-system-prompt.md"))));
+
+        foreach (var skill in Directory.EnumerateFiles(Path.Combine(repoRoot, "claude_skills"), "SKILL.md", SearchOption.AllDirectories))
+        {
+            surfaces.Add((Path.GetRelativePath(repoRoot, skill), File.ReadAllText(skill)));
+        }
+
+        var violations = new List<string>();
+        foreach (var (source, text) in surfaces)
+        {
+            foreach (var retired in RetiredToolNames)
+            {
+                // Word-ish boundary: avoid matching inside a longer identifier (e.g. get_item inside get_item_details).
+                var idx = 0;
+                while ((idx = text.IndexOf(retired, idx, StringComparison.OrdinalIgnoreCase)) >= 0)
+                {
+                    var before = idx == 0 ? ' ' : text[idx - 1];
+                    var afterIdx = idx + retired.Length;
+                    var after = afterIdx >= text.Length ? ' ' : text[afterIdx];
+                    if (!char.IsLetterOrDigit(before) && before != '_' && !char.IsLetterOrDigit(after) && after != '_')
+                    {
+                        violations.Add($"{source}: '{retired}'");
+                        break;
+                    }
+
+                    idx = afterIdx;
+                }
+            }
+        }
+
+        Assert.True(violations.Count == 0,
+            "Retired tool names referenced in LLM-visible surfaces:\n" + string.Join("\n", violations));
+    }
+
+    [Fact]
+    public void EverySkillFile_HasYamlFrontmatterWithNameAndDescription()
+    {
+        var repoRoot = FindRepoRoot();
+        foreach (var skill in Directory.EnumerateFiles(Path.Combine(repoRoot, "claude_skills"), "SKILL.md", SearchOption.AllDirectories))
+        {
+            var content = File.ReadAllText(skill);
+            Assert.True(content.StartsWith("---", StringComparison.Ordinal),
+                $"{skill} is missing YAML frontmatter (required for skill discovery).");
+            Assert.Contains("name:", content[..content.IndexOf("---", 3, StringComparison.Ordinal)], StringComparison.Ordinal);
+            Assert.Contains("description:", content[..content.IndexOf("---", 3, StringComparison.Ordinal)], StringComparison.Ordinal);
+        }
     }
 
     private static string FindRepoRoot()
@@ -318,11 +423,19 @@ public class LlmToolingRegressionTests
     }
 
     [Fact]
-    public void GetItem_IsRegisteredAsAnMcpTool()
+    public void GetEntity_IsRegisteredAsAnMcpTool_AndFetchersAreDemoted()
     {
-        var method = typeof(DeepDiveTools).GetMethod(nameof(DeepDiveTools.GetItem), BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-        Assert.NotNull(method);
-        Assert.NotNull(method!.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>());
+        var getEntity = typeof(DeepDiveTools).GetMethod(nameof(DeepDiveTools.GetEntity), BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+        Assert.NotNull(getEntity);
+        Assert.NotNull(getEntity!.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>());
+
+        // The per-type fetchers it replaced must stay internal and unregistered.
+        foreach (var name in new[] { "GetItem", "GetFactionContext", "GetQuestDetails", "GetPlotThread", "ListPlotThreads" })
+        {
+            var method = typeof(DeepDiveTools).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+            Assert.NotNull(method);
+            Assert.Null(method!.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>());
+        }
     }
 
     [Theory]

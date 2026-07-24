@@ -58,38 +58,30 @@ internal static partial class McpToolErrorFilter
                 "Provide a unique campaign slug (spaces become hyphens). Pass campaignName on subsequent tool calls.",
             ("create_campaign", "initialSystem") =>
                 "Use a RulesetSystem value: Dnd5e, Pathfinder2e, or Narrative.",
-            ("commit", "changes") =>
-                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
-            ("commit", "narrative") =>
-                "Provide a short summary of what happened for the event log.",
-            ("get_scene", "locationId") =>
-                "Use search_world or get_world_state to find a location ID first.",
-            ("get_npc_context", "characterId") or ("get_npc_needs", "characterId") =>
-                "Use get_scene or search_world to find the exact character ID.",
-            ("get_faction_context", "factionId") =>
-                "Use get_scene or search_world for exact faction IDs.",
-            ("get_quest_details", "questId") =>
-                "Use get_scene for active quest summaries, then request the full document.",
+            ("take_turn", "changes") =>
+                "Pass an array of world-change objects in request.changes; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
+            ("take_turn", "narrative") =>
+                "Provide a short summary of what happened for the event log (required when changes are present).",
+            ("get_entity", "entityId") =>
+                "Pass an exact entity ID with its type prefix (chars/, locations/, factions/, quests/, items/, plot-threads/). Use search_world to find IDs.",
             ("search_world", "query") or ("recall_history", "query") =>
                 "Pass a name or keyword to search for.",
             ("advance_world", "narrative") =>
                 "Summarize the travel, rest, or downtime activity.",
-            ("start_combat", "locationId") =>
-                "Pass where combat occurs.",
-            ("start_combat", "combatantIds") =>
-                "Pass an array of character IDs participating in combat.",
+            ("combat", "action") =>
+                "Pass 'start', 'next', 'end', or 'status'.",
+            ("combat", "locationId") =>
+                "action:'start' requires locationId — pass where combat occurs.",
+            ("combat", "combatantIds") =>
+                "action:'start' requires combatantIds — an array of character IDs participating in combat.",
             ("world_build", "batch") =>
                 "Pass an object with one or more arrays: locations, factions, creatures, spells, feats, characters, items, quests, plotThreads, lore, rumors, needDescriptors. Each array uses the same field shape as its live-play commit type (e.g. characters[] entries mirror character_update fields). See get_help topic=world-building.",
             ("world_build", "campaignName") =>
                 "Pass the campaign slug (e.g. dragon-heist). Call list_campaigns to discover slugs.",
-            ("define_need_descriptor", "needName") or ("define_need_descriptor", "descriptor") =>
-                "Both needName and descriptor are required.",
-            ("set_active_system", "activeSystem") =>
-                "Use a RulesetSystem value: Dnd5e, Pathfinder2e, or Narrative.",
-            ("get_current_campaign", "campaignName") =>
-                "Pass the campaign slug (e.g. dragon-heist). Call list_campaigns to discover slugs.",
+            ("get_rules_reference", "kind") =>
+                "Pass 'handbook', 'spells' (requires className), or 'creatures'.",
             _ =>
-                $"Call list_tools or get_help for the expected argument names and examples."
+                $"Call get_help (topic=tools for the full catalog) for the expected argument names and examples."
         };
 
         if (ToolCallExamples.TryGet(toolName, out _))
@@ -100,13 +92,9 @@ internal static partial class McpToolErrorFilter
         var legacyExample = (toolName, paramName) switch
         {
             ("create_campaign", "name") => "create_campaign(name: \"dragon-heist\", initialSystem: \"Dnd5e\")",
-            ("get_scene", "locationId") => "get_scene(\"locations/tavern\")",
-            ("get_npc_context", "characterId") => "get_npc_context(\"chars/innkeeper\")",
-            ("get_faction_context", "factionId") => "get_faction_context(\"factions/thieves-guild\")",
-            ("get_quest_details", "questId") => "get_quest_details(\"quests/rats_01\")",
-            ("start_combat", "locationId") => "start_combat(\"locations/tavern\", [\"chars/hero\"])",
-            ("define_need_descriptor", _) =>
-                "define_need_descriptor(\"homesickness\", \"Longing for home and family.\")",
+            ("get_entity", "entityId") => "get_entity(\"chars/innkeeper\")",
+            ("combat", "locationId") or ("combat", "combatantIds") =>
+                "combat(action: \"start\", locationId: \"locations/tavern\", combatantIds: [\"chars/hero\"])",
             _ => null
         };
 

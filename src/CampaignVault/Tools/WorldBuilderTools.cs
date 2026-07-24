@@ -247,7 +247,7 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
                 && !await s.Query<Item>().Where(i => (i.CampaignName == effective || i.CampaignName == null) && i.HolderId == charId).AnyAsync())
             {
                 var hint = $"HINT: '{charId}' has no items on file (nothing with holderId=\"{charId}\") — unarmed/unequipped. " +
-                    "Use world_build's items[] (or upsert_item) with holderId set to this character's id to give them a weapon/armor/gear.";
+                    "Use world_build's items[] with holderId set to this character's id to give them a weapon/armor/gear.";
                 return new ToolResult<Character>(result.Success, result.Data, $"{result.Summary} {hint}", result.Error, result.WorldPressure, result.RetryExample);
             }
             return result;
@@ -293,7 +293,7 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
         {
             extras.Add(
                 $"NOTE: No campaign ruleset is configured yet for '{effective}' — this character was bootstrapped assuming {RulesetSystem.Dnd5e}. " +
-                "If this campaign should use a different ruleset, call create_campaign or set_active_system BEFORE creating more characters, then re-upsert this one with corrected systemStats.");
+                "If this campaign should use a different ruleset, call create_campaign with the correct initialSystem BEFORE creating more characters, then re-upsert this one with corrected systemStats.");
         }
 
         if (existedBefore)
@@ -385,7 +385,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew creature stat-block template. These are reusable reference templates (distinct from live NPC/monster instances, which use world_build's characters[]). Homebrew creatures override SRD creatures by name when queried via query_creatures. Omitted fields are preserved: on an existing creature, omitting skills/abilities keeps the stored value; providing one replaces it wholesale.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew creature stat-block template. These are reusable reference templates (distinct from live NPC/monster instances, which use world_build's characters[]). Homebrew creatures override SRD creatures by name when queried via get_rules_reference (kind:'creatures'). Omitted fields are preserved: on an existing creature, omitting skills/abilities keeps the stored value; providing one replaces it wholesale.")]
     internal Task<ToolResult<CustomCreature>> UpsertCreature(
         [Description("The creature to create or update. Strongly typed.")]
         CustomCreatureUpsertRequest creature,
@@ -423,7 +423,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew spell. Overrides SRD spells by name when queried via get_spells. Omitted fields are preserved: on an existing spell, omitting classes keeps the stored value; providing one replaces it wholesale.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew spell. Overrides SRD spells by name when queried via get_rules_reference (kind:'spells'). Omitted fields are preserved: on an existing spell, omitting classes keeps the stored value; providing one replaces it wholesale.")]
     internal Task<ToolResult<CustomSpell>> UpsertSpell(
         [Description("The spell to create or update. Strongly typed.")]
         CustomSpellUpsertRequest spell,
@@ -440,7 +440,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via get_system_handbook.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via get_rules_reference (kind:'handbook').")]
     internal Task<ToolResult<CustomFeat>> UpsertFeat(
         [Description("The feat to create or update. Strongly typed.")]
         CustomFeatUpsertRequest feat,
@@ -517,14 +517,10 @@ This is the only tool that creates a new location. During play, use commit's loc
         return new ToolResult<Rumor>(true, merged, $"Rumor upserted (campaign context: {effective}).");
     }
 
-    [ToolCategory("World builder")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(
-        "WORLD BUILDER TOOL: Define or update a descriptor for a need type for a campaign slug. Automatically merged into get_npc_needs, get_npc_context, and get_scene results (per-NPC descriptors override). Use get_need_descriptors to list defined ones for the campaign. Example: needName='homesickness', descriptor='Longing for home and family. High values cause distraction, poor rest, and risk of emotional outbursts.'")]
-    public Task<ToolResult<string>> DefineNeedDescriptor(
-        [Description("The name of the need (e.g., 'homesickness').")] string needName,
-        [Description("The description of the need and its effects.")] string descriptor,
-        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
+    internal Task<ToolResult<string>> DefineNeedDescriptor(
+        string needName,
+        string descriptor,
+        string campaignName)
     {
         if (string.IsNullOrWhiteSpace(needName) || string.IsNullOrWhiteSpace(descriptor))
         {
@@ -540,11 +536,7 @@ This is the only tool that creates a new location. During play, use commit's loc
         });
     }
 
-    [ToolCategory("World builder")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description("DISCOVERABILITY TOOL: Lists all defined need descriptors for the given campaign slug.")]
-    public Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(
-        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+    internal Task<ToolResult<Dictionary<string, string>>> GetNeedDescriptors(
         string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>

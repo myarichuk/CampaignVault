@@ -11,9 +11,11 @@ public class ToolCatalogTests
     {
         var index = ToolCatalog.FormatHelpIndex();
 
-        Assert.Contains("get_party", index, StringComparison.Ordinal);
-        Assert.Contains("get_current_campaign", index, StringComparison.Ordinal);
-        Assert.Contains("list_tools", index, StringComparison.Ordinal);
+        Assert.Contains("take_turn", index, StringComparison.Ordinal);
+        Assert.Contains("start_session", index, StringComparison.Ordinal);
+        Assert.Contains("get_entity", index, StringComparison.Ordinal);
+        Assert.Contains("combat", index, StringComparison.Ordinal);
+        Assert.Contains("get_rules_reference", index, StringComparison.Ordinal);
         Assert.Contains("### Session & exploration", index, StringComparison.Ordinal);
     }
 }

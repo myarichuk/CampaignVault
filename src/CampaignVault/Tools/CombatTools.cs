@@ -25,11 +25,44 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMBAT TOOL: Starts a new combat encounter at the specified location.
-Rolls initiative for all combatants based on the active ruleset system and establishes the turn order. If a combat is already active, it is overwritten. Requires campaignName.
+    [Description(@"COMBAT CONTROL: Single tool for the combat lifecycle, dispatched by 'action':
+- action:'start' — begin an encounter: requires locationId + combatantIds (array of character IDs); rolls initiative via the active ruleset and establishes turn order. Pass overwriteActive:true to abandon a stuck encounter and restart.
+- action:'next' — advance to the next combatant (new round when everyone has acted; expires round-based effects; skips dead combatants). Optional expectedActiveTurnId guards against double-advancing.
+- action:'end' — end the encounter: clears round-based status effects, recovers encounter-end resource pools.
+- action:'status' — read-only: the active encounter (location, round, whose turn), or 'no active combat'.
+Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_turn with a ruleset_action change; the engine enforces turn order and action economy against this encounter. Requires campaignName.")]
+    public Task<ToolResult<object>> Combat(
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName,
+        [Description("Lifecycle action: 'start', 'next', 'end', or 'status'.")]
+        string action,
+        [Description("start only: the location ID where combat is happening.")]
+        string? locationId = null,
+        [Description("start only: character IDs participating in combat, e.g. [\"chars/valen\", \"chars/goblin1\"].")]
+        List<string>? combatantIds = null,
+        [Description("start only: abandon any active combat and start fresh instead of failing.")]
+        bool overwriteActive = false,
+        [Description("next only: fail if the current active turn does not match this ID (prevents accidental double-advancing).")]
+        string? expectedActiveTurnId = null)
+    {
+        return (action?.Trim().ToLowerInvariant()) switch
+        {
+            "start" => Box(StartCombat(locationId ?? "", combatantIds ?? [], campaignName, overwriteActive)),
+            "next" => Box(NextTurn(campaignName, expectedActiveTurnId)),
+            "end" => Box(EndCombat(campaignName)),
+            "status" => GetCombat(campaignName),
+            _ => Task.FromResult(new ToolResult<object>(false, Error: ToolErrors.InvalidArgument,
+                Summary: $"Unknown combat action '{action}'. Use 'start', 'next', 'end', or 'status'."))
+        };
+    }
 
-Parameter name is combatantIds (not combatants). Example: start_combat(""locations/tavern"", [""chars/pc1"", ""chars/pc2"", ""chars/goblin1""])")]
-    public Task<ToolResult<CombatEncounter>> StartCombat(
+    private static async Task<ToolResult<object>> Box<T>(Task<ToolResult<T>> task)
+    {
+        var r = await task;
+        return new ToolResult<object>(r.Success, r.Data, r.Summary, r.Error, r.WorldPressure, r.RetryExample);
+    }
+
+    internal Task<ToolResult<CombatEncounter>> StartCombat(
         [Description("The location ID where combat is happening.")]
         string locationId,
         [Description("List of character IDs participating in combat.")]
@@ -44,7 +77,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
             return ToolArgumentErrors.Missing<CombatEncounter>(
                 "locationId",
                 "Pass where combat occurs.",
-                exampleCall: "start_combat(\"locations/tavern\", [\"chars/hero\"])");
+                exampleCall: "combat(action: \"start\", locationId: \"locations/tavern\", combatantIds: [\"chars/hero\"])");
         }
 
         if (combatantIds?.Count == 0)
@@ -62,7 +95,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
             {
                 return new ToolResult<CombatEncounter>(false,
                     Error: $"Combat already active at {existing.LocationId} (round {existing.Round}). " +
-                           "Call end_combat to abandon, or pass overwriteActive:true to force restart.");
+                           "Call combat(action: 'end') to abandon, or pass overwriteActive:true to force restart.");
             }
             var uniqueIds = (combatantIds ?? []).Distinct().ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
@@ -142,13 +175,7 @@ Parameter name is combatantIds (not combatants). Example: start_combat(""locatio
         });
     }
 
-    [ToolCategory("Combat & rulesets")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMBAT TOOL: Advances the turn order to the next combatant.
-If all combatants have acted, advances to the next round. Skips dead combatants (HP <= 0).
-Round-based status effects naturally expire during this transition when their round duration ends.
-Requires campaignName.")]
-    public Task<ToolResult<CombatEncounter>> NextTurn(
+    internal Task<ToolResult<CombatEncounter>> NextTurn(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
         [Description(
@@ -251,12 +278,7 @@ Requires campaignName.")]
         });
     }
 
-    [ToolCategory("Combat & rulesets")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMBAT TOOL: Ends the current active combat encounter and wraps up the state.
-Aggressively clears all round-based status effects (e.g., 'until end of combat' effects) from all combatants.
-Day-based effects remain active. Requires campaignName.")]
-    public Task<ToolResult<CombatEncounter>> EndCombat(
+    internal Task<ToolResult<CombatEncounter>> EndCombat(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
@@ -321,10 +343,7 @@ Day-based effects remain active. Requires campaignName.")]
         });
     }
 
-    [ToolCategory("Combat & rulesets")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description("COMBAT TOOL: Retrieve the active combat encounter (if any), regardless of location. Returns null if no active combat.")]
-    public Task<ToolResult<object>> GetCombat(
+    internal Task<ToolResult<object>> GetCombat(
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>

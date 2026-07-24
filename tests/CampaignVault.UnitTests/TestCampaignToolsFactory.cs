@@ -65,9 +65,16 @@ internal static class TestCampaignToolsFactory
 
     /// <summary>
     /// Resolves DeepDiveTools directly for tests that exercise tools not wrapped by the
-    /// legacy CampaignTools facade (e.g. get_item).
+    /// legacy CampaignTools facade (e.g. get_entity).
     /// </summary>
-    public static DeepDiveTools CreateDeepDiveTools(RavenDBFixture fixture, CampaignRepository? repository = null)
+    public static DeepDiveTools CreateDeepDiveTools(RavenDBFixture fixture, CampaignRepository? repository = null) =>
+        CreateTool<DeepDiveTools>(fixture, repository);
+
+    /// <summary>
+    /// Resolves any tool class directly for tests exercising tools outside the legacy facade
+    /// (SessionTools.start_session, CombatTools.combat, CampaignManagementTools.get_rules_reference, ...).
+    /// </summary>
+    public static T CreateTool<T>(RavenDBFixture fixture, CampaignRepository? repository = null) where T : notnull
     {
         var repo = repository ?? fixture.CreateRepository();
 
@@ -79,6 +86,6 @@ internal static class TestCampaignToolsFactory
                 .InstancePerLifetimeScope();
         });
 
-        return scope.Resolve<DeepDiveTools>();
+        return scope.Resolve<T>();
     }
 }

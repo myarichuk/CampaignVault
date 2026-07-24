@@ -177,7 +177,7 @@ public class CommitChangesParserTests
     }
 
     [Fact]
-    public void TryNormalize_Commit_UnwrapsStringEncodedChangesArray()
+    public void TryNormalize_TakeTurn_UnwrapsStringEncodedChangesArray()
     {
         var args = new JsonObject
         {
@@ -185,10 +185,11 @@ public class CommitChangesParserTests
             ["narrative"] = "Beat narrative",
         };
 
-        var modified = ToolCallExamples.TryNormalize("commit", args, out var rewrites);
+        var modified = ToolCallExamples.TryNormalize("take_turn", args, out var rewrites);
 
         Assert.True(modified);
-        Assert.IsType<JsonArray>(args["changes"]);
+        Assert.Contains("flattened→request", rewrites);
+        Assert.IsType<JsonArray>(args["request"]!["changes"]);
         Assert.Contains("changes(string)→changes(array)", rewrites);
     }
 }

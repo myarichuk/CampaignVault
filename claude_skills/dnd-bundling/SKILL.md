@@ -1,6 +1,13 @@
-# Bundling & Composite Actions (Phase C.5 Guidance)
+---
+name: dnd-bundling
+description: Which WorldChange types to bundle in one take_turn call — cohesion rules, decision tree, and common patterns
+metadata:
+  type: skill
+---
 
-**Context**: Campaign Vault's `take_turn` tool handles all mutations atomically with bundled auto-refresh. This skill guides which WorldChange types to bundle in one `take_turn` call for cohesion and narrative clarity. No need to choose between tools — `take_turn` is the unified pattern.
+# Bundling & Composite Actions
+
+**Context**: Campaign Vault's `take_turn` tool handles all mutations atomically with bundled auto-refresh. This skill guides which WorldChange types to bundle in one `take_turn` call for cohesion and narrative clarity. There is no separate commit tool and no wrapper tools — `take_turn` with your chosen changes[] is the one mutation pattern.
 
 ## Core Principle: Bundling Cohesion
 
@@ -12,7 +19,7 @@ A **bundle** is a set of `WorldChange` types that logically belong together — 
 - `engagement_relation` + `event` (establish a new relationship, log it)
 
 ❌ **Incoherent bundles**:
-- `ruleset_action` (attack) + `item_update` (unrelated item state) — use two separate commits
+- `ruleset_action` (attack) + `item_update` (unrelated item state) — use two separate take_turn calls
 - `event` + `event` — typically redundant; one event should suffice
 - `character_update` (mood) + `spatial_position` + `activity` (unclustered changes) — break into separate beats
 
@@ -20,26 +27,26 @@ A **bundle** is a set of `WorldChange` types that logically belong together — 
 
 ### 1. **Is this one narrative beat?**
 
-**Yes** → Go to #2  
+**Yes** → Go to #2
 **No** (multiple distinct events) → Call `take_turn` separately for each beat
 
 **Example: Yes**
 ```
 Valen tries to seduce the guard.
 → One beat, one skill check, one relationship outcome
-→ Single bundle or commit
+→ Single take_turn bundle
 ```
 
 **Example: No**
 ```
 Valen attacks the guard, the guard takes damage, and alarm bells ring across the fort.
 → Three beats: attack, alarm (event), and fort reaction (NPC activities)
-→ Three separate commits
+→ Three separate take_turn calls
 ```
 
 ### 2. **Does the outcome change character state?**
 
-**Yes** → Go to #3  
+**Yes** → Go to #3
 **No** → Just an `event` or `ruleset_action` (read-only check)
 
 **Example: Yes**
@@ -49,20 +56,13 @@ Valen persuades the barkeep → Barkeep's trust increases → character state ch
 
 **Example: No**
 ```
-Valen asks the barkeep "Have you heard of the Shadow Guild?" 
+Valen asks the barkeep "Have you heard of the Shadow Guild?"
 → DM responds with roleplay → no game state change (unless barkeep gives an item)
 ```
 
 ### 3. **How many WorldChange types does this action need?**
 
-**One type** (e.g., just `character_update` for a mood shift)
-→ Use raw `commit` with that single type, or wait for lightweight wrapper tools (Phase B+)
-
-**Two types** (e.g., `ruleset_action` + `engagement_relation`)
-→ Use raw `commit` with the pair; pattern is stable and clear
-
-**Three+ types** (e.g., social success bundles `ruleset_action` + `engagement_relation` + `event` + `item_transfer`)
-→ Use `take_turn` with explicit changes[] list (reference `DmHelpManual` for bundling examples). Composite tools (`perform_dialogue`, `update_entity`) are no longer planned — `take_turn` with your chosen changes is the pattern.
+However many the beat genuinely needs — one, two, or five — they all go in ONE `take_turn` changes[] array. Never split a single beat's changes across calls (a failed batch rolls back atomically; a split batch can half-persist). Reference `get_help topic=patterns` for worked examples.
 
 ## Common Bundling Patterns
 
@@ -71,7 +71,7 @@ Valen asks the barkeep "Have you heard of the Shadow Guild?"
 **Success case**:
 ```json
 [
-  { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck", 
+  { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck",
     "actionName": "Persuasion", "parameters": { "skill": "Persuasion", "dc": "14" } },
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep",
     "engagement": { "verb": "persuaded", "distanceBand": "close" } },
@@ -91,11 +91,11 @@ Valen asks the barkeep "Have you heard of the Shadow Guild?"
 
 ### Combat Action (Attack + Damage)
 
-Use `take_turn` with ruleset_action (no separate tool needed — Phase C.8 demoted semantic wrappers):
+Use `take_turn` with ruleset_action (no separate attack tool exists):
 ```json
 [
   { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "Attack",
-    "actionName": "Longsword", "targetIds": ["chars/goblin1"], 
+    "actionName": "Longsword", "targetIds": ["chars/goblin1"],
     "parameters": { "damageDice": "1d8+3" } }
   // HP delta is auto-applied; no separate $type needed
 ]
@@ -106,7 +106,7 @@ Use `take_turn` with ruleset_action (no separate tool needed — Phase C.8 demot
 **Single change**:
 ```json
 [
-  { "$type": "character_update", "characterId": "chars/valen", 
+  { "$type": "character_update", "characterId": "chars/valen",
     "newMood": "Wounded", "updateAppearance": "bloodied, breathing hard" }
 ]
 ```
@@ -188,19 +188,18 @@ Use `take_turn` with ruleset_action (no separate tool needed — Phase C.8 demot
 
 | **Unsure about bundling** | Use `take_turn` with explicit changes[] batch — auto-refresh handles follow-up reads |
 
-## Phase C Completion (C.5)
+## Refresh Opt-Ins (avoid extra round-trips)
 
-**Phase C.1** (✅): `take_turn` unified tool — mutations + auto-refresh in one call.  
-**Phase C.2** (✅): Query tool demotion to internal (GetScene, GetNpcContext, GetSceneSummary, GetNpcSummary).  
-**Phase C.3** (✅): Enhanced WorldState bundling, full-detail opt-in views, differential test coverage.  
-**Phase C.4** (✅): Pressure items and suggested commit examples in WorldState.  
-**Phase C.5** (✅): Commit tool demotion to internal. Public tool surface stabilized at 38 tools.  
+`take_turn` echoes touched-entity summaries automatically. When the next beat needs more, opt in on the SAME call instead of a follow-up query:
+- `includeParty: true` — full party roster refresh
+- `includeWorldState: true` (+ `partyLocationId`) — rumors/quests/factions/time/pressures
+- `fullDetailCharacterId` / `fullDetailLocationId` — one full NPC/scene view bundled in
+- `extraCharacterIds` / `extraLocationIds` — refresh entities the batch didn't touch
 
-**Resolution**: Composite write-side tools (`perform_dialogue`, `update_entity`, `faction_action`) are no longer planned. The `take_turn` pattern with your chosen changes[] is the preferred approach — it's simpler, more explicit, and already includes atomic bundling + auto-refresh.
+Standalone reads with no mutation use `get_entity` instead.
 
 For bundling decisions, use:
 - This decision tree
-- `DmHelpManual.cs` (get_help topic=patterns)
-- `recommended-system-prompt.md` (PHASE C UNIFIED TURNS section)
-- `CommitHelpExamples.cs` (sample JSON)
-- `take_turn` with explicit WorldChange arrays and auto-refresh
+- `get_help topic=patterns` (worked examples)
+- `recommended-system-prompt.md` (SACRED RULES section)
+- `get_commit_schema` (per-$type required fields and co-commit hints)

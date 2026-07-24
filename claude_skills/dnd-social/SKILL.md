@@ -108,9 +108,9 @@ If the NPC learns something new (local rumors, PC background, strategic intel):
 
 ## Social Checklist
 
-- [ ] Did I `get_npc_context` to read Trust/Suspicion/Loyalty/Fear?
+- [ ] Did I fetch the NPC full detail (`get_entity` chars/ id) to read Trust/Suspicion/Loyalty/Fear?
 - [ ] Is there a skill check? → `ruleset_action` first, narrate outcome from result
 - [ ] Did words get exchanged? → Commit `event` (category: Conversation, involved: all speakers)
-- [ ] Did relationship shift? → `relationship_change` commit
+- [ ] Did relationship shift? → `relationship` change in take_turn
 - [ ] Did the NPC learn something? → `knowledge_update`
 - [ ] Did time pass (banter, tense talk)? → `minutesElapsed` on the commit

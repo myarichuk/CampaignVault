@@ -8,9 +8,9 @@ namespace CampaignVault.Tests;
 public class McpToolErrorFilterTests
 {
     [Theory]
-    [InlineData("get_current_campaign", "campaignName", "campaign slug")]
-    [InlineData("commit", "changes", "get_help")]
-    [InlineData("get_scene", "locationId", "search_world")]
+    [InlineData("take_turn", "changes", "get_help")]
+    [InlineData("get_entity", "entityId", "search_world")]
+    [InlineData("combat", "action", "start")]
     [InlineData("world_build", "batch", "arrays")]
     public void BuildMissingParamMessage_IncludesToolSpecificHints(string tool, string param, string expectedHint)
     {

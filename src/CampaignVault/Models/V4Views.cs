@@ -89,7 +89,9 @@ public record ActiveQuestSummary(
     string? GiverId = null,
     int LastUpdatedDay = 0,
     /// <summary>Oldest open/in-progress objective anchor day (TotalDaysElapsed). Used for staleness pressures.</summary>
-    int OldestOpenObjectiveDay = 0)
+    int OldestOpenObjectiveDay = 0,
+    /// <summary>True when DeadlineDay has already passed — the quest is still surfaced (deadline misses are campaign-critical) but should be narrated as overdue, not merely urgent.</summary>
+    bool IsOverdue = false)
 {
     public ActiveQuestSummary() : this(default!, default!, default!, default!, default!) { }
 }

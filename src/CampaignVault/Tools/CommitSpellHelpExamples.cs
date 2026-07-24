@@ -19,7 +19,7 @@ internal static class CommitSpellHelpExamples
 
 **HP from ruleset_action:** The engine auto-applies `hp` deltas for attacks, saves, and heals. Do NOT also commit separate `hp` changes for the same hit.
 
-**Spell slots:** commit `resource` with `spellName` (from `get_spells`) when spending `spell_slots_*` — engine validates slot level. Cantrips do not use slots.
+**Spell slots:** commit `resource` with `spellName` (from `get_rules_reference kind:'spells'`) when spending `spell_slots_*` — engine validates slot level. Cantrips do not use slots.
 
 **After any spell:** commit `status` separately for concentration, charm, etc.
 """;

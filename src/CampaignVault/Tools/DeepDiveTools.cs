@@ -9,20 +9,91 @@ namespace CampaignVault.Tools;
 [McpServerToolType]
 public class DeepDiveTools : CampaignToolBase, IMcpServerTool
 {
+    private readonly ExplorationTools _exploration;
+
     public DeepDiveTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
+        ExplorationTools exploration,
         ILogger<DeepDiveTools>? logger = null)
         : base(repository, keys, logger)
     {
+        _exploration = exploration;
     }
 
     [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "DEEP DIVE TOOL: Returns the full Faction document (stances, influence, territory, leaders, metadata). Requires campaignName.")]
-    public Task<ToolResult<Faction>> GetFactionContext(
-        [Description("Exact faction ID e.g. 'factions/thieves-guild' (use fuzzy search or get_scene first if unsure).")]
+        @"ENTITY DEEP DIVE: Fetch ONE entity in full detail by its exact ID — the entity type is inferred from the ID prefix:
+- 'chars/…' → full NPC context (psychology, social, needs, behavior synthesis, held items, recent interactions)
+- 'locations/…' → full scene (present NPCs, items, climate, local rumors, pressures; pass partyPresent:true when the party is physically there)
+- 'factions/…' → full faction document (stances, influence, territory)
+- 'quests/…' → full quest document (objectives, deadlines, rewards)
+- 'items/…' → full item document (including persistent ItemDetails: scratches, secret compartments, damage/wear)
+- 'plot-threads/…' → full plot thread (clues, foreshadowing, DM notes); pass the literal id 'plot-threads' to list all active threads
+Use search_world first when you only know a name, not the ID. To bundle a full-detail fetch WITH a mutation in one round-trip, use take_turn's fullDetailCharacterId/fullDetailLocationId instead. Requires campaignName.")]
+    public async Task<ToolResult<object>> GetEntity(
+        [Description("Exact entity ID with type prefix, e.g. 'chars/valen', 'locations/rusty-nail', 'quests/rats_01', 'factions/thieves-guild', 'items/battle-worn-sword', 'plot-threads/guild-infiltration' — or the literal 'plot-threads' to list all active threads.")]
+        string entityId,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName,
+        [Description("Locations only: set true if the party is physically entering or spending time at the location (prevents transient-NPC cleanup).")]
+        bool partyPresent = false)
+    {
+        if (string.IsNullOrWhiteSpace(entityId))
+        {
+            return await ToolArgumentErrors.Missing<object>(
+                "entityId",
+                "Pass an exact entity ID with its type prefix (chars/, locations/, factions/, quests/, items/, plot-threads/). Use search_world to find IDs.",
+                toolName: "get_entity");
+        }
+
+        var id = entityId.Trim();
+
+        if (id.Equals("plot-threads", StringComparison.OrdinalIgnoreCase))
+        {
+            return Box(await ListPlotThreads(campaignName));
+        }
+
+        if (id.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+        {
+            return Box(await _exploration.GetNpcContext(id, campaignName));
+        }
+
+        if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
+        {
+            return Box(await _exploration.GetScene(id, campaignName, partyPresent));
+        }
+
+        if (id.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
+        {
+            return Box(await GetFactionContext(id, campaignName));
+        }
+
+        if (id.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
+        {
+            return Box(await GetQuestDetails(id, campaignName));
+        }
+
+        if (id.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
+        {
+            return Box(await GetItem(id, campaignName));
+        }
+
+        if (id.StartsWith("plot-threads/", StringComparison.OrdinalIgnoreCase))
+        {
+            return Box(await GetPlotThread(id, campaignName));
+        }
+
+        return new ToolResult<object>(false, Error: ToolErrors.InvalidArgument,
+            Summary: $"Unrecognized entity ID prefix in '{id}'. Supported prefixes: chars/, locations/, factions/, quests/, items/, plot-threads/ (or literal 'plot-threads' to list threads). For rumors, lore, or name-based lookup use search_world.");
+    }
+
+    private static ToolResult<object> Box<T>(ToolResult<T> r) =>
+        new(r.Success, r.Data, r.Summary, r.Error, r.WorldPressure, r.RetryExample);
+
+    internal Task<ToolResult<Faction>> GetFactionContext(
+        [Description("Exact faction ID e.g. 'factions/thieves-guild' (use search_world first if unsure).")]
         string factionId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
@@ -37,7 +108,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
                     ? " Did you mean: " + string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"))
                     : "";
                 return new ToolResult<Faction>(false, Error: "NotFound",
-                    Summary: $"Faction '{factionId}' not found.{hint} Use exact ID from get_scene or search.");
+                    Summary: $"Faction '{factionId}' not found.{hint} Use the exact ID from search_world.");
             }
 
             return new ToolResult<Faction>(true, faction,
@@ -45,12 +116,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
         }, saveChanges: false);
     }
 
-    [ToolCategory("Deep dives")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(
-        "PLOT THREADS: Returns all active/escalating/climax plot threads for the campaign — DM-facing narrative arcs. " +
-        "Includes tension level, discovered clue count, and resolution condition. Requires campaignName.")]
-    public Task<ToolResult<IReadOnlyList<PlotThread>>> ListPlotThreads(
+    internal Task<ToolResult<IReadOnlyList<PlotThread>>> ListPlotThreads(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
@@ -64,11 +130,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
         }, saveChanges: false);
     }
 
-    [ToolCategory("Deep dives")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(
-        "PLOT THREAD DEEP DIVE: Returns the full PlotThread document — all clues, foreshadowing hooks, involved entities, and DM notes. Requires campaignName.")]
-    public Task<ToolResult<PlotThread>> GetPlotThread(
+    internal Task<ToolResult<PlotThread>> GetPlotThread(
         [Description("Exact plot thread ID e.g. 'plot-threads/guild-infiltration'.")]
         string plotThreadId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -79,7 +141,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
             var thread = await _repository.GetPlotThreadAsync(session, plotThreadId, effective);
             if (thread == null)
                 return new ToolResult<PlotThread>(false, Error: "NotFound",
-                    Summary: $"PlotThread '{plotThreadId}' not found. Use list_plot_threads to see available IDs.");
+                    Summary: $"PlotThread '{plotThreadId}' not found. Pass 'plot-threads' to get_entity to list available threads.");
 
             var discoveredClues = thread.Clues.Count(c => c.IsDiscovered);
             return new ToolResult<PlotThread>(true, thread,
@@ -87,11 +149,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
         }, saveChanges: false);
     }
 
-    [ToolCategory("Deep dives")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(
-        "DEEP DIVE TOOL: Returns the full Quest document (objectives, deadlines, rewards, giver). Requires campaignName.")]
-    public Task<ToolResult<Quest>> GetQuestDetails(
+    internal Task<ToolResult<Quest>> GetQuestDetails(
         [Description("Exact quest ID e.g. 'quests/rats_01'.")]
         string questId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -113,14 +171,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
         }, saveChanges: false);
     }
 
-    [ToolCategory("Deep dives")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(
-        "DEEP DIVE TOOL: Returns the full Item document by exact ID — including all persistent ItemDetails " +
-        "(scratches, stains, secret compartments, damage/wear) with their ids, useful before retiring a detail " +
-        "via item_update's retireItemDetailId, or before reviewing an item's full history. For fuzzy/semantic " +
-        "item lookup by name, use search_world instead. Requires campaignName.")]
-    public Task<ToolResult<Item>> GetItem(
+    internal Task<ToolResult<Item>> GetItem(
         [Description("Exact item ID e.g. 'items/battle-worn-sword' (use search_world first if unsure).")]
         string itemId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]

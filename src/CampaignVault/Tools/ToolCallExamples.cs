@@ -16,6 +16,13 @@ internal static class ToolCallExamples
     /// </summary>
     private static readonly HashSet<string> SiblingParameterKeys = new(StringComparer.Ordinal) { "campaignName" };
 
+    /// <summary>Alias repairs applied to take_turn's payload (both top-level flattened calls and the nested 'request' object).</summary>
+    private static readonly Dictionary<string, string[]> TakeTurnPayloadSynonyms = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["changes"] = ["change", "commits", "worldChanges", "world_changes", "deltas"],
+        ["narrative"] = ["summary", "description", "narration"],
+    };
+
     public static bool TryGet(string toolName, out ToolCallExample example) =>
         Registry.TryGetValue(toolName, out example!);
 
@@ -92,8 +99,75 @@ internal static class ToolCallExamples
             }
         }
 
-        if (string.Equals(toolName, "commit", StringComparison.OrdinalIgnoreCase)
-            && arguments.TryGetPropertyValue("changes", out var changesNode))
+        // take_turn nests its payload under 'request'. Repairs, in order: alias fixes at both levels,
+        // rewrapping a flattened call, then normalizing the changes array itself.
+        JsonNode? changesNode = null;
+        JsonObject? changesOwner = null;
+        if (string.Equals(toolName, "take_turn", StringComparison.OrdinalIgnoreCase))
+        {
+            bool ApplyPayloadAliases(JsonObject target)
+            {
+                var any = false;
+                foreach (var (canonical, aliases) in TakeTurnPayloadSynonyms)
+                {
+                    if (target.ContainsKey(canonical))
+                    {
+                        continue;
+                    }
+
+                    foreach (var alias in aliases)
+                    {
+                        if (!target.ContainsKey(alias))
+                        {
+                            continue;
+                        }
+
+                        target[canonical] = JsonNode.Parse(target[alias]!.ToJsonString());
+                        target.Remove(alias);
+                        applied.Add($"{alias}→{canonical}");
+                        any = true;
+                        break;
+                    }
+                }
+
+                return any;
+            }
+
+            modified |= ApplyPayloadAliases(arguments);
+
+            if (!arguments.ContainsKey("request") &&
+                (arguments.ContainsKey("changes") || arguments.ContainsKey("narrative")))
+            {
+                var wrapped = new JsonObject();
+                foreach (var prop in arguments.ToList())
+                {
+                    if (SiblingParameterKeys.Contains(prop.Key))
+                    {
+                        continue;
+                    }
+
+                    wrapped[prop.Key] = prop.Value?.DeepClone();
+                    arguments.Remove(prop.Key);
+                }
+
+                arguments["request"] = wrapped;
+                applied.Add("flattened→request");
+                modified = true;
+            }
+
+            if (arguments.TryGetPropertyValue("request", out var requestNode)
+                && requestNode is JsonObject requestObj)
+            {
+                modified |= ApplyPayloadAliases(requestObj);
+
+                if (requestObj.TryGetPropertyValue("changes", out changesNode))
+                {
+                    changesOwner = requestObj;
+                }
+            }
+        }
+
+        if (changesOwner is not null)
         {
             if (changesNode is JsonValue
                 && changesNode.GetValueKind() == JsonValueKind.String
@@ -105,7 +179,7 @@ internal static class ToolCallExamples
                     var parsed = JsonNode.Parse(changesText);
                     if (parsed is JsonArray)
                     {
-                        arguments["changes"] = parsed;
+                        changesOwner["changes"] = parsed;
                         applied.Add("changes(string)→changes(array)");
                         modified = true;
                         changesNode = parsed;
@@ -396,43 +470,23 @@ internal static class ToolCallExamples
 
         return new Dictionary<string, ToolCallExample>(StringComparer.OrdinalIgnoreCase)
         {
-            ["get_npc_context"] = new ToolCallExample
+            ["get_entity"] = new ToolCallExample
             {
-                ToolName = "get_npc_context",
-                Synonyms = characterIdSynonyms,
+                ToolName = "get_entity",
+                Synonyms = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["entityId"] = ["id", "characterId", "npcId", "charId", "locationId", "factionId", "questId", "itemId", "plotThreadId"],
+                },
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
-                      "characterId": "chars/innkeeper"
+                      "entityId": "chars/innkeeper"
                     }
                     """)!.AsObject(),
             },
-            ["get_npc_needs"] = new ToolCallExample
+            ["combat"] = new ToolCallExample
             {
-                ToolName = "get_npc_needs",
-                Synonyms = characterIdSynonyms,
-                ArgumentsTemplate = JsonNode.Parse(
-                    """
-                    {
-                      "characterId": "chars/innkeeper"
-                    }
-                    """)!.AsObject(),
-            },
-            ["get_scene"] = new ToolCallExample
-            {
-                ToolName = "get_scene",
-                Synonyms = locationIdSynonyms,
-                ArgumentsTemplate = JsonNode.Parse(
-                    """
-                    {
-                      "locationId": "locations/tavern",
-                      "partyPresent": true
-                    }
-                    """)!.AsObject(),
-            },
-            ["start_combat"] = new ToolCallExample
-            {
-                ToolName = "start_combat",
+                ToolName = "combat",
                 Synonyms = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["locationId"] = ["locId", "location_id", "loc_id", "location"],
@@ -441,19 +495,15 @@ internal static class ToolCallExamples
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
+                      "action": "start",
                       "locationId": "locations/tavern",
                       "combatantIds": ["chars/pc1", "chars/guard-captain"]
                     }
                     """)!.AsObject(),
             },
-            ["commit"] = new ToolCallExample
+            ["take_turn"] = new ToolCallExample
             {
-                ToolName = "commit",
-                Synonyms = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["changes"] = ["change", "commits", "worldChanges", "world_changes", "deltas"],
-                    ["narrative"] = ["summary", "description", "narration"],
-                },
+                ToolName = "take_turn",
                 DeserializationHint =
                     "Conversation events MUST include 'involved' with every participant's character ID (NOT 'participants'). "
                     + "Put location IDs in 'locationId'/'relatedLocationIds', not 'involved' — 'involved' is for character/faction/item IDs only. "
@@ -471,33 +521,31 @@ internal static class ToolCallExamples
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
-                      "changes": [
-                        {
-                          "$type": "event",
-                          "category": "Conversation",
-                          "summary": "Valen spoke with the innkeeper at the bar about harbor gossip.",
-                          "involved": ["chars/valen", "chars/innkeeper"]
-                        },
-                        {
-                          "$type": "engagement_relation",
-                          "characterId": "chars/valen",
-                          "targetId": "chars/innkeeper",
-                          "category": "Social",
-                          "verb": "talking with",
-                          "bidirectional": true
-                        },
-                        {
-                          "$type": "activity",
-                          "characterId": "chars/valen",
-                          "newActivity": "Leaning on the bar, listening to the innkeeper"
-                        },
-                        {
-                          "$type": "activity",
-                          "characterId": "chars/innkeeper",
-                          "newActivity": "Tending bar and sharing gossip with Valen"
-                        }
-                      ],
-                      "narrative": "Valen ordered ale and exchanged news with the innkeeper."
+                      "request": {
+                        "changes": [
+                          {
+                            "$type": "event",
+                            "category": "Conversation",
+                            "summary": "Valen spoke with the innkeeper at the bar about harbor gossip.",
+                            "involved": ["chars/valen", "chars/innkeeper"]
+                          },
+                          {
+                            "$type": "engagement_relation",
+                            "characterId": "chars/valen",
+                            "targetId": "chars/innkeeper",
+                            "category": "Social",
+                            "verb": "talking with",
+                            "bidirectional": true
+                          },
+                          {
+                            "$type": "activity",
+                            "characterId": "chars/valen",
+                            "newActivity": "Leaning on the bar, listening to the innkeeper"
+                          }
+                        ],
+                        "narrative": "Valen ordered ale and exchanged news with the innkeeper."
+                      },
+                      "campaignName": "dragon-heist"
                     }
                     """)!.AsObject(),
             },
@@ -506,7 +554,7 @@ internal static class ToolCallExamples
                 ToolName = "world_build",
                 DeserializationHint =
                     "Each field is an optional array using the same shape as the matching upsert_* tool's entity payload "
-                    + "(locations[] ~ upsert_location's 'location', characters[] ~ upsert_character's 'character', etc.). "
+                    + "(locations[] entries mirror location_update's fields, characters[] mirror character_update's, etc.). "
                     + "Dispatched in a fixed order: locations, factions, creatures/spells/feats, characters, items, quests, "
                     + "plotThreads, lore, rumors, then needDescriptors — all in ONE call. Capped at 100 total entries; split "
                     + "larger seeds into multiple calls. A validation failure on any entry rolls back the entire batch and "
@@ -537,7 +585,7 @@ internal static class ToolCallExamples
                     args.ContainsKey("id") && args.ContainsKey("name") && !args.ContainsKey("character"),
                 DeserializationHint =
                     "Required: id, name. This is the only tool that CREATES a character — for changes to an existing "
-                    + "one (HP, activity, location, level-up, status) use commit instead, not another upsert_character call. "
+                    + "one (HP, activity, location, level-up, status) use take_turn changes instead, not another create call. "
                     + "Omit maxHp for PCs — the engine derives it from systemStats (hitDie/level/constitution etc.) at "
                     + "bootstrap; set maxHp directly only for creature stat blocks (or use systemStats.statBlockHp). "
                     + "systemStats.$system is 'dnd5e' or 'pf2e' (lowercase, exact) — omit the whole systemStats object for "
@@ -622,9 +670,9 @@ internal static class ToolCallExamples
                     args.ContainsKey("name") && args.ContainsKey("system") && !args.ContainsKey("creature"),
                 DeserializationHint =
                     "Required: id, name, system (Dnd5e, Pathfinder2e, or Narrative). This defines a reusable homebrew "
-                    + "stat-block TEMPLATE that overrides SRD creatures by name when queried via query_creatures — it is "
+                    + "stat-block TEMPLATE that overrides SRD creatures by name when queried via get_rules_reference (kind:'creatures') — it is "
                     + "distinct from a live NPC/monster instance in a scene, which is created via world_build's "
-                    + "characters[] (or upsert_character), not this tool.",
+                    + "characters[], not this tool.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
@@ -768,7 +816,7 @@ internal static class ToolCallExamples
                     args.ContainsKey("name") && args.ContainsKey("system") && !args.ContainsKey("spell"),
                 DeserializationHint =
                     "Required: id, name, system (Dnd5e, Pathfinder2e, or Narrative). Homebrew spells override SRD spells "
-                    + "by name when queried via get_spells.",
+                    + "by name when queried via get_rules_reference (kind:'spells').",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
@@ -791,7 +839,7 @@ internal static class ToolCallExamples
                     args.ContainsKey("name") && args.ContainsKey("system") && !args.ContainsKey("feat"),
                 DeserializationHint =
                     "Required: id, name, system (Dnd5e, Pathfinder2e, or Narrative). Homebrew feats/perks override SRD "
-                    + "ones by name when queried via get_system_handbook.",
+                    + "ones by name when queried via get_rules_reference (kind:'handbook').",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {

@@ -4,20 +4,18 @@ using CampaignVault.Models;
 namespace CampaignVault.Data.Pressure;
 
 /// <summary>
-/// Converts verbose pressure text to terse codes (e.g., "HUNGER:critical", "QUEST:deadline:3days").
-/// Only abbreviates Suggestion-level pressures to preserve high-fidelity data for important alerts.
-/// Reduces per-turn chattiness by ~100-150 tokens per scene on average.
+/// Converts verbose low-severity pressure text to terse codes (e.g., "HUNGER", "QUEST:deadline:3d").
+/// Only Suggestion-level pressures are abbreviated — higher severities always keep full text.
+/// Unmatched text is NEVER abbreviated: better a verbose suggestion than one whose content is lost.
 /// </summary>
 internal static class PressureAbbreviator
 {
     /// <summary>
-    /// Generates a terse abbreviation for a pressure item based on its text and grouping key.
-    /// Only returns abbreviations for Suggestion-level pressures; higher severities keep full text.
+    /// Generates a terse abbreviation for a Suggestion-level pressure item, or null to keep the
+    /// full text (higher severities, blank text, or no recognized pattern).
     /// </summary>
     public static string? TryAbbreviate(WorldPressureItem item)
     {
-        // Only abbreviate low-severity pressures (Suggestion level).
-        // Higher severities (Simulation, NarrativePrompt, EngineWarning) keep full text for clarity.
         if (item.Severity != PressureSeverity.Suggestion)
             return null;
 
@@ -28,19 +26,18 @@ internal static class PressureAbbreviator
         var groupKey = item.GroupingKey ?? "";
 
         // Pattern matching: map common low-severity pressure text patterns to terse codes.
-        // Format: {CODE}:{DETAIL} or {CODE}:{DETAIL}:{TIMEFRAME}
+        // Format: {CODE} or {CODE}:{DETAIL} or {CODE}:{DETAIL}:{TIMEFRAME}
 
-        // Character distress: "This character is starving..." → "HUNGER:critical"
         if (text.Contains("starving", StringComparison.OrdinalIgnoreCase))
-            return $"HUNGER:{SeverityCode(item.Severity)}";
+            return "HUNGER";
 
         if (text.Contains("parched", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("dying of thirst", StringComparison.OrdinalIgnoreCase))
-            return $"THIRST:{SeverityCode(item.Severity)}";
+            return "THIRST";
 
         if (text.Contains("exhausted", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("falling asleep", StringComparison.OrdinalIgnoreCase))
-            return $"TIRED:{SeverityCode(item.Severity)}";
+            return "TIRED";
 
         if (text.Contains("morale", StringComparison.OrdinalIgnoreCase))
         {
@@ -52,15 +49,15 @@ internal static class PressureAbbreviator
 
         if (text.Contains("wounded", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("blood loss", StringComparison.OrdinalIgnoreCase))
-            return $"WOUNDED:{SeverityCode(item.Severity)}";
+            return "WOUNDED";
 
         if (text.Contains("diseased", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("plague", StringComparison.OrdinalIgnoreCase))
-            return $"DISEASE:{SeverityCode(item.Severity)}";
+            return "DISEASE";
 
         if (text.Contains("cursed", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("hexed", StringComparison.OrdinalIgnoreCase))
-            return $"CURSE:{SeverityCode(item.Severity)}";
+            return "CURSE";
 
         // Quest & factions: deadline or goal
         if (groupKey.Contains("Quest", StringComparison.OrdinalIgnoreCase) ||
@@ -75,7 +72,7 @@ internal static class PressureAbbreviator
         if (text.Contains("faction", StringComparison.OrdinalIgnoreCase))
         {
             if (text.Contains("war", StringComparison.OrdinalIgnoreCase))
-                return $"FACTION:war:{SeverityCode(item.Severity)}";
+                return "FACTION:war";
             return "FACTION:stance";
         }
 
@@ -100,7 +97,7 @@ internal static class PressureAbbreviator
         if (text.Contains("temperature", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("cold", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("heat", StringComparison.OrdinalIgnoreCase))
-            return $"CLIMATE:{SeverityCode(item.Severity)}";
+            return "CLIMATE";
 
         if (text.Contains("engagement", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("grapple", StringComparison.OrdinalIgnoreCase) ||
@@ -127,24 +124,7 @@ internal static class PressureAbbreviator
         if (text.Contains("memory", StringComparison.OrdinalIgnoreCase))
             return "MEMORY:decay";
 
-        // Fallback: use first words of text if no specific pattern matched
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length > 0)
-        {
-            var fallback = string.Join("_", words.Take(2)).ToUpperInvariant();
-            return $"{fallback}:{SeverityCode(item.Severity)}";
-        }
-
+        // No recognized pattern: keep the full text — never degrade to a lossy generic code.
         return null;
     }
-
-    private static string SeverityCode(PressureSeverity severity) =>
-        severity switch
-        {
-            PressureSeverity.EngineWarning => "ALERT",
-            PressureSeverity.NarrativePrompt => "prompt",
-            PressureSeverity.Simulation => "sim",
-            PressureSeverity.Suggestion => "info",
-            _ => "?"
-        };
 }

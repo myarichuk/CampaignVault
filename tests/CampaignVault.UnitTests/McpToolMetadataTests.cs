@@ -141,23 +141,16 @@ public class McpToolMetadataTests
     }
 
     [Fact]
-    public void GetCommitSchemaAndListTools_CategoryDescriptions_AreNotSelfReferentialOrInverted()
+    public void GetCommitSchema_CategoryDescription_SelfIdentifiesItsTaxonomy()
     {
+        // list_tools was absorbed into get_help topic=tools, so only get_commit_schema still has a
+        // category parameter — its description must self-identify the change-$type taxonomy.
         var getCommitSchema = typeof(MetaTools).GetMethod(nameof(MetaTools.GetCommitSchema))!;
-        var listTools = typeof(MetaTools).GetMethod(nameof(MetaTools.ListTools))!;
 
         var commitSchemaCategoryDesc = getCommitSchema.GetParameters()
             .Single(p => p.Name == "category").GetCustomAttribute<DescriptionAttribute>()!.Description;
-        var listToolsCategoryDesc = listTools.GetParameters()
-            .Single(p => p.Name == "category").GetCustomAttribute<DescriptionAttribute>()!.Description;
 
-        // Regression guard for the previously-inverted doc string: get_commit_schema's description
-        // must not claim that list_tools groups commit $types (it groups tools).
-        Assert.DoesNotContain("list_tools' category parameter, which groups commit $types", commitSchemaCategoryDesc);
-        Assert.DoesNotContain("get_commit_schema's category parameter, which groups commit $types", listToolsCategoryDesc);
-
-        // Each description should self-identify its own taxonomy.
-        Assert.Contains("commit $type", commitSchemaCategoryDesc);
-        Assert.Contains("MCP tool", listToolsCategoryDesc);
+        Assert.Contains("$type", commitSchemaCategoryDesc);
+        Assert.DoesNotContain("list_tools", commitSchemaCategoryDesc);
     }
 }

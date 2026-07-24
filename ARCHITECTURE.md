@@ -263,12 +263,15 @@ The public MCP tool surface has evolved through several phases to reduce LLM con
 | **Phase C.6** | Guidance alignment | 38 | Updated system prompt and skill files to emphasize `take_turn` as primary pattern |
 | **Phase C.7** | Behavioral synthesis | 38 | Enhanced NPC summaries with recent event context (prevents roundtrips for behavioral context) |
 | **Phase C.8** | Wrapper demotion | 35 | Demoted `attack`, `travel_to`, `rest_at_location` to internal (thin layers now eliminated; `take_turn` is universal for mutations) |
+| **Consolidation** | Full merge | 15 | Merged deep-dives into `get_entity`, kickoff tools into `start_session`, combat lifecycle into `combat(action:...)`, rules lookups into `get_rules_reference(kind:...)`, `list_tools` into `get_help topic=tools`, need descriptors into `world_build`; deleted the demoted wrapper code outright (no backward compatibility kept) |
 
-**Current public tool count: 35** (down from original 48). The remaining public tools are:
+**Current public tool count: 15** (down from original 48). The full surface:
 
-- **Mutations:** `take_turn` (unified), `start_combat`, `next_turn`, `end_combat`, `advance_world`
-- **Queries:** `get_world_state`, `get_session_briefing`, `get_party`, `search_world`, `recall_history`, `get_npc_needs`, `get_item`, `get_faction_context`, `get_quest_details`
-- **Build:** `world_build`, `get_help`, `get_system_handbook`, `get_spells`, `get_config`, `get_current_campaign`, `create_campaign`, `set_active_system`, `list_campaigns`
-- **Meta:** `list_tools`
+- **Mutations & time:** `take_turn` (THE mutation tool — changes[] + narrative in, commit outcome + bundled fresh state out; also serves pure refreshes via includeParty/includeWorldState/full-detail opt-ins), `advance_world`
+- **Session:** `start_session` (kickoff superset: recap + campaign context + world state + seed coverage + party), `end_session`
+- **Discovery:** `search_world`, `recall_history`, `get_entity` (one entity full-detail by exact id: chars/, locations/, factions/, quests/, items/, plot-threads/)
+- **Combat:** `combat` (action: start | next | end | status — lifecycle only; combat actions go through take_turn's ruleset_action, reactions via isReaction:true)
+- **Build & campaign:** `world_build`, `create_campaign`, `list_campaigns`, `get_config`, `get_rules_reference` (kind: handbook | spells | creatures)
+- **Meta:** `get_help` (topic=tools serves the catalog), `get_commit_schema`
 
-**Design principle:** Public tools should reduce LLM decision ambiguity. Retired/demoted tools were either (1) redundant with newer patterns, or (2) thin semantic wrappers that added unnecessary tool-name confusion. Internal tools remain for backward-compatibility and internal choreography but do not clutter the LLM's decision tree.
+**Design principle:** Public tools should reduce LLM decision ambiguity. Retired/demoted tools were either (1) redundant with newer patterns, or (2) thin semantic wrappers that added unnecessary tool-name confusion. Internal methods remain only where public dispatchers or tests reuse their logic — dead wrappers were deleted rather than kept.

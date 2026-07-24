@@ -25,7 +25,7 @@ Region → Settlement → District → Building → Room
 |------|-----------------------------------|
 | Region / Settlement | Only as the `from`/`to` of a `travel` commit, or as backdrop description ("the free city sprawls below"). **Never** the anchor of an active scene. |
 | District | Named neighborhoods/streets inside a settlement. Create these liberally — cheap, and they give the party somewhere concrete to be without needing full interiors yet. |
-| Building / Room | Anywhere a scene will actually play out for more than a beat — a specific tavern, the guard captain's office, the alley behind the smithy. This is where `get_scene`'s anchored location should resolve once the party has arrived and is doing something. |
+| Building / Room | Anywhere a scene will actually play out for more than a beat — a specific tavern, the guard captain's office, the alley behind the smithy. This is where the anchored scene (get_entity with the location id) should resolve once the party has arrived and is doing something. |
 
 If the party arrives in a settlement and you're about to narrate a scene (a conversation, a search, a fight), don't anchor it at the Settlement/Region level — that's an ancestor, not a place to stand. Resolve or create the District/Building/Room first:
 
@@ -96,7 +96,7 @@ Travel can trigger random encounters. Engine resolves and returns encounter NPC/
 ## Location Transitions
 
 After arriving at a location:
-1. Call `get_scene` to read location state + any NPCs/creatures present
+1. Call `get_entity` with the location id (partyPresent: true) to read location state + any NPCs/creatures present
 2. Check `WorldPressure` for location-specific ENGINE WARNINGs
 3. Narrate arrival sensory details
 4. Continue from there
@@ -128,7 +128,7 @@ Travel and rest apply `minutesElapsed`. Hunger/thirst/tiredness advance immediat
 - [ ] Is this a local move (same location, safe)? → `activity`
 - [ ] Is this a real journey (distance, danger)? → `travel` with encounterRiskModifier
 - [ ] Is this an overnight span with stakes? → `rest` (not `advance_world`)
-- [ ] Did I `get_scene` after arrival to read location state?
+- [ ] Did I fetch the scene (`get_entity` locations/ id, partyPresent: true) after arrival?
 - [ ] Is there a check (Perception, Investigation, Survival)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll?
 - [ ] Did time pass? → `minutesElapsed` on commits

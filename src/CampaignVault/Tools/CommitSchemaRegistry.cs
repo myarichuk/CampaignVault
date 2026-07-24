@@ -101,7 +101,7 @@ internal static class CommitSchemaRegistry
 
         // ── Narrative ────────────────────────────────────────────────────────────────
         new("event", "Narrative",
-            "Record a noteworthy occurrence. Required after combat rounds, conversations, and discoveries to populate recall_history and get_npc_context. Set recordingMode to 'Deliberate' when the player performs an explicit, in-fiction act of recording (marking a map, writing a name down, deliberately memorizing a landmark). Leave as 'Passive' (or omit) for ambient narrative elements. Deliberate events lock in high importance and skip heuristic inference; Passive events infer tone/importance from context and decay naturally. Do NOT put a location ID inside 'involved' — use 'locationId'/'relatedLocationIds' so recall_history/location-scoped queries can find it.",
+            "Record a noteworthy occurrence. Required after combat rounds, conversations, and discoveries to populate recall_history and NPC context views (get_entity). Set recordingMode to 'Deliberate' when the player performs an explicit, in-fiction act of recording (marking a map, writing a name down, deliberately memorizing a landmark). Leave as 'Passive' (or omit) for ambient narrative elements. Deliberate events lock in high importance and skip heuristic inference; Passive events infer tone/importance from context and decay naturally. Do NOT put a location ID inside 'involved' — use 'locationId'/'relatedLocationIds' so recall_history/location-scoped queries can find it.",
             ["summary"],
             ["category", "involved", "emotionalBeat", "relatedEntityId", "locationId", "relatedLocationIds", "eventId", "importance", "recordingMode"],
             HasSideEffects: false,
@@ -220,7 +220,7 @@ internal static class CommitSchemaRegistry
             "Update an item's state, category, tags, or properties. Also handles persistent granular " +
             "ItemDetails (scratches, stains, secret compartments) via upsertItemDetail/retireItemDetailId — " +
             "durable, examine-able state distinct from temporary tags or narrative flavor. To seed initial " +
-            "ItemDetails on a brand-new item, pass itemDetails on upsert_item/world_build instead — this " +
+            "ItemDetails on a brand-new item, pass itemDetails on world_build instead — this " +
             "$type is for incremental changes to an item that already exists.",
             ["itemId"],
             ["newState", "coreCategory", "tagsToAdd", "tagsToRemove", "featuresToAdd",
@@ -347,7 +347,7 @@ internal static class CommitSchemaRegistry
             "recover/award. Currency pools: 'gold' (dnd5e/pf2e), 'caps' (fallout2d20) — never recover, capped " +
             "at a large finite max (not literally unlimited). Grants clamp to max; spends that would go " +
             "below 0 HARD-FAIL with an 'Insufficient <pool>' error instead of clamping. " +
-            "Set spellName when spending spell_slots_* for slot-level validation (call get_spells for names).",
+            "Set spellName when spending spell_slots_* for slot-level validation (call get_rules_reference kind:'spells' for names).",
             ["characterId", "poolName", "delta"],
             ["reason", "spellName"],
             HasSideEffects: false,
@@ -367,5 +367,16 @@ internal static class CommitSchemaRegistry
             SideEffects: [],
             CoCommitHints: [],
             Example: """{"$type":"archive_entity","entityType":"Quest","entityId":"quests/stop-nightshade","archived":true}"""),
+
+        new("campaign_update", "World",
+            "Update campaign-level meta during play. Currently: replace the narrative focus tag list " +
+            "(steers event-importance judgment — see the Narrative Focus section in get_help). Campaigns evolve — " +
+            "commit this when the story's center of gravity shifts. Pass the FULL tag list you want retained.",
+            ["narrativeFocus"],
+            [],
+            HasSideEffects: false,
+            SideEffects: [],
+            CoCommitHints: [],
+            Example: """{"$type":"campaign_update","narrativeFocus":["political intrigue","court politics"]}"""),
     ];
 }

@@ -193,6 +193,7 @@ mcpServerBuilder
     .WithToolsFromAssembly()
     .WithRequestFilters(filters =>
     {
+        McpToolTelemetryFilter.Register(filters);
         McpToolErrorFilter.Register(filters);
         McpResponseCleaner.Register(filters);
     });
@@ -200,6 +201,8 @@ mcpServerBuilder
 builder.Services.AddGrpc();
 
 var app = builder.Build();
+
+McpToolTelemetryFilter.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
 app.UseCors();
 

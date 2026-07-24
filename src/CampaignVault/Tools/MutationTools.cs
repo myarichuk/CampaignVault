@@ -1,12 +1,12 @@
 using System.ComponentModel;
 using System.Collections.Concurrent;
-using System.Text.Json;
 using System.Threading.RateLimiting;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Tools;
 
@@ -17,17 +17,39 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     private readonly IPressureOrchestrator _pressureOrchestrator;
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
 
-    // Keyed per-campaign so commits in one campaign never throttle another.
+    // Keyed per-campaign so commits in one campaign never throttle another. Bounded so a
+    // long-running multi-campaign server can't grow this dictionary without limit: past the cap,
+    // idle limiters (full token bucket = no recent commits) are evicted and disposed.
+    private const int RateLimiterCap = 256;
     private static readonly ConcurrentDictionary<string, RateLimiter> CommitRateLimiters = new(StringComparer.OrdinalIgnoreCase);
 
-    private static RateLimiter GetRateLimiter(string campaignName) =>
-        CommitRateLimiters.GetOrAdd(campaignName, _ => new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+    private static RateLimiter GetRateLimiter(string campaignName)
+    {
+        if (CommitRateLimiters.Count > RateLimiterCap)
+        {
+            foreach (var (key, limiter) in CommitRateLimiters)
+            {
+                if (key.Equals(campaignName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (limiter.GetStatistics() is { CurrentAvailablePermits: >= 50 } &&
+                    CommitRateLimiters.TryRemove(key, out var removed))
+                {
+                    removed.Dispose();
+                }
+            }
+        }
+
+        return CommitRateLimiters.GetOrAdd(campaignName, _ => new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
         {
             TokenLimit = 50,
             TokensPerPeriod = 10,
             ReplenishmentPeriod = TimeSpan.FromSeconds(10),
             AutoReplenishment = true
         }));
+    }
 
     public MutationTools(
         CampaignRepository repository,
@@ -43,43 +65,42 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         _behaviorSynthesizer = behaviorSynthesizer;
     }
 
+    /// <summary>
+    /// Mutable state threaded through the take_turn pipeline steps. Each step reads the request,
+    /// enriches <see cref="Result"/>, and records non-fatal problems via <see cref="MutationTools.Warn"/>.
+    /// </summary>
+    private sealed class TurnContext(TakeTurnRequest? request, string campaign, IAsyncDocumentSession session)
+    {
+        public TakeTurnRequest? Request { get; } = request;
+        public string Campaign { get; } = campaign;
+        public IAsyncDocumentSession Session { get; } = session;
+        public TurnResult Result { get; } = new();
+    }
+
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
     [Description(
         @"UNIFIED TURN TOOL: Call this at the end of any narrative beat (combat, conversation, discovery) for atomic mutations + bundled fresh state in one round-trip.
 
-REPLACES the old pattern: get_scene → commit → get_scene again. Instead: one take_turn call with optional mutations and refresh params, getting back the commit outcome + fresh entity summaries in one response.
+One take_turn call carries optional mutations (Changes+Narrative) and optional refresh params, and returns the commit outcome + fresh entity summaries in one response — no separate query-before/query-after calls needed.
 
-AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes. Opt out with autoRefreshInvolved: false for bulk/seeding commits.
+AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes (explicitly requested extraCharacterIds/extraLocationIds are always served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
 
-Pure queries (no Changes): pass just the refresh params with Changes omitted to refresh specific entities without mutations.")]
+Pure queries (no Changes): pass just the refresh params with Changes omitted to refresh specific entities without mutations. Check the 'warnings' array in the response for any section that could not be assembled.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
         [Description("Bundled turn request: optional mutations (Changes+Narrative) and/or entity refresh requests (AutoRefreshInvolved, ExtraCharacterIds, ExtraLocationIds).")]
         TakeTurnRequest request,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
-        if (request?.Changes is not null && request.Changes.Length > 0)
+        var hasChanges = request?.Changes is { Length: > 0 };
+
+        if (hasChanges)
         {
-            if (string.IsNullOrWhiteSpace(request.Narrative))
+            var precheckFailure = ValidateChanges(request!);
+            if (precheckFailure != null)
             {
-                return ToolArgumentErrors.Missing<TurnResult>(
-                    "narrative",
-                    "Provide a short summary of what happened for the event log when Changes are provided.",
-                    toolName: "take_turn");
-            }
-
-            if (request.Changes.Length > 50)
-            {
-                return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
-                    Summary: $"Commit rejected: Too many changes in a single batch ({request.Changes.Length}). Maximum is 50."));
-            }
-
-            var duplicationConflict = SideEffectDuplicationGuard.FindConflict(request.Changes);
-            if (duplicationConflict != null)
-            {
-                return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.InvalidArgument,
-                    Summary: $"Commit rejected: {duplicationConflict}"));
+                return precheckFailure;
             }
         }
 
@@ -92,462 +113,442 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
         }
 
         var rateLimiter = GetRateLimiter(effective);
-
-        if (request?.Changes is not null && request.Changes.Length > 0)
+        if (hasChanges && !rateLimiter.AttemptAcquire().IsAcquired)
         {
-            if (!rateLimiter.AttemptAcquire().IsAcquired)
-            {
-                return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
-                    Summary: "Commit rate limit exceeded. Please wait a few seconds before making more world changes."));
-            }
-        }
-
-        return ExecuteAsync(async session =>
-        {
-            var result = new TurnResult();
-
-            if (request?.Changes is not null && request.Changes.Length > 0)
-            {
-                var commitResult = await _repository.StageChangesAsync(session, request.Changes, effective);
-                if (!commitResult.Success)
-                {
-                    var errorMsg = "NO CHANGES WERE SAVED — the entire batch was rolled back because at least one " +
-                                   "change failed validation. Fix the error(s) below and resend the FULL batch " +
-                                   "(not just the failed item).\n" + string.Join("\n", commitResult.Summary);
-                    return new ToolResult<TurnResult>(false, new TurnResult(), Summary: errorMsg, Error: "ValidationError");
-                }
-
-                result.Committed = true;
-                result.ChangesProcessed = commitResult.ChangesProcessed;
-                result.Summary = commitResult.Summary;
-                result.InvolvedEntities = commitResult.InvolvedEntities;
-                result.EntityCollisions = commitResult.EntityCollisions;
-                result.NarrativeReminder = commitResult.NarrativeReminder;
-
-                var commitTime = await _repository.GetTimeAsync(session, effective);
-                await _repository.LogEventAsync(session,
-                    new Event
-                    {
-                        Id = "events/" + Guid.NewGuid(),
-                        CampaignName = effective,
-                        Summary = request.Narrative!,
-                        Category = EventCategory.SceneCommit,
-                        Involved = commitResult.InvolvedEntities,
-                        DayLogged = (int)commitTime.TotalDaysElapsed
-                    },
-                    effective);
-
-                var hasCombatMutation = request.Changes.Any(c => c is HpChange or RulesetAction or StatusChange);
-                var hasNarrativeEvent = request.Changes.Any(c => c is EventOccurred);
-                if (hasCombatMutation && !hasNarrativeEvent)
-                {
-                    result.NarrativeReminder =
-                        "This commit included combat/status changes but no 'event' ($type: event). " +
-                        "Add an EventOccurred to record the narrative beat.";
-                }
-
-                var significantEventLocations = request.Changes.OfType<EventOccurred>()
-                    .Where(e => e.Importance is MemoryImportance.Important or MemoryImportance.Core)
-                    .SelectMany(e => (e.RelatedLocationIds ?? []).Append(e.LocationId))
-                    .Where(id => !string.IsNullOrEmpty(id))
-                    .ToHashSet();
-                if (significantEventLocations.Count > 0)
-                {
-                    var poiCoveredLocations = request.Changes.OfType<LocationUpdate>()
-                        .Where(lu => !string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
-                        .Select(lu => lu.LocationId)
-                        .ToHashSet();
-                    var uncoveredMoves = request.Changes.OfType<ActivityChange>()
-                        .Where(a => a.UpdateLocation && !string.IsNullOrEmpty(a.NewLocationId)
-                                    && string.IsNullOrWhiteSpace(a.PoiName)
-                                    && significantEventLocations.Contains(a.NewLocationId!)
-                                    && !poiCoveredLocations.Contains(a.NewLocationId!))
-                        .Select(a => a.NewLocationId!)
-                        .Distinct()
-                        .ToList();
-                    if (uncoveredMoves.Count > 0)
-                    {
-                        var poiReminder =
-                            $"This commit moved a character to {string.Join(", ", uncoveredMoves)} alongside an Important/Core event " +
-                            "but recorded no location detail. If the spot matters, add poiName/poiDetails.";
-                        result.NarrativeReminder = result.NarrativeReminder is null
-                            ? poiReminder
-                            : result.NarrativeReminder + " " + poiReminder;
-                    }
-                }
-
-                await session.SaveChangesAsync();
-            }
-
-            var shouldRefresh = (request?.AutoRefreshInvolved != false && result.InvolvedEntities.Count > 0) ||
-                                (request?.ExtraCharacterIds != null && request.ExtraCharacterIds.Length > 0) ||
-                                (request?.ExtraLocationIds != null && request.ExtraLocationIds.Length > 0);
-
-            if (shouldRefresh)
-            {
-                var toRefresh = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                if (request?.AutoRefreshInvolved != false)
-                {
-                    foreach (var id in result.InvolvedEntities)
-                    {
-                        if (id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase) ||
-                            id.StartsWith(CanonicalId.Locations, StringComparison.OrdinalIgnoreCase))
-                        {
-                            toRefresh.Add(id);
-                        }
-                    }
-                }
-
-                if (request?.ExtraCharacterIds != null)
-                {
-                    foreach (var id in request.ExtraCharacterIds)
-                    {
-                        toRefresh.Add(id);
-                    }
-                }
-
-                if (request?.ExtraLocationIds != null)
-                {
-                    foreach (var id in request.ExtraLocationIds)
-                    {
-                        toRefresh.Add(id);
-                    }
-                }
-
-                const int NpcCap = 6;
-                const int SceneCap = 3;
-
-                var npcsToFetch = new List<string>();
-                var scenesToFetch = new List<string>();
-                var truncatedIds = new List<string>();
-
-                foreach (var id in toRefresh)
-                {
-                    if (id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (npcsToFetch.Count < NpcCap)
-                            npcsToFetch.Add(id);
-                        else
-                            truncatedIds.Add(id);
-                    }
-                    else if (id.StartsWith(CanonicalId.Locations, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (scenesToFetch.Count < SceneCap)
-                            scenesToFetch.Add(id);
-                        else
-                            truncatedIds.Add(id);
-                    }
-                }
-
-                if (scenesToFetch.Count > 0)
-                {
-                    result.Scenes = [];
-                    foreach (var locationId in scenesToFetch)
-                    {
-                        try
-                        {
-                            var summary = await _repository.BuildSceneSummaryAsync(session, locationId, effective);
-                            if (summary != null)
-                                result.Scenes.Add(summary);
-                        }
-                        catch { }
-                    }
-                }
-
-                if (npcsToFetch.Count > 0)
-                {
-                    result.Npcs = [];
-                    foreach (var charId in npcsToFetch)
-                    {
-                        try
-                        {
-                            var summary = await _repository.BuildNpcSummaryAsync(session, charId, effective);
-                            if (summary != null)
-                                result.Npcs.Add(summary);
-                        }
-                        catch { }
-                    }
-                }
-
-                if (truncatedIds.Count > 0)
-                {
-                    result.RefreshTruncatedIds = truncatedIds;
-                }
-            }
-
-            if (request?.IncludeParty == true)
-            {
-                try
-                {
-                    var party = await session.Query<Character>()
-                        .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
-                        .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
-                        .ToListAsync();
-
-                    var partyMembers = new List<PartyMemberView>();
-                    foreach (var member in party)
-                    {
-                        try
-                        {
-                            var summary = await _repository.BuildNpcSummaryAsync(session, member.Id, effective);
-                            if (summary != null)
-                            {
-                                partyMembers.Add(new PartyMemberView(member, summary.Equipped, summary.Carried));
-                            }
-                        }
-                        catch { }
-                    }
-
-                    if (partyMembers.Count > 0)
-                        result.Party = partyMembers;
-                }
-                catch { }
-            }
-
-            if (request?.IncludeWorldState == true)
-            {
-                try
-                {
-                    var worldState = await _repository.BuildWorldStateAsync(session, effective, request.PartyLocationId, _pressureOrchestrator);
-                    // take_turn context uses fewer events (first 5) vs kickoff's full list
-                    result.WorldState = new WorldStateView(
-                        worldState.Time,
-                        worldState.ActiveRumors,
-                        worldState.RecentEvents.Take(5),
-                        worldState.PartyLocation,
-                        worldState.WorldPressure,
-                        worldState.ActiveQuests,
-                        worldState.RelevantFactions,
-                        worldState.LastKnownTravel,
-                        worldState.SuggestedCommitExamples
-                    );
-                    result.WorldState.WorldPressureItems = worldState.WorldPressureItems;
-                }
-                catch { }
-            }
-
-            if (!string.IsNullOrEmpty(request?.FullDetailCharacterId))
-            {
-                try
-                {
-                    var npc = await _repository.GetCharacterAsync(session, request.FullDetailCharacterId, effective);
-                    if (npc != null)
-                    {
-                        var heldItems = await session.Query<Item>()
-                            .Where(i => i.HolderId == npc.Id && !i.IsArchived)
-                            .Customize(x => x.WaitForNonStaleResults())
-                            .ToListAsync();
-                        var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
-                        var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
-
-                        var config = await _repository.GetCampaignConfigAsync(session, effective);
-                        var npcEvents = await _repository.SelectRecentEventsAsync(session, effective,
-                            config.EventContextBudgetNpc, involvedCharacterId: request.FullDetailCharacterId);
-
-                        foreach (var ev in npcEvents)
-                        {
-                            _repository.SanitizeEvent(ev);
-                        }
-
-                        var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
-
-                        result.FullNpcContext = new NpcContextView
-                        {
-                            Character = npc,
-                            Psychology = npc.Psychology ?? new PsychologyProfile(),
-                            Social = npc.Social ?? new SocialProfile(),
-                            Needs = npc.Needs ?? new NeedsProfile(),
-                            SystemStats = npc.SystemStats ?? new SystemExtension(),
-                            RecentInteractions = npcEvents,
-                            BehavioralSummary = behavioralSummary,
-                            KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
-                            Equipped = equipped,
-                            Carried = carried
-                        };
-                    }
-                }
-                catch { }
-            }
-
-            if (!string.IsNullOrEmpty(request?.FullDetailLocationId))
-            {
-                try
-                {
-                    var scene = await _repository.GetSceneAsync(session, request.FullDetailLocationId, effective, markVisited: false);
-                    if (scene != null)
-                    {
-                        result.FullScene = scene;
-                    }
-                }
-                catch { }
-            }
-
-            var stats = rateLimiter.GetStatistics();
-            if (stats != null)
-            {
-                result.RateLimitTokensRemaining = (int)stats.CurrentAvailablePermits;
-            }
-
-            var successMsg = result.Committed
-                ? $"World updated with {result.ChangesProcessed} changes and fresh state echoed."
-                : "State refreshed.";
-
-            return new ToolResult<TurnResult>(true, result, successMsg);
-        }, saveChanges: false);
-    }
-
-    internal Task<ToolResult<CommitResult>> Commit(
-        [Description("Batch of world changes and narrative summary.")]
-        CommitRequest request,
-        [Description(ToolParameterDescriptions.CampaignNameRequired)]
-        string campaignName)
-    {
-        if (request?.Changes is null || request.Changes.Length == 0)
-        {
-            return ToolArgumentErrors.Missing<CommitResult>(
-                "changes",
-                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
-                toolName: "commit");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Narrative))
-        {
-            return ToolArgumentErrors.Missing<CommitResult>(
-                "narrative",
-                "Provide a short summary of what happened for the event log.",
-                toolName: "commit");
-        }
-
-        return Commit(request.Changes, request.Narrative, campaignName);
-    }
-
-    internal Task<ToolResult<CommitResult>> Commit(
-        WorldChange[]? changes,
-        string? narrative = null,
-        string? campaignName = null)
-    {
-        if (changes is null || changes.Length == 0)
-        {
-            return ToolArgumentErrors.Missing<CommitResult>(
-                "changes",
-                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
-                toolName: "commit");
-        }
-
-        if (string.IsNullOrWhiteSpace(narrative))
-        {
-            return ToolArgumentErrors.Missing<CommitResult>(
-                "narrative",
-                "Provide a short summary of what happened for the event log.",
-                toolName: "commit");
-        }
-
-        if (!TryGetEffectiveCampaign(campaignName, out var effective))
-        {
-            return Task.FromResult(new ToolResult<CommitResult>(
-                false,
-                Error: ToolErrors.NoCampaignSelected,
-                Summary: NoCampaignSelectedSummary));
-        }
-
-        if (changes.Length > 50)
-        {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.RateLimitExceeded,
-                Summary:
-                $"Commit rejected: Too many changes in a single batch ({changes.Length}). Maximum allowed is 50."));
-        }
-
-        var duplicationConflict = SideEffectDuplicationGuard.FindConflict(changes);
-        if (duplicationConflict != null)
-        {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.InvalidArgument,
-                Summary: $"Commit rejected: {duplicationConflict}"));
-        }
-
-        var rateLimiter = GetRateLimiter(effective);
-        if (!rateLimiter.AttemptAcquire().IsAcquired)
-        {
-            return Task.FromResult(new ToolResult<CommitResult>(false, Error: ToolErrors.RateLimitExceeded,
+            return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
                 Summary: "Commit rate limit exceeded. Please wait a few seconds before making more world changes."));
         }
 
+        // saveChanges: true so pressure-cooldown state mutated by world-state/pressure evaluation is
+        // persisted even on pure-query turns (FilterAndCapAsync requires the caller to save).
         return ExecuteAsync(async session =>
         {
-            var result = await _repository.StageChangesAsync(session, changes, effective);
-            if (!result.Success)
-            {
-                var errorMsg = "NO CHANGES WERE SAVED — the entire batch was rolled back because at least one " +
-                                "change failed validation. Fix the error(s) below and resend the FULL batch " +
-                                "(not just the failed item).\n" + string.Join("\n", result.Summary);
-                return new ToolResult<CommitResult>(false, result, Summary: errorMsg,
-                    Error: "ValidationError");
-            }
+            var ctx = new TurnContext(request, effective, session);
 
-            var commitTime = await _repository.GetTimeAsync(session, effective);
-            await _repository.LogEventAsync(session,
-                new Event
+            if (hasChanges)
+            {
+                var commitFailure = await CommitChangesAsync(ctx);
+                if (commitFailure != null)
                 {
-                    Id = "events/" + Guid.NewGuid(), CampaignName = effective, Summary = narrative,
-                    Category = EventCategory.SceneCommit, Involved = result.InvolvedEntities,
-                    DayLogged = (int)commitTime.TotalDaysElapsed
-                }, effective);
-
-            // Warn if the batch contained combat/status mutations but no narrative event
-            var hasCombatMutation = changes.Any(c => c is HpChange or RulesetAction or StatusChange);
-            var hasNarrativeEvent = changes.Any(c => c is EventOccurred);
-            if (hasCombatMutation && !hasNarrativeEvent)
-            {
-                result.NarrativeReminder =
-                    "This commit included combat/status changes but no 'event' ($type: event). " +
-                    "Add an EventOccurred to record the narrative beat for future get_npc_context and recall_history queries.";
-            }
-
-            // Warn if an activity moved a character somewhere narratively significant with no PoI detail recorded
-            var significantEventLocations = changes.OfType<EventOccurred>()
-                .Where(e => e.Importance is MemoryImportance.Important or MemoryImportance.Core)
-                .SelectMany(e => (e.RelatedLocationIds ?? []).Append(e.LocationId))
-                .Where(id => !string.IsNullOrEmpty(id))
-                .ToHashSet();
-            if (significantEventLocations.Count > 0)
-            {
-                var poiCoveredLocations = changes.OfType<LocationUpdate>()
-                    .Where(lu => !string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
-                    .Select(lu => lu.LocationId)
-                    .ToHashSet();
-                var uncoveredMoves = changes.OfType<ActivityChange>()
-                    .Where(a => a.UpdateLocation && !string.IsNullOrEmpty(a.NewLocationId)
-                                && string.IsNullOrWhiteSpace(a.PoiName)
-                                && significantEventLocations.Contains(a.NewLocationId!)
-                                && !poiCoveredLocations.Contains(a.NewLocationId!))
-                    .Select(a => a.NewLocationId!)
-                    .Distinct()
-                    .ToList();
-                if (uncoveredMoves.Count > 0)
-                {
-                    var poiReminder =
-                        $"This commit moved a character to {string.Join(", ", uncoveredMoves)} alongside an Important/Core " +
-                        "event referencing that location, but recorded no location detail there. If the narrated spot " +
-                        "(cover, hazards, what's hidden) will matter later, add poiName/poiDetails to the activity change " +
-                        "(or a paired location_update with materializePointOfInterest) — see get_help topic=patterns, " +
-                        "'Ad-Hoc Waypoint Detail'.";
-                    result.NarrativeReminder = result.NarrativeReminder is null
-                        ? poiReminder
-                        : result.NarrativeReminder + " " + poiReminder;
+                    return commitFailure;
                 }
             }
 
-            // Surface remaining rate-limit budget so the LLM can pace large scenes
-            var stats = rateLimiter.GetStatistics();
-            if (stats != null)
-                result.RateLimitTokensRemaining = (int)stats.CurrentAvailablePermits;
+            await RefreshInvolvedEntitiesAsync(ctx);
+            await IncludePartyAsync(ctx);
+            await IncludeWorldStateAsync(ctx);
+            await IncludeFullNpcDetailAsync(ctx);
+            await IncludeFullSceneDetailAsync(ctx);
 
-            var msg = $"World updated with {changes.Length} changes. Full result in structuredContent.";
-            return new ToolResult<CommitResult>(true, result, msg);
-        });
+            return Finalize(ctx, rateLimiter);
+        }, saveChanges: true);
     }
 
+    /// <summary>Static request validation that needs no session. Returns null when the request is valid.</summary>
+    private static Task<ToolResult<TurnResult>>? ValidateChanges(TakeTurnRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Narrative))
+        {
+            return ToolArgumentErrors.Missing<TurnResult>(
+                "narrative",
+                "Provide a short summary of what happened for the event log when Changes are provided.",
+                toolName: "take_turn");
+        }
 
+        if (request.Changes!.Length > 50)
+        {
+            return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
+                Summary: $"Commit rejected: Too many changes in a single batch ({request.Changes.Length}). Maximum allowed is 50."));
+        }
+
+        var duplicationConflict = SideEffectDuplicationGuard.FindConflict(request.Changes);
+        if (duplicationConflict != null)
+        {
+            return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.InvalidArgument,
+                Summary: $"Commit rejected: {duplicationConflict}"));
+        }
+
+        return null;
+    }
+
+    /// <summary>Stages the batch, logs the narrative event, composes reminders, and saves. Returns a failure result or null on success.</summary>
+    private async Task<ToolResult<TurnResult>?> CommitChangesAsync(TurnContext ctx)
+    {
+        var request = ctx.Request!;
+        var changes = request.Changes!;
+
+        var commitResult = await _repository.StageChangesAsync(ctx.Session, changes, ctx.Campaign);
+        if (!commitResult.Success)
+        {
+            var errorMsg = "NO CHANGES WERE SAVED — the entire batch was rolled back because at least one " +
+                           "change failed validation. Fix the error(s) below and resend the FULL batch " +
+                           "(not just the failed item).\n" + string.Join("\n", commitResult.Summary);
+            return new ToolResult<TurnResult>(false, new TurnResult(), Summary: errorMsg, Error: "ValidationError");
+        }
+
+        var result = ctx.Result;
+        result.Committed = true;
+        result.ChangesProcessed = commitResult.ChangesProcessed;
+        result.Summary = commitResult.Summary;
+        result.InvolvedEntities = commitResult.InvolvedEntities;
+        result.EntityCollisions = commitResult.EntityCollisions;
+        result.NarrativeReminder = commitResult.NarrativeReminder;
+
+        var commitTime = await _repository.GetTimeAsync(ctx.Session, ctx.Campaign);
+        await _repository.LogEventAsync(ctx.Session,
+            new Event
+            {
+                Id = "events/" + Guid.NewGuid(),
+                CampaignName = ctx.Campaign,
+                Summary = request.Narrative!,
+                Category = EventCategory.SceneCommit,
+                Involved = commitResult.InvolvedEntities,
+                DayLogged = (int)commitTime.TotalDaysElapsed
+            },
+            ctx.Campaign);
+
+        ComposeReminders(changes, result);
+
+        await ctx.Session.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>Appends commit-hygiene reminders (missing narrative event, missing PoI detail) without discarding earlier reminders.</summary>
+    private static void ComposeReminders(WorldChange[] changes, TurnResult result)
+    {
+        var hasCombatMutation = changes.Any(c => c is HpChange or RulesetAction or StatusChange);
+        var hasNarrativeEvent = changes.Any(c => c is EventOccurred);
+        if (hasCombatMutation && !hasNarrativeEvent)
+        {
+            AppendReminder(result,
+                "This commit included combat/status changes but no 'event' ($type: event). " +
+                "Add an EventOccurred to record the narrative beat.");
+        }
+
+        var significantEventLocations = changes.OfType<EventOccurred>()
+            .Where(e => e.Importance is MemoryImportance.Important or MemoryImportance.Core)
+            .SelectMany(e => (e.RelatedLocationIds ?? []).Append(e.LocationId))
+            .Where(id => !string.IsNullOrEmpty(id))
+            .ToHashSet();
+        if (significantEventLocations.Count > 0)
+        {
+            var poiCoveredLocations = changes.OfType<LocationUpdate>()
+                .Where(lu => !string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
+                .Select(lu => lu.LocationId)
+                .ToHashSet();
+            var uncoveredMoves = changes.OfType<ActivityChange>()
+                .Where(a => a.UpdateLocation && !string.IsNullOrEmpty(a.NewLocationId)
+                            && string.IsNullOrWhiteSpace(a.PoiName)
+                            && significantEventLocations.Contains(a.NewLocationId!)
+                            && !poiCoveredLocations.Contains(a.NewLocationId!))
+                .Select(a => a.NewLocationId!)
+                .Distinct()
+                .ToList();
+            if (uncoveredMoves.Count > 0)
+            {
+                AppendReminder(result,
+                    $"This commit moved a character to {string.Join(", ", uncoveredMoves)} alongside an Important/Core event " +
+                    "but recorded no location detail. If the spot matters, add poiName/poiDetails.");
+            }
+        }
+    }
+
+    private static void AppendReminder(TurnResult result, string reminder) =>
+        result.NarrativeReminder = result.NarrativeReminder is null
+            ? reminder
+            : result.NarrativeReminder + " " + reminder;
+
+    /// <summary>
+    /// Fetches lightweight summaries for refreshed entities. Explicitly requested extras are queued
+    /// before auto-involved IDs, so the 6-NPC/3-scene caps never silently drop something the caller asked for.
+    /// </summary>
+    private async Task RefreshInvolvedEntitiesAsync(TurnContext ctx)
+    {
+        var request = ctx.Request;
+        var result = ctx.Result;
+
+        const int NpcCap = 6;
+        const int SceneCap = 3;
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var npcCandidates = new List<string>();
+        var sceneCandidates = new List<string>();
+
+        void AddCandidate(string id, bool explicitlyRequested)
+        {
+            if (string.IsNullOrWhiteSpace(id) || !seen.Add(id))
+            {
+                return;
+            }
+
+            if (id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase))
+            {
+                npcCandidates.Add(id);
+            }
+            else if (id.StartsWith(CanonicalId.Locations, StringComparison.OrdinalIgnoreCase))
+            {
+                sceneCandidates.Add(id);
+            }
+            else if (explicitlyRequested)
+            {
+                Warn(ctx, $"Refresh skipped for '{id}': not a '{CanonicalId.Characters}' or '{CanonicalId.Locations}' id.");
+            }
+        }
+
+        foreach (var id in request?.ExtraCharacterIds ?? [])
+        {
+            AddCandidate(id, explicitlyRequested: true);
+        }
+
+        foreach (var id in request?.ExtraLocationIds ?? [])
+        {
+            AddCandidate(id, explicitlyRequested: true);
+        }
+
+        if (request?.AutoRefreshInvolved != false)
+        {
+            foreach (var id in result.InvolvedEntities)
+            {
+                AddCandidate(id, explicitlyRequested: false);
+            }
+        }
+
+        var truncatedIds = npcCandidates.Skip(NpcCap).Concat(sceneCandidates.Skip(SceneCap)).ToList();
+        if (truncatedIds.Count > 0)
+        {
+            result.RefreshTruncatedIds = truncatedIds;
+        }
+
+        var scenesToFetch = sceneCandidates.Take(SceneCap).ToList();
+        if (scenesToFetch.Count > 0)
+        {
+            result.Scenes = [];
+            foreach (var locationId in scenesToFetch)
+            {
+                try
+                {
+                    var summary = await _repository.BuildSceneSummaryAsync(ctx.Session, locationId, ctx.Campaign);
+                    if (summary != null)
+                    {
+                        result.Scenes.Add(summary);
+                    }
+                    else
+                    {
+                        Warn(ctx, $"Scene refresh: '{locationId}' not found.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Warn(ctx, $"Scene refresh failed for '{locationId}': {ex.Message}", ex);
+                }
+            }
+        }
+
+        var npcsToFetch = npcCandidates.Take(NpcCap).ToList();
+        if (npcsToFetch.Count > 0)
+        {
+            result.Npcs = [];
+            foreach (var charId in npcsToFetch)
+            {
+                try
+                {
+                    var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, charId, ctx.Campaign);
+                    if (summary != null)
+                    {
+                        result.Npcs.Add(summary);
+                    }
+                    else
+                    {
+                        Warn(ctx, $"NPC refresh: '{charId}' not found.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Warn(ctx, $"NPC refresh failed for '{charId}': {ex.Message}", ex);
+                }
+            }
+        }
+    }
+
+    private async Task IncludePartyAsync(TurnContext ctx)
+    {
+        if (ctx.Request?.IncludeParty != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var party = await ctx.Session.Query<Character>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+                .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
+                .ToListAsync();
+
+            var partyMembers = new List<PartyMemberView>();
+            foreach (var member in party)
+            {
+                try
+                {
+                    var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, member.Id, ctx.Campaign);
+                    if (summary != null)
+                    {
+                        partyMembers.Add(new PartyMemberView(member, summary.Equipped, summary.Carried));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Warn(ctx, $"Party summary failed for '{member.Id}': {ex.Message}", ex);
+                }
+            }
+
+            if (partyMembers.Count > 0)
+            {
+                ctx.Result.Party = partyMembers;
+            }
+        }
+        catch (Exception ex)
+        {
+            Warn(ctx, $"Party section failed: {ex.Message}", ex);
+        }
+    }
+
+    private async Task IncludeWorldStateAsync(TurnContext ctx)
+    {
+        if (ctx.Request?.IncludeWorldState != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var worldState = await _repository.BuildWorldStateAsync(ctx.Session, ctx.Campaign, ctx.Request.PartyLocationId, _pressureOrchestrator);
+            // take_turn context uses fewer events (first 5) vs kickoff's full list
+            ctx.Result.WorldState = new WorldStateView(
+                worldState.Time,
+                worldState.ActiveRumors,
+                worldState.RecentEvents.Take(5),
+                worldState.PartyLocation,
+                worldState.WorldPressure,
+                worldState.ActiveQuests,
+                worldState.RelevantFactions,
+                worldState.LastKnownTravel,
+                worldState.SuggestedCommitExamples
+            );
+            ctx.Result.WorldState.WorldPressureItems = worldState.WorldPressureItems;
+        }
+        catch (Exception ex)
+        {
+            Warn(ctx, $"World-state section failed: {ex.Message}", ex);
+        }
+    }
+
+    private async Task IncludeFullNpcDetailAsync(TurnContext ctx)
+    {
+        var characterId = ctx.Request?.FullDetailCharacterId;
+        if (string.IsNullOrEmpty(characterId))
+        {
+            return;
+        }
+
+        try
+        {
+            var npc = await _repository.GetCharacterAsync(ctx.Session, characterId, ctx.Campaign);
+            if (npc == null)
+            {
+                Warn(ctx, $"Full NPC detail: '{characterId}' not found.");
+                return;
+            }
+
+            var heldItems = await ctx.Session.Query<Item>()
+                .Where(i => i.HolderId == npc.Id && !i.IsArchived)
+                .Customize(x => x.WaitForNonStaleResults())
+                .ToListAsync();
+            var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
+            var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+
+            var config = await _repository.GetCampaignConfigAsync(ctx.Session, ctx.Campaign);
+            var npcEvents = await _repository.SelectRecentEventsAsync(ctx.Session, ctx.Campaign,
+                config.EventContextBudgetNpc, involvedCharacterId: characterId);
+
+            foreach (var ev in npcEvents)
+            {
+                _repository.SanitizeEvent(ev);
+            }
+
+            var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
+
+            ctx.Result.FullNpcContext = new NpcContextView
+            {
+                Character = npc,
+                Psychology = npc.Psychology ?? new PsychologyProfile(),
+                Social = npc.Social ?? new SocialProfile(),
+                Needs = npc.Needs ?? new NeedsProfile(),
+                SystemStats = npc.SystemStats ?? new SystemExtension(),
+                RecentInteractions = npcEvents,
+                BehavioralSummary = behavioralSummary,
+                KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
+                Equipped = equipped,
+                Carried = carried
+            };
+        }
+        catch (Exception ex)
+        {
+            Warn(ctx, $"Full NPC detail failed for '{characterId}': {ex.Message}", ex);
+        }
+    }
+
+    private async Task IncludeFullSceneDetailAsync(TurnContext ctx)
+    {
+        var locationId = ctx.Request?.FullDetailLocationId;
+        if (string.IsNullOrEmpty(locationId))
+        {
+            return;
+        }
+
+        try
+        {
+            var scene = await _repository.GetSceneAsync(ctx.Session, locationId, ctx.Campaign, markVisited: false);
+            if (scene != null)
+            {
+                ctx.Result.FullScene = scene;
+            }
+            else
+            {
+                Warn(ctx, $"Full scene detail: '{locationId}' not found.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Warn(ctx, $"Full scene detail failed for '{locationId}': {ex.Message}", ex);
+        }
+    }
+
+    private static ToolResult<TurnResult> Finalize(TurnContext ctx, RateLimiter rateLimiter)
+    {
+        var result = ctx.Result;
+
+        var stats = rateLimiter.GetStatistics();
+        if (stats != null)
+        {
+            result.RateLimitTokensRemaining = (int)stats.CurrentAvailablePermits;
+        }
+
+        var successMsg = result.Committed
+            ? $"World updated with {result.ChangesProcessed} changes and fresh state echoed."
+            : "State refreshed.";
+        if (result.Warnings is { Count: > 0 })
+        {
+            successMsg += $" {result.Warnings.Count} warning(s) — see 'warnings'.";
+        }
+
+        return new ToolResult<TurnResult>(true, result, successMsg);
+    }
+
+    private void Warn(TurnContext ctx, string message, Exception? ex = null)
+    {
+        _logger.LogWarning(ex, "take_turn warning (campaign {Campaign}): {Message}", ctx.Campaign, message);
+        (ctx.Result.Warnings ??= []).Add(message);
+    }
 
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]

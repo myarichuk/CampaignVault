@@ -11,7 +11,7 @@ You are running NPCs: their psychology drives their decisions, not your narrativ
 
 ## Read Context First
 
-Before narrating any NPC action, call `get_npc_context` to read:
+Before narrating any NPC action, call `get_entity` with the NPC's `chars/...` id (or bundle it with a mutation via `take_turn`'s `fullDetailCharacterId`) to read:
 
 ```
 Psychology:
@@ -60,7 +60,7 @@ Show this through dialogue and hesitation, not stated outright.
 
 ## Knowledge Updates
 
-When the NPC learns something, commit a `knowledge_update`:
+When the NPC learns something, include a `knowledge_update` in your `take_turn` batch:
 
 ```json
 {
@@ -87,8 +87,8 @@ Don't name the need—narrate its sensory effect.
 
 NPCs follow schedules. If an NPC should be at the market but is in the tavern, there's a reason. Either:
 1. Narrate why they skipped their schedule ("I had to hide from the militia")
-2. Call `get_npc_context` to check for activity changes
-3. Commit an `activity` change if they're deliberately shifting their schedule
+2. Call `get_entity` with the NPC id to check for activity changes
+3. Include an `activity` change in `take_turn` if they're deliberately shifting their schedule
 
 ## Memory & Salience
 
@@ -102,15 +102,15 @@ Social checks against NPCs apply relationship modifiers automatically (see `dnd-
 
 ## NPC Initiative
 
-If `TurnIntentSignal` is set on `get_npc_context`, this NPC is eager to act/speak next. Use as an advisory hint (not a hard rule). They might interrupt, volunteer info, act urgently.
+If `TurnIntent` is set on the NPC's full-detail view (get_entity / take_turn full detail), this NPC is eager to act/speak next. Use as an advisory hint (not a hard rule). They might interrupt, volunteer info, act urgently.
 
 ## Checklist
 
-- [ ] Did I `get_npc_context` first?
+- [ ] Did I fetch the NPC's full detail (`get_entity` chars/ id) first?
 - [ ] Have I read Psychology/Social/Needs?
 - [ ] Is the NPC voice distinct (diction, pace, rhythm)?
 - [ ] Did they show self-interest (not automatic helpfulness)?
 - [ ] Did they learn something? → `knowledge_update`
-- [ ] Did their relationship with PC shift? → `relationship_change`
+- [ ] Did their relationship with PC shift? → `relationship` change in take_turn
 - [ ] Are they driven by unmet needs? → Show it, don't state it
 - [ ] Did I check their schedule? → Are they where they should be?

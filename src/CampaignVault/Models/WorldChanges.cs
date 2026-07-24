@@ -49,6 +49,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(ItemUse), "item_use")]
 [JsonDerivedType(typeof(ItemPersistenceSurfaced), "item_persistence_surfaced")]
 [JsonDerivedType(typeof(MemoryDecay), "memory_decay")]
+[JsonDerivedType(typeof(CampaignUpdateChange), "campaign_update")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -969,7 +970,7 @@ public class ItemUpdate : WorldChange
 /// </summary>
 public class ItemDetailUpsertRequest
 {
-    [Description("Optional. Pass if known (from a prior commit response or get_item) for a cheap authoritative match. Omit to resolve by semantic similarity or create new.")]
+    [Description("Optional. Pass if known (from a prior take_turn response or get_entity) for a cheap authoritative match. Omit to resolve by semantic similarity or create new.")]
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
@@ -997,7 +998,7 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("tetheredToId")]
     public string? TetheredToId { get; set; }
 
-    [Description("Optional characters who caused/witnessed this detail — pushes a memory to each. Ignored inside upsert_item/world_build (no in-fiction moment yet).")]
+    [Description("Optional characters who caused/witnessed this detail — pushes a memory to each. Ignored inside world_build (no in-fiction moment yet).")]
     [JsonPropertyName("participants")]
     public List<ItemDetailParticipant>? Participants { get; set; }
 
@@ -1243,7 +1244,7 @@ public class ResourceChange : WorldChange
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
 
-    [Description("Spell template name when spending spell_slots_* (e.g. 'fireball'). Enables slot-level validation via get_spells registry.")]
+    [Description("Spell template name when spending spell_slots_* (e.g. 'fireball'). Enables slot-level validation via the spell registry (get_rules_reference kind:'spells').")]
     [JsonPropertyName("spellName")]
     public string? SpellName { get; set; }
 
@@ -1319,6 +1320,18 @@ public class ArchiveEntityChange : WorldChange
     [Description("true to archive (hide from default results, soft-delete), false to restore visibility. Defaults to true.")]
     [JsonPropertyName("archived")]
     public bool Archived { get; set; } = true;
+}
+
+/// <summary>
+/// Updates campaign-level meta as part of normal play — currently the narrative focus tags.
+/// Lets the DM shift the campaign's center of gravity (dungeon crawl → political thriller)
+/// via take_turn without a dedicated management tool.
+/// </summary>
+public class CampaignUpdateChange : WorldChange
+{
+    [Description("Full replacement list of narrative focus tags (e.g. ['political intrigue', 'court politics']). Pass every tag you want retained — this replaces the whole list, it does not append.")]
+    [JsonPropertyName("narrativeFocus")]
+    public List<string>? NarrativeFocus { get; set; }
 }
 
 /// <summary>

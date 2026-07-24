@@ -25,7 +25,7 @@ public class CampaignManagementTools(
 {
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"RULES CONFIG TOOL: Get campaign configuration (ruleset and house-rule options).")]
+    [Description(@"RULES CONFIG TOOL: Get campaign configuration — active ruleset system (Dnd5e/Pathfinder2e/Narrative) and house-rule options. Campaign narrative context (party roster, narrative focus, last event) comes from start_session instead.")]
     public Task<ToolResult<CampaignConfig>> GetConfig(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
@@ -37,19 +37,9 @@ public class CampaignManagementTools(
         }, saveChanges: false);
     }
 
-    [ToolCategory("Campaign management")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(@"RULES CONFIG TOOL: Set the active ruleset system for a campaign.
-Respects lock-in (cannot change system once locked). Use this to define house rules or system options.
-Available Systems: Dnd5e, Pathfinder2e, Narrative
-
-Example: set_active_system(RulesetSystem.Pathfinder2e, { ""mapEnabled"": ""true"" })")]
-    public Task<ToolResult<CampaignConfig>> SetActiveSystem(
-        [Description("The active TTRPG ruleset system.")]
+    internal Task<ToolResult<CampaignConfig>> SetActiveSystem(
         RulesetSystem activeSystem,
-        [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
-        [Description("Optional dictionary of system options and house rules.")]
         Dictionary<string, string>? systemOptions = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
@@ -96,7 +86,7 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
         RulesetSystem initialSystem,
         [Description("Optional human-friendly display name.")]
         string? displayName = null,
-        [Description("Optional free-text tags describing the kind(s) of story this campaign tells (e.g. ['political intrigue'], ['dungeon crawl'], ['horror investigation']). Steers how the LLM should judge event importance on commit — see the Narrative Focus section in get_help. Can be set or changed later via set_narrative_focus.")]
+        [Description("Optional free-text tags describing the kind(s) of story this campaign tells (e.g. ['political intrigue'], ['dungeon crawl'], ['horror investigation']). Steers how the LLM should judge event importance on commit — see the Narrative Focus section in get_help. Update later with take_turn's campaign_update change ($type: campaign_update, narrativeFocus: [...]).")]
         List<string>? narrativeFocus = null)
     {
         string normalized;
@@ -131,16 +121,8 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
         });
     }
 
-    [ToolCategory("Campaign management")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(@"CAMPAIGN TOOL: Set or update the campaign's narrative focus tags (e.g. ['political intrigue'], ['dungeon crawl'], ['horror investigation']).
-Campaigns evolve — a dungeon crawl can turn into a political thriller. Call this any time the story's center of gravity shifts.
-Replaces the full tag list; pass all tags you want retained, not just the new ones.
-See the Narrative Focus section in get_help for how this steers event-importance judgment on commit.")]
-    public Task<ToolResult<List<string>>> SetNarrativeFocus(
-        [Description("Full replacement list of narrative focus tags (e.g. ['political intrigue', 'court politics']).")]
+    internal Task<ToolResult<List<string>>> SetNarrativeFocus(
         List<string> tags,
-        [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
@@ -179,12 +161,56 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        @"RULESET DISCOVERY: Returns available classes, races, backgrounds, feats, conditions, skills, and creatures for the campaign's active ruleset.
-Homebrew YAML on disk (RulesetData/{system}/) and feats authored via world_build (feats[]) appear automatically alongside embedded SRD/ORC defaults.
-Call before world_build (characters[]) or when applying typed conditionName values. For spells, see notes → get_spells. For creatures, use query_creatures for paginated SRD + homebrew merged results.
-Creature data is available for dnd5e and pf2e. Skills are freeform ability checks with no fixed reference list for either system.")]
-    public Task<ToolResult<SystemHandbookResponse>> GetSystemHandbook(
+        @"RULES REFERENCE: Single lookup tool for ruleset reference data, dispatched by 'kind':
+- kind:'handbook' — classes, races, backgrounds, feats, conditions for the campaign's active ruleset. Call before world_build (characters[]) or when applying typed conditionName values.
+- kind:'spells' — spell metadata (level, concentration, casting time). REQUIRES className (e.g. 'Wizard'); level filter strongly recommended (0 = cantrip); paginated via offset/limit (default 40/page). Use these spell names in resource commits (spellName) for slot validation.
+- kind:'creatures' — creature stat-block *templates* (SRD + campaign homebrew merged, homebrew wins by name), filtered by nameQuery/levelMin/levelMax, paginated. Templates only — use world_build (characters[]) to place a live instance.
+Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData/{system}/ YAML appear automatically. Requires campaignName.")]
+    public async Task<ToolResult<object>> GetRulesReference(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName,
+        [Description("What to look up: 'handbook', 'spells', or 'creatures'.")]
+        string kind,
+        [Description("spells only (required there): class name to list spells for, e.g. 'Wizard', 'Cleric'.")]
+        string? className = null,
+        [Description("spells only: spell level filter (0 = cantrip). Strongly recommended — full class lists are large.")]
+        int? level = null,
+        [Description("creatures only: creature name substring filter.")]
+        string? nameQuery = null,
+        [Description("creatures only: minimum level filter.")]
+        int? levelMin = null,
+        [Description("creatures only: maximum level filter.")]
+        int? levelMax = null,
+        [Description("spells/creatures: pagination offset (default 0). Use response.pagination.hasMore for next page.")]
+        int offset = 0,
+        [Description("spells/creatures: page size (default 40, max 100).")]
+        int? limit = null)
+    {
+        switch (kind?.Trim().ToLowerInvariant())
+        {
+            case "handbook":
+                return Box(await GetSystemHandbook(campaignName));
+            case "spells":
+                if (string.IsNullOrWhiteSpace(className))
+                {
+                    return await ToolArgumentErrors.Missing<object>(
+                        "className",
+                        "kind:'spells' requires className (e.g. 'Wizard'). Get valid class names from kind:'handbook'.",
+                        toolName: "get_rules_reference");
+                }
+                return Box(await GetSpells(className, campaignName, level, offset, limit));
+            case "creatures":
+                return Box(await QueryCreatures(campaignName, nameQuery, levelMin, levelMax, offset, limit));
+            default:
+                return new ToolResult<object>(false, Error: ToolErrors.InvalidArgument,
+                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', or 'creatures'.");
+        }
+    }
+
+    private static ToolResult<object> Box<T>(ToolResult<T> r) =>
+        new(r.Success, r.Data, r.Summary, r.Error, r.WorldPressure, r.RetryExample);
+
+    internal Task<ToolResult<SystemHandbookResponse>> GetSystemHandbook(
         string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
@@ -209,23 +235,11 @@ Creature data is available for dnd5e and pf2e. Skills are freeform ability check
         }, saveChanges: false);
     }
 
-    [ToolCategory("Campaign management")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(
-        @"SPELL DISCOVERY: Returns spell metadata (level, concentration, casting time) for the campaign's active ruleset.
-Filter by class and optional spell level. Results are paginated (default 40 per page) — use offset/limit or level filter for large lists.
-Homebrew spells authored via world_build (spells[]) appear automatically (override SRD by name); RulesetData/{system}/spells/ on disk also appears.
-Use spell names from this tool in resource commits (spellName field) for slot validation.")]
-    public Task<ToolResult<SpellListResponse>> GetSpells(
-        [Description("Class name for list filtering (e.g. 'Wizard', 'Cleric'). Required.")]
+    internal Task<ToolResult<SpellListResponse>> GetSpells(
         string @class,
-        [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
-        [Description("Optional spell level filter (0 = cantrip). Strongly recommended — full class lists are large.")]
         int? level = null,
-        [Description("Pagination offset (default 0). Use response.pagination.hasMore and hint for next page.")]
         int offset = 0,
-        [Description("Page size (default 40, max 100).")]
         int? limit = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
@@ -254,24 +268,12 @@ Use spell names from this tool in resource commits (spellName field) for slot va
             CastingTime = spell.CastingTime
         };
 
-    [ToolCategory("Campaign management")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(
-        @"CREATURE DISCOVERY: Returns creature stat-block templates (both SRD reference data and campaign homebrew).
-Paginated results merge SRD and homebrew creatures (homebrew overrides SRD by name). Use for NPC/monster stat-block lookup.
-Note: This surfaces stat-block *templates* (reusable reference data), not live instances. Use world_build (characters[]) to place a creature instance in the world.")]
-    public Task<ToolResult<CreatureListResponse>> QueryCreatures(
-        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+    internal Task<ToolResult<CreatureListResponse>> QueryCreatures(
         string campaignName,
-        [Description("Optional creature name substring filter.")]
         string? nameQuery = null,
-        [Description("Optional minimum level filter (for numeric sorting/range).")]
         int? levelMin = null,
-        [Description("Optional maximum level filter (for numeric sorting/range).")]
         int? levelMax = null,
-        [Description("Pagination offset (default 0). Use response.pagination.hasMore and hint for next page.")]
         int offset = 0,
-        [Description("Page size (default 40, max 100).")]
         int? limit = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
@@ -291,16 +293,7 @@ Note: This surfaces stat-block *templates* (reusable reference data), not live i
         }, saveChanges: false);
     }
 
-    [ToolCategory("Campaign management")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(
-        @"CAMPAIGN DISCOVERABILITY: Returns campaign context (meta + posture: party roster, entry hint, last event).
-Use this if you need the active ruleset system (e.g., Dnd5e, Pathfinder2e) before using ruleset_actions in combat.
-Requires campaignName. IDEMPOTENT READ-ONLY LOOKUP, no side effects, no session/lock state changes — call it once at
-session start (or after a summarization gap), not on every turn/beat. A campaignName already known (from your system
-prompt, a prior call, or the current conversation) does not need re-confirmation via this tool.")]
-    public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(
-        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+    internal Task<ToolResult<CampaignContextView>> GetCurrentCampaign(
         string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (explicitName, session) =>

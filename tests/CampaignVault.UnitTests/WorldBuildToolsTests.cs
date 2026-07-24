@@ -139,20 +139,24 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task WorldBuild_ThenGetWorldState_ReportsSeedCoverage()
+    public async Task WorldBuild_ThenSeedCoverage_ReportsSeedCoverage()
     {
+        // Seed coverage moved out of GetWorldState (per-turn cost) into the start_session kickoff;
+        // this exercises the underlying repository builder both before and after seeding.
         var repo = _fixture.CreateRepository();
         var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
         var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
         var slug = "world-build-coverage-" + Guid.NewGuid().ToString("N")[..8];
         await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
 
-        var before = await tools.GetWorldState(campaignName: slug);
-        Assert.True(before.Success, before.Summary);
-        Assert.NotNull(before.Data!.SeedCoverage);
-        Assert.Equal(0, before.Data.SeedCoverage!.Locations);
-        Assert.Contains("no locations yet", before.Data.SeedCoverage.Gaps);
-        Assert.Contains("no PC characters yet", before.Data.SeedCoverage.Gaps);
+        SeedCoverageSummary before;
+        using (var beforeSession = _fixture.Store.OpenAsyncSession())
+        {
+            before = await repo.BuildSeedCoverageAsync(beforeSession, slug, null);
+        }
+        Assert.Equal(0, before.Locations);
+        Assert.Contains("no locations yet", before.Gaps);
+        Assert.Contains("no PC characters yet", before.Gaps);
 
         var batch = new WorldBuildBatch
         {
@@ -162,13 +166,16 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         var buildResult = await worldBuilder.WorldBuild(batch, slug);
         Assert.True(buildResult.Success, buildResult.Summary);
 
-        var after = await tools.GetWorldState("locations/wb-cov-start", slug);
-        Assert.True(after.Success, after.Summary);
-        Assert.Equal(1, after.Data!.SeedCoverage!.Locations);
-        Assert.Equal(1, after.Data.SeedCoverage.PcCharacters);
-        Assert.DoesNotContain("no locations yet", after.Data.SeedCoverage.Gaps);
-        Assert.DoesNotContain("no PC characters yet", after.Data.SeedCoverage.Gaps);
-        Assert.DoesNotContain(after.Data.SeedCoverage.Gaps, g => g.Contains("climateZone"));
+        SeedCoverageSummary after;
+        using (var afterSession = _fixture.Store.OpenAsyncSession())
+        {
+            after = await repo.BuildSeedCoverageAsync(afterSession, slug, "locations/wb-cov-start");
+        }
+        Assert.Equal(1, after.Locations);
+        Assert.Equal(1, after.PcCharacters);
+        Assert.DoesNotContain("no locations yet", after.Gaps);
+        Assert.DoesNotContain("no PC characters yet", after.Gaps);
+        Assert.DoesNotContain(after.Gaps, g => g.Contains("climateZone"));
     }
 
     [Fact]

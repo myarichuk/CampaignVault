@@ -22,7 +22,7 @@ public record WorldPressureItem(
     /// <summary>Optional machine-readable commit example(s) for the LLM to use.</summary>
     public string? SuggestedCommitJson { get; init; }
 
-    /// <summary>Terse abbreviation for this pressure (e.g. "HUNGER:critical"). If null, uses Text as-is.</summary>
+    /// <summary>Terse abbreviation for this pressure (e.g. "HUNGER", "QUEST:deadline:3d"). Only set for Suggestion-level items with a recognized pattern; null means Text is used as-is.</summary>
     public string? Abbreviation { get; init; }
 
     public const string RumorsGroupingKey = "Simulation:Rumors";

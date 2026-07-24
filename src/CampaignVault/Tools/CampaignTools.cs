@@ -54,9 +54,40 @@ public class CampaignTools(
         exploration.GetNpcNeeds(characterId, ResolveCampaign(campaignName));
 
     // --- Mutation ---
-    internal Task<ToolResult<CommitResult>> Commit(WorldChange[]? changes, string? narrative = null,
-        string? campaignName = TestDefaultCampaignSlug) =>
-        mutation.Commit(changes, narrative, ResolveCampaign(campaignName));
+    // Routes through the production take_turn pipeline (the only mutation path) and adapts the
+    // TurnResult back to the CommitResult shape the historical test suite asserts on.
+    internal async Task<ToolResult<CommitResult>> Commit(WorldChange[]? changes, string? narrative = null,
+        string? campaignName = TestDefaultCampaignSlug)
+    {
+        if (changes is null || changes.Length == 0)
+        {
+            return await ToolArgumentErrors.Missing<CommitResult>(
+                "changes",
+                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
+                toolName: "take_turn");
+        }
+
+        var turn = await mutation.TakeTurn(
+            new TakeTurnRequest { Changes = changes, Narrative = narrative, AutoRefreshInvolved = false },
+            ResolveCampaign(campaignName));
+
+        CommitResult? data = null;
+        if (turn.Data is { } turnResult)
+        {
+            data = new CommitResult
+            {
+                Success = turn.Success,
+                ChangesProcessed = turnResult.ChangesProcessed,
+                Summary = turnResult.Summary,
+                InvolvedEntities = turnResult.InvolvedEntities,
+                EntityCollisions = turnResult.EntityCollisions,
+                NarrativeReminder = turnResult.NarrativeReminder,
+                RateLimitTokensRemaining = turnResult.RateLimitTokensRemaining,
+            };
+        }
+
+        return new ToolResult<CommitResult>(turn.Success, data, turn.Summary, turn.Error, turn.WorldPressure, turn.RetryExample);
+    }
 
     internal Task<ToolResult<CommitResult>> Commit(string changesJson, string narrative,
         string? campaignName = TestDefaultCampaignSlug)
@@ -87,7 +118,7 @@ public class CampaignTools(
                 Summary: "Invalid changes format. Expected JSON array of world changes."));
         }
 
-        return mutation.Commit(parsed, narrative, ResolveCampaign(campaignName));
+        return Commit(parsed, narrative, campaignName);
     }
 
     public Task<ToolResult<TurnResult>> TakeTurn(TakeTurnRequest request,

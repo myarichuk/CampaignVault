@@ -39,7 +39,11 @@ internal enum HelpTopic
 
     /// <summary>Laziness traps, tips, common mistakes.</summary>
     [Description("FAQ and laziness traps")]
-    Faq
+    Faq,
+
+    /// <summary>Full MCP tool catalog grouped by category (absorbed the former list_tools tool).</summary>
+    [Description("MCP tool catalog")]
+    Tools
 }
 
 [McpServerToolType]
@@ -47,9 +51,9 @@ public class MetaTools : IMcpServerTool
 {
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for commit $type discriminators — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use — e.g. for scratches, stains, secret compartments, or other lasting item damage/wear, look at item_update's upsertItemDetail. Filter by category to reduce output. NOTE: every $type below (except rest/travel, which have their own hour fields) also accepts an optional 'minutesElapsed' field — not listed per-entry since it's universal — to nudge hunger/thirst/tiredness during an ordinary scene without waiting for rest/advance_world.")]
+    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for the $type discriminators used inside take_turn's changes[] array — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use — e.g. for scratches, stains, secret compartments, or other lasting item damage/wear, look at item_update's upsertItemDetail. Filter by category to reduce output. NOTE: every $type below (except rest/travel, which have their own hour fields) also accepts an optional 'minutesElapsed' field — not listed per-entry since it's universal — to nudge hunger/thirst/tiredness during an ordinary scene without waiting for rest/advance_world.")]
     public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
-        [Description("Optional filter over commit $type categories: Combat, Narrative, World, PlotThread. Omit to return all. This groups commit $type discriminators used inside the 'commit' tool's changes array — it is unrelated to list_tools' category parameter, which groups MCP tools themselves.")]
+        [Description("Optional filter over change $type categories: Combat, Narrative, World, PlotThread. Omit to return all.")]
         string? category = null)
     {
         var schema = CommitSchemaRegistry.GetAll(category);
@@ -58,11 +62,7 @@ public class MetaTools : IMcpServerTool
             $"Returned {schema.Count} commit type schemas{(category != null ? $" for category '{category}'" : "")}. Side-effect types are marked hasSideEffects=true — do not duplicate their auto-mutations. Reminder: every type here (except rest/travel) also accepts an optional 'minutesElapsed' to nudge needs during ordinary scenes."));
     }
 
-    [ToolCategory("System")]
-    [McpServerTool(UseStructuredContent = true)]
-    [Description(@"TOOL CATALOG: Returns the complete list of CampaignVault MCP tools (name, category, one-line description). Call this if search-based discovery only surfaced a subset. Optional category filter available.")]
-    public Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(
-        [Description("Optional filter over MCP tool-grouping categories: Session & exploration, Mutation & time, Combat & rulesets, Campaign management, Deep dives, World builder, System. Omit to return all tools. This groups the MCP tools themselves — it is unrelated to get_commit_schema's category parameter, which groups commit $type discriminators.")] string? category = null)
+    internal Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(string? category = null)
     {
         var tools = ToolCatalog.GetByCategory(category);
         var summary = string.IsNullOrWhiteSpace(category)
@@ -73,9 +73,9 @@ public class MetaTools : IMcpServerTool
 
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: world-building, patterns, combat, world-pressure, visual-sandbox (item damage/wear/hidden-feature tracking, tags, appearance, knowledge), commit-enum, or faq. Each topic is self-contained with copy-paste examples.")]
+    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: world-building, patterns, combat, world-pressure, visual-sandbox (item damage/wear/hidden-feature tracking, tags, appearance, knowledge), commit-enum, tools (full MCP tool catalog), or faq. Each topic is self-contained with copy-paste examples.")]
     public Task<ToolResult<string>> GetHelp(
-        [Description("Optional help topic for focused deep-dive sections: 'world-building' (session-0 seeding order + world_build example), 'patterns' (commit examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox' (persistent item details: scratches/stains/secret compartments/damage, tags, appearance, knowledge), 'commit-enum', 'faq'. Omit for lean quickstart.")]
+        [Description("Optional help topic for focused deep-dive sections: 'world-building' (session-0 seeding order + world_build example), 'patterns' (take_turn change examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox' (persistent item details: scratches/stains/secret compartments/damage, tags, appearance, knowledge), 'commit-enum', 'tools' (full MCP tool catalog grouped by category), 'faq'. Omit for lean quickstart.")]
         string? topic = null)
     {
         var content = GetHelpContent(topic);
@@ -109,6 +109,8 @@ public class MetaTools : IMcpServerTool
                 .Replace("{{COMMIT_ENUM_VALUES}}", CommitEnumCheatSheet.Full, StringComparison.Ordinal),
 
             HelpTopic.Faq => DmHelpManual.FaqSection,
+
+            HelpTopic.Tools => "## MCP Tool Catalog\n\n" + ToolCatalog.FormatHelpIndex(),
 
             _ => DmHelpManual.QuickstartSection
         };

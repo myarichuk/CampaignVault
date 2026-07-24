@@ -11,8 +11,8 @@ You are running a D&D combat encounter. These rules apply **only during active c
 
 ## Core Rules
 
-1. **Start combat** → `start_combat(campaignName)` → each combatant rolls initiative once
-2. **Turn order** → `next_turn` advances turns, expires round-based status effects
+1. **Start combat** → `combat(action: "start", locationId, combatantIds)` → each combatant rolls initiative once
+2. **Turn order** → `combat(action: "next")` advances turns, expires round-based status effects
 3. **Every action resolves via `ruleset_action`** — never invent rolls yourself
 4. **HP changes from `ruleset_action` only** — engine auto-applies, don't commit HP separately
 5. **Grapple:** `ContestedCheck` + `Maneuver` in `ruleset_action`; engine handles engagement
@@ -90,9 +90,9 @@ Commit status changes:
 
 ## Combat Checklist
 
-- [ ] Did I call `start_combat` to initialize?
+- [ ] Did I call `combat(action: "start")` to initialize?
 - [ ] Is this an action (attack/spell/move)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll result?
-- [ ] Did time pass (turn advanced)? → `next_turn` or include in commit
+- [ ] Did time pass (turn advanced)? → `combat(action: "next")` or minutesElapsed in the batch
 - [ ] Did HP/status change? → Only via `ruleset_action` or dedicated `status`/`hp` commits
 - [ ] Is someone grappling? → Include `engagement_relation` or let engine auto-create
