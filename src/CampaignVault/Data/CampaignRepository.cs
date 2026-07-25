@@ -1095,6 +1095,17 @@ public class CampaignRepository
             @event.Details = SanitizeDetails(@event.Details);
         }
 
+        // Set SessionId to the currently open session (if one exists)
+        if (string.IsNullOrEmpty(@event.SessionId))
+        {
+            var sessionLog = await GetSessionLogAsync(session, effective);
+            var openSession = sessionLog?.Sessions.FirstOrDefault(s => s.IsOpen);
+            if (openSession != null)
+            {
+                @event.SessionId = openSession.Number.ToString();
+            }
+        }
+
         await EnrichSemanticVectorAsync(@event);
         await session.StoreAsync(@event);
     }
