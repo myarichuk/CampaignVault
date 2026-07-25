@@ -152,7 +152,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var npc = await _repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null)
             {
-                return new ToolResult<NpcContextView>(false, Error: "NotFound");
+                var suggestion = EntitySeedingAdvisor.GenerateSuggestion(characterId, effective);
+                return new ToolResult<NpcContextView>(false, Error: "NotFound", Summary: suggestion);
             }
 
             var config = await _repository.GetCampaignConfigAsync(session, effective);
@@ -290,7 +291,13 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         // Pure read + the previous parallel query pattern was a major source of "active async tasks on dispose".
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var results = await _repository.UnifiedSearchAsync(session, query, effective);
-            return new ToolResult<UnifiedSearchResult>(true, new UnifiedSearchResult(results), $"Found {results.Count()} matches (campaign: {effective}).");
+            var count = results.Count();
+            var summary = $"Found {count} matches (campaign: {effective}).";
+            if (count == 0)
+            {
+                summary += "\n\n💡 **No matches found.** If the party is looking for a specific location, NPC, item, or quest that doesn't exist yet, consider seeding it with `world_build`. See `get_help topic=world-building` or the dnd-exploration skill for lazy-seeding guidelines.";
+            }
+            return new ToolResult<UnifiedSearchResult>(true, new UnifiedSearchResult(results), summary);
         }, saveChanges: false);
     }
 
@@ -327,7 +334,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var npc = await _repository.GetCharacterAsync(session, characterId, effective);
             if (npc == null)
             {
-                return new ToolResult<NpcNeedsView>(false, Error: "NotFound");
+                var suggestion = EntitySeedingAdvisor.GenerateSuggestion(characterId, effective);
+                return new ToolResult<NpcNeedsView>(false, Error: "NotFound", Summary: suggestion);
             }
 
             // Merge global descriptors (from DefineNeedDescriptor) with per-NPC ones.
@@ -360,7 +368,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var summary = await _repository.BuildSceneSummaryAsync(session, locationId, effective);
             if (summary == null)
             {
-                return new ToolResult<SceneSummaryView>(false, Error: "NotFound");
+                var suggestion = EntitySeedingAdvisor.GenerateSuggestion(locationId, effective);
+                return new ToolResult<SceneSummaryView>(false, Error: "NotFound", Summary: suggestion);
             }
 
             return new ToolResult<SceneSummaryView>(true, summary,
@@ -376,7 +385,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var summary = await _repository.BuildNpcSummaryAsync(session, characterId, effective);
             if (summary == null)
             {
-                return new ToolResult<NpcSummaryView>(false, Error: "NotFound");
+                var suggestion = EntitySeedingAdvisor.GenerateSuggestion(characterId, effective);
+                return new ToolResult<NpcSummaryView>(false, Error: "NotFound", Summary: suggestion);
             }
 
             return new ToolResult<NpcSummaryView>(true, summary,
