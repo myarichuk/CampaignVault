@@ -48,6 +48,7 @@ internal static class ConventionRegistration
 
         // Register tools explicitly to ensure dependency order: ExplorationTools before DeepDiveTools
         builder.RegisterType<ExplorationTools>()
+            .AsSelf()
             .As<IMcpServerTool>()
             .InstancePerLifetimeScope();
 
