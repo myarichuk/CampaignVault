@@ -45,7 +45,16 @@ internal static class ConventionRegistration
         RegisterCollection<IPressureContributor>(builder, assembly);
         RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
         RegisterCollection<IRulesetModule>(builder, assembly);
-        RegisterCollection<IMcpServerTool>(builder, assembly);
+
+        // Register tools explicitly to ensure dependency order: ExplorationTools before DeepDiveTools
+        builder.RegisterType<ExplorationTools>()
+            .As<IMcpServerTool>()
+            .InstancePerLifetimeScope();
+
+        builder.RegisterAssemblyTypes(assembly)
+            .Where(t => t.IsAssignableTo<IMcpServerTool>() && !t.IsAbstract && t.Name != nameof(ExplorationTools))
+            .As<IMcpServerTool>()
+            .InstancePerLifetimeScope();
 
         builder.RegisterAssemblyTypes(assembly)
             .Where(t => t.IsAssignableTo<IWorldChangeHandler>() && !t.IsAbstract)

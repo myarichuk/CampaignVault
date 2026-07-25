@@ -790,18 +790,40 @@ internal static class ToolCallExamples
                 FlattenedFieldDetector = args =>
                     args.ContainsKey("title") && args.ContainsKey("tensionLevel") && !args.ContainsKey("plotThread"),
                 DeserializationHint =
-                    "Required: id, title. state (Dormant, Active, Escalating, Climax, Resolved, Abandoned) defaults to "
-                    + "Active. Usually DM-scaffolding, not player-visible (isPlayerVisible defaults to false). Omitting "
-                    + "clues/involvedEntityIds/foreshadowingHooks on an existing thread preserves the stored value — use "
-                    + "this to bump tensionLevel or add a clue without re-sending the whole clue list.",
+                    "Required: id, title. state (Dormant, Active, Escalating, Climax, Resolved, Abandoned) defaults to Active. "
+                    + "Usually DM-scaffolding, not player-visible (isPlayerVisible defaults to false). When seeding new threads, "
+                    + "MUST include: foreshadowingHooks (2-4 narratable teasers), clues (2-4 discoverable entries), "
+                    + "resolutionCondition (testable end state), involvedEntityIds (NPCs/factions). Omitting these fields on an "
+                    + "existing thread preserves the stored value — use this to bump tensionLevel or evolve state without re-sending the whole arc.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
                       "plotThread": {
                         "id": "plot-threads/guild-infiltration",
                         "title": "Infiltrate the Thieves' Guild",
-                        "state": "Active",
-                        "tensionLevel": 20
+                        "summary": "The guild leadership demands internal sabotage before offering refuge.",
+                        "state": "Dormant",
+                        "tensionLevel": 0,
+                        "foreshadowingHooks": [
+                          "A hooded figure watching from the rooftops when the party meets with guild contacts",
+                          "Rumors of 'the job' — whispered in taverns, quickly silenced when outsiders draw near"
+                        ],
+                        "clues": [
+                          {
+                            "id": "clue-contact-letter",
+                            "description": "A sealed letter from a guild intermediary, outlining the required sabotage",
+                            "involvedEntityIds": ["chars/contact"]
+                          },
+                          {
+                            "id": "clue-vault-location",
+                            "description": "Overheard conversation between guild members about the vault's location and security",
+                            "involvedEntityIds": ["chars/guard-captain"]
+                          }
+                        ],
+                        "resolutionCondition": "Party presents evidence of completed sabotage to the guild leadership and gains their backing, or the job is abandoned and the guild becomes permanently hostile.",
+                        "involvedEntityIds": ["chars/guild-master", "factions/thieves-guild"],
+                        "dmNotes": "The guild leadership is testing party loyalty before granting them sanctuary. Their true endgame is political leverage against the city guard.",
+                        "isPlayerVisible": false
                       },
                       "campaignName": "dragon-heist"
                     }

@@ -43,6 +43,10 @@ Call `get_commit_schema` for the machine-readable field list per $type.
 
 Never create entities through take_turn changes — there are no `_create` $types. Use `world_build` (batch: characters, locations, items, factions, quests, rumors, plotThreads, creatures, spells, feats, lore, needDescriptors), even for a single new entity (a one-item batch is fine). It reports a merge (not a duplicate) if the id already exists.
 
+**Before calling world_build**, run the world-building seeding checklist in `dnd-exploration` — especially the 6-step location depth + plot thread enrichment check. A missed district, missing PoIs, or unfilled clues are gaps that surface as a broken `get_entity` or a flat narration later.
+
+**Plot thread clues must materialize as real items or NPCs:** If a clue references a physical object, seed it as an `items[]` entry. The clue's `involvedEntityIds` must include the item ID so `get_entity` on the item surfaces clue context. Tag the item: `tags: ["clue:plot-threads/..."]`. Without this, the party searches the world and finds nothing.
+
 New locations follow the same rule — see `dnd-exploration` for the Region→Settlement→District→Building→Room hierarchy and when a spot needs a full Location vs. just a PoI.
 
 ## Batch Changes (one take_turn, multiple changes)

@@ -194,14 +194,16 @@ internal static class WorldStateScopeResolver
                 .ToListAsync()
             : [];
 
-        // Query factions by reputation
+        // Query factions by reputation (move Contains to client-side to avoid closure capture issue in RavenDB LINQ)
         var factionsByReputation = hasFactionContext
-            ? await session.Query<Faction, Faction_Search>()
+            ? (await session.Query<Faction, Faction_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(f => (f.CampaignName == effective || f.CampaignName == null || f.CampaignName == "")
-                            && relevantFactionIds.Contains(f.Id))
+                .Where(f => (f.CampaignName == effective || f.CampaignName == null || f.CampaignName == ""))
+                .Take(limit * 2)
+                .ToListAsync())
+                .Where(f => relevantFactionIds.Contains(f.Id))
                 .Take(limit)
-                .ToListAsync()
+                .ToList()
             : [];
 
         var factions = factionsByTerritory
