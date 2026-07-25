@@ -145,6 +145,9 @@ public class Item : ICampaignScopedEntity, IArchivable
     /// When true, hidden from default search/scene results (soft delete). Does not remove history.
     /// </summary>
     public bool IsArchived { get; set; }
+
+    /// <summary>Plot threads associated with this item (referenced via thread-level or clue-level involvedEntityIds).</summary>
+    public List<PlotThreadMinimal> AssociatedPlotThreads { get; set; } = [];
 }
 
 /// <summary>

@@ -117,6 +117,12 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var pressureItems = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.Scene, pressureCtx);
             var finalPressures = PressureManager.ToDisplayStrings(pressureItems);
 
+            // Query associated plot threads
+            var associatedThreads = await _repository.GetPlotThreadsReferencingEntityAsync(session, locationId, effective);
+            scene.AssociatedPlotThreads = associatedThreads
+                .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+                .ToList();
+
             var stuckChar = scene.PresentNPCs?.FirstOrDefault(c => c.CurrentActivity != null && c.CurrentActivity.Contains("interrupted en route", StringComparison.OrdinalIgnoreCase));
             scene.SuggestedCommitExamples = SuggestedCommitExampleBuilder.Build(
                 pressureItems,
@@ -124,7 +130,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 stuckChar?.Id);
             scene.WorldPressureItems = pressureItems;
 
-            return new ToolResult<SceneView>(true, scene, 
+            return new ToolResult<SceneView>(true, scene,
                 $"Scene details for {locationId} (campaign: {effective}) retrieved.",
                 WorldPressure: finalPressures.Length > 0 ? finalPressures : null);
         }, saveChanges: true);
@@ -187,6 +193,12 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
             var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
 
+            // Query associated plot threads
+            var associatedThreads = await _repository.GetPlotThreadsReferencingEntityAsync(session, characterId, effective);
+            var associatedMinimal = associatedThreads
+                .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+                .ToList();
+
             var time = await _repository.GetTimeAsync(session, effective);
             string[]? initiativePressure = null;
             var urgentInitiatives = enrichment.ActiveInitiatives
@@ -225,7 +237,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 RelevantMemories = enrichment.RelevantMemories.ToList(),
                 Equipped = equipped,
                 Carried = carried,
-                TurnIntent = enrichment.TurnIntent
+                TurnIntent = enrichment.TurnIntent,
+                AssociatedPlotThreads = associatedMinimal
             };
 
             var equipmentHint = heldItems.Count == 0

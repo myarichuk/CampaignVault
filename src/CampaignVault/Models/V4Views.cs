@@ -61,6 +61,9 @@ public class SceneView
     /// BehavioralTension among those whose TurnIntent.Holder is "npc" — a hint, not a lock.
     /// </summary>
     public string? TurnIntentCharacterId { get; set; }
+
+    /// <summary>Plot threads associated with this location (referenced via thread-level or clue-level involvedEntityIds).</summary>
+    public List<PlotThreadMinimal> AssociatedPlotThreads { get; set; } = [];
 }
 
 /// <summary>

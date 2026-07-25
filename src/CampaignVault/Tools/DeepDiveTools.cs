@@ -111,6 +111,12 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
                     Summary: $"Faction '{factionId}' not found.{hint} Use the exact ID from search_world.");
             }
 
+            // Query associated plot threads
+            var associatedThreads = await _repository.GetPlotThreadsReferencingEntityAsync(session, factionId, effective);
+            faction.AssociatedPlotThreads = associatedThreads
+                .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+                .ToList();
+
             return new ToolResult<Faction>(true, faction,
                 $"Full faction context for {faction.Name} (campaign: {effective}).");
         }, saveChanges: false);
@@ -167,6 +173,12 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
                 return new ToolResult<Quest>(false, Error: "NotFound", Summary: $"Quest '{questId}' not found.{hint}");
             }
 
+            // Query associated plot threads
+            var associatedThreads = await _repository.GetPlotThreadsReferencingEntityAsync(session, questId, effective);
+            quest.AssociatedPlotThreads = associatedThreads
+                .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+                .ToList();
+
             return new ToolResult<Quest>(true, quest, $"Quest details for '{quest.Title}' (campaign: {effective}).");
         }, saveChanges: false);
     }
@@ -188,6 +200,12 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
                     : "";
                 return new ToolResult<Item>(false, Error: "NotFound", Summary: $"Item '{itemId}' not found.{hint}");
             }
+
+            // Query associated plot threads
+            var associatedThreads = await _repository.GetPlotThreadsReferencingEntityAsync(session, itemId, effective);
+            item.AssociatedPlotThreads = associatedThreads
+                .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+                .ToList();
 
             var activeCount = item.ItemDetails.Count(d => !d.IsRetired);
             var retiredCount = item.ItemDetails.Count(d => d.IsRetired);

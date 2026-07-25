@@ -45,6 +45,9 @@ public class Quest : ICampaignScopedEntity, IArchivable
     /// When true, hidden from default search/scene results (soft delete). Does not remove history.
     /// </summary>
     public bool IsArchived { get; set; }
+
+    /// <summary>Plot threads associated with this quest (referenced via thread-level or clue-level involvedEntityIds).</summary>
+    public List<PlotThreadMinimal> AssociatedPlotThreads { get; set; } = [];
 }
 
 public record QuestObjective(

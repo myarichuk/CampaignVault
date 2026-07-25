@@ -1,5 +1,15 @@
 namespace CampaignVault.Models;
 
+/// <summary>
+/// Minimal plot thread summary embedded in entity detail responses.
+/// Payload restricted to: id, title, state, tensionLevel only.
+/// </summary>
+public record PlotThreadMinimal(
+    string Id,
+    string Title,
+    PlotThreadState State,
+    int TensionLevel);
+
 public class NpcContextView
 {
     public Character Character { get; set; } = default!;
@@ -29,6 +39,9 @@ public class NpcContextView
 
     /// <summary>Advisory-only "whose move is it" hint for this NPC — never a hard gate.</summary>
     public TurnIntentSignal? TurnIntent { get; set; }
+
+    /// <summary>Plot threads associated with this NPC (referenced via thread-level or clue-level involvedEntityIds).</summary>
+    public List<PlotThreadMinimal> AssociatedPlotThreads { get; set; } = [];
 }
 
 /// <summary>
