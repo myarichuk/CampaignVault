@@ -104,6 +104,26 @@ Social checks against NPCs apply relationship modifiers automatically (see `dnd-
 
 If `TurnIntent` is set on the NPC's full-detail view (get_entity / take_turn full detail), this NPC is eager to act/speak next. Use as an advisory hint (not a hard rule). They might interrupt, volunteer info, act urgently.
 
+## NPC Promotion & "Little Stories"
+
+When a transient NPC (born mid-session with `keepAlive: false`) becomes a favorite and you decide to keep them:
+
+1. Use `take_turn` with `character_update` + `keepAlive: true` to promote them to permanent
+2. Engine responds with NARRATIVE PROMPT: "Consider creating a plot thread for them"
+3. **Seed a "little story" (plot thread) for this NPC:**
+   - `world_build` with a new `plotThreads[]` entry
+   - Include `foreshadowingHooks` (2-3): hints of their arc before it activates
+   - Include `clues` (2-3): discoverable evidence about them/their involvement (reference items, related NPCs, locations)
+   - Include `resolutionCondition`: a clear end state (e.g., "NPC confesses their past," "NPC's rival is defeated," "NPC opens their shop")
+   - Include `involvedEntityIds`: the NPC's ID + any related characters/factions (their mentor, their enemy, their patron)
+
+4. **Clues can reference future entities:**
+   - If a clue mentions an item that doesn't exist yet, seed it when the plot demands it
+   - If a clue references an NPC ally who hasn't been introduced, create them when the thread heats up
+   - Engine flags ENGINE WARNING for missing clue entities; address them or remove stale references
+
+5. **Each permanent NPC can anchor one or more plot threads.** Companion NPCs, allies, rivals, patrons—each can have their own arc(s) that weave into the larger campaign.
+
 ## Checklist
 
 - [ ] Did I fetch the NPC's full detail (`get_entity` chars/ id) first?
@@ -114,3 +134,4 @@ If `TurnIntent` is set on the NPC's full-detail view (get_entity / take_turn ful
 - [ ] Did their relationship with PC shift? → `relationship` change in take_turn
 - [ ] Are they driven by unmet needs? → Show it, don't state it
 - [ ] Did I check their schedule? → Are they where they should be?
+- [ ] If promoted to permanent (keepAlive: true), did I seed a plot thread ("little story") for them?

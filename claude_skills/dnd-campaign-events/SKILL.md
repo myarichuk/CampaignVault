@@ -91,18 +91,26 @@ This rolls simulation rules (needs, rumors, status expiry, NPC schedules) and re
 
 **Don't use `advance_world` for dangerous travel or overnight spans with stakes**—use `rest` (for immediate recovery + interruption rolls) or `travel` (for encounters).
 
-## Plot Thread Progression
+## Plot Thread Progression & Scaffolding
 
-Track multi-beat narrative arcs:
+Every plot thread seeded via `world_build` MUST include:
 
-```json
-{
-  "$type": "plot_thread_progress",
-  "plotThreadId": "plot/conspiracy-within-council",
-  "newState": "Escalating",
-  "clue": "council-member-letter-intercepted"
-}
-```
+1. **`foreshadowingHooks` (2-4 strings):** Narratable teasers BEFORE the thread activates
+   - Example: "A robed figure watching from a rooftop", "Overheard tavern rumor about strange shipments", "A letter found in a desk"
+   - Weave these into scenes before plot activates; they prime the party for what's coming
+
+2. **`clues` (2-4+ entries, each with id, description, involvedEntityIds):** Discoverable evidence DURING the thread
+   - A scrap of paper, a witness statement, a tracking mark, a behavioral tic, a relationship dynamic
+   - Each clue should be findable at a location or from an NPC
+   - **Clue types:** physical (objects/locations), behavioral (NPC quirks/responses), relational (ties between NPCs/factions)
+
+3. **`resolutionCondition` (testable end state):** Not "the party talks to them" but "party presents evidence of the camp to Maeva, and she calls off the war parties"
+
+4. **`involvedEntityIds` (NPC IDs + related characters/factions):** At minimum the primary NPC the thread revolves around
+
+**Clue materialization:** When a clue references a physical object, seed it via `world_build` as an `items[]` entry with `holderId` pointing to location/NPC. The clue's `involvedEntityIds` must include the item ID. Tag the item: `tags: ["clue:plot-threads/..."]`. Without this link, party searches find nothing.
+
+**Reverse connections & validation:** Use `get_entity(plot-threads/...)` to fetch a thread. If ENGINE WARNING appears, the thread references missing entities (items/NPCs not yet seeded). Either seed them on-demand when plot demands, or remove stale clue references via `world_build`.
 
 ## Campaign Time
 
