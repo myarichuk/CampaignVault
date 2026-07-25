@@ -274,7 +274,7 @@ public class CampaignRepository
             .ContainsAny("Locations", targetIds)
             .Take(20)
             .ToListAsync();
-        return StripSemanticVectors(npcs).ToList();
+        return npcs.ToList();
     }
 
     private async Task<List<Character>> LoadSceneNpcsFromSimulationAsync(IAsyncDocumentSession session,
@@ -285,7 +285,7 @@ public class CampaignRepository
             .WhereIn("CurrentLocationId", targetIds)
             .Take(20)
             .ToListAsync();
-        return StripSemanticVectors(npcs).ToList();
+        return npcs.ToList();
     }
 
     private async Task<List<Item>> LoadVisibleSceneItemsAsync(
@@ -306,7 +306,7 @@ public class CampaignRepository
             JsonSanitizer.Sanitize(item);
         }
 
-        return StripSemanticVectors(items).ToList();
+        return items.ToList();
     }
 
     private async Task<List<Event>> LoadSceneEventsAsync(
@@ -350,7 +350,7 @@ public class CampaignRepository
         var q = ApplyEventScalarFilters(session.Query<Event, Event_Search>(), effective, null, locationId, involvedCharacterId);
         var events = await q.Customize(x => x.WaitForNonStaleResults()).OrderByDescending(x => x.Importance).ThenByDescending(x => x.Timestamp).Take(budget).ToListAsync();
         SanitizeEventDetails(events);
-        return StripSemanticVectors(events).ToList();
+        return events.ToList();
     }
 
     private static IRavenQueryable<Event> ApplyEventScalarFilters(
@@ -628,30 +628,30 @@ public class CampaignRepository
         // Await queries individually. The previous Task-capture + WhenAll + re-await pattern
         // could leave RavenDB session tracking "active async tasks" after the method returned,
         // causing "Disposing session with active async task is forbidden" on ExecuteAsync disposal.
-        var chars = StripSemanticVectors(await ApplyHybridSearchAsync<Character, Character_Search>(
+        var chars = await ApplyHybridSearchAsync<Character, Character_Search>(
             session, queryVector, effective,
-            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit)).ToList();
-        var lore = StripSemanticVectors(await ApplyHybridSearchAsync<Lore, Lore_Search>(
+            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var lore = await ApplyHybridSearchAsync<Lore, Lore_Search>(
             session, queryVector, effective,
-            q => q.Search(x => x.Title, $"*{query}*"), UnifiedSearchPerTypeLimit)).ToList();
-        var locs = StripSemanticVectors(await ApplyHybridSearchAsync<Location, Location_Search>(
+            q => q.Search(x => x.Title, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var locs = await ApplyHybridSearchAsync<Location, Location_Search>(
             session, queryVector, effective,
-            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit)).ToList();
-        var rumors = StripSemanticVectors(await ApplyHybridSearchAsync<Rumor, Rumor_Search>(
+            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var rumors = await ApplyHybridSearchAsync<Rumor, Rumor_Search>(
             session, queryVector, effective,
-            q => q.Search(x => x.Subject, $"*{query}*"), UnifiedSearchPerTypeLimit)).ToList();
-        var factions = StripSemanticVectors(await ApplyHybridSearchAsync<Faction, Faction_Search>(
+            q => q.Search(x => x.Subject, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var factions = await ApplyHybridSearchAsync<Faction, Faction_Search>(
             session, queryVector, effective,
-            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit)).ToList();
-        var quests = StripSemanticVectors(await ApplyHybridSearchAsync<Quest, Quest_Search>(
+            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var quests = await ApplyHybridSearchAsync<Quest, Quest_Search>(
             session, queryVector, effective,
-            q => q.Search(x => x.Title, $"*{query}*"), UnifiedSearchPerTypeLimit)).ToList();
-        var events = StripSemanticVectors(await ApplyHybridSearchAsync<Event, Event_Search>(
+            q => q.Search(x => x.Title, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var events = await ApplyHybridSearchAsync<Event, Event_Search>(
             session, queryVector, effective,
-            q => q.Search(x => x.Summary, $"*{query}*"), UnifiedSearchPerTypeLimit)).ToList();
-        var items = StripSemanticVectors(await ApplyHybridSearchAsync<Item, Item_Search>(
+            q => q.Search(x => x.Summary, $"*{query}*"), UnifiedSearchPerTypeLimit);
+        var items = await ApplyHybridSearchAsync<Item, Item_Search>(
             session, queryVector, effective,
-            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit)).ToList();
+            q => q.Search(x => x.Name, $"*{query}*"), UnifiedSearchPerTypeLimit);
 
         foreach (var l in locs)
         {
@@ -767,7 +767,7 @@ public class CampaignRepository
         }
 
         SanitizeEventDetails(events);
-        return StripSemanticVectors(events);
+        return events;
     }
 
     private static async Task<List<Event>> QueryEventsHybridAsync(
@@ -866,20 +866,20 @@ public class CampaignRepository
         {
             if (!IsVisibleInCampaign(character.CampaignName, effective))
                 return null;
-            return StripSemanticVectors(character);
+            return character;
         }
 
         character = await session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
         if (character != null && IsVisibleInCampaign(character.CampaignName, effective))
         {
-            return StripSemanticVectors(character);
+            return character;
         }
 
         // Corax does not support .Fuzzy(); use wildcard substring as last-resort name match.
         // Misspelled names from LLM tool calls are caught by semantic vector search in UnifiedSearchAsync.
         var fuzzy = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .Search(x => x.Name, "*" + identifier + "*").FirstOrDefaultAsync();
-        return fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective) ? StripSemanticVectors(fuzzy) : null;
+        return fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective) ? fuzzy : null;
     }
 
     /// <summary>
@@ -1233,7 +1233,7 @@ public class CampaignRepository
                 .ToList(); // loose for lore (may share)
         }
 
-        return StripSemanticVectors(list);
+        return list;
     }
 
     /// <summary>
@@ -1522,7 +1522,7 @@ public class CampaignRepository
             list = list.Where(r => r.CampaignName == effective).ToList();
         }
 
-        return StripSemanticVectors(list.Where(r => !r.IsArchived).ToList()).ToList();
+        return list.Where(r => !r.IsArchived).ToList();
     }
 
     /// <summary>
@@ -1538,7 +1538,7 @@ public class CampaignRepository
         }
 
         SanitizeLocation(loc);
-        return loc != null ? StripSemanticVectors(loc) : null;
+        return loc;
     }
 
     /// <summary>
@@ -1550,7 +1550,7 @@ public class CampaignRepository
         var item = await session.LoadAsync<Item>(id);
         if (item != null && !IsVisibleInCampaign(item.CampaignName, effective))
             return null;
-        return item != null ? StripSemanticVectors(item) : null;
+        return item;
     }
 
     /// <summary>
@@ -1785,7 +1785,7 @@ public class CampaignRepository
             .ToListAsync();
 
         var result = creatures.Where(c => IsVisibleInCampaign(c.CampaignName, effective) && !c.IsArchived).ToList();
-        return StripSemanticVectors(result).ToList();
+        return result;
     }
 
     public async Task<CustomSpell> UpsertCustomSpellAsync(IAsyncDocumentSession session, CustomSpellUpsertRequest spell, string? campaignName = null)
@@ -1856,7 +1856,7 @@ public class CampaignRepository
             .ToListAsync();
 
         var result = spells.Where(s => IsVisibleInCampaign(s.CampaignName, effective) && !s.IsArchived).ToList();
-        return StripSemanticVectors(result).ToList();
+        return result;
     }
 
     public async Task<CustomFeat> UpsertCustomFeatAsync(IAsyncDocumentSession session, CustomFeatUpsertRequest feat, string? campaignName = null)
@@ -1923,7 +1923,7 @@ public class CampaignRepository
             .ToListAsync();
 
         var result = feats.Where(f => IsVisibleInCampaign(f.CampaignName, effective) && !f.IsArchived).ToList();
-        return StripSemanticVectors(result).ToList();
+        return result;
     }
 
     public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery,
@@ -2244,7 +2244,7 @@ public class CampaignRepository
             .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
                         && (q.CampaignName == effective || q.CampaignName == null || q.CampaignName == ""))
             .Take(limit).ToListAsync();
-        return StripSemanticVectors(quests).ToList();
+        return quests;
     }
 
     public async Task<List<Faction>> GetActiveFactionsAsync(IAsyncDocumentSession session, string? campaignName = null,
@@ -2255,7 +2255,7 @@ public class CampaignRepository
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
             .Where(f => f.CampaignName == effective || f.CampaignName == null || f.CampaignName == "")
             .Take(limit).ToListAsync();
-        return StripSemanticVectors(factions).ToList();
+        return factions;
     }
 
     /// <summary>
@@ -2460,7 +2460,7 @@ public class CampaignRepository
         var faction = await session.LoadAsync<Faction>(id);
         if (faction != null && !IsVisibleInCampaign(faction.CampaignName, effective))
             return null;
-        return faction != null ? StripSemanticVectors(faction) : null;
+        return faction;
     }
 
     /// <summary>
@@ -2581,7 +2581,7 @@ public class CampaignRepository
         var quest = await session.LoadAsync<Quest>(id);
         if (quest != null && !IsVisibleInCampaign(quest.CampaignName, effective))
             return null;
-        return quest != null ? StripSemanticVectors(quest) : null;
+        return quest;
     }
 
     public async Task<PlotThread?> GetPlotThreadAsync(IAsyncDocumentSession session, string id, string? campaignName = null)
@@ -2590,7 +2590,7 @@ public class CampaignRepository
         var thread = await session.LoadAsync<PlotThread>(id);
         if (thread != null && !IsVisibleInCampaign(thread.CampaignName, effective))
             return null;
-        return thread != null ? StripSemanticVectors(thread) : null;
+        return thread;
     }
 
     public async Task<List<PlotThread>> GetActivePlotThreadsAsync(IAsyncDocumentSession session, string? campaignName = null)
@@ -2894,7 +2894,7 @@ public class CampaignRepository
                         && !q.IsArchived
                         && q.RelatedLocationIds.Contains(locationId))
             .ToList();
-        return StripSemanticVectors(result).ToList();
+        return result;
     }
 
     /// <summary>
@@ -2914,7 +2914,7 @@ public class CampaignRepository
                         && !f.IsArchived
                         && (f.ControllingTerritory == locationId || f.TerritoryLocationIds.Contains(locationId)))
             .ToList();
-        return StripSemanticVectors(result).ToList();
+        return result;
     }
 
     public static ActiveQuestSummary ToActiveQuestSummary(Quest q)
@@ -2937,22 +2937,6 @@ public class CampaignRepository
             oldestOpen);
     }
 
-    private static T StripSemanticVectors<T>(T entity) where T : class, IHasSemanticVector
-    {
-        entity.SemanticVector = null;
-        entity.EmbeddingTextHash = null;
-        return entity;
-    }
-
-    private static IEnumerable<T> StripSemanticVectors<T>(IEnumerable<T> entities) where T : class, IHasSemanticVector
-    {
-        foreach (var entity in entities)
-        {
-            entity.SemanticVector = null;
-            entity.EmbeddingTextHash = null;
-        }
-        return entities;
-    }
 
     internal async Task<NpcSummaryView?> BuildNpcSummaryAsync(IAsyncDocumentSession session, string characterId, string campaignName)
     {
