@@ -2621,6 +2621,73 @@ public class CampaignRepository
     }
 
     /// <summary>
+    /// Validate all entity IDs referenced in a plot thread's clues.
+    /// Returns list of entity IDs that are referenced but do not exist in the database.
+    /// </summary>
+    public async Task<List<string>> ValidateClueEntityReferencesAsync(
+        IAsyncDocumentSession session,
+        PlotThread thread,
+        string? campaignName = null)
+    {
+        var missingEntityIds = new List<string>();
+        if (thread?.Clues == null || thread.Clues.Count == 0)
+            return missingEntityIds;
+
+        var allReferencedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var clue in thread.Clues.Where(c => c?.InvolvedEntityIds != null))
+        {
+            foreach (var id in clue.InvolvedEntityIds.Where(id => !string.IsNullOrWhiteSpace(id)))
+            {
+                allReferencedIds.Add(id);
+            }
+        }
+
+        if (allReferencedIds.Count == 0)
+            return missingEntityIds;
+
+        var effective = ResolveCampaign(campaignName);
+
+        // Check each entity type
+        foreach (var id in allReferencedIds)
+        {
+            var exists = false;
+
+            if (id.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+            {
+                var char_ = await session.LoadAsync<Character>(id);
+                exists = char_ != null && IsVisibleInCampaign(char_.CampaignName, effective);
+            }
+            else if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
+            {
+                var loc = await session.LoadAsync<Location>(id);
+                exists = loc != null && IsVisibleInCampaign(loc.CampaignName, effective);
+            }
+            else if (id.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
+            {
+                var item = await session.LoadAsync<Item>(id);
+                exists = item != null && IsVisibleInCampaign(item.CampaignName, effective);
+            }
+            else if (id.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
+            {
+                var faction = await session.LoadAsync<Faction>(id);
+                exists = faction != null && IsVisibleInCampaign(faction.CampaignName, effective);
+            }
+            else if (id.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
+            {
+                var quest = await session.LoadAsync<Quest>(id);
+                exists = quest != null && IsVisibleInCampaign(quest.CampaignName, effective);
+            }
+
+            if (!exists)
+            {
+                missingEntityIds.Add(id);
+            }
+        }
+
+        return missingEntityIds;
+    }
+
+    /// <summary>
     /// Creates or updates a PlotThread, e.g. bulk-seeding clues or bumping TensionLevel. Rich collection
     /// fields (Clues/InvolvedEntityIds/ForeshadowingHooks) are preserved when omitted from the request.
     /// </summary>

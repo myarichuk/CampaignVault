@@ -444,6 +444,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         var appearanceBefore = character.CurrentAppearance;
         var tagsBefore = new HashSet<string>(character.VisualTags);
         var featuresBefore = new HashSet<string>(character.DistinctiveFeatures);
+        var keepAliveBefore = character.KeepAlive;
 
         if (cu.AppearanceOverride != null) character.CurrentAppearance = cu.AppearanceOverride;
 
@@ -511,6 +512,15 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         if (cu.KeepAlive.HasValue)
         {
             character.KeepAlive = cu.KeepAlive.Value;
+
+            // Nudge: NPC promoted from transient to permanent — suggest creating a plot thread
+            if (!keepAliveBefore && cu.KeepAlive.Value)
+            {
+                context.RecordMessage(
+                    $"NARRATIVE PROMPT: '{character.Name}' promoted from transient to permanent NPC. Consider creating a plot thread " +
+                    $"(\"little story\") for them with clues, foreshadowing, and resolution conditions. " +
+                    $"Use world_build with plotThreads[] to seed it, or get_entity('plot-threads') to list existing threads.");
+            }
         }
 
         if (cu.IsPc.HasValue || cu.IsPartyCompanion.HasValue)

@@ -149,9 +149,18 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
                 return new ToolResult<PlotThread>(false, Error: "NotFound",
                     Summary: $"PlotThread '{plotThreadId}' not found. Pass 'plot-threads' to get_entity to list available threads.");
 
+            // Validate clue entity references
+            var missingEntityIds = await _repository.ValidateClueEntityReferencesAsync(session, thread, effective);
+            var clueWarning = missingEntityIds.Count > 0
+                ? $"ENGINE WARNING: Plot thread '{thread.Title}' has clues referencing non-existent entities: {string.Join(", ", missingEntityIds)}. These should be created via world_build or the references should be removed."
+                : null;
+
             var discoveredClues = thread.Clues.Count(c => c.IsDiscovered);
-            return new ToolResult<PlotThread>(true, thread,
-                $"Plot thread '{thread.Title}': {thread.State}, tension {thread.TensionLevel}/100, {discoveredClues}/{thread.Clues.Count} clues discovered.");
+            var summary = $"Plot thread '{thread.Title}': {thread.State}, tension {thread.TensionLevel}/100, {discoveredClues}/{thread.Clues.Count} clues discovered.";
+            if (clueWarning != null)
+                summary += " " + clueWarning;
+
+            return new ToolResult<PlotThread>(true, thread, summary);
         }, saveChanges: false);
     }
 
