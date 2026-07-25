@@ -21,6 +21,10 @@ public class PlotThread_Search : AbstractIndexCreationTask<PlotThread>
                 t.TensionLevel,
                 t.DeadlineDay,
                 ClueDescriptions = t.Clues != null ? t.Clues.Select(c => c.Description) : new string[0],
+                AllInvolvedEntityIds = t.InvolvedEntityIds.Concat(
+                    t.Clues != null
+                        ? t.Clues.Where(c => c.InvolvedEntityIds != null).SelectMany(c => c.InvolvedEntityIds)
+                        : new List<string>()).ToList(),
                 SemanticVector = CreateVector(t.SemanticVector)
             };
 
@@ -30,5 +34,6 @@ public class PlotThread_Search : AbstractIndexCreationTask<PlotThread>
         Index("ClueDescriptions", FieldIndexing.Search);
         Index(x => x.State, FieldIndexing.Exact);
         Index(x => x.CampaignName, FieldIndexing.Exact);
+        Index(x => x.AllInvolvedEntityIds, FieldIndexing.Exact);
     }
 }

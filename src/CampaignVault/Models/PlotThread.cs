@@ -35,6 +35,46 @@ public class PlotThread : ICampaignScopedEntity, IArchivable
     public string? ResolutionCondition { get; set; }
     public List<string> ForeshadowingHooks { get; set; } = [];
 
+    /// <summary>
+    /// Flattened union of thread-level InvolvedEntityIds and all clue-level InvolvedEntityIds.
+    /// Used for indexed reverse lookup: "which plots reference this entity?"
+    /// Computed on serialize to avoid storage duplication.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlyList<string> AllInvolvedEntityIds
+    {
+        get
+        {
+            var result = new HashSet<string>(StringComparer.Ordinal);
+
+            if (InvolvedEntityIds != null)
+            {
+                foreach (var id in InvolvedEntityIds)
+                {
+                    if (!string.IsNullOrWhiteSpace(id))
+                        result.Add(id);
+                }
+            }
+
+            if (Clues != null)
+            {
+                foreach (var clue in Clues)
+                {
+                    if (clue.InvolvedEntityIds != null)
+                    {
+                        foreach (var id in clue.InvolvedEntityIds)
+                        {
+                            if (!string.IsNullOrWhiteSpace(id))
+                                result.Add(id);
+                        }
+                    }
+                }
+            }
+
+            return result.ToList();
+        }
+    }
+
     /// <summary>DM-only notes. Never visible to players.</summary>
     public string? DmNotes { get; set; }
 

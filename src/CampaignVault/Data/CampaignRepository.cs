@@ -2599,6 +2599,28 @@ public class CampaignRepository
     }
 
     /// <summary>
+    /// Find all plot threads that reference a specific entity (by ID).
+    /// Searches both thread-level InvolvedEntityIds and clue-level InvolvedEntityIds.
+    /// Results are scoped to the campaign.
+    /// </summary>
+    public async Task<List<PlotThread>> GetPlotThreadsReferencingEntityAsync(
+        IAsyncDocumentSession session,
+        string entityId,
+        string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(entityId))
+            return [];
+
+        var effective = ResolveCampaign(campaignName);
+
+        return await session.Query<PlotThread, PlotThread_Search>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(t => (t.CampaignName == effective || t.CampaignName == null || t.CampaignName == "")
+                        && t.AllInvolvedEntityIds.Contains(entityId))
+            .ToListAsync();
+    }
+
+    /// <summary>
     /// Creates or updates a PlotThread, e.g. bulk-seeding clues or bumping TensionLevel. Rich collection
     /// fields (Clues/InvolvedEntityIds/ForeshadowingHooks) are preserved when omitted from the request.
     /// </summary>
