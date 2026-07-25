@@ -144,6 +144,7 @@ After arriving at a location:
    - For Climax threads: immediate consequences manifest in the scene
 3. Check `WorldPressure` for location-specific ENGINE WARNINGs (missing clue entities, unvisited transients, etc.)
    - Missing entity in a clue? Seed it via world_build or remove the stale reference
+   - **To verify resolution:** After committing a fix via `take_turn`, pass `includeWorldState: true` and check the response's `WorldPressure` — the warning should be gone. If it's still there, your fix didn't work; investigate why.
 4. Narrate arrival sensory details
 5. Continue from there
 

@@ -95,6 +95,24 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
     {
         var hasChanges = request?.Changes is { Length: > 0 };
 
+        // Validate that this isn't an empty call with no purpose
+        if (!hasChanges && request != null)
+        {
+            var hasRefreshParams = request.IncludeWorldState || request.IncludeParty ||
+                                   (request.ExtraCharacterIds?.Length > 0) ||
+                                   (request.ExtraLocationIds?.Length > 0) ||
+                                   !string.IsNullOrEmpty(request.FullDetailCharacterId) ||
+                                   !string.IsNullOrEmpty(request.FullDetailLocationId);
+
+            if (!hasRefreshParams)
+            {
+                return Task.FromResult(new ToolResult<TurnResult>(
+                    false,
+                    Error: ToolErrors.InvalidArgument,
+                    Summary: "This take_turn call has no Changes and no refresh parameters (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, fullDetailLocationId). Did you mean to commit world changes? Pass at least one refresh param if this is a pure-query call."));
+            }
+        }
+
         if (hasChanges)
         {
             var precheckFailure = ValidateChanges(request!);

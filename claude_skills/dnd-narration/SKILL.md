@@ -130,15 +130,17 @@ The **roll determines the narration**, not the reverse.
 When `get_entity` or `take_turn` returns ENGINE WARNING or NARRATIVE PROMPT in `WorldPressure`:
 
 1. **Pause the narration moment** (don't commit to a direction that will contradict the pressure)
-2. **Resolve the pressure** atomically via `take_turn` with the suggested change
-3. **Narrate the *consequence*** of that resolution into the scene
+2. **Resolve the pressure** atomically via `take_turn` with the suggested change, and **pass `includeWorldState: true`** to verify resolution
+3. **Verify the warning is gone** by checking the response's `WorldPressure` — if it still lists the warning, the resolution didn't work; try again
+4. **Narrate the *consequence*** of that resolution into the scene
 
 **Example:**
 - Engine: "NPC 'Kergil' is transient and will be evicted if party leaves location. Consider `keepAlive: true` or `schedule_change`."
-- You: Hmm, I want Kergil to stay. Commit `character_update` with `keepAlive: true` + nudge notification.
+- You: Hmm, I want Kergil to stay. Commit `character_update` with `keepAlive: true` + nudge notification, with `includeWorldState: true`.
+- Response comes back with `WorldPressure` showing Kergil is no longer flagged as evicting. ✓ Resolved.
 - Then narrate: "As the party turns to leave, Kergil steps forward. 'Wait. I'm staying. There's something I need to... handle here. Alone.' His voice carries weight—a decision made."
 
-Don't ignore pressures or narrate around them. Address them, then weave the consequence into the prose.
+**Critical:** Don't assume a `take_turn` call with Changes succeeded just because it didn't error. If you didn't pass `includeWorldState: true`, you won't see whether the warning was actually resolved. Always verify.
 
 ## Multi-NPC Scenes (3+ speakers)
 

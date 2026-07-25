@@ -26,7 +26,22 @@ Whenever a response carries `WorldPressure` (start_session, a scene fetch via ge
 }
 ```
 
-Include the suggested resolution in the same take_turn batch. Do not skip or defer ENGINE WARNINGs. 5+ unresolved warnings cap progress; call `get_help topic=world-pressure` to drain the backlog.
+Include the suggested resolution in the same `take_turn` batch **and always pass `includeWorldState: true`** to verify the warning is resolved:
+
+```json
+{
+  "campaignName": "kael-quest",
+  "request": {
+    "changes": [ { "$type":"rumor", "rumorId":"rumor/bandits-growing", "newState":"Peak" } ],
+    "narrative": "The rumor about bandits reached peak intensity in the community.",
+    "includeWorldState": true
+  }
+}
+```
+
+After the response, **check `WorldPressure` in the response**. If the warning still appears, it wasn't actually resolved—investigate why and try again. Do not skip or defer ENGINE WARNINGs. 5+ unresolved warnings cap progress; call `get_help topic=world-pressure` to drain the backlog.
+
+**Critical gotcha:** If you call `take_turn` with Changes but omit `includeWorldState: true`, the response won't include WorldPressure, so you'll never know if the warning was actually resolved. Always verify.
 
 ## Quest Progress
 
