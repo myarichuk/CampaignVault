@@ -202,7 +202,15 @@ builder.Services.AddGrpc();
 
 var app = builder.Build();
 
-McpToolTelemetryFilter.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+// Semantic vector bootstrap: repair any entities missing embeddings
+Console.WriteLine("[Startup] Running semantic vector bootstrap...");
+var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+var bootstrapLogger = loggerFactory.CreateLogger("SemanticVectorBootstrap");
+var bootstrap = new SemanticVectorBootstrap(documentStore, app.Services.GetRequiredService<ILocalEmbeddingService>(), bootstrapLogger);
+await bootstrap.RunAsync();
+Console.WriteLine("[Startup] Bootstrap complete ✓\n");
+
+McpToolTelemetryFilter.LoggerFactory = loggerFactory;
 
 app.UseCors();
 
