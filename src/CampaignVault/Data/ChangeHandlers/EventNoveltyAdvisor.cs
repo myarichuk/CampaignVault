@@ -19,9 +19,29 @@ internal static class EventNoveltyAdvisor
     private const double HighSimilarityThreshold = 0.90;
     private const int RecentEventsToCompare = 5;
 
+    /// <summary>
+    /// Overload for ChangeContext (used in change handlers). Delegates to the session-based implementation.
+    /// </summary>
     public static async Task<(double? Similarity, string? Hint)> ScoreAsync(ChangeContext context, Event newEvent, CancellationToken ct = default)
     {
-        if (newEvent.SemanticVector is not { Length: > 0 } vector || context.Session == null)
+        if (context.Session == null || string.IsNullOrEmpty(context.CampaignName))
+            return (null, null);
+
+        return await ScoreAsync(context.Session, newEvent, context.CampaignName, context.Logger, ct);
+    }
+
+    /// <summary>
+    /// Core scoring logic: compares event embedding against recent events in the campaign.
+    /// Used by both ChangeHandler and tool-level contexts (e.g., MutationTools).
+    /// </summary>
+    public static async Task<(double? Similarity, string? Hint)> ScoreAsync(
+        IAsyncDocumentSession session,
+        Event newEvent,
+        string campaignName,
+        ILogger? logger = null,
+        CancellationToken ct = default)
+    {
+        if (newEvent.SemanticVector is not { Length: > 0 } vector || session == null)
         {
             return (null, null);
         }
@@ -29,8 +49,8 @@ internal static class EventNoveltyAdvisor
         List<Event> recent;
         try
         {
-            recent = await context.Session.Query<Event, Event_Search>()
-                .Where(x => x.CampaignName == context.CampaignName)
+            recent = await session.Query<Event, Event_Search>()
+                .Where(x => x.CampaignName == campaignName)
                 .OrderByDescending(x => x.Timestamp)
                 .Take(RecentEventsToCompare)
                 .ToListAsync(ct);
@@ -38,7 +58,7 @@ internal static class EventNoveltyAdvisor
         catch (Exception ex)
         {
             // Advisory only — a stale/unavailable index must never affect commit success.
-            context.Logger.LogDebug(ex, "EventNoveltyAdvisor: skipped novelty scoring (advisory only).");
+            logger?.LogDebug(ex, "EventNoveltyAdvisor: skipped novelty scoring (advisory only).");
             return (null, null);
         }
 

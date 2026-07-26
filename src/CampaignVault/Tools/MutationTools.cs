@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Collections.Concurrent;
 using System.Threading.RateLimiting;
 using CampaignVault.Data;
+using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging;
@@ -225,6 +226,17 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
         };
 
         await _repository.LogEventAsync(ctx.Session, sceneEvent, ctx.Campaign);
+
+        // Calculate novelty score after event is persisted with semantic vector
+        var (similarity, noveltyHint) = await EventNoveltyAdvisor.ScoreAsync(
+            ctx.Session, sceneEvent, ctx.Campaign, _logger);
+        sceneEvent.NoveltyScore = similarity;
+        if (!string.IsNullOrEmpty(noveltyHint))
+        {
+            result.NarrativeReminder = result.NarrativeReminder is null
+                ? noveltyHint
+                : result.NarrativeReminder + " " + noveltyHint;
+        }
 
         ComposeReminders(changes, result);
 
