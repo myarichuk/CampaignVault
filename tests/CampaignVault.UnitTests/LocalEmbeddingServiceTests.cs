@@ -24,13 +24,14 @@ public class LocalEmbeddingServiceTests
     }
 
     [Fact]
-    public async Task GenerateEmbeddingAsync_ReturnsEmpty_ForBlankInput()
+    public async Task GenerateEmbeddingAsync_ReturnsFixedDimensionZeroVector_ForBlankInput()
     {
         using var service = new LocalEmbeddingService();
 
         var result = await service.GenerateEmbeddingAsync("   ");
 
         Assert.NotNull(result);
-        Assert.Empty(result);
+        Assert.Equal(384, result.Length);
+        Assert.All(result, v => Assert.Equal(0f, v));
     }
 }

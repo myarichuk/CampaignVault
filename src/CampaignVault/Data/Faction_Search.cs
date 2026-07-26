@@ -24,6 +24,7 @@ public class Faction_Search : AbstractIndexCreationTask<Faction>
                 f.InfluenceLevel,
                 f.CampaignName,
                 f.ControllingTerritory,
+                f.IsArchived,
                 TerritoryLocationIds = f.TerritoryLocationIds,
                 KnownLeaderIds = f.KnownLeaderIds
 ,
@@ -37,5 +38,6 @@ public class Faction_Search : AbstractIndexCreationTask<Faction>
         Index(x => x.CampaignName, FieldIndexing.Exact);
         Index(x => x.ControllingTerritory, FieldIndexing.Exact);
         Index(x => x.TerritoryLocationIds, FieldIndexing.Exact);
+        Index(x => x.IsArchived, FieldIndexing.Exact);
     }
 }

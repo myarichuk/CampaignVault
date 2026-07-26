@@ -238,7 +238,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         damageBonus = ApplyAllModifiers(actorStats, damageBonus, "DamageRoll");
 
-        var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = DiceMechanic.Standard }, ct);
+        var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = GetMechanicFromAction(action) }, ct);
         
         var degree = CalculateDegreeOfSuccess(attackRoll, ac);
 
@@ -297,7 +297,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             }
         }
 
-        var outcome = await _rollService.RollAsync(new RollRequest { Tag = "skill", Expression = "1d20", Bonus = bonus, Mechanic = DiceMechanic.Standard }, ct);
+        var outcome = await _rollService.RollAsync(new RollRequest { Tag = "skill", Expression = "1d20", Bonus = bonus, Mechanic = GetMechanicFromAction(action) }, ct);
 
         var degree = CalculateDegreeOfSuccess(outcome, dc);
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
@@ -343,7 +343,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 Tag = "grapple",
                 Expression = "1d20",
                 Bonus = bonus,
-                Mechanic = DiceMechanic.Standard
+                Mechanic = GetMechanicFromAction(action)
             }, ct);
 
             var degree = CalculateDegreeOfSuccess(outcome, fortDc);
@@ -373,7 +373,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 Tag = "escape",
                 Expression = "1d20",
                 Bonus = actorBonus,
-                Mechanic = DiceMechanic.Standard
+                Mechanic = GetMechanicFromAction(action)
             }, ct);
 
             var degree = CalculateDegreeOfSuccess(outcome, escapeDc);
@@ -409,7 +409,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var targetRollBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
         targetRollBonus = ApplyAllModifiers(targetStats, targetRollBonus, "SkillCheck", targetSkill);
 
-        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorRollBonus, Mechanic = DiceMechanic.Standard }, ct);
+        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorRollBonus, Mechanic = GetMechanicFromAction(action) }, ct);
         var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetRollBonus, Mechanic = DiceMechanic.Standard }, ct);
 
         var actorWins = actorRoll.Result > targetRoll.Result;
@@ -430,10 +430,10 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var bonus = GetSavingThrowBonus(actorStats, saveName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SavingThrow", saveName);
 
-        var outcome = await _rollService.RollAsync(new RollRequest { Tag = "save", Expression = "1d20", Bonus = bonus, Mechanic = DiceMechanic.Standard }, ct);
-        
+        var outcome = await _rollService.RollAsync(new RollRequest { Tag = "save", Expression = "1d20", Bonus = bonus, Mechanic = GetMechanicFromAction(action) }, ct);
+
         var degree = CalculateDegreeOfSuccess(outcome, dc);
-        
+
         var damage = await TryApplyPf2eSaveDamageAsync(action, action.CharacterId, degree, mutations, ct);
         var damageMsg = damage > 0 ? $" Took {damage} damage." : string.Empty;
         return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}");
@@ -480,7 +480,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 Tag = "spell-save",
                 Expression = "1d20",
                 Bonus = bonus,
-                Mechanic = DiceMechanic.Standard,
+                Mechanic = GetMechanicFromAction(action),
             }, ct);
 
             var degree = CalculateDegreeOfSuccess(outcome, dc);

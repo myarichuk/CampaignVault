@@ -10,6 +10,7 @@ namespace CampaignVault.IntegrationTests;
 /// These tests require Docker to be available and the campaignvault:latest image to be built.
 /// </summary>
 [Collection("Integration Tests")]
+[Trait("Category", "Docker")]
 public class McpServerIntegrationTests : IAsyncLifetime
 {
     private IContainer? _container;
@@ -23,7 +24,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
         {
             _container = new ContainerBuilder()
                 .WithImage(CONTAINER_IMAGE)
-                .WithPortBinding(MCP_PORT, MCP_PORT)
+                .WithPortBinding(MCP_PORT, assignRandomHostPort: true)
                 .WithEnvironment("CAMPAIGN_DB_PATH", "/app/data/campaign.db")
                 .WithEnvironment("MCP_BIND_ANY", "1")
                 .WithWaitStrategy(Wait.ForUnixContainer()

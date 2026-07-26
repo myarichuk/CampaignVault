@@ -66,17 +66,19 @@ public record QuestObjective(
     public QuestObjective() : this(Description: string.Empty) { }
 }
 
-public enum QuestState 
-{ 
-    Open, 
-    InProgress, 
-    Complete, 
-    Failed, 
-    Skipped 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+public enum QuestState
+{
+    Open,
+    InProgress,
+    Complete,
+    Failed,
+    Skipped
 }
 
-public enum QuestUrgency 
-{ 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+public enum QuestUrgency
+{
     Low, 
     Normal, 
     Urgent, 

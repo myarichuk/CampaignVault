@@ -24,7 +24,7 @@ internal class SemanticVectorBootstrap
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        Console.WriteLine("[SemanticVectorBootstrap] Starting semantic vector enrichment check...");
+        Console.Error.WriteLine("[SemanticVectorBootstrap] Starting semantic vector enrichment check...");
         _logger.LogInformation("Starting semantic vector enrichment check for all entity types");
 
         try
@@ -44,13 +44,13 @@ internal class SemanticVectorBootstrap
             await EnrichMissingVectorsAsync<CustomFeat>(cancellationToken);
             await EnrichMissingVectorsAsync<PlotThread>(cancellationToken);
 
-            Console.WriteLine("[SemanticVectorBootstrap] Semantic vector enrichment complete ✓");
+            Console.Error.WriteLine("[SemanticVectorBootstrap] Semantic vector enrichment complete ✓");
             _logger.LogInformation("Semantic vector enrichment complete");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Semantic vector bootstrap failed");
-            Console.WriteLine($"[SemanticVectorBootstrap] ERROR: {ex.Message}");
+            Console.Error.WriteLine($"[SemanticVectorBootstrap] ERROR: {ex.Message}");
             throw;
         }
     }
@@ -61,39 +61,48 @@ internal class SemanticVectorBootstrap
         const int batchSize = 50;
         var typeName = typeof(T).Name;
 
-        using var session = _store.OpenAsyncSession();
-        var missing = await session.Query<T>()
-            .Where(x => x.SemanticVector == null)
-            .ToListAsync(cancellationToken);
+        // Paged, one session per batch: a large campaign can have far more than one page's worth
+        // of entities missing vectors, and re-querying "still missing" each round (rather than
+        // Skip-ing over an ever-mutating predicate) means already-enriched entities naturally fall
+        // out of subsequent pages.
+        var totalEnriched = 0;
+        while (true)
+        {
+            using var session = _store.OpenAsyncSession();
+            var batch = await session.Query<T>()
+                .Where(x => x.SemanticVector == null)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken);
 
-        if (missing.Count == 0)
+            if (batch.Count == 0)
+            {
+                break;
+            }
+
+            foreach (var entity in batch)
+            {
+                await SemanticEnrichmentHelper.EnrichAsync(entity, _embeddingService, _logger, cancellationToken);
+                await session.StoreAsync(entity, cancellationToken);
+            }
+
+            await session.SaveChangesAsync(cancellationToken);
+            totalEnriched += batch.Count;
+            _logger.LogDebug("{EntityType}: saved batch of {BatchCount} (running total {Total})", typeName,
+                batch.Count, totalEnriched);
+
+            if (batch.Count < batchSize)
+            {
+                break;
+            }
+        }
+
+        if (totalEnriched == 0)
         {
             _logger.LogDebug("{EntityType}: all vectors present", typeName);
             return;
         }
 
-        _logger.LogInformation("{EntityType}: enriching {Count} missing vectors", typeName, missing.Count);
-        Console.WriteLine($"  {typeName}: enriching {missing.Count} entities...");
-
-        for (int i = 0; i < missing.Count; i += batchSize)
-        {
-            var batch = missing.Skip(i).Take(batchSize).ToList();
-            foreach (var entity in batch)
-            {
-                await SemanticEnrichmentHelper.EnrichAsync(entity, _embeddingService, _logger, cancellationToken);
-            }
-
-            // Batch save
-            foreach (var entity in batch)
-            {
-                await session.StoreAsync(entity, cancellationToken);
-            }
-
-            await session.SaveChangesAsync(cancellationToken);
-            _logger.LogDebug("{EntityType}: saved batch {BatchNum}/{TotalBatches}", typeName,
-                (i / batchSize) + 1, (missing.Count + batchSize - 1) / batchSize);
-        }
-
-        _logger.LogInformation("{EntityType}: enrichment complete ({Count} entities)", typeName, missing.Count);
+        _logger.LogInformation("{EntityType}: enrichment complete ({Count} entities)", typeName, totalEnriched);
+        Console.Error.WriteLine($"  {typeName}: enriched {totalEnriched} entities.");
     }
 }

@@ -12,7 +12,8 @@ namespace CampaignVault.Tests.SimulationHarness;
 public class HybridStressTests : IClassFixture<RavenDBFixture>
 {
     private readonly IDocumentStore _store;
-    private readonly Random _rng = new();
+    // Fixed seed for reproducible failures — a fuzz test that can't be replayed can't be debugged.
+    private readonly Random _rng = new(20260726);
     private readonly RavenDBFixture _fixture;
 
     public HybridStressTests(RavenDBFixture fixture)

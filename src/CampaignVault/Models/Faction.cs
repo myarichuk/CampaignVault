@@ -37,19 +37,21 @@ public class Faction : ICampaignScopedEntity, IArchivable
     public List<PlotThreadMinimal> AssociatedPlotThreads { get; set; } = [];
 }
 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum FactionType
-{ 
-    Guild, 
-    Kingdom, 
-    Cult, 
-    MerchantHouse, 
-    MilitaryOrder, 
-    Criminal, 
-    Religious 
+{
+    Guild,
+    Kingdom,
+    Cult,
+    MerchantHouse,
+    MilitaryOrder,
+    Criminal,
+    Religious
 }
 
-public enum FactionStance 
-{ 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+public enum FactionStance
+{
     Neutral, 
     Allied, 
     TradePartner, 

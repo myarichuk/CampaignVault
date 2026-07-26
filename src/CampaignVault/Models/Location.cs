@@ -95,6 +95,7 @@ public class Location : ICampaignScopedEntity, IArchivable
     public ClimateZone? ClimateZone { get; set; }
 }
 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum LocationType
 {
     Region,
@@ -106,6 +107,7 @@ public enum LocationType
 }
 
 /// <summary>Broad climate zone used to derive ambient temperature (see ClimateCycle).</summary>
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum ClimateZone
 {
     Arctic,

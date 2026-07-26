@@ -96,6 +96,94 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task PushCampaignEntity_ExistingCanonEntity_IsPushable()
+    {
+        // Regression: canon entities (CampaignName null/empty) are visible in every campaign per
+        // CampaignEntityVisibility.IsVisibleInCampaign, so they aren't "owned" by any one campaign.
+        // The ownership check used to compare CampaignName with a plain `!=`, which treated
+        // null-vs-"some-campaign" as a mismatch and rejected the push outright.
+        var service = CreateService();
+        var campaignName = "campaign-" + Guid.NewGuid();
+        var id = "characters/canon-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character { Id = id, Name = "Canon NPC", CampaignName = null }, id);
+            await session.SaveChangesAsync();
+        }
+
+        var response = await service.PushCampaignEntity(new PushCampaignEntityRequest
+        {
+            CampaignName = campaignName,
+            Id = id,
+            Type = "character",
+            Content = JsonSerializer.Serialize(new Character { Id = id, Name = "Canon NPC Updated" })
+        }, CreateContext());
+
+        Assert.True(response.Success, response.Message);
+    }
+
+    [Fact]
+    public async Task PushCampaignEntity_SameCampaign_UpdatesExistingEntity()
+    {
+        var service = CreateService();
+        var campaignName = "campaign-" + Guid.NewGuid();
+        var id = "characters/update-test-" + Guid.NewGuid();
+
+        var firstPush = await service.PushCampaignEntity(new PushCampaignEntityRequest
+        {
+            CampaignName = campaignName,
+            Id = id,
+            Type = "character",
+            Content = JsonSerializer.Serialize(new Character { Id = id, Name = "Before" })
+        }, CreateContext());
+        Assert.True(firstPush.Success, firstPush.Message);
+
+        var secondPush = await service.PushCampaignEntity(new PushCampaignEntityRequest
+        {
+            CampaignName = campaignName,
+            Id = id,
+            Type = "character",
+            Content = JsonSerializer.Serialize(new Character { Id = id, Name = "After" })
+        }, CreateContext());
+        Assert.True(secondPush.Success, secondPush.Message);
+
+        using var verifySession = _store.OpenAsyncSession();
+        var updated = await verifySession.LoadAsync<Character>(id);
+        Assert.Equal("After", updated!.Name);
+    }
+
+    [Fact]
+    public async Task PushCampaignEntity_ExistingDifferentCampaign_IsRejected()
+    {
+        var service = CreateService();
+        var ownerCampaign = "owner-campaign-" + Guid.NewGuid();
+        var otherCampaign = "other-campaign-" + Guid.NewGuid();
+        var id = "characters/owned-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character { Id = id, Name = "Owned", CampaignName = ownerCampaign }, id);
+            await session.SaveChangesAsync();
+        }
+
+        var response = await service.PushCampaignEntity(new PushCampaignEntityRequest
+        {
+            CampaignName = otherCampaign,
+            Id = id,
+            Type = "character",
+            Content = JsonSerializer.Serialize(new Character { Id = id, Name = "Hijacked" })
+        }, CreateContext());
+
+        Assert.False(response.Success);
+
+        using var verifySession = _store.OpenAsyncSession();
+        var stillOwned = await verifySession.LoadAsync<Character>(id);
+        Assert.Equal(ownerCampaign, stillOwned!.CampaignName);
+        Assert.Equal("Owned", stillOwned.Name);
+    }
+
+    [Fact]
     public async Task DeleteCampaignEntity_WrongCampaign_DoesNotDelete()
     {
         var service = CreateService();

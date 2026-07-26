@@ -372,7 +372,7 @@ public class CampaignRepository
 
         if (!string.IsNullOrEmpty(locationId))
         {
-            q = q.Where(x => x.LocationId == locationId || x.RelatedLocationIds!.Contains(locationId));
+            q = q.Where(x => x.LocationId == locationId || (x.RelatedLocationIds != null && x.RelatedLocationIds.Contains(locationId)));
         }
 
         if (!string.IsNullOrEmpty(involvedCharacterId))
@@ -489,15 +489,9 @@ public class CampaignRepository
         }
         else
         {
-            time.TotalDaysElapsed += days;
-
-            // Recompute Year/Month/Day from TotalDaysElapsed using the fixed 360-day (12×30) fantasy calendar.
-            // TotalDaysElapsed is the single source of truth (used by simulation rules, rumor expiry, etc.).
-            // This eliminates drift and long loops from the previous Day += + while-loop approach.
-            var total = time.TotalDaysElapsed;
-            time.Year = 1492 + (total / 360);
-            time.Month = ((total % 360) / 30) + 1;
-            time.Day = (total % 30) + 1;
+            // Rolls Day/Month/Year forward from CampaignTime's own current values (seeded from the
+            // campaign's LoreSettings at creation), not a hardcoded epoch — see CampaignTime.AdvanceDays.
+            time.AdvanceDays(days);
 
             if (resultingHour.HasValue)
             {
@@ -801,7 +795,7 @@ public class CampaignRepository
 
             if (!string.IsNullOrEmpty(locationId))
             {
-                q = q.Where(x => x.LocationId == locationId || x.RelatedLocationIds!.Contains(locationId));
+                q = q.Where(x => x.LocationId == locationId || (x.RelatedLocationIds != null && x.RelatedLocationIds.Contains(locationId)));
             }
 
             if (!string.IsNullOrEmpty(involvedCharacterId))
@@ -1813,18 +1807,19 @@ public class CampaignRepository
 
     /// <summary>
     /// Retrieves CustomCreatures for a given ruleset system and campaign, with a safety-bounded query.
-    /// Applies campaign visibility filter in memory.
+    /// Campaign visibility and archive filters are applied server-side, before the take-limit.
     /// </summary>
     public async Task<List<CustomCreature>> GetCustomCreaturesForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
     {
         var effective = ResolveCampaign(campaignName);
         var creatures = await session.Query<CustomCreature>()
-            .Where(c => c.System == system)
+            .Where(c => c.System == system
+                        && !c.IsArchived
+                        && (string.IsNullOrEmpty(c.CampaignName) || c.CampaignName == effective))
             .Take(take)
             .ToListAsync();
 
-        var result = creatures.Where(c => IsVisibleInCampaign(c.CampaignName, effective) && !c.IsArchived).ToList();
-        return result;
+        return creatures;
     }
 
     public async Task<CustomSpell> UpsertCustomSpellAsync(IAsyncDocumentSession session, CustomSpellUpsertRequest spell, string? campaignName = null)
@@ -2533,7 +2528,7 @@ public class CampaignRepository
             existing.ControllingTerritory = faction.ControllingTerritory;
             existing.TerritoryLocationIds = faction.TerritoryLocationIds ?? [];
             existing.KnownLeaderIds = faction.KnownLeaderIds ?? [];
-            existing.InfluenceLevel = faction.InfluenceLevel;
+            existing.InfluenceLevel = Math.Clamp(faction.InfluenceLevel, 0, 100);
             existing.StanceToward = faction.StanceToward ?? [];
             existing.Metadata = faction.Metadata ?? [];
             existing.LastUpdated = faction.LastUpdated;
@@ -2578,7 +2573,7 @@ public class CampaignRepository
             existing.KnownLeaderIds = faction.KnownLeaderIds ?? existing.KnownLeaderIds;
             if (faction.InfluenceLevel.HasValue)
             {
-                existing.InfluenceLevel = faction.InfluenceLevel.Value;
+                existing.InfluenceLevel = Math.Clamp(faction.InfluenceLevel.Value, 0, 100);
             }
             existing.LastUpdated = DateTime.UtcNow;
             existing.CampaignName = effectiveCampaignName;
@@ -2599,7 +2594,7 @@ public class CampaignRepository
                 ControllingTerritory = faction.ControllingTerritory,
                 TerritoryLocationIds = faction.TerritoryLocationIds ?? [],
                 KnownLeaderIds = faction.KnownLeaderIds ?? [],
-                InfluenceLevel = faction.InfluenceLevel ?? 50,
+                InfluenceLevel = Math.Clamp(faction.InfluenceLevel ?? 50, 0, 100),
                 CampaignName = effectiveCampaignName,
                 LastUpdated = DateTime.UtcNow,
                 IsArchived = faction.IsArchived ?? false,
@@ -2925,15 +2920,13 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         var quests = await session.Query<Quest, Quest_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-            .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+            .Where(q => (q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
+                        && !q.IsArchived
+                        && (string.IsNullOrEmpty(q.CampaignName) || q.CampaignName == effective)
+                        && q.RelatedLocationIds.Contains(locationId))
             .Take(20).ToListAsync();
 
-        var result = quests
-            .Where(q => IsVisibleInCampaign(q.CampaignName, effective)
-                        && !q.IsArchived
-                        && q.RelatedLocationIds.Contains(locationId))
-            .ToList();
-        return result;
+        return quests;
     }
 
     /// <summary>
@@ -2946,14 +2939,12 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         var factions = await session.Query<Faction, Faction_Search>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(f => !f.IsArchived
+                        && (string.IsNullOrEmpty(f.CampaignName) || f.CampaignName == effective)
+                        && (f.ControllingTerritory == locationId || f.TerritoryLocationIds.Contains(locationId)))
             .Take(50).ToListAsync();
 
-        var result = factions
-            .Where(f => IsVisibleInCampaign(f.CampaignName, effective)
-                        && !f.IsArchived
-                        && (f.ControllingTerritory == locationId || f.TerritoryLocationIds.Contains(locationId)))
-            .ToList();
-        return result;
+        return factions;
     }
 
     public static ActiveQuestSummary ToActiveQuestSummary(Quest q)

@@ -122,11 +122,7 @@ public static class EngagementRelationCatalog
         if (AsymmetricInverseVerbs.TryGetValue(verb, out var inverse))
             return inverse;
 
-        return category is EngagementCategory.Social
-            or EngagementCategory.Attention
-            or EngagementCategory.Proximity
-            ? verb
-            : verb;
+        return verb;
     }
 
     private static string HumanizeVerb(string verb)

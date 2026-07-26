@@ -23,6 +23,8 @@ log/
 appsettings.Development.json
 RavenDBServer/
 
+*/**/.DS_STORE
+
 # Docker
 .docker/
 

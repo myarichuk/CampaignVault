@@ -469,6 +469,32 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task AdvanceWorld_NonDefaultStartingYear_RollsForwardFromActualYear()
+    {
+        // Regression test: AdvanceWorldAsync's day-based path used to recompute Year as
+        // "1492 + (TotalDaysElapsed / 360)", ignoring the campaign's actual LoreSettings.Year.
+        // A campaign that started at, say, year 500 would get silently reset to the 1492 epoch
+        // the moment a day-based advance ran. It must instead roll forward from wherever the
+        // clock's own Year/Month/Day currently sit.
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+
+        var startTime = new CampaignTime { TotalDaysElapsed = 0, Year = 500, Month = 11, Day = 25 };
+        await repo.SaveTimeAsync(session, startTime, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        // Advance 10 days: Day 25 + 10 = 35 -> rolls into month 12, day 5.
+        var result = await repo.AdvanceWorldAsync(session, 10, 6, TestCampaignDefaults.Slug);
+        await session.SaveChangesAsync();
+
+        var t = result.NewTime;
+        Assert.Equal(10, t.TotalDaysElapsed);
+        Assert.Equal(500, t.Year);
+        Assert.Equal(12, t.Month);
+        Assert.Equal(5, t.Day);
+    }
+
+    [Fact]
     public async Task NeedsAccumulationRule_Does_Not_Exceed_Cap_And_Uses_Clean_Math()
     {
         // Verifies review issue #14 fixes: capped deltas + consistent float math

@@ -98,7 +98,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
             if (cc.CurrentHp.HasValue)
             {
-                existing.CurrentHp = cc.CurrentHp.Value;
+                existing.CurrentHp = Math.Clamp(cc.CurrentHp.Value, 0, existing.MaxHp);
             }
 
             if (cc.ClassLevel != null)

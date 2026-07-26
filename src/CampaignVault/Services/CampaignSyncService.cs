@@ -188,116 +188,47 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         {
             using var session = documentStore.OpenAsyncSession();
             var campaignName = request.CampaignName;
-            bool stored;
 
-            if (request.Type == "character")
+            ICampaignScopedEntity? entity = request.Type switch
             {
-                var charData = JsonSerializer.Deserialize<Character>(request.Content, JsonOptions);
-                stored = charData != null;
-                if (charData != null)
-                {
-                    charData.CampaignName = campaignName;
-                    await session.StoreAsync(charData, charData.Id);
-                }
-            }
-            else if (request.Type == "location")
-            {
-                var locData = JsonSerializer.Deserialize<Location>(request.Content, JsonOptions);
-                stored = locData != null;
-                if (locData != null)
-                {
-                    locData.CampaignName = campaignName;
-                    await session.StoreAsync(locData, locData.Id);
-                }
-            }
-            else if (request.Type == "quest")
-            {
-                var questData = JsonSerializer.Deserialize<Quest>(request.Content, JsonOptions);
-                stored = questData != null;
-                if (questData != null)
-                {
-                    questData.CampaignName = campaignName;
-                    await session.StoreAsync(questData, questData.Id);
-                }
-            }
-            else if (request.Type == "faction")
-            {
-                var factionData = JsonSerializer.Deserialize<Faction>(request.Content, JsonOptions);
-                stored = factionData != null;
-                if (factionData != null)
-                {
-                    factionData.CampaignName = campaignName;
-                    await session.StoreAsync(factionData, factionData.Id);
-                }
-            }
-            else if (request.Type == "lore")
-            {
-                var loreData = JsonSerializer.Deserialize<Lore>(request.Content, JsonOptions);
-                stored = loreData != null;
-                if (loreData != null)
-                {
-                    loreData.CampaignName = campaignName;
-                    await session.StoreAsync(loreData, loreData.Id);
-                }
-            }
-            else if (request.Type == "rumor")
-            {
-                var rumorData = JsonSerializer.Deserialize<Rumor>(request.Content, JsonOptions);
-                stored = rumorData != null;
-                if (rumorData != null)
-                {
-                    rumorData.CampaignName = campaignName;
-                    await session.StoreAsync(rumorData, rumorData.Id);
-                }
-            }
-            else if (request.Type == "event")
-            {
-                var eventData = JsonSerializer.Deserialize<Event>(request.Content, JsonOptions);
-                stored = eventData != null;
-                if (eventData != null)
-                {
-                    eventData.CampaignName = campaignName;
-                    await session.StoreAsync(eventData, eventData.Id);
-                }
-            }
-            else if (request.Type == "item")
-            {
-                var itemData = JsonSerializer.Deserialize<Item>(request.Content, JsonOptions);
-                stored = itemData != null;
-                if (itemData != null)
-                {
-                    itemData.CampaignName = campaignName;
-                    await session.StoreAsync(itemData, itemData.Id);
-                }
-            }
-            else if (request.Type == "customcreature")
-            {
-                var creatureData = JsonSerializer.Deserialize<CustomCreature>(request.Content, JsonOptions);
-                stored = creatureData != null;
-                if (creatureData != null)
-                {
-                    creatureData.CampaignName = campaignName;
-                    await session.StoreAsync(creatureData, creatureData.Id);
-                }
-            }
-            else if (request.Type == "plotthread")
-            {
-                var plotThreadData = JsonSerializer.Deserialize<PlotThread>(request.Content, JsonOptions);
-                stored = plotThreadData != null;
-                if (plotThreadData != null)
-                {
-                    plotThreadData.CampaignName = campaignName;
-                    await session.StoreAsync(plotThreadData, plotThreadData.Id);
-                }
-            }
-            else
-            {
-                return new PushResponse { Success = false, Message = $"Unknown entity type '{request.Type}'." };
-            }
+                "character" => JsonSerializer.Deserialize<Character>(request.Content, JsonOptions),
+                "location" => JsonSerializer.Deserialize<Location>(request.Content, JsonOptions),
+                "quest" => JsonSerializer.Deserialize<Quest>(request.Content, JsonOptions),
+                "faction" => JsonSerializer.Deserialize<Faction>(request.Content, JsonOptions),
+                "lore" => JsonSerializer.Deserialize<Lore>(request.Content, JsonOptions),
+                "rumor" => JsonSerializer.Deserialize<Rumor>(request.Content, JsonOptions),
+                "event" => JsonSerializer.Deserialize<Event>(request.Content, JsonOptions),
+                "item" => JsonSerializer.Deserialize<Item>(request.Content, JsonOptions),
+                "customcreature" => JsonSerializer.Deserialize<CustomCreature>(request.Content, JsonOptions),
+                "plotthread" => JsonSerializer.Deserialize<PlotThread>(request.Content, JsonOptions),
+                _ => throw new InvalidOperationException($"Unknown entity type '{request.Type}'.")
+            };
 
-            if (!stored)
+            if (entity == null)
                 return new PushResponse { Success = false, Message = $"Could not deserialize content for type '{request.Type}'." };
 
+            // Ownership check: if an entity with this ID already exists and is scoped to a specific
+            // (non-canon) campaign, it must already belong to the campaign being pushed to —
+            // otherwise a push could silently re-own another campaign's entity. Canon entities
+            // (null/empty CampaignName, per CampaignEntityVisibility.IsVisibleInCampaign) are
+            // visible/shared across every campaign by design, so they aren't "owned" by anyone and
+            // must remain pushable/updatable from any campaign.
+            var existing = await session.LoadAsync<ICampaignScopedEntity>(entity.Id);
+            if (existing != null && !string.IsNullOrEmpty(existing.CampaignName) && existing.CampaignName != campaignName)
+            {
+                return new PushResponse { Success = false, Message = $"Entity '{entity.Id}' already belongs to a different campaign and cannot be overwritten by campaign '{campaignName}'." };
+            }
+
+            if (existing != null)
+            {
+                // Detach the loaded instance before storing the freshly-deserialized `entity` under
+                // the same ID — RavenDB's session refuses to track two different object instances
+                // against one document ID.
+                session.Advanced.Evict(existing);
+            }
+
+            entity.CampaignName = campaignName;
+            await session.StoreAsync(entity, entity.Id);
             await session.SaveChangesAsync();
 
             return new PushResponse { Success = true, Message = "Successfully pushed." };
@@ -344,7 +275,10 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
             if (campaign == null)
                 return new PushResponse { Success = false, Message = $"Campaign '{request.CampaignName}' not found." };
 
-            campaign.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null! : request.DisplayName;
+            if (!string.IsNullOrWhiteSpace(request.DisplayName))
+            {
+                campaign.DisplayName = request.DisplayName;
+            }
             campaign.NarrativeFocus = request.NarrativeFocus?.ToList() ?? [];
 
             await session.SaveChangesAsync();

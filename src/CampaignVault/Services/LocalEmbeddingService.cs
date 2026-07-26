@@ -25,7 +25,7 @@ public class LocalEmbeddingService : ILocalEmbeddingService, IDisposable
     public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(text))
-            return Task.FromResult(Array.Empty<float>());
+            return Task.FromResult(new float[EmbeddingModelPaths.VectorDimensions]);
 
         return Task.Run(() => _embedder.GenerateEmbedding(text).ToArray(), ct);
     }

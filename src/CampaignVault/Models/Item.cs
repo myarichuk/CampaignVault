@@ -236,6 +236,7 @@ public class ItemDetailParticipant
     public ItemDetailParticipantRole Role { get; set; }
 }
 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum ItemCategory
 {
     Weapon,
@@ -252,6 +253,7 @@ public enum ItemCategory
 }
 
 /// <summary>Body/hand slot an equippable item can occupy. An item may list several (e.g. a two-handed weapon lists MainHand only but sets TwoHanded).</summary>
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum EquipZone
 {
     Head,
@@ -271,6 +273,7 @@ public enum EquipZone
 }
 
 /// <summary>Layer within an EquipZone. Distinct layers on the same zone coexist (robe over chainmail); same zone+layer conflicts.</summary>
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum EquipLayer
 {
     Base,

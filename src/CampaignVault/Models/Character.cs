@@ -122,6 +122,7 @@ public class PsychologyProfile
     public double Resilience { get; set; } = 0.5;
 }
 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum MemoryImportance
 {
     Trivial,
@@ -129,6 +130,7 @@ public enum MemoryImportance
     Core
 }
 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum MemorySource
 {
     Witnessed,
@@ -139,6 +141,7 @@ public enum MemorySource
     Conditioned
 }
 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum EmotionalValence
 {
     Positive,
@@ -147,6 +150,7 @@ public enum EmotionalValence
     Traumatic
 }
 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum MemoryUrgency
 {
     Low,

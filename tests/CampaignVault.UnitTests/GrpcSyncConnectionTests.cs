@@ -4,6 +4,7 @@ using Xunit;
 
 namespace CampaignVault.Tests;
 
+[Trait("Category", "Docker")]
 public class GrpcSyncConnectionTests
 {
     [Fact]

@@ -204,17 +204,18 @@ var app = builder.Build();
 
 var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
-// Data migrations: handle schema upgrades, format conversions, repairs
-Console.WriteLine("[Startup] Running data migrations...");
+// Data migrations: handle schema upgrades, format conversions, repairs.
+// stdout carries the JSON-RPC channel in MCP_STDIO mode, so startup status goes to stderr.
+Console.Error.WriteLine("[Startup] Running data migrations...");
 await RavenStartup.RunDataMigrationsAsync(documentStore, loggerFactory);
-Console.WriteLine("[Startup] Data migrations complete ✓\n");
+Console.Error.WriteLine("[Startup] Data migrations complete ✓\n");
 
 // Semantic vector bootstrap: repair any entities missing embeddings
-Console.WriteLine("[Startup] Running semantic vector bootstrap...");
+Console.Error.WriteLine("[Startup] Running semantic vector bootstrap...");
 var bootstrapLogger = loggerFactory.CreateLogger("SemanticVectorBootstrap");
 var bootstrap = new SemanticVectorBootstrap(documentStore, app.Services.GetRequiredService<ILocalEmbeddingService>(), bootstrapLogger);
 await bootstrap.RunAsync();
-Console.WriteLine("[Startup] Bootstrap complete ✓\n");
+Console.Error.WriteLine("[Startup] Bootstrap complete ✓\n");
 
 McpToolTelemetryFilter.LoggerFactory = loggerFactory;
 

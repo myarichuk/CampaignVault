@@ -91,6 +91,39 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task CreateCampaign_AfterEarlyGetWorldState_AdoptsPhantomMetaInsteadOfRefusing()
+    {
+        var repo = _fixture.CreateRepository();
+        var exploration = TestCampaignToolsFactory.CreateTool<ExplorationTools>(_fixture, repo);
+        var management = TestCampaignToolsFactory.CreateTool<CampaignManagementTools>(_fixture, repo);
+        var slug = "phantom-world-" + Guid.NewGuid().ToString("N")[..8];
+
+        // Out-of-order: a read tool (get_world_state, which underlies get_session_briefing) is
+        // called against a slug that was never created via create_campaign. This auto-vivifies
+        // bare Campaign/CampaignConfig/CampaignTime docs as a side effect of the read.
+        var earlyRead = await exploration.GetWorldState(campaignName: slug);
+        Assert.True(earlyRead.Success);
+
+        // Regression: create_campaign used to reject this with "AlreadyExists" forever, because the
+        // phantom Campaign meta doc already existed — permanently blocking real creation for the slug.
+        var createResult = await management.CreateCampaign(slug, RulesetSystem.Pathfinder2e, loreYear: 900);
+        Assert.True(createResult.Success, $"create_campaign should adopt the phantom instead of refusing: {createResult.Summary}");
+        Assert.Equal(RulesetSystem.Pathfinder2e, createResult.Data!.System);
+        Assert.True(createResult.Data.IsSystemLocked);
+        Assert.Equal(900, createResult.Data.LoreSettings.Year);
+
+        // The config doc (what bootstrap actually reads) must agree with the now-locked system.
+        var configResult = await management.GetConfig(slug);
+        Assert.True(configResult.Success);
+        Assert.Equal(RulesetSystem.Pathfinder2e, configResult.Data!.ActiveSystem);
+
+        // A second create_campaign call for the now-real, locked campaign must still be refused.
+        var secondCreate = await management.CreateCampaign(slug, RulesetSystem.Dnd5e);
+        Assert.False(secondCreate.Success);
+        Assert.Equal("AlreadyExists", secondCreate.Error);
+    }
+
+    [Fact]
     public async Task UpsertCharacter_OnExistingId_WarnsInSummary_InsteadOfSilentOverwrite()
     {
         var tools = CreateTools();

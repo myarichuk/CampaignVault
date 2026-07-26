@@ -64,8 +64,6 @@ public static class RavenStartup
 
         try
         {
-            using var session = documentStore.OpenAsyncSession();
-
             // Migrate CampaignTime from old TimeOfDay enum to hour-based tracking
             var timeHourMigration = new MigrateCampaignTimeToHours(documentStore);
             await timeHourMigration.ExecuteAsync();
@@ -74,7 +72,7 @@ public static class RavenStartup
             // Repair corrupted Event documents
             var repairLogger = loggerFactory.CreateLogger<EventDataRepair>();
             var repair = new EventDataRepair(repairLogger);
-            var (repaired, details) = await repair.RepairAsync(session, ct);
+            var (repaired, details) = await repair.RepairAsync(documentStore, ct);
 
             if (repaired > 0)
             {
