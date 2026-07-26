@@ -505,8 +505,7 @@ internal static class ToolCallExamples
             {
                 ToolName = "take_turn",
                 DeserializationHint =
-                    "Conversation events MUST include 'involved' with every participant's character ID (NOT 'participants'). "
-                    + "Put location IDs in 'locationId'/'relatedLocationIds', not 'involved' — 'involved' is for character/faction/item IDs only. "
+                    "**Conversation events MUST include 'involved' field.** Other categories optional. Never put location IDs in 'involved'—use 'locationId' instead. "
                     + "Crowd interrupt: $type scene_interrupt_check with locationId, characterId, optional riskModifier (-50..+50). "
                     + "SPELLS: use actionType Spell + parameters.resolution (attack|save|check|utility|heal). "
                     + "AoE saves: ONE ruleset_action with all targetIds — NOT per-target SavingThrow. "

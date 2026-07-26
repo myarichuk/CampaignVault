@@ -123,7 +123,7 @@ public record LocationExit(
     string TargetLocationId,
     string Description,
     string? LockCondition = null,
-    int? TravelCostHours = 0,
+    double? TravelCostHours = 0,
     string? Terrain = null,
     string? EncounterHint = null,
     bool OneWay = false

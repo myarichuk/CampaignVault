@@ -29,15 +29,17 @@ public class CampaignTime
     /// Advances the clock by the given number of hours, rolling Day/Month/Year over on the fixed
     /// 360-day (12×30) fantasy calendar so a multi-day hour skip (e.g. a long rest spanning a
     /// month boundary) doesn't leave Day sitting above 30.
+    /// Fractional hours are rounded to the nearest whole hour.
     /// </summary>
-    public void AdvanceHours(int hours)
+    public void AdvanceHours(double hours)
     {
         if (hours <= 0)
         {
             return;
         }
 
-        var newHour = Hour + hours;
+        var roundedHours = (int)Math.Round(hours);
+        var newHour = Hour + roundedHours;
         var daysPassed = newHour / 24;
         Hour = newHour % 24;
 

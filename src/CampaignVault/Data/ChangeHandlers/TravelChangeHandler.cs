@@ -89,7 +89,7 @@ public class TravelChangeHandler : IWorldChangeHandler
         {
             time.AdvanceHours(hoursTraveled);
 
-            var tirednessDelta = (hoursTraveled / 4.0f) * 10f;
+            var tirednessDelta = (float)((hoursTraveled / 4.0) * 10.0);
             if (tirednessDelta > 0)
             {
                 await context.Dispatcher.DispatchMutationAsync(context, new NeedChange

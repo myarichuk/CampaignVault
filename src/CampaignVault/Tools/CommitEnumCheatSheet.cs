@@ -14,8 +14,7 @@ internal static class CommitEnumCheatSheet
 - `world_build.items[].equipZones` (equip path — set once, not on item_equip) → Head, Face, Neck, Torso, Back, Waist, Hands, Wrists, Legs, Feet, MainHand, OffHand, Ring, Accessory
 - `world_build.items[].equipLayer` (equip path — set once, not on item_equip) → Base, Armor, Outer, Held
 - `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure
-  - Common mistake: Narrative/Roleplay → **Conversation**
-  - **Conversation events MUST include `involved`: [`chars/pc`, `chars/npc`]** (every speaker). NOT `participants`.
+  - **Conversation MUST have `involved`: [`chars/pc`, `chars/npc`]**. Narrative→Conversation. Field is `involved` NOT `participants`.
 - New rumor → use `world_build` (rumors[]: `id`, `regionLocationId`, `subject`, `text`; starts Nascent)
 - `rumor` (evolve, via commit) → `rumorId`, `newState`: Nascent, Spreading, Peak, Fading, Resolved, Forgotten
 - `quest_progress.newState` / quest overall → Open, InProgress, Complete, Failed, Skipped
@@ -55,11 +54,8 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 ### event (`$type: event`)
 | Field | Valid values | LLM alias hints |
 |-------|----------------|-----------------|
-| `category` | Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure | Narrative, Roleplay → **Conversation**; Scene → **Interaction** |
-| `involved` | **Required** when `category` is `Conversation` | Array of character IDs for **every** participant (2+). Field name is `involved` (NOT `participants`). Auto-inferred/merged from `engagement_relation`, `spatial_position`, `activity`, `ruleset_action`, or other events in the same batch if omitted or partial. |
-
-**Conversation commit template (copy-paste):**
-{ "$type": "event", "category": "Conversation", "summary": "Valen asked Lirael about the missing caravans.", "involved": ["chars/valen", "chars/lirael-goldvein"] }
+| `category` | Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure | Narrative → **Conversation** |
+| `involved` | **Req'd if Conversation** | Character IDs only. Use `locationId` for locations. Field is `involved` (NOT `participants`). |
 
 ### world_build.rumors[] (creates or replaces a rumor — NOT a commit $type)
 | Field | Notes |

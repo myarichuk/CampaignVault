@@ -124,7 +124,7 @@ public class SceneInterruptCheck : WorldChange
     [JsonPropertyName("riskModifier")]
     public int? RiskModifier { get; set; }
 
-    [Description("Optional free-text flavor for the engine directive (e.g. 'Bloodied wanted face, Schlag drawn, crowd already hostile').")]
+    [Description("Optional free-text flavor for the engine directive (e.g. 'Bloodied wanted face, Schlag drawn, crowd already hostile') - include when narratively makes sense.")]
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
 }
@@ -808,9 +808,9 @@ public class TravelChange : WorldChange
     [JsonPropertyName("narrative")]
     public string? Narrative { get; set; }
     
-    [Description("Optional travel cost in hours override. If omitted, engine reads from the LocationExit metadata.")]
+    [Description("Optional travel cost in hours override. Supports decimal values (e.g., 0.5 for 30 minutes). If omitted, engine reads from the LocationExit metadata.")]
     [JsonPropertyName("travelCostHoursOverride")]
-    public int? TravelCostHoursOverride { get; set; }
+    public double? TravelCostHoursOverride { get; set; }
     
     [Description("Optional terrain override.")]
     [JsonPropertyName("terrainOverride")]

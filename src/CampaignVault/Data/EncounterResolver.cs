@@ -20,12 +20,12 @@ public class EncounterResolver
     /// <summary>
     /// Evaluates an encounter roll loop for travel or resting.
     /// </summary>
-    public async Task<(bool Interrupted, int HoursPassed, List<WorldChange> Deltas, List<string> Narratives)>
+    public async Task<(bool Interrupted, double HoursPassed, List<WorldChange> Deltas, List<string> Narratives)>
         EvaluateAsync(
             ChangeContext context,
             Character character,
             Location location,
-            int totalHours,
+            double totalHours,
             int bucketSizeHours,
             int userModifier,
             string contextType, // "Travel" or "Rest"
@@ -57,7 +57,7 @@ public class EncounterResolver
         // 5. Clamp
         modifiedChance = Math.Clamp(modifiedChance, 0.01, 0.90);
 
-        var hoursPassed = 0;
+        var hoursPassed = 0.0;
         var interrupted = false;
 
         for (var i = 0; i < buckets; i++)
