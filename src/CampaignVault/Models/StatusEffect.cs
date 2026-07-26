@@ -29,7 +29,7 @@ public class StatusEffect
     /// Used as the key when calling StatusRemove.
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     /// <summary>
     /// Broad category for filtering and display. Suggested values:
@@ -37,7 +37,7 @@ public class StatusEffect
     /// The LLM may invent categories — these are hints, not an enforced enum.
     /// </summary>
     [JsonPropertyName("category")]
-    public string Category { get; set; } = default!;
+    public string Category { get; set; } = null!;
 
     /// <summary>
     /// Which body part is affected. Null means whole-body / systemic.

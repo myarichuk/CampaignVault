@@ -4,7 +4,7 @@ namespace CampaignVault.Models;
 
 public class Location : ICampaignScopedEntity, IArchivable
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     [JsonIgnore]
     public float[]? SemanticVector { get; set; }
@@ -13,9 +13,9 @@ public class Location : ICampaignScopedEntity, IArchivable
 
     public string BuildEmbeddingText() => $"{Name}\n{Description}";
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
     
-    public string Description { get; set; } = default!;
+    public string Description { get; set; } = null!;
     
     public LocationType Type { get; set; } = LocationType.Building;
     
@@ -129,5 +129,5 @@ public record LocationExit(
     bool OneWay = false
 )
 {
-    public LocationExit() : this(default!, default!) { }
+    public LocationExit() : this(null!, null!) { }
 }

@@ -7,7 +7,7 @@ namespace CampaignVault.Data.Templates;
 /// </summary>
 public record CreatureDefinition : RulesetTemplate
 {
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
     public int? Level { get; init; }
     public string? ChallengeRating { get; init; }
     public int? Hp { get; init; }

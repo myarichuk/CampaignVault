@@ -2,7 +2,7 @@ namespace CampaignVault.Data.Templates;
 
 public record FeatDefinition : RulesetTemplate
 {
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
     public string? Prerequisite { get; init; }
     public string? MechanicalSummary { get; init; }
     public List<string> ExtraPools { get; init; } = [];

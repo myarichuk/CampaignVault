@@ -2,7 +2,7 @@ namespace CampaignVault.Data.Templates;
 
 public record ClassDefinition : RulesetTemplate
 {
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
     public string? HitDie { get; init; }
     // Nullable: null means "inherit from parent"; explicit None means non-caster
     public CasterType? CasterType { get; init; }

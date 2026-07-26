@@ -36,7 +36,7 @@ public class SeedCoverageSummary
 
 public class WorldStateView
 {
-    public CampaignTime Time { get; set; } = default!;
+    public CampaignTime Time { get; set; } = null!;
     public IEnumerable<RumorSummary> ActiveRumors { get; set; } = [];
     public IEnumerable<Event> RecentEvents { get; set; } = [];
     public LocationSummary? PartyLocation { get; set; }
@@ -81,7 +81,7 @@ public class WorldStateView
 /// </summary>
 public class SessionBriefingView
 {
-    public CampaignTime Time { get; set; } = default!;
+    public CampaignTime Time { get; set; } = null!;
     public IEnumerable<RumorSummary> ActiveRumors { get; set; } = [];
     public IEnumerable<Event> RecentEvents { get; set; } = [];
     public LocationSummary? PartyLocation { get; set; }

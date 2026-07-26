@@ -8,7 +8,7 @@ namespace CampaignVault.Models;
 public class ClassLevelEntry
 {
     [JsonPropertyName("class")]
-    public string Class { get; set; } = default!;
+    public string Class { get; set; } = null!;
 
     [JsonPropertyName("level")]
     public int Level { get; set; }

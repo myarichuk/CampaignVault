@@ -5,7 +5,7 @@ namespace CampaignVault.Models;
 /// </summary>
 public record PressureState(int LastSurfacedDay, int SuppressionCount)
 {
-    public PressureState() : this(default!, default!) { }
+    public PressureState() : this(0!, 0!) { }
 
     /// <summary>
     /// Content signature (see PressureHelpers.ComputeContentSignature) of the Text last surfaced under

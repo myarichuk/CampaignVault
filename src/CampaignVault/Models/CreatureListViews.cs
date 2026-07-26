@@ -5,7 +5,7 @@ namespace CampaignVault.Models;
 public record CreatureSummaryView
 {
     [JsonPropertyName("name")]
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = null!;
 
     [JsonPropertyName("id")]
     public string? Id { get; init; }
@@ -53,14 +53,14 @@ public record CreatureListPaginationView
 public record CreatureListResponse
 {
     [JsonPropertyName("system")]
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
 
     [JsonPropertyName("creatures")]
     public List<CreatureSummaryView> Creatures { get; init; } = [];
 
     [JsonPropertyName("pagination")]
-    public CreatureListPaginationView Pagination { get; init; } = default!;
+    public CreatureListPaginationView Pagination { get; init; } = null!;
 
     [JsonPropertyName("hint")]
-    public string Hint { get; init; } = default!;
+    public string Hint { get; init; } = null!;
 }

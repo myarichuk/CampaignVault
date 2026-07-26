@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class SceneView
 {
-    public Location Location { get; set; } = default!;
+    public Location Location { get; set; } = null!;
 
     /// <summary>
     /// True if the location exists in the persistent database (was loaded successfully).
@@ -72,7 +72,7 @@ public class SceneView
 /// </summary>
 public class SceneSummaryView
 {
-    public Location Location { get; set; } = default!;
+    public Location Location { get; set; } = null!;
     public IEnumerable<NpcPresenceSummary> PresentNPCs { get; set; } = [];
     public IEnumerable<RumorSummary> LocalRumors { get; set; } = [];
     public bool ActiveCombat { get; set; }
@@ -96,7 +96,7 @@ public record ActiveQuestSummary(
     /// <summary>True when DeadlineDay has already passed — the quest is still surfaced (deadline misses are campaign-critical) but should be narrated as overdue, not merely urgent.</summary>
     bool IsOverdue = false)
 {
-    public ActiveQuestSummary() : this(default!, default!, default!, default!, default!) { }
+    public ActiveQuestSummary() : this(null!, null!, 0!, 0!, default!) { }
 }
 
 /// <summary>
@@ -112,7 +112,7 @@ public record FactionPresenceSummary(
     int TerritoryLocationCount = 0,
     Dictionary<string, float>? EconomicDemand = null)
 {
-    public FactionPresenceSummary() : this(default!, default!, default!) { }
+    public FactionPresenceSummary() : this(null!, null!, 0!) { }
 }
 
 /// <summary>
@@ -167,7 +167,7 @@ public record NpcPresenceSummary(
     /// </summary>
     TurnIntentSignal? TurnIntent = null)
 {
-    public NpcPresenceSummary() : this(default!, default!, default!, default!, default!, default!, default!) { }
+    public NpcPresenceSummary() : this(null!, null!, null!, null!, null!, null!, null!) { }
 }
 
 public class CommitResult
@@ -192,12 +192,12 @@ public record EvictedNpcSummary(
     string? FromLocationId,
     string? FromLocationName)
 {
-    public EvictedNpcSummary() : this(default!, default!, default, default) { }
+    public EvictedNpcSummary() : this(null!, null!, null, null) { }
 }
 
 public class AdvanceResult
 {
-    public CampaignTime NewTime { get; set; } = default!;
+    public CampaignTime NewTime { get; set; } = null!;
     public List<string> SimulatorEvents { get; set; } = [];
     public List<WorldPressureItem> WorldPressure { get; set; } = [];
     /// <summary>IDs of transient NPCs evicted during this advance. Re-introduce important ones via keepAlive or schedule_change.</summary>
@@ -212,22 +212,22 @@ public class AdvanceResult
 
 public record RumorSummary(string Subject, string CurrentText, RumorState State)
 {
-    public RumorSummary() : this(default!, default!, default!) { }
+    public RumorSummary() : this(null!, null!, default!) { }
 }
 
 public record LocationSummary(string Id, string Name, LocationType Type)
 {
-    public LocationSummary() : this(default!, default!, default!) { }
+    public LocationSummary() : this(null!, null!, default!) { }
 }
 
 public record NpcActivitySummary(string Name, string CurrentActivity)
 {
-    public NpcActivitySummary() : this(default!, default!) { }
+    public NpcActivitySummary() : this(null!, null!) { }
 }
 
 public record ItemDetailSummary(string Id, string Name, string? Status)
 {
-    public ItemDetailSummary() : this(default!, default!, default) { }
+    public ItemDetailSummary() : this(null!, null!, null) { }
 }
 
 public record ItemSummaryView(

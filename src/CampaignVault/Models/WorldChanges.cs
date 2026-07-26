@@ -80,11 +80,11 @@ public class RestChange : WorldChange
 {
     [Description("ID of the character attempting to rest.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("ID of the location where they are resting.")]
     [JsonPropertyName("locationId")]
-    public string LocationId { get; set; } = default!;
+    public string LocationId { get; set; } = null!;
 
     [Description("How many hours the character intends to rest. (e.g., 1 for short, 8 for long). Eligible resource pools (spell slots, etc.) recover immediately when the rest completes — no separate advance_world call needed.")]
     [JsonPropertyName("intendedHours")]
@@ -114,11 +114,11 @@ public class SceneInterruptCheck : WorldChange
 {
     [Description("ID of the location where the scene beat occurred.")]
     [JsonPropertyName("locationId")]
-    public string LocationId { get; set; } = default!;
+    public string LocationId { get; set; } = null!;
 
     [Description("ID of the character whose vulnerability/flavor drives the check (usually the PC).")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Abstract modifier from -50 to +50 representing crowd reaction risk, like encounterRiskModifier on travel. Positive = PC looks vulnerable/provocative (bloodied, wanted, insulted a guard). Negative = PC looks safe (well_armed, escorted). If omitted, engine auto-derives from visualTags/appearance/equipment.")]
     [JsonPropertyName("riskModifier")]
@@ -134,7 +134,7 @@ public class HpChange : WorldChange
 {
     [Description("ID of the character whose HP to modify (e.g. 'chars/grog' or 'chars/elara-voss'). Must exist.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Delta to apply to CurrentHp. Positive = heal/gain, negative = damage/loss. Use small values for normal hits, larger for big effects.")]
     [JsonPropertyName("delta")]
@@ -146,11 +146,11 @@ public class ItemTransfer : WorldChange
 {
     [Description("ID of the item being moved (e.g. 'items/iron-key-17').")]
     [JsonPropertyName("itemId")]
-    public string ItemId { get; set; } = default!;
+    public string ItemId { get; set; } = null!;
 
     [Description("New holder ID. Can be a character ('chars/xxx'), a location ('locations/xxx'), or another item acting as container.")]
     [JsonPropertyName("toHolderId")]
-    public string ToHolderId { get; set; } = default!;
+    public string ToHolderId { get; set; } = null!;
 }
 
 /// <summary>
@@ -166,7 +166,7 @@ public class StatusChange : WorldChange
 {
     [Description("ID of the character receiving the status (e.g. 'chars/grog').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("[Preferred] Structured StatusEffect: name, category, optional conditionName/affectedPart/statModifiers, and expiresAtDay/expiresAtRound (omit both for permanent). See get_help topic=combat for the full field reference.")]
     [JsonPropertyName("effect")]
@@ -185,11 +185,11 @@ public class StatusRemove : WorldChange
 {
     [Description("ID of the character whose status to remove (e.g. 'chars/grog').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Name of the status condition to remove. Matching is case-insensitive; all matching entries are removed.")]
     [JsonPropertyName("status")]
-    public string Status { get; set; } = default!;
+    public string Status { get; set; } = null!;
 }
 
 /// <summary>
@@ -200,7 +200,7 @@ public class EventOccurred : WorldChange
 {
     [Description("Short human-readable summary of what happened. This becomes the main text of the event log entry.")]
     [JsonPropertyName("summary")]
-    public string Summary { get; set; } = default!;
+    public string Summary { get; set; } = null!;
 
     [Description("Classification of the event. Use 'Unresolved' for dangling plot hooks the party should follow up on. Other good values: 'Combat', 'Conversation', 'Discovery', 'Arrival', 'Betrayal', 'SceneInterrupt' (engine-emitted crowd interrupts).")]
     [JsonPropertyName("category")]
@@ -246,7 +246,7 @@ public class RumorEvolves : WorldChange
 {
     [Description("ID of the rumor to evolve (e.g. 'rumors/bandit-activity-in-woods'). Must already exist.")]
     [JsonPropertyName("rumorId")]
-    public string RumorId { get; set; } = default!;
+    public string RumorId { get; set; } = null!;
 
     [Description("New lifecycle state for the rumor. One of: Nascent, Spreading, Peak, Fading, Resolved, Forgotten. Use Resolved or Forgotten to retire a rumor.")]
     [JsonPropertyName("newState")]
@@ -263,15 +263,15 @@ public class RumorCreate : WorldChange
 {
     [Description("Unique rumor ID (e.g. 'rumors/nightshade-gang'). Namespace with campaign slug when campaign-specific.")]
     [JsonPropertyName("rumorId")]
-    public string RumorId { get; set; } = default!;
+    public string RumorId { get; set; } = null!;
 
     [Description("Short topic label (e.g. 'Nightshade Gang').")]
     [JsonPropertyName("subject")]
-    public string Subject { get; set; } = default!;
+    public string Subject { get; set; } = null!;
 
     [Description("Initial rumor text heard by the party or world.")]
     [JsonPropertyName("text")]
-    public string Text { get; set; } = default!;
+    public string Text { get; set; } = null!;
 
     [Description("Optional location IDs this rumor is tied to. First ID becomes RegionLocationId; omit for global.")]
     [JsonPropertyName("relatedLocationIds")]
@@ -283,11 +283,11 @@ public class RelationshipChange : WorldChange
 {
     [Description("ID of the character whose opinion of the target is changing (e.g. 'chars/elara-voss').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("ID of the target character being evaluated (e.g. 'chars/bram-ironarm').")]
     [JsonPropertyName("targetId")]
-    public string TargetId { get; set; } = default!;
+    public string TargetId { get; set; } = null!;
 
     [Description("Numeric delta to apply to the relationship score. Positive = better opinion/trust, negative = worse. Typical range -20 to +20 per significant event.")]
     [JsonPropertyName("delta")]
@@ -295,7 +295,7 @@ public class RelationshipChange : WorldChange
 
     [Description("Narrative reason for the shift. This is stored with the relationship and helps the behavioral synthesizer explain why the NPC feels this way.")]
     [JsonPropertyName("reason")]
-    public string Reason { get; set; } = default!;
+    public string Reason { get; set; } = null!;
 }
 
 /// <summary>
@@ -306,11 +306,11 @@ public class EngagementRelationChange : WorldChange
 {
     [Description("ID of the character initiating or anchoring the relation (e.g. 'chars/bard').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("ID of the target character or object (e.g. 'chars/archivist').")]
     [JsonPropertyName("targetId")]
-    public string TargetId { get; set; } = default!;
+    public string TargetId { get; set; } = null!;
 
     [Description("Engagement category: Physical, Social, Medical, Attention, or Proximity.")]
     [JsonPropertyName("category")]
@@ -339,11 +339,11 @@ public class SpatialPositionChange : WorldChange
 {
     [Description("ID of the character whose position is being set (e.g. 'chars/drunk').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("ID of the reference entity (e.g. 'chars/pc', 'locations/tavern_bar').")]
     [JsonPropertyName("targetId")]
-    public string TargetId { get; set; } = default!;
+    public string TargetId { get; set; } = null!;
 
     [Description("Distance band (Touch, Close, Near, Far, Distant). Use null or empty to remove.")]
     [JsonPropertyName("distanceBand")]
@@ -369,11 +369,11 @@ public class SceneSetupChange : WorldChange
 {
     [Description("ID of the character whose engagement/position is being set (e.g. 'chars/bard').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("ID of the target character or object this scene setup is relative to (e.g. 'chars/archivist'). Shared by both Engagement and Spatial below.")]
     [JsonPropertyName("targetId")]
-    public string TargetId { get; set; } = default!;
+    public string TargetId { get; set; } = null!;
 
     [Description("Optional pairwise engagement to establish/update/clear against TargetId. Omit to leave engagement untouched.")]
     [JsonPropertyName("engagement")]
@@ -425,11 +425,11 @@ public class NeedChange : WorldChange
 {
     [Description("ID of the character whose need is changing (e.g. 'chars/grog').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Name of the need (unrestricted — invent any narrative-appropriate need, e.g. 'paranoia', 'bloodlust'; core needs are 'hunger'/'thirst'/'tiredness').")]
     [JsonPropertyName("need")]
-    public string Need { get; set; } = default!;
+    public string Need { get; set; } = null!;
 
     [Description("Delta to apply. Negative values satisfy/reduce the need (e.g. feeding someone). Positive values increase the drive (e.g. marching all day raises tiredness).")]
     [JsonPropertyName("delta")]
@@ -441,11 +441,11 @@ public class AttributeChange : WorldChange
 {
     [Description("ID of the character receiving the attribute change.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Name of the attribute. Common examples: 'willpower', 'temperature', 'morale', 'corruption', 'reputation', 'fear', 'exhaustion_level' (D&D 5e mechanical exhaustion, 1-6 scale — distinct from narrative tiredness set via 'need' commits). Invent others that fit the story.")]
     [JsonPropertyName("attribute")]
-    public string Attribute { get; set; } = default!;
+    public string Attribute { get; set; } = null!;
 
     [Description("The new absolute value for the attribute, unless IsDelta is true.")]
     [JsonPropertyName("value")]
@@ -464,11 +464,11 @@ public class MoodChange : WorldChange
 {
     [Description("ID of the character whose mood to set.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("New short mood string (e.g. 'grimly determined', 'euphoric', 'terrified', 'playfully drunk', 'brooding'). Keep it evocative but concise.")]
     [JsonPropertyName("newMood")]
-    public string NewMood { get; set; } = default!;
+    public string NewMood { get; set; } = null!;
 }
 
 /// <summary>
@@ -480,7 +480,7 @@ public class ActivityChange : WorldChange
 {
     [Description("ID of the character whose activity/location is changing (e.g. 'chars/bram-ironarm').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("What the character is now visibly doing (e.g. 'tending bar and watching the door', 'sleeping in the corner', 'arguing with the blacksmith', 'on patrol at the old watchtower'). Omit to leave activity unchanged.")]
     [JsonPropertyName("newActivity")]
@@ -551,7 +551,7 @@ public class RulesetAction : WorldChange
 {
     [Description("ID of the acting character (attacker, caster, skill user, or item user).")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Target character IDs. Required for attack/save spells. Omit for a self-targeted heal (heals characterId) or for non-combat utility/check spells. List ALL AoE targets in one commit.")]
     [JsonPropertyName("targetIds")]
@@ -559,7 +559,7 @@ public class RulesetAction : WorldChange
 
     [Description("Free-text action label: weapon name, spell name, or skill (e.g. longsword, Fireball, Detect Magic). Attacks: match heldItems for auto weapon merge.")]
     [JsonPropertyName("actionName")]
-    public string ActionName { get; set; } = default!;
+    public string ActionName { get; set; } = null!;
 
     [Description("REQUIRED (no default; omitting fails the commit). Attack, Spell, SkillCheck, SavingThrow, ContestedCheck (alias OpposedCheck), UseItem, or Recovery.")]
     [JsonPropertyName("actionType")]
@@ -606,7 +606,7 @@ public class LocationUpdate : WorldChange
 {
     [Description("The ID of the location to update.")]
     [JsonPropertyName("locationId")]
-    public string LocationId { get; set; } = default!;
+    public string LocationId { get; set; } = null!;
 
     [Description("Append a single exit if the target is not already present.")]
     [JsonPropertyName("addExit")]
@@ -688,11 +688,11 @@ public class CharacterCreate : WorldChange
 {
     [Description("The unique ID of the new character (e.g., 'chars/cloaked_figure_42').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("The name of the character.")]
     [JsonPropertyName("name")]
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     [Description("DM notes about this character.")]
     [JsonPropertyName("notes")]
@@ -750,7 +750,7 @@ public class LevelUpChange : WorldChange
 {
     [Description("ID of the character gaining levels (e.g. 'chars/kergil').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("How many levels to gain (default 1).")]
     [JsonPropertyName("levelsGained")]
@@ -781,7 +781,7 @@ public class ScheduleChange : WorldChange
 {
     [Description("The ID of the character to update.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("The new schedule. Supplying a schedule promotes a transient NPC to a persistent one. Sending null removes their schedule.")]
     [JsonPropertyName("schedule")]
@@ -798,11 +798,11 @@ public class TravelChange : WorldChange
 {
     [Description("ID of the character traveling (e.g. 'chars/grog').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
     
     [Description("ID of the destination location (e.g. 'locations/highpass').")]
     [JsonPropertyName("destinationLocationId")]
-    public string DestinationLocationId { get; set; } = default!;
+    public string DestinationLocationId { get; set; } = null!;
     
     [Description("Narrative summary of the journey.")]
     [JsonPropertyName("narrative")]
@@ -828,11 +828,11 @@ public class FactionReputationChange : WorldChange
 {
     [Description("The ID of the character.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("The ID of the faction.")]
     [JsonPropertyName("factionId")]
-    public string FactionId { get; set; } = default!;
+    public string FactionId { get; set; } = null!;
 
     [Description("Delta to apply to reputation (-100 to +100 range).")]
     [JsonPropertyName("delta")]
@@ -850,7 +850,7 @@ public class FactionStateChange : WorldChange
 {
     [Description("The ID of the faction.")]
     [JsonPropertyName("factionId")]
-    public string FactionId { get; set; } = default!;
+    public string FactionId { get; set; } = null!;
 
     [Description("New stance toward target faction.")]
     [JsonPropertyName("newStance")]
@@ -879,7 +879,7 @@ public class QuestProgress : WorldChange
 {
     [Description("The ID of the quest to progress.")]
     [JsonPropertyName("questId")]
-    public string QuestId { get; set; } = default!;
+    public string QuestId { get; set; } = null!;
 
     [Description("The index of the objective to update (0-based).")]
     [JsonPropertyName("objectiveIndex")]
@@ -909,7 +909,7 @@ public class ItemUpdate : WorldChange
 {
     [Description("ID of the item being updated.")]
     [JsonPropertyName("itemId")]
-    public string ItemId { get; set; } = default!;
+    public string ItemId { get; set; } = null!;
 
     [Description("Optional new temporary narrative state of the item (e.g. 'Covered in mud'). Overwrites the previous state.")]
     [JsonPropertyName("newState")]
@@ -976,11 +976,11 @@ public class ItemDetailUpsertRequest
 
     [Description("Short label for the detail (e.g. 'Hidden compartment', 'Scorch mark').")]
     [JsonPropertyName("name")]
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     [Description("Full narrative description of the detail's current state.")]
     [JsonPropertyName("description")]
-    public string Description { get; set; } = default!;
+    public string Description { get; set; } = null!;
 
     [Description("Optional short current-status label, distinct from the full description (e.g. 'Concealed', 'Discovered').")]
     [JsonPropertyName("status")]
@@ -1011,7 +1011,7 @@ public class CharacterUpdate : WorldChange
 {
     [Description("ID of the character being updated.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Optional new temporary narrative appearance (e.g. 'Looking exhausted and covered in mud'). Overwrites the previous appearance.")]
     [JsonPropertyName("appearanceOverride")]
@@ -1069,26 +1069,26 @@ public class SystemStatsChange : WorldChange
 {
     [Description("ID of the character to update.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Ruleset stats to merge. Include $system discriminator (dnd5e, pf2e, fallout2d20).")]
     [JsonPropertyName("systemStats")]
-    public SystemExtension SystemStats { get; set; } = default!;
+    public SystemExtension SystemStats { get; set; } = null!;
 }
 
 public class KnowledgeUpdate : WorldChange
 {
     [Description("ID of the character whose memory is updating.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("The topic/entity the memory is about (e.g. 'The Rusty Tavern', 'Mayor Bob').")]
     [JsonPropertyName("topic")]
-    public string Topic { get; set; } = default!;
+    public string Topic { get; set; } = null!;
 
     [Description("The details of the memory. Write how the character understands it now.")]
     [JsonPropertyName("details")]
-    public string Details { get; set; } = default!;
+    public string Details { get; set; } = null!;
 
     [Description("Optional. If provided, overrides the memory's importance level (Trivial, Important, Core).")]
     [JsonPropertyName("importance")]
@@ -1139,10 +1139,10 @@ public class KnowledgeUpdate : WorldChange
 public class PlotClueDto
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     [JsonPropertyName("description")]
-    public string Description { get; set; } = default!;
+    public string Description { get; set; } = null!;
 
     [JsonPropertyName("involvedEntityIds")]
     public List<string>? InvolvedEntityIds { get; set; }
@@ -1156,7 +1156,7 @@ public class PlotThreadProgress : WorldChange
 {
     [Description("ID of the plot thread to update (e.g. 'plot-threads/guild-infiltration').")]
     [JsonPropertyName("plotThreadId")]
-    public string PlotThreadId { get; set; } = default!;
+    public string PlotThreadId { get; set; } = null!;
 
     [Description("New state override. Omit to keep current state.")]
     [JsonPropertyName("newState")]
@@ -1205,11 +1205,11 @@ public class PlotThreadClueDiscovered : WorldChange
 {
     [Description("ID of the plot thread containing the clue (e.g. 'plot-threads/guild-infiltration').")]
     [JsonPropertyName("plotThreadId")]
-    public string PlotThreadId { get; set; } = default!;
+    public string PlotThreadId { get; set; } = null!;
 
     [Description("ID of the specific clue that was discovered (matches PlotClue.Id).")]
     [JsonPropertyName("clueId")]
-    public string ClueId { get; set; } = default!;
+    public string ClueId { get; set; } = null!;
 
     [Description("Character IDs who discovered or witnessed the clue.")]
     [JsonPropertyName("discoveredByCharacterIds")]
@@ -1230,11 +1230,11 @@ public class ResourceChange : WorldChange
 {
     [Description("Character ID whose resource is changing (e.g. 'chars/wizard-1').")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Pool name (e.g., 'spell_slots_3', 'font_of_magic', 'focus_points', 'action_points', 'gold' [dnd5e/pf2e currency], 'caps' [fallout2d20 currency]). Must match an existing pool in character.systemStats.resourcePools.")]
     [JsonPropertyName("poolName")]
-    public string PoolName { get; set; } = default!;
+    public string PoolName { get; set; } = null!;
 
     [Description("Delta to apply to the pool (-3 = spend 3 points, +1 = recover 1 point). Cannot exceed pool max.")]
     [JsonPropertyName("delta")]
@@ -1260,7 +1260,7 @@ public class ResourceChange : WorldChange
 public class RestRecoveryAck : WorldChange
 {
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [JsonPropertyName("restDay")]
     public int RestDay { get; set; }
@@ -1315,7 +1315,7 @@ public class ArchiveEntityChange : WorldChange
 
     [Description("The ID of the entity to archive or restore (e.g. 'quests/stop-nightshade').")]
     [JsonPropertyName("entityId")]
-    public string EntityId { get; set; } = default!;
+    public string EntityId { get; set; } = null!;
 
     [Description("true to archive (hide from default results, soft-delete), false to restore visibility. Defaults to true.")]
     [JsonPropertyName("archived")]
@@ -1349,11 +1349,11 @@ public class ItemEquip : WorldChange
 {
     [Description("ID of the character equipping the item.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("ID of the item to equip. Must already be carried by (HolderId == ) characterId and have EquipZones/EquipLayer set via world_build.")]
     [JsonPropertyName("itemId")]
-    public string ItemId { get; set; } = default!;
+    public string ItemId { get; set; } = null!;
 
     [Description("If true, auto-unequips whatever conflicts (same zone+layer, or the off-hand item for a two-handed weapon) to make room. If false/omitted, equipping HARD-FAILS when conflicts exist and lists them — never silently swaps gear.")]
     [JsonPropertyName("replaceConflicts")]
@@ -1365,11 +1365,11 @@ public class ItemUnequip : WorldChange
 {
     [Description("ID of the character unequipping the item.")]
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("ID of the item to unequip. Must currently be equipped and carried by characterId.")]
     [JsonPropertyName("itemId")]
-    public string ItemId { get; set; } = default!;
+    public string ItemId { get; set; } = null!;
 }
 
 /// <summary>
@@ -1383,7 +1383,7 @@ public class ItemUse : WorldChange
 {
     [Description("ID of the item being used. Must have MaxCharges set (via world_build).")]
     [JsonPropertyName("itemId")]
-    public string ItemId { get; set; } = default!;
+    public string ItemId { get; set; } = null!;
 
     [Description("Charge delta. Negative spends a dose/charge (default -1); positive restores/refills (e.g. refilling a water gourd).")]
     [JsonPropertyName("delta")]
@@ -1402,7 +1402,7 @@ public class ItemUse : WorldChange
 public class ItemPersistenceSurfaced : WorldChange
 {
     [JsonPropertyName("itemId")]
-    public string ItemId { get; set; } = default!;
+    public string ItemId { get; set; } = null!;
 }
 
 /// <summary>
@@ -1413,7 +1413,7 @@ public class ItemPersistenceSurfaced : WorldChange
 public class MemoryDecay : WorldChange
 {
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [Description("Map from memory entry key to (newSalience, newUrgency, evict). Null field = no change for that aspect.")]
     [JsonPropertyName("entryChanges")]

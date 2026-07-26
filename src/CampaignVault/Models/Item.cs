@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class Item : ICampaignScopedEntity, IArchivable
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
@@ -17,11 +17,11 @@ public class Item : ICampaignScopedEntity, IArchivable
         return string.Join("\n", new[] { $"{Name}\n{Description}" }.Concat(detailLines));
     }
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
     
-    public string Description { get; set; } = default!;
+    public string Description { get; set; } = null!;
     
-    public string HolderId { get; set; } = default!; // Character.Id, Location.Id, or Item.Id
+    public string HolderId { get; set; } = null!; // Character.Id, Location.Id, or Item.Id
 
     public int Quantity { get; set; } = 1;
 
@@ -157,13 +157,13 @@ public class Item : ICampaignScopedEntity, IArchivable
 public class ItemDetail : IHasSemanticVector
 {
     /// <summary>Engine-assigned, e.g. "detail-" + Guid. Canonical identity — never matched by Name.</summary>
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     /// <summary>Short label, free text (e.g. "Hidden compartment"). Display/LLM-reference only.</summary>
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     /// <summary>Full narrative description of the detail's current state.</summary>
-    public string Description { get; set; } = default!;
+    public string Description { get; set; } = null!;
 
     /// <summary>Optional short current-status label, distinct from the full description.</summary>
     public string? Status { get; set; }
@@ -232,7 +232,7 @@ public enum ItemDetailParticipantRole { Caused, Witnessed }
 
 public class ItemDetailParticipant
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     public ItemDetailParticipantRole Role { get; set; }
 }
 

@@ -7,7 +7,7 @@ namespace CampaignVault.Models;
 /// </summary>
 public class NeedDescriptorsConfig
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     /// <summary>
     /// Case-insensitive mapping from need name (e.g. "wanderlust") to human-readable description.

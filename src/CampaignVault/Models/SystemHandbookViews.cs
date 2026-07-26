@@ -5,10 +5,10 @@ namespace CampaignVault.Models;
 public record ClassHandbookEntry
 {
     [JsonPropertyName("name")]
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = null!;
 
     [JsonPropertyName("casterType")]
-    public string CasterType { get; init; } = default!;
+    public string CasterType { get; init; } = null!;
 
     [JsonPropertyName("hitDie")]
     public string? HitDie { get; init; }
@@ -20,10 +20,10 @@ public record ClassHandbookEntry
 public record ConditionHandbookEntry
 {
     [JsonPropertyName("name")]
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = null!;
 
     [JsonPropertyName("durationType")]
-    public string DurationType { get; init; } = default!;
+    public string DurationType { get; init; } = null!;
 
     [JsonPropertyName("mechanicalSummary")]
     public string? MechanicalSummary { get; init; }
@@ -41,13 +41,13 @@ public record CreatureHandbookSummary
     public List<string> ExampleNames { get; init; } = [];
 
     [JsonPropertyName("hint")]
-    public string Hint { get; init; } = default!;
+    public string Hint { get; init; } = null!;
 }
 
 public record SystemHandbookResponse
 {
     [JsonPropertyName("system")]
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
 
     [JsonPropertyName("classes")]
     public List<ClassHandbookEntry> Classes { get; init; } = [];
@@ -68,5 +68,5 @@ public record SystemHandbookResponse
     public CreatureHandbookSummary? Creatures { get; init; }
 
     [JsonPropertyName("notes")]
-    public string Notes { get; init; } = default!;
+    public string Notes { get; init; } = null!;
 }

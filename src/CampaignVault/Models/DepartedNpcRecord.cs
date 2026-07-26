@@ -12,5 +12,5 @@ public record DepartedNpcRecord(
     [property: JsonPropertyName("departedAtDay")] int DepartedAtDay,
     [property: JsonPropertyName("reason")] string? Reason = null)
 {
-    public DepartedNpcRecord() : this(default!, default!, default) { }
+    public DepartedNpcRecord() : this(null!, null!, 0) { }
 }

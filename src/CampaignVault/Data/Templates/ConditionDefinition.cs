@@ -4,7 +4,7 @@ namespace CampaignVault.Data.Templates;
 
 public record ConditionDefinition : RulesetTemplate
 {
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
 
     // Nullable: null means inherit from parent; explicit value overrides
     public ConditionDurationType? DurationType { get; init; }

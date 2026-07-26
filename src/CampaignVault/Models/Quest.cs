@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class Quest : ICampaignScopedEntity, IArchivable
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
@@ -20,7 +20,7 @@ public class Quest : ICampaignScopedEntity, IArchivable
         return string.Join('\n', parts);
     }
 
-    public string Title { get; set; } = default!;
+    public string Title { get; set; } = null!;
     public string? GiverId { get; set; }
     public List<QuestObjective> Objectives { get; set; } = [];
     public QuestState OverallState { get; set; } = QuestState.Open;

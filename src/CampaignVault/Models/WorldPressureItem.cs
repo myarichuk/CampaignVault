@@ -17,7 +17,7 @@ public record WorldPressureItem(
     string Text,
     string GroupingKey)
 {
-    public WorldPressureItem() : this(default!, default!, default!, default!) { }
+    public WorldPressureItem() : this(default!, null!, null!, null!) { }
 
     /// <summary>Optional machine-readable commit example(s) for the LLM to use.</summary>
     public string? SuggestedCommitJson { get; init; }

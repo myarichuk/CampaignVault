@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Grpc;
@@ -26,7 +27,7 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
 
     private static ServerCallContext CreateContext() => TestServerCallContext.Create(
         method: "test", host: "test", deadline: DateTime.UtcNow.AddMinutes(1), requestHeaders: new Metadata(),
-        cancellationToken: default, peer: "test", authContext: null, contextPropagationToken: null,
+        cancellationToken: CancellationToken.None, peer: "test", authContext: null, contextPropagationToken: null,
         writeHeadersFunc: _ => Task.CompletedTask, writeOptionsGetter: () => new WriteOptions(),
         writeOptionsSetter: _ => { });
 

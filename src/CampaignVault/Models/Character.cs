@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class Character : ICampaignScopedEntity
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
@@ -11,7 +11,7 @@ public class Character : ICampaignScopedEntity
 
     public string BuildEmbeddingText() => $"{Name}\n{Notes}";
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
     
     public string? ClassLevel { get; set; }
     
@@ -161,8 +161,8 @@ public enum MemoryUrgency
 
 public class MemoryNode
 {
-    public string Topic { get; set; } = default!;
-    public string Details { get; set; } = default!;
+    public string Topic { get; set; } = null!;
+    public string Details { get; set; } = null!;
     public int DayAcquired { get; set; } = 0;
     public MemoryImportance Importance { get; set; } = MemoryImportance.Important;
 
@@ -388,7 +388,7 @@ public record SpatialPosition
 {
     /// <summary>ID of the reference character, object, or zone anchor.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("targetId")]
-    public string TargetId { get; init; } = default!;
+    public string TargetId { get; init; } = null!;
 
     /// <summary>Distance band. See <see cref="SpatialDistanceBand"/>.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("distanceBand")]
@@ -408,7 +408,7 @@ public record EngagementRelation
 {
     /// <summary>ID of the target character or object (e.g. 'chars/archivist').</summary>
     [System.Text.Json.Serialization.JsonPropertyName("targetId")]
-    public string TargetId { get; init; } = default!;
+    public string TargetId { get; init; } = null!;
 
     /// <summary>Broad engagement category — drives default restriction and prompts.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("category")]
@@ -416,7 +416,7 @@ public record EngagementRelation
 
     /// <summary>Freeform verb phrase (e.g. 'grappling', 'ranting at', 'stitching').</summary>
     [System.Text.Json.Serialization.JsonPropertyName("verb")]
-    public string Verb { get; init; } = default!;
+    public string Verb { get; init; } = null!;
 
     /// <summary>Optional override of the category default restriction level.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("restrictionLevel")]
@@ -425,7 +425,7 @@ public record EngagementRelation
 
 public class Schedule
 {
-    public string DefaultLocationId { get; set; } = default!;
+    public string DefaultLocationId { get; set; } = null!;
     
     public List<Routine> Routines { get; set; } = [];
     
@@ -434,20 +434,20 @@ public class Schedule
 
 public class Routine
 {
-    public string Condition { get; set; } = default!;
+    public string Condition { get; set; } = null!;
     
-    public string LocationId { get; set; } = default!;
+    public string LocationId { get; set; } = null!;
     
-    public string Activity { get; set; } = default!;
+    public string Activity { get; set; } = null!;
     
     public double Probability { get; set; } = 1.0;
 }
 
 public class StateModifier
 {
-    public string Type { get; set; } = default!;
+    public string Type { get; set; } = null!;
     
-    public string Description { get; set; } = default!;
+    public string Description { get; set; } = null!;
     
     public string? OverrideLocationId { get; set; }
     

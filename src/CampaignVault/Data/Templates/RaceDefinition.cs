@@ -2,7 +2,7 @@ namespace CampaignVault.Data.Templates;
 
 public record RaceDefinition : RulesetTemplate
 {
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
     public List<string> Traits { get; init; } = [];
     public Dictionary<string, int> AbilityBonuses { get; init; } = [];
     public string? Size { get; init; }

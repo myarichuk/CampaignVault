@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class Faction : ICampaignScopedEntity, IArchivable
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
@@ -10,7 +10,7 @@ public class Faction : ICampaignScopedEntity, IArchivable
 
     public string BuildEmbeddingText() => $"{Name}\n{Description}";
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
     public string? Description { get; set; }
     public FactionType FactionType { get; set; }
     public string? ControllingTerritory { get; set; }

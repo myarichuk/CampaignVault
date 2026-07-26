@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class PlotThread : ICampaignScopedEntity, IArchivable
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
@@ -20,7 +20,7 @@ public class PlotThread : ICampaignScopedEntity, IArchivable
         return string.Join('\n', parts);
     }
 
-    public string Title { get; set; } = default!;
+    public string Title { get; set; } = null!;
     public string? Summary { get; set; }
     public PlotThreadState State { get; set; } = PlotThreadState.Active;
 

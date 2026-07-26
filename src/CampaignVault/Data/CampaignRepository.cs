@@ -559,13 +559,13 @@ public class CampaignRepository
         // Scoping hardened: entity queries now filter by CampaignName (see code_review.md and plan).
         // For shareables (NPCs/locs) loose filter allows cross-camp if desired; events/rumors strict.
         // Per user feedback: no BC for play data (none exists), don't support global where doesn't make sense (e.g. no global events).
-        var activeRumors = await SimulationQueryHelper.QueryActiveRumorsAsync(session, effective, ct: default);
-        var npcs = await SimulationQueryHelper.QueryCampaignCharactersAsync(session, effective, ct: default);
+        var activeRumors = await SimulationQueryHelper.QueryActiveRumorsAsync(session, effective, ct: CancellationToken.None);
+        var npcs = await SimulationQueryHelper.QueryCampaignCharactersAsync(session, effective, ct: CancellationToken.None);
 
         // Phase 7.1: Load active factions and quests so simulation rules can reason about them.
-        var activeFactions = await SimulationQueryHelper.QueryCampaignFactionsAsync(session, effective, ct: default);
-        var activeQuests = await SimulationQueryHelper.QueryActiveQuestsAsync(session, effective, ct: default);
-        var activePlotThreads = await SimulationQueryHelper.QueryActivePlotThreadsAsync(session, effective, ct: default);
+        var activeFactions = await SimulationQueryHelper.QueryCampaignFactionsAsync(session, effective, ct: CancellationToken.None);
+        var activeQuests = await SimulationQueryHelper.QueryActiveQuestsAsync(session, effective, ct: CancellationToken.None);
+        var activePlotThreads = await SimulationQueryHelper.QueryActivePlotThreadsAsync(session, effective, ct: CancellationToken.None);
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
         var config = await GetCampaignConfigAsync(session, effective);

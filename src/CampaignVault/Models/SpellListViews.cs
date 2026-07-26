@@ -5,7 +5,7 @@ namespace CampaignVault.Models;
 public record SpellSummaryView
 {
     [JsonPropertyName("name")]
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = null!;
 
     [JsonPropertyName("level")]
     public int Level { get; init; }
@@ -35,7 +35,7 @@ public record SpellListPaginationView
 public record SpellListResponse
 {
     [JsonPropertyName("system")]
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
 
     [JsonPropertyName("class")]
     public string? Class { get; init; }
@@ -47,8 +47,8 @@ public record SpellListResponse
     public List<SpellSummaryView> Spells { get; init; } = [];
 
     [JsonPropertyName("pagination")]
-    public SpellListPaginationView Pagination { get; init; } = default!;
+    public SpellListPaginationView Pagination { get; init; } = null!;
 
     [JsonPropertyName("hint")]
-    public string Hint { get; init; } = default!;
+    public string Hint { get; init; } = null!;
 }

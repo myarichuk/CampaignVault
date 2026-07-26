@@ -12,11 +12,11 @@ public record PlotThreadMinimal(
 
 public class NpcContextView
 {
-    public Character Character { get; set; } = default!;
-    public PsychologyProfile Psychology { get; set; } = default!;
-    public SocialProfile Social { get; set; } = default!;
-    public NeedsProfile Needs { get; set; } = default!;
-    public SystemExtension SystemStats { get; set; } = default!;
+    public Character Character { get; set; } = null!;
+    public PsychologyProfile Psychology { get; set; } = null!;
+    public SocialProfile Social { get; set; } = null!;
+    public NeedsProfile Needs { get; set; } = null!;
+    public SystemExtension SystemStats { get; set; } = null!;
     public IEnumerable<Event> RecentInteractions { get; set; } = [];
     public string? BehavioralSummary { get; set; }
 
@@ -49,8 +49,8 @@ public class NpcContextView
 /// </summary>
 public class NpcNeedsView
 {
-    public string CharacterId { get; set; } = default!;
-    public string Name { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
+    public string Name { get; set; } = null!;
     public Dictionary<string, float> KnownNeeds { get; set; } = [];
     public Dictionary<string, string> NeedDescriptors { get; set; } = [];
 }
@@ -61,9 +61,9 @@ public class NpcNeedsView
 /// </summary>
 public class NpcSummaryView
 {
-    public string CharacterId { get; set; } = default!;
-    public string Name { get; set; } = default!;
-    public string CurrentAppearance { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
+    public string Name { get; set; } = null!;
+    public string CurrentAppearance { get; set; } = null!;
     public string? BehavioralSummary { get; set; }
     public Dictionary<string, float> KnownNeeds { get; set; } = [];
     public List<ItemSummaryView>? Equipped { get; set; }

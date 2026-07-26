@@ -10,9 +10,9 @@ using System.Text.Json.Serialization;
 /// </summary>
 public class CharacterUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     public string? ClassLevel { get; set; }
 
@@ -65,11 +65,11 @@ public class CharacterUpsertRequest
 /// </summary>
 public class LocationUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
-    public string Description { get; set; } = default!;
+    public string Description { get; set; } = null!;
 
     public LocationType Type { get; set; } = LocationType.Building;
 
@@ -121,11 +121,11 @@ public class LocationUpsertRequest
 /// </summary>
 public class LoreUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Title { get; set; } = default!;
+    public string Title { get; set; } = null!;
 
-    public string Content { get; set; } = default!;
+    public string Content { get; set; } = null!;
 
     [Description("Omit to preserve the lore entry's existing tags. Provide to replace them wholesale.")]
     public List<string>? Tags { get; set; }
@@ -145,13 +145,13 @@ public class LoreUpsertRequest
 /// </summary>
 public class ItemUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
-    public string Description { get; set; } = default!;
+    public string Description { get; set; } = null!;
 
-    public string HolderId { get; set; } = default!;
+    public string HolderId { get; set; } = null!;
 
     public int Quantity { get; set; } = 1;
 
@@ -223,9 +223,9 @@ public class ItemUpsertRequest
 /// </summary>
 public class PlotThreadUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Title { get; set; } = default!;
+    public string Title { get; set; } = null!;
 
     public string? Summary { get; set; }
 
@@ -263,9 +263,9 @@ public class PlotThreadUpsertRequest
 /// </summary>
 public class CustomCreatureUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     public RulesetSystem System { get; set; }
 
@@ -298,9 +298,9 @@ public class CustomCreatureUpsertRequest
 /// </summary>
 public class FactionUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     public string? Description { get; set; }
 
@@ -330,9 +330,9 @@ public class FactionUpsertRequest
 /// </summary>
 public class QuestUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Title { get; set; } = default!;
+    public string Title { get; set; } = null!;
 
     public string? GiverId { get; set; }
 
@@ -365,9 +365,9 @@ public class QuestUpsertRequest
 /// </summary>
 public class CustomSpellUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     public RulesetSystem System { get; set; }
 
@@ -393,9 +393,9 @@ public class CustomSpellUpsertRequest
 /// </summary>
 public class CustomFeatUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     public RulesetSystem System { get; set; }
 
@@ -416,13 +416,13 @@ public class CustomFeatUpsertRequest
 /// </summary>
 public class RumorUpsertRequest
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     public string? RegionLocationId { get; set; }
 
-    public string Subject { get; set; } = default!;
+    public string Subject { get; set; } = null!;
 
-    public string CurrentText { get; set; } = default!;
+    public string CurrentText { get; set; } = null!;
 
     public RumorState State { get; set; } = RumorState.Nascent;
 

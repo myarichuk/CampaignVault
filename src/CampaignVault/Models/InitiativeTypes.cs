@@ -16,7 +16,7 @@ public record InitiativeCandidate(
     string FramingPrompt,
     double Weight)
 {
-    public InitiativeCandidate() : this(default!, default!, default!, default!, default!, default!) { }
+    public InitiativeCandidate() : this(null!, null!, default!, default!, null!, 0!) { }
 }
 
 public record TensionBreakdown(
@@ -25,7 +25,7 @@ public record TensionBreakdown(
     float RelationalStress,
     float DispositionStress)
 {
-    public TensionBreakdown() : this(default!, default!, default!, default!) { }
+    public TensionBreakdown() : this(0!, 0!, 0!, 0!) { }
 }
 
 public record InitiativeSurfacedState(
@@ -33,7 +33,7 @@ public record InitiativeSurfacedState(
     string SurfacedViaTool,
     bool Consumed = true)
 {
-    public InitiativeSurfacedState() : this(default!, default!) { }
+    public InitiativeSurfacedState() : this(0!, null!) { }
 }
 
 /// <summary>
@@ -43,7 +43,7 @@ public record InitiativeSurfacedState(
 /// </summary>
 public record TurnIntentSignal(string Holder, string? Reason, MemoryUrgency? Confidence)
 {
-    public TurnIntentSignal() : this(default!, default, default) { }
+    public TurnIntentSignal() : this(null!, null, null) { }
 }
 
 public record NpcInitiativeEnrichment(
@@ -52,7 +52,7 @@ public record NpcInitiativeEnrichment(
     IReadOnlyList<InitiativeCandidate> ActiveInitiatives,
     IReadOnlyList<MemoryNode> RelevantMemories)
 {
-    public NpcInitiativeEnrichment() : this(default!, default!, default!, default!) { }
+    public NpcInitiativeEnrichment() : this(0!, null!, null!, null!) { }
 
     /// <summary>Null means "open turn" — the player can always act. Advisory only.</summary>
     public TurnIntentSignal? TurnIntent { get; init; }

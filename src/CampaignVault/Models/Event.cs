@@ -24,7 +24,7 @@ public enum EventCategory
 
 public class Event : ICampaignScopedEntity
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     
     [JsonIgnore]
     public float[]? SemanticVector { get; set; }
@@ -41,7 +41,7 @@ public class Event : ICampaignScopedEntity
     
     public EventCategory Category { get; set; } = EventCategory.Unresolved;
     
-    public string Summary { get; set; } = default!;
+    public string Summary { get; set; } = null!;
     
     public IDictionary<string, object>? Details { get; set; }
     

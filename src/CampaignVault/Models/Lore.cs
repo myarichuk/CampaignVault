@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class Lore : ICampaignScopedEntity
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
@@ -11,9 +11,9 @@ public class Lore : ICampaignScopedEntity
 
     public string BuildEmbeddingText() => $"{Title}\n{Content}";
 
-    public string Title { get; set; } = default!;
+    public string Title { get; set; } = null!;
     
-    public string Content { get; set; } = default!;
+    public string Content { get; set; } = null!;
     
     public List<string> Tags { get; set; } = [];
     

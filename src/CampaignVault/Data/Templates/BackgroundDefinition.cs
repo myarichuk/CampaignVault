@@ -2,7 +2,7 @@ namespace CampaignVault.Data.Templates;
 
 public record BackgroundDefinition : RulesetTemplate
 {
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
     public List<string> SkillProficiencies { get; init; } = [];
     public List<string> ToolProficiencies { get; init; } = [];
     public List<string> Languages { get; init; } = [];

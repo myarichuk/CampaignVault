@@ -18,7 +18,7 @@ public class CampaignConfig
     /// Document ID. Should be set via CampaignDocumentKeys.Config(campaignName) rather than hardcoded.
     /// Kept mutable for Raven load/store compatibility.
     /// </summary>
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     /// <summary>
     /// The active TTRPG ruleset for this campaign.

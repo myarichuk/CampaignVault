@@ -22,7 +22,7 @@ public sealed record EngagementRelationMetadata(
     string DescriptionTemplate,
     string ResolutionPrompt)
 {
-    public EngagementRelationMetadata() : this(default!, default!, default!, default!) { }
+    public EngagementRelationMetadata() : this(default!, default!, null!, null!) { }
 }
 
 public static class EngagementRelationCatalog

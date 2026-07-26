@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class Rumor : ICampaignScopedEntity, IArchivable
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
@@ -11,11 +11,11 @@ public class Rumor : ICampaignScopedEntity, IArchivable
 
     public string BuildEmbeddingText() => $"{Subject}\n{CurrentText}";
 
-    public string RegionLocationId { get; set; } = default!;
+    public string RegionLocationId { get; set; } = null!;
     
-    public string Subject { get; set; } = default!;
+    public string Subject { get; set; } = null!;
     
-    public string CurrentText { get; set; } = default!;
+    public string CurrentText { get; set; } = null!;
     
     public RumorState State { get; set; } = RumorState.Nascent;
     

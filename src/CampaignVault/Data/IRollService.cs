@@ -15,7 +15,7 @@ public class RollRequest
     /// Examples: "attack", "damage", "intimidate", "actorAthletics", "targetAthletics".
     /// </summary>
     [JsonPropertyName("tag")]
-    public string Tag { get; set; } = default!;
+    public string Tag { get; set; } = null!;
 
     /// <summary>
     /// Standard dice expression: "1d20+5", "2d6", "3d8+2".
@@ -23,7 +23,7 @@ public class RollRequest
     /// For KeepHighest/KeepLowest: use with <see cref="Keep"/>.
     /// </summary>
     [JsonPropertyName("expression")]
-    public string Expression { get; set; } = default!;
+    public string Expression { get; set; } = null!;
 
     /// <summary>Rolling mechanic to apply. Defaults to Standard.</summary>
     [JsonPropertyName("mechanic")]
@@ -65,7 +65,7 @@ public class RollOutcome
 {
     /// <summary>Verbatim copy of RollRequest.Tag — lets the LLM match outcomes to requests.</summary>
     [JsonPropertyName("tag")]
-    public string Tag { get; set; } = default!;
+    public string Tag { get; set; } = null!;
 
     /// <summary>Final numeric result (total for Standard/Advantage/etc., success count for SuccessCount).</summary>
     [JsonPropertyName("result")]
@@ -96,7 +96,7 @@ public class RollOutcome
     /// Examples: "[15]+5 = 20 (Advantage: kept 20 over 8)", "3 successes (pool: [4, 11, 20]) vs TN 12".
     /// </summary>
     [JsonPropertyName("summary")]
-    public string Summary { get; set; } = default!;
+    public string Summary { get; set; } = null!;
 }
 
 /// <summary>

@@ -5,7 +5,7 @@ namespace CampaignVault.Models;
 public class CombatantState
 {
     [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = default!;
+    public string CharacterId { get; set; } = null!;
 
     [JsonPropertyName("initiative")]
     public float Initiative { get; set; }
@@ -28,10 +28,10 @@ public class CombatEncounter
     /// The old hardcoded "combat/current" singleton is deprecated in favor of per-campaign namespacing.
     /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     [JsonPropertyName("locationId")]
-    public string LocationId { get; set; } = default!;
+    public string LocationId { get; set; } = null!;
 
     [JsonPropertyName("round")]
     public int Round { get; set; } = 1;

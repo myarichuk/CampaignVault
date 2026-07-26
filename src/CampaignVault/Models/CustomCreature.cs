@@ -7,7 +7,7 @@ namespace CampaignVault.Models;
 /// </summary>
 public class CustomCreature : ICampaignScopedEntity, IArchivable
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
@@ -16,7 +16,7 @@ public class CustomCreature : ICampaignScopedEntity, IArchivable
 
     public string BuildEmbeddingText() => $"{Name}\n{Description}";
 
-    public string Name { get; set; } = default!;
+    public string Name { get; set; } = null!;
 
     public RulesetSystem System { get; set; }
 

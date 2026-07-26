@@ -16,7 +16,7 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
 
         if (!context.Items.TryGetValue(transfer.ItemId, out var item))
         {
-            item = context.Session != null ? await context.Session.LoadAsync<Item>(transfer.ItemId, ct) : null;
+            item = await context.Session.LoadAsync<Item>(transfer.ItemId, ct);
             if (item == null)
             {
                 var hints = await context.SuggestItemMatchAsync(transfer.ItemId);

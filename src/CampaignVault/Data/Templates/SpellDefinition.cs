@@ -2,7 +2,7 @@ namespace CampaignVault.Data.Templates;
 
 public record SpellDefinition : RulesetTemplate
 {
-    public string System { get; init; } = default!;
+    public string System { get; init; } = null!;
 
     /// <summary>0 = cantrip.</summary>
     public int? Level { get; init; }

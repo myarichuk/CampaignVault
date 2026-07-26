@@ -2,7 +2,7 @@ namespace CampaignVault.Models;
 
 public class SessionLog : ICampaignScopedEntity
 {
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = null!;
     public string? CampaignName { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }

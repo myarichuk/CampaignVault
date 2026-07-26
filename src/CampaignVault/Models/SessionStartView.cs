@@ -24,7 +24,7 @@ public class SessionStartView
     public CampaignContextView? Campaign { get; set; }
 
     [Description("Authoritative world state: time, scoped rumors/quests/factions, recent events, pressures, and seedCoverage (entity counts + gap hints — check right after world_build).")]
-    public WorldStateView WorldState { get; set; } = default!;
+    public WorldStateView WorldState { get; set; } = null!;
 
     [Description("Active party roster (isPc or isPartyCompanion) with equipped/carried items.")]
     public List<PartyMemberView> Party { get; set; } = [];
