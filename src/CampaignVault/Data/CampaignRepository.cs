@@ -615,6 +615,10 @@ public class CampaignRepository
 
     private const int UnifiedSearchPerTypeLimit = 3;
 
+    // MiniLM-L6-v2 cosine similarities for genuinely related text typically land around 0.5+;
+    // unrelated text is usually well below that. Tune if searches feel too loose/strict.
+    private const float VectorSearchMinimumSimilarity = 0.5f;
+
     /// <summary>
     /// Performs hybrid keyword + vector search across all semantically-indexed narrative entity types.
     /// Returns a mixed collection of documents matching the search string.
@@ -703,7 +707,8 @@ public class CampaignRepository
         var vectorQuery = ApplyCampaignScope(
             session.Query<T, TIndex>().VectorSearch(
                 field => field.WithField(x => x.SemanticVector),
-                searchTerm => searchTerm.ByEmbedding(queryVector)),
+                searchTerm => searchTerm.ByEmbedding(queryVector),
+                minimumSimilarity: VectorSearchMinimumSimilarity),
             effective);
         var vectorResults = await vectorQuery.Take(limit).ToListAsync();
         return MergeSearchResults(textResults, vectorResults, limit);

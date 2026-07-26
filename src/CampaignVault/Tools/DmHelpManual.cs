@@ -137,6 +137,35 @@ A scene's `TurnIntentCharacterId` / an NPC's `TurnIntent` (in `get_entity` full 
 
 None of this forces the NPC to interrupt — `TurnIntent` only actually sets when `BehavioralTension` crosses a configured threshold AND the top candidate's urgency is High. Treat a non-null `TurnIntent` as ""this NPC has a plausible, mechanically-grounded reason to speak next,"" and let the player act freely regardless.
 
+## Emotional Beats (emotionalBeat on Events)
+
+When a narrative moment carries emotional weight (gratitude, betrayal, relief, fear, etc.), tag it with `emotionalBeat` on your `event` changes. This signals the engine to prioritize that beat in NPC memory and behavior, enabling emotional continuity across sessions.
+
+**When to use:**
+- A gift given or favor owed → `""gratitude""` or `""gift_received""`
+- A trust broken → `""betrayal""` or `""distrust""`
+- A danger averted → `""relief""` or `""triumph""`
+- A secret revealed → `""shock""` or `""revelation""`
+- An insult or injury → `""offense""` or `""resentment""`
+- Kindness or sacrifice → `""affection""` or `""respect""`
+
+**Example:**
+```json
+{
+  ""$type"": ""event"",
+  ""category"": ""Conversation"",
+  ""summary"": ""The party vows to help Maeva recover her stolen heirloom."",
+  ""involved"": [""chars/pc1"", ""chars/maeva""],
+  ""locationId"": ""locations/tavern"",
+  ""emotionalBeat"": ""trust"",
+  ""importance"": ""Important""
+}
+```
+
+**Impact:** NPCs whose `TurnIntent` surfaces because of an `emotionalBeat` tag (vs. stale conversation or raw need pressure) carry that emotional memory into their next interaction — they'll reference it, show gratitude, or react with wariness depending on the beat and the relationship history. This is one of the highest-fidelity ways to make relationships feel alive across sessions.
+
+**Note:** `emotionalBeat` is optional. Use it when the beat genuinely moves you; ordinary tactical or transactional beats (""party bought supplies"") don't need it.
+
 ## Discovery + Activity Sync
 
 [
