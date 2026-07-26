@@ -1,3 +1,4 @@
+using CampaignVault.Data.Migrations;
 using Microsoft.Extensions.Logging;
 using Raven.Client.Documents.Indexes;
 using Raven.Embedded;
@@ -64,6 +65,11 @@ public static class RavenStartup
         try
         {
             using var session = documentStore.OpenAsyncSession();
+
+            // Migrate CampaignTime from old TimeOfDay enum to hour-based tracking
+            var timeHourMigration = new MigrateCampaignTimeToHours(documentStore);
+            await timeHourMigration.ExecuteAsync();
+            logger.LogInformation("✓ CampaignTime hours migration: completed");
 
             // Repair corrupted Event documents
             var repairLogger = loggerFactory.CreateLogger<EventDataRepair>();

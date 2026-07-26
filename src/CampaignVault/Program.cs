@@ -202,9 +202,15 @@ builder.Services.AddGrpc();
 
 var app = builder.Build();
 
+var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+
+// Data migrations: handle schema upgrades, format conversions, repairs
+Console.WriteLine("[Startup] Running data migrations...");
+await RavenStartup.RunDataMigrationsAsync(documentStore, loggerFactory);
+Console.WriteLine("[Startup] Data migrations complete ✓\n");
+
 // Semantic vector bootstrap: repair any entities missing embeddings
 Console.WriteLine("[Startup] Running semantic vector bootstrap...");
-var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 var bootstrapLogger = loggerFactory.CreateLogger("SemanticVectorBootstrap");
 var bootstrap = new SemanticVectorBootstrap(documentStore, app.Services.GetRequiredService<ILocalEmbeddingService>(), bootstrapLogger);
 await bootstrap.RunAsync();
