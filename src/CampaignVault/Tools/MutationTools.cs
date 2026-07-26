@@ -222,6 +222,7 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
             Category = EventCategory.SceneCommit,
             Involved = commitResult.InvolvedEntities,
             DayLogged = (int)commitTime.TotalDaysElapsed,
+            Details = ExtractEventDetails(changes),
             RelatedEntityId = ExtractPrimaryActor(commitResult.InvolvedEntities)
         };
 
@@ -242,6 +243,148 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
 
         await ctx.Session.SaveChangesAsync();
         return null;
+    }
+
+    /// <summary>Extracts structured details from all mutations for event enrichment.</summary>
+    private static IDictionary<string, object>? ExtractEventDetails(WorldChange[] changes)
+    {
+        var details = new Dictionary<string, object>();
+
+        var itemTransfers = new List<object>();
+        var damageDealt = new List<object>();
+        var statusesApplied = new List<object>();
+        var resourcesSpent = new List<object>();
+        var relationshipChanges = new List<object>();
+        var locationsVisited = new List<object>();
+        var needsChanged = new List<object>();
+        var questsProgressed = new List<object>();
+        var factsDiscovered = new List<object>();
+
+        foreach (var change in changes)
+        {
+            switch (change)
+            {
+                case ItemTransfer it:
+                    itemTransfers.Add(new { itemId = it.ItemId, toHolderId = it.ToHolderId });
+                    break;
+
+                case HpChange hp:
+                    if (hp.Delta != 0)
+                    {
+                        damageDealt.Add(new { characterId = hp.CharacterId, delta = hp.Delta });
+                    }
+                    break;
+
+                case StatusChange sc:
+                    if (sc.Effect != null)
+                    {
+                        statusesApplied.Add(new
+                        {
+                            characterId = sc.CharacterId,
+                            statusName = sc.Effect.Name,
+                            category = sc.Effect.Category?.ToString()
+                        });
+                    }
+                    else if (!string.IsNullOrEmpty(sc.Status))
+                    {
+                        statusesApplied.Add(new { characterId = sc.CharacterId, statusName = sc.Status });
+                    }
+                    break;
+
+                case ResourceChange rc:
+                    if (rc.Delta != 0)
+                    {
+                        resourcesSpent.Add(new
+                        {
+                            characterId = rc.CharacterId,
+                            pool = rc.PoolName,
+                            delta = rc.Delta
+                        });
+                    }
+                    break;
+
+                case RelationshipChange rel:
+                    if (rel.Delta != 0)
+                    {
+                        relationshipChanges.Add(new
+                        {
+                            characterId = rel.CharacterId,
+                            targetId = rel.TargetId,
+                            delta = rel.Delta
+                        });
+                    }
+                    break;
+
+                case ActivityChange ac:
+                    if (ac.UpdateLocation && !string.IsNullOrEmpty(ac.NewLocationId))
+                    {
+                        locationsVisited.Add(new
+                        {
+                            characterId = ac.CharacterId,
+                            location = ac.NewLocationId,
+                            poiName = ac.PoiName
+                        });
+                    }
+                    break;
+
+                case NeedChange nc:
+                    if (nc.Delta != 0)
+                    {
+                        needsChanged.Add(new
+                        {
+                            characterId = nc.CharacterId,
+                            need = nc.Need,
+                            delta = nc.Delta
+                        });
+                    }
+                    break;
+
+                case QuestProgress qp:
+                    if (!string.IsNullOrEmpty(qp.QuestId))
+                    {
+                        questsProgressed.Add(new
+                        {
+                            questId = qp.QuestId,
+                            newState = qp.NewState
+                        });
+                    }
+                    break;
+
+                case PlotThreadClueDiscovered ptc:
+                    if (!string.IsNullOrEmpty(ptc.PlotThreadId) && !string.IsNullOrEmpty(ptc.ClueId))
+                    {
+                        factsDiscovered.Add(new
+                        {
+                            plotThreadId = ptc.PlotThreadId,
+                            clueId = ptc.ClueId
+                        });
+                    }
+                    break;
+
+                case RulesetAction ra:
+                    // Combat/skill check actions
+                    factsDiscovered.Add(new
+                    {
+                        characterId = ra.CharacterId,
+                        actionType = ra.ActionType.ToString(),
+                        actionName = ra.ActionName
+                    });
+                    break;
+            }
+        }
+
+        // Add non-empty sections to details
+        if (itemTransfers.Count > 0) details["itemTransfers"] = itemTransfers;
+        if (damageDealt.Count > 0) details["damageDealt"] = damageDealt;
+        if (statusesApplied.Count > 0) details["statusesApplied"] = statusesApplied;
+        if (resourcesSpent.Count > 0) details["resourcesSpent"] = resourcesSpent;
+        if (relationshipChanges.Count > 0) details["relationshipChanges"] = relationshipChanges;
+        if (locationsVisited.Count > 0) details["locationsVisited"] = locationsVisited;
+        if (needsChanged.Count > 0) details["needsChanged"] = needsChanged;
+        if (questsProgressed.Count > 0) details["questsProgressed"] = questsProgressed;
+        if (factsDiscovered.Count > 0) details["factsDiscovered"] = factsDiscovered;
+
+        return details.Count > 0 ? details : null;
     }
 
     /// <summary>Extracts the primary actor (typically the first player character) from involved entities.</summary>
