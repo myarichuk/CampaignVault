@@ -213,22 +213,35 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
         result.NarrativeReminder = commitResult.NarrativeReminder;
 
         var commitTime = await _repository.GetTimeAsync(ctx.Session, ctx.Campaign);
-        await _repository.LogEventAsync(ctx.Session,
-            new Event
-            {
-                Id = "events/" + Guid.NewGuid(),
-                CampaignName = ctx.Campaign,
-                Summary = request.Narrative!,
-                Category = EventCategory.SceneCommit,
-                Involved = commitResult.InvolvedEntities,
-                DayLogged = (int)commitTime.TotalDaysElapsed
-            },
-            ctx.Campaign);
+        var sceneEvent = new Event
+        {
+            Id = "events/" + Guid.NewGuid(),
+            CampaignName = ctx.Campaign,
+            Summary = request.Narrative!,
+            Category = EventCategory.SceneCommit,
+            Involved = commitResult.InvolvedEntities,
+            DayLogged = (int)commitTime.TotalDaysElapsed,
+            RelatedEntityId = ExtractPrimaryActor(commitResult.InvolvedEntities)
+        };
+
+        await _repository.LogEventAsync(ctx.Session, sceneEvent, ctx.Campaign);
 
         ComposeReminders(changes, result);
 
         await ctx.Session.SaveChangesAsync();
         return null;
+    }
+
+    /// <summary>Extracts the primary actor (typically the first player character) from involved entities.</summary>
+    private static string? ExtractPrimaryActor(List<string> involvedEntities)
+    {
+        if (involvedEntities == null || involvedEntities.Count == 0)
+            return null;
+
+        // Prefer player character (chars/pc or any chars/ that's not an NPC)
+        // For simplicity, just return the first chars/ entity (usually the acting character)
+        return involvedEntities.FirstOrDefault(id =>
+            !string.IsNullOrEmpty(id) && id.StartsWith("chars/", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Appends commit-hygiene reminders (missing narrative event, missing PoI detail) without discarding earlier reminders.</summary>
