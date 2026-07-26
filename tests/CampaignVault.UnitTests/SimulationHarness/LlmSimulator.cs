@@ -51,9 +51,9 @@ public class LlmSimulator(CampaignTools tools, IAsyncDocumentSession session)
         return result;
     }
 
-    public async Task<ToolResult<AdvanceResult>> Rest(int days, TimeOfDay timeOfDay, string narrative)
+    public async Task<ToolResult<AdvanceResult>> Rest(int days, int resultingHour, string narrative)
     {
-        var result = await tools.AdvanceWorld(days, timeOfDay, narrative, TestCampaignDefaults.Slug);
+        var result = await tools.AdvanceWorld(days, resultingHour, narrative, TestCampaignDefaults.Slug);
         CurrentPhase = NarrativePhase.Exploration; // Cycle back to exploration
         return result;
     }

@@ -96,8 +96,8 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
         int? loreMonth = null,
         [Description("Optional starting day (1-30). Defaults to 1.")]
         int? loreDay = null,
-        [Description("Optional starting time of day (Dawn, Morning, Noon, Afternoon, Evening, Dusk, Night). Defaults to Dawn.")]
-        TimeOfDay? loreTimeOfDay = null)
+        [Description("Optional starting hour of day (0-23, e.g. 6=dawn, 12=noon, 20=evening). Defaults to 6 (dawn).")]
+        int? loreHour = null)
     {
         string normalized;
         try
@@ -132,7 +132,7 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
                 Year = loreYear ?? 1492,
                 Month = loreMonth ?? 1,
                 Day = loreDay ?? 1,
-                StartingTimeOfDay = loreTimeOfDay ?? TimeOfDay.Dawn
+                StartingHour = loreHour ?? 6
             };
 
             return new ToolResult<Campaign>(true, campaign,

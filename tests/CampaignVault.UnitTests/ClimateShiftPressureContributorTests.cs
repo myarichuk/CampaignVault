@@ -58,7 +58,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
         var contributor = new ClimateShiftPressureContributor();
         var ctx = new PressureContext(
             campaign,
-            new CampaignTime { TimeOfDay = TimeOfDay.Night },
+            new CampaignTime { Hour = 0 },
             new CampaignConfig { Id = "config/" + campaign },
             session,
             RequestedLocationId: location.Id,
@@ -82,7 +82,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
         var contributor = new ClimateShiftPressureContributor();
         var ctx = new PressureContext(
             campaign,
-            new CampaignTime { TimeOfDay = TimeOfDay.Noon },
+            new CampaignTime { Hour = 12 },
             new CampaignConfig { Id = "config/" + campaign },
             session,
             RequestedLocationId: location.Id,
@@ -104,7 +104,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
         var contributor = new ClimateShiftPressureContributor();
         var ctx = new PressureContext(
             campaign,
-            new CampaignTime { TimeOfDay = TimeOfDay.Noon },
+            new CampaignTime { Hour = 12 },
             new CampaignConfig { Id = "config/" + campaign },
             session,
             RequestedLocationId: location.Id,
@@ -127,7 +127,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
         var contributor = new ClimateShiftPressureContributor();
         var ctx = new PressureContext(
             campaign,
-            new CampaignTime { TimeOfDay = TimeOfDay.Night },
+            new CampaignTime { Hour = 0 },
             new CampaignConfig { Id = "config/" + campaign },
             session,
             RequestedLocationId: location.Id,

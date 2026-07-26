@@ -102,5 +102,6 @@ public class CampaignLoreSettings
     public int Year { get; set; } = 1492;
     public int Month { get; set; } = 1;
     public int Day { get; set; } = 1;
-    public TimeOfDay StartingTimeOfDay { get; set; } = TimeOfDay.Dawn;
+    /// <summary>Starting hour of day (0-23). Defaults to 6 (dawn).</summary>
+    public int StartingHour { get; set; } = 6;
 }

@@ -7,19 +7,22 @@ public class CampaignTime
     /// Old singleton "state/time" is being replaced by per-campaign namespacing.
     /// </summary>
     public string Id { get; set; } = default!;
-    
+
     public string Epoch { get; set; } = "Current Era";
-    
+
     public int Year { get; set; } = 1492;
-    
+
     public int Month { get; set; } = 1;
-    
+
     public int Day { get; set; } = 1;
-    
-    public TimeOfDay TimeOfDay { get; set; } = TimeOfDay.Dawn;
-    
+
+    /// <summary>
+    /// Hour of day (0-23). Precision tracking stops at hours; minutes/seconds not tracked.
+    /// </summary>
+    public int Hour { get; set; } = 6; // 6 = Dawn
+
     public int TotalDaysElapsed { get; set; } = 0;
-    
+
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     public void AdvanceHours(int hours)
@@ -29,29 +32,28 @@ public class CampaignTime
             return;
         }
 
-        // Simple approximation: 3-4 hours per TimeOfDay segment. Let's say 4 hours per segment to wrap around 6 segments roughly.
-        // Dawn(0), Morning(1), Noon(2), Afternoon(3), Evening(4), Dusk(5), Night(6).
-        // 7 segments * 4 hours = 28 hours (close enough for narrative time).
-        var segmentsToAdvance = (int)Math.Ceiling(hours / 3.0);
-        
-        var currentSegment = (int)TimeOfDay;
-        var newSegment = currentSegment + segmentsToAdvance;
-        
-        var daysPassed = newSegment / 7;
-        TimeOfDay = (TimeOfDay)(newSegment % 7);
-        
+        var newHour = Hour + hours;
+        var daysPassed = newHour / 24;
+        Hour = newHour % 24;
+
         TotalDaysElapsed += daysPassed;
         Day += daysPassed;
     }
-}
 
-public enum TimeOfDay
-{
-    Dawn,
-    Morning,
-    Noon,
-    Afternoon,
-    Evening,
-    Dusk,
-    Night
+    /// <summary>
+    /// Maps the current hour (0-23) to a narrative time-of-day category.
+    /// Used for display and systems that need coarse time categories.
+    /// </summary>
+    public string GetTimeOfDayName() =>
+        Hour switch
+        {
+            >= 0 and < 6 => "Night",
+            >= 6 and < 9 => "Dawn",
+            >= 9 and < 12 => "Morning",
+            >= 12 and < 15 => "Noon",
+            >= 15 and < 18 => "Afternoon",
+            >= 18 and < 21 => "Evening",
+            >= 21 and < 24 => "Dusk",
+            _ => "Night"
+        };
 }

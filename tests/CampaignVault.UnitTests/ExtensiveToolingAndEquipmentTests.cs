@@ -1002,7 +1002,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         var initialDays = initialState.Data?.Time?.TotalDaysElapsed ?? 0;
 
         // Advance 1 day
-        var advance = await tools.AdvanceWorld(1, TimeOfDay.Morning, "Advancing time by 1 day", campaignName: campaign);
+        var advance = await tools.AdvanceWorld(1, 9, "Advancing time by 1 day", campaignName: campaign);
         Assert.True(advance.Success, advance.Summary);
 
         // Get new time

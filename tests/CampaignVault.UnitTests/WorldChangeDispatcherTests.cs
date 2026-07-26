@@ -901,7 +901,7 @@ public class WorldChangeDispatcherTests
 
         Assert.True(result.Success);
         // A few lines of dialogue shouldn't flip TimeOfDay — only needs should move.
-        Assert.Equal(TimeOfDay.Dawn, time.TimeOfDay);
+        Assert.Equal(6, time.Hour);
         Assert.Equal(0, time.TotalDaysElapsed);
         Assert.True(pc.Needs!.ActiveNeeds["hunger"] > 0f);
         Assert.True(pc.Needs.ActiveNeeds["hunger"] < 1f); // 10 * (20/1440) ≈ 0.14, much less than a full day's nudge
@@ -922,7 +922,7 @@ public class WorldChangeDispatcherTests
         mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<string, Location>());
 
-        var time = new CampaignTime(); // starts at TimeOfDay.Dawn
+        var time = new CampaignTime(); // starts at 6
 
         var result = await dispatcher.DispatchAsync(
             mockSession,
@@ -933,7 +933,7 @@ public class WorldChangeDispatcherTests
             _ => Task.CompletedTask);
 
         Assert.True(result.Success);
-        Assert.Equal(TimeOfDay.Morning, time.TimeOfDay);
+        Assert.Equal(9, time.Hour);
     }
 
     [Fact]
@@ -977,7 +977,7 @@ public class WorldChangeDispatcherTests
         Assert.True(result.Success);
         Assert.Equal(0f, pc.Needs!.ActiveNeeds["hunger"]);
         Assert.Equal(0, time.TotalDaysElapsed);
-        Assert.Equal(TimeOfDay.Dawn, time.TimeOfDay);
+        Assert.Equal(6, time.Hour);
     }
 
     [Fact]

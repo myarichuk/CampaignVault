@@ -97,11 +97,11 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var config = await _repository.GetCampaignConfigAsync(session, effective);
 
             var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, scene.Location);
-            var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, time.TimeOfDay);
+            var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, time.Hour);
             scene.Climate = new SceneClimateSummary(
                 zone.ToString(),
                 ambientTemp,
-                time.TimeOfDay.ToString()
+                time.GetTimeOfDayName()
             );
 
             var pressureCtx = new PressureContext(

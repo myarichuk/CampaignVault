@@ -34,7 +34,7 @@ public class ScheduleEvaluationRule : ISimulationRule
         // whenever any campaign's time advances. ActivityChange deltas are scoped to the campaign
         // driving the simulation, so the event log remains isolated per-campaign.
 
-        var timeOfDay = context.Time.TimeOfDay.ToString();
+        var timeOfDay = context.Time.GetTimeOfDayName();
 
         foreach (var npc in context.ScheduledNpcs)
         {

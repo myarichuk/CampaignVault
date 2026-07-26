@@ -39,7 +39,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         };
 
         var rule = new ClimateExposureRule();
-        var time = new CampaignTime { TimeOfDay = TimeOfDay.Noon };
+        var time = new CampaignTime { Hour = 12 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
         var result = await rule.ApplyAsync(ctx);
@@ -74,7 +74,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         };
 
         var rule = new ClimateExposureRule();
-        var time = new CampaignTime { TimeOfDay = TimeOfDay.Night };
+        var time = new CampaignTime { Hour = 0 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
         var result = await rule.ApplyAsync(ctx);
@@ -109,7 +109,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         };
 
         var rule = new ClimateExposureRule();
-        var time = new CampaignTime { TimeOfDay = TimeOfDay.Night };
+        var time = new CampaignTime { Hour = 0 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
         var result = await rule.ApplyAsync(ctx);
@@ -142,7 +142,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         };
 
         var rule = new ClimateExposureRule();
-        var time = new CampaignTime { TimeOfDay = TimeOfDay.Noon };
+        var time = new CampaignTime { Hour = 12 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
         var result = await rule.ApplyAsync(ctx);
@@ -175,7 +175,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         };
 
         var rule = new ClimateExposureRule();
-        var time = new CampaignTime { TimeOfDay = TimeOfDay.Night };
+        var time = new CampaignTime { Hour = 0 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
         var result = await rule.ApplyAsync(ctx);
@@ -193,7 +193,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var character = new Character { Id = "chars/climate_exposure_no_location", Name = "Nowhere", SystemStats = new Dnd5eExtension() };
 
         var rule = new ClimateExposureRule();
-        var time = new CampaignTime { TimeOfDay = TimeOfDay.Noon };
+        var time = new CampaignTime { Hour = 12 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
         var result = await rule.ApplyAsync(ctx);

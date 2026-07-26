@@ -84,7 +84,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
 
             // 2. Random Time Passage (Downtime phase simulate)
             var days = _rng.Next(1, 15);
-            var advanceResult = await tools.AdvanceWorld(days, TimeOfDay.Night, "Fuzz time skip");
+            var advanceResult = await tools.AdvanceWorld(days, 0, "Fuzz time skip");
             Assert.True(advanceResult.Success);
 
             await session.SaveChangesAsync();

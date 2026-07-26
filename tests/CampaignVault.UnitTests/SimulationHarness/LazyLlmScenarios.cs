@@ -190,7 +190,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         Assert.True(commitResult.Success, commitResult.Summary);
 
         // 2. Advance time (simulating a full day passing without arriving)
-        await tools.AdvanceWorld(1, TimeOfDay.Morning, "Simulating day passing", "TravelLazinessTest");
+        await tools.AdvanceWorld(1, 9, "Simulating day passing", "TravelLazinessTest");
 
         // 3. Next scene load should nag the LLM
         var sceneResult = await tools.GetScene("locations/start", true, "TravelLazinessTest");
@@ -421,7 +421,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        var advanceResult = await tools.AdvanceWorld(14, TimeOfDay.Dawn, "Simulating days passing", "QuestStaleTest");
+        var advanceResult = await tools.AdvanceWorld(14, 6, "Simulating days passing", "QuestStaleTest");
         Assert.True(advanceResult.Success, advanceResult.Error);
 
         var sceneResult = await tools.GetScene("locations/town_03", true, "QuestStaleTest");
@@ -522,7 +522,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         }
 
         // Advance 3 days, eviction should skip the quest giver
-        var advanceResult1 = await tools.AdvanceWorld(3, TimeOfDay.Dawn, "Simulating days passing", "QuestGiverEvictionTest");
+        var advanceResult1 = await tools.AdvanceWorld(3, 6, "Simulating days passing", "QuestGiverEvictionTest");
         Assert.True(advanceResult1.Success, advanceResult1.Error);
 
         using (var session = _store.OpenAsyncSession())
@@ -559,7 +559,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         }
 
         // Advance another 3 days, now he should be evicted
-        var advanceResult2 = await tools.AdvanceWorld(3, TimeOfDay.Dawn, "Simulating days passing", "QuestGiverEvictionTest");
+        var advanceResult2 = await tools.AdvanceWorld(3, 6, "Simulating days passing", "QuestGiverEvictionTest");
         Assert.True(advanceResult2.Success, advanceResult2.Error);
 
         using (var session = _store.OpenAsyncSession())

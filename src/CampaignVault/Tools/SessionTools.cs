@@ -61,7 +61,7 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
                     Title = title,
                     StartedAtUtc = DateTime.UtcNow,
                     InWorldStartDay = (int)time.TotalDaysElapsed,
-                    InWorldStartTimeOfDay = time.TimeOfDay.ToString(),
+                    InWorldStartTimeOfDay = time.GetTimeOfDayName(),
                     IsOpen = true,
                 };
 
@@ -145,7 +145,7 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
             openSession.EndedAtUtc = DateTime.UtcNow;
             var time = await _repo.GetTimeAsync(session, effective);
             openSession.InWorldEndDay = (int)time.TotalDaysElapsed;
-            openSession.InWorldEndTimeOfDay = time.TimeOfDay.ToString();
+            openSession.InWorldEndTimeOfDay = time.GetTimeOfDayName();
             openSession.RecapText = recapText;
             openSession.IsOpen = false;
 

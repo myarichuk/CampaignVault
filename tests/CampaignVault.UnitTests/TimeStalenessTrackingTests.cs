@@ -86,7 +86,7 @@ public class TimeStalenessTrackingTests : IClassFixture<RavenDBFixture>
 
         // days=0 is the explicit "run the sweep now" pattern (see RestThenAdvanceWorldIntegrationTests) —
         // still counts as time recorded even though the calendar itself doesn't move.
-        await repo.AdvanceWorldAsync(session, 0, TimeOfDay.Noon, campaign);
+        await repo.AdvanceWorldAsync(session, 0, 12, campaign);
         await session.SaveChangesAsync();
         Assert.Equal(0, (await LoadCampaignAsync(session, campaign)).CommitsSinceTimeRecorded);
     }

@@ -71,7 +71,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
 
         // Small time advance so ScheduleEvaluationRule runs and populates CurrentActivity / CurrentLocationId.
         // This exercises the new dynamic presence behavior (Phase 1 goal).
-        await simulator.Rest(0, TimeOfDay.Evening, "A few hours pass as the party arrives.");
+        await simulator.Rest(0, 18, "A few hours pass as the party arrives.");
         await simulator.SaveChangesAsync();
 
         // 1. Kickoff
@@ -103,7 +103,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         Assert.Equal(NarrativePhase.Downtime, simulator.CurrentPhase);
 
         // 5. Rest (Time passes)
-        var rest = await simulator.Rest(1, TimeOfDay.Morning, "A long night's sleep at the inn.");
+        var rest = await simulator.Rest(1, 9, "A long night's sleep at the inn.");
         Assert.True(rest.Success);
         Assert.Equal(NarrativePhase.Exploration, simulator.CurrentPhase);
 

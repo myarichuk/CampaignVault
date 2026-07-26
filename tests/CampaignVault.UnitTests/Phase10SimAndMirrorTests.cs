@@ -74,7 +74,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
         await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
 
-        await repo.AdvanceWorldAsync(session, 1, TimeOfDay.Dawn, campaign);
+        await repo.AdvanceWorldAsync(session, 1, 6, campaign);
         await session.SaveChangesAsync();
 
         var reloaded = await session.LoadAsync<Character>(charId);
@@ -113,7 +113,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
         await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
 
-        await repo.AdvanceWorldAsync(session, 1, TimeOfDay.Dawn, campaign);
+        await repo.AdvanceWorldAsync(session, 1, 6, campaign);
         await session.SaveChangesAsync();
 
         var conflictNpc = await session.LoadAsync<Character>(conflictId);
@@ -215,7 +215,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
         await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
 
-        await repo.AdvanceWorldAsync(session, 5, TimeOfDay.Dawn, campaign);
+        await repo.AdvanceWorldAsync(session, 5, 6, campaign);
         await session.SaveChangesAsync();
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
@@ -373,7 +373,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
         Assert.Empty(second.ActiveInitiatives);
 
-        await repo.AdvanceWorldAsync(session, rearmInterval, TimeOfDay.Morning, campaign);
+        await repo.AdvanceWorldAsync(session, rearmInterval, 9, campaign);
         await session.SaveChangesAsync();
 
         npc = await session.LoadAsync<Character>(npcId);
@@ -419,7 +419,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
         await session.SaveChangesAsync();
 
-        await repo.AdvanceWorldAsync(session, 2, TimeOfDay.Morning, campaign);
+        await repo.AdvanceWorldAsync(session, 2, 9, campaign);
         await session.SaveChangesAsync();
 
         npc = await session.LoadAsync<Character>(npcId);

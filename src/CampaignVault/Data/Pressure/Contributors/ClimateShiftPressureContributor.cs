@@ -36,7 +36,7 @@ public sealed class ClimateShiftPressureContributor : IPressureContributor
         }
 
         var zone = await ClimateResolver.ResolveEffectiveZoneAsync(ctx.Session, location, ct);
-        var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, ctx.Time.TimeOfDay);
+        var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, ctx.Time.Hour);
 
         var party = await PressureQueryHelper.QueryPartyAtLocationAsync(ctx.Session, ctx.CampaignName, ctx.RequestedLocationId, 10, ct);
 

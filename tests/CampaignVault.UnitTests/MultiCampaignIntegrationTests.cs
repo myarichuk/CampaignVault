@@ -291,7 +291,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        await tools.AdvanceWorld(1, TimeOfDay.Morning, "Advance A only", "campaign-a");
+        await tools.AdvanceWorld(1, 9, "Advance A only", "campaign-a");
 
         using (var verify = _store.OpenAsyncSession())
         {

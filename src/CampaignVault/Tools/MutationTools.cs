@@ -585,9 +585,9 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
         string campaignName,
         [Description("Number of whole days to skip for a multi-day time jump. Omit when using 'hours' instead — set one or the other, not both.")]
         int days = 0,
-        [Description("Resulting time-of-day bucket (Dawn/Morning/Noon/Afternoon/Evening/Dusk/Night). Required when using 'days'. Omit when using 'hours' — derived automatically.")]
-        TimeOfDay? timeOfDay = null,
-        [Description("Alternative to days/timeOfDay: hours to fast-forward from the CURRENT time (e.g. 8 for sleeping through the night, 4 for a half-day trek). The engine computes the resulting day/timeOfDay for you. Mutually exclusive with days/timeOfDay.")]
+        [Description("Resulting hour of day (0-23, e.g. 6 for dawn, 12 for noon, 20 for evening). Required when using 'days'. Omit when using 'hours' — derived automatically.")]
+        int? resultingHour = null,
+        [Description("Alternative to days/resultingHour: hours to fast-forward from the CURRENT time (e.g. 8 for sleeping through the night, 4 for a half-day trek). The engine computes the resulting hour for you. Mutually exclusive with days/resultingHour.")]
         int? hours = null)
     {
         if (hours.HasValue)
@@ -596,14 +596,14 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
             {
                 return ToolArgumentErrors.Missing<AdvanceResult>(
                     "hours",
-                    "hours must be a positive number of hours to fast-forward. Use days+timeOfDay for a multi-day skip instead.",
+                    "hours must be a positive number of hours to fast-forward. Use days+resultingHour for a multi-day skip instead.",
                     toolName: "advance_world");
             }
 
-            if (days != 0 || timeOfDay.HasValue)
+            if (days != 0 || resultingHour.HasValue)
             {
                 return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "InvalidArgument",
-                    Summary: "Pass either 'hours' OR 'days'+'timeOfDay', not both."));
+                    Summary: "Pass either 'hours' OR 'days'+'resultingHour', not both."));
             }
         }
         else if (days <= 0)
@@ -611,17 +611,22 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
             return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "BadRequest",
                 Summary: "Cannot advance zero or a negative number of days. Use 'hours' instead for a sub-day/overnight span."));
         }
-        else if (!timeOfDay.HasValue)
+        else if (!resultingHour.HasValue)
         {
             return ToolArgumentErrors.Missing<AdvanceResult>(
-                "timeOfDay",
-                "Required when using 'days' for a multi-day skip. Use 'hours' instead for a same-night/partial-day span, which derives timeOfDay automatically.",
+                "resultingHour",
+                "Required when using 'days' for a multi-day skip (0-23). Use 'hours' instead for a same-night/partial-day span, which derives the hour automatically.",
                 toolName: "advance_world");
+        }
+        else if (resultingHour < 0 || resultingHour > 23)
+        {
+            return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "InvalidArgument",
+                Summary: "resultingHour must be between 0 and 23."));
         }
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var result = await _repository.AdvanceWorldAsync(session, days, timeOfDay, effective, hours);
+            var result = await _repository.AdvanceWorldAsync(session, days, resultingHour, effective, hours);
 
             var partyIds = await session.Query<Character, Character_Search>()
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))

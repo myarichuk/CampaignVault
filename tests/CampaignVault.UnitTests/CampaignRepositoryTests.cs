@@ -358,7 +358,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             throw new TimeoutException("Indexes did not become non-stale within 10s");
         }
 
-        var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon, TestCampaignDefaults.Slug);
+        var result = await repo.AdvanceWorldAsync(session, 15, 12, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         Assert.Equal(115, result.NewTime.TotalDaysElapsed);
@@ -421,7 +421,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         }
 
         // Act: advance (simulator mutates in-memory on tracked entities)
-        var result = await repo.AdvanceWorldAsync(session, 15, TimeOfDay.Noon, TestCampaignDefaults.Slug);
+        var result = await repo.AdvanceWorldAsync(session, 15, 12, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         // Assert rumor fade (existing)
@@ -453,7 +453,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         // Act: advance a large number of days (e.g. 400 days = 1 year + 1 month + 10 days in our 360-day calendar)
-        var result = await repo.AdvanceWorldAsync(session, 400, TimeOfDay.Dawn, TestCampaignDefaults.Slug);
+        var result = await repo.AdvanceWorldAsync(session, 400, 6, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         var t = result.NewTime;
@@ -499,7 +499,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             .ToListAsync();
 
         // Advance 2 days — hunger should go to 100 (capped delta), thirst should stay at 100 (no delta emitted for it)
-        var result = await repo.AdvanceWorldAsync(session, 2, TimeOfDay.Dawn, TestCampaignDefaults.Slug);
+        var result = await repo.AdvanceWorldAsync(session, 2, 6, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         var reloaded = await session.LoadAsync<Character>(id);
@@ -1415,7 +1415,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         // 20 days in a single call crosses both the Nascent->Spreading (7d) and Spreading->Peak (7d)
         // thresholds — the rule traverses every intermediate state within one AdvanceWorld call.
-        var result = await repo.AdvanceWorldAsync(session, 20, TimeOfDay.Noon, TestCampaignDefaults.Slug);
+        var result = await repo.AdvanceWorldAsync(session, 20, 12, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
         var reloaded = await session.LoadAsync<Rumor>("rumors/nascent-test");

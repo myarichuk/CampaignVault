@@ -47,7 +47,7 @@ public class ClimateExposureRule : ISimulationRule
                 resolvedZones[location.Id] = zone;
             }
 
-            var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, context.Time.TimeOfDay);
+            var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, context.Time.Hour);
             var warmth = npc.SystemStats?.WarmthRating ?? 0f;
             var feltTemp = ambientTemp + warmth;
 

@@ -125,9 +125,9 @@ public class CampaignTools(
         string? campaignName = TestDefaultCampaignSlug) =>
         mutation.TakeTurn(request, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<AdvanceResult>> AdvanceWorld(int days, TimeOfDay timeOfDay, string narrative,
+    public Task<ToolResult<AdvanceResult>> AdvanceWorld(int days, int resultingHour, string narrative,
         string? campaignName = TestDefaultCampaignSlug, int? hours = null) =>
-        mutation.AdvanceWorld(narrative, ResolveCampaign(campaignName), days, timeOfDay, hours);
+        mutation.AdvanceWorld(narrative, ResolveCampaign(campaignName), days, resultingHour, hours);
 
     // --- Deep Dives ---
     public Task<ToolResult<Faction>> GetFactionContext(string factionId,

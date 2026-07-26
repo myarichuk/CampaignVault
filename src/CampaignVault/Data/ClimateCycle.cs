@@ -3,9 +3,9 @@ using CampaignVault.Models;
 namespace CampaignVault.Data;
 
 /// <summary>
-/// Pure (ClimateZone, TimeOfDay) → °C lookup table. Desert gets an exaggerated diurnal swing
-/// (hot days, cold nights); Subterranean is nearly flat (caves don't feel day/night). No wall-clock
-/// hour granularity needed — TimeOfDay's 7-value cycle is enough for a narrative temperature curve.
+/// Pure (ClimateZone, Hour) → °C lookup. Desert gets an exaggerated diurnal swing
+/// (hot days, cold nights); Subterranean is nearly flat (caves don't feel day/night).
+/// Uses smooth diurnal curve mapped from hour (0-23).
 /// </summary>
 public static class ClimateCycle
 {
@@ -20,22 +20,22 @@ public static class ClimateCycle
         [ClimateZone.Subterranean] = (12f, 1f),
     };
 
-    // Normalized diurnal curve: peaks at Noon (+1), troughs at Night (-1).
-    private static readonly Dictionary<TimeOfDay, float> DiurnalMultiplier = new()
+    /// <summary>
+    /// Maps hour of day (0-23) to a diurnal temperature multiplier.
+    /// Peaks at noon (hour 12) = +1, troughs at midnight (hour 0) = -1.
+    /// Smooth cosine-like curve.
+    /// </summary>
+    private static float GetDiurnalMultiplier(int hour)
     {
-        [TimeOfDay.Dawn] = -0.3f,
-        [TimeOfDay.Morning] = 0.3f,
-        [TimeOfDay.Noon] = 1.0f,
-        [TimeOfDay.Afternoon] = 0.7f,
-        [TimeOfDay.Evening] = 0.1f,
-        [TimeOfDay.Dusk] = -0.3f,
-        [TimeOfDay.Night] = -1.0f,
-    };
+        // Normalize hour to 0-1 range, offset so 12 (noon) = 0 in the sine curve
+        var normalizedHour = (hour - 6) / 12f; // 6am = -1, 6pm = +1
+        return (float)Math.Sin(Math.PI * normalizedHour); // Smooth curve -1 to +1
+    }
 
-    public static float GetTemperatureCelsius(ClimateZone zone, TimeOfDay timeOfDay)
+    public static float GetTemperatureCelsius(ClimateZone zone, int hour)
     {
         var (baseline, amplitude) = ZoneProfiles.GetValueOrDefault(zone, ZoneProfiles[ClimateZone.Temperate]);
-        var multiplier = DiurnalMultiplier.GetValueOrDefault(timeOfDay, 0f);
+        var multiplier = GetDiurnalMultiplier(hour);
         return baseline + amplitude * multiplier;
     }
 }
