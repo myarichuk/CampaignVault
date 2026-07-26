@@ -4,8 +4,8 @@ using CampaignVault.Models;
 namespace CampaignVault.Tools;
 
 /// <summary>
-/// Evaluates whether a location's occupancy is contextually plausible.
-/// Suggests seeding staff NPCs when a location (temple, tavern, shop) is empty but shouldn't be.
+/// Evaluates whether a location's occupancy and metadata are contextually plausible.
+/// Surfaces nudges for: (1) missing staff NPCs, (2) incomplete metadata (ambientCrowd, exits, visualTags, factions, etc.).
 /// Never blocks—hints only. Integrated into GetScene when partyPresent=true.
 /// </summary>
 internal static class LocationPlausibilityAdvisor
@@ -34,59 +34,132 @@ internal static class LocationPlausibilityAdvisor
     {
         if (location == null || string.IsNullOrEmpty(location.Name) || location.Type == LocationType.Region || location.Type == LocationType.Settlement)
         {
-            return null; // Regional/settlement-level places aren't expected to have staff on-site
+            return null;
         }
 
         var locName = location.Name.ToLowerInvariant();
         var locDesc = (location.Description ?? "").ToLowerInvariant();
 
-        // Infer staffing profile from location name and description
-        string? profile = FindProfile(locName, locDesc);
-        if (profile == null)
-        {
-            return null; // No opinion on this location type
-        }
-
-        var expectedStaff = LocationProfiles[profile];
-
-        // If the location has enough NPCs, or has notes explaining why it's empty, don't nudge
-        if (npcCountAtLocation >= expectedStaff.Threshold)
-        {
-            return null;
-        }
-
-        // Check if description explains the emptiness
-        if (!string.IsNullOrEmpty(location.Description) &&
-            (location.Description.Contains("abandoned", StringComparison.OrdinalIgnoreCase) ||
-             location.Description.Contains("sealed", StringComparison.OrdinalIgnoreCase) ||
-             location.Description.Contains("destroyed", StringComparison.OrdinalIgnoreCase) ||
-             location.Description.Contains("evacuated", StringComparison.OrdinalIgnoreCase)))
-        {
-            return null;
-        }
-
         var sb = new StringBuilder();
-        sb.AppendLine($"\n💡 **Location Plausibility Check:** `{location.Name}`");
-        sb.AppendLine();
-        sb.AppendLine($"This **{expectedStaff.TypeLabel}** has no staff present. Consider whether this is intentional:");
-        sb.AppendLine();
-        sb.AppendLine("**If this location SHOULD have staff:**");
-        sb.AppendLine($"1. Seed {(expectedStaff.Threshold == 1 ? "a" : expectedStaff.Threshold)} key staff NPC(s) using `world_build`:");
-        sb.AppendLine($"   - Suggested roles: {string.Join(", ", expectedStaff.StaffRoles.Take(3))}");
-        sb.AppendLine("   - Set `currentLocationId` to this location to anchor them here");
-        sb.AppendLine("   - Add `Social` profile (role, trust, suspicion) and `Psychology` (motivation, pride, quirks)");
-        sb.AppendLine("2. Or use `take_turn` → `activity` to move an existing staff NPC here from elsewhere");
-        sb.AppendLine("3. Use `get_entity(locationId, partyPresent:true)` after seeding to reload the scene");
-        sb.AppendLine();
-        sb.AppendLine("**If this location should be empty:**");
-        sb.AppendLine("- Update the location description to explain why (sealed after plague, abandoned, repurposed, etc.)");
-        sb.AppendLine("- No further action needed");
-        sb.AppendLine();
-        sb.AppendLine("**If uncertain:**");
-        sb.AppendLine("- Consider the narrative context: are the party investigating a mystery, or just passing through?");
-        sb.AppendLine("- A sealed/abandoned location can still have secrets or clues — think about what finding it empty *means* to the story.");
+        bool hasAnyIssue = false;
 
-        return sb.ToString();
+        // 1. Check NPC plausibility
+        string? profile = FindProfile(locName, locDesc);
+        if (profile != null)
+        {
+            var expectedStaff = LocationProfiles[profile];
+            if (npcCountAtLocation < expectedStaff.Threshold &&
+                !IsExplicitlyEmpty(location.Description))
+            {
+                if (!hasAnyIssue)
+                {
+                    sb.AppendLine($"\n💡 **Location Plausibility Check:** `{location.Name}`");
+                    sb.AppendLine();
+                    hasAnyIssue = true;
+                }
+                else
+                {
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine($"**Occupancy:** This **{expectedStaff.TypeLabel}** has no staff present. Consider whether this is intentional:");
+                sb.AppendLine();
+                var staffCount = expectedStaff.Threshold == 1 ? "a" : expectedStaff.Threshold.ToString();
+                var staffRoles = string.Join(", ", expectedStaff.StaffRoles.Take(3));
+                sb.AppendLine($"  - If it *should* have staff: seed {staffCount} key NPC(s) (`world_build`, roles: {staffRoles})");
+                sb.AppendLine("  - If it's empty intentionally: update description (abandoned, sealed, repurposed)");
+                sb.AppendLine("  - If uncertain: what does finding it empty *mean* to the narrative?");
+                sb.AppendLine();
+            }
+        }
+
+        // 2. Check metadata completeness
+        var metadataGaps = CheckMetadataCompleteness(location);
+        if (metadataGaps.Count > 0)
+        {
+            if (!hasAnyIssue)
+            {
+                sb.AppendLine($"\n💡 **Location Metadata:** `{location.Name}`");
+                sb.AppendLine();
+                hasAnyIssue = true;
+            }
+            else
+            {
+                sb.AppendLine("**Metadata gaps:**");
+                sb.AppendLine();
+            }
+
+            foreach (var gap in metadataGaps)
+            {
+                sb.AppendLine($"  - {gap}");
+            }
+            sb.AppendLine();
+            sb.AppendLine("Use `world_build` with a location-only batch to enrich. No action needed immediately — these are optional enrichment nudges.");
+            sb.AppendLine();
+        }
+
+        return hasAnyIssue ? sb.ToString() : null;
+    }
+
+    private static bool IsExplicitlyEmpty(string? description)
+    {
+        if (string.IsNullOrEmpty(description))
+            return false;
+
+        return description.Contains("abandoned", StringComparison.OrdinalIgnoreCase) ||
+               description.Contains("sealed", StringComparison.OrdinalIgnoreCase) ||
+               description.Contains("destroyed", StringComparison.OrdinalIgnoreCase) ||
+               description.Contains("evacuated", StringComparison.OrdinalIgnoreCase) ||
+               description.Contains("empty", StringComparison.OrdinalIgnoreCase) ||
+               description.Contains("deserted", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<string> CheckMetadataCompleteness(Location location)
+    {
+        var gaps = new List<string>();
+
+        // AmbientCrowd
+        if (string.IsNullOrEmpty(location.AmbientCrowd))
+        {
+            gaps.Add("**AmbientCrowd** (sensory texture at rest): \"fishermen hauling nets, merchants haggling, smell of brine\"");
+        }
+
+        // Exits
+        if (location.Exits == null || location.Exits.Count == 0)
+        {
+            gaps.Add("**Exits** (empty array): connect to parent/sibling locations via `connectedFromLocationId`");
+        }
+
+        // VisualTags
+        if (location.VisualTags == null || location.VisualTags.Count == 0)
+        {
+            gaps.Add("**VisualTags** (e.g., run-down, wealthy, militaristic): categorical filters for search/recall");
+        }
+
+        // DistinctiveFeatures
+        if (location.DistinctiveFeatures == null || location.DistinctiveFeatures.Count == 0)
+        {
+            gaps.Add("**DistinctiveFeatures** (prose visual markers): \"crumbling stonework\", \"armed guards at every corner\"");
+        }
+
+        // ControllingFactionId (only for District/Building/Room)
+        if ((location.Type == LocationType.District || location.Type == LocationType.Building || location.Type == LocationType.Room) &&
+            string.IsNullOrEmpty(location.ControllingFactionId))
+        {
+            gaps.Add("**ControllingFactionId** (administrative authority): who runs this location?");
+        }
+
+        // InfluentialFactionIds (if missing/empty)
+        // Note: InfluentialFactionIds may not exist on Location model yet, so we'll skip or add when field is available
+        // For now, just document the gap
+
+        // ClimateZone (if null)
+        if (location.ClimateZone == null)
+        {
+            gaps.Add("**ClimateZone** (temperate, tropical, arctic, etc.): affects seasonal details, NPC attire, hazards");
+        }
+
+        return gaps;
     }
 
     private static string? FindProfile(string locName, string locDesc)

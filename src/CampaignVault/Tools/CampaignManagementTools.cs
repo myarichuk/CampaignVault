@@ -87,7 +87,17 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
         [Description("Optional human-friendly display name.")]
         string? displayName = null,
         [Description("Optional free-text tags describing the kind(s) of story this campaign tells (e.g. ['political intrigue'], ['dungeon crawl'], ['horror investigation']). Steers how the LLM should judge event importance on commit — see the Narrative Focus section in get_help. Update later with take_turn's campaign_update change ($type: campaign_update, narrativeFocus: [...]).")]
-        List<string>? narrativeFocus = null)
+        List<string>? narrativeFocus = null,
+        [Description("Optional lore epoch/era name (e.g. 'First Age', 'Current Era'). Defaults to 'Current Era'.")]
+        string? loreEpoch = null,
+        [Description("Optional starting year in lore (e.g. 1492). Defaults to 1492.")]
+        int? loreYear = null,
+        [Description("Optional starting month (1-12). Defaults to 1.")]
+        int? loreMonth = null,
+        [Description("Optional starting day (1-30). Defaults to 1.")]
+        int? loreDay = null,
+        [Description("Optional starting time of day (Dawn, Morning, Noon, Afternoon, Evening, Dusk, Night). Defaults to Dawn.")]
+        TimeOfDay? loreTimeOfDay = null)
     {
         string normalized;
         try
@@ -115,6 +125,15 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
             {
                 campaign.NarrativeFocus = narrativeFocus;
             }
+
+            campaign.LoreSettings = new()
+            {
+                Epoch = loreEpoch ?? "Current Era",
+                Year = loreYear ?? 1492,
+                Month = loreMonth ?? 1,
+                Day = loreDay ?? 1,
+                StartingTimeOfDay = loreTimeOfDay ?? TimeOfDay.Dawn
+            };
 
             return new ToolResult<Campaign>(true, campaign,
                 $"Campaign '{normalized}' created and locked to {initialSystem}. Pass campaignName='{normalized}' on subsequent calls.");

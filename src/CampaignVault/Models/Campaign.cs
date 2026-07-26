@@ -85,5 +85,22 @@ public class Campaign
     /// </summary>
     public List<string> NarrativeFocus { get; set; } = [];
 
+    /// <summary>
+    /// Lore settings for this campaign's starting time/era. Applied when CampaignTime is first initialized.
+    /// </summary>
+    public CampaignLoreSettings LoreSettings { get; set; } = new();
+
     // Future: per-campaign defaults, player list, etc. can be added here without breaking storage.
+}
+
+/// <summary>
+/// Lore and time context for a campaign. Used to initialize CampaignTime on first access.
+/// </summary>
+public class CampaignLoreSettings
+{
+    public string Epoch { get; set; } = "Current Era";
+    public int Year { get; set; } = 1492;
+    public int Month { get; set; } = 1;
+    public int Day { get; set; } = 1;
+    public TimeOfDay StartingTimeOfDay { get; set; } = TimeOfDay.Dawn;
 }

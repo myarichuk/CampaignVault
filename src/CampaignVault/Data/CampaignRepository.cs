@@ -980,7 +980,8 @@ public class CampaignRepository
     }
 
     /// <summary>
-    /// Retrieves the current time for the specified campaign. Returns a new zeroed time object if none exists.
+    /// Retrieves the current time for the specified campaign. Returns a new time object initialized with
+    /// campaign lore settings if none exists yet.
     /// </summary>
     public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session, string? campaignName = null)
     {
@@ -989,7 +990,19 @@ public class CampaignRepository
         var time = await session.LoadAsync<CampaignTime>(id);
         if (time == null)
         {
-            time = new() { Id = id };
+            var campaignId = _keys.Meta(effective);
+            var campaign = await session.LoadAsync<Campaign>(campaignId);
+            var lore = campaign?.LoreSettings ?? new();
+
+            time = new()
+            {
+                Id = id,
+                Epoch = lore.Epoch,
+                Year = lore.Year,
+                Month = lore.Month,
+                Day = lore.Day,
+                TimeOfDay = lore.StartingTimeOfDay
+            };
             await session.StoreAsync(time, id);
         }
 
