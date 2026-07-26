@@ -130,8 +130,18 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 stuckChar?.Id);
             scene.WorldPressureItems = pressureItems;
 
-            return new ToolResult<SceneView>(true, scene,
-                $"Scene details for {locationId} (campaign: {effective}) retrieved.",
+            var summary = $"Scene details for {locationId} (campaign: {effective}) retrieved.";
+            if (partyPresent && scene.Location != null && scene.PresentNPCs != null)
+            {
+                int npcCount = scene.PresentNPCs.Count();
+                string? hint = LocationPlausibilityAdvisor.GenerateSuggestion(scene.Location, npcCount);
+                if (!string.IsNullOrEmpty(hint))
+                {
+                    summary += hint;
+                }
+            }
+
+            return new ToolResult<SceneView>(true, scene, summary,
                 WorldPressure: finalPressures.Length > 0 ? finalPressures : null);
         }, saveChanges: true);
     }

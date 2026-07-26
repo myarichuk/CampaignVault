@@ -108,6 +108,21 @@ internal static class EventFollowUpAdvisor
                 notes.Add(
                     $"Hint: the knowledge_update(s) tied to \"{ev.Summary}\" don't set 'sourceEventIds' — if this memory stems from this beat, reference it via a client-set 'eventId' on this event change (or a prior event's ID) so ground truth stays traceable.");
             }
+
+            // Nudge about relatedEntityIds: if knowledge_update exists but entities involved are not tracked
+            var knowledgeUpdatesForEvent = changes.OfType<KnowledgeUpdate>()
+                .Where(k => k.CharacterId != null && involved.Contains(k.CharacterId, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+            if (knowledgeUpdatesForEvent.Any(k => k.RelatedEntityIds == null || k.RelatedEntityIds.Count == 0))
+            {
+                var otherInvolved = involved.Where(id => !id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase)).ToList();
+                if (otherInvolved.Count > 0)
+                {
+                    notes.Add(
+                        $"Hint: the knowledge_update(s) for \"{ev.Summary}\" don't populate 'relatedEntityIds' — if other entities (NPCs, items, locations) are contextually related to this memory, list them so the engine can surface relevant memories when those entities appear later.");
+                }
+            }
         }
 
         return notes;

@@ -1106,6 +1106,16 @@ public class CampaignRepository
             }
         }
 
+        // Extract locationId from involved list if not explicitly set
+        if (string.IsNullOrEmpty(@event.LocationId) && @event.Involved != null && @event.Involved.Count > 0)
+        {
+            var locationId = @event.Involved.FirstOrDefault(id => !string.IsNullOrEmpty(id) && id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(locationId))
+            {
+                @event.LocationId = locationId;
+            }
+        }
+
         await EnrichSemanticVectorAsync(@event);
         await session.StoreAsync(@event);
     }

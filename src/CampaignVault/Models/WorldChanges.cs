@@ -1117,11 +1117,11 @@ public class KnowledgeUpdate : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public MemoryUrgency? Urgency { get; set; }
 
-    [Description("Optional entity IDs this memory relates to (characters, items, locations).")]
+    [Description("Entity IDs this memory relates to (characters, items, locations). REQUIRED when this memory is tied to an event: include all involved entities except the remembering character. Enables surface-by-association in future scenes.")]
     [JsonPropertyName("relatedEntityIds")]
     public List<string>? RelatedEntityIds { get; set; }
 
-    [Description("Optional ground-truth event ID(s) this memory derives from — a prior event's ID or a same-batch eventId. Lets later checks compare belief vs. what actually happened (misremembering, rumor drift).")]
+    [Description("Ground-truth event ID(s) this memory derives from — provide a client-set 'eventId' on this event change, or a prior event's ID. REQUIRED when this memory is event-sourced. Lets later checks compare belief vs. what actually happened (misremembering, rumor drift).")]
     [JsonPropertyName("sourceEventIds")]
     public List<string>? SourceEventIds { get; set; }
 
