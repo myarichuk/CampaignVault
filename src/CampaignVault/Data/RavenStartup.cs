@@ -64,6 +64,12 @@ public static class RavenStartup
 
         try
         {
+            // Strip stale anonymous-type $type discriminators from Event.Details at the raw-JSON
+            // level, before any typed query against the Event collection (below) can trip over them.
+            var anonymousTypeRepair = new RepairAnonymousTypeDiscriminators(documentStore);
+            await anonymousTypeRepair.ExecuteAsync(ct);
+            logger.LogInformation("✓ Event anonymous-type discriminator repair: completed");
+
             // Migrate CampaignTime from old TimeOfDay enum to hour-based tracking
             var timeHourMigration = new MigrateCampaignTimeToHours(documentStore);
             await timeHourMigration.ExecuteAsync();

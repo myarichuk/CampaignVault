@@ -267,110 +267,75 @@ Pure queries (no Changes): pass just the refresh params with Changes omitted to 
             switch (change)
             {
                 case ItemTransfer it:
-                    itemTransfers.Add(new { itemId = it.ItemId, toHolderId = it.ToHolderId });
+                    itemTransfers.Add(new ItemTransferDetail(it.ItemId, it.ToHolderId));
                     break;
 
                 case HpChange hp:
                     if (hp.Delta != 0)
                     {
-                        damageDealt.Add(new { characterId = hp.CharacterId, delta = hp.Delta });
+                        damageDealt.Add(new DamageDealtDetail(hp.CharacterId, hp.Delta));
                     }
                     break;
 
                 case StatusChange sc:
                     if (sc.Effect != null)
                     {
-                        statusesApplied.Add(new
-                        {
-                            characterId = sc.CharacterId,
-                            statusName = sc.Effect.Name,
-                            category = sc.Effect.Category?.ToString()
-                        });
+                        statusesApplied.Add(new StatusAppliedDetail(
+                            sc.CharacterId,
+                            sc.Effect.Name,
+                            sc.Effect.Category?.ToString()));
                     }
                     else if (!string.IsNullOrEmpty(sc.Status))
                     {
-                        statusesApplied.Add(new { characterId = sc.CharacterId, statusName = sc.Status });
+                        statusesApplied.Add(new StatusAppliedDetail(sc.CharacterId, sc.Status));
                     }
                     break;
 
                 case ResourceChange rc:
                     if (rc.Delta != 0)
                     {
-                        resourcesSpent.Add(new
-                        {
-                            characterId = rc.CharacterId,
-                            pool = rc.PoolName,
-                            delta = rc.Delta
-                        });
+                        resourcesSpent.Add(new ResourceSpentDetail(rc.CharacterId, rc.PoolName, rc.Delta));
                     }
                     break;
 
                 case RelationshipChange rel:
                     if (rel.Delta != 0)
                     {
-                        relationshipChanges.Add(new
-                        {
-                            characterId = rel.CharacterId,
-                            targetId = rel.TargetId,
-                            delta = rel.Delta
-                        });
+                        relationshipChanges.Add(new RelationshipChangeDetail(rel.CharacterId, rel.TargetId, rel.Delta));
                     }
                     break;
 
                 case ActivityChange ac:
                     if (ac.UpdateLocation && !string.IsNullOrEmpty(ac.NewLocationId))
                     {
-                        locationsVisited.Add(new
-                        {
-                            characterId = ac.CharacterId,
-                            location = ac.NewLocationId,
-                            poiName = ac.PoiName
-                        });
+                        locationsVisited.Add(new LocationVisitedDetail(ac.CharacterId, ac.NewLocationId, ac.PoiName));
                     }
                     break;
 
                 case NeedChange nc:
                     if (nc.Delta != 0)
                     {
-                        needsChanged.Add(new
-                        {
-                            characterId = nc.CharacterId,
-                            need = nc.Need,
-                            delta = nc.Delta
-                        });
+                        needsChanged.Add(new NeedChangedDetail(nc.CharacterId, nc.Need, nc.Delta));
                     }
                     break;
 
                 case QuestProgress qp:
                     if (!string.IsNullOrEmpty(qp.QuestId))
                     {
-                        questsProgressed.Add(new
-                        {
-                            questId = qp.QuestId,
-                            newState = qp.NewState
-                        });
+                        questsProgressed.Add(new QuestProgressedDetail(qp.QuestId, qp.NewState));
                     }
                     break;
 
                 case PlotThreadClueDiscovered ptc:
                     if (!string.IsNullOrEmpty(ptc.PlotThreadId) && !string.IsNullOrEmpty(ptc.ClueId))
                     {
-                        factsDiscovered.Add(new
-                        {
-                            plotThreadId = ptc.PlotThreadId,
-                            clueId = ptc.ClueId
-                        });
+                        factsDiscovered.Add(new PlotThreadFactDetail(ptc.PlotThreadId, ptc.ClueId));
                     }
                     break;
 
                 case RulesetAction ra:
                     // Combat/skill check actions
-                    factsDiscovered.Add(new
-                    {
-                        characterId = ra.CharacterId,
-                        actionType = ra.ActionType.ToString(),
-                        actionName = ra.ActionName
-                    });
+                    factsDiscovered.Add(new RulesetActionFactDetail(ra.CharacterId, ra.ActionType.ToString(), ra.ActionName));
                     break;
             }
         }
