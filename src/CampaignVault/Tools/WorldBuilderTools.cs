@@ -538,12 +538,14 @@ This is the only tool that creates a new location. During play, use commit's loc
 
     private async Task<ToolResult<Faction>> ApplyFactionUpsertAsync(IAsyncDocumentSession s, FactionUpsertRequest faction, string effective)
     {
+        var wasNew = await s.LoadAsync<Models.Faction>(faction.Id) is null;
         var merged = await _repository.UpsertFactionAsync(s, faction, effective);
         var refs = (faction.TerritoryLocationIds ?? [])
             .Select((id, i) => ($"territoryLocationIds[{i}]", (string?)id))
             .Concat((faction.KnownLeaderIds ?? []).Select((id, i) => ($"knownLeaderIds[{i}]", (string?)id)));
         var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
-        var summary = $"Faction upserted (campaign context: {effective}).{warning}";
+        var seedHint = wasNew ? EntitySeedingAdvisor.GenerateWorldEventSeedingHint(merged, effective) : null;
+        var summary = $"Faction upserted (campaign context: {effective}).{warning}{seedHint}";
         return new ToolResult<Faction>(true, merged, summary);
     }
 

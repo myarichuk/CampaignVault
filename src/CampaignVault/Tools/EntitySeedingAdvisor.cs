@@ -152,4 +152,47 @@ internal static class EntitySeedingAdvisor
 
         return (type, parts.Length > 1 ? string.Join("/", parts.Skip(1)) : null);
     }
+
+    /// <summary>
+    /// Generates a nudge for the LLM to consider seeding world events after creating a new faction.
+    /// Guides toward scripted, disruptable consequences (patrols, raids, operations) rather than
+    /// improvisation turn-by-turn. Follows the same text-hint pattern as other seeding nudges.
+    /// </summary>
+    public static string? GenerateWorldEventSeedingHint(Models.Faction faction, string? campaignName = null)
+    {
+        if (faction == null || string.IsNullOrEmpty(faction.Id))
+        {
+            return null;
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"\n💡 **Consider seeding world events for {faction.Name}:**");
+        sb.AppendLine();
+        sb.AppendLine($"Now that `{faction.Name}` exists, you can script their activities and goals as `world_event` entries. This persists their state across days and lets the party disrupt them with consequences:");
+        sb.AppendLine();
+        sb.AppendLine("**Use `upsert_world_event` to seed 2–3 events showing their goals/activities:**");
+        sb.AppendLine();
+        sb.AppendLine("- **Recurring operations (TimeBased):** patrols, smuggling runs, resource collection every N days. Stay `Pending` forever; fire on interval. Example: 'nightly tavern recruitment'.");
+        sb.AppendLine($"  - Set `triggerType: TimeBased`, `intervalDays: N`, `actorId: {faction.Id}`");
+        sb.AppendLine();
+        sb.AppendLine("- **Deadline-driven plans (Scheduled):** a raid, theft, or diplomatic move on day X. Transition `Pending → Triggered` when fired, and `Triggered → Resolved` when the DM confirms the outcome.");
+        sb.AppendLine($"  - Set `triggerType: Scheduled`, `targetDay: X`, `actorId: {faction.Id}`");
+        sb.AppendLine();
+        sb.AppendLine("- **Disruptable consequences:** Add a `preventionCondition` (e.g., 'PlotThreadStateIs: defeated_leader') so the party's victories auto-prevent cascading events. Example: 'If the party kills the warlord, cancel the siege.'");
+        sb.AppendLine("  - Set `preventionCondition` with a matching entity state or faction influence threshold");
+        sb.AppendLine();
+        sb.AppendLine("- **Effects:** Each event emits `effects` (rumors, faction stance changes, discoveries) when it fires. Shape the world reactively without re-planning every turn.");
+        sb.AppendLine("  - Include `RumorCreate`, `FactionStateChange`, `EventOccurred`, or `KnowledgeUpdate` effects");
+        sb.AppendLine();
+        sb.AppendLine($"**Example:** `upsert_world_event {{ id: 'world-events/{faction.Name.ToLower()}-raid', title: '{faction.Name} raids the village', actorId: '{faction.Id}', triggerType: Scheduled, targetDay: 10, effects: [{{ kind: RumorCreate, subject: '...', text: '...' }}, {{ kind: EventOccurred, text: '...' }}] }}`");
+        sb.AppendLine();
+        sb.AppendLine("**When to seed events:**");
+        sb.AppendLine("- Major factions with clear goals (warlords, merchant consortiums, religious orders) → always seed events");
+        sb.AppendLine("- Flavor factions with passive roles (background NPCs, tavern crowds) → skip events unless a specific plot needs them");
+        sb.AppendLine("- Newly awakened threats (an enemy resurfaces, a calamity brewing) → seed events immediately to persist the threat");
+        sb.AppendLine();
+        sb.AppendLine("**References:** SACRED RULES rule 4 (World Events & Disruptable Consequences), world_build docs");
+
+        return sb.ToString();
+    }
 }
