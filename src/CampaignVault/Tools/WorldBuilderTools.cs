@@ -49,11 +49,11 @@ See get_help topic=world-building for a full copy-paste example and recommended 
             var totalEntries = (batch.Locations?.Count ?? 0) + (batch.Factions?.Count ?? 0) + (batch.Creatures?.Count ?? 0)
                 + (batch.Spells?.Count ?? 0) + (batch.Feats?.Count ?? 0) + (batch.Characters?.Count ?? 0)
                 + (batch.Items?.Count ?? 0) + (batch.Quests?.Count ?? 0) + (batch.PlotThreads?.Count ?? 0)
-                + (batch.Lore?.Count ?? 0) + (batch.Rumors?.Count ?? 0) + (batch.NeedDescriptors?.Count ?? 0);
+                + (batch.WorldEvents?.Count ?? 0) + (batch.Lore?.Count ?? 0) + (batch.Rumors?.Count ?? 0) + (batch.NeedDescriptors?.Count ?? 0);
 
             if (totalEntries == 0)
             {
-                throw new ArgumentException("world_build requires at least one entry across its arrays (locations, factions, creatures, spells, feats, characters, items, quests, plotThreads, lore, rumors, needDescriptors).");
+                throw new ArgumentException("world_build requires at least one entry across its arrays (locations, factions, creatures, spells, feats, characters, items, quests, plotThreads, worldEvents, lore, rumors, needDescriptors).");
             }
 
             if (totalEntries > 100)
@@ -74,6 +74,7 @@ See get_help topic=world-building for a full copy-paste example and recommended 
             await WarnOnUnequippedCharactersAsync(batch, s, effective, warnings);
             await ProcessKindAsync(batch.Quests, "quests", CanonicalId.Quests, r => r.Id, ApplyQuestUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.PlotThreads, "plotThreads", CanonicalId.PlotThreads, r => r.Id, ApplyPlotThreadUpsertAsync, s, effective, result, warnings);
+            await ProcessKindAsync(batch.WorldEvents, "worldEvents", CanonicalId.WorldEvents, r => r.Id, ApplyWorldEventUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Lore, "lore", CanonicalId.Lore, r => r.Id, ApplyLoreUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Rumors, "rumors", CanonicalId.Rumors, r => r.Id, ApplyRumorUpsertAsync, s, effective, result, warnings);
 
@@ -466,6 +467,28 @@ This is the only tool that creates a new location. During play, use commit's loc
         var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
         var summary = $"PlotThread upserted (campaign context: {effective}).{warning}";
         return new ToolResult<PlotThread>(true, merged, summary);
+    }
+
+    [Description(
+        "WORLD BUILDER TOOL: Create or update a world event (scheduled, time-based, or conditional). Scripted consequences that auto-fire based on triggers, with optional prevention conditions. Omitted fields are preserved: on an existing event, omitting involvedEntityIds/effects keeps the stored value; providing one replaces it wholesale.")]
+    internal Task<ToolResult<WorldEvent>> UpsertWorldEvent(
+        [Description("The world event to create or update. Strongly typed.")]
+        WorldEventUpsertRequest worldEvent,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, (effective, s) => ApplyWorldEventUpsertAsync(s, worldEvent, effective));
+    }
+
+    private async Task<ToolResult<WorldEvent>> ApplyWorldEventUpsertAsync(IAsyncDocumentSession s, WorldEventUpsertRequest worldEvent, string effective)
+    {
+        var merged = await _repository.UpsertWorldEventAsync(s, worldEvent, effective);
+        var refs = (worldEvent.InvolvedEntityIds ?? [])
+            .Select((id, i) => ($"involvedEntityIds[{i}]", (string?)id))
+            .Concat([("actorId", worldEvent.ActorId)]);
+        var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
+        var summary = $"WorldEvent upserted (campaign context: {effective}).{warning}";
+        return new ToolResult<WorldEvent>(true, merged, summary);
     }
 
     [Description(

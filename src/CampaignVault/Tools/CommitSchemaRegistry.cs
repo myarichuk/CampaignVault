@@ -340,6 +340,18 @@ internal static class CommitSchemaRegistry
             CoCommitHints: [],
             Example: """{"$type":"plot_thread_clue","plotThreadId":"plot-threads/guild-infiltration","clueId":"clue-1","discoveredByCharacterIds":["chars/valen"],"narrativeNote":"Found the captain's ledger."}"""),
 
+        new("world_event_status", "WorldEvent",
+            "Update a world event's status or fire a recurring event's idempotency stamp. " +
+            "newStatus transitions: Pending→(Triggered|Prevented|Resolved). " +
+            "For freeform resolutions not captured by structured conditions, emit Prevented here. " +
+            "Recurring TimeBased events stamp lastTriggeredDay to survive multi-day skips without double-firing.",
+            ["worldEventId"],
+            ["newStatus", "lastTriggeredDay", "narrativeNote"],
+            HasSideEffects: false,
+            SideEffects: [],
+            CoCommitHints: ["event"],
+            Example: """{"$type":"world_event_status","worldEventId":"world-events/raid-on-castle","newStatus":"Prevented","narrativeNote":"Party assassinated the raid leader in freeform roleplay."}"""),
+
         // ── Resources (Spells, Focus Points, Action Points) ────────────────────────────
         new("resource", "World",
             "Spend or recover a resource pool (spell slots, sorcerer points, focus points, action points, " +

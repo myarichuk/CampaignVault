@@ -433,3 +433,49 @@ public class RumorUpsertRequest
 
     public string? CampaignName { get; set; }
 }
+
+/// <summary>
+/// Tool-facing request for upsert_world_event. Mirrors <see cref="WorldEvent"/>, but declares
+/// collection fields as nullable so omitting them in a partial-update call preserves the
+/// existing stored values instead of blanking them to defaults.
+/// </summary>
+public class WorldEventUpsertRequest
+{
+    public string Id { get; set; } = null!;
+
+    public string Title { get; set; } = null!;
+
+    public string? Description { get; set; }
+
+    public string? ActorId { get; set; }
+
+    [Description("Omit to preserve the event's existing involved entity IDs. Provide to replace them wholesale.")]
+    public List<string>? InvolvedEntityIds { get; set; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public WorldEventTriggerType TriggerType { get; set; } = WorldEventTriggerType.Scheduled;
+
+    [Description("For TimeBased events: fire every N days (recurring).")]
+    public int? IntervalDays { get; set; }
+
+    [Description("For Scheduled events: fire once when TotalDaysElapsed >= this value.")]
+    public int? TargetDay { get; set; }
+
+    [Description("For Conditional events: fire when this condition is satisfied (Phase 2).")]
+    public WorldEventCondition? Condition { get; set; }
+
+    [Description("Omit to preserve the event's existing effects. Provide to replace them wholesale.")]
+    public List<WorldEventEffect>? Effects { get; set; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public WorldEventStatus Status { get; set; } = WorldEventStatus.Pending;
+
+    public bool IsPlayerVisible { get; set; }
+
+    public string? DmNotes { get; set; }
+
+    [Description("Set true to hide this event from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
+    public bool? IsArchived { get; set; }
+
+    public string? CampaignName { get; set; }
+}

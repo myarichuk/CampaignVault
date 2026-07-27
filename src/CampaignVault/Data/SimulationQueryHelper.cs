@@ -202,6 +202,28 @@ internal static class SimulationQueryHelper
         return StripSemanticVectors(result).ToList();
     }
 
+    public static async Task<List<WorldEvent>> QueryPendingWorldEventsAsync(
+        IAsyncDocumentSession session,
+        string? campaignName,
+        CancellationToken ct = default)
+    {
+        var query = session.Query<WorldEvent, WorldEvent_Search>()
+            .Customize(x => x.WaitForNonStaleResults(IndexWait))
+            .Where(e => e.Status == WorldEventStatus.Pending);
+
+        // IsArchived is not indexed, so filter post-query
+        var events = (await query.ToListAsync(ct)).Where(e => !e.IsArchived).ToList();
+
+        if (string.IsNullOrWhiteSpace(campaignName))
+            return StripSemanticVectors(events).ToList();
+
+        var result = events
+            .Where(e => string.IsNullOrEmpty(e.CampaignName)
+                || string.Equals(e.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        return StripSemanticVectors(result).ToList();
+    }
+
     private static IEnumerable<T> StripSemanticVectors<T>(IEnumerable<T> entities) where T : class, IHasSemanticVector
     {
         foreach (var entity in entities)

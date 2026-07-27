@@ -5,7 +5,7 @@ namespace CampaignVault.Data;
 
 /// <summary>
 /// Context passed to all simulation rules during an AdvanceWorld tick.
-/// 
+///
 /// Designed to evolve:
 /// - Will later carry richer "world pressure" snapshots, region scoping, and initiative queues.
 /// - Rules for agency/initiative can use the Session to query additional context (recent events, etc.).
@@ -21,5 +21,6 @@ public sealed record SimulationContext(
     IReadOnlyList<Faction>? ActiveFactions = null,
     IReadOnlyList<Quest>? ActiveQuests = null,
     CampaignConfig? Config = null,
-    IReadOnlyList<PlotThread>? ActivePlotThreads = null
+    IReadOnlyList<PlotThread>? ActivePlotThreads = null,
+    IReadOnlyList<WorldEvent>? ActiveWorldEvents = null
 );

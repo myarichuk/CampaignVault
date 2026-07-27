@@ -20,6 +20,7 @@ internal static class CanonicalId
     public const string Spells = "spells/";
     public const string Feats = "feats/";
     public const string Creatures = "creatures/";
+    public const string WorldEvents = "world-events/";
 
     private static readonly (string Alias, string Canonical)[] Aliases =
     [

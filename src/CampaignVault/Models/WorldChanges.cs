@@ -50,6 +50,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(ItemPersistenceSurfaced), "item_persistence_surfaced")]
 [JsonDerivedType(typeof(MemoryDecay), "memory_decay")]
 [JsonDerivedType(typeof(CampaignUpdateChange), "campaign_update")]
+[JsonDerivedType(typeof(WorldEventStatusChange), "world_event_status")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -1418,4 +1419,27 @@ public class MemoryDecay : WorldChange
     [Description("Map from memory entry key to (newSalience, newUrgency, evict). Null field = no change for that aspect.")]
     [JsonPropertyName("entryChanges")]
     public Dictionary<string, (float? NewSalience, float? NewUrgency, bool Evict)> EntryChanges { get; set; } = [];
+}
+
+/// <summary>
+/// Transitions a WorldEvent's status or stamps LastTriggeredDay for recurring events.
+/// Can be emitted by WorldEventRule during simulation or committed by the DM for freeform narrative resolutions.
+/// </summary>
+public class WorldEventStatusChange : WorldChange
+{
+    [JsonPropertyName("worldEventId")]
+    public string WorldEventId { get; set; } = null!;
+
+    [Description("New status for the event (Pending/Triggered/Prevented/Resolved). Null = don't change status (used for recurring TimeBased firing).")]
+    [JsonPropertyName("newStatus")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public WorldEventStatus? NewStatus { get; set; }
+
+    [Description("For recurring TimeBased events, stamps the day this cycle fired to prevent double-firing on multi-day skips.")]
+    [JsonPropertyName("lastTriggeredDay")]
+    public int? LastTriggeredDay { get; set; }
+
+    [Description("Optional narrative note appended to the event's DmNotes.")]
+    [JsonPropertyName("narrativeNote")]
+    public string? NarrativeNote { get; set; }
 }

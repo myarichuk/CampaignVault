@@ -38,6 +38,9 @@ public class WorldBuildBatch
     [Description("Plot threads to create or update. Dispatched after characters/locations/factions/quests (involvedEntityIds may reference them).")]
     public List<PlotThreadUpsertRequest>? PlotThreads { get; set; }
 
+    [Description("World events to create or update. Dispatched after plot threads (effects/conditions may reference them).")]
+    public List<WorldEventUpsertRequest>? WorldEvents { get; set; }
+
     [Description("Lore entries to create or update.")]
     public List<LoreUpsertRequest>? Lore { get; set; }
 

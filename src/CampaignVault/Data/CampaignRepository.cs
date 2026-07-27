@@ -566,11 +566,12 @@ public class CampaignRepository
         var activeFactions = await SimulationQueryHelper.QueryCampaignFactionsAsync(session, effective, ct: CancellationToken.None);
         var activeQuests = await SimulationQueryHelper.QueryActiveQuestsAsync(session, effective, ct: CancellationToken.None);
         var activePlotThreads = await SimulationQueryHelper.QueryActivePlotThreadsAsync(session, effective, ct: CancellationToken.None);
+        var activeWorldEvents = await SimulationQueryHelper.QueryPendingWorldEventsAsync(session, effective, ct: CancellationToken.None);
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
         var config = await GetCampaignConfigAsync(session, effective);
         var simContext = new SimulationContext(time, activeRumors, npcs, session, daysPassed, effective, activeFactions,
-            activeQuests, config, activePlotThreads);
+            activeQuests, config, activePlotThreads, activeWorldEvents);
 
         _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", daysPassed, time);
 
@@ -2786,6 +2787,77 @@ public class CampaignRepository
                 DayCreated = currentDay,
                 LastUpdatedDay = currentDay,
                 IsArchived = thread.IsArchived ?? false,
+            };
+            await session.StoreAsync(result);
+        }
+
+        await EnrichSemanticVectorAsync(result);
+        return result;
+    }
+
+    public async Task<WorldEvent> UpsertWorldEventAsync(IAsyncDocumentSession session, WorldEventUpsertRequest eventRequest, string? campaignName = null)
+    {
+        if (string.IsNullOrWhiteSpace(eventRequest.Id))
+        {
+            throw new ArgumentException("WorldEvent.Id is required for upsert.");
+        }
+
+        eventRequest.Id = CanonicalId.Normalize(eventRequest.Id, CanonicalId.WorldEvents);
+
+        var effective = ResolveCampaign(campaignName);
+        var effectiveCampaignName = eventRequest.CampaignName;
+        if (string.IsNullOrEmpty(effectiveCampaignName))
+        {
+            effectiveCampaignName = effective;
+        }
+
+        var currentDay = (await GetTimeAsync(session, effective)).TotalDaysElapsed;
+
+        var existing = await session.LoadAsync<WorldEvent>(eventRequest.Id);
+        WorldEvent result;
+        if (existing != null)
+        {
+            existing.Title = eventRequest.Title;
+            existing.Description = eventRequest.Description;
+            existing.ActorId = eventRequest.ActorId;
+            existing.InvolvedEntityIds = eventRequest.InvolvedEntityIds ?? existing.InvolvedEntityIds;
+            existing.TriggerType = eventRequest.TriggerType;
+            existing.IntervalDays = eventRequest.IntervalDays;
+            existing.TargetDay = eventRequest.TargetDay;
+            existing.Condition = eventRequest.Condition ?? existing.Condition;
+            existing.Effects = eventRequest.Effects ?? existing.Effects;
+            existing.Status = eventRequest.Status;
+            existing.IsPlayerVisible = eventRequest.IsPlayerVisible;
+            existing.DmNotes = eventRequest.DmNotes;
+            existing.CampaignName = effectiveCampaignName;
+            existing.LastUpdatedDay = currentDay;
+            if (eventRequest.IsArchived.HasValue)
+            {
+                existing.IsArchived = eventRequest.IsArchived.Value;
+            }
+            result = existing;
+        }
+        else
+        {
+            result = new WorldEvent
+            {
+                Id = eventRequest.Id,
+                Title = eventRequest.Title,
+                Description = eventRequest.Description,
+                ActorId = eventRequest.ActorId,
+                InvolvedEntityIds = eventRequest.InvolvedEntityIds ?? [],
+                TriggerType = eventRequest.TriggerType,
+                IntervalDays = eventRequest.IntervalDays,
+                TargetDay = eventRequest.TargetDay,
+                Condition = eventRequest.Condition,
+                Effects = eventRequest.Effects ?? [],
+                Status = eventRequest.Status,
+                IsPlayerVisible = eventRequest.IsPlayerVisible,
+                DmNotes = eventRequest.DmNotes,
+                CampaignName = effectiveCampaignName,
+                DayCreated = currentDay,
+                LastUpdatedDay = currentDay,
+                IsArchived = eventRequest.IsArchived ?? false,
             };
             await session.StoreAsync(result);
         }
