@@ -302,7 +302,7 @@ During actual play, strongly prefer `commit` (especially with `activity` changes
 - **Critical**: `get_scene`, `get_world_state`, and `advance_world` return `WorldPressure` containing `ENGINE WARNING:` and `NARRATIVE PROMPT:` items. These include **exact copy-paste JSON** for the `commit` needed to fix hallucinations, dead-ends, empty-but-expected-crowds, broken links, etc. Treat them as mandatory directives. Call `get_help` for the full "Lazy Tavern" walkthrough and patterns.
 - This directly addresses the "silly factor" of forcing perfect polymorphic JSON arrays for every flavor element the LLM narrates.
 
-See `get_help` for the full DM manual (engagements, spatial positions, grapple patterns). See `ARCHITECTURE.md` for scoping, simulation, engagement/spatial design, and ruleset integration. See `docs/recommended-system-prompt.md` for a copy-paste LLM system prompt.
+See `get_help` for the full DM manual (engagements, spatial positions, grapple patterns). See `ARCHITECTURE.md` for scoping, simulation, engagement/spatial design, and ruleset integration. See [recommended-system-prompt.md](./recommended-system-prompt.md) for a copy-paste LLM system prompt (or [recommended-system-prompt.opencode.md](./recommended-system-prompt.opencode.md) plus [opencode Integration](#opencode-integration) below if you're using opencode).
 
 ## Open-World & Sandbox Mechanics
 
@@ -458,6 +458,25 @@ See the `commit` tool description and `get_help` for detailed guidance and copy-
 
 Full history of robustness improvements lives in the git log and the regression tests in `CampaignRepositoryTests.cs`.
 
+## opencode Integration
+
+If you're playing through [opencode](https://opencode.ai), CampaignVault ships a dedicated plugin plus a one-shot setup script instead of the generic copy-paste system prompt:
+
+- **[opencode-plugin/](./opencode-plugin/)** — a TypeScript opencode plugin that mechanically enforces several of the rules the generic system prompt otherwise has to spell out in prose:
+  - Surfaces `ENGINE WARNING` pressure and the 5-warning escalation cap as a toast (`tool.execute.after`), and prepends a pre-rendered STATUS BAR block to `start_session`/`take_turn`/`get_entity` output so the model doesn't have to reconstruct it from memory.
+  - Re-injects the `CAMPAIGN` line and a state-refresh nudge after a compaction/idle gap (`session.compacted`/`session.idle`), so persisted state stays the source of truth across summarization.
+  - Hard-blocks bash/script commands that look like an attempt to fake a dice roll (`tool.execute.before`) — CampaignVault resolves all rolls server-side via `take_turn`.
+  - Build/test it standalone with `cd opencode-plugin && npm install && npm run build && npm test`.
+- **[recommended-system-prompt.opencode.md](./recommended-system-prompt.opencode.md)** — the opencode-specific system prompt. Same structure as `recommended-system-prompt.md`, but the pressure/state-persistence/dice rules and the STATUS BAR section are shortened since the plugin above enforces them mechanically. Use this one (not the generic file) when the plugin is installed.
+- **[scripts/setup-opencode.sh](./scripts/setup-opencode.sh)** / **[scripts/setup-opencode.ps1](./scripts/setup-opencode.ps1)** — wires up a campaign directory for opencode in one step: writes `AGENTS.md` from `recommended-system-prompt.opencode.md` (falling back to the generic prompt with a warning if that file is missing), copies the `dnd-*` skills into `.opencode/skills/`, builds the plugin and copies it into `.opencode/plugin/`, and writes/merges `opencode.json` with the MCP server entry and the plugin registration.
+
+  ```bash
+  ./scripts/setup-opencode.sh /path/to/campaign --slug my-campaign --ruleset Dnd5e \
+    --roster "chars/valen - Valen, chars/nia - Nia" --mcp-port 5275
+  ```
+
+  This assumes the CampaignVault MCP server is already running locally (`dotnet run`, default port 5275) — start that separately before launching opencode against the campaign directory.
+
 ## Troubleshooting
 
 **"Docker daemon is not running"** → Start Docker and try again.
@@ -470,4 +489,4 @@ Full history of robustness improvements lives in the git log and the regression 
 
 ---
 
-For deeper docs: [ARCHITECTURE.md](./ARCHITECTURE.md) | [System Prompt](./docs/recommended-system-prompt.md)
+For deeper docs: [ARCHITECTURE.md](./ARCHITECTURE.md) | [System Prompt](./recommended-system-prompt.md) | [opencode Integration](#opencode-integration)

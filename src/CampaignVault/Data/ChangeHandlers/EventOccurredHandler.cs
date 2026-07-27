@@ -54,7 +54,8 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             RelatedEntityId = ev.RelatedEntityId,
             LocationId = locationId,
             RelatedLocationIds = ev.RelatedLocationIds,
-            Importance = importance
+            Importance = importance,
+            Details = ev.Details
         };
 
         e.CampaignName = context.CampaignName;

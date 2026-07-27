@@ -239,6 +239,10 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("recordingMode")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RecordingMode? RecordingMode { get; set; }
+
+    [Description("Optional structured data about the event (e.g. { \"hoursTraveled\": 2.5 } for travel). Stored as-is on the event's Details field.")]
+    [JsonPropertyName("details")]
+    public Dictionary<string, object>? Details { get; set; }
 }
 
 /// <summary>Change the state of an existing rumor and optionally rewrite its current text.</summary>
@@ -636,7 +640,7 @@ public class LocationUpdate : WorldChange
     [JsonPropertyName("pointOfInterestDetails")]
     public Dictionary<string, string>? PointOfInterestDetails { get; set; }
 
-    [Description("Set or clear the ambient crowd. Use empty string to clear.")]
+    [Description("Set or clear the ambient crowd. Use empty string to clear. Always set when narratively justified. Taverns, for example, should always have some sort of a crowd - if active, of course")]
     [JsonPropertyName("ambientCrowd")]
     public string? AmbientCrowd { get; set; }
 
@@ -644,7 +648,7 @@ public class LocationUpdate : WorldChange
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
-    [Description("Update the description.")]
+    [Description("Update the description. Required field - this would serve as hints for DM to describe the location")]
     [JsonPropertyName("description")]
     public string? Description { get; set; }
 
@@ -812,11 +816,11 @@ public class TravelChange : WorldChange
     [JsonPropertyName("travelCostHoursOverride")]
     public double? TravelCostHoursOverride { get; set; }
     
-    [Description("Optional terrain override.")]
+    [Description("Optional terrain override. Use this to designate 'special' terrain that may or may not cause damage or side effects")]
     [JsonPropertyName("terrainOverride")]
     public string? TerrainOverride { get; set; }
 
-    [Description("Abstract modifier from -50 to +50 representing the risk of an encounter during this travel. Negative numbers mean safer/stealthy travel (e.g. Pass Without Trace cast, cautious pace). Positive numbers mean reckless/noisy travel (clanking armor, large group).")]
+    [Description("Abstract modifier from -50 to +50 representing the risk of an encounter during this travel. Should always be set if narratively justified (either by plot, situation or player actions - such as declaring caution or not declaring caution - never assume player intent). Negative numbers mean safer/stealthy travel (e.g. Pass Without Trace cast, cautious pace). Positive numbers mean reckless/noisy travel (clanking armor, large group).")]
     [JsonPropertyName("encounterRiskModifier")]
     public int? EncounterRiskModifier { get; set; }
 }

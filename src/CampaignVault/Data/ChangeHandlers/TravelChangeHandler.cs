@@ -122,23 +122,100 @@ public class TravelChangeHandler : IWorldChangeHandler
             // Mark destination as visited only if we actually arrived
             destination.LastVisitedDay = (int)time.TotalDaysElapsed;
             destination.LastUpdated = DateTime.UtcNow;
-            
+
+            await ClearStaleEngagementsAsync(character, tc.DestinationLocationId, context, ct);
+
             var msg = $"Travel: {character.Name} traveled to {destination.Name}. {tc.Narrative}";
             await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
             {
                 Category = EventCategory.Travel,
                 Summary = msg,
                 Involved = [character.Id],
-                LocationId = destination.Id
+                LocationId = destination.Id,
+                Details = new Dictionary<string, object> { ["hoursTraveled"] = hoursTraveled }
             }, ct);
         }
         else
         {
             context.RecordMessage($"Travel interrupted: {string.Join(" ", narratives)}");
+
+            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
+            {
+                Category = EventCategory.Travel,
+                Summary = $"Travel interrupted: {character.Name} did not reach {destination.Name}. {string.Join(" ", narratives)}".Trim(),
+                Involved = [character.Id],
+                LocationId = character.CurrentLocationId,
+                Details = new Dictionary<string, object> { ["hoursTraveled"] = hoursTraveled }
+            }, ct);
         }
 
         return ChangeHandlerResult.Ok;
     }
+
+    /// <summary>
+    /// Clears engagement relations left over from the departure location. Any relation still on the
+    /// character at this point is guaranteed non-Hard (Hard relations already blocked travel above),
+    /// so this only ever resolves Social/Attention/Proximity engagements — conversations, being watched,
+    /// standing close to someone — that no longer make sense once the character has left. A relation is
+    /// kept only if its target ends up at the same destination (i.e. they traveled together).
+    /// </summary>
+    private static async Task ClearStaleEngagementsAsync(
+        Character character, string destinationLocationId, ChangeContext context, CancellationToken ct)
+    {
+        var relations = character.SystemStats?.EngagementRelations;
+        if (relations is not { Count: > 0 })
+        {
+            return;
+        }
+
+        foreach (var relation in relations.ToList())
+        {
+            if (HasCoTravelInBatch(relation.TargetId, destinationLocationId, context))
+            {
+                continue;
+            }
+
+            if (!context.Characters.TryGetValue(relation.TargetId, out var target))
+            {
+                target = context.Session != null
+                    ? await context.Session.LoadAsync<Character>(relation.TargetId, ct)
+                    : null;
+            }
+
+            if (target?.CurrentLocationId == destinationLocationId)
+            {
+                continue;
+            }
+
+            if (target != null)
+            {
+                await context.Dispatcher.DispatchMutationAsync(context, new EngagementRelationChange
+                {
+                    CharacterId = character.Id,
+                    TargetId = relation.TargetId,
+                    Verb = null,
+                    Bidirectional = true
+                }, ct);
+            }
+            else
+            {
+                character.SystemStats!.EngagementRelations.RemoveAll(r => r.TargetId == relation.TargetId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// True if the relation's target has its own TravelChange to the same destination somewhere in this
+    /// commit batch. A whole party traveling together is normally expressed as one TravelChange per
+    /// character in the same take_turn batch — without this check, whoever's TravelChange happens to be
+    /// processed first would see their companions still parked at the origin (the companions' own
+    /// TravelChange hasn't run yet) and sever the relation, even though everyone is headed to the same
+    /// place in the same beat. Checking the batch directly makes the outcome order-independent.
+    /// </summary>
+    private static bool HasCoTravelInBatch(string targetId, string destinationLocationId, ChangeContext context) =>
+        context.Batch?.OfType<TravelChange>().Any(tc =>
+            string.Equals(tc.CharacterId, targetId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(tc.DestinationLocationId, destinationLocationId, StringComparison.OrdinalIgnoreCase)) == true;
 
     public bool ExtractInvolvedEntities(
         WorldChange change,

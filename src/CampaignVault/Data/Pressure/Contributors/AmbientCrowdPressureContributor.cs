@@ -36,9 +36,16 @@ public sealed class AmbientCrowdPressureContributor : IPressureContributor
     private static IEnumerable<WorldPressureItem> EvaluateScene(SceneView scene)
     {
         var loc = scene.Location;
-        if (string.IsNullOrWhiteSpace(loc.AmbientCrowd))
+        if (loc.PointsOfInterest.Count == 0 && string.IsNullOrWhiteSpace(loc.AmbientCrowd))
         {
-            yield break;
+            AmbientCrowdHeuristics.TryBuildAmbientPopulateExample(loc.Id, loc.AmbientCrowd, out var example);
+
+            yield return new WorldPressureItem(
+                PressureSeverity.Suggestion,
+                loc.Id,
+                $"SUGGESTION: Location may narratively require ambient crowd but {nameof(loc.AmbientCrowd)} property is null or empty. "
+                + "Example:\n" + example,
+                SparseCrowdGroupingKey);
         }
 
         var presentCount = scene.PresentNPCs?.Count() ?? 0;

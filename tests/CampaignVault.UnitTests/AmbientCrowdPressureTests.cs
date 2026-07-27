@@ -95,6 +95,64 @@ public class AmbientCrowdPressureContributorTests
     }
 
     [Fact]
+    public async Task Evaluate_NagsEmptyAmbientCrowd_WhenNoPointsOfInterestEither()
+    {
+        var contributor = new AmbientCrowdPressureContributor();
+        var scene = new SceneView
+        {
+            IsLocationAnchored = true,
+            Location = new Location
+            {
+                Id = "locations/driftwood-tavern",
+                Name = "The Driftwood Tavern",
+                AmbientCrowd = null,
+                PointsOfInterest = []
+            },
+            PresentNPCs = [],
+            RecentEvents = []
+        };
+
+        var pressures = await contributor.EvaluateAsync(new PressureContext(
+            CampaignName: "test",
+            Time: new CampaignTime(),
+            Config: new CampaignConfig(),
+            Session: null!,
+            Scene: scene));
+
+        Assert.Contains(pressures, p =>
+            p.GroupingKey == AmbientCrowdPressureContributor.SparseCrowdGroupingKey
+            && p.Text.Contains("AmbientCrowd", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Evaluate_SkipsEmptyAmbientCrowdNag_WhenPointsOfInterestPresent()
+    {
+        var contributor = new AmbientCrowdPressureContributor();
+        var scene = new SceneView
+        {
+            IsLocationAnchored = true,
+            Location = new Location
+            {
+                Id = "locations/quiet-study",
+                Name = "Quiet Study",
+                AmbientCrowd = null,
+                PointsOfInterest = ["A cluttered writing desk"]
+            },
+            PresentNPCs = [],
+            RecentEvents = []
+        };
+
+        var pressures = await contributor.EvaluateAsync(new PressureContext(
+            CampaignName: "test",
+            Time: new CampaignTime(),
+            Config: new CampaignConfig(),
+            Session: null!,
+            Scene: scene));
+
+        Assert.DoesNotContain(pressures, p => p.GroupingKey == AmbientCrowdPressureContributor.SparseCrowdGroupingKey);
+    }
+
+    [Fact]
     public async Task Evaluate_UnanchoredBeat_FromRecentEvent()
     {
         var contributor = new AmbientCrowdPressureContributor();

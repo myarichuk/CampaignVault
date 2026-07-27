@@ -102,6 +102,14 @@ public static partial class AmbientCrowdHeuristics
         return true;
     }
 
+    public static bool TryBuildAmbientPopulateExample(string locationId, string? currentAmbient, out string exampleJson)
+    {
+        exampleJson =
+            "[ { \"$type\": \"location_update\", \"locationId\": \"" + locationId + "\", "
+            + "\"ambientCrowd\": \"Add narratively justified ambient crowd if relevant\" } ]";
+        return true;
+    }
+    
     public static bool TryBuildAmbientRefreshExample(string locationId, string? currentAmbient, out string exampleJson)
     {
         exampleJson =

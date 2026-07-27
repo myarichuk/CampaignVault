@@ -1,0 +1,17 @@
+{
+  "name": "campaign-vault-opencode-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "opencode plugin that mechanically enforces CampaignVault's pressure-escalation, STATUS BAR, state-persistence, and no-invented-rolls rules.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
