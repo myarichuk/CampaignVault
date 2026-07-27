@@ -300,59 +300,9 @@ public class DefaultRollServiceTests
     }
 
     [Fact]
-    public async Task RollAsync_SuccessCount_CountsCorrectly()
+    public void DiceMechanic_HasNoSuccessCountMember()
     {
-        // Arrange
-        var testRng = new Random(Seed);
-        var serviceRng = new Random(Seed);
-        var service = new DefaultRollService(serviceRng);
-
-        var request = new RollRequest
-        {
-            Expression = "3d20",
-            Mechanic = DiceMechanic.SuccessCount,
-            TargetNumber = 12,
-            CriticalThreshold = 2
-        };
-
-        // Act
-        var outcome = await service.RollAsync(request);
-
-        // Assert
-        var rolled = Enumerable.Range(0, 3).Select(_ => testRng.Next(1, 21)).ToList();
-        var expectedSuccesses = 0;
-        var expectedComplication = false;
-        foreach (var d in rolled)
-        {
-            if (d <= 12)
-            {
-                expectedSuccesses += (d <= 2) ? 2 : 1;
-            }
-
-            if (d == 20)
-            {
-                expectedComplication = true;
-            }
-        }
-
-        Assert.Equal(expectedSuccesses, outcome.Result);
-        Assert.Equal(expectedSuccesses, outcome.Successes);
-        Assert.Equal(expectedSuccesses > 0, outcome.IsSuccess);
-        Assert.Equal(expectedComplication, outcome.HasComplication);
-        Assert.Contains("success(es)", outcome.Summary);
-    }
-
-    [Fact]
-    public async Task RollAsync_SuccessCount_ThrowsIfNoTargetNumber()
-    {
-        var service = new DefaultRollService();
-        var request = new RollRequest
-        {
-            Expression = "2d20",
-            Mechanic = DiceMechanic.SuccessCount
-        };
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RollAsync(request));
+        Assert.DoesNotContain("SuccessCount", Enum.GetNames<DiceMechanic>());
     }
 
     [Fact]

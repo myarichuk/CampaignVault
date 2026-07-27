@@ -432,7 +432,7 @@ Code is in `src/CampaignVault/`. Key folders:
 - **Repository** — `src/CampaignVault/Data/CampaignRepository.cs` + `JsonSanitizer.cs`
 - **Simulation** — `DefaultSimulationEngine` + rules: `ScheduleEvaluationRule`, `NeedsAccumulationRule`, `RumorDecayRule`, `StatusExpiryRule`, `MemorySalienceDecayRule`, `NeedConflictRule`, `ClimateExposureRule`, `FactionEcosystemRule`, `QuestStalenessRule`, `RelationalRearmRule`, `AmbientItemDecayRule`, `TransientEvictionRule`, `ResourceRecoveryRule`
 - **Pressure** — `src/CampaignVault/Data/Pressure/` (orchestrator + contributors)
-- **Rulesets** — `src/CampaignVault/Rulesets/` (D&D 5e, PF2e, Fallout 2d20, Narrative resolvers + `DefaultRollService`)
+- **Rulesets** — `src/CampaignVault/Rulesets/` (D&D 5e, PF2e, Narrative resolvers + `DefaultRollService`)
 - **MCP tools** — `src/CampaignVault/Tools/*Tools.cs` (domain classes; `CampaignTools.cs` is a test-only facade)
 - **Authoring UI** — connects via gRPC on `GRPC_PORT`; for play/testing against a local MCP server, pass `campaignName` on each tool call
 - **Tests** — `tests/CampaignVault.Tests/`

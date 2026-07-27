@@ -206,14 +206,20 @@ public class NeedsProfile
         ["hunger"] = 25f,
         ["thirst"] = 20f,
         ["tiredness"] = 15f,
-        ["social_drive"] = 10f
+        ["social_drive"] = 10f,
+        ["stress"] = 0f,
+        ["fatigue"] = 0f
     };
 
     /// <summary>
     /// Optional human/LLM-readable descriptions for the keys in ActiveNeeds.
     /// Example: "homesickness" -> "Longing for family and familiar places. High values cause distraction and poor sleep."
     /// </summary>
-    public Dictionary<string, string> NeedDescriptors { get; set; } = [];
+    public Dictionary<string, string> NeedDescriptors { get; set; } = new()
+    {
+        ["stress"] = "Psychological stress / trauma accumulation (0-100). Direct analogue: CoC SAN loss, Alien RPG Stress, Delta Green Breaking Point.",
+        ["fatigue"] = "Physical exhaustion level (0-100). D&D 5e exhaustion track, PF2e Fatigued condition, survival systems."
+    };
 
     public bool ActivityConflictActive { get; set; }
     public string? ActivityConflictNeed { get; set; }
@@ -265,28 +271,10 @@ public class SystemExtension
     public float MovementModifier { get; set; } = 0f;
 
     /// <summary>
-    /// Psychological stress / trauma accumulation (0–100).
-    /// Direct analogue: CoC SAN loss, Alien RPG Stress, Delta Green Breaking Point.
-    /// NeedsAccumulationRule can emit MoodChanges when this crests thresholds.
-    /// </summary>
-    public float Stress { get; set; } = 0f;
-
-    /// <summary>
-    /// Physical exhaustion level (0–100).
-    /// D&amp;D 5e exhaustion track, PF2e Fatigued condition, survival systems.
-    /// NeedsAccumulationRule writes here when tiredness exceeds critical thresholds.
-    /// </summary>
-    public float Fatigue { get; set; } = 0f;
-
-    /// <summary>
-    /// Spendable luck resource — hero points, bennies, fate points, inspiration.
-    /// D&amp;D 5e Inspiration (0 or 1), PF2e Hero Points (0–3), Savage Worlds Bennies.
-    /// </summary>
-    public int LuckPoints { get; set; } = 0;
-
-    /// <summary>
-    /// Base movement speed in system-native units.
-    /// D&amp;D/PF2e: feet (30).
+    /// Base movement speed in system-native units (D&amp;D/PF2e: feet, e.g. 30).
+    /// Set from the character's race/ancestry BaseSpeed at creation (Dnd5eDeriveRaceStep /
+    /// Pf2eDeriveAncestryStep) unless already explicitly provided. Narrative-only — no travel
+    /// commit reads this yet; the DM-LLM narrates travel effects (same pattern as MovementModifier).
     /// Nullable — leave null for systems that do not use numeric movement.
     /// </summary>
     public float? Movement { get; set; }

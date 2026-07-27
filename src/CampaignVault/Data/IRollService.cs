@@ -19,7 +19,7 @@ public class RollRequest
 
     /// <summary>
     /// Standard dice expression: "1d20+5", "2d6", "3d8+2".
-    /// For SuccessCount/RollUnder: pool size like "2d20" or "3d20".
+    /// For RollUnder: pool size like "2d20" or "3d20".
     /// For KeepHighest/KeepLowest: use with <see cref="Keep"/>.
     /// </summary>
     [JsonPropertyName("expression")]
@@ -39,18 +39,10 @@ public class RollRequest
     public int Bonus { get; set; } = 0;
 
     /// <summary>
-    /// For RollUnder and SuccessCount: the threshold each die must meet or beat.
-    /// For Fallout 2d20: set to Attribute + Skill (the Target Number).
+    /// For RollUnder: the threshold each die must meet or beat.
     /// </summary>
     [JsonPropertyName("targetNumber")]
     public int? TargetNumber { get; set; }
-
-    /// <summary>
-    /// For SuccessCount only: dice &lt;= this value count as 2 successes.
-    /// Used for Fallout 2d20 tag skills (dice &lt;= skill rank = double success).
-    /// </summary>
-    [JsonPropertyName("criticalThreshold")]
-    public int? CriticalThreshold { get; set; }
 
     /// <summary>For KeepHighest/KeepLowest: how many dice to retain.</summary>
     [JsonPropertyName("keep")]
@@ -67,7 +59,7 @@ public class RollOutcome
     [JsonPropertyName("tag")]
     public string Tag { get; set; } = null!;
 
-    /// <summary>Final numeric result (total for Standard/Advantage/etc., success count for SuccessCount).</summary>
+    /// <summary>Final numeric result (total for Standard/Advantage/etc.).</summary>
     [JsonPropertyName("result")]
     public int Result { get; set; }
 
@@ -75,25 +67,21 @@ public class RollOutcome
     [JsonPropertyName("individualDice")]
     public List<int> IndividualDice { get; set; } = [];
 
-    /// <summary>True for RollUnder/SuccessCount when the outcome constitutes a success.</summary>
+    /// <summary>True for RollUnder when the outcome constitutes a success.</summary>
     [JsonPropertyName("isSuccess")]
     public bool IsSuccess { get; set; }
-
-    /// <summary>Total successes for SuccessCount mechanic. Always 0 for other mechanics.</summary>
-    [JsonPropertyName("successes")]
-    public int Successes { get; set; }
 
     /// <summary>True when a natural 20 (d20 systems) or max-face (Explosive) was rolled.</summary>
     [JsonPropertyName("hasCritical")]
     public bool HasCritical { get; set; }
 
-    /// <summary>True when a natural 1 (d20 systems) or a 20 die (Fallout 2d20 complication) was rolled.</summary>
+    /// <summary>True when a natural 1 (d20 systems) was rolled.</summary>
     [JsonPropertyName("hasComplication")]
     public bool HasComplication { get; set; }
 
     /// <summary>
     /// Human-readable summary for the LLM.
-    /// Examples: "[15]+5 = 20 (Advantage: kept 20 over 8)", "3 successes (pool: [4, 11, 20]) vs TN 12".
+    /// Example: "[15]+5 = 20 (Advantage: kept 20 over 8)".
     /// </summary>
     [JsonPropertyName("summary")]
     public string Summary { get; set; } = null!;

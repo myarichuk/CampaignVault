@@ -348,16 +348,6 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
     {
         public Task<RollOutcome> RollAsync(RollRequest request, CancellationToken ct = default)
         {
-            if (request.Mechanic == DiceMechanic.SuccessCount)
-            {
-                return Task.FromResult(new RollOutcome
-                {
-                    Tag = request.Tag,
-                    Successes = 2,
-                    Summary = "Harness: 2 successes"
-                });
-            }
-
             var diceVal = request.Expression.Contains("d8", StringComparison.Ordinal) ? 5 : 10;
             return Task.FromResult(new RollOutcome
             {

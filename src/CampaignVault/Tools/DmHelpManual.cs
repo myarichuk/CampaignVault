@@ -398,7 +398,6 @@ When a `knowledge_update` is derived from a specific logged event, set `sourceEv
 **Typed bootstrap fields (NOT in `attributes` — numbers only there):**
 - **5e**: `hitDie` (e.g. ""d12""), `level`, `constitution`, `hpMode` (`average` | `rolled`), `classLevel` fallback; **multiclass**: `classLevels` array; **casters**: `spellcastingAbility`, optional `spellSaveDc`/`spellAttackBonus`
 - **PF2e**: `classHpPerLevel`, `ancestryHp`, `level`, `constitutionMod`
-- **Fallout**: `endurance`, `luck`, `level`, optional `hpPerLevel` (defaults to endurance)
 
 5e also derives `armorClass` (unarmored 10 + DEX), `attributes.proficiencyBonus`, `attributes.passivePerception`, `spellSaveDc`/`spellAttackBonus` for casters, and emits `[BOOTSTRAP HINT]` with `world_build` armor JSON when no worn armor is detected.
 
@@ -426,9 +425,6 @@ Party companion:
 PF2e auto-bootstrap, via `world_build`:
 { ""character"": { ""id"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""classHpPerLevel"": 10, ""ancestryHp"": 8, ""level"": 2, ""constitutionMod"": 2, ""armorClass"": 19, ""strengthMod"": 4, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 } } } }
 
-Fallout auto-bootstrap, via `world_build`:
-{ ""character"": { ""id"": ""chars/raider"", ""name"": ""Raider"", ""systemStats"": { ""$system"": ""fallout2d20"", ""endurance"": 6, ""luck"": 5, ""level"": 3, ""agility"": 7, ""perception"": 6, ""skills"": { ""SmallGuns"": 2 }, ""tagSkills"": [""SmallGuns""] } } }
-
 Patch stats on existing character:
 { ""$type"": ""system_stats"", ""characterId"": ""chars/campaign-thorin"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 16, ""strength"": 16, ""skillModifiers"": { ""Athletics"": 5 } } }
 
@@ -455,7 +451,6 @@ Use `ruleset_action` inside `take_turn`'s changes for attacks, spells, skills, g
 **Common parameters:**
 - **All**: `resolution` (Spell: attack|save|check|utility|heal), `dc`, `skill`, `save`, `halfOnSave` (5e default true), `healDice`/`healBonus`/`healAmount`
 - **5e/PF2e**: `bonus`/`toHitBonus`, `damageDice`, `damageBonus`, `ac`, `mapPenalty` (PF2e), `spellAttackBonus` (override)
-- **Fallout**: `difficulty` or `dc`, `attribute`, `skill`, `pool`, `bonusDice`, `useLuck` (+1 die, no auto luck spend), `rangeModifier`, `cover`, `targetPart`, `damageDice` (combat dice count), `vicious`, `piercing`, `saveAttribute`, `saveSkill`
 
 - **advantageState**: `""Advantage""`, `""Disadvantage""`, `""None""` (5e native).
 
@@ -609,7 +604,7 @@ You (the LLM) author narrative state; the engine scores a fixed set of **visualT
 
 ## Resources & Currency
 
-- Award/spend party currency the same way as any other pool: `$type: ""resource""`, `poolName: ""gold""` (dnd5e/pf2e) or `""caps""` (fallout2d20), `delta: ±N`.
+- Award/spend party currency the same way as any other pool: `$type: ""resource""`, `poolName: ""gold""` (dnd5e/pf2e), `delta: ±N`.
 
 ## Crowd Interrupts & Vulnerability
 

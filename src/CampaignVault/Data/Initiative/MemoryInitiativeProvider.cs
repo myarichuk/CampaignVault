@@ -16,6 +16,7 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
         var presentIds = new HashSet<string>(
             ctx.PresentEntities.Select(e => e.Id),
             StringComparer.OrdinalIgnoreCase);
+        var presentNames = ctx.PresentEntities.Select(e => e.Name).Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
         var locationName = ctx.Location?.Name;
         var locationId = ctx.Location?.Id;
 
@@ -23,7 +24,7 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
         foreach (var memory in psych.Memories.Values)
         {
             memory.ApplyMigrationDefaultsIfNeeded();
-            if (!MemoryMatchesScene(memory, presentIds, locationName, locationId))
+            if (!MemoryMatchesScene(memory, presentIds, presentNames, locationName, locationId))
             {
                 continue;
             }
@@ -61,6 +62,7 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
     private static bool MemoryMatchesScene(
         MemoryNode memory,
         HashSet<string> presentIds,
+        IReadOnlyList<string> presentNames,
         string? locationName,
         string? locationId)
     {
@@ -81,6 +83,30 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
                 || memory.Details.Contains(locationName, StringComparison.OrdinalIgnoreCase)))
         {
             return true;
+        }
+
+        // TriggerCondition is an LLM-authored freeform predicate (e.g. a name, place, or topic)
+        // checked against who/where is currently present in the scene.
+        if (!string.IsNullOrWhiteSpace(memory.TriggerCondition))
+        {
+            if (presentNames.Any(name => memory.TriggerCondition.Contains(name, StringComparison.OrdinalIgnoreCase)
+                    || name.Contains(memory.TriggerCondition, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(locationName)
+                && (memory.TriggerCondition.Contains(locationName, StringComparison.OrdinalIgnoreCase)
+                    || locationName.Contains(memory.TriggerCondition, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(locationId)
+                && memory.TriggerCondition.Contains(locationId, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
         }
 
         return false;

@@ -24,7 +24,6 @@ public class SessionLog : ICampaignScopedEntity
         public int? InWorldEndDay { get; set; }
         public string? InWorldEndTimeOfDay { get; set; }
         public string? RecapText { get; set; }
-        public List<string> KeyEventIds { get; set; } = [];
         public bool IsOpen { get; set; }
     }
 }

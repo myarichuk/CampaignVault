@@ -305,7 +305,6 @@ public sealed class EntityCanonicalizer
             TerritoryLocationIds = f.TerritoryLocationIds,
             KnownLeaderIds = f.KnownLeaderIds,
             InfluenceLevel = f.InfluenceLevel,
-            EnemyFactionIds = f.EnemyFactionIds,
             StanceToward = f.StanceToward,
             EconomicDemand = f.EconomicDemand,
             Metadata = f.Metadata

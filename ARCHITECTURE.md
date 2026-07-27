@@ -9,7 +9,7 @@ Campaign Vault is an ASP.NET Core MCP server backed by embedded RavenDB. It expo
 3. **Simulation engine** (`DefaultSimulationEngine` + `ISimulationRule`) — background world evolution on `advance_world`.
 4. **Pressure orchestration** (`PressureOrchestrator` + `IPressureContributor`) — proactive LLM nudges on read paths.
 
-Ruleset math (D&D 5e, PF2e, Fallout 2d20) lives in pluggable `IRulesetModule` implementations, not in the core engine.
+Ruleset math (D&D 5e, PF2e) lives in pluggable `IRulesetModule` implementations, not in the core engine.
 
 ## Multi-Campaign Scoping
 
@@ -123,7 +123,6 @@ Two complementary primitives on `SystemExtension` track *who is doing what to wh
 
 - **D&D 5e** — opposed Athletics (or Acrobatics) d20; tie → defender wins
 - **PF2e** — Athletics vs target Fortitude DC (not opposed; matches CRB grapple)
-- **Fallout 2d20** — opposed success-count pools (Strength + Athletics default)
 
 Escape grapple (`escape: true` or escape action name) clears the engagement on success. Combat grapples need not be manually committed; unresolved RP beats (hugs, tending wounds) should be committed by the LLM.
 
@@ -183,7 +182,6 @@ Implemented and registered at startup:
 |----------------|--------|-------------------|
 | `Dnd5eRulesetResolver` | D&D 5e | Advantage/disadvantage, saving throws, contested checks, grapple → engagement mutations, exhaustion pressure |
 | `Pf2eRulesetResolver` | Pathfinder 2e | Four degrees of success, Athletics vs Fortitude DC grapple |
-| `Fallout2d20RulesetResolver` | Fallout 2d20 | d20 dice pools, target numbers, opposed pool contested checks |
 | `NarrativeRulesetResolver` | Narrative | Oracle-style d100 rolls for skill/combat checks when mechanical rulesets are disabled; no HP math |
 
 `RulesetModuleSelector` validates that every `RulesetSystem` enum value has a registered module at startup. `DefaultRollService` provides deterministic dice evaluation.
@@ -196,7 +194,7 @@ Consumption goes through `ResourceChangeHandler` via `$type: "resource"` commits
 
 ### Relationship-based social roll modifiers
 
-`RelationshipModifierHelper` + `SocialSkillGating` translate stored relationship scores (on `Character.Social.Relationships`) into social skill roll modifiers for Dnd5e, PF2e, and Fallout2d20. Gating: `ActionCategory: Social` **or** per-ruleset skill lists (5e: Persuasion/Deception/…; PF2e: Diplomacy/Society/…; Fallout: Speech/Barter/…). Modifiers are banded: score ≥80 → +5 (trusted friend), 60–79 → +3 (friendly), 40–59 → +1 (acquainted), −39..39 → 0 (neutral), −59..−40 → −1 (distrustful), −79..−60 → −3 (hostile), ≤−80 → −5 (hated enemy). Each resolver adds the modifier to the roll bonus and includes the label in the narrative (e.g., `(trusted friend)`). Contested checks apply the modifier only to the actor's roll. Multi-target social actions use the first `targetId` as the relationship source. `WorldChangeDispatcher` preloads `CampaignConfig` (with default fallback) only when the batch includes `ruleset_action` or `level_up`. Symmetric fallback (`CampaignConfig.SymmetricRelationshipFallback`, default false) applies only when the target→actor key is **missing**, not when explicitly 0. Narrative rulesets skip relationship modifiers structurally.
+`RelationshipModifierHelper` + `SocialSkillGating` translate stored relationship scores (on `Character.Social.Relationships`) into social skill roll modifiers for Dnd5e and PF2e. Gating: `ActionCategory: Social` **or** per-ruleset skill lists (5e: Persuasion/Deception/…; PF2e: Diplomacy/Society/…). Modifiers are banded: score ≥80 → +5 (trusted friend), 60–79 → +3 (friendly), 40–59 → +1 (acquainted), −39..39 → 0 (neutral), −59..−40 → −1 (distrustful), −79..−60 → −3 (hostile), ≤−80 → −5 (hated enemy). Each resolver adds the modifier to the roll bonus and includes the label in the narrative (e.g., `(trusted friend)`). Contested checks apply the modifier only to the actor's roll. Multi-target social actions use the first `targetId` as the relationship source. `WorldChangeDispatcher` preloads `CampaignConfig` (with default fallback) only when the batch includes `ruleset_action` or `level_up`. Symmetric fallback (`CampaignConfig.SymmetricRelationshipFallback`, default false) applies only when the target→actor key is **missing**, not when explicitly 0. Narrative rulesets skip relationship modifiers structurally.
 
 `ConversationInvolvedResolver` auto-infers or merges `involved` on `Conversation` events from pairwise `engagement_relation`, `spatial_position`, `activity`, and other batch changes — supporting 3+ participant scenes (e.g. PC + companion + barkeep) when the LLM commits multiple pairwise engagements or an explicit `involved` array.
 

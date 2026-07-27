@@ -344,7 +344,7 @@ internal static class CommitSchemaRegistry
         new("resource", "World",
             "Spend or recover a resource pool (spell slots, sorcerer points, focus points, action points, " +
             "party currency). Negative delta = spend (cast spell, use ability, pay for goods), positive = " +
-            "recover/award. Currency pools: 'gold' (dnd5e/pf2e), 'caps' (fallout2d20) — never recover, capped " +
+            "recover/award. Currency pools: 'gold' (dnd5e/pf2e) — never recover, capped " +
             "at a large finite max (not literally unlimited). Grants clamp to max; spends that would go " +
             "below 0 HARD-FAIL with an 'Insufficient <pool>' error instead of clamping. " +
             "Set spellName when spending spell_slots_* for slot-level validation (call get_rules_reference kind:'spells' for names).",

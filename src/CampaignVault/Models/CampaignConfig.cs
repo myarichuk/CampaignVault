@@ -247,7 +247,7 @@ public record ResourcePoolTemplate : RulesetTemplate
     [JsonPropertyName("defaultMax")]
     public int? DefaultMax { get; set; }
 
-    /// <summary>TTRPG systems this pool applies to ("dnd5e", "pf2e", "fallout2d20"). Null = all systems.</summary>
+    /// <summary>TTRPG systems this pool applies to ("dnd5e", "pf2e"). Null = all systems.</summary>
     [JsonPropertyName("applicableSystems")]
     public List<string>? ApplicableSystems { get; set; }
 

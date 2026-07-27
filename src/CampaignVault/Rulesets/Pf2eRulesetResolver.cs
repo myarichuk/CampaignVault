@@ -2,6 +2,7 @@ using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets;
 
@@ -18,14 +19,16 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
     private readonly IRollService _rollService;
     private readonly ICharacterBootstrapPipeline _bootstrap;
 
-    public Pf2eRulesetResolver(IRollService rollService)
+    public Pf2eRulesetResolver(IRollService rollService, RaceDefinitionProvider? raceProvider = null)
     {
         _rollService = rollService;
         var hpStep = new Pf2eDeriveHitPointsStep();
         var profStep = new Pf2eDeriveProficiencyStep();
         var spellStep = new Pf2eDeriveSpellcastingStep();
+        List<IBootstrapStep> steps = raceProvider != null ? [new Pf2eDeriveAncestryStep(raceProvider)] : [];
+        steps.AddRange([hpStep, new Pf2eDeriveDefenseStep(), profStep, spellStep]);
         _bootstrap = new CharacterBootstrapPipeline(
-            [hpStep, new Pf2eDeriveDefenseStep(), profStep, spellStep],
+            steps,
             [hpStep, profStep, spellStep]);
     }
 

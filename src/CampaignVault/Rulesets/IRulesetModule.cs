@@ -46,7 +46,6 @@ public interface ICombatRuleset
     /// Empty dict means no gating (unrestricted, as in Narrative).
     /// 5e example: {"action":1,"bonus":1,"reaction":1,"movement":1}
     /// PF2e example: {"actions":3,"reaction":1}
-    /// Fallout example: {"ap":&lt;character AP&gt;}
     /// </summary>
     IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character);
 
@@ -54,8 +53,7 @@ public interface ICombatRuleset
     /// Attempts to consume the correct slot(s) in state.ActionBudget for the given action.
     /// Returns false + errorReason if insufficient budget remains (e.g. "No action remaining this turn.").
     /// Ruleset-specific: e.g. 5e Attack costs "action" (or "bonus" if parameters["bonusAction"]="true");
-    /// PF2e Strike costs 1 of 3 "actions" (or more via parameters["actionCost"]);
-    /// Fallout attack costs parameters["apCost"] from the "ap" pool.
+    /// PF2e Strike costs 1 of 3 "actions" (or more via parameters["actionCost"]).
     /// </summary>
     bool TryConsumeActionSlot(CombatantState state, RulesetAction action, out string? errorReason);
 

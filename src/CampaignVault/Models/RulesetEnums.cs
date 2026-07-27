@@ -34,7 +34,7 @@ public enum RulesetActionType
     /// <summary>Both actor and target roll; the higher success total wins.</summary>
     ContestedCheck,
 
-    /// <summary>Actor rolls against target's static defence value (e.g. PF2e AC, Fallout static difficulty).</summary>
+    /// <summary>Actor rolls against target's static defence value (e.g. PF2e AC).</summary>
     OpposedCheck,
 
     /// <summary>Using a consumable or equipment item (e.g. Stimpak, potion, med-kit).</summary>
@@ -129,13 +129,7 @@ public enum DiceMechanic
     KeepLowest,
 
     /// <summary>Roll succeeds if result &lt;= TargetNumber. Used by Basic Role-Play and old-school systems.</summary>
-    RollUnder,
-
-    /// <summary>
-    /// Count dice whose result &lt;= TargetNumber as successes (1 each).
-    /// If CriticalThreshold is set, dice &lt;= CriticalThreshold count as 2 successes.
-    /// </summary>
-    SuccessCount
+    RollUnder
 }
 
 /// <summary>

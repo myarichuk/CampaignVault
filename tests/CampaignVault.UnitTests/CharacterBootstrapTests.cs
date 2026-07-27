@@ -112,6 +112,113 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task Dnd5e_Race_AppliesAbilityBonusesSizeSpeedAndTraits()
+    {
+        var orchestrator = BootstrapTestHelper.CreateOrchestrator(raceProvider: BootstrapTestHelper.CreateRaceProvider());
+        var character = new Character
+        {
+            Id = "chars/dwarf-fighter",
+            Name = "Torgan",
+            ClassLevel = "Dwarf Fighter 1",
+            SystemStats = new Dnd5eExtension
+            {
+                Constitution = 14,
+                Race = "dwarf",
+            },
+        };
+
+        var report = await orchestrator.ApplyCreationAsync(new BootstrapContext
+        {
+            Character = character,
+            ActiveSystem = RulesetSystem.Dnd5e,
+        });
+
+        var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
+        Assert.Equal(16, stats.Constitution); // 14 base + 2 dwarf ability bonus
+        Assert.Equal(25f, stats.Movement); // dwarf base speed
+        Assert.Contains("Size: Medium", character.DistinctiveFeatures);
+        Assert.Contains("Darkvision", character.DistinctiveFeatures);
+        Assert.Contains(report.Steps, s => s.StepName == "dnd5e.derive_race");
+    }
+
+    [Fact]
+    public async Task Dnd5e_Race_DoesNotOverrideExplicitMovement()
+    {
+        var orchestrator = BootstrapTestHelper.CreateOrchestrator(raceProvider: BootstrapTestHelper.CreateRaceProvider());
+        var character = new Character
+        {
+            Id = "chars/dwarf-fighter-2",
+            Name = "Torgan",
+            ClassLevel = "Dwarf Fighter 1",
+            SystemStats = new Dnd5eExtension
+            {
+                Constitution = 14,
+                Race = "dwarf",
+                Movement = 40f,
+            },
+        };
+
+        await orchestrator.ApplyCreationAsync(new BootstrapContext
+        {
+            Character = character,
+            ActiveSystem = RulesetSystem.Dnd5e,
+        });
+
+        var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
+        Assert.Equal(40f, stats.Movement);
+    }
+
+    [Fact]
+    public async Task Pf2e_Ancestry_AppliesSizeSpeedAndTraits()
+    {
+        var orchestrator = BootstrapTestHelper.CreateOrchestrator(raceProvider: BootstrapTestHelper.CreateRaceProvider());
+        var character = new Character
+        {
+            Id = "chars/elf-wizard",
+            Name = "Sylvaine",
+            ClassLevel = "Elf Wizard 1",
+            SystemStats = new Pf2eExtension
+            {
+                Ancestry = "elf",
+            },
+        };
+
+        var report = await orchestrator.ApplyCreationAsync(new BootstrapContext
+        {
+            Character = character,
+            ActiveSystem = RulesetSystem.Pathfinder2e,
+        });
+
+        var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
+        Assert.Equal(30f, stats.Movement); // elf base speed
+        Assert.Contains("Size: Medium", character.DistinctiveFeatures);
+        Assert.Contains("Low-Light Vision", character.DistinctiveFeatures);
+        Assert.Contains(report.Steps, s => s.StepName == "pf2e.derive_ancestry");
+    }
+
+    [Fact]
+    public async Task Dnd5e_NoRaceSet_SkipsRaceStep()
+    {
+        var orchestrator = BootstrapTestHelper.CreateOrchestrator(raceProvider: BootstrapTestHelper.CreateRaceProvider());
+        var character = new Character
+        {
+            Id = "chars/no-race",
+            Name = "Mystery",
+            ClassLevel = "Fighter 1",
+            SystemStats = new Dnd5eExtension { Constitution = 12 },
+        };
+
+        var report = await orchestrator.ApplyCreationAsync(new BootstrapContext
+        {
+            Character = character,
+            ActiveSystem = RulesetSystem.Dnd5e,
+        });
+
+        Assert.DoesNotContain(report.Steps, s => s.StepName == "dnd5e.derive_race");
+        Assert.Empty(character.DistinctiveFeatures);
+    }
+
+    [Fact]
     public async Task Pf2e_DerivesHp_WhenBootstrapFieldsPresent()
     {
         var orchestrator = BootstrapTestHelper.CreateOrchestrator();

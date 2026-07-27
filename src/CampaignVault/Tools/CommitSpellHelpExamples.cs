@@ -112,38 +112,6 @@ internal static class CommitSpellHelpExamples
 ]
 """;
 
-    internal const string FalloutGrenade = """
-[
-  {
-    "$type": "ruleset_action",
-    "characterId": "chars/raider",
-    "targetIds": ["chars/pc1", "chars/pc2"],
-    "actionType": "Spell",
-    "actionCategory": "Spell",
-    "actionName": "Frag Grenade",
-    "parameters": {
-      "resolution": "save",
-      "dc": "2",
-      "saveAttribute": "Endurance",
-      "damageDice": "3"
-    }
-  }
-]
-""";
-
-    internal const string FalloutStimpak = """
-[
-  {
-    "$type": "ruleset_action",
-    "characterId": "chars/pc1",
-    "targetIds": ["chars/pc1"],
-    "actionType": "UseItem",
-    "actionName": "Stimpak",
-    "parameters": { "healAmount": "8" }
-  }
-]
-""";
-
     internal const string MulticlassBootstrap = """
 Via world_build:
 { "characters": [ { "id": "chars/gish", "name": "Aldric", "isPc": true, "keepAlive": true,
@@ -198,12 +166,6 @@ This rest commit recovers eligible resource pools and settles tiredness immediat
 
 **Fire Bolt (spell attack):**
 """ + FireBoltAttack + """
-
-**Fallout grenade (save):**
-""" + FalloutGrenade + """
-
-**Stimpak (UseItem):**
-""" + FalloutStimpak + """
 
 **Concentration (after save spell — separate commit):**
 """ + ConcentrationStatus + """

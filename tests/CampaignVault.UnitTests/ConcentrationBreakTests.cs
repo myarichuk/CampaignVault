@@ -60,6 +60,31 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         };
     }
 
+    private static Character CreatePf2eConcentratingCharacter(int? fortitudeSaveModifier = null, int constitutionMod = 0)
+    {
+        var pf2e = new Pf2eExtension
+        {
+            ConstitutionMod = constitutionMod,
+            StatusEffects =
+            [
+                new StatusEffect { Name = "Concentration: Bless", Category = "Buff" }
+            ]
+        };
+        if (fortitudeSaveModifier.HasValue)
+        {
+            pf2e.SavingThrowModifiers["Fortitude"] = fortitudeSaveModifier.Value;
+        }
+
+        return new Character
+        {
+            Id = "chars/caster",
+            Name = "Caster",
+            MaxHp = 50,
+            CurrentHp = 50,
+            SystemStats = pf2e
+        };
+    }
+
     private sealed class FixedRollService(int result) : IRollService
     {
         public Task<RollOutcome> RollAsync(RollRequest request, CancellationToken ct = default) =>
@@ -114,6 +139,48 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         var handler = new HpChangeHandler(new FixedRollService(1));
 
         var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = 5 }, ctx);
+
+        Assert.True(result.Success);
+        Assert.Contains(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
+    }
+
+    [Fact]
+    public async Task HpChange_Pf2e_FailedFortitudeSave_BreaksConcentration()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = CreatePf2eConcentratingCharacter(fortitudeSaveModifier: 2);
+        var ctx = CreateContext(session, character);
+        var handler = new HpChangeHandler(new FixedRollService(1)); // 1 + 2 bonus = 3, well below DC 10
+
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx);
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
+    }
+
+    [Fact]
+    public async Task HpChange_Pf2e_SuccessfulFortitudeSave_KeepsConcentration()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = CreatePf2eConcentratingCharacter(fortitudeSaveModifier: 8);
+        var ctx = CreateContext(session, character);
+        var handler = new HpChangeHandler(new FixedRollService(15)); // 15 + 8 bonus, well above DC
+
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx);
+
+        Assert.True(result.Success);
+        Assert.Contains(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
+    }
+
+    [Fact]
+    public async Task HpChange_Pf2e_FallsBackToConstitutionModWhenNoFortitudeEntry()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = CreatePf2eConcentratingCharacter(fortitudeSaveModifier: null, constitutionMod: 6);
+        var ctx = CreateContext(session, character);
+        var handler = new HpChangeHandler(new FixedRollService(10)); // 10 + 6 fallback mod = 16, above DC 10
+
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx);
 
         Assert.True(result.Success);
         Assert.Contains(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));

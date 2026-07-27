@@ -118,12 +118,6 @@
                                                         <NumericUpDown Value="{Binding FormWillpower, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="28" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="2" />
                                                     </StackPanel>
                                                 </Border>
-                                                <Border Background="#2D2D3D" CornerRadius="4" Padding="8,4" Margin="0,0,8,8">
-                                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                                        <TextBlock Text="Stress" FontWeight="Bold" Foreground="#F59E0B" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Value="{Binding FormStress, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0" ShowButtonSpinner="False" Padding="3,2" FontSize="11" MinWidth="28" Background="#262630" Foreground="{StaticResource TextPrimaryColor}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="2" />
-                                                    </StackPanel>
-                                                </Border>
                                             </WrapPanel>
                                         </StackPanel>
                                     </StackPanel>

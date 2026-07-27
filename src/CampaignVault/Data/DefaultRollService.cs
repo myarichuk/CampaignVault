@@ -52,7 +52,6 @@ public sealed class DefaultRollService : IRollService
             DiceMechanic.KeepHighest => EvaluateKeep(req, keepHigh: true),
             DiceMechanic.KeepLowest => EvaluateKeep(req, keepHigh: false),
             DiceMechanic.RollUnder => EvaluateRollUnder(req),
-            DiceMechanic.SuccessCount => EvaluateSuccessCount(req),
             _ => throw new ArgumentOutOfRangeException(nameof(req.Mechanic), req.Mechanic, "Unknown DiceMechanic")
         };
     }
@@ -189,46 +188,6 @@ public sealed class DefaultRollService : IRollService
             IsSuccess = success,
             Summary =
                 $"RollUnder: [{string.Join(", ", dice)}] = {result} vs TN {tn} → {(success ? "Success" : "Failure")}"
-        };
-    }
-
-    // ── SuccessCount (Fallout 2d20 pool) ──────────────────────────────────────
-
-    private RollOutcome EvaluateSuccessCount(RollRequest req)
-    {
-        var (diceCount, dieSides, _) = ParseExpression(req.Expression);
-        var tn = req.TargetNumber ??
-                 throw new InvalidOperationException($"SuccessCount requires TargetNumber (tag: {req.Tag})");
-        var critThreshold = req.CriticalThreshold ?? 0;
-
-        var dice = RollDice(diceCount, dieSides);
-        var successes = 0;
-        var hasComplication = false;
-
-        foreach (var d in dice)
-        {
-            if (d <= tn)
-            {
-                successes += (d == 1 || (critThreshold > 0 && d <= critThreshold)) ? 2 : 1;
-            }
-
-            if (d == dieSides) // natural max = complication on Fallout d20
-            {
-                hasComplication = true;
-            }
-        }
-
-        return new RollOutcome
-        {
-            Tag = req.Tag,
-            Result = successes,
-            IndividualDice = dice,
-            IsSuccess = successes > 0,
-            Successes = successes,
-            HasCritical = false, // crits in Fallout are handled differently (per-resolver)
-            HasComplication = hasComplication,
-            Summary =
-                $"{successes} success(es) (pool: [{string.Join(", ", dice)}] vs TN {tn}{(critThreshold > 0 ? $", tag ≤{critThreshold}" : "")}){(hasComplication ? " ⚠ COMPLICATION" : "")}"
         };
     }
 

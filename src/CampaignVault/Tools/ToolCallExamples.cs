@@ -282,9 +282,6 @@ internal static class ToolCallExamples
             ["spellAttackBonus"] = ["spell_attack_bonus"],
             ["saveAttribute"] = ["save_attribute"],
             ["saveSkill"] = ["save_skill"],
-            ["rangeModifier"] = ["range_modifier"],
-            ["bonusDice"] = ["bonus_dice", "luckDice"],
-            ["targetPart"] = ["target_part", "hitLocation"],
         })
         {
             if (parameters.ContainsKey(canonical))
@@ -512,8 +509,7 @@ internal static class ToolCallExamples
                     + "Fireball pattern: resolution save, dc, save, damageDice, halfOnSave true. "
                     + "Detect Magic: resolution check, dc, skill — no targetIds. "
                     + "5e casters: bootstrap spellcastingAbility on systemStats; omit dc/bonus if spellSaveDc/spellAttackBonus derived. "
-                    + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points/gold/caps; validates spell level, and spending below 0 HARD-FAILS the commit (\"Insufficient <pool> for <name>: has X, needs Y.\") — grants above max still clamp silently. Recovery on NEXT advance_world after rest, not at rest time. "
-                    + "Fallout: dc aliases difficulty; Stimpak = UseItem + healAmount. "
+                    + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points/gold; validates spell level, and spending below 0 HARD-FAILS the commit (\"Insufficient <pool> for <name>: has X, needs Y.\") — grants above max still clamp silently. Recovery on NEXT advance_world after rest, not at rest time. "
                     + "RUMORS: create with world_build (rumors[]: id, regionLocationId, subject, text); evolve an existing one with $type rumor (rumorId, newState). "
                     + "Engine auto-applies hp from ruleset_action — no duplicate hp commits. "
                     + "See get_help → Ruleset Actions for copy-paste JSON.",

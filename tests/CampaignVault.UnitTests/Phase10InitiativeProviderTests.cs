@@ -143,6 +143,71 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public void MemoryProvider_TriggerConditionMatchesPresentEntity_EmitsMemoryDriver()
+    {
+        var provider = new MemoryInitiativeProvider();
+        var npc = new Character
+        {
+            Id = "chars/guard",
+            Name = "Guard",
+            Psychology = new PsychologyProfile
+            {
+                Memories = new Dictionary<string, MemoryNode>
+                {
+                    ["Old grudge"] = new MemoryNode
+                    {
+                        Topic = "Old grudge",
+                        Details = "Holds a grudge from years ago.",
+                        Salience = 0.8,
+                        Valence = EmotionalValence.Negative,
+                        Urgency = MemoryUrgency.High,
+                        DayAcquired = 8,
+                        TriggerCondition = "Aldric"
+                    }
+                }
+            }
+        };
+        var aldric = new Character { Id = "chars/pc1", Name = "Aldric" };
+
+        var candidates = provider.GetCandidates(BuildCtx(npc, present: [npc, aldric]));
+
+        Assert.Single(candidates);
+        Assert.Equal(InitiativeDriver.Memory, candidates[0].Driver);
+    }
+
+    [Fact]
+    public void MemoryProvider_TriggerConditionNoMatch_DoesNotSurface()
+    {
+        var provider = new MemoryInitiativeProvider();
+        var npc = new Character
+        {
+            Id = "chars/guard",
+            Name = "Guard",
+            Psychology = new PsychologyProfile
+            {
+                Memories = new Dictionary<string, MemoryNode>
+                {
+                    ["Old grudge"] = new MemoryNode
+                    {
+                        Topic = "Old grudge",
+                        Details = "Holds a grudge from years ago.",
+                        Salience = 0.8,
+                        Valence = EmotionalValence.Negative,
+                        Urgency = MemoryUrgency.High,
+                        DayAcquired = 8,
+                        TriggerCondition = "Aldric"
+                    }
+                }
+            }
+        };
+        var stranger = new Character { Id = "chars/pc2", Name = "Someone Else" };
+
+        var candidates = provider.GetCandidates(BuildCtx(npc, present: [npc, stranger]));
+
+        Assert.Empty(candidates);
+    }
+
+    [Fact]
     public void NeedProvider_ActivityConflict_EmitsNeedDriver()
     {
         var provider = new NeedActivityConflictProvider();

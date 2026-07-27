@@ -17,7 +17,6 @@ public class Faction : ICampaignScopedEntity, IArchivable
     public List<string> TerritoryLocationIds { get; set; } = [];
     public List<string> KnownLeaderIds { get; set; } = [];
     public int InfluenceLevel { get; set; } = 50;
-    public List<string> EnemyFactionIds { get; set; } = [];
     public Dictionary<string, FactionStance> StanceToward { get; set; } = [];
     public Dictionary<string, float> EconomicDemand { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> Metadata { get; set; } = [];

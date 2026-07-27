@@ -546,8 +546,6 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
 
     [ObservableProperty] private float _formWillpower;
 
-    [ObservableProperty] private float _formStress;
-
     [ObservableProperty] private string _parseErrorMessage = string.Empty;
 
     [ObservableProperty] private IReadOnlyList<YamlDiagnostic> _yamlDiagnostics = Array.Empty<YamlDiagnostic>();
@@ -722,8 +720,6 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
                 {
                     _formWillpower = character.SystemStats.Willpower;
                     OnPropertyChanged(nameof(FormWillpower));
-                    _formStress = character.SystemStats.Stress;
-                    OnPropertyChanged(nameof(FormStress));
                 }
             }
         }
@@ -747,7 +743,6 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
     partial void OnFormCurrentHpChanged(int value) => SyncFormToEditor();
     partial void OnFormMaxHpChanged(int value) => SyncFormToEditor();
     partial void OnFormWillpowerChanged(float value) => SyncFormToEditor();
-    partial void OnFormStressChanged(float value) => SyncFormToEditor();
 
     private void SyncFormToEditor()
     {
@@ -761,7 +756,6 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
         ParsedCharacter.MaxHp = FormMaxHp;
         if (ParsedCharacter.SystemStats == null) ParsedCharacter.SystemStats = new SystemExtension();
         ParsedCharacter.SystemStats.Willpower = FormWillpower;
-        ParsedCharacter.SystemStats.Stress = FormStress;
         ParsedCharacter.Notes = null;
 
         var yaml = _yamlSerializer.Serialize(ParsedCharacter);

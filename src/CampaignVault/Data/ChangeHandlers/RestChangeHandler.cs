@@ -128,7 +128,7 @@ public class RestChangeHandler : IWorldChangeHandler
 
         int CalculateRestHours(RestChange restChange)
         {
-            // note: speial case, at the moment used by Fallout system for recharging AP
+            // PerTurn rests (e.g. per-round resource recharges) don't advance in-world time.
             if (restChange.RestType == RestType.PerTurn)
             {
                 return 0;

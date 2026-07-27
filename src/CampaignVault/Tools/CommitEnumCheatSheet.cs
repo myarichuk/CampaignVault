@@ -35,7 +35,7 @@ internal static class CommitEnumCheatSheet
 - `engagement_relation.restrictionLevel` → None, Soft, Hard
 - `level_up.levelsGained` → positive integer (default 1); `hpMode` (5e) → average, rolled
 - PCs: omit `maxHp` on create — use `systemStats.hitDie`/`level`/`constitution`; creatures use `statBlockHp` or `maxHp`
-- Party currency → `$type: "resource"`, `poolName`: `gold` (dnd5e/pf2e) or `caps` (fallout2d20), `delta`: ±N
+- Party currency → `$type: "resource"`, `poolName`: `gold` (dnd5e/pf2e), `delta`: ±N
 
 Full enum tables: call `get_help` → section **Commit Enum Values**.
 """;
@@ -89,14 +89,10 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | `actionCategory` | Melee, Ranged, Spell, Maneuver, Social, Survival |
 | `advantageState` | None, Advantage, Disadvantage |
 | `parameters.resolution` (Spell) | attack, save, check, utility, heal — **set explicitly** |
-| `parameters.save` | 5e abilities; PF2e Fortitude/Reflex/Will; Fallout: use `saveAttribute` + optional `saveSkill` |
+| `parameters.save` | 5e abilities; PF2e Fortitude/Reflex/Will |
 | `parameters.halfOnSave` | true/false — 5e defaults **true** (half damage on successful save) |
-| `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) or Stimpak-style items (Fallout flat `healAmount`) |
+| `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) |
 | `parameters.spellAttackBonus` / `dc` | Optional if caster has bootstrapped `spellAttackBonus` / `spellSaveDc` on systemStats |
-| `parameters.targetPart` (Fallout) | Head, Neck, Torso, LeftArm, RightArm, LeftHand, RightHand, LeftLeg, RightLeg, LeftFoot, RightFoot |
-| `parameters.bonusDice` / `useLuck` (Fallout) | Extra d20s in pool; `useLuck` adds +1 die (does not auto-spend luckPoints) |
-| `parameters.rangeModifier` / `cover` (Fallout) | Added to attack difficulty (defense + modifiers) |
-| `parameters.dc` (Fallout) | Alias for `difficulty` on saves/explosives |
 
 ### knowledge_update
 | Field | Valid values |
@@ -142,7 +138,7 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 ### world_build.characters[].systemStats / system_stats
 | Field | Valid values |
 |-------|----------------|
-| `$system` | dnd5e, pf2e, fallout2d20 (lowercase, exact — wrong casing silently falls back to untyped stats) |
+| `$system` | dnd5e, pf2e (lowercase, exact — wrong casing silently falls back to untyped stats) |
 | `hpMode` (5e) | average, rolled |
 | `hitDie` (5e) | String on extension root — e.g. `"d12"` (NOT in `attributes`) |
 | `level` | Integer on extension root (total character level) |
@@ -150,7 +146,6 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 | `spellcastingAbility` (5e) | Intelligence, Wisdom, or Charisma — derives spell DC/attack at bootstrap |
 | `spellSaveDc` / `spellAttackBonus` (5e) | Optional overrides; omit to auto-derive from level + ability |
 | `classHpPerLevel`, `ancestryHp` (PF2e) | Integers for HP derivation |
-| `endurance`, `luck`, `hpPerLevel` (Fallout) | Integers for HP derivation |
 | `statBlockHp` (all systems) | Authoritative creature HP; skips formula. PCs should omit. |
 
 ### level_up (`$type: level_up`)

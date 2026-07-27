@@ -352,8 +352,8 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         {
             context.RecordMessage(
                 $"Warning: level_up for '{levelUp.CharacterId}' applied no ruleset changes. "
-                + "Ensure systemStats has bootstrap fields (5e: hitDie/level/constitution; pf2e: classHpPerLevel/ancestryHp/level; "
-                + "fallout2d20: endurance/luck/level) and the campaign active ruleset supports level_up.");
+                + "Ensure systemStats has bootstrap fields (5e: hitDie/level/constitution; pf2e: classHpPerLevel/ancestryHp/level) "
+                + "and the campaign active ruleset supports level_up.");
         }
 
         if (levelUp.HealToMatch && character.MaxHp > previousMax)

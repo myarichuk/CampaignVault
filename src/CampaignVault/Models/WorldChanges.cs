@@ -530,8 +530,7 @@ public class ActivityChange : WorldChange
 ///   "damageDice"    – damage expression for attacks (e.g. "1d8")
 ///   "damageBonus"   – flat damage bonus for attacks
 ///   "ac"            – target AC override for attacks
-///   "difficulty"    – success count threshold for Fallout 2d20 (default "1")
-///   "targetPart"    – BodyPart enum string for hit-location targeting (Fallout 2d20)
+///   "difficulty"    – alias for "dc" on Spell actions
 ///   "advantage"     – "true"/"false" for D&amp;D 5e
 ///   "item"          – item document ID for UseItem actions (alias: weaponItemId, weapon)
 ///   "weaponItemId"  – held weapon item ID; properties merge into attack if parameters omitted
@@ -539,16 +538,13 @@ public class ActivityChange : WorldChange
 ///   "initiativeSkill" – skill name overriding default initiative (PF2e)
 ///   "targetSkill"   – skill name for the target side of a ContestedCheck
 ///   "resolution"    – spell routing: attack, save, check, utility, heal (alias: spellResolution)
-///   "save"          – saving throw ability for save-based spells (5e/PF2e) or saveAttribute (Fallout)
+///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)
 ///   "healDice"      – healing expression for heal/recovery spells (e.g. "1d8")
 ///   "healBonus"     – flat healing bonus
-///   "healAmount"    – flat HP restored (Fallout stimpak-style items)
+///   "healAmount"    – flat HP restored (no dice roll)
 ///   "spellAttackBonus" – override spell attack roll bonus (optional if caster has systemStats.spellAttackBonus)
 ///   "spellResolution" – alias for resolution
-///   "bonusDice"     – extra d20s in Fallout pools (Luck/AP); useLuck adds +1 (does not spend luckPoints)
-///   "rangeModifier" – added to Fallout attack difficulty
-///   "cover"         – added to Fallout attack difficulty
 /// Multiclass/spellcasting bootstrap lives on systemStats (character_create), NOT here: classLevels, spellcastingAbility, spellSaveDc.
 /// </summary>
 public class RulesetAction : WorldChange
@@ -738,7 +734,7 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("currentHp")]
     public int? CurrentHp { get; set; }
 
-    [Description("Ruleset-specific stats with $system discriminator (dnd5e/pf2e/fallout2d20). REQUIRED for combatants — engine warns until bootstrapped. See get_help topic=world-building for the per-ruleset bootstrap field list.")]
+    [Description("Ruleset-specific stats with $system discriminator (dnd5e/pf2e). REQUIRED for combatants — engine warns until bootstrapped. See get_help topic=world-building for the per-ruleset bootstrap field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
 
@@ -1075,7 +1071,7 @@ public class SystemStatsChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = null!;
 
-    [Description("Ruleset stats to merge. Include $system discriminator (dnd5e, pf2e, fallout2d20).")]
+    [Description("Ruleset stats to merge. Include $system discriminator (dnd5e, pf2e).")]
     [JsonPropertyName("systemStats")]
     public SystemExtension SystemStats { get; set; } = null!;
 }
@@ -1236,7 +1232,7 @@ public class ResourceChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = null!;
 
-    [Description("Pool name (e.g., 'spell_slots_3', 'font_of_magic', 'focus_points', 'action_points', 'gold' [dnd5e/pf2e currency], 'caps' [fallout2d20 currency]). Must match an existing pool in character.systemStats.resourcePools.")]
+    [Description("Pool name (e.g., 'spell_slots_3', 'font_of_magic', 'focus_points', 'action_points', 'gold' [dnd5e/pf2e currency]). Must match an existing pool in character.systemStats.resourcePools.")]
     [JsonPropertyName("poolName")]
     public string PoolName { get; set; } = null!;
 

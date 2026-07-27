@@ -11,7 +11,7 @@ namespace CampaignVault.Data;
 /// Daily-recovery pass, gated purely by ResourcePool.LastRecoveredDay, is unrelated to resting
 /// and always runs here only.
 ///
-/// LIMITATION: PerTurn recovery (Fallout 2d20 Action Points) is not automatically handled.
+/// LIMITATION: PerTurn recovery is not automatically handled.
 /// The LLM must manually reset these via resource commits at the start of each turn in combat.
 /// Example: commit { $type: "resource", characterId: "chars/agent-1", poolName: "action_points", delta: 10, reason: "Turn start" }
 /// </summary>

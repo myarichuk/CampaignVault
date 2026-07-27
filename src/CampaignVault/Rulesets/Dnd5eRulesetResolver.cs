@@ -3,6 +3,7 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Rulesets.Contributors;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets;
 
@@ -11,22 +12,18 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     private readonly IRollService _rollService;
     private readonly ICharacterBootstrapPipeline _bootstrap;
 
-    public Dnd5eRulesetResolver(IRollService rollService)
+    public Dnd5eRulesetResolver(IRollService rollService, RaceDefinitionProvider? raceProvider = null)
     {
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
         var hpStep = new Dnd5eDeriveHitPointsStep(_rollService);
         var profStep = new Dnd5eDeriveProficiencyStep();
         var passiveStep = new Dnd5eDerivePassivePerceptionStep();
         var spellStep = new Dnd5eDeriveSpellcastingStep();
+        List<IBootstrapStep> steps = raceProvider != null ? [new Dnd5eDeriveRaceStep(raceProvider)] : [];
+        steps.AddRange([hpStep, new Dnd5eDeriveDefenseStep(), profStep, passiveStep, spellStep]);
         _bootstrap = new CharacterBootstrapPipeline(
-        [
-            hpStep,
-            new Dnd5eDeriveDefenseStep(),
-            profStep,
-            passiveStep,
-            spellStep,
-        ],
-        [hpStep, profStep, passiveStep, spellStep]);
+            steps,
+            [hpStep, profStep, passiveStep, spellStep]);
     }
 
     public override RulesetSystem System => RulesetSystem.Dnd5e;

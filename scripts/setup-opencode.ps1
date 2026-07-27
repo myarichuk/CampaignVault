@@ -82,7 +82,7 @@ foreach ($line in $lines) {
     if ($inFence) { $fenceLines.Add($line) }
 }
 
-$campaignLine = "**CAMPAIGN:** campaignName=`"$Slug`" — always use this exact value on every campaign-scoped call, never ask the player or re-derive it. PC roster: $Roster — use these ids as characterId on their checks/actions. Ruleset: $Ruleset."
+$campaignLine = "**CAMPAIGN:** campaignName=`"$Slug`" - always use this exact value on every campaign-scoped call, never ask the player or re-derive it. PC roster: $Roster - use these ids as characterId on their checks/actions. Ruleset: $Ruleset."
 
 for ($i = 0; $i -lt $fenceLines.Count; $i++) {
     if ($fenceLines[$i] -match '^\*\*CAMPAIGN:\*\* campaignName=') {
