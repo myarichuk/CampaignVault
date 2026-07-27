@@ -18,6 +18,8 @@ public sealed class Dnd5eDerivePassivePerceptionStep : IBootstrapStep, ILevelGai
     private static BootstrapStepResult? ApplyPassivePerception(BootstrapContext context)
     {
         var stats = (Dnd5eExtension)context.Character.SystemStats;
+        stats.Attributes ??= [];
+
         var perceptionMod = stats.SkillModifiers
             .FirstOrDefault(kv => string.Equals(kv.Key, "Perception", StringComparison.OrdinalIgnoreCase)).Value;
         if (perceptionMod == 0)
