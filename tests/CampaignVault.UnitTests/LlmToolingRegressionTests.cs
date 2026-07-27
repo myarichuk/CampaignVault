@@ -302,9 +302,9 @@ public class LlmToolingRegressionTests
     {
         var expected = new[]
         {
-            "advance_world", "combat", "create_campaign", "end_session", "get_commit_schema",
+            "advance_world", "combat", "create_campaign", "end_session", "finalize_campaign_onboarding", "get_commit_schema",
             "get_config", "get_entity", "get_help", "get_rules_reference", "list_campaigns",
-            "recall_history", "search_world", "start_session", "take_turn", "world_build",
+            "recall_history", "search_world", "start_campaign_onboarding", "start_session", "submit_onboarding_answer", "take_turn", "world_build",
         };
 
         var actual = ToolCatalog.GetAll().Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
