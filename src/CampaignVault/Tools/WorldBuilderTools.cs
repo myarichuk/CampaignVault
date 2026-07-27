@@ -33,6 +33,8 @@ Dispatched in a fixed dependency order — locations, factions, creatures/spells
 
 Character entries get the full bootstrap treatment (HP/defense derivation). Capped at 100 total entries across all arrays — split larger seeds into multiple calls.
 
+SYSTEMSTATS REQUIREMENT (Ruleset-dependent): Combat-capable NPCs MUST have systemStats matching the campaign's active ruleset (dnd5e, pf2e, narrative, etc.). For Dnd5e: include hitDie, level, abilities (Strength, Dexterity, etc.), and optional Attributes (passivePerception auto-derived, but add custom ones like morale, corruption, reputation). For Pf2e: similar structure. For Narrative: minimal statblock OK. See get_help topic=world-building for full examples per ruleset. Characters without systemStats cannot participate in combat, skill checks, or attribute tracking.
+
 CHARACTERS DO NOT CARRY EQUIPMENT INLINE. A `characters[]` entry has no weapon/armor/gear fields — equipment is always a SEPARATE `items[]` entry in the SAME batch, with `holderId` set to the character's id (and `equipZones`/`equipLayer`/`isEquipped` if it should start worn). Seeding an armed guard, a soldier, a crime boss, or any combat-capable NPC without a matching `items[]` entry leaves them unarmed and unarmored — add the weapon/armor entries in the same call. A non-blocking warning is emitted for any newly-seeded character with no items[] entry (in this batch or already on file) so this is easy to miss but not silent.
 
 See get_help topic=world-building for a full copy-paste example and recommended seeding order.")]
@@ -237,12 +239,19 @@ See get_help topic=world-building for a full copy-paste example and recommended 
 
 Use this to seed or update full NPC records, including rich psychological data.
 
+SYSTEMSTATS (REQUIRED FOR COMBAT): Match the campaign's active ruleset:
+- Dnd5e: Provide hitDie, level, and core abilities (Strength, Dexterity, Wisdom, Intelligence, Charisma, Constitution). Engine auto-derives passivePerception and proficiencyBonus. Add Attributes for custom narrative mechanics (morale, willpower, corruption, reputation, etc.) — open-ended key/value dictionary (0-100 float range).
+- Pf2e: Similar structure; provide level and key ability modifiers.
+- Narrative/Generic: Minimal statblock OK (no combat resolution needed).
+Characters without systemStats cannot use skill checks, combat, or attribute mechanics.
+
 STRONGLY encouraged to populate:
 - psychology.wants, psychology.fears, psychology.memories
 - Detailed backstory in notes
 - Schedule + Routines + StateModifiers
 - needs.needDescriptors (human-readable explanations for any custom needs)
-- Equipment via world_build's items[] (set holderId to the character)
+- Equipment via items (separate tool; set holderId to this character's id)
+- Custom Attributes if NPC has interesting mechanical/narrative properties
 
 HP bootstrap: omit maxHp for PCs — engine derives from typed systemStats (hitDie, level, constitution, etc.).
 Creature stat blocks: set maxHp OR systemStats.statBlockHp (not both needed). currentHp alone sets wounded state.
