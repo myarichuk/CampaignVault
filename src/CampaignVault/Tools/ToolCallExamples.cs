@@ -555,6 +555,8 @@ internal static class ToolCallExamples
                     + "larger seeds into multiple calls. A validation failure on any entry rolls back the entire batch and "
                     + "reports '{kind}[{index}]' — fix that entry and resend the full batch. Forward references to an "
                     + "entity created later in the same batch are allowed (non-blocking warning only). "
+                    + "IMPORTANT: Combat NPCs MUST have systemStats.$system='dnd5e'/'pf2e' with abilities (strength, dexterity, etc.). "
+                    + "Add Attributes (morale, willpower, corruption, etc.) to enrich NPCs narratively and mechanically. "
                     + "See get_help topic=world-building for a full copy-paste example.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
@@ -564,7 +566,7 @@ internal static class ToolCallExamples
                           { "id": "locations/rusty-nail", "name": "The Rusty Nail", "description": "A dim tavern near the docks.", "type": "Building" }
                         ],
                         "characters": [
-                          { "id": "chars/innkeeper", "name": "Old Tam", "isPc": false, "isPartyCompanion": false, "currentLocationId": "locations/rusty-nail" }
+                          { "id": "chars/innkeeper", "name": "Old Tam", "isPc": false, "isPartyCompanion": false, "currentLocationId": "locations/rusty-nail", "systemStats": { "$system": "dnd5e", "level": 2, "hitDie": "d8", "strength": 10, "dexterity": 12, "constitution": 14, "intelligence": 11, "wisdom": 13, "charisma": 14, "attributes": { "morale": 65, "reputation": 75 } } }
                         ]
                       },
                       "campaignName": "dragon-heist"
@@ -583,18 +585,19 @@ internal static class ToolCallExamples
                     + "one (HP, activity, location, level-up, status) use take_turn changes instead, not another create call. "
                     + "Omit maxHp for PCs — the engine derives it from systemStats (hitDie/level/constitution etc.) at "
                     + "bootstrap; set maxHp directly only for creature stat blocks (or use systemStats.statBlockHp). "
-                    + "systemStats.$system is 'dnd5e' or 'pf2e' (lowercase, exact) — omit the whole systemStats object for "
-                    + "a narrative-only character with no ruleset stats. Omitting psychology/social/needs/systemStats on an "
-                    + "existing character preserves the stored value; providing one replaces it wholesale.",
+                    + "systemStats: Dnd5e/Pf2e require $system (lowercase), level, hitDie, and core abilities (strength, dexterity, wisdom, etc.). "
+                    + "ALWAYS add Attributes dictionary with custom narrative/mechanical properties: morale (loyalty/confidence 0-100), willpower (mental fortitude 0-100), temperature (physical comfort -50 to 100), plus campaign-specific ones (corruption, reputation, fear, honor, debt). "
+                    + "Omit systemStats entirely for narrative-only NPCs (no combat/skills). "
+                    + "Omitting psychology/social/needs/systemStats on an existing character preserves the stored value; providing one replaces it wholesale.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
                       "character": {
                         "id": "chars/valen",
-                        "name": "Valen",
+                        "name": "Valen the Brave",
                         "isPc": true,
                         "isPartyCompanion": false,
-                        "systemStats": { "$system": "dnd5e", "level": 3, "hitDie": "d10", "strength": 14, "dexterity": 12, "constitution": 14, "intelligence": 10, "wisdom": 10, "charisma": 12 }
+                        "systemStats": { "$system": "dnd5e", "level": 3, "hitDie": "d10", "strength": 14, "dexterity": 12, "constitution": 14, "intelligence": 10, "wisdom": 10, "charisma": 12, "attributes": { "morale": 75, "willpower": 60 } }
                       },
                       "campaignName": "dragon-heist"
                     }

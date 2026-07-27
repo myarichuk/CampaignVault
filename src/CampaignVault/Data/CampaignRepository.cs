@@ -3012,4 +3012,37 @@ public class CampaignRepository
 
         return summary;
     }
+
+    /// <summary>
+    /// Loads the in-progress onboarding state for a campaign, or null if none exists.
+    /// </summary>
+    public async Task<OnboardingState?> GetOnboardingStateAsync(IAsyncDocumentSession session, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var id = _keys.StateOnboarding(effective);
+        return await session.LoadAsync<OnboardingState>(id);
+    }
+
+    /// <summary>
+    /// Saves or updates the onboarding state for a campaign.
+    /// </summary>
+    public async Task UpsertOnboardingStateAsync(IAsyncDocumentSession session, OnboardingState state, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var id = _keys.StateOnboarding(effective);
+        state.Id = id;
+        state.CampaignSlug = effective;
+        state.LastUpdatedAt = DateTime.UtcNow;
+        await session.StoreAsync(state, id);
+    }
+
+    /// <summary>
+    /// Deletes the onboarding state for a campaign (typically called after finalization).
+    /// </summary>
+    public async Task DeleteOnboardingStateAsync(IAsyncDocumentSession session, string? campaignName = null)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var id = _keys.StateOnboarding(effective);
+        session.Delete(id);
+    }
 }

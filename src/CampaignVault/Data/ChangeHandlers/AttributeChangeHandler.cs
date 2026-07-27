@@ -39,6 +39,8 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure();
         }
 
+        character.SystemStats.Attributes ??= [];
+
         var key = attr.Attribute.ToLowerInvariant();
 
         switch (key)

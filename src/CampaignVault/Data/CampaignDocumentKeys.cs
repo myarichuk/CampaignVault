@@ -51,5 +51,12 @@ public sealed class CampaignDocumentKeys
     public string NeedDescriptors(string campaignName) =>
         $"campaigns/{CampaignSlug.Canonicalize(campaignName)}/config/need-descriptors";
 
+    /// <summary>
+    /// Returns the document ID for the campaign's in-progress onboarding session.
+    /// Deleted after finalization.
+    /// </summary>
+    public string StateOnboarding(string campaignName) =>
+        $"campaigns/{Normalize(campaignName)}/state/onboarding";
+
     private static string Normalize(string name) => CampaignSlug.Canonicalize(name);
 }
