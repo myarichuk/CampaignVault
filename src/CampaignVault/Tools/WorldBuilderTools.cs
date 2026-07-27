@@ -184,6 +184,23 @@ See get_help topic=world-building for a full copy-paste example and recommended 
             return;
         }
 
+        foreach (var character in batch.Characters)
+        {
+            if (string.IsNullOrWhiteSpace(character.Id))
+                continue;
+
+            if (character.SystemStats == null)
+            {
+                warnings.Add($"characters: '{character.Id}' has no systemStats — no HP/defense/abilities. " +
+                    "For combat NPCs, provide systemStats with the appropriate ruleset (dnd5e, pf2e, etc.).");
+            }
+            else if ((character.SystemStats.Attributes?.Count ?? 0) == 0)
+            {
+                warnings.Add($"characters: '{character.Id}' has no custom attributes (willpower, morale, temperature, etc.). " +
+                    "Consider adding Attributes to make this character mechanically/narratively richer.");
+            }
+        }
+
         var itemHolderIds = new HashSet<string>(
             (batch.Items ?? []).Select(i => i.HolderId).Where(h => !string.IsNullOrEmpty(h)),
             StringComparer.OrdinalIgnoreCase);
@@ -243,12 +260,32 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             var result = await ApplyCharacterUpsertAsync(s, character, effective);
-            if (result.Success && result.Data?.Id is { } charId
-                && !await s.Query<Item>().Where(i => (i.CampaignName == effective || i.CampaignName == null) && i.HolderId == charId).AnyAsync())
+            if (result.Success && result.Data?.Id is { } charId)
             {
-                var hint = $"HINT: '{charId}' has no items on file (nothing with holderId=\"{charId}\") — unarmed/unequipped. " +
-                    "Use world_build's items[] with holderId set to this character's id to give them a weapon/armor/gear.";
-                return new ToolResult<Character>(result.Success, result.Data, $"{result.Summary} {hint}", result.Error, result.WorldPressure, result.RetryExample);
+                var hints = new List<string>();
+
+                if (result.Data.SystemStats == null)
+                {
+                    hints.Add("HINT: No systemStats statblock provided — no HP/defense/abilities. " +
+                        "For combat NPCs, provide systemStats with the appropriate ruleset (dnd5e, pf2e, etc.).");
+                }
+                else if ((result.Data.SystemStats.Attributes?.Count ?? 0) == 0)
+                {
+                    hints.Add("HINT: systemStats has no custom attributes (willpower, morale, temperature, corruption, etc.). " +
+                        "Consider adding Attributes to make this character mechanically/narratively richer.");
+                }
+
+                if (!await s.Query<Item>().Where(i => (i.CampaignName == effective || i.CampaignName == null) && i.HolderId == charId).AnyAsync())
+                {
+                    hints.Add($"HINT: '{charId}' has no items on file (nothing with holderId=\"{charId}\") — unarmed/unequipped. " +
+                        "Use world_build's items[] with holderId set to this character's id to give them a weapon/armor/gear.");
+                }
+
+                if (hints.Count > 0)
+                {
+                    var hintsText = string.Join(" | ", hints);
+                    return new ToolResult<Character>(result.Success, result.Data, $"{result.Summary} {hintsText}", result.Error, result.WorldPressure, result.RetryExample);
+                }
             }
             return result;
         });
