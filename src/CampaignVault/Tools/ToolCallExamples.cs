@@ -502,7 +502,8 @@ internal static class ToolCallExamples
             {
                 ToolName = "take_turn",
                 DeserializationHint =
-                    "**Conversation events MUST include 'involved' field.** Other categories optional. Never put location IDs in 'involved'—use 'locationId' instead. "
+                    "*** CRITICAL: EVERY change object MUST include a '$type' field with one of: event, hp, engagement_relation, activity, status, status_remove, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, location_update, character_update, travel, rest, etc. Omitting '$type' causes deserialization failure. See examples for correct structure. *** "
+                    + "**Conversation events MUST include 'involved' field.** Other categories optional. Never put location IDs in 'involved'—use 'locationId' instead. "
                     + "Crowd interrupt: $type scene_interrupt_check with locationId, characterId, optional riskModifier (-50..+50). "
                     + "SPELLS: use actionType Spell + parameters.resolution (attack|save|check|utility|heal). "
                     + "AoE saves: ONE ruleset_action with all targetIds — NOT per-target SavingThrow. "

@@ -83,6 +83,8 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     [Description(
         @"UNIFIED TURN TOOL: Call this at the end of any narrative beat (combat, conversation, discovery) for atomic mutations + bundled fresh state in one round-trip.
 
+*** CRITICAL: Each change object in the changes[] array MUST include a '$type' field (the polymorphic discriminator) — this is REQUIRED. Example values: 'event', 'hp', 'engagement_relation', 'activity', 'status', 'resource', 'rumor', 'quest_progress', etc. Omitting '$type' on any change will cause deserialization to fail. ***
+
 One take_turn call carries optional mutations (Changes+Narrative) and optional refresh params, and returns the commit outcome + fresh entity summaries in one response — no separate query-before/query-after calls needed.
 
 AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes (explicitly requested extraCharacterIds/extraLocationIds are always served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
