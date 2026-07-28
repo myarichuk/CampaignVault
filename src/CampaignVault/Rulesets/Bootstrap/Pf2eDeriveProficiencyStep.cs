@@ -77,6 +77,13 @@ public sealed class Pf2eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
             changed = true;
         }
 
+        var derivedSkills = DeriveNumericModifiers(stats, level, stats.SkillProficiencies, stats.SkillModifiers, Pf2eSkillTable.KeyAbility);
+        var derivedSaves = DeriveNumericModifiers(stats, level, stats.SaveProficiencies, stats.SavingThrowModifiers, Pf2eSkillTable.SaveKeyAbility);
+        if (derivedSkills.Count > 0 || derivedSaves.Count > 0)
+        {
+            changed = true;
+        }
+
         if (!changed)
         {
             return null;
@@ -88,4 +95,43 @@ public sealed class Pf2eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
             Message = $"Set proficiency ranks on {context.Character.Name} (level {level}): AC={stats.AcProficiency}, Skills/Saves initialized to Trained.",
         };
     }
+
+    /// <summary>
+    /// Converts proficiency ranks into numeric modifiers (ability mod + proficiency bonus, where proficiency
+    /// bonus is 0 if Untrained, else level + rank value per PF2e rules). Never overwrites an entry already
+    /// present in <paramref name="modifiers"/> (DM override or previously-derived value).
+    /// </summary>
+    private static List<string> DeriveNumericModifiers(
+        Pf2eExtension stats,
+        int level,
+        IReadOnlyDictionary<string, Pf2eProficiencyRank> ranks,
+        Dictionary<string, int> modifiers,
+        IReadOnlyDictionary<string, string> keyAbilities)
+    {
+        var applied = new List<string>();
+        foreach (var (name, rank) in ranks)
+        {
+            if (modifiers.ContainsKey(name) || !keyAbilities.TryGetValue(name, out var ability))
+            {
+                continue;
+            }
+
+            var proficiencyBonus = rank == Pf2eProficiencyRank.Untrained ? 0 : level + (int)rank;
+            modifiers[name] = GetAbilityModifier(stats, ability) + proficiencyBonus;
+            applied.Add(name);
+        }
+
+        return applied;
+    }
+
+    private static int GetAbilityModifier(Pf2eExtension stats, string ability) => ability.ToLowerInvariant() switch
+    {
+        "strength" => stats.StrengthMod,
+        "dexterity" => stats.DexterityMod,
+        "constitution" => stats.ConstitutionMod,
+        "intelligence" => stats.IntelligenceMod,
+        "wisdom" => stats.WisdomMod,
+        "charisma" => stats.CharismaMod,
+        _ => 0,
+    };
 }

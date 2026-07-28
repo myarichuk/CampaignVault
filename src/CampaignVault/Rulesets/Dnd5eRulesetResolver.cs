@@ -12,11 +12,15 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     private readonly IRollService _rollService;
     private readonly ICharacterBootstrapPipeline _bootstrap;
 
-    public Dnd5eRulesetResolver(IRollService rollService, RaceDefinitionProvider? raceProvider = null)
+    public Dnd5eRulesetResolver(
+        IRollService rollService,
+        RaceDefinitionProvider? raceProvider = null,
+        ClassDefinitionProvider? classProvider = null,
+        BackgroundDefinitionProvider? backgroundProvider = null)
     {
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
         var hpStep = new Dnd5eDeriveHitPointsStep(_rollService);
-        var profStep = new Dnd5eDeriveProficiencyStep();
+        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider);
         var passiveStep = new Dnd5eDerivePassivePerceptionStep();
         var spellStep = new Dnd5eDeriveSpellcastingStep();
         List<IBootstrapStep> steps = raceProvider != null ? [new Dnd5eDeriveRaceStep(raceProvider)] : [];

@@ -31,10 +31,20 @@ You are persisting changes to the world: events, character state, items, relatio
 | Character State | `character_update`, `mood`, `knowledge_update` | Appearance, mood, memory |
 | Relationships | `relationship`, `engagement_relation`, `spatial_position` | Social bonds, proximity, restraint |
 | Inventory | `item`, `item_update`, `item_equip`, `item_unequip` | Carry/drop/equip items |
+
+**Picking up / dropping / giving an item (`$type: "item"`):** moves an *existing* item to a new holder — character, location, or container item. Never narrate a pickup without it, or the item stays owned by its old holder and `get_entity` on the location will still list it as `visibleItems`.
+
+```json
+{ "$type": "item", "itemId": "items/gold-coin", "toHolderId": "chars/lyra" }
+```
+
+For a brand-new item (loot that didn't exist yet), create it via `world_build`'s `items[]` first, then transfer if needed.
 | Combat/Mechanics | `ruleset_action`, `status`, `hp`, `resource` | Dice rolls, HP, spell slots |
 | Activities | `activity`, `travel`, `rest` | Movement, waiting, recovery |
 | Quests/World | `quest_progress`, `rumor`, `faction_state`, `plot_thread_progress` | Story progression |
 | Locations | `location_update` | State, PoI materialization, danger modifier |
+
+**`location_update.description` is static prose** — independent of `currentState`/`pointOfInterestDetails` and never auto-rewritten. If a state change would make the old description contradict canon (e.g. a body removed from a scene, a fire put out), explicitly resend a new `description` in the same `location_update`, or `get_entity` will keep surfacing the stale text.
 | Campaign | `campaign_update` | Narrative focus tags (full replacement list) |
 
 Call `get_commit_schema` for the machine-readable field list per $type.
@@ -51,7 +61,7 @@ New locations follow the same rule — see `dnd-exploration` for the Region→Se
 
 ## Batch Changes (one take_turn, multiple changes)
 
-Atomic all-or-nothing; if any change fails, the entire batch rolls back — fix the failing entry and resend the FULL batch:
+Atomic all-or-nothing; if any change fails, the entire batch rolls back — **nothing is saved, including changes earlier in the same batch that individually "succeeded."** Fix the failing entry and resend the FULL corrected batch, not just the fix.
 
 ```json
 [
@@ -65,8 +75,10 @@ Atomic all-or-nothing; if any change fails, the entire batch rolls back — fix 
 
 - `ruleset_action.actionType` — "Attack", "Spell", "SkillCheck", etc.
 - `quest_progress.newState` — "Open", "Active", "Complete", "Failed", etc.
+- `quest_progress` — must also include `objectiveIndex` or `objectiveName`; there's no default, and omitting both hard-fails the change (and the whole batch with it).
 - `rest.intendedHours` — always set explicitly (positive number)
 - `event.locationId` — never put location ID inside `involved`
+- `knowledge_update.sourceEventIds` — required when `source` is `Witnessed` or `Experienced` (the character was directly there). Pass a client-chosen `eventId` on the paired `event`/`ruleset_action` change in the *same* batch and reference it here — the engine won't hand back a mid-batch ID for reuse, so you must pre-choose one. `Heard`/`Told` (secondhand/rumor) don't need this.
 
 ## Time Tracking
 

@@ -736,6 +736,14 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
 
         ApplyEnrichment(memory, ku, isNew);
 
+        if ((memory.Source is MemorySource.Witnessed or MemorySource.Experienced)
+            && (memory.SourceEventIds == null || memory.SourceEventIds.Count == 0))
+        {
+            return ChangeHandlerResult.Failure(
+                $"knowledge_update for '{ku.CharacterId}' topic '{ku.Topic}' has source={memory.Source} (directly event-sourced) "
+                + "but no sourceEventIds. Pass a client-chosen eventId on the paired event change in this same batch and reference it here.");
+        }
+
         context.RecordMessage($"Updated memory for character '{ku.CharacterId}' regarding '{ku.Topic}'.");
         return ChangeHandlerResult.Ok;
     }

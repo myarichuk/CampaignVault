@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Services;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -112,6 +115,102 @@ public class BootstrapStepTests
     }
 
     [Fact]
+    public async Task Dnd5eDeriveProficiencyStep_FirstDerivation_HintsClassSkillChoice()
+    {
+        var step = new Dnd5eDeriveProficiencyStep();
+        var character = new Character
+        {
+            Id = "chars/hinted-fighter",
+            Name = "Borin",
+            ClassLevel = "Dwarf Fighter 1",
+            SystemStats = new Dnd5eExtension(),
+        };
+        var context = CreateContext(character, RulesetSystem.Dnd5e);
+
+        var createResult = await step.ApplyAsync(context);
+        Assert.NotNull(createResult);
+        Assert.Contains(createResult!.LlmHints, h => h.Contains("Fighter") && h.Contains("skillModifiers"));
+
+        // Level gain shouldn't repeat the hint once proficiencyBonus already exists at the same level.
+        var levelGainResult = await step.ApplyLevelGainAsync(context);
+        Assert.Null(levelGainResult);
+    }
+
+    [Fact]
+    public async Task Dnd5eDeriveProficiencyStep_DerivesBackgroundSkillModifiers()
+    {
+        var assembly = typeof(ClassDefinitionProvider).Assembly;
+        var dir = Path.Combine(Path.GetTempPath(), "cv_ruleset_test_" + Guid.NewGuid());
+        var backgrounds = new BackgroundDefinitionProvider(dir, assembly);
+        var step = new Dnd5eDeriveProficiencyStep(backgroundProvider: backgrounds);
+        var character = new Character
+        {
+            Id = "chars/acolyte",
+            Name = "Acolyte",
+            ClassLevel = "Human Cleric 1",
+            SystemStats = new Dnd5eExtension { Background = "acolyte", Wisdom = 16 },
+        };
+
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
+
+        Assert.NotNull(result);
+        // acolyte grants Insight (Wisdom) + Religion (Intelligence); Wisdom mod +3, proficiencyBonus +2 at level 1
+        Assert.Equal(5, stats.SkillModifiers["Insight"]);
+        Assert.Equal(2, stats.SkillModifiers["Religion"]);
+    }
+
+    [Fact]
+    public async Task Dnd5eDeriveProficiencyStep_DerivesClassSavingThrowModifiers()
+    {
+        var assembly = typeof(ClassDefinitionProvider).Assembly;
+        var dir = Path.Combine(Path.GetTempPath(), "cv_ruleset_test_" + Guid.NewGuid());
+        var classes = new ClassDefinitionProvider(dir, assembly);
+        var step = new Dnd5eDeriveProficiencyStep(classProvider: classes);
+        var character = new Character
+        {
+            Id = "chars/fighter-saves",
+            Name = "Fighter",
+            ClassLevel = "Human Fighter 1",
+            SystemStats = new Dnd5eExtension { Strength = 16, Constitution = 14 },
+        };
+
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
+
+        Assert.NotNull(result);
+        // Fighter is proficient in Strength + Constitution saves; +3 Str mod / +2 Con mod, proficiencyBonus +2 at level 1
+        Assert.Equal(5, stats.SavingThrowModifiers["Strength"]);
+        Assert.Equal(4, stats.SavingThrowModifiers["Constitution"]);
+    }
+
+    [Fact]
+    public async Task Dnd5eDeriveProficiencyStep_DoesNotOverwriteExistingSkillModifier()
+    {
+        var assembly = typeof(ClassDefinitionProvider).Assembly;
+        var dir = Path.Combine(Path.GetTempPath(), "cv_ruleset_test_" + Guid.NewGuid());
+        var backgrounds = new BackgroundDefinitionProvider(dir, assembly);
+        var step = new Dnd5eDeriveProficiencyStep(backgroundProvider: backgrounds);
+        var character = new Character
+        {
+            Id = "chars/acolyte-override",
+            Name = "Acolyte",
+            ClassLevel = "Human Cleric 1",
+            SystemStats = new Dnd5eExtension
+            {
+                Background = "acolyte",
+                Wisdom = 16,
+                SkillModifiers = new Dictionary<string, int> { ["Insight"] = 99 },
+            },
+        };
+
+        await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
+
+        Assert.Equal(99, stats.SkillModifiers["Insight"]);
+    }
+
+    [Fact]
     public async Task Dnd5eDerivePassivePerceptionStep_UsesSkillModifier()
     {
         var step = new Dnd5eDerivePassivePerceptionStep();
@@ -175,6 +274,29 @@ public class BootstrapStepTests
         await step.ApplyAsync(CreateContext(character, RulesetSystem.Pathfinder2e));
 
         Assert.Equal(32, character.MaxHp);
+    }
+
+    [Fact]
+    public async Task Pf2eDeriveProficiencyStep_DerivesNumericSkillAndSaveModifiers()
+    {
+        var profStep = new Pf2eDeriveProficiencyStep();
+        var character = new Character
+        {
+            Id = "chars/pf-skills",
+            Name = "Elara",
+            SystemStats = new Pf2eExtension { Level = 3, DexterityMod = 3, WisdomMod = 2 },
+        };
+
+        var result = await profStep.ApplyAsync(CreateContext(character, RulesetSystem.Pathfinder2e));
+        var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
+
+        Assert.NotNull(result);
+        // Trained (rank value 2) + level 3 + Dex mod 3 = 8
+        Assert.Equal(8, stats.SkillModifiers["Stealth"]);
+        // Reflex save: Trained (2) + level 3 + Dex mod 3 = 8
+        Assert.Equal(8, stats.SavingThrowModifiers["Reflex"]);
+        // Will save: Trained (2) + level 3 + Wis mod 2 = 7
+        Assert.Equal(7, stats.SavingThrowModifiers["Will"]);
     }
 
     [Fact]

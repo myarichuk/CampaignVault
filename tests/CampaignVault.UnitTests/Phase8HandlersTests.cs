@@ -271,7 +271,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Valence = EmotionalValence.Positive,
             Salience = 0.8,
             Urgency = MemoryUrgency.Normal,
-            RelatedEntityIds = ["chars/pc1", "items/necklace"]
+            RelatedEntityIds = ["chars/pc1", "items/necklace"],
+            SourceEventIds = ["events/party-gift"]
         };
 
         var result = await handler.ApplyAsync(update, ctx);
@@ -324,7 +325,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/infer",
             Topic = "The brawl",
-            Details = "I witnessed violence and death in the square."
+            Details = "I witnessed violence and death in the square.",
+            SourceEventIds = ["events/square-brawl"]
         };
 
         var result = await handler.ApplyAsync(update, ctx);
@@ -335,6 +337,29 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Equal(EmotionalValence.Negative, mem.Valence);
         Assert.True(mem.Salience >= 0.7);
         Assert.Equal(MemoryUrgency.High, mem.Urgency);
+    }
+
+    [Fact]
+    public async Task KnowledgeUpdate_WitnessedWithoutSourceEventIds_Fails()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var c = new Character { Id = "chars/infer-missing-source", Name = "InferMissingSource" };
+        await session.StoreAsync(c);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+        var handler = new KnowledgeUpdateHandler();
+        var update = new KnowledgeUpdate
+        {
+            CharacterId = "chars/infer-missing-source",
+            Topic = "The brawl",
+            Details = "I witnessed violence and death in the square."
+        };
+
+        var result = await handler.ApplyAsync(update, ctx);
+
+        Assert.False(result.Success);
+        Assert.Contains("sourceEventIds", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
