@@ -83,7 +83,10 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     [Description(
         @"UNIFIED TURN TOOL: Call this at the end of any narrative beat (combat, conversation, discovery) for atomic mutations + bundled fresh state in one round-trip.
 
-*** CRITICAL: Each change object in the changes[] array MUST include a '$type' field (the polymorphic discriminator) — this is REQUIRED. Example values: 'event', 'hp', 'engagement_relation', 'activity', 'status', 'resource', 'rumor', 'quest_progress', etc. Omitting '$type' on any change will cause deserialization to fail. ***
+🚨 *** CRITICAL — REQUIRED FIELD: '$type' *** 🚨
+Every single change object in the changes[] array MUST include a '$type' field (the polymorphic discriminator). This is NOT OPTIONAL — it is REQUIRED for every change. If ANY object lacks '$type', the entire batch will fail to deserialize and be rejected.
+
+Valid $type values: event, hp, engagement_relation, activity, status, status_remove, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, location_update, character_update, travel, rest, level_up, schedule_change, item, item_transfer, item_equip, item_unequip, item_use, ruleset_action, faction_reputation, faction_state, scene_setup, scene_interrupt_check, spatial_position, memory_decay, knowledge_update, and more.
 
 One take_turn call carries optional mutations (Changes+Narrative) and optional refresh params, and returns the commit outcome + fresh entity summaries in one response — no separate query-before/query-after calls needed.
 

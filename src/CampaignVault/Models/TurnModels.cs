@@ -10,7 +10,7 @@ namespace CampaignVault.Models;
 public class TakeTurnRequest
 {
     [Description(
-        "Array of world changes to commit (optional). REQUIRED: Each item MUST include '$type' field with the change type name (e.g. 'event', 'hp', 'engagement_relation', 'activity', 'status', etc.). Without $type, deserialization will fail. Omit entirely for pure queries.")]
+        "Array of world changes to commit (optional, null/empty for pure queries). *** REQUIRED FIELD: '$type' *** Every single change object MUST include a '$type' discriminator field — this is not optional. Valid values: event, hp, engagement_relation, activity, status, status_remove, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, location_update, character_update, travel, rest, level_up, and 25+ others. Omitting '$type' on ANY item will cause the entire batch to fail deserialization.")]
     [JsonPropertyName("changes")]
     public WorldChange[]? Changes { get; set; }
 
