@@ -53,11 +53,13 @@ internal static class PressureQueryHelper
         IAsyncDocumentSession session, string campaignName, int limit, CancellationToken ct = default)
     {
         var indexed = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(3))
             .WhereEquals(x => x.CampaignName, campaignName)
             .Take(limit * 2)
             .ToListAsync(ct);
 
         var shareable = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(3))
             .Not.WhereExists(x => x.CampaignName)
             .Take(limit)
             .ToListAsync(ct);

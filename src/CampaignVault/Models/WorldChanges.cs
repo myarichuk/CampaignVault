@@ -9,7 +9,7 @@ namespace CampaignVault.Models;
 /// The LLM must include the exact <c>$type</c> discriminator so the server knows which concrete change to apply.
 /// Mix as many different change kinds as needed in a single call for atomicity.
 /// </summary>
-[Description("REQUIRED: Every WorldChange object MUST include the exact '$type' discriminator field. Valid values: hp, activity, relationship, need, event, status, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, travel, rest, location_update, character_update, and 30+ others. Omitting '$type' will cause deserialization to fail. Mix freely (hp + activity + relationship + need + event, etc.) for atomicity.")]
+[Description("REQUIRED: Every WorldChange object MUST include the exact '$type' discriminator field. Valid values: hp, activity, relationship, need, event, status, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, travel, rest, location_update, character_update, system_stats, and 30+ others. Omitting '$type' will cause deserialization to fail. Use 'system_stats' (or character_update's systemStats field) to bootstrap/patch a character's ruleset combat stats — see IncompleteSystemStats ENGINE WARNING. Mix freely (hp + activity + relationship + need + event, etc.) for atomicity.")]
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(HpChange), "hp")]
 [JsonDerivedType(typeof(ItemTransfer), "item")]

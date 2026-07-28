@@ -17,6 +17,10 @@ internal enum HelpTopic
     [Description("Initial world-building (session 0) guide")]
     WorldBuilding,
 
+    /// <summary>Guided session-0 Q&amp;A flow: start_campaign_onboarding / submit_onboarding_answer / finalize_campaign_onboarding — when to use it vs going straight to create_campaign + world_build.</summary>
+    [Description("Guided campaign onboarding (session 0 Q&A) — when to use it vs create_campaign")]
+    Onboarding,
+
     /// <summary>Commit patterns: tavern walkthrough, quest lifecycle, wilderness, transients.</summary>
     [Description("Commit patterns and narrative examples")]
     Patterns,
@@ -73,9 +77,9 @@ public class MetaTools : IMcpServerTool
 
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: world-building, patterns, combat, world-pressure, visual-sandbox (item damage/wear/hidden-feature tracking, tags, appearance, knowledge), commit-enum, tools (full MCP tool catalog), or faq. Each topic is self-contained with copy-paste examples.")]
+    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: onboarding, world-building, patterns, combat, world-pressure, visual-sandbox (item damage/wear/hidden-feature tracking, tags, appearance, knowledge), commit-enum, tools (full MCP tool catalog), or faq. Each topic is self-contained with copy-paste examples.")]
     public Task<ToolResult<string>> GetHelp(
-        [Description("Optional help topic for focused deep-dive sections: 'world-building' (session-0 seeding order + world_build example), 'patterns' (take_turn change examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox' (persistent item details: scratches/stains/secret compartments/damage, tags, appearance, knowledge), 'commit-enum', 'tools' (full MCP tool catalog grouped by category), 'faq'. Omit for lean quickstart.")]
+        [Description("Optional help topic for focused deep-dive sections: 'onboarding' (guided session-0 Q&A — start_campaign_onboarding/submit_onboarding_answer/finalize_campaign_onboarding, and when to use it vs going straight to create_campaign), 'world-building' (session-0 seeding order + world_build example), 'patterns' (take_turn change examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox' (persistent item details: scratches/stains/secret compartments/damage, tags, appearance, knowledge), 'commit-enum', 'tools' (full MCP tool catalog grouped by category), 'faq'. Omit for lean quickstart.")]
         string? topic = null)
     {
         var content = GetHelpContent(topic);
@@ -92,6 +96,8 @@ public class MetaTools : IMcpServerTool
 
         return topic switch
         {
+            HelpTopic.Onboarding => DmHelpManual.OnboardingSection,
+
             HelpTopic.WorldBuilding => DmHelpManual.WorldBuildingSection,
 
             HelpTopic.Patterns => DmHelpManual.PatternsSection

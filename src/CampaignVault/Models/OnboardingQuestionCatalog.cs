@@ -9,6 +9,7 @@ public static class OnboardingQuestionCatalog
     public const string CampaignName = "campaign_name";
     public const string System = "system";
     public const string Tone = "tone";
+    public const string StartingEra = "starting_era";
     public const string WorldSetting = "world_setting";
     public const string PartyComposition = "party_composition";
     public const string SoloCompanions = "solo_companions";
@@ -51,6 +52,15 @@ public static class OnboardingQuestionCatalog
                 Text = "What's the tone and themes of your campaign? (e.g., 'dark fantasy', 'cozy tavern mysteries', 'space opera')",
                 AnswerType = OnboardingAnswerType.Text,
                 HelpText = "This steers the LLM's content generation and how important events should feel."
+            },
+
+            // Q2b: Starting Era/Year
+            new OnboardingQuestion
+            {
+                Key = StartingEra,
+                Text = "What year, era, or calendar date does your campaign begin in? (e.g., '1492 DR', 'the Age of Dragons, year 20', or say 'present day'/'doesn't matter' for a default fantasy start)",
+                AnswerType = OnboardingAnswerType.Text,
+                HelpText = "Sets the campaign's starting in-world date (epoch name and year). Free text — a leading number is parsed as the starting year; the rest is kept as the epoch label."
             },
 
             // Q3: World Setting (Solo vs Party, Existing vs Homebrew)

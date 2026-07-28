@@ -11,7 +11,7 @@ Welcome to the CampaignVault engine. Your role as the AI DM is to drive the narr
 
 ## Quickstart for Models
 1. **Call `get_help`** (this document); `get_help topic=tools` lists the full tool catalog.
-2. **Establish campaign context**: `list_campaigns` → `create_campaign` (if needed), then pass `campaignName` on every tool call.
+2. **Establish campaign context**: `list_campaigns` → `create_campaign` (if needed; or `start_campaign_onboarding` first if the user hasn't told you the setting/tone/ruleset yet — see `get_help topic=onboarding`), then pass `campaignName` on every tool call.
 3. **Call `start_session(campaignName)`** once at kickoff — one round-trip returns the last-session recap, campaign context (ruleset, narrative focus), authoritative world state (time, rumors, events, **WorldPressure**, seedCoverage), and the party roster. Safe to re-call after a reconnect (it resumes the open session).
 4. **Call `get_entity`** with a `locations/...` id (partyPresent:true) whenever the party enters a location. Action any `ENGINE WARNING` / `NARRATIVE PROMPT` immediately.
 5. **Call `take_turn`** at the end of every meaningful beat (combat, conversation, discovery): pass the changes[] + narrative, and get the commit outcome plus fresh entity summaries echoed back in one response — no re-query needed.
@@ -69,6 +69,7 @@ For tense or crowded scenes (interrogation, stakeout, a heated negotiation — n
 
 ## For Deep Dives
 
+- **Guided session-0 Q&A (when the user hasn't told you setting/tone/ruleset yet)**: call `get_help topic=onboarding`
 - **Initial world-building / session 0**: call `get_help topic=world-building`
 - **Change patterns & examples**: call `get_help topic=patterns`
 - **Combat & ruleset actions**: call `get_help topic=combat`
@@ -91,6 +92,8 @@ Call `get_help topic=tools` for the full catalog. The surface is deliberately sm
 **Deep Dives**: `get_entity` (ONE entity in full detail by exact id: chars/, locations/, factions/, quests/, items/, plot-threads/)
 
 **Campaign Management**: `create_campaign`, `list_campaigns`, `get_config`, `get_rules_reference` (kind: handbook | spells | creatures)
+
+**Campaign Onboarding** (optional guided session-0 Q&A — see `get_help topic=onboarding`): `start_campaign_onboarding`, `submit_onboarding_answer`, `finalize_campaign_onboarding`
 
 **World Builder**: `world_build` (batch create/update for all entity kinds + needDescriptors)
 
@@ -688,13 +691,27 @@ For more details, call `get_commit_schema` (optional category filter: Combat, Na
 **Watch your WorldPressure — it's your co-DM:** Never ignore ENGINE WARNING or NARRATIVE PROMPT. If you see the same pressure twice, you didn't commit the fix.
 ";
 
+    internal const string OnboardingSection = @"# Guided Campaign Onboarding (Session 0 Q&A)
+
+`start_campaign_onboarding` / `submit_onboarding_answer` / `finalize_campaign_onboarding` are an OPTIONAL guided alternative to calling `create_campaign` directly. They exist to prevent hallucination when the user has NOT yet told you their setting, tone, ruleset, or plot — the tool asks one structured question at a time (system, tone, starting era/year, solo-vs-party, plot source, factions, etc.) instead of you inventing answers.
+
+## When to use it vs going straight to `create_campaign`
+
+**Use onboarding** when the user's opening message is short/vague (""let's start a new campaign"", ""set up a D&D game for me"") and you don't yet know the ruleset, tone, or starting point. Call `start_campaign_onboarding(campaignName)`, then `submit_onboarding_answer` for each question it returns, then `finalize_campaign_onboarding` once it reports `ready_to_build` — that call creates the locked `Campaign` doc (system, narrative focus, starting lore/year) from the collected answers. Follow it with `world_build` as usual (see `get_help topic=world-building`).
+
+**Skip straight to `create_campaign` + `world_build`** when the user has ALREADY given you the substance in their own words — a plot outline, a PC character sheet, a named antagonist, an inciting incident, a specific ruleset. Onboarding's questions only collect abstract preference flags (system/tone/era/solo-vs-party/plot-source); it has no field for verbatim content like a full stat block or a named villain. Re-asking questions the user already answered unprompted is a laziness trap, not thoroughness — extract the ruleset/tone/era straight from what they gave you, call `create_campaign` with it, then seed the PCs/antagonist/plot via `world_build` directly. If they mentioned some things but left real gaps (e.g. gave you a plot but not a ruleset), ask only about the gaps in plain conversation, or run onboarding only for the unanswered questions — don't restart the full Q&A sequence over information already on the table.
+
+Onboarding state is per-campaign-slug and resumable: calling `start_campaign_onboarding` again on an in-progress slug resumes where it left off instead of restarting.
+";
+
     internal const string WorldBuildingSection = @"# Initial World-Building (Session 0)
 
 Seeding a fresh campaign — the starting region, key NPCs, opening quest — is a one-time batch job. Use `world_build` instead of many individual entity calls: it accepts arrays for every entity kind in one atomic call (all-or-nothing — a bad entry rolls back the whole batch and tells you which one failed).
 
 ## Before you seed
 
-1. `create_campaign` — pass `initialSystem` (locks the ruleset immediately; bootstrap HP/AC derivation for `world_build`'s `characters[]` depends on it) and `narrativeFocus` (steers `importance` defaults on later `event` changes; update later via a `campaign_update` change in take_turn).
+0. If the user hasn't told you the ruleset/tone/setting yet, consider the guided `start_campaign_onboarding` flow first instead of guessing — see `get_help topic=onboarding` for when it's worth it vs going straight to step 1 below.
+1. `create_campaign` — pass `initialSystem` (locks the ruleset immediately; bootstrap HP/AC derivation for `world_build`'s `characters[]` depends on it) and `narrativeFocus` (steers `importance` defaults on later `event` changes; update later via a `campaign_update` change in take_turn). Skip this step if `finalize_campaign_onboarding` already created the campaign.
 
 ## Recommended seeding order (matches world_build's own dispatch order)
 

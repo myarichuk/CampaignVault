@@ -158,6 +158,33 @@ public abstract class CampaignToolBase
                 config.ActiveSystem = defaultSystem;
             }
         }
+        else if (forceLock && !campaign.IsSystemLocked)
+        {
+            // `campaign` is a phantom meta doc auto-vivified by an earlier read tool call against
+            // this slug (e.g. get_scene, get_session_briefing) before a real creation flow ever ran —
+            // it has no System/IsSystemLocked set (IsSystemLocked only ever becomes true via a real
+            // create_campaign or finalize_campaign_onboarding call). Adopt it here instead of silently
+            // leaving the caller's explicitly chosen system/lock discarded.
+            campaign.DisplayName = string.IsNullOrWhiteSpace(displayName) ? normalizedName : displayName;
+            campaign.System = defaultSystem;
+            campaign.IsSystemLocked = true;
+
+            var configId = _keys.Config(normalizedName);
+            var config = await session.LoadAsync<CampaignConfig>(configId);
+            if (config == null)
+            {
+                config = new CampaignConfig
+                {
+                    Id = configId,
+                    ActiveSystem = defaultSystem
+                };
+                await session.StoreAsync(config, configId);
+            }
+            else
+            {
+                config.ActiveSystem = defaultSystem;
+            }
+        }
         return campaign;
     }
 }

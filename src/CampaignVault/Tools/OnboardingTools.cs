@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Services;
@@ -221,6 +222,10 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
                 ? toneObj?.ToString() ?? ""
                 : "";
 
+            var startingEraStr = state.CollectedAnswers.TryGetValue(OnboardingQuestionCatalog.StartingEra, out var eraObj)
+                ? eraObj?.ToString() ?? ""
+                : "";
+
             var worldSetting = state.CollectedAnswers.TryGetValue(OnboardingQuestionCatalog.WorldSetting, out var wsObj)
                 ? wsObj?.ToString() ?? "party-homebrew"
                 : "party-homebrew";
@@ -245,8 +250,24 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
             // Create the campaign with collected settings
             var campaign = await GetOrCreateCampaignMetaAsync(session, effective, system, campaignNameFromAnswer, forceLock: true);
             campaign.NarrativeFocus = narrativeFocus;
+            campaign.LoreSettings = ParseStartingEra(startingEraStr);
             campaign.Metadata["onboarding_completed"] = DateTime.UtcNow.ToString("O");
             await session.StoreAsync(campaign);
+
+            // A phantom CampaignTime doc may already exist (GetTimeAsync auto-vivifies with default
+            // lore on any read against this slug before onboarding finishes) — reseed it to the lore
+            // actually chosen here rather than silently keeping the earlier default. Mirrors
+            // create_campaign's equivalent reseed in CampaignManagementTools.CreateCampaign.
+            var existingTime = await session.LoadAsync<CampaignTime>(_keys.StateTime(effective));
+            if (existingTime != null)
+            {
+                existingTime.Epoch = campaign.LoreSettings.Epoch;
+                existingTime.Year = campaign.LoreSettings.Year;
+                existingTime.Month = campaign.LoreSettings.Month;
+                existingTime.Day = campaign.LoreSettings.Day;
+                existingTime.Hour = campaign.LoreSettings.StartingHour;
+                existingTime.TotalDaysElapsed = 0;
+            }
 
             // Also save the world building preferences to campaign metadata for world_build to reference
             foreach (var flag in state.WorldBuildingFlags)
@@ -280,6 +301,38 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
                 },
                 $"Onboarding finalized for '{campaignNameFromAnswer}'.");
         });
+    }
+
+    /// <summary>
+    /// Parses the free-text starting_era onboarding answer into a CampaignLoreSettings.
+    /// A leading integer (e.g. "1492 DR", "year 20") is taken as the starting Year; whatever text
+    /// remains after stripping it becomes the Epoch label. Blank/generic answers ("present day",
+    /// "doesn't matter") fall back to the same defaults create_campaign uses.
+    /// </summary>
+    private static CampaignLoreSettings ParseStartingEra(string? answer)
+    {
+        var settings = new CampaignLoreSettings();
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            return settings;
+        }
+
+        var match = Regex.Match(answer, @"\d+");
+        if (match.Success && int.TryParse(match.Value, out var parsedYear))
+        {
+            settings.Year = parsedYear;
+            var remainder = answer.Remove(match.Index, match.Length).Trim(' ', ',', '-', '.', ':');
+            if (!string.IsNullOrWhiteSpace(remainder))
+            {
+                settings.Epoch = remainder;
+            }
+        }
+        else
+        {
+            settings.Epoch = answer.Trim();
+        }
+
+        return settings;
     }
 
     private static string DetermineBranchingPath(OnboardingState state)

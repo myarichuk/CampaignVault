@@ -128,40 +128,11 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
                 StartingHour = loreHour ?? 6
             };
 
-            Campaign campaign;
-            if (existing != null)
-            {
-                // `existing` is a phantom meta doc auto-created by a read tool (e.g. get_scene,
-                // get_session_briefing) called against this slug before create_campaign ever ran —
-                // it has no System/IsSystemLocked set (IsSystemLocked only ever becomes true via a
-                // real create_campaign or set_active_system call). Adopt it here instead of refusing
-                // "AlreadyExists", so a stray earlier read never permanently blocks real creation.
-                campaign = existing;
-                campaign.DisplayName = string.IsNullOrWhiteSpace(displayName) ? normalized : displayName;
-                campaign.System = initialSystem;
-                campaign.IsSystemLocked = true;
-
-                var config = await _repository.GetCampaignConfigAsync(session, normalized);
-                config.ActiveSystem = initialSystem;
-
-                // A phantom CampaignTime doc may already exist too (GetTimeAsync auto-vivifies with
-                // default lore on any read against this slug) — reseed it to the lore actually chosen
-                // here rather than silently keeping the earlier default.
-                var existingTime = await session.LoadAsync<CampaignTime>(_keys.StateTime(normalized));
-                if (existingTime != null)
-                {
-                    existingTime.Epoch = loreSettings.Epoch;
-                    existingTime.Year = loreSettings.Year;
-                    existingTime.Month = loreSettings.Month;
-                    existingTime.Day = loreSettings.Day;
-                    existingTime.Hour = loreSettings.StartingHour;
-                    existingTime.TotalDaysElapsed = 0;
-                }
-            }
-            else
-            {
-                campaign = await GetOrCreateCampaignMetaAsync(session, normalized, initialSystem, displayName, forceLock: true);
-            }
+            // GetOrCreateCampaignMetaAsync adopts a phantom meta doc (auto-vivified by an earlier
+            // read tool against this slug) in place — sets System/DisplayName/IsSystemLocked/config
+            // — instead of leaving the chosen system silently discarded (see the AlreadyExists guard
+            // above for the case where a real, already-locked campaign already exists).
+            var campaign = await GetOrCreateCampaignMetaAsync(session, normalized, initialSystem, displayName, forceLock: true);
 
             if (narrativeFocus is { Count: > 0 })
             {
@@ -169,6 +140,20 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
             }
 
             campaign.LoreSettings = loreSettings;
+
+            // A phantom CampaignTime doc may already exist too (GetTimeAsync auto-vivifies with
+            // default lore on any read against this slug) — reseed it to the lore actually chosen
+            // here rather than silently keeping the earlier default.
+            var existingTime = await session.LoadAsync<CampaignTime>(_keys.StateTime(normalized));
+            if (existingTime != null)
+            {
+                existingTime.Epoch = loreSettings.Epoch;
+                existingTime.Year = loreSettings.Year;
+                existingTime.Month = loreSettings.Month;
+                existingTime.Day = loreSettings.Day;
+                existingTime.Hour = loreSettings.StartingHour;
+                existingTime.TotalDaysElapsed = 0;
+            }
 
             return new ToolResult<Campaign>(true, campaign,
                 $"Campaign '{normalized}' created and locked to {initialSystem}. Pass campaignName='{normalized}' on subsequent calls.");
