@@ -83,6 +83,9 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     [Description(
         @"UNIFIED TURN TOOL: Call this at the end of any narrative beat (combat, conversation, discovery) for atomic mutations + bundled fresh state in one round-trip.
 
+🚨 *** CRITICAL CONSTRAINT: MUST HAVE EITHER CHANGES OR A REFRESH PARAM *** 🚨
+You MUST pass EITHER (1) Changes with a Narrative summary, OR (2) at least one refresh parameter (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, or fullDetailLocationId). Passing neither (empty call with no refresh param) will be rejected. This prevents wasted no-op calls.
+
 🚨 *** CRITICAL — REQUIRED FIELD: '$type' *** 🚨
 Every single change object in the changes[] array MUST include a '$type' field (the polymorphic discriminator). This is NOT OPTIONAL — it is REQUIRED for every change. If ANY object lacks '$type', the entire batch will fail to deserialize and be rejected.
 
@@ -92,9 +95,9 @@ One take_turn call carries optional mutations (Changes+Narrative) and optional r
 
 AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes (explicitly requested extraCharacterIds/extraLocationIds are always served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
 
-Pure queries (no Changes): pass just the refresh params with Changes omitted to refresh specific entities without mutations. Check the 'warnings' array in the response for any section that could not be assembled.")]
+Pure queries (no Changes): omit Changes, provide at least one refresh param, and the response will refresh specific entities without mutations. Examples: includeWorldState=true to get campaign state, includeParty=true to get party summaries, or extraCharacterIds=[id] to refresh specific NPCs. Check the 'warnings' array in the response for any section that could not be assembled.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
-        [Description("Bundled turn request: optional mutations (Changes+Narrative) and/or entity refresh requests (AutoRefreshInvolved, ExtraCharacterIds, ExtraLocationIds).")]
+        [Description("Bundled turn request: MUST contain EITHER (1) Changes with Narrative, OR (2) at least one refresh parameter. Passing neither will be rejected. Mutations: Changes+Narrative. Refresh params: AutoRefreshInvolved (default true), ExtraCharacterIds, ExtraLocationIds, IncludeWorldState, IncludeParty, FullDetailCharacterId, FullDetailLocationId.")]
         TakeTurnRequest request,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
