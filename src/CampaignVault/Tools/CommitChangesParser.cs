@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CampaignVault.Models;
+using CampaignVault.Models.Converters;
 
 namespace CampaignVault.Tools;
 
@@ -43,6 +44,7 @@ internal static class CommitChangesParser
                 }
 
                 text = NormalizeEngagementRelationActorId(text);
+                text = WorldChangeNormalizer.NormalizeChangesArray(text);
                 parsed = JsonSerializer.Deserialize<WorldChange[]>(text, Options);
                 return parsed is { Length: > 0 };
             }
@@ -50,6 +52,7 @@ internal static class CommitChangesParser
             if (el.ValueKind == JsonValueKind.Array)
             {
                 var text = NormalizeEngagementRelationActorId(el.GetRawText());
+                text = WorldChangeNormalizer.NormalizeChangesArray(text);
                 parsed = JsonSerializer.Deserialize<WorldChange[]>(text, Options);
                 return parsed is { Length: > 0 };
             }
