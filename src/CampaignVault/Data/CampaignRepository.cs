@@ -200,6 +200,11 @@ public class CampaignRepository
         var config = await GetCampaignConfigAsync(session, effectiveCampaign);
         var events = await LoadSceneEventsAsync(session, locationId, effectiveCampaign, config.EventContextBudgetAmbient);
 
+        foreach (var npc in npcsFromIndex.Concat(npcsFromSimulation))
+        {
+            await UpgradeSystemStatsIfNeededAsync(session, npc, effectiveCampaign);
+        }
+
         JsonSanitizer.Sanitize(location);
 
         var time = await GetTimeAsync(session, effectiveCampaign);
@@ -854,6 +859,8 @@ public class CampaignRepository
 
     /// <summary>
     /// Looks up a character by explicit document ID or performs a fuzzy search on the character's name.
+    /// Migrates legacy SystemExtension to the appropriate derived type (Dnd5eExtension/Pf2eExtension) based
+    /// on campaign's active ruleset, ensuring access to ruleset-specific properties like SkillModifiers.
     /// </summary>
     public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier,
         string? campaignName = null)
@@ -866,12 +873,14 @@ public class CampaignRepository
         {
             if (!IsVisibleInCampaign(character.CampaignName, effective))
                 return null;
+            await UpgradeSystemStatsIfNeededAsync(session, character, effective);
             return character;
         }
 
         character = await session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
         if (character != null && IsVisibleInCampaign(character.CampaignName, effective))
         {
+            await UpgradeSystemStatsIfNeededAsync(session, character, effective);
             return character;
         }
 
@@ -879,7 +888,44 @@ public class CampaignRepository
         // Misspelled names from LLM tool calls are caught by semantic vector search in UnifiedSearchAsync.
         var fuzzy = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .Search(x => x.Name, "*" + identifier + "*").FirstOrDefaultAsync();
-        return fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective) ? fuzzy : null;
+        if (fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective))
+        {
+            await UpgradeSystemStatsIfNeededAsync(session, fuzzy, effective);
+            return fuzzy;
+        }
+
+        return null;
+    }
+
+    internal async Task UpgradeSystemStatsIfNeededAsync(IAsyncDocumentSession session, Character character, string campaignName)
+    {
+        if (character.SystemStats == null)
+        {
+            return;
+        }
+
+        var statsType = character.SystemStats.GetType();
+        var config = await session.LoadAsync<CampaignConfig>(_keys.Config(campaignName));
+        var activeSystem = config?.ActiveSystem ?? RulesetSystem.Dnd5e;
+
+        var expectedType = activeSystem switch
+        {
+            RulesetSystem.Dnd5e => typeof(Dnd5eExtension),
+            RulesetSystem.Pathfinder2e => typeof(Pf2eExtension),
+            _ => typeof(SystemExtension)
+        };
+
+        if (statsType == expectedType || statsType == typeof(SystemExtension) && expectedType == typeof(SystemExtension))
+        {
+            return;
+        }
+
+        if (statsType != typeof(SystemExtension))
+        {
+            return;
+        }
+
+        character.SystemStats = SystemStatsMerger.CoerceToRuleset(character.SystemStats, activeSystem);
     }
 
     /// <summary>
