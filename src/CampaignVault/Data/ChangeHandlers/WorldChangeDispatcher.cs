@@ -1,5 +1,7 @@
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
+using CampaignVault.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents.Session;
 
@@ -23,12 +25,16 @@ public sealed class WorldChangeDispatcher(
     IEnumerable<IWorldChangeHandler>? handlers,
     CampaignDocumentKeys keys,
     ILogger<WorldChangeDispatcher>? logger = null,
-    EncounterResolver? encounterResolver = null)
+    EncounterResolver? encounterResolver = null,
+    ClassDefinitionProvider? classProvider = null,
+    BackgroundDefinitionProvider? backgroundProvider = null)
 {
     private readonly IReadOnlyList<IWorldChangeHandler> _handlers = handlers?.ToList() ?? [];
     private readonly ILogger<WorldChangeDispatcher> _logger = logger ?? NullLogger<WorldChangeDispatcher>.Instance;
     private readonly CampaignDocumentKeys _keys = keys ?? throw new ArgumentNullException(nameof(keys));
     private readonly EncounterResolver? _encounterResolver = encounterResolver;
+    private readonly ClassDefinitionProvider? _classProvider = classProvider;
+    private readonly BackgroundDefinitionProvider? _backgroundProvider = backgroundProvider;
 
 
     /// <summary>
@@ -123,6 +129,12 @@ public sealed class WorldChangeDispatcher(
                 .Where(kv => string.IsNullOrEmpty(effectiveCampaign)
                              || CampaignEntityVisibility.IsVisibleInCampaign(kv.Value!.CampaignName, effectiveCampaign))
                 .ToDictionary(kv => kv.Key, kv => kv.Value!);
+
+            if (!string.IsNullOrEmpty(effectiveCampaign))
+            {
+                await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
+                    session, characters, effectiveCampaign, _keys, _classProvider, _backgroundProvider);
+            }
             items = (await session.LoadAsync<Item>(itemIds))
                 .Where(kv => kv.Value != null)
                 .Where(kv => string.IsNullOrEmpty(effectiveCampaign)
