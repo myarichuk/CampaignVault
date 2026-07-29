@@ -59,24 +59,27 @@ public static class SystemStatsUpgradeHelper
             _ => typeof(SystemExtension)
         };
 
-        if (statsType == expectedType || (statsType == typeof(SystemExtension) && expectedType == typeof(SystemExtension)))
+        // Only coerce the type if it's currently the base SystemExtension (legacy document).
+        // If already the correct derived type, use it as-is.
+        if (statsType == typeof(SystemExtension) && expectedType != typeof(SystemExtension))
         {
+            character.SystemStats = SystemStatsMerger.CoerceToRuleset(character.SystemStats, activeSystem);
+        }
+        else if (statsType != typeof(SystemExtension) && statsType != expectedType)
+        {
+            // Already a derived type, but wrong one for this ruleset — don't auto-fix, just return.
             return;
         }
 
-        if (statsType != typeof(SystemExtension))
-        {
-            return;
-        }
-
-        character.SystemStats = SystemStatsMerger.CoerceToRuleset(character.SystemStats, activeSystem);
-
+        // Derive ruleset-specific fields (SkillModifiers, proficiencies, etc.) even if the type was
+        // already correct. Both methods internally no-op if their respective dicts are already populated.
         if (activeSystem == RulesetSystem.Dnd5e && character.SystemStats is Dnd5eExtension dnd5e)
         {
             DeriveD5eProficienciesIfEmpty(character, dnd5e, backgroundProvider);
         }
         else if (activeSystem == RulesetSystem.Pathfinder2e && character.SystemStats is Pf2eExtension pf2e)
         {
+            DerivePf2eProficienciesIfEmpty(character, pf2e, backgroundProvider);
         }
     }
 
@@ -118,6 +121,39 @@ public static class SystemStatsUpgradeHelper
                     stats.SkillModifiers[skill] = stats.GetAbilityModifier(abilityScore) + prof;
                 }
             }
+        }
+    }
+
+    private static void DerivePf2eProficienciesIfEmpty(
+        Character character,
+        Pf2eExtension stats,
+        BackgroundDefinitionProvider? backgroundProvider)
+    {
+        if (stats.SkillModifiers.Count > 0)
+        {
+            return;
+        }
+
+        // Derive level the same way Pf2eDeriveProficiencyStep does: from ClassLevels, or fall back to Level.
+        var level = stats.Level ?? 1;
+
+        // Derive from SkillProficiencies rank if populated; otherwise from background.
+        if (stats.SkillProficiencies.Count > 0)
+        {
+            Pf2eDeriveProficiencyStep.DeriveNumericModifiers(stats, level, stats.SkillProficiencies, stats.SkillModifiers, Pf2eSkillTable.KeyAbility);
+            return;
+        }
+
+        // Fall back to background proficiencies if no explicit skill proficiencies are set yet.
+        if (backgroundProvider != null && !string.IsNullOrWhiteSpace(stats.Background) && backgroundProvider.TryGet(RulesetSystem.Pathfinder2e, stats.Background, out var background) && background != null)
+        {
+            // Initialize SkillProficiencies from background's granted proficiencies, then derive modifiers.
+            var backgroundSkills = new Dictionary<string, Pf2eProficiencyRank>();
+            foreach (var skillName in background.SkillProficiencies)
+            {
+                backgroundSkills[skillName] = Pf2eProficiencyRank.Trained;
+            }
+            Pf2eDeriveProficiencyStep.DeriveNumericModifiers(stats, level, backgroundSkills, stats.SkillModifiers, Pf2eSkillTable.KeyAbility);
         }
     }
 

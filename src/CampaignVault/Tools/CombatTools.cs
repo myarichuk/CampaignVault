@@ -99,6 +99,12 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
             }
             var uniqueIds = (combatantIds ?? []).Distinct().ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
+
+            // Ensure all loaded characters have upgraded SystemStats (type coercion + SkillModifiers derivation).
+            // Initiative rolls and other combat resolution need SkillModifiers to be populated.
+            await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
+                session, loadedCharacters, effective, _keys);
+
             var validCharacters = new List<Character>();
             var droppedForZeroHp = new List<string>();
 
@@ -204,6 +210,10 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
             var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
             var characters = await session.LoadAsync<Character>(characterIds);
 
+            // Ensure all loaded characters have upgraded SystemStats before resolving their actions.
+            await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
+                session, characters, effective, _keys);
+
             // Mark current actor as having acted
             var current = encounter.Combatants.FirstOrDefault(c => c.CharacterId == encounter.ActiveTurnId);
             if (current != null)
@@ -294,6 +304,11 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
 
             var characterIds = encounter.Combatants.Select(c => c.CharacterId).ToList();
             var characters = await session.LoadAsync<Character>(characterIds);
+
+            // Ensure all loaded characters have upgraded SystemStats before processing end-of-combat effects.
+            await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
+                session, characters, effective, _keys);
+
             var expiredMessages = new List<string>();
 
             // Clear all round-based status effects when combat ends.

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
@@ -99,6 +100,15 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
+
+            // Ensure all party members have upgraded SystemStats before building party views.
+            if (party.Count > 0)
+            {
+                var partyDict = party.ToDictionary(m => m.Id);
+                await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
+                    session, partyDict, effective, _keys);
+            }
+
             foreach (var member in party)
             {
                 var heldItems = await session.Query<Item>()

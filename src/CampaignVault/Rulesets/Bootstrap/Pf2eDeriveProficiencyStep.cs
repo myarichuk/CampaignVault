@@ -101,7 +101,7 @@ public sealed class Pf2eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
     /// bonus is 0 if Untrained, else level + rank value per PF2e rules). Never overwrites an entry already
     /// present in <paramref name="modifiers"/> (DM override or previously-derived value).
     /// </summary>
-    private static List<string> DeriveNumericModifiers(
+    internal static List<string> DeriveNumericModifiers(
         Pf2eExtension stats,
         int level,
         IReadOnlyDictionary<string, Pf2eProficiencyRank> ranks,
