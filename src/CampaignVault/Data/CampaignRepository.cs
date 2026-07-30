@@ -22,6 +22,8 @@ public class CampaignRepository
     private readonly INpcInitiativeService _initiativeService;
     private readonly SceneAssembler _sceneAssembler;
     private readonly ILocalEmbeddingService _embeddingService;
+    private readonly ClassDefinitionProvider _classProvider;
+    private readonly BackgroundDefinitionProvider _backgroundProvider;
 
     private string ResolveCampaign(string? campaignName)
     {
@@ -48,7 +50,9 @@ public class CampaignRepository
         ChangeHandlers.WorldChangeDispatcher changeDispatcher,
         SceneAssembler sceneAssembler,
         INpcInitiativeService initiativeService,
-        ILocalEmbeddingService embeddingService)
+        ILocalEmbeddingService embeddingService,
+        ClassDefinitionProvider classProvider,
+        BackgroundDefinitionProvider backgroundProvider)
     {
         _store = store;
         _simulationEngine = simulationEngine;
@@ -59,6 +63,8 @@ public class CampaignRepository
         _sceneAssembler = sceneAssembler ?? throw new ArgumentNullException(nameof(sceneAssembler));
         _changeDispatcher = changeDispatcher ?? throw new ArgumentNullException(nameof(changeDispatcher));
         _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
+        _classProvider = classProvider ?? throw new ArgumentNullException(nameof(classProvider));
+        _backgroundProvider = backgroundProvider ?? throw new ArgumentNullException(nameof(backgroundProvider));
     }
 
     private Task EnrichSemanticVectorAsync(IHasSemanticVector entity)
@@ -199,6 +205,11 @@ public class CampaignRepository
         var items = await LoadVisibleSceneItemsAsync(session, locationId, effectiveCampaign);
         var config = await GetCampaignConfigAsync(session, effectiveCampaign);
         var events = await LoadSceneEventsAsync(session, locationId, effectiveCampaign, config.EventContextBudgetAmbient);
+
+        foreach (var npc in npcsFromIndex.Concat(npcsFromSimulation))
+        {
+            await UpgradeSystemStatsIfNeededAsync(session, npc, effectiveCampaign);
+        }
 
         JsonSanitizer.Sanitize(location);
 
@@ -854,6 +865,8 @@ public class CampaignRepository
 
     /// <summary>
     /// Looks up a character by explicit document ID or performs a fuzzy search on the character's name.
+    /// Migrates legacy SystemExtension to the appropriate derived type (Dnd5eExtension/Pf2eExtension) based
+    /// on campaign's active ruleset, ensuring access to ruleset-specific properties like SkillModifiers.
     /// </summary>
     public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier,
         string? campaignName = null)
@@ -866,12 +879,14 @@ public class CampaignRepository
         {
             if (!IsVisibleInCampaign(character.CampaignName, effective))
                 return null;
+            await UpgradeSystemStatsIfNeededAsync(session, character, effective);
             return character;
         }
 
         character = await session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
         if (character != null && IsVisibleInCampaign(character.CampaignName, effective))
         {
+            await UpgradeSystemStatsIfNeededAsync(session, character, effective);
             return character;
         }
 
@@ -879,7 +894,27 @@ public class CampaignRepository
         // Misspelled names from LLM tool calls are caught by semantic vector search in UnifiedSearchAsync.
         var fuzzy = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .Search(x => x.Name, "*" + identifier + "*").FirstOrDefaultAsync();
-        return fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective) ? fuzzy : null;
+        if (fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective))
+        {
+            await UpgradeSystemStatsIfNeededAsync(session, fuzzy, effective);
+            return fuzzy;
+        }
+
+        return null;
+    }
+
+    internal async Task UpgradeSystemStatsIfNeededAsync(IAsyncDocumentSession session, Character character, string campaignName)
+    {
+        if (character.SystemStats == null)
+        {
+            return;
+        }
+
+        var config = await session.LoadAsync<CampaignConfig>(_keys.Config(campaignName));
+        var activeSystem = config?.ActiveSystem ?? RulesetSystem.Dnd5e;
+
+        await SystemStatsUpgradeHelper.UpgradeSystemStatsIfNeededAsync(
+            session, character, activeSystem, _classProvider, _backgroundProvider, _keys, campaignName);
     }
 
     /// <summary>

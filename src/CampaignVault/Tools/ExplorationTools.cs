@@ -273,6 +273,11 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
 
+            foreach (var member in party)
+            {
+                await _repository.UpgradeSystemStatsIfNeededAsync(session, member, effective);
+            }
+
             var partyMembers = new List<PartyMemberView>();
             foreach (var member in party)
             {

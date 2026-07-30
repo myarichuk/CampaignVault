@@ -15,6 +15,12 @@ public class Character : ICampaignScopedEntity
     
     public string? ClassLevel { get; set; }
     
+    /// <summary>
+    /// Experience points earned by this character. Used for level progression tracking.
+    /// Only applies when campaign uses XP-based progression (not Milestone).
+    /// </summary>
+    public int ExperiencePoints { get; set; } = 0;
+    
     public int CurrentHp { get; set; }
     
     public int MaxHp { get; set; }
@@ -236,7 +242,7 @@ public class SystemExtension
 
     /// <summary>
     /// Willpower / iron will — resisting fear, compulsion, mind control.
-    /// D&amp;D Will Save bonus, PF2e Will DC anchor.
+    /// D&D Will Save bonus, PF2e Will DC anchor.
     /// </summary>
     public float Willpower { get; set; } = 75f;
 
@@ -271,7 +277,7 @@ public class SystemExtension
     public float MovementModifier { get; set; } = 0f;
 
     /// <summary>
-    /// Base movement speed in system-native units (D&amp;D/PF2e: feet, e.g. 30).
+    /// Base movement speed in system-native units (D&D/PF2e: feet, e.g. 30).
     /// Set from the character's race/ancestry BaseSpeed at creation (Dnd5eDeriveRaceStep /
     /// Pf2eDeriveAncestryStep) unless already explicitly provided. Narrative-only — no travel
     /// commit reads this yet; the DM-LLM narrates travel effects (same pattern as MovementModifier).
@@ -305,7 +311,7 @@ public class SystemExtension
     public Dictionary<string, int> DamageResistances { get; set; } = [];
 
     /// <summary>
-    /// Structured status effects replacing the old flat <c>Character.Status: List&lt;string&gt;</c>.
+    /// Structured status effects replacing the old flat <c>Character.Status: List<string></c>.
     /// Each effect carries stat modifiers, expiration metadata, and a recovery hint authored by the LLM DM.
     /// See <see cref="StatusEffect"/> for the full design and tool-schema documentation.
     /// </summary>

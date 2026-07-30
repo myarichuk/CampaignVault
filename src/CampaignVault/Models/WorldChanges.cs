@@ -51,6 +51,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(MemoryDecay), "memory_decay")]
 [JsonDerivedType(typeof(CampaignUpdateChange), "campaign_update")]
 [JsonDerivedType(typeof(WorldEventStatusChange), "world_event_status")]
+[JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -103,6 +104,42 @@ public class RestChange : WorldChange
     [Description("Narrative description of how the character rests.")]
     [JsonPropertyName("narrativeNote")]
     public string? NarrativeNote { get; set; }
+}
+
+/// <summary>
+/// Grant or deduct experience points to a character.
+/// </summary>
+public class XpGrantChange : WorldChange
+{
+    [Description("ID of the character receiving XP (e.g., 'chars/hero').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("Amount of XP to grant (positive) or deduct (negative).")]
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [Description("Source of the XP grant.")]
+    [JsonPropertyName("source")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public XpSource Source { get; set; } = XpSource.Combat;
+
+    [Description("Narrative reason for the XP grant (e.g., 'defeated goblin chief', 'completed quest').")]
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Source category for XP grants.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum XpSource
+{
+    Combat,
+    Exploration,
+    Social,
+    Milestone,
+    DMFiat
 }
 
 /// <summary>

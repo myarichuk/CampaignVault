@@ -30,10 +30,10 @@ public class CampaignConfig
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RulesetSystem ActiveSystem { get; set; } = RulesetSystem.Dnd5e;
 
-    /// <summary>
+/// <summary>
     /// Optional house-rule overrides passed to resolvers.
     /// Keys and values are resolver-specific. Examples:
-    /// "lingeringInjuries" → "true" (D&amp;D 5e optional rule)
+    /// "lingeringInjuries" → "true" (D&D 5e optional rule)
     /// "mapEnabled" → "true" (PF2e multi-attack penalty tracking)
     /// </summary>
     public Dictionary<string, string> SystemOptions { get; set; } = [];
@@ -230,6 +230,40 @@ public class CampaignConfig
     /// Defaults to 5.
     /// </summary>
     public int EventContextBudgetRecall { get; set; } = 5;
+
+    /// <summary>
+    /// XP progression type for this campaign.
+    /// Standard = PHB default, Slow = half XP, Fast = double XP, Milestone = narrative leveling only (no XP tracking).
+    /// </summary>
+    public XpProgressionType XpProgression { get; set; } = XpProgressionType.Standard;
+
+    /// <summary>
+    /// Custom XP thresholds per level (level -> XP required). If empty, uses built-in table for XpProgression type.
+    /// Key = target level (e.g., "2" = XP needed to reach level 2), Value = cumulative XP required.
+    /// </summary>
+    public Dictionary<int, int> CustomXpThresholds { get; set; } = [];
+
+    /// <summary>
+    /// When true, surfaces a pressure when a character reaches XP threshold for next level.
+    /// Defaults to true.
+    /// </summary>
+    public bool AutoLevelUpPrompt { get; set; } = true;
+}
+
+/// <summary>
+/// XP progression speed for the campaign.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum XpProgressionType
+{
+    /// <summary>Standard PHB progression (D&D 5e default).</summary>
+    Standard,
+    /// <summary>Half XP required per level (slower leveling).</summary>
+    Slow,
+    /// <summary>Double XP required per level (faster leveling).</summary>
+    Fast,
+    /// <summary>Milestone leveling only — no XP tracking, level_up changes are narrative-only.</summary>
+    Milestone
 }
 
 /// <summary>
