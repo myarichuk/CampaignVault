@@ -1,0 +1,173 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: paladin
+system: dnd5e
+className: Paladin
+hitDie: d10
+aliases: [paladin]
+savingThrows: [Wisdom, Charisma]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Divine Sense"
+        description: "Detect celestials, fiends, undead within 60 ft. 1+Cha mod/day."
+      - name: "Lay on Hands"
+        description: "Pool of 5 * paladin level HP to heal or cure disease/poison."
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Fighting Style"
+        description: "Choose: Defense, Protection, Dueling, Great Weapon Fighting, Blessed Warrior (cantrips)."
+        choices:
+          fightingStyle:
+            type: Enum
+            required: true
+            options:
+              - id: defense
+                label: "Defense"
+                description: "+1 AC while wearing armor."
+              - id: protection
+                label: "Protection"
+                description: "Impose disadvantage on attacks against allies within 5 ft."
+              - id: dueling
+                label: "Dueling"
+                description: "+2 damage with one-handed melee weapon."
+              - id: greatWeaponFighting
+                label: "Great Weapon Fighting"
+                description: "Reroll 1s and 2s on damage dice for two-handed weapons."
+              - id: blessedWarrior
+                label: "Blessed Warrior"
+                description: "Learn two cleric cantrips (Cha is spellcasting ability)."
+      - name: "Spellcasting"
+        description: "Prepare paladin spells. Cha is spellcasting ability."
+        spellSlots: {1: 2}
+  3:
+    proficiencyBonus: 2
+    features:
+      - name: "Divine Health"
+        description: "Immune to disease."
+      - name: "Sacred Oath"
+        description: "Choose a sacred oath."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: devotion
+                label: "Oath of Devotion"
+                description: "Channel Divinity: Sacred Weapon, Turn the Unholy. Aura of Devotion."
+              - id: ancients
+                label: "Oath of the Ancients"
+                description: "Channel Divinity: Nature's Wrath, Turn the Faithless. Aura of Warding."
+              - id: vengeance
+                label: "Oath of Vengeance"
+                description: "Channel Divinity: Abjure Enemy, Vow of Enmity. Relentless Avenger."
+    spellSlots: {1: 3}
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 3}
+  5:
+    proficiencyBonus: 3
+    features:
+      - name: "Extra Attack"
+        description: "Attack twice when you take the Attack action."
+    spellSlots: {1: 4, 2: 2}
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Aura of Protection"
+        description: "You and allies within 10 ft add Cha mod to saving throws (min +1)."
+    spellSlots: {1: 4, 2: 3}
+  7:
+    proficiencyBonus: 3
+    features:
+      - name: "Oath Feature"
+        description: "Gain a feature from your sacred oath."
+    spellSlots: {1: 4, 2: 3}
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3}
+  9:
+    proficiencyBonus: 4
+    spellSlots: {1: 4, 2: 3, 3: 2}
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Aura of Courage"
+        description: "You and allies within 10 ft can't be frightened while you're conscious."
+    spellSlots: {1: 4, 2: 3, 3: 3}
+  11:
+    proficiencyBonus: 4
+    features:
+      - name: "Improved Divine Smite"
+        description: "All melee weapon attacks deal +1d8 radiant damage."
+    spellSlots: {1: 4, 2: 3, 3: 3}
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3}
+  13:
+    proficiencyBonus: 5
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 1}
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Cleansing Touch"
+        description: "Use Lay on Hands to end spells. Cha mod times per long rest."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 1}
+  15:
+    proficiencyBonus: 5
+    features:
+      - name: "Oath Feature"
+        description: "Gain a feature from your sacred oath."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 2}
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 2}
+  17:
+    proficiencyBonus: 6
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
+  18:
+    proficiencyBonus: 6
+    features:
+      - name: "Aura Improvements"
+        description: "Aura of Protection and Courage range increases to 30 ft."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2}
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Sacred Oath Feature"
+        description: "Gain the capstone feature of your sacred oath."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2}

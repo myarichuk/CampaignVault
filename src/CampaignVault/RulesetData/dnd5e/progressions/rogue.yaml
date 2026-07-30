@@ -1,0 +1,151 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: rogue
+system: dnd5e
+className: Rogue
+hitDie: d8
+aliases: [rogue]
+keyAbility: [Dexterity]
+savingThrows: [Dexterity, Intelligence]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Expertise"
+        description: "Choose two skills (or one skill + thieves' tools). Proficiency bonus doubled."
+      - name: "Sneak Attack"
+        description: "1d6 extra damage when you have advantage or ally within 5 ft. Increases by level."
+      - name: "Thieves' Cant"
+        description: "Secret language of criminals."
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Cunning Action"
+        description: "Bonus action: Dash, Disengage, or Hide."
+  3:
+    proficiencyBonus: 2
+    features:
+      - name: "Roguish Archetype"
+        description: "Choose a roguish archetype."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: thief
+                label: "Thief"
+                description: "Fast hands, second-story work, supreme sneak, use magic device."
+              - id: assassin
+                label: "Assassin"
+                description: "Bonus proficiencies, assassinate, infiltration expertise, imposter, death strike."
+              - id: arcaneTrickster
+                label: "Arcane Trickster"
+                description: "Spellcasting (Wizard), mage hand legerdemain, magical ambush, versatile trickster."
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  5:
+    proficiencyBonus: 3
+    features:
+      - name: "Uncanny Dodge"
+        description: "Reaction to halve damage from attack you can see."
+      - name: "Sneak Attack (3d6)"
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Expertise"
+        description: "Choose two more skills (or one + thieves' tools) for double proficiency."
+  7:
+    proficiencyBonus: 3
+    features:
+      - name: "Evasion"
+        description: "Dex save for half damage: take none on success, half on failure."
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  9:
+    proficiencyBonus: 4
+    features:
+      - name: "Roguish Archetype Feature"
+        description: "Gain a feature from your roguish archetype."
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  11:
+    proficiencyBonus: 4
+    features:
+      - name: "Reliable Talent"
+        description: "Roll 9 or lower on ability check with proficiency: treat as 10."
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  13:
+    proficiencyBonus: 5
+    features:
+      - name: "Roguish Archetype Feature"
+        description: "Gain a feature from your roguish archetype."
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Blindsense"
+        description: "Aware of hidden/invisible creatures within 10 ft (if can hear)."
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  15:
+    proficiencyBonus: 5
+    features:
+      - name: "Slippery Mind"
+        description: "Proficiency in Wisdom saving throws."
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  17:
+    proficiencyBonus: 6
+    features:
+      - name: "Roguish Archetype Feature"
+        description: "Gain a feature from your roguish archetype."
+  18:
+    proficiencyBonus: 6
+    features:
+      - name: "Elusive"
+        description: "No attack has advantage against you while not incapacitated."
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Stroke of Luck"
+        description: "Once per short/long rest: turn missed attack into hit, or failed ability check into 20."

@@ -1,0 +1,109 @@
+# Source: Pathfinder 2e material released under the ORC License by Paizo Inc.
+name: fighter
+system: pf2e
+hitDie: d10
+className: Fighter
+aliases: [fighter]
+keyAbility: [Strength, Dexterity]
+levels:
+  1:
+    features: [Ancestry and Background, Initial Proficiencies, Fighter Class Features]
+    classFeats: 1
+    skillFeats: 1
+    ancestryFeats: 1
+    generalFeats: 0
+    abilityBoosts: 4
+  2:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  3:
+    features: [Fighter Class Feature, 2nd-level Feats]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  4:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  5:
+    features: [Fighter Class Feature, 3rd-level Feats, Battlefield Surveyor]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  6:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  7:
+    features: [Fighter Class Feature, 4th-level Feats]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  8:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  9:
+    features: [Fighter Class Feature, 5th-level Feats, Weapon Mastery]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  10:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  11:
+    features: [Fighter Class Feature, 6th-level Feats, Juggernaut]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  12:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  13:
+    features: [Fighter Class Feature, 7th-level Feats, Weapon Legend]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  14:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  15:
+    features: [Fighter Class Feature, 8th-level Feats]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  16:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  17:
+    features: [Fighter Class Feature, 9th-level Feats, Armor Mastery]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  18:
+    features: [Fighter Class Feature]
+    classFeats: 1
+    skillFeats: 1
+  19:
+    features: [Fighter Class Feature, 10th-level Feats]
+    classFeats: 1
+    skillFeats: 1
+    generalFeats: 1
+    abilityBoosts: 4
+  20:
+    features: [Fighter Class Feature, Weapon Supremacy]
+    classFeats: 1
+    skillFeats: 1

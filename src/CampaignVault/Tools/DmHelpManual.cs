@@ -91,7 +91,7 @@ Call `get_help topic=tools` for the full catalog. The surface is deliberately sm
 
 **Deep Dives**: `get_entity` (ONE entity in full detail by exact id: chars/, locations/, factions/, quests/, items/, plot-threads/)
 
-**Campaign Management**: `create_campaign`, `list_campaigns`, `get_config`, `get_rules_reference` (kind: handbook | spells | creatures)
+**Campaign Management**: `create_campaign`, `list_campaigns`, `get_config`, `get_rules_reference` (kind: handbook | spells | creatures | level_up)
 
 **Campaign Onboarding** (optional guided session-0 Q&A — see `get_help topic=onboarding`): `start_campaign_onboarding`, `submit_onboarding_answer`, `finalize_campaign_onboarding`
 
@@ -420,10 +420,12 @@ Infer from class+level for PCs. Pure flavor transients (no HP, not KeepAlive) sk
 5e creature stat block (statBlockHp — HP formula skipped, AC still bootstrapped if omitted), via `world_build`:
 { ""character"": { ""id"": ""chars/goblin-scout"", ""name"": ""Goblin Scout"", ""classLevel"": ""Goblin 1"", ""systemStats"": { ""$system"": ""dnd5e"", ""statBlockHp"": 7, ""dexterity"": 14, ""strength"": 8, ""skillModifiers"": { ""Stealth"": 6, ""Perception"": 2 }, ""savingThrowModifiers"": { ""Dexterity"": 2 } } } }
 
-**Level up:** The engine does not track XP. When a milestone is earned in narration, commit `level_up` for the PC or party companion (`isPartyCompanion: true`). Applies HP gains, re-syncs spell/resource pools, and runs bootstrap. Optional `reason` is logged in the summary.
-{ ""$type"": ""level_up"", ""characterId"": ""chars/kergil"", ""levelsGained"": 1, ""hpMode"": ""rolled"", ""healToMatch"": false, ""reason"": ""cleared the goblin warrens"" }
+**Level up:** Milestone campaigns level on narrative say-so; XP campaigns get an XP_THRESHOLD world pressure once a character has enough `xp_grant`-tracked XP (see get_config's `xpProgression`/`autoLevelUpPrompt`). Either way: call `get_rules_reference kind:'level_up' characterId:'...'` first to see the choices this level offers (subclass, fighting style, ASI/feat, etc.) sourced from authored progression data, talk them through with the player, then commit `level_up` for the PC or party companion (`isPartyCompanion: true`) with those answers in `choices`/`abilityScoreIncreases`. Applies HP gains, re-syncs spell/resource pools, runs bootstrap, and appends the choices to the character's level-up history. Optional `reason` is logged in the summary.
+{ ""$type"": ""level_up"", ""characterId"": ""chars/kergil"", ""levelsGained"": 1, ""hpMode"": ""rolled"", ""healToMatch"": false, ""reason"": ""cleared the goblin warrens"", ""choices"": { ""subclass"": ""battleMaster"" } }
 Party companion:
 { ""$type"": ""level_up"", ""characterId"": ""chars/wolf-companion"", ""levelsGained"": 1, ""reason"": ""bonded after the siege"" }
+ASI at a ability-improvement level:
+{ ""$type"": ""level_up"", ""characterId"": ""chars/kergil"", ""levelsGained"": 1, ""abilityScoreIncreases"": { ""Strength"": 2 } }
 
 PF2e auto-bootstrap, via `world_build`:
 { ""character"": { ""id"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""classHpPerLevel"": 10, ""ancestryHp"": 8, ""level"": 2, ""constitutionMod"": 2, ""armorClass"": 19, ""strengthMod"": 4, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 } } } }

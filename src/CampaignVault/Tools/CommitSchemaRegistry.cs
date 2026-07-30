@@ -70,9 +70,9 @@ internal static class CommitSchemaRegistry
             Example: """{"$type":"statusremove","characterId":"chars/grog","status":"Poisoned"}"""),
 
         new("level_up", "Combat",
-            "Increase a character's level and apply ruleset-specific HP gains.",
+            "Increase a character's level and apply ruleset-specific HP gains. Call get_rules_reference kind:'level_up' first to see pending choices.",
             ["characterId"],
-            ["levelsGained", "hpMode", "healToMatch", "classGained"],
+            ["levelsGained", "hpMode", "healToMatch", "classGained", "choices", "abilityScoreIncreases"],
             HasSideEffects: false,
             SideEffects: [],
             CoCommitHints: ["event"]),

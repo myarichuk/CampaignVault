@@ -370,7 +370,66 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         context.RecordMessage(
             $"Level up: {character.Name} gained {levelUp.LevelsGained} level(s){reasonSuffix}. MaxHp {previousMax} → {character.MaxHp}.");
 
+        ApplyLevelUpChoices(character, levelUp, context);
+
         return ChangeHandlerResult.Ok;
+    }
+
+    private static void ApplyLevelUpChoices(Character character, LevelUpChange levelUp, ChangeContext context)
+    {
+        if (character.SystemStats == null)
+        {
+            return;
+        }
+
+        if (levelUp.Choices is { Count: > 0 } choices)
+        {
+            var newLevel = XpThresholdCalculator.GetCurrentLevel(character);
+            foreach (var (key, value) in choices)
+            {
+                character.SystemStats.LevelUpChoices.Add(new LevelUpChoiceRecord
+                {
+                    Level = newLevel,
+                    Key = key,
+                    Value = value,
+                });
+            }
+
+            context.RecordMessage(
+                $"Level-up choices recorded for {character.Name}: {string.Join(", ", choices.Select(kv => $"{kv.Key}={kv.Value}"))}.");
+        }
+
+        if (levelUp.AbilityScoreIncreases is { Count: > 0 } increases)
+        {
+            if (character.SystemStats is Dnd5eExtension dnd5e)
+            {
+                foreach (var (ability, amount) in increases)
+                {
+                    ApplyAbilityScoreIncrease(dnd5e, ability, amount);
+                }
+
+                context.RecordMessage(
+                    $"Ability score increase for {character.Name}: {string.Join(", ", increases.Select(kv => $"{kv.Key} +{kv.Value}"))}.");
+            }
+            else
+            {
+                context.RecordMessage(
+                    "Warning: abilityScoreIncreases on level_up is only applied for D&D 5e characters; ignored for this character's system.");
+            }
+        }
+    }
+
+    private static void ApplyAbilityScoreIncrease(Dnd5eExtension stats, string ability, int amount)
+    {
+        switch (ability.ToLowerInvariant())
+        {
+            case "strength": stats.Strength += amount; break;
+            case "dexterity": stats.Dexterity += amount; break;
+            case "constitution": stats.Constitution += amount; break;
+            case "intelligence": stats.Intelligence += amount; break;
+            case "wisdom": stats.Wisdom += amount; break;
+            case "charisma": stats.Charisma += amount; break;
+        }
     }
 }
 

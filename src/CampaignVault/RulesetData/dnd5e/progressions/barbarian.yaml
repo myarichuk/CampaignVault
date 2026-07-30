@@ -1,0 +1,146 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: barbarian
+system: dnd5e
+className: Barbarian
+hitDie: d12
+aliases: [barbarian]
+savingThrows: [Strength, Constitution]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Rage"
+        description: "Bonus action: advantage on Str checks/saves, +2 damage, resistance to bludgeoning/piercing/slashing. 1 min, 2/day."
+      - name: "Unarmored Defense"
+        description: "AC = 10 + Dex mod + Con mod when not wearing armor."
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Reckless Attack"
+        description: "Advantage on Str attack rolls, enemies have advantage against you until your next turn."
+      - name: "Danger Sense"
+        description: "Advantage on Dex saves against effects you can see."
+  3:
+    proficiencyBonus: 2
+    features:
+      - name: "Primal Path"
+        description: "Choose a primal path."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: berserker
+                label: "Path of the Berserker"
+                description: "Frenzy, mindless rage, intimidating presence."
+              - id: totemWarrior
+                label: "Path of the Totem Warrior"
+                description: "Spirit animal features, beast sense, spirit walker."
+              - id: ancestralGuardian
+                label: "Path of the Ancestral Guardian"
+                description: "Ancestral protectors, spirit shield, consult the spirits."
+              - id: stormHerald
+                label: "Path of the Storm Herald"
+                description: "Storm aura, storm soul, shield of the storm."
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  5:
+    proficiencyBonus: 3
+    features:
+      - name: "Extra Attack"
+        description: "Attack twice when you take the Attack action."
+      - name: "Fast Movement"
+        description: "Speed increases by 10 ft while not wearing heavy armor."
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Path Feature"
+        description: "Gain a feature from your primal path."
+  7:
+    proficiencyBonus: 3
+    features:
+      - name: "Feral Instinct"
+        description: "Advantage on initiative, can act normally if surprised while raging."
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  9:
+    proficiencyBonus: 4
+    features:
+      - name: "Brutal Critical (1 die)"
+        description: "Roll one additional weapon damage die on critical hits."
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Path Feature"
+        description: "Gain a feature from your primal path."
+  11:
+    proficiencyBonus: 4
+    features:
+      - name: "Relentless Rage"
+        description: "DC 10 Con save to drop to 1 HP instead of 0 when raging. DC increases per use."
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  13:
+    proficiencyBonus: 5
+    features:
+      - name: "Brutal Critical (2 dice)"
+        description: "Roll two additional weapon damage dice on critical hits."
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Path Feature"
+        description: "Gain a feature from your primal path."
+  15:
+    proficiencyBonus: 5
+    features:
+      - name: "Persistent Rage"
+        description: "Rage ends only if you fall unconscious or choose to end it."
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  17:
+    proficiencyBonus: 6
+    features:
+      - name: "Brutal Critical (3 dice)"
+        description: "Roll three additional weapon damage dice on critical hits."
+  18:
+    proficiencyBonus: 6
+    features:
+      - name: "Indomitable Might"
+        description: "Total Str check score is at least your Strength score."
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Primal Champion"
+        description: "Str and Con increase by 4, max becomes 24."

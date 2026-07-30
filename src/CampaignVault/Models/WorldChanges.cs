@@ -810,6 +810,14 @@ public class LevelUpChange : WorldChange
     [Description("Optional narrative reason logged in the commit summary (e.g. 'defeated the goblin chief', 'milestone after clearing the mine').")]
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+
+    [Description("Level-up choices to record, keyed by choice key from get_rules_reference kind:'level_up' (e.g. 'subclass': 'battleMaster', 'fightingStyle': 'archery', 'asiOrFeat': 'greatWeaponMaster'). For PF2e feat budgets with no enumerated catalog, use keys like 'classFeat'/'skillFeat'/'generalFeat'/'ancestryFeat' with a free-text feat name. Appended to the character's choice history — does not overwrite earlier picks, so repeatable choices (feats at multiple levels) are all kept.")]
+    [JsonPropertyName("choices")]
+    public Dictionary<string, string>? Choices { get; set; }
+
+    [Description("5e only: ability score increases from an Ability Score Improvement (e.g. { \"Strength\": 2 } or { \"Strength\": 1, \"Dexterity\": 1 }). Applied directly to the character's ability scores.")]
+    [JsonPropertyName("abilityScoreIncreases")]
+    public Dictionary<string, int>? AbilityScoreIncreases { get; set; }
 }
 
 /// <summary>
