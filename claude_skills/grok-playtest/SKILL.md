@@ -7,296 +7,221 @@ metadata:
 
 # Grok Web Playtest Mode
 
-You are running a narrative playtest session via Grok Web. The engine is authoritative; Grok Web is the interface. Maintain discipline across the handoff.
+You are running a narrative playtest session via Grok Web. The engine is authoritative; Grok Web is the interface. Grok Web doesn't auto-load skills the way Claude Code does, so this file is self-contained — it merges call-efficiency discipline with the narration craft you'd otherwise get from separate skills. Combat mechanics (attack/spell resolution, the `combat` tool) live in `recommended-system-prompt.md`'s COMBAT/SPELLS sections — inject that alongside this file.
+
+## Core Efficiency Principle
+
+**`take_turn` is the primary tool.** Design goal: ~70% of all engine calls should be `take_turn`.
+
+- Mutations + fresh summaries + WorldPressure in one round-trip.
+- Auto-refresh of involved entities is on by default (`autoRefreshInvolved: true`, capped at 6 NPCs / 3 scenes).
+- Use `includeWorldState: true` whenever you need pressure/warnings.
+- Use `fullDetailCharacterId` / `fullDetailLocationId` only when you truly need the deep dossier (psychology graph, full memory list, itemDetails, etc.).
+
+`get_entity` is the **deep-dive** tool. Reserve it for:
+- First look at a brand-new location or important NPC.
+- Session start / after a long gap when you need ground truth.
+- When a summary is insufficient (e.g. you need the full memory set or ItemDetails).
+
+Do **not** call `get_entity` before every beat just to "be safe." Prefer the lightweight summaries that `take_turn` already returns.
+
+---
 
 ## Session Prep: Anchor Before Play
 
-**Before the first action of a playtest session:**
+*Before the first action of a playtest session:*
 
-1. **Verify system prompt consistency.** Grok Web doesn't auto-load skills like Claude Code does — you are manually injecting guidance. Open `recommended-system-prompt.md` and confirm the current world-building context, NPC psychology sections, and narrative constraints are in your view.
+1. *Verify system prompt consistency.* You are manually injecting guidance — confirm `recommended-system-prompt.md`'s campaign context (slug, PC roster, ruleset) is in view.
+2. *Snapshot the campaign state efficiently.* Prefer:
+   - `start_session` (once) for recap + world state + party roster.
+   - Then `take_turn` with `includeWorldState: true` + `includeParty: true` (or selective `extraCharacterIds` / `extraLocationIds`) for a light refresh.
+   - Only call full `get_entity` on the active location (partyPresent:true) or a key NPC if the summaries are not enough.
+3. *Check for unresolved ENGINE WARNINGs.* Resolve them immediately via `take_turn` + `includeWorldState: true`.
+4. *Frame the session opener.* Narrate with 3–4 rich sensory beats. Re-anchor the party.
 
-2. **Snapshot the campaign state.** Call `get_entity` on the active locations (where the party will play), key NPCs present, and any active plot threads:
-   ```
-   - Location: name, atmosphere, zones, NPCs present
-   - Active Combat: turn order? round?
-   - Plot Threads: any Dormant/Active/Climax threads the party might trigger?
-   - WorldPressure: ENGINE WARNINGs or NARRATIVE PROMPTs?
-   ```
-   **This is your canonical ground truth for the session.** Grok Web cannot see the engine state — you are the bridge.
-
-3. **Check for unresolved ENGINE WARNINGs.** If `WorldPressure` surfaces warnings (missing entities, transient NPCs about to evict, unresolved plot thread foreshadowing), resolve them now via `take_turn` with `includeWorldState: true` before the session begins. Don't let the party stumble into broken state.
-
-4. **Frame the session opener.** Narrate the party's current location or impending travel using 3–4 rich sensory beats (see Narration Discipline below). Don't assume they remember where they were — re-anchor them in the world.
+---
 
 ## Narration Discipline: Resolve Before You Describe
 
-**The core rule:** Never narrate an uncertain outcome before committing the roll or change to the engine.
+*The core rule:* Never narrate an uncertain outcome before committing the roll or change to the engine.
 
-### Correct Order
-1. **Query:** Call `get_entity` for the scene/NPC you need to narrate
-2. **Resolve:** Commit `ruleset_action`, `activity`, `travel`, or other WorldChange via `take_turn` to resolve uncertainty (with `includeWorldState: true`)
-3. **Narrate:** Describe the sensory outcome from the engine's result
-4. **Persist:** Log any position/engagement/appearance changes in the same batch (they're already included in the resolution)
+### Correct (Efficient) Order
+
+1. *Resolve:* Commit `ruleset_action`, `activity`, `travel`, item moves, etc. via `take_turn` (include `includeWorldState: true` when pressure matters). The response already contains the updated summaries.
+2. *Narrate:* Describe the sensory outcome from the engine result. Weave the roll/DC inline.
+3. *Only if needed:* If the summary is missing critical psychology, memory, or item detail, then (and only then) request `fullDetailCharacterId` on the same or a follow-up `take_turn`, or call `get_entity`.
 
 ### Wrong Order (Anti-Pattern)
-- "The orc swings at you and hits!" (narrate success first)
-- Then commit the attack roll (too late—you've already told the player the outcome)
-- Result: Grok Web's narration contradicts the engine if the roll fails
 
-**Why it matters:** Grok Web's continuity depends on the engine being the single source of truth. If you narrate first, you create phantom outcomes that the engine never recorded. The party returns to the campaign tomorrow and discovers their "victory" didn't persist.
+- "The orc swings at you and hits!" (narrate success first), then commit the roll — too late, and it contradicts the engine if the roll actually fails.
+- Call full `get_entity` on every NPC before every line of dialogue "just in case."
 
-## Scene Context: Fetch Before You Describe
+*Why it matters:* The engine is the single source of truth. If you narrate first, you create phantom outcomes the engine never recorded — the party returns next session and finds their "victory" didn't persist. Extra full dumps also waste context and slow the loop.
 
-Before describing any scene (arrival, NPC interaction, search, encounter):
+---
 
-**Call `get_entity` with the location id or character id:**
+## Scene Context: Prefer Summaries, Deep-Dive Only When Required
 
-```json
-{
-  "characterId": "chars/npc-id"
-  // OR
-  "locationId": "locations/place-id",
-  "partyPresent": true
-}
-```
+**Default path (most beats):** work from the summaries returned by the previous `take_turn` (or `start_session`) — name, appearance/tags, current activity, needs, equipped/carried, short behavioralSummary, associated plot threads.
 
-This returns:
+**When you actually need depth:**
+- Full psychology / memory graph / recentInteractions → `take_turn` with `fullDetailCharacterId` **or** `get_entity(chars/…)`.
+- Full scene with every POI detail, ambient crowd, local rumors → `get_entity(locations/…, partyPresent:true)` or `fullDetailLocationId`.
+- Brand-new area the party has never visited → justified `get_entity` (then switch back to summaries).
 
-**For Locations:**
-- Name, description, zones, atmosphere, ambient danger level
-- Present NPCs: names, positions, moods, activities
-- Items: visible objects, containers
-- Active Combat: turn order, rounds (if any)
-- Associated Plot Threads: dormant/active/climax threads tied to this place
-- WorldPressure: ENGINE WARNINGs, unresolved plot scaffolding
+Full detail includes:
+- **NPCs:** Psychology (motivation, ideology, pride/paranoia), Social (Trust/Suspicion/Loyalty/Fear), Needs (hunger/thirst/tiredness), Schedule, Memory, Active Initiatives (TurnIntent, advisory).
+- **Locations:** zones, atmosphere, present NPCs, items, active combat, associated plot threads.
 
-**For NPCs:**
-- Psychology: motivation, ideology, pride/paranoia, behavioral tension
-- Social: Trust, Suspicion, Loyalty, Fear (affects demeanor and dialogue tone)
-- Needs: hunger, thirst, tiredness (shows in behavior and speech)
-- Schedule: where should they be? what's their current activity?
-- Memory: what do they remember about the PC? what's urgent?
-- Active Initiatives: what do they want to pursue? (TurnIntent is advisory)
-- Associated Plot Threads: which threads does this NPC drive?
+*Use whatever you fetched as canon.* Never contradict it. Weave **one** detail per mention, never the whole sheet.
 
-**Use this as canon.** Never contradict it. Weave in one detail per mention, not the whole sheet.
+---
 
 ## Rich Narration: 3–4 Substantive Beats
 
-Each narrative moment should be **3–4 concrete sensory beats**, not 2–3 sentences.
+Each narrative moment should be *3–4 concrete sensory beats*, not 2–3 flat sentences.
 
-### Beat 1 — Sensory Arrival
-Establish the immediate sensory landscape. 2–3 concrete details: sight, sound, smell, touch.
+**Beat 1 — Sensory Arrival.** 2–3 concrete details: sight, sound, smell, touch. Not "You walk into the tavern." Yes: "The Salty Anchor roars with the smell of spiced ale and woodsmoke. A fiddle squeals over the din; someone's laughing too loud at the bar. The floor is tacky — last night's spills, probably."
 
-**Not:** "You walk into the tavern."
+**Beat 2 — Spatial Setup.** Where is everyone? Micro-geography, from the latest summary or full fetch. "Kergil sits at the corner booth, back to the wall, nursing a cup. Three sailors eye your gear from the counter."
 
-**Yes:** "The Salty Anchor roars with the smell of spiced ale and woodsmoke. A fiddle squeals over the din; someone's laughing too loud at the bar. The floor is tacky—last night's spills, probably."
+**Beat 3 — Emotional / Psychological Texture.** Read from Psychology/Needs/Tension when you have it; show through behavior and dialogue, not exposition. "Kergil's jaw is clenched. He hasn't slept — dark rings under his eyes. When he sees you, something in his shoulders tightens."
 
-### Beat 2 — Spatial Setup
-Where is everyone? What's the micro-geography? Reference the `get_entity` result.
-
-**"Kergil sits at the corner booth, back to the wall, nursing a cup. The serving wench is shouting orders at the bar. Three sailors eye your gear from the counter."**
-
-### Beat 3 — Emotional / Psychological Texture
-What's the mood? Read from NPC Psychology/Needs/Tension. Show it through behavior and dialogue, not exposition.
-
-**"Kergil's jaw is clenched. He hasn't slept—dark rings under his eyes. When he sees you, something in his shoulders tightens. Recognition. Wariness."**
-
-### Beat 4 — Ambiguity or Forward Momentum
-What's unresolved? What creates pressure? Reference ENGINE WARNING or plot hook if relevant.
-
-**"But there's something else in his expression. Fear? Guilt? Before you can read it, he looks away and takes a drink."**
+**Beat 4 — Ambiguity or Forward Momentum.** What's unresolved? What creates pressure? "But there's something else in his expression. Fear? Guilt? Before you can read it, he looks away and takes a drink."
 
 Then the party acts. You resolve via the engine. The cycle repeats.
 
-## Sensory Detail: Concrete, Not Purple
-
-**Anti-pattern (purple prose):**
-- "The tavern was resplendent with the sweet embrace of ambrosial spirits."
-
-**Yes (concrete):**
-- "The Salty Anchor reeks of spilled ale and sweat."
-
-### Rules for Detail
+### Sensory detail rules
 1. **One per mention.** Describe an NPC once per scene: one visual tag (torn sleeve), one voice quirk (slurs S's), one gesture (taps their ring). Never recite the whole sheet.
-2. **Tie to canon.** Use `CurrentAppearance`, `VisualTags`, `DistinctiveFeatures` from `get_entity`. Never contradict; weave in one detail differently each time.
-3. **Anchor in the fiction.** "Her scars are pale—years old" (shows time). "He reeks of horse" (shows origin/schedule). Details do narrative work.
-4. **Avoid adjectives alone.** Instead of "beautiful," show: "Light catches her cheekbone; she's had the kind of face that stops conversation."
+2. **Tie to canon.** Use `CurrentAppearance`/`VisualTags`/`DistinctiveFeatures` from the summary or full fetch. Never contradict; weave the same detail differently each time (first mention: "his left eye scarred shut"; later: "the scarred eye catches the firelight").
+3. **Anchor in the fiction, don't decorate.** "Her scars are pale — years old" (shows time) beats "resplendent with ambrosial spirits" (purple prose, does no narrative work).
+4. **Avoid bare adjectives.** Instead of "beautiful," show: "Light catches her cheekbone; she's had the kind of face that stops conversation."
 
-## NPC Voice: Psychology-Driven Dialogue
+### NPC voice: psychology-driven dialogue
+Voice emerges from Social (role, trust level) and Psychology (motivation, paranoia, ideology) — never arbitrary:
+- **Nervous merchant:** short, apologetic, rambling. "I—yes, the shipment arrived, but—I had no choice, you understand?"
+- **Proud knight:** formal, uses titles, slow to admit fault. "I shall not dignify that accusation with a response."
+- **Weary innkeeper:** long pauses, sighs, seen-it-all. "Look, I've seen a lot in thirty years. So what'll it be?"
 
-NPC voice emerges from `Social` (their role, trust level with the PC) and `Psychology` (motivation, paranoia, ideology):
+### Multi-NPC scenes (3+ present): show social geometry
+1. PC acts/speaks → resolve via `ruleset_action` or `event`.
+2. NPC responds, grounded in Psychology.
+3. A second NPC's stake emerges — interest/fear/motivation (reference TurnIntent as advisory).
+4. Pressure or consequence surfaces — who's frustrated, emboldened, afraid?
 
-**Nervous merchant:** Short sentences. Apologetic. Rambling.
-- "I—yes, the shipment arrived, but—I had no choice, you understand?"
+Not flat back-and-forth ("Tell me what happened." / "Well, I was there, and..."). Yes: Kergil hesitates, glances at Marta the fence — she's watching him — before answering; her hand drifts to her belt. Show the *geometry*, not just the exchange.
 
-**Proud knight:** Formal. Uses titles. Slow to admit fault.
-- "I shall not dignify that accusation with a response. Speak with respect, or speak not at all."
+### No exposition dumps
+Not "She is weary and has given up hope." Instead: she doesn't move when you enter; it takes her a moment to register your words; she sighs — a long, empty sound. "What do you want?" No inflection. Let psychology surface through action, dialogue, and hesitation.
 
-**Weary innkeeper:** Long pauses. Sighs. Seen-it-all tone.
-- "Look, I've seen a lot in thirty years. Nothing surprises me anymore. So what'll it be?"
-
-Each voice is **earned** from their psychology, not arbitrary.
+---
 
 ## Handling Uncertainty: The Full Cycle
 
-**Scene:** Party approaches a trapped door. Does anyone notice?
+*Scene:* Party approaches a trapped door.
 
-**Wrong:**
-"You push the door open. It opens safely. Good fortune!"
+*Right (efficient):*
+1. Commit `ruleset_action` (Perception/Investigation) via `take_turn` with `includeWorldState: true`.
+2. Narrate the outcome **from the engine result**, weaving the roll/DC inline: success — "your eye catches a glint of wire at the hinge (Perception 18 vs DC 15) — you disarm it quietly"; failure — "the door swings open. Three paces in, your boot catches something. The floor lurches—".
+3. Any discovered items, position changes, or consequences are already in the response. Persist ownership with `$type: "item"` / `item_transfer` in the same or next batch if needed.
 
-(No resolution. Canon state is unknown. Grok Web has no record of the outcome.)
+Only call `get_entity` first if you genuinely do not know whether a trap (or similar) even exists. **The roll determines the narration, never the reverse.**
 
-**Right:**
+---
 
-1. **Query:** `get_entity` on the location to see trap status/DC.
-2. **Resolve:** Commit `ruleset_action` (Perception or Investigation check) via `take_turn` with `includeWorldState: true`.
-3. **Narrate outcome from the engine result:**
-   - **Success:** "As your hand touches the handle, your eye catches it—a glint of wire at the hinge. The trap was meant to snap inward. You disarm it quietly."
-   - **Failure:** "The door swings open. Three paces in, your boot catches something. The floor lurches—"
-4. **Persist:** Any position changes, discovered items, or trigger consequences are already in the engine's response.
+## ENGINE WARNINGs & NARRATIVE PROMPTs
 
-**The roll determines the narration.** Not the reverse.
+When any response surfaces ENGINE WARNING or NARRATIVE PROMPT in WorldPressure:
 
-## ENGINE WARNINGs & NARRATIVE PROMPTs Mid-Session
+1. Pause the pure-narration moment.
+2. Resolve atomically with `take_turn` + the suggested fix + `includeWorldState: true`.
+3. Verify the warning is gone in the response — don't assume success just because the call didn't error.
+4. Narrate the consequence into the scene.
 
-When `get_entity` or `take_turn` returns ENGINE WARNING or NARRATIVE PROMPT in `WorldPressure`:
+Example: engine warns "NPC 'Kergil' is transient and will evict if party leaves." → commit `character_update` with `keepAlive: true` + a nudge, `includeWorldState: true` → confirm WorldPressure is clear → narrate: "As the party turns to leave, Kergil steps forward. 'Wait. I'm staying.'"
 
-1. **Pause the narration moment.** Don't commit to a direction that will contradict the warning.
-2. **Resolve atomically.** Commit a `take_turn` with the suggested fix and **pass `includeWorldState: true`**.
-3. **Verify resolution.** Check the response's `WorldPressure` — if the warning is still there, your fix didn't work. Try again.
-4. **Narrate the consequence** of that resolution into the scene.
+---
 
-**Example:**
-- Engine warns: "NPC 'Kergil' is transient and will evict if party leaves. Consider `keepAlive: true` or `schedule_change`."
-- You: I want Kergil to stay. Commit `character_update` with `keepAlive: true` + nudge, with `includeWorldState: true`.
-- Response shows `WorldPressure` is now clear. ✓
-- Narrate: "As the party turns to leave, Kergil steps forward. 'Wait. I'm staying. There's something I need to handle here. Alone.' His voice carries weight—a decision made."
+## Item Ownership (Frequently Missed)
 
-**Critical:** Don't assume a `take_turn` succeeded just because it didn't error. Always pass `includeWorldState: true` and verify the warning is gone.
+When a character takes, picks up, or is given an existing item:
+- Include `{ "$type": "item", "itemId": "items/…", "toHolderId": "chars/…" }` (or the appropriate transfer/equip variant) in the **same** `take_turn` batch as the discovery/search.
+- Do not narrate "you pocket the coin" without the ownership change — the engine will still show it on the location.
 
-## Multi-NPC Scenes: Show Social Geometry
+New items that do not yet exist → seed via `world_build` first, then transfer.
 
-When 3+ NPCs are present, cycle through their agency and stakes:
-
-1. **PC acts or speaks.** You resolve via `ruleset_action` or `event`.
-2. **NPC responds.** Describe their reaction, grounded in Psychology.
-3. **Second NPC's stake emerges.** Show their interest/fear/motivation. Reference `TurnIntent` as an advisory hint.
-4. **Pressure or consequence surfaces.** What shifts? Who's frustrated, emboldened, afraid?
-
-**Not (flat):**
-- PC: "Tell me what happened."
-- Kergil: "I was there, and..."
-
-**Yes (social geometry):**
-- PC: "Tell me what happened."
-- Kergil hesitates. He glances at Marta, the fence. She's watching him closely. He looks back to you.
-- "I was there. But I'm not the only one who saw. And some people... don't want it talked about."
-- Marta's hand moves to her belt. Small gesture, readable. Threat.
-
-Show the *social geometry*, not just the exchange.
-
-## No Exposition Dumps
-
-**Anti-pattern:**
-- "She is weary and has given up hope."
-
-**Yes:**
-- She doesn't move when you enter. When you speak, it takes her a moment to register. She sighs—a long, empty sound. "What do you want?" No inflection.
-
-Let psychology surface through **action, dialogue, and hesitation.** Readers/players feel it faster than you can explain it.
-
-## Appearance Continuity
-
-When you mention an NPC or location:
-1. Fetch `get_entity` or work from prior detail
-2. Weave in ONE canonical detail (from `CurrentAppearance`, `VisualTags`, `DistinctiveFeatures`)
-3. Never contradict or restate the whole sheet
-
-**First mention this session:**
-- "Kergil sits in the corner, his left eye scarred shut from some old wound."
-
-**Later mention:**
-- "Kergil pushes his chair back. The scarred eye catches the firelight as he turns."
-
-Same detail, woven differently. No contradiction. No recitation.
+---
 
 ## Session Continuity Across Grok Web Sessions
 
-Grok Web doesn't persist session state automatically. **You** are the bridge.
+Grok Web doesn't persist session state automatically — you are the bridge.
 
-1. **After each major scene or decision**, call `get_entity` on the active location/NPCs with `includeWorldState: true` to verify the engine recorded the changes.
-2. **Before resuming next session**, re-fetch the party's location and key NPCs. Read their current state (appearance, schedules, psychological shifts).
-3. **Surface any ENGINE WARNINGs that accumulated** since last session (new transients, unresolved plot scaffolding). Resolve them before the next scene begins.
-4. **Narrate the transition** from end-of-last-session to start-of-new-session using sensory anchors (time passed, weather, NPC mood shifts, location changes).
+1. After major scenes, a single `take_turn` with `includeWorldState: true` is usually enough verification.
+2. Before resuming next session: `start_session` (or a light `take_turn` refresh). Only full `get_entity` if summaries feel incomplete.
+3. Surface and clear any accumulated ENGINE WARNINGs before the next scene.
+4. Narrate the time-skip / re-anchor with sensory detail (time passed, weather, NPC mood shifts).
 
-**Document key decisions and discoveries** at the end of each session — not in the engine, but in Grok Web notes or a playtest log. These are your external memory.
+Document key decisions and discoveries at the end of each session outside the engine (Grok Web notes or a playtest log) — external memory, since Grok Web itself won't retain it.
 
-## Playtest Session Checklist
+---
 
-**Before play begins:**
-- [ ] System prompt (`recommended-system-prompt.md`) is in view?
-- [ ] Called `get_entity` on active location(s) and key NPCs to snapshot state?
-- [ ] Any ENGINE WARNINGs in `WorldPressure`? Resolved them?
-- [ ] Party re-anchored in the world via sensory narration?
+## Playtest Session Checklist (Efficiency-Oriented)
 
-**During play (per major action):**
-- [ ] Did I query (`get_entity`) for the scene/NPC context first?
-- [ ] Did I resolve uncertainty via `ruleset_action` / WorldChange before narrating the outcome?
-- [ ] Did I pass `includeWorldState: true` on my `take_turn`?
-- [ ] Did I check for ENGINE WARNINGs in the response and address them?
-- [ ] Is my narration 3–4 rich beats, not 2–3 sentences?
-- [ ] Did I use concrete sensory detail, not adjectives alone?
+*Before play begins:*
+- [ ] System prompt / campaign context is in view?
+- [ ] `start_session` (or light refresh) done?
+- [ ] ENGINE WARNINGs resolved?
+- [ ] Party re-anchored via sensory narration?
+
+*During play (per major action):*
+- [ ] Did I resolve uncertainty via `take_turn` / `ruleset_action` **before** narrating the outcome?
+- [ ] Did I pass `includeWorldState: true` when pressure or verification mattered?
+- [ ] Did I stay on summaries unless I truly needed full psychology / ItemDetails / new-location depth?
+- [ ] Did I include item ownership changes in the same batch when something was taken?
+- [ ] Is narration 3–4 rich beats, using concrete sensory detail (not adjectives alone)?
 - [ ] Did I differentiate NPC voice via Psychology/Social, not arbitrary styles?
-- [ ] Did I weave in one visual detail (if NPC/location), not recite?
-- [ ] Did I show emotional state through action/dialogue, not exposition?
-- [ ] If multi-NPC scene, did I show social geometry and competing stakes?
-- [ ] Did I narrate success/failure *after* the roll, not before?
+- [ ] One visual/psychological detail per mention, not a dump?
+- [ ] If multi-NPC, did I show social geometry and competing stakes?
+- [ ] Roll results woven inline after the engine returns them?
 
-**Between sessions:**
-- [ ] Documented major decisions and discoveries in playtest notes?
-- [ ] Called `get_entity` to verify all changes persisted?
-- [ ] Noted any recurring ENGINE WARNINGs for next session prep?
-- [ ] Plan: which location/NPC/plot thread next session?
+*Between sessions:*
+- [ ] Key decisions noted externally?
+- [ ] Any recurring warnings logged for next prep?
+
+---
 
 ## Quick Reference: WorldChange Types You'll Use Often
 
-**Combat & Uncertainty:**
-- `ruleset_action` (skill checks, attacks, saves)
-- `initiative_result` (start combat)
+*Uncertainty:* `ruleset_action` (skill checks, attacks, saves, spells) via `take_turn`. Combat sequencing (start/next turn/end) is the separate `combat` tool — see `recommended-system-prompt.md`'s COMBAT section.
 
-**Movement & Time:**
-- `activity` (local move, no encounter risk)
-- `travel` (journey with distance/danger)
-- `rest` (overnight recovery)
+*Movement & Time:* `activity` (local, no encounter risk), `travel` (journey with risk), `rest` (recovery + interruption chance).
 
-**NPC & World:**
-- `character_update` (psychology, appearance, keepAlive, schedule)
-- `location_update` (atmosphere, ambient danger, PoI detail)
-- `event` (faction activity, ambient encounters, scripted moments)
+*Items:* `item` / `item_transfer` / `item_equip` / `item_unequip` / `item_use`.
 
-**Plot & Scaffolding:**
-- `plot_thread_progress` (advance a thread's activation/resolution)
-- `world_build` (seed new locations, NPCs, plot threads)
+*NPC & World:* `character_update`, `location_update`, `event`, `mood`, `knowledge_update`.
 
-**Always pair with `includeWorldState: true`** to verify resolution.
+*Plot:* `quest_progress`, `plot_thread_progress`, `plot_thread_clue`.
+
+*Always prefer bundling related changes into one `take_turn`.*
+
+---
 
 ## Anti-Patterns to Avoid
 
-- **Narrating before resolving:** Grok Web has no record. Tomorrow's session won't see it.
-- **Ignoring ENGINE WARNINGs:** They surface real state problems. Fix them immediately.
-- **Skipping `get_entity` before a scene:** You'll contradict canon or miss NPC psychological shifts.
-- **Reciting the full NPC/location sheet:** One detail per mention. Weave, don't list.
-- **Long pauses without narration:** Grok Web can't see your thinking. Narrate what the engine told you.
-- **Assuming a `take_turn` worked without `includeWorldState: true`:** Always verify.
-- **Two-sentence scene beats:** Aim for 3–4 rich moments. Make the world feel inhabited.
+- Narrating before resolving.
+- Ignoring ENGINE WARNINGs.
+- Calling full `get_entity` (or fullDetail) on every beat "just to be safe."
+- Reciting the full NPC/location sheet.
+- Narrating "you take the item" without the corresponding `$type: "item"` change.
+- Assuming a `take_turn` worked without checking WorldPressure when it matters.
+- Two-sentence scene beats.
+
+---
 
 ## Success Looks Like
 
-By end of session:
-- Party remembers where they are and why (sensory anchoring works)
-- NPC interactions feel consistent and motivated (Psychology-driven)
-- Outcomes are grounded in engine resolution (narration matches canon)
-- ENGINE WARNINGs resolved before they compound (proactive world maintenance)
-- Plot threads advance with narrative scaffolding (clues, foreshadowing, consequences visible)
-- Tomorrow's session has a clear starting state (Grok Web handoff is clean)
+- Most turns are a single efficient `take_turn`.
+- Full dumps are rare and intentional.
+- Narration matches engine results, and NPC interactions feel psychology-driven, not arbitrary.
+- Ownership, pressure, and plot state stay in sync.
+- Tomorrow's session has a clean, lightweight starting state.

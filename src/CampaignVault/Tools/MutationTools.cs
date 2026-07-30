@@ -87,9 +87,7 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
 You MUST pass EITHER (1) Changes with a Narrative summary, OR (2) at least one refresh parameter (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, or fullDetailLocationId). Passing neither (empty call with no refresh param) will be rejected. This prevents wasted no-op calls.
 
 🚨 *** CRITICAL — REQUIRED FIELD: '$type' *** 🚨
-Every single change object in the changes[] array MUST include a '$type' field (the polymorphic discriminator). This is NOT OPTIONAL — it is REQUIRED for every change. If ANY object lacks '$type', the entire batch will fail to deserialize and be rejected.
-
-Valid $type values: event, hp, engagement_relation, activity, status, status_remove, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, location_update, character_update, travel, rest, level_up, schedule_change, item, item_transfer, item_equip, item_unequip, item_use, ruleset_action, faction_reputation, faction_state, scene_setup, scene_interrupt_check, spatial_position, memory_decay, knowledge_update, and more.
+Every single change object in the changes[] array MUST include a '$type' field (the polymorphic discriminator — see WorldChange's own description for the full list of valid values). This is NOT OPTIONAL — it is REQUIRED for every change. If ANY object lacks '$type', the entire batch will fail to deserialize and be rejected.
 
 One take_turn call carries optional mutations (Changes+Narrative) and optional refresh params, and returns the commit outcome + fresh entity summaries in one response — no separate query-before/query-after calls needed.
 
