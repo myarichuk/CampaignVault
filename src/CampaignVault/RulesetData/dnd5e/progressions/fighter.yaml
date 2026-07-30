@@ -1,0 +1,183 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: fighter
+system: dnd5e
+className: Fighter
+hitDie: d10
+aliases: [fighter]
+savingThrows: [Strength, Constitution]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Fighting Style"
+        description: "Choose a fighting style: Archery, Defense, Dueling, Great Weapon Fighting, Protection, Two-Weapon Fighting."
+        choices:
+          fightingStyle:
+            type: Enum
+            required: true
+            options:
+              - id: archery
+                label: "Archery"
+                description: "+2 to attack rolls with ranged weapons."
+              - id: defense
+                label: "Defense"
+                description: "+1 AC while wearing armor."
+              - id: dueling
+                label: "Dueling"
+                description: "+2 damage with one-handed melee weapon."
+              - id: greatWeaponFighting
+                label: "Great Weapon Fighting"
+                description: "Reroll 1s and 2s on damage dice for two-handed weapons."
+              - id: protection
+                label: "Protection"
+                description: "Impose disadvantage on attacks against allies within 5 ft."
+              - id: twoWeaponFighting
+                label: "Two-Weapon Fighting"
+                description: "Add ability modifier to off-hand attack damage."
+      - name: "Second Wind"
+        description: "Bonus action to regain 1d10 + fighter level HP. Once per short/long rest."
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Action Surge"
+        description: "Take one additional action on your turn. Once per short/long rest (twice at 17th level)."
+  3:
+    proficiencyBonus: 2
+    features:
+      - name: "Martial Archetype"
+        description: "Choose a martial archetype."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: champion
+                label: "Champion"
+                description: "Improved criticals, remarkable athlete, additional fighting style."
+              - id: battleMaster
+                label: "Battle Master"
+                description: "Combat maneuvers with superiority dice."
+              - id: eldritchKnight
+                label: "Eldritch Knight"
+                description: "Wizard spellcasting, weapon bond, war magic."
+              - id: psiWarrior
+                label: "Psi Warrior"
+                description: "Psionic powers, telekinetic movement, defensive psionics."
+              - id: runeKnight
+                label: "Rune Knight"
+                description: "Giant runes, rune magic, giant's might."
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  5:
+    proficiencyBonus: 3
+    features:
+      - name: "Extra Attack"
+        description: "Attack twice when you take the Attack action."
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  7:
+    proficiencyBonus: 3
+    features:
+      - name: "Martial Archetype Feature"
+        description: "Gain a feature from your chosen martial archetype."
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  9:
+    proficiencyBonus: 4
+    features:
+      - name: "Indomitable"
+        description: "Reroll a failed saving throw. Once per long rest (twice at 13th, three times at 17th)."
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Martial Archetype Feature"
+        description: "Gain a feature from your chosen martial archetype."
+  11:
+    proficiencyBonus: 4
+    features:
+      - name: "Extra Attack (2)"
+        description: "Attack three times when you take the Attack action."
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  13:
+    proficiencyBonus: 5
+    features:
+      - name: "Indomitable (2)"
+        description: "Can reroll failed saving throws twice per long rest."
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  15:
+    proficiencyBonus: 5
+    features:
+      - name: "Martial Archetype Feature"
+        description: "Gain a feature from your chosen martial archetype."
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  17:
+    proficiencyBonus: 6
+    features:
+      - name: "Action Surge (2)"
+        description: "Can use Action Surge twice per short/long rest."
+      - name: "Indomitable (3)"
+        description: "Can reroll failed saving throws three times per long rest."
+  18:
+    proficiencyBonus: 6
+    features:
+      - name: "Martial Archetype Feature"
+        description: "Gain a feature from your chosen martial archetype."
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Extra Attack (3)"
+        description: "Attack four times when you take the Attack action."

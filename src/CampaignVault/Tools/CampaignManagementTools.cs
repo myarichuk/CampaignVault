@@ -20,6 +20,7 @@ public class CampaignManagementTools(
     FeatDefinitionProvider featProvider,
     ConditionDefinitionProvider conditionProvider,
     CreatureDefinitionProvider creatureProvider,
+    ProgressionDefinitionProvider progressionProvider,
     ILogger<CampaignManagementTools>? logger = null)
     : CampaignToolBase(repository, keys, logger), IMcpServerTool
 {
@@ -204,11 +205,12 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 - kind:'handbook' — classes, races, backgrounds, feats, conditions for the campaign's active ruleset. Call before world_build (characters[]) or when applying typed conditionName values.
 - kind:'spells' — spell metadata (level, concentration, casting time). REQUIRES className (e.g. 'Wizard'); level filter strongly recommended (0 = cantrip); paginated via offset/limit (default 40/page). Use these spell names in resource commits (spellName) for slot validation.
 - kind:'creatures' — creature stat-block *templates* (SRD + campaign homebrew merged, homebrew wins by name), filtered by nameQuery/levelMin/levelMax, paginated. Templates only — use world_build (characters[]) to place a live instance.
+- kind:'level_up' — read-only lookup of the choices a character faces at their next level (subclass, fighting style, ASI/feat, invocations, PF2e feat budget). REQUIRES characterId. No session is created — talk through the choices with the player, then commit a single 'level_up' change via take_turn with the answers in 'choices'/'abilityScoreIncreases'.
 Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData/{system}/ YAML appear automatically. Requires campaignName.")]
     public async Task<ToolResult<object>> GetRulesReference(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
-        [Description("What to look up: 'handbook', 'spells', or 'creatures'.")]
+        [Description("What to look up: 'handbook', 'spells', 'creatures', or 'level_up'.")]
         string kind,
         [Description("spells only (required there): class name to list spells for, e.g. 'Wizard', 'Cleric'.")]
         string? className = null,
@@ -223,7 +225,9 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
         [Description("spells/creatures: pagination offset (default 0). Use response.pagination.hasMore for next page.")]
         int offset = 0,
         [Description("spells/creatures: page size (default 40, max 100).")]
-        int? limit = null)
+        int? limit = null,
+        [Description("level_up only (required there): character ID, e.g. 'chars/hero-123'.")]
+        string? characterId = null)
     {
         switch (kind?.Trim().ToLowerInvariant())
         {
@@ -240,9 +244,18 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
                 return Box(await GetSpells(className, campaignName, level, offset, limit));
             case "creatures":
                 return Box(await QueryCreatures(campaignName, nameQuery, levelMin, levelMax, offset, limit));
+            case "level_up":
+                if (string.IsNullOrWhiteSpace(characterId))
+                {
+                    return await ToolArgumentErrors.Missing<object>(
+                        "characterId",
+                        "kind:'level_up' requires characterId (e.g. 'chars/hero-123').",
+                        toolName: "get_rules_reference");
+                }
+                return Box(await GetPendingLevelUpChoices(characterId, campaignName));
             default:
                 return new ToolResult<object>(false, Error: ToolErrors.InvalidArgument,
-                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', or 'creatures'.");
+                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', or 'creatures' (or 'level_up').");
         }
     }
 
@@ -296,6 +309,95 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
                 response,
                 response.Hint);
         }, saveChanges: false);
+    }
+
+    internal Task<ToolResult<PendingLevelUpChoicesResponse>> GetPendingLevelUpChoices(
+        string characterId,
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var character = await _repository.GetCharacterAsync(session, characterId, effective);
+            if (character == null)
+            {
+                return new ToolResult<PendingLevelUpChoicesResponse>(
+                    false,
+                    Error: "CharacterNotFound",
+                    Summary: $"Character {characterId} not found.");
+            }
+
+            var system = character.SystemStats switch
+            {
+                Dnd5eExtension => RulesetSystem.Dnd5e,
+                Pf2eExtension => RulesetSystem.Pathfinder2e,
+                _ => RulesetSystem.Dnd5e
+            };
+
+            var currentLevel = XpThresholdCalculator.GetCurrentLevel(character);
+            var targetLevel = currentLevel + 1;
+            var className = DetermineClassForLevelUp(character);
+
+            var response = new PendingLevelUpChoicesResponse
+            {
+                CharacterId = characterId,
+                ClassName = className,
+                CurrentLevel = currentLevel,
+                TargetLevel = targetLevel,
+                System = system,
+            };
+
+            var levelDef = progressionProvider.GetLevelDefinition(system, className, targetLevel);
+            if (levelDef == null)
+            {
+                response.Summary = $"No authored progression data for {className} at level {targetLevel} ({system}). "
+                    + "Narrate the level-up choices yourself and commit a 'level_up' change with 'choices' describing them.";
+                return new ToolResult<PendingLevelUpChoicesResponse>(true, response, response.Summary);
+            }
+
+            response.Features = levelDef.Features.Select(f =>
+                string.IsNullOrWhiteSpace(f.Description) ? f.Name : $"{f.Name}: {f.Description}").ToList();
+
+            response.Choices = levelDef.Choices.Select(c => new PendingLevelUpChoice
+            {
+                Key = c.Key,
+                Prompt = c.Prompt,
+                Type = c.Type,
+                Required = c.Required,
+                Options = c.Options,
+                AbilityOptions = c.AbilityOptions,
+            }).ToList();
+
+            if (system == RulesetSystem.Pathfinder2e
+                && (levelDef.ClassFeats is > 0 || levelDef.SkillFeats is > 0 || levelDef.GeneralFeats is > 0
+                    || levelDef.AncestryFeats is > 0 || levelDef.AbilityBoosts is > 0))
+            {
+                response.Pf2eBudget = new Pf2eLevelBudget
+                {
+                    ClassFeats = levelDef.ClassFeats ?? 0,
+                    SkillFeats = levelDef.SkillFeats ?? 0,
+                    GeneralFeats = levelDef.GeneralFeats ?? 0,
+                    AncestryFeats = levelDef.AncestryFeats ?? 0,
+                    AbilityBoosts = levelDef.AbilityBoosts ?? 0,
+                };
+            }
+
+            response.Summary = response.Choices.Count == 0 && response.Pf2eBudget == null
+                ? $"{character.Name} reaches L{targetLevel} with no choices to make — just commit 'level_up'."
+                : $"{character.Name} reaching L{targetLevel} ({className}): {response.Choices.Count} choice(s) to ask about"
+                  + (response.Pf2eBudget != null ? " plus PF2e feat/ability budget." : ".");
+
+            return new ToolResult<PendingLevelUpChoicesResponse>(true, response, response.Summary);
+        }, saveChanges: false);
+    }
+
+    private static string DetermineClassForLevelUp(Character character)
+    {
+        if (string.IsNullOrWhiteSpace(character.ClassLevel))
+            return "fighter";
+
+        var firstPart = character.ClassLevel.Split('/')[0].Trim();
+        var words = firstPart.Split(' ');
+        return words.Length > 0 && words[0].Length > 0 ? words[0].ToLowerInvariant() : "fighter";
     }
 
     private static SpellSummaryView ToSpellSummary(SpellDefinition spell) =>

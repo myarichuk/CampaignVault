@@ -24,6 +24,8 @@ public class RulesetTemplateLoader<T> where T : RulesetTemplate
 
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
+        .WithTypeConverter(new FeatureDefinitionYamlConverter())
+        .WithTypeConverter(new ChoiceOptionYamlConverter())
         .IgnoreUnmatchedProperties()
         .Build();
 

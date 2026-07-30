@@ -157,7 +157,9 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 | `healToMatch` | Boolean — if true, increase `currentHp` by the same amount as `maxHp` gain |
 | `classGained` (5e multiclass) | Which class gained the level (e.g. `"Wizard"`) — sets hit die for HP gain |
 | `reason` | Optional narrative milestone text logged in commit summary |
-| Eligibility | `isPc: true` or `isPartyCompanion: true` — engine does not track XP; LLM commits when earned |
+| `choices` | `{ key: chosenOptionId }` from `get_rules_reference kind:'level_up'` (e.g. `subclass`, `fightingStyle`, `asiOrFeat`) — appended to the character's level-up choice history, never overwrites earlier picks |
+| `abilityScoreIncreases` (5e only) | `{ Ability: amount }` for an ASI, e.g. `{ "Strength": 2 }` or `{ "Strength": 1, "Dexterity": 1 }` |
+| Eligibility | `isPc: true` or `isPartyCompanion: true` — milestone campaigns level on narrative say-so; XP campaigns surface an XP_THRESHOLD pressure once `xp_grant`-tracked XP crosses the threshold |
 
 """;
 }

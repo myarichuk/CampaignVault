@@ -1,0 +1,155 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: wizard
+system: dnd5e
+className: Wizard
+hitDie: d6
+aliases: [wizard]
+keyAbility: [Intelligence]
+savingThrows: [Intelligence, Wisdom]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Spellcasting"
+        description: "Int is spellcasting ability. Prepare spells from spellbook."
+      - name: "Arcane Recovery"
+        description: "Once per day on short rest, recover spell slots up to half your wizard level (rounded up)."
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Arcane Tradition"
+        description: "Choose your Arcane Tradition."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: abjuration
+                label: "School of Abjuration"
+                description: "Protective magic and wards."
+              - id: conjuration
+                label: "School of Conjuration"
+                description: "Summoning and teleportation."
+              - id: divination
+                label: "School of Divination"
+                description: "Foresight and scrying."
+              - id: enchantment
+                label: "School of Enchantment"
+                description: "Beguiling and controlling minds."
+              - id: evocation
+                label: "School of Evocation"
+                description: "Raw elemental destruction."
+              - id: illusion
+                label: "School of Illusion"
+                description: "Deceiving senses and minds."
+              - id: necromancy
+                label: "School of Necromancy"
+                description: "Power over life and death."
+              - id: transmutation
+                label: "School of Transmutation"
+                description: "Changing matter and energy."
+  3:
+    proficiencyBonus: 2
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+            abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
+  5:
+    proficiencyBonus: 3
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Arcane Tradition Feature"
+        description: "Feature depends on your chosen school at level 2."
+  7:
+    proficiencyBonus: 3
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+            abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
+  9:
+    proficiencyBonus: 4
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Arcane Tradition Feature"
+        description: "Feature depends on your chosen school."
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+            abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
+  11:
+    proficiencyBonus: 4
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+            abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
+  13:
+    proficiencyBonus: 5
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Arcane Tradition Feature"
+        description: "Feature depends on your chosen school."
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+            abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
+  15:
+    proficiencyBonus: 5
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+            abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
+  17:
+    proficiencyBonus: 6
+  18:
+    proficiencyBonus: 6
+    features:
+      - name: "Spell Mastery"
+        description: "Choose a 1st- and 2nd-level spell to cast at will, without expending a slot."
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        description: "Increase one ability by 2, or two abilities by 1, or take a feat."
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+            abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Signature Spells"
+        description: "Choose two 3rd-level spells to always have prepared, castable once each without a slot per short/long rest."

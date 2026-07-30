@@ -318,6 +318,13 @@ public class SystemExtension
     public List<StatusEffect> StatusEffects { get; set; } = [];
 
     /// <summary>
+    /// History of level-up choices applied via <see cref="LevelUpChange"/> (subclass, fighting style,
+    /// feats, pact boon, invocations, etc.). Appended to, never overwritten, so repeatable picks
+    /// (feats gained at multiple levels) are all preserved.
+    /// </summary>
+    public List<LevelUpChoiceRecord> LevelUpChoices { get; set; } = [];
+
+    /// <summary>
     /// Pairwise engagement states (grappling, embracing, watching, etc.) that anchor characters together.
     /// Distinct from future zone/distance positioning.
     /// </summary>

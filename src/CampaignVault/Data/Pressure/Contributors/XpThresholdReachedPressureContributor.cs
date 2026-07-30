@@ -52,7 +52,8 @@ public sealed class XpThresholdReachedPressureContributor : IPressureContributor
                     """;
 
                 var message = $"{character.Name} (L{currentLevel}) has {xp} XP — enough to reach level {nextLevel} " +
-                    $"(needed {xpRequired} XP).";
+                    $"(needed {xpRequired} XP). Call get_rules_reference kind:'level_up' characterId:'{character.Id}' " +
+                    "to see any choices (subclass, feat, ASI) to talk through with the player before committing.";
 
                 if (xpSurplus > 0)
                 {

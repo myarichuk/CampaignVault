@@ -1,0 +1,163 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: monk
+system: dnd5e
+className: Monk
+hitDie: d8
+aliases: [monk]
+savingThrows: [Strength, Dexterity]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Unarmored Defense"
+        description: "AC = 10 + Dex mod + Wis mod (unarmored, no shield)."
+      - name: "Martial Arts"
+        description: "Dex for unarmed/monk weapons. 1d4 damage (scales). Bonus action unarmed strike."
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Ki"
+        description: "Ki points = monk level. Flurry of Blows, Patient Defense, Step of the Wind."
+      - name: "Unarmored Movement"
+        description: "Speed +10 ft (increases). Not wearing armor/shield."
+  3:
+    proficiencyBonus: 2
+    features:
+      - name: "Monastic Tradition"
+        description: "Choose a monastic tradition."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: openHand
+                label: "Way of the Open Hand"
+                description: "Open hand technique, wholeness of body, tranquility, quivering palm."
+              - id: shadow
+                label: "Way of Shadow"
+                description: "Shadow arts, darkness, shadow step, cloaked in shadows, opportunist."
+              - id: fourElements
+                label: "Way of the Four Elements"
+                description: "Disciple of the elements, elemental disciplines."
+              - id: longDeath
+                label: "Way of the Long Death"
+                description: "Touch of death, hour of reaping, master of death, touch of the long death."
+              - id: sunSoul
+                label: "Way of the Sun Soul"
+                description: "Radiant sun bolt, searing sunburst, sun shield, searing arc strike."
+      - name: "Deflect Missiles"
+        description: "Reaction to reduce ranged damage by 1d10+Dex+lvl. Catch and throw back if 0."
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  5:
+    proficiencyBonus: 3
+    features:
+      - name: "Extra Attack"
+        description: "Attack twice when you take the Attack action."
+      - name: "Stunning Strike"
+        description: "Spend 1 ki: target Con save or stunned until end of your next turn."
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Ki-Empowered Strikes"
+        description: "Unarmed strikes count as magical for overcoming resistance."
+ 
+      - name: "Monastic Tradition Feature"
+        description: "Gain a feature from your monastic tradition."
+  7:
+    proficiencyBonus: 3
+    features:
+      - name: "Evasion"
+        description: "Dex save for half damage: take none on success, half on failure."
+      - name: "Stillness of Mind"
+        description: "Action to end charmed/frightened on yourself."
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  9:
+    proficiencyBonus: 4
+    features:
+      - name: "Unarmored Movement"
+        description: "Speed +15 ft. Run on vertical surfaces/liquid."
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Purity of Body"
+        description: "Immune to disease and poison."
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  11:
+    proficiencyBonus: 4
+    features:
+      - name: "Monastic Tradition Feature"
+        description: "Gain a feature from your monastic tradition."
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  13:
+    proficiencyBonus: 5
+    features:
+      - name: "Tongue of the Sun and Moon"
+        description: "Understand all spoken languages, any creature understands you."
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Diamond Soul"
+        description: "Proficiency in all saves. Spend 1 ki to reroll failed save."
+  15:
+    proficiencyBonus: 5
+    features:
+      - name: "Timeless Body"
+        description: "Don't age, don't need food/water."
+      - name: "Monastic Tradition Feature"
+        description: "Gain a feature from your monastic tradition."
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  17:
+    proficiencyBonus: 6
+    features:
+      - name: "Quivering Palm"
+        description: "Spend 3 ki: target Con save or take 10d10 necrotic. Or 5d10 on success."
+  18:
+    proficiencyBonus: 6
+    features:
+      - name: "Empty Body"
+        description: "Spend 4 ki: invisible for 1 min, resistance to all damage but force."
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Perfect Self"
+        description: "Roll initiative with <4 ki: regain 4 ki."

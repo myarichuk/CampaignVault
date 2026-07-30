@@ -1,0 +1,159 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: cleric
+system: dnd5e
+className: Cleric
+hitDie: d8
+savingThrows: [Wisdom, Charisma]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Spellcasting"
+        description: "Wis is spellcasting ability. Prepare cleric spells. Domain spells always prepared."
+        spellSlots: {1: 2}
+      - name: "Divine Domain"
+        description: "Choose a divine domain."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: knowledge
+                label: "Knowledge Domain"
+                description: "Divine knowledge, blessings of knowledge, channel divinity: knowledge of the ages."
+              - id: life
+                label: "Life Domain"
+                description: "Healing focus, channel divinity: preserve life, blessed healer."
+              - id: light
+                label: "Light Domain"
+                description: "Fire/radiance spells, channel divinity: radiance of the dawn, warding flare."
+              - id: nature
+                label: "Nature Domain"
+                description: "Nature spells, channel divinity: charm animals/plants, dampen elements."
+              - id: tempest
+                label: "Tempest Domain"
+                description: "Storm spells, channel divinity: destructive wrath, thunderbolt strike."
+              - id: trickery
+                label: "Trickery Domain"
+                description: "Illusion spells, channel divinity: invoke duplicity, cloak of shadows."
+              - id: war
+                label: "War Domain"
+                description: "Battle spells, channel divinity: guided strike, war god's blessing."
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Channel Divinity (1/rest)"
+        description: "Use Channel Divinity feature from your domain."
+    spellSlots: {1: 3}
+  3:
+    proficiencyBonus: 2
+    spellSlots: {1: 4, 2: 2}
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3}
+  5:
+    proficiencyBonus: 3
+    features:
+      - name: "Destroy Undead (CR 1/2)"
+        description: "Turn undead: destroyed if CR 1/2 or lower."
+    spellSlots: {1: 4, 2: 3, 3: 2}
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Channel Divinity (2/rest)"
+        description: "Can use Channel Divinity twice per short/long rest."
+      - name: "Divine Domain Feature"
+        description: "Gain a feature from your divine domain."
+    spellSlots: {1: 4, 2: 3, 3: 3}
+  7:
+    proficiencyBonus: 3
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 1}
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Divine Strike (1d8)"
+        description: "Once per turn, add 1d8 radiant/necrotic to weapon attack."
+      - name: "Destroy Undead (CR 1)"
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 2}
+  9:
+    proficiencyBonus: 4
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Divine Intervention"
+        description: "Call on deity for aid. % chance = cleric level. Succeeds automatically at 20th."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2}
+  11:
+    proficiencyBonus: 4
+    features:
+      - name: "Destroy Undead (CR 2)"
+      - name: "Divine Strike (2d8)"
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1}
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1}
+  13:
+    proficiencyBonus: 5
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1}
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Destroy Undead (CR 3)"
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1}
+  15:
+    proficiencyBonus: 5
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1}
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1}
+  17:
+    proficiencyBonus: 6
+    features:
+      - name: "Destroy Undead (CR 4)"
+      - name: "Divine Strike (3d8)"
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1}
+  18:
+    proficiencyBonus: 6
+    features:
+      - name: "Divine Domain Feature"
+        description: "Gain a feature from your divine domain."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1}
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1}
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Divine Intervention Improvement"
+        description: "Divine Intervention succeeds automatically."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1}

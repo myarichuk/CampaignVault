@@ -1,0 +1,182 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: warlock
+system: dnd5e
+className: Warlock
+hitDie: d8
+aliases: [warlock]
+savingThrows: [Wisdom, Charisma]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Otherworldly Patron"
+        description: "Choose a patron."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: archfey
+                label: "The Archfey"
+                description: "Fey presence, misty escape, beguiling defenses, dark delerium."
+              - id: fiend
+                label: "The Fiend"
+                description: "Dark one's blessing, dark one's luck, fire resistance, hurl through hell."
+              - id: greatOldOne
+                label: "The Great Old One"
+                description: "Awakened mind, entropic ward, create thrall, telepathic bond."
+      - name: "Pact Magic"
+        description: "Cha is spellcasting ability. Slots per short rest. Spell slots scale differently."
+        spellSlots: {1: 1}
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Eldritch Invocations"
+        description: "Choose two invocations (e.g., Agonizing Blast, Devil's Sight)."
+        choices:
+          invocation:
+            type: FeatSelection
+            required: true
+            options:
+              - agonizingBlast
+              - armorOfShadows
+              - beastSpeech
+              - beginnersLuck
+              - devilSight
+              - eldritchSight
+              - eldritchSpear
+              - eyesOfTheRuneKeeper
+              - fiendishVigor
+              - gazeOfTwoMinds
+              - mistyVisions
+              - repellingBlast
+              - thievesCant
+    spellSlots: {1: 2}
+  3:
+    proficiencyBonus: 2
+    features:
+      - name: "Pact Boon"
+        description: "Choose a pact boon."
+        choices:
+          pactBoon:
+            type: Enum
+            required: true
+            options:
+              - id: chain
+                label: "Pact of the Chain"
+                description: "Find familiar as ritual. Familiar can attack, use Help, etc."
+              - id: blade
+                label: "Pact of the Blade"
+                description: "Create pact weapon. Proficient. Charisma for attacks. Disappear/reappear."
+              - id: tome
+                label: "Pact of the Tome"
+                description: "Book of Shadows. Three cantrips from any class."
+    spellSlots: {2: 2}
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {2: 2}
+  5:
+    proficiencyBonus: 3
+    features:
+      - name: "Pact Magic (3rd level)"
+        description: "Spell slots now 3rd level."
+    spellSlots: {3: 2}
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Otherworldly Patron Feature"
+        description: "Gain a feature from your patron."
+    spellSlots: {3: 2}
+  7:
+    proficiencyBonus: 3
+    spellSlots: {4: 1, 3: 2}
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {4: 1, 3: 2}
+  9:
+    proficiencyBonus: 4
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Otherworldly Patron Feature"
+        description: "Gain a feature from your patron."
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  11:
+    proficiencyBonus: 4
+    features:
+      - name: "Mystic Arcanum (6th)"
+        description: "Gain one 6th-level spell. Cast once per long rest."
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  13:
+    proficiencyBonus: 5
+    features:
+      - name: "Mystic Arcanum (7th)"
+        description: "Gain one 7th-level spell. Cast once per long rest."
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Otherworldly Patron Feature"
+        description: "Gain a feature from your patron."
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  15:
+    proficiencyBonus: 5
+    features:
+      - name: "Mystic Arcanum (8th)"
+        description: "Gain one 8th-level spell. Cast once per long rest."
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  17:
+    proficiencyBonus: 6
+    features:
+      - name: "Mystic Arcanum (9th)"
+        description: "Gain one 9th-level spell. Cast once per long rest."
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  18:
+    proficiencyBonus: 6
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {5: 1, 4: 1, 3: 2}
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Eldritch Master"
+        description: "Regain all expended Pact Magic slots on 1-minute rest."
+    spellSlots: {5: 1, 4: 1, 3: 2}

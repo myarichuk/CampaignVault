@@ -1,0 +1,169 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: ranger
+system: dnd5e
+className: Ranger
+hitDie: d10
+aliases: [ranger]
+savingThrows: [Strength, Dexterity]
+levels:
+  1:
+    proficiencyBonus: 2
+    features:
+      - name: "Favored Enemy"
+        description: "Advantage on Wis (Survival) and Int checks for chosen enemy type. Learn one language."
+      - name: "Natural Explorer"
+        description: "Double proficiency for Int/Wis checks for favored terrain. Benefits while traveling."
+  2:
+    proficiencyBonus: 2
+    features:
+      - name: "Fighting Style"
+        description: "Choose: Archery, Defense, Dueling, Two-Weapon Fighting, Close Quarters Shooter, etc."
+        choices:
+          fightingStyle:
+            type: Enum
+            required: true
+            options:
+              - id: archery
+                label: "Archery"
+                description: "+2 to attack rolls with ranged weapons."
+              - id: defense
+                label: "Defense"
+                description: "+1 AC while wearing armor."
+              - id: dueling
+                label: "Dueling"
+                description: "+2 damage with one-handed melee weapon."
+              - id: twoWeaponFighting
+                label: "Two-Weapon Fighting"
+                description: "Add ability modifier to off-hand attack damage."
+    spellSlots: {1: 2}
+  3:
+    proficiencyBonus: 2
+    features:
+      - name: "Ranger Archetype"
+        description: "Choose a ranger archetype."
+        choices:
+          subclass:
+            type: Enum
+            required: true
+            options:
+              - id: hunter
+                label: "Hunter"
+                description: "Hunter's prey, defensive tactics, multiattack, superior hunter's defense."
+              - id: beastMaster
+                label: "Beast Master"
+                description: "Ranger's companion, exceptional training, bestial fury, share spells."
+              - id: gloomStalker
+                label: "Gloom Stalker"
+                description: "Dread ambusher, umbral sight, iron mind, stalker's flurry."
+    spellSlots: {1: 3}
+  4:
+    proficiencyBonus: 2
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 3}
+  5:
+    proficiencyBonus: 3
+    features:
+      - name: "Extra Attack"
+        description: "Attack twice when you take the Attack action."
+      - name: "Spellcasting (2nd level)"
+        description: "Gain 2nd-level spell slots."
+    spellSlots: {1: 4, 2: 2}
+  6:
+    proficiencyBonus: 3
+    features:
+      - name: "Favored Enemy & Natural Explorer Improvements"
+        description: "Add another favored enemy and language, another favored terrain."
+    spellSlots: {1: 4, 2: 3}
+  7:
+    proficiencyBonus: 3
+    features:
+      - name: "Archetype Feature"
+        description: "Gain a feature from your ranger archetype."
+    spellSlots: {1: 4, 2: 3}
+  8:
+    proficiencyBonus: 3
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+      - name: "Land's Stride"
+        description: "Nonmagical difficult terrain costs no extra movement. Advantage vs plants."
+    spellSlots: {1: 4, 2: 3}
+  9:
+    proficiencyBonus: 4
+    spellSlots: {1: 4, 2: 3, 3: 2}
+  10:
+    proficiencyBonus: 4
+    features:
+      - name: "Hide in Plain Sight"
+        description: "Spend 1 min camouflaging: +10 to Dex (Stealth) while stationary."
+    spellSlots: {1: 4, 2: 3, 3: 3}
+  11:
+    proficiencyBonus: 4
+    features:
+      - name: "Archetype Feature"
+        description: "Gain a feature from your ranger archetype."
+    spellSlots: {1: 4, 2: 3, 3: 3}
+  12:
+    proficiencyBonus: 4
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3}
+  13:
+    proficiencyBonus: 5
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 1}
+  14:
+    proficiencyBonus: 5
+    features:
+      - name: "Vanish"
+        description: "Bonus action Hide. Can't be tracked by nonmagical means."
+      - name: "Archetype Feature"
+        description: "Gain a feature from your ranger archetype."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 1}
+  15:
+    proficiencyBonus: 5
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 2}
+  16:
+    proficiencyBonus: 5
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 2}
+  17:
+    proficiencyBonus: 6
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
+  18:
+    proficiencyBonus: 6
+    features:
+      - name: "Feral Senses"
+        description: "Attack invisible creatures without disadvantage. Aware of invisible within 30 ft."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
+  19:
+    proficiencyBonus: 6
+    features:
+      - name: "Ability Score Improvement"
+        choices:
+          asiOrFeat:
+            type: AsiOrFeat
+            required: true
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2}
+  20:
+    proficiencyBonus: 6
+    features:
+      - name: "Foe Slayer"
+        description: "Add Wis mod to attack roll or damage roll vs favored enemies."
+    spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2}
