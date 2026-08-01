@@ -37,8 +37,6 @@ internal static class CommitSchemaModel
     {
         var variants = new List<CommitVariantModel>();
         var worldChangeType = typeof(WorldChange);
-        var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
-        var ctx = new NullabilityInfoContext();
 
         // Get all [JsonDerivedType] attributes from WorldChange
         var derivedTypeAttrs = worldChangeType
@@ -54,44 +52,33 @@ internal static class CommitSchemaModel
             var categoryAttr = derivedType.GetCustomAttribute<CommitCategoryAttribute>();
             var category = categoryAttr?.Category ?? "Uncategorized";
 
-            // Get summary from [Description] or class docstring
+            // Get summary from [Description] on the class
             var descAttr = derivedType.GetCustomAttribute<DescriptionAttribute>();
             var summary = descAttr?.Description ?? $"Mutation type: {discriminator}";
 
-            // Get fields from JSON serialization
-            var typeInfo = jsonOptions.GetTypeInfo(derivedType);
+            // Get properties from reflection (simplified - doesn't use JSON serializer metadata)
             var fields = new List<CommitFieldModel>();
+            var props = derivedType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            if (typeInfo.Properties != null)
+            foreach (var pi in props)
             {
-                foreach (var prop in typeInfo.Properties)
+                // Skip inherited properties from WorldChange base class (MinutesElapsed, IsEngineAuthored)
+                if (pi.DeclaringType == worldChangeType)
+                    continue;
+
+                var jsonNameAttr = pi.GetCustomAttribute<JsonPropertyNameAttribute>();
+                var jsonName = jsonNameAttr?.Name ?? pi.Name;
+                var isRequired = pi.PropertyType.IsValueType || !IsNullableProperty(pi);
+
+                var fieldDesc = pi.GetCustomAttribute<DescriptionAttribute>()?.Description;
+
+                IReadOnlyList<string>? enumValues = null;
+                if (pi.PropertyType.IsEnum)
                 {
-                    var jsonName = prop.Name;
-                    var clrType = prop.PropertyType ?? typeof(object);
-
-                    // Determine if required
-                    var isRequired = false;
-                    if (prop.AttributeProvider is PropertyInfo pi)
-                    {
-                        var nullInfo = ctx.Create(pi);
-                        isRequired = pi.PropertyType.IsValueType ||
-                            nullInfo.WriteState == NullabilityState.NotNull;
-                    }
-
-                    // Get description from [Description]
-                    var fieldDesc = (prop.AttributeProvider as PropertyInfo)?
-                        .GetCustomAttribute<DescriptionAttribute>()?
-                        .Description;
-
-                    // Get enum values if applicable
-                    IReadOnlyList<string>? enumValues = null;
-                    if (clrType.IsEnum)
-                    {
-                        enumValues = Enum.GetNames(clrType).ToList();
-                    }
-
-                    fields.Add(new CommitFieldModel(jsonName, clrType, isRequired, fieldDesc, enumValues));
+                    enumValues = Enum.GetNames(pi.PropertyType).ToList();
                 }
+
+                fields.Add(new CommitFieldModel(jsonName, pi.PropertyType, isRequired, fieldDesc, enumValues));
             }
 
             // Get attributes
@@ -117,5 +104,17 @@ internal static class CommitSchemaModel
         }
 
         return variants.AsReadOnly();
+    }
+
+    private static bool IsNullableProperty(PropertyInfo prop)
+    {
+        // Check if it's a nullable reference type or Nullable<T>
+        if (prop.PropertyType.IsValueType)
+        {
+            return Nullable.GetUnderlyingType(prop.PropertyType) != null;
+        }
+
+        var nullableAttr = prop.GetCustomAttribute<System.Runtime.CompilerServices.NullableAttribute>();
+        return nullableAttr != null && nullableAttr.NullableFlags[0] != 1;
     }
 }
