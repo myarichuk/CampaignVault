@@ -77,7 +77,6 @@ public sealed class SceneNpcPresenceFactory
                 BehavioralTension: enrichment.BehavioralTension,
                 ActiveInitiatives: enrichment.ActiveInitiatives.ToList(),
                 RelevantMemories: enrichment.RelevantMemories.ToList(),
-                HeldItems: heldItems,
                 EquippedItems: equippedItems,
                 CarriedItems: carriedItems,
                 TurnIntent: enrichment.TurnIntent

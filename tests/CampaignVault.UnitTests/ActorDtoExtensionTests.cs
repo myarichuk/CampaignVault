@@ -190,10 +190,10 @@ public class ActorDtoExtensionTests
     }
 
     [Fact]
-    public void SystemStatsChange_WithDnd5eExtension_CanUpdateIdentityFields()
+    public void CharacterUpdate_WithDnd5eExtension_CanUpdateIdentityFields()
     {
-        // Arrange: Simulate applying a SystemStatsChange that adds a feat
-        var change = new SystemStatsChange
+        // Arrange: Simulate applying a CharacterUpdate systemStats patch that adds a feat
+        var change = new CharacterUpdate
         {
             CharacterId = "chars/thief",
             SystemStats = new Dnd5eExtension
@@ -210,7 +210,7 @@ public class ActorDtoExtensionTests
 
         // Assert
         Assert.NotNull(deserialized);
-        var statsChange = Assert.IsType<SystemStatsChange>(deserialized);
+        var statsChange = Assert.IsType<CharacterUpdate>(deserialized);
         var stats = Assert.IsType<Dnd5eExtension>(statsChange.SystemStats);
         Assert.Equal("halfling", stats.Race);
         Assert.Equal("criminal", stats.Background);

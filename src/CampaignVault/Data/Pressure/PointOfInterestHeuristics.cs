@@ -52,12 +52,12 @@ public static class PointOfInterestHeuristics
         return true;
     }
 
-    public static bool PoiHasDetails(Location loc, string poiName)
+    public static bool PoiHasDetails(Dictionary<string, string> pointOfInterestDetails, string poiName)
     {
-        if (loc.PointOfInterestDetails == null || loc.PointOfInterestDetails.Count == 0)
+        if (pointOfInterestDetails == null || pointOfInterestDetails.Count == 0)
             return false;
 
-        foreach (var kv in loc.PointOfInterestDetails)
+        foreach (var kv in pointOfInterestDetails)
         {
             if (string.Equals(kv.Key, poiName, StringComparison.OrdinalIgnoreCase) &&
                 !string.IsNullOrWhiteSpace(kv.Value))
@@ -71,11 +71,11 @@ public static class PointOfInterestHeuristics
     /// <summary>
     /// Returns the list of PoI names that currently have no materialized details.
     /// </summary>
-    public static List<string> GetUnmaterializedPois(Location loc)
+    public static List<string> GetUnmaterializedPois(List<string> pointsOfInterest, Dictionary<string, string> pointOfInterestDetails)
     {
-        var pois = loc.PointsOfInterest ?? new List<string>();
+        var pois = pointsOfInterest ?? new List<string>();
         return pois
-            .Where(p => !string.IsNullOrWhiteSpace(p) && !PoiHasDetails(loc, p))
+            .Where(p => !string.IsNullOrWhiteSpace(p) && !PoiHasDetails(pointOfInterestDetails, p))
             .ToList();
     }
 }

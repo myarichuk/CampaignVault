@@ -97,7 +97,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task SystemStatsChange_MergesPartialUpdates()
+    public async Task CharacterUpdate_MergesPartialSystemStatsUpdates()
     {
         using var session = _fixture.Store.OpenAsyncSession();
         await StoreDnd5eConfigAsync(session, "bootstrap-merge");
@@ -118,8 +118,8 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(existing);
         await session.SaveChangesAsync();
 
-        var handler = new SystemStatsChangeHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
-        var change = new SystemStatsChange
+        var handler = new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
+        var change = new CharacterUpdate
         {
             CharacterId = "chars/goblin-1",
             SystemStats = new Dnd5eExtension

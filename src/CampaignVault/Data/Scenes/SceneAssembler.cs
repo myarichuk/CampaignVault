@@ -24,7 +24,7 @@ public sealed class SceneAssembler
     {
         return new SceneView
         {
-            Location = new Location
+            Location = LocationDetailView.From(new Location
             {
                 Id = locationId,
                 Name = "[Unanchored]",
@@ -35,11 +35,12 @@ public sealed class SceneAssembler
                 PointOfInterestDetails = new(StringComparer.OrdinalIgnoreCase),
                 AmbientCrowd = null,
                 LastVisitedDay = null
-            },
+            }),
             PresentNPCs = [],
             LocalRumors = [],
             VisibleItems = [],
             RecentEvents = [],
+            RecentEventSummaries = [],
             ActiveCombat = null,
             IsLocationAnchored = false,
             ActiveQuests = [],
@@ -87,11 +88,12 @@ public sealed class SceneAssembler
 
         return new SceneView
         {
-            Location = context.Location,
+            Location = LocationDetailView.From(context.Location),
             PresentNPCs = presenceSummaries,
             LocalRumors = context.Rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)).ToList(),
-            VisibleItems = context.Items,
+            VisibleItems = context.Items.Select(ItemSummaryView.From).ToList(),
             RecentEvents = context.Events,
+            RecentEventSummaries = context.Events.Select(EventSummaryView.From).ToList(),
             ActiveCombat = NormalizeActiveCombat(context.ActiveCombat, context.Location.Id),
             IsLocationAnchored = true,
             ActiveQuests = context.ActiveQuests.Select(CampaignRepository.ToActiveQuestSummary).ToList(),

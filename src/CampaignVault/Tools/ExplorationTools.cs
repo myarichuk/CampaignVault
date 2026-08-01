@@ -233,12 +233,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
             var context = new NpcContextView
             {
-                Character = npc,
-                Psychology = npc.Psychology ?? new PsychologyProfile(),
-                Social = npc.Social ?? new SocialProfile(),
-                Needs = npc.Needs ?? new NeedsProfile(),
-                SystemStats = npc.SystemStats ?? new SystemExtension(),
-                RecentInteractions = npcEvents,
+                Character = CharacterDetailView.From(npc),
+                RecentInteractions = npcEvents.Select(EventSummaryView.From).ToList(),
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = knownNeeds,
                 NeedDescriptors = mergedDescriptors,
@@ -286,7 +282,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                     .ToListAsync();
                 var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
                 var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
-                partyMembers.Add(new PartyMemberView(member, equipped, carried));
+                partyMembers.Add(new PartyMemberView(CharacterDetailView.From(member), equipped, carried));
             }
 
             var pcCount = party.Count(c => c.IsPc);
@@ -298,7 +294,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("UNIFIED SEARCH: Hybrid keyword + semantic search across characters, lore, locations, rumors, factions, quests, events, and items (campaign-scoped plus shared-universe entities with no CampaignName). Requires campaignName.")]
+    [Description("UNIFIED SEARCH: Hybrid keyword + semantic search across characters, lore, locations, rumors, factions, quests, events, and items (campaign-scoped plus shared-universe entities with no CampaignName). Each match is { entityType, match: <summary> } — entityType disambiguates types that share field names (e.g. character/location/faction/item all have 'name'). Summaries are lean, not full documents; use get_entity with the matched id for full detail (chars/, locations/, factions/, quests/, items/ — rumors and lore have no get_entity route, so their summaries already include full text). Requires campaignName.")]
     public Task<ToolResult<UnifiedSearchResult>> SearchWorld(
         [Description("The keyword or phrase to search for.")] string query,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)

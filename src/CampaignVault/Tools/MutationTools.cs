@@ -549,7 +549,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                     var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, member.Id, ctx.Campaign);
                     if (summary != null)
                     {
-                        partyMembers.Add(new PartyMemberView(member, summary.Equipped, summary.Carried));
+                        partyMembers.Add(new PartyMemberView(CharacterDetailView.From(member), summary.Equipped, summary.Carried));
                     }
                 }
                 catch (Exception ex)
@@ -636,12 +636,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
             ctx.Result.FullNpcContext = new NpcContextView
             {
-                Character = npc,
-                Psychology = npc.Psychology ?? new PsychologyProfile(),
-                Social = npc.Social ?? new SocialProfile(),
-                Needs = npc.Needs ?? new NeedsProfile(),
-                SystemStats = npc.SystemStats ?? new SystemExtension(),
-                RecentInteractions = npcEvents,
+                Character = CharacterDetailView.From(npc),
+                RecentInteractions = npcEvents.Select(EventSummaryView.From).ToList(),
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
                 Equipped = equipped,

@@ -1,8 +1,57 @@
+using System.Text.Json.Serialization;
+
 namespace CampaignVault.Models;
+
+/// <summary>
+/// Wire-facing projection of <see cref="Location"/> for response views (SceneView, SceneSummaryView) —
+/// drops CampaignName, LastUpdated, IsArchived (an archived location surfacing in an active scene is a
+/// bug worth seeing in logs, not narrating), and TagProvenance (event-id provenance for tags/features,
+/// not narrative content).
+/// </summary>
+public record LocationDetailView(
+    string Id,
+    string Name,
+    string Description,
+    LocationType Type,
+    string? ParentLocationId,
+    List<LocationExit> Exits,
+    List<string> PointsOfInterest,
+    Dictionary<string, string> PointOfInterestDetails,
+    string? AmbientCrowd,
+    int? LastVisitedDay,
+    List<DepartedNpcRecord> RecentlyDeparted,
+    Dictionary<string, object> Metadata,
+    string? CurrentState,
+    List<string> VisualTags,
+    List<string> DistinctiveFeatures,
+    string? ControllingFactionId,
+    int DangerModifier,
+    ClimateZone? ClimateZone)
+{
+    public static LocationDetailView From(Location l) => new(
+        l.Id,
+        l.Name,
+        l.Description,
+        l.Type,
+        l.ParentLocationId,
+        l.Exits,
+        l.PointsOfInterest,
+        l.PointOfInterestDetails,
+        l.AmbientCrowd,
+        l.LastVisitedDay,
+        l.RecentlyDeparted,
+        l.Metadata,
+        l.CurrentState,
+        l.VisualTags,
+        l.DistinctiveFeatures,
+        l.ControllingFactionId,
+        l.DangerModifier,
+        l.ClimateZone);
+}
 
 public class SceneView
 {
-    public Location Location { get; set; } = null!;
+    public LocationDetailView Location { get; set; } = null!;
 
     /// <summary>
     /// True if the location exists in the persistent database (was loaded successfully).
@@ -18,9 +67,25 @@ public class SceneView
     // ReSharper disable once InconsistentNaming
     public IEnumerable<NpcPresenceSummary> PresentNPCs { get; set; } = [];
     public IEnumerable<RumorSummary> LocalRumors { get; set; } = [];
-    public IEnumerable<Item> VisibleItems { get; set; } = [];
+
+    /// <summary>
+    /// Lightweight summaries of items visible/present at this location. Not full Item documents —
+    /// see ItemSummaryView.
+    /// </summary>
+    public IEnumerable<ItemSummaryView> VisibleItems { get; set; } = [];
+
+    /// <summary>
+    /// Full Event objects for in-process pressure heuristics (need Timestamp and other fields not on
+    /// EventSummaryView) — kept for in-process consumers (AmbientCrowdPressureContributor,
+    /// SceneVulnerabilityHeuristics, etc.) but not sent over the wire. LLM-facing recent-events summary
+    /// is RecentEventSummaries below (same "internal full copy + wire summary" pattern as WorldPressureItems).
+    /// </summary>
+    [JsonIgnore]
     public IEnumerable<Event> RecentEvents { get; set; } = [];
-    
+
+    /// <summary>Lightweight recent-event summaries actually sent to the LLM.</summary>
+    public IEnumerable<EventSummaryView> RecentEventSummaries { get; set; } = [];
+
     /// <summary>
     /// If there is an active combat encounter in this location, its state is returned here.
     /// Informs the LLM of turn order and rounds.
@@ -33,9 +98,11 @@ public class SceneView
     public IEnumerable<string>? SuggestedCommitExamples { get; set; }
 
     /// <summary>
-    /// Rich pressure items including Severity and optional SuggestedCommitJson for structured clients.
-    /// The parallel ToolResult.WorldPressure contains the human-prefixed display strings (with JSONs appended).
+    /// Structured pressure items (Severity, GroupingKey, SuggestedCommitJson) — kept for in-process
+    /// consumers (tests assert on these fields directly) but not sent over the wire: the LLM already
+    /// gets the same content via the parallel ToolResult.WorldPressure display strings.
     /// </summary>
+    [JsonIgnore]
     public List<WorldPressureItem> WorldPressureItems { get; set; } = [];
 
     /// <summary>
@@ -72,7 +139,7 @@ public class SceneView
 /// </summary>
 public class SceneSummaryView
 {
-    public Location Location { get; set; } = null!;
+    public LocationDetailView Location { get; set; } = null!;
     public IEnumerable<NpcPresenceSummary> PresentNPCs { get; set; } = [];
     public IEnumerable<RumorSummary> LocalRumors { get; set; } = [];
     public bool ActiveCombat { get; set; }
@@ -146,6 +213,12 @@ public record NpcPresenceSummary(
     /// truth, distinct from this NPC's own subjective Memories below.
     /// </summary>
     Dictionary<string, List<string>>? TagProvenance = null,
+    /// <summary>
+    /// Full memory dict — kept for in-process consumers (MemoryDecayPressureContributor scans every
+    /// memory for decay, not just the top-ranked ones) but not sent over the wire. LLM-facing subset is
+    /// RelevantMemories below (same "internal full copy + wire summary" pattern as WorldPressureItems).
+    /// </summary>
+    [property: JsonIgnore]
     Dictionary<string, MemoryNode>? Memories = null,
     /// <summary>
     /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills).
@@ -154,11 +227,12 @@ public record NpcPresenceSummary(
     SystemExtension? SystemStats = null,
     double BehavioralTension = 0,
     IReadOnlyList<InitiativeCandidate>? ActiveInitiatives = null,
-    IReadOnlyList<MemoryNode>? RelevantMemories = null,
     /// <summary>
-    /// Items held by this character (weapons, gear). Use for attack narration and ruleset_action parameters.
+    /// Top memories scored relevant to this moment (present entities, location, recency) — not this
+    /// NPC's complete memory history. More may exist; deep-dive with get_entity (chars/&lt;id&gt;) or
+    /// take_turn's fullDetailCharacterId for the full set.
     /// </summary>
-    IReadOnlyList<Item>? HeldItems = null,
+    IReadOnlyList<MemoryNode>? RelevantMemories = null,
     List<ItemSummaryView>? EquippedItems = null,
     List<ItemSummaryView>? CarriedItems = null,
     /// <summary>
@@ -233,6 +307,7 @@ public record ItemDetailSummary(string Id, string Name, string? Status)
 public record ItemSummaryView(
     string Id,
     string Name,
+    string Description,
     int Quantity,
     string CoreCategory,
     bool IsEquipped,
@@ -241,6 +316,8 @@ public record ItemSummaryView(
     string? CurrentState,
     int? CurrentCharges,
     int? MaxCharges,
+    List<string> Tags,
+    List<string> DistinctiveFeatures,
     List<string>? VisualTags,
     string? AppearanceNote,
     List<ItemDetailSummary>? ItemDetails)
@@ -248,6 +325,7 @@ public record ItemSummaryView(
     public static ItemSummaryView From(Item item) => new(
         item.Id,
         item.Name,
+        item.Description,
         Math.Max(item.Quantity, 1),
         item.CoreCategory.ToString(),
         item.IsEquipped,
@@ -256,10 +334,42 @@ public record ItemSummaryView(
         item.CurrentState,
         item.CurrentCharges,
         item.MaxCharges,
+        item.Tags ?? [],
+        item.DistinctiveFeatures ?? [],
         item.VisualTags,
         item.AppearanceNote,
         item.ItemDetails.Where(d => !d.IsRetired).Select(d => new ItemDetailSummary(d.Id, d.Name, d.Status)).ToList() is { Count: > 0 } details ? details : null
     );
+}
+
+/// <summary>
+/// Lightweight event projection for DM narration — summary/category/involved/location/day/importance
+/// plus EmotionalBeat (see DmHelpManual's Patterns section: "one of the highest-fidelity ways to make
+/// relationships feel alive across sessions" — dropping it would sever that continuity for any DM
+/// reading this view). Not full Event documents (no Details, Timestamp, SemanticVector, etc.) — full
+/// event history with those fields is still available on-demand via recall_history. Production logic
+/// that needs the full Event (e.g. pressure heuristics reading SceneView.RecentEvents) keeps using
+/// Event directly.
+/// </summary>
+public record EventSummaryView(
+    string Id,
+    string Summary,
+    EventCategory Category,
+    List<string> Involved,
+    string? LocationId,
+    int DayLogged,
+    MemoryImportance Importance,
+    string? EmotionalBeat)
+{
+    public static EventSummaryView From(Event ev) => new(
+        ev.Id,
+        ev.Summary,
+        ev.Category,
+        ev.Involved,
+        ev.LocationId,
+        ev.DayLogged,
+        ev.Importance,
+        ev.EmotionalBeat);
 }
 
 public record SceneClimateSummary(
@@ -268,7 +378,7 @@ public record SceneClimateSummary(
     string TimeOfDay);
 
 public record PartyMemberView(
-    Character Character,
+    CharacterDetailView Character,
     List<ItemSummaryView>? Equipped = null,
     List<ItemSummaryView>? Carried = null)
 {
@@ -290,4 +400,90 @@ public record ContainerContentsSummary(
     string ContainerName,
     List<ContainedItemSummary> Contents,
     int MaxDepth);
+
+/// <summary>
+/// Wraps a search_world hit with an explicit type tag. Needed because Character/Location/Faction/Item
+/// all share a "Name" field — without this, the LLM has no reliable way to tell them apart by shape
+/// alone. Each Match is a lean summary, not the full document: search_world is for ID discovery (see
+/// get_entity's own description — "Use search_world first when you only know a name, not the ID"), and
+/// most types have a get_entity full-detail fallback (chars/, locations/, factions/, quests/, items/).
+/// Rumor and Lore have no get_entity route, so their summaries keep full narrative content intact.
+/// </summary>
+public record SearchMatch(string EntityType, object Match);
+
+/// <summary>Search-result projection of <see cref="Character"/> — see get_entity (chars/) for full detail.</summary>
+public record CharacterSearchSummary(
+    string Id,
+    string Name,
+    bool IsPc,
+    bool IsPartyCompanion,
+    string? CurrentAppearance,
+    string? CurrentActivity,
+    string? CurrentLocationId)
+{
+    public static CharacterSearchSummary From(Character c) => new(
+        c.Id, c.Name, c.IsPc, c.IsPartyCompanion, c.CurrentAppearance, c.CurrentActivity, c.CurrentLocationId);
+}
+
+/// <summary>Search-result projection of <see cref="Location"/> — see get_entity (locations/) for full detail.</summary>
+public record LocationSearchSummary(
+    string Id,
+    string Name,
+    LocationType Type,
+    string Description,
+    string? ParentLocationId)
+{
+    public static LocationSearchSummary From(Location l) => new(l.Id, l.Name, l.Type, l.Description, l.ParentLocationId);
+}
+
+/// <summary>Search-result projection of <see cref="Faction"/> — see get_entity (factions/) for full detail.</summary>
+public record FactionSearchSummary(
+    string Id,
+    string Name,
+    string? Description,
+    FactionType FactionType,
+    int InfluenceLevel)
+{
+    public static FactionSearchSummary From(Faction f) => new(f.Id, f.Name, f.Description, f.FactionType, f.InfluenceLevel);
+}
+
+/// <summary>Search-result projection of <see cref="Quest"/> — see get_entity (quests/) for full detail.</summary>
+public record QuestSearchSummary(
+    string Id,
+    string Title,
+    QuestState OverallState,
+    QuestUrgency Urgency,
+    int? DeadlineDay,
+    string? GiverId)
+{
+    public static QuestSearchSummary From(Quest q) => new(q.Id, q.Title, q.OverallState, q.Urgency, q.DeadlineDay, q.GiverId);
+}
+
+/// <summary>
+/// Search-result projection of <see cref="Lore"/>. No get_entity route exists for lore/ — this keeps
+/// Content intact (only drops CampaignName/LastUpdated bookkeeping) since there's no full-detail fallback.
+/// </summary>
+public record LoreSearchSummary(
+    string Id,
+    string Title,
+    string Content,
+    string? Category)
+{
+    public static LoreSearchSummary From(Lore l) => new(l.Id, l.Title, l.Content, l.Category);
+}
+
+/// <summary>
+/// Search-result projection of <see cref="Rumor"/>. No get_entity route exists for rumors/ — this keeps
+/// CurrentText intact (only drops CampaignName/LastUpdated/IsArchived bookkeeping) since there's no
+/// full-detail fallback.
+/// </summary>
+public record RumorSearchSummary(
+    string Id,
+    string Subject,
+    string CurrentText,
+    RumorState State,
+    string RegionLocationId)
+{
+    public static RumorSearchSummary From(Rumor r) => new(r.Id, r.Subject, r.CurrentText, r.State, r.RegionLocationId);
+}
 

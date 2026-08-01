@@ -45,7 +45,7 @@ public sealed class Pf2eDeriveDefenseStep : IBootstrapStep
         if (stats.Level.HasValue && stats.AcProficiency != Pf2eProficiencyRank.Trained)
         {
             hints.Add(
-                $"AC uses {stats.AcProficiency} proficiency. If {context.Character.Name}'s proficiency should be different, correct the AC via system_stats.");
+                $"AC uses {stats.AcProficiency} proficiency. If {context.Character.Name}'s proficiency should be different, correct the AC via character_update's systemStats.");
         }
 
         return new BootstrapStepResult

@@ -649,65 +649,6 @@ public class CharacterUpdateHandler : IWorldChangeHandler
     }
 }
 
-public class SystemStatsChangeHandler : IWorldChangeHandler
-{
-    private readonly CampaignDocumentKeys _keys;
-    private readonly CharacterBootstrapOrchestrator _bootstrap;
-
-    public SystemStatsChangeHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap)
-    {
-        _keys = keys ?? throw new ArgumentNullException(nameof(keys));
-        _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
-    }
-
-    public bool ShouldHandle(WorldChange change) => change is SystemStatsChange;
-
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
-        CancellationToken ct = default)
-    {
-        var ssc = (SystemStatsChange)change;
-        if (string.IsNullOrWhiteSpace(ssc.CharacterId))
-        {
-            return ChangeHandlerResult.Failure("characterId is required.");
-        }
-
-        if (ssc.SystemStats == null)
-        {
-            return ChangeHandlerResult.Failure("systemStats is required.");
-        }
-
-        var character = context.Session != null
-            ? await context.Session.LoadAsync<Character>(ssc.CharacterId, ct)
-            : null;
-        if (character == null)
-        {
-            return ChangeHandlerResult.Failure($"Character '{ssc.CharacterId}' not found. Cannot update system stats.");
-        }
-
-        if (!string.IsNullOrEmpty(context.CampaignName)
-            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
-        {
-            return ChangeHandlerResult.Failure(hidden);
-        }
-
-        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
-        if (!SystemStatsMerger.TryValidateRuleset(ssc.SystemStats, activeSystem, out var validationError))
-        {
-            return ChangeHandlerResult.Failure(validationError!);
-        }
-
-        character.SystemStats = SystemStatsMerger.Merge(
-            character.SystemStats ?? SystemStatsMerger.CreateDefault(activeSystem),
-            SystemStatsMerger.CoerceToRuleset(ssc.SystemStats, activeSystem));
-
-        await CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
-            _bootstrap, character, activeSystem, null, null, BootstrapTrigger.SystemStatsPatch, context, ct: ct);
-
-        context.RecordMessage($"Updated system stats for '{ssc.CharacterId}'.");
-        return ChangeHandlerResult.Ok;
-    }
-}
-
 internal static class CharacterHandlerHelpers
 {
     public static async Task<RulesetSystem> ResolveActiveSystemAsync(ChangeContext context, CampaignDocumentKeys keys,

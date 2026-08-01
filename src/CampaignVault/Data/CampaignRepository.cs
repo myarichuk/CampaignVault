@@ -682,14 +682,14 @@ public class CampaignRepository
         }
 
         var results = new List<object>();
-        results.AddRange(chars);
-        results.AddRange(lore);
-        results.AddRange(locs.Where(l => !l.IsArchived));
-        results.AddRange(rumors.Where(r => !r.IsArchived));
-        results.AddRange(factions.Where(f => !f.IsArchived));
-        results.AddRange(quests.Where(q => !q.IsArchived));
-        results.AddRange(events);
-        results.AddRange(items.Where(i => !i.IsArchived));
+        results.AddRange(chars.Select(c => new SearchMatch("character", CharacterSearchSummary.From(c))));
+        results.AddRange(lore.Select(l => new SearchMatch("lore", LoreSearchSummary.From(l))));
+        results.AddRange(locs.Where(l => !l.IsArchived).Select(l => new SearchMatch("location", LocationSearchSummary.From(l))));
+        results.AddRange(rumors.Where(r => !r.IsArchived).Select(r => new SearchMatch("rumor", RumorSearchSummary.From(r))));
+        results.AddRange(factions.Where(f => !f.IsArchived).Select(f => new SearchMatch("faction", FactionSearchSummary.From(f))));
+        results.AddRange(quests.Where(q => !q.IsArchived).Select(q => new SearchMatch("quest", QuestSearchSummary.From(q))));
+        results.AddRange(events.Select(e => new SearchMatch("event", EventSummaryView.From(e))));
+        results.AddRange(items.Where(i => !i.IsArchived).Select(i => new SearchMatch("item", ItemSummaryView.From(i))));
         return results;
     }
 
@@ -2502,7 +2502,7 @@ public class CampaignRepository
         var view = new WorldStateView(
             time,
             rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
-            events,
+            events.Select(EventSummaryView.From),
             locSummary,
             PressureManager.ToDisplayStrings(pressureItems),
             worldActiveQuests.Select(q => ToActiveQuestSummary(q) with

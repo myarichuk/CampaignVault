@@ -88,7 +88,7 @@ internal static class WorldChangeNormalizer
                 {
                     throw new InvalidOperationException(
                         "WorldChange object is missing the required '$type' discriminator field and we could not infer the type from its properties. " +
-                        "Please ensure every change object includes '$type' with one of: event, hp, engagement_relation, activity, status, status_remove, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, location_update, character_update, travel, rest, etc.");
+                        "Please ensure every change object includes '$type' — see WorldChange's own description for the full list of valid values.");
                 }
             }
 

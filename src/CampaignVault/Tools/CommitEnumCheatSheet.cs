@@ -135,7 +135,7 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 
 Cooldown: one successful interrupt per location per in-game day. Do not use during active combat or on every dialog line.
 
-### world_build.characters[].systemStats / system_stats
+### world_build.characters[].systemStats / character_update.systemStats
 | Field | Valid values |
 |-------|----------------|
 | `$system` | dnd5e, pf2e (lowercase, exact — wrong casing silently falls back to untyped stats) |

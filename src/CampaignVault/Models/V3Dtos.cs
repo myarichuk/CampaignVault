@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
 
@@ -38,7 +39,7 @@ public class WorldStateView
 {
     public CampaignTime Time { get; set; } = null!;
     public IEnumerable<RumorSummary> ActiveRumors { get; set; } = [];
-    public IEnumerable<Event> RecentEvents { get; set; } = [];
+    public IEnumerable<EventSummaryView> RecentEvents { get; set; } = [];
     public LocationSummary? PartyLocation { get; set; }
     public IEnumerable<string> WorldPressure { get; set; } = [];
     public IEnumerable<ActiveQuestSummary>? ActiveQuests { get; set; }
@@ -47,9 +48,12 @@ public class WorldStateView
     public IEnumerable<string>? SuggestedCommitExamples { get; set; }
 
     /// <summary>
-    /// Rich pressure items (with optional SuggestedCommitJson). Preferred for structuredContent consumers.
-    /// The string WorldPressure contains the formatted display form (including any suggested JSON inline).
+    /// Structured pressure items (Severity, GroupingKey, SuggestedCommitJson) — kept for in-process
+    /// consumers (tests assert on these fields directly) but not sent over the wire: the LLM-facing
+    /// channel is WorldPressure (display strings with the same suggested JSON embedded inline), and
+    /// serializing both would duplicate this content in every world-state-carrying response.
     /// </summary>
+    [JsonIgnore]
     public IEnumerable<WorldPressureItem> WorldPressureItems { get; set; } = [];
 
     /// <summary>
@@ -60,7 +64,7 @@ public class WorldStateView
     public SeedCoverageSummary? SeedCoverage { get; set; }
 
     public WorldStateView() { }
-    public WorldStateView(CampaignTime time, IEnumerable<RumorSummary> rumors, IEnumerable<Event> events, LocationSummary? location = null, IEnumerable<string>? pressure = null, IEnumerable<ActiveQuestSummary>? activeQuests = null, IEnumerable<FactionPresenceSummary>? relevantFactions = null, string? lastKnownTravel = null, IEnumerable<string>? suggestedCommitExamples = null, IEnumerable<WorldPressureItem>? pressureItems = null)
+    public WorldStateView(CampaignTime time, IEnumerable<RumorSummary> rumors, IEnumerable<EventSummaryView> events, LocationSummary? location = null, IEnumerable<string>? pressure = null, IEnumerable<ActiveQuestSummary>? activeQuests = null, IEnumerable<FactionPresenceSummary>? relevantFactions = null, string? lastKnownTravel = null, IEnumerable<string>? suggestedCommitExamples = null, IEnumerable<WorldPressureItem>? pressureItems = null)
     {
         Time = time;
         ActiveRumors = rumors;
@@ -83,12 +87,15 @@ public class SessionBriefingView
 {
     public CampaignTime Time { get; set; } = null!;
     public IEnumerable<RumorSummary> ActiveRumors { get; set; } = [];
-    public IEnumerable<Event> RecentEvents { get; set; } = [];
+    public IEnumerable<EventSummaryView> RecentEvents { get; set; } = [];
     public LocationSummary? PartyLocation { get; set; }
     public IEnumerable<string> WorldPressure { get; set; } = [];
     public IEnumerable<ActiveQuestSummary>? ActiveQuests { get; set; }
     public IEnumerable<FactionPresenceSummary>? RelevantFactions { get; set; }
     public string? LastKnownTravel { get; set; }
+
+    /// <summary>Same wire-exclusion rationale as WorldStateView.WorldPressureItems — see there.</summary>
+    [JsonIgnore]
     public IEnumerable<WorldPressureItem> WorldPressureItems { get; set; } = [];
     public SeedCoverageSummary? SeedCoverage { get; set; }
     public IEnumerable<PartyMemberView> Party { get; set; } = [];

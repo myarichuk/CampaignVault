@@ -49,7 +49,7 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
         var scene = new SceneView
         {
             IsLocationAnchored = true,
-            Location = source,
+            Location = LocationDetailView.From(source),
             PresentNPCs = [],
             RecentEvents = []
         };
@@ -91,7 +91,7 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
         var scene = new SceneView
         {
             IsLocationAnchored = true,
-            Location = source
+            Location = LocationDetailView.From(source)
         };
 
         var pressures = await contributor.EvaluateAsync(new PressureContext(

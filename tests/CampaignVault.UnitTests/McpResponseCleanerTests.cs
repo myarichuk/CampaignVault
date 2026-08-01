@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using CampaignVault.Middleware;
+using ModelContextProtocol.Protocol;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -71,5 +72,65 @@ public class McpResponseCleanerTests
 
         Assert.Equal("Forest", output.GetProperty("matches")[0].GetProperty("name").GetString());
         Assert.Equal("Something happened", output.GetProperty("matches")[1].GetProperty("summary").GetString());
+    }
+
+    private static void CollapseContentToSummary(CallToolResult result)
+    {
+        var method = typeof(McpResponseCleaner).GetMethod(
+            "TryCollapseContentToSummary",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+        method!.Invoke(null, [result]);
+    }
+
+    [Fact]
+    public void CollapsesContentToSummary_WhenStructuredContentHasSummary()
+    {
+        var structured = JsonDocument.Parse(
+            """{"success":true,"summary":"World updated with 2 changes.","data":{"committed":true,"npcs":[{"name":"Old Owen"}]}}"""
+        ).RootElement;
+        var result = new CallToolResult
+        {
+            Content = [new TextContentBlock { Text = JsonSerializer.Serialize(structured) }],
+            StructuredContent = structured,
+        };
+
+        CollapseContentToSummary(result);
+
+        var block = Assert.Single(result.Content);
+        var text = Assert.IsType<TextContentBlock>(block);
+        Assert.Equal("World updated with 2 changes.", text.Text);
+    }
+
+    [Fact]
+    public void LeavesContentUntouched_WhenSummaryMissing()
+    {
+        var structured = JsonDocument.Parse("""{"success":true,"data":{"committed":true}}""").RootElement;
+        var original = new TextContentBlock { Text = "original text" };
+        var result = new CallToolResult
+        {
+            Content = [original],
+            StructuredContent = structured,
+        };
+
+        CollapseContentToSummary(result);
+
+        Assert.Same(original, Assert.Single(result.Content));
+    }
+
+    [Fact]
+    public void LeavesContentUntouched_WhenSummaryIsEmpty()
+    {
+        var structured = JsonDocument.Parse("""{"success":true,"summary":"","data":{}}""").RootElement;
+        var original = new TextContentBlock { Text = "original text" };
+        var result = new CallToolResult
+        {
+            Content = [original],
+            StructuredContent = structured,
+        };
+
+        CollapseContentToSummary(result);
+
+        Assert.Same(original, Assert.Single(result.Content));
     }
 }

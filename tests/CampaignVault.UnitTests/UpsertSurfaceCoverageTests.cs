@@ -139,7 +139,7 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
         var results = await repository.UnifiedSearchAsync(verifySession, "ZzArchivedCryptUnique", "test-camp");
-        Assert.DoesNotContain(results, r => r is Location loc && loc.Id == "locations/forgotten-crypt");
+        Assert.DoesNotContain(results, r => r is SearchMatch { EntityType: "location", Match: LocationSearchSummary loc } && loc.Id == "locations/forgotten-crypt");
 
         var reloaded = await verifySession.LoadAsync<Location>("locations/forgotten-crypt");
         Assert.NotNull(reloaded);

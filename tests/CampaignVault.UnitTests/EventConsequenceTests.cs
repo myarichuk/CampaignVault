@@ -218,7 +218,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var contributor = new EventConsequencePressureContributor();
-        var scene = new SceneView { IsLocationAnchored = true, Location = new Location { Id = locId, Name = "Hall" } };
+        var scene = new SceneView { IsLocationAnchored = true, Location = LocationDetailView.From(new Location { Id = locId, Name = "Hall" }) };
         var pressures = await contributor.EvaluateAsync(new PressureContext(
             campaign,
             new CampaignTime { TotalDaysElapsed = 5 },
@@ -251,7 +251,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var contributor = new EventConsequencePressureContributor();
-        var scene = new SceneView { IsLocationAnchored = true, Location = new Location { Id = locId, Name = "Hall" } };
+        var scene = new SceneView { IsLocationAnchored = true, Location = LocationDetailView.From(new Location { Id = locId, Name = "Hall" }) };
         var pressures = await contributor.EvaluateAsync(new PressureContext(
             campaign,
             new CampaignTime { TotalDaysElapsed = 5 },

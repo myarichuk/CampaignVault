@@ -60,7 +60,7 @@ public class EngagementRelationPressureTests
         var session = Substitute.For<IAsyncDocumentSession>();
         var scene = new SceneView
         {
-            Location = new Location { Id = "loc_1", Name = "Tavern" },
+            Location = LocationDetailView.From(new Location { Id = "loc_1", Name = "Tavern" }),
             PresentNPCs =
             [
                 new(

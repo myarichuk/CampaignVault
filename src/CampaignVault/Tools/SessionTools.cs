@@ -115,7 +115,7 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
                     .Where(i => i.HolderId == member.Id && !i.IsArchived)
                     .ToListAsync();
                 view.Party.Add(new PartyMemberView(
-                    member,
+                    CharacterDetailView.From(member),
                     heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList(),
                     heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList()));
             }

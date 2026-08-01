@@ -9,7 +9,7 @@ namespace CampaignVault.Models;
 /// The LLM must include the exact <c>$type</c> discriminator so the server knows which concrete change to apply.
 /// Mix as many different change kinds as needed in a single call for atomicity.
 /// </summary>
-[Description("REQUIRED: Every WorldChange object MUST include the exact '$type' discriminator field. Valid values: hp, activity, relationship, need, event, status, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, travel, rest, location_update, character_update, system_stats, and 30+ others. Omitting '$type' will cause deserialization to fail. Use 'system_stats' (or character_update's systemStats field) to bootstrap/patch a character's ruleset combat stats — see IncompleteSystemStats ENGINE WARNING. Mix freely (hp + activity + relationship + need + event, etc.) for atomicity.")]
+[Description("REQUIRED: Every WorldChange object MUST include the exact '$type' discriminator field. Valid values: hp, activity, relationship, need, event, status, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, travel, rest, location_update, character_update, and 30+ others. Omitting '$type' will cause deserialization to fail. Use character_update's systemStats field to bootstrap/patch a character's ruleset combat stats — see IncompleteSystemStats ENGINE WARNING. Mix freely (hp + activity + relationship + need + event, etc.) for atomicity.")]
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(HpChange), "hp")]
 [JsonDerivedType(typeof(ItemTransfer), "item")]
@@ -33,7 +33,6 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(RestChange), "rest")]
 [JsonDerivedType(typeof(ItemUpdate), "item_update")]
 [JsonDerivedType(typeof(CharacterUpdate), "character_update")]
-[JsonDerivedType(typeof(SystemStatsChange), "system_stats")]
 [JsonDerivedType(typeof(KnowledgeUpdate), "knowledge_update")]
 [JsonDerivedType(typeof(EngagementRelationChange), "engagement_relation")]
 [JsonDerivedType(typeof(SpatialPositionChange), "spatial_position")]
@@ -772,7 +771,7 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("currentHp")]
     public int? CurrentHp { get; set; }
 
-    [Description("Ruleset-specific stats with $system discriminator (dnd5e/pf2e). REQUIRED for combatants — engine warns until bootstrapped. See get_help topic=world-building for the per-ruleset bootstrap field list.")]
+    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See get_help topic=combat for the field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
 
@@ -1091,7 +1090,7 @@ public class CharacterUpdate : WorldChange
     [JsonPropertyName("isPartyCompanion")]
     public bool? IsPartyCompanion { get; set; }
 
-    [Description("Partial ruleset stats merge. Same shape as character_create.systemStats.")]
+    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See get_help topic=combat for the field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
 
@@ -1106,20 +1105,6 @@ public class CharacterUpdate : WorldChange
     [Description("Clear departure metadata when re-promoting or returning an evicted NPC.")]
     [JsonPropertyName("clearDeparture")]
     public bool? ClearDeparture { get; set; }
-}
-
-/// <summary>
-/// Patch or bootstrap a character's ruleset-specific systemStats (partial merge).
-/// </summary>
-public class SystemStatsChange : WorldChange
-{
-    [Description("ID of the character to update.")]
-    [JsonPropertyName("characterId")]
-    public string CharacterId { get; set; } = null!;
-
-    [Description("Ruleset stats to merge. Include $system discriminator (dnd5e, pf2e).")]
-    [JsonPropertyName("systemStats")]
-    public SystemExtension SystemStats { get; set; } = null!;
 }
 
 public class KnowledgeUpdate : WorldChange

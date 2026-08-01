@@ -118,9 +118,9 @@ public class SceneAssemblerTests
         Assert.Equal(42.5, summary.BehavioralTension);
         Assert.Equal("Alice looks ready to bolt.", summary.BehavioralSummary);
         Assert.Single(summary.ActiveInitiatives!);
-        Assert.NotNull(summary.HeldItems);
-        Assert.Single(summary.HeldItems!);
-        Assert.Equal("Ring", summary.HeldItems![0].Name);
+        Assert.NotNull(summary.CarriedItems);
+        Assert.Single(summary.CarriedItems!);
+        Assert.Equal("Ring", summary.CarriedItems![0].Name);
 
         initiative.Received(1).Enrich(
             Arg.Is<NpcInitiativeContext>(ctx =>

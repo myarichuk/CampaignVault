@@ -171,7 +171,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var searchSession = _store.OpenAsyncSession();
         var resultsFromA = await repo.UnifiedSearchAsync(searchSession, "dragon", campaignName: campaignA);
 
-        Assert.DoesNotContain(resultsFromA, r => r is Character c && c.Id == charId);
+        Assert.DoesNotContain(resultsFromA, r => r is SearchMatch { EntityType: "character", Match: CharacterSearchSummary c } && c.Id == charId);
     }
 
     [Fact]
@@ -720,14 +720,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var ev = result.Data!.RecentInteractions.FirstOrDefault(e => e.Id == eventId);
         Assert.NotNull(ev);
 
-        // Must be sanitized (no JsonElement leakage)
-        // Note: Depending on RavenDB/System.Text.Json versioning, whole numbers might be long or int.
-        // What matters is that it's NOT a JsonElement.
-        var secretValue = ev.Details!["secret"];
-        Assert.True(secretValue is int || secretValue is long,
-            $"Expected numeric type, got {secretValue?.GetType().Name}");
-
-        // The query path must not have blown up
+        // RecentInteractions is EventSummaryView (no Details field) — general Event.Details
+        // JsonElement-leakage sanitization is covered by SanitizeValue_Prevents_JsonElement_Leakage
+        // above, which still returns full Event. This asserts the query path itself doesn't blow up
+        // loading an event whose Details contains values that need sanitizing.
         Assert.Contains("NPC involved event", ev.Summary);
     }
 
@@ -942,14 +938,14 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         {
             var results = (await repo.UnifiedSearchAsync(session, marker, TestCampaignDefaults.Slug)).ToList();
 
-            Assert.Contains(results, r => r is Character);
-            Assert.Contains(results, r => r is Lore);
-            Assert.Contains(results, r => r is Location);
-            Assert.Contains(results, r => r is Rumor);
-            Assert.Contains(results, r => r is Faction);
-            Assert.Contains(results, r => r is Quest);
-            Assert.Contains(results, r => r is Event);
-            Assert.Contains(results, r => r is Item);
+            Assert.Contains(results, r => r is SearchMatch { EntityType: "character" });
+            Assert.Contains(results, r => r is SearchMatch { EntityType: "lore" });
+            Assert.Contains(results, r => r is SearchMatch { EntityType: "location" });
+            Assert.Contains(results, r => r is SearchMatch { EntityType: "rumor" });
+            Assert.Contains(results, r => r is SearchMatch { EntityType: "faction" });
+            Assert.Contains(results, r => r is SearchMatch { EntityType: "quest" });
+            Assert.Contains(results, r => r is SearchMatch { EntityType: "event" });
+            Assert.Contains(results, r => r is SearchMatch { EntityType: "item" });
         }
     }
 

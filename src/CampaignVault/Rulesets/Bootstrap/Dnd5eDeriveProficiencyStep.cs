@@ -86,7 +86,7 @@ public sealed class Dnd5eDeriveProficiencyStep(
     /// LLM already knows them and would just be duplicating/maintaining a second copy). Instead, nudge once
     /// at first bootstrap: if the character has a resolvable class and background-granted skills are the
     /// only ones present, remind the LLM to pick and commit the class's skill proficiencies itself via a
-    /// system_stats change, mirroring the existing armor-equip hint in Dnd5eDeriveDefenseStep.
+    /// character_update systemStats patch, mirroring the existing armor-equip hint in Dnd5eDeriveDefenseStep.
     /// </summary>
     private List<string> BuildClassSkillChoiceHints(BootstrapContext context, Dnd5eExtension stats)
     {
@@ -100,7 +100,7 @@ public sealed class Dnd5eDeriveProficiencyStep(
         return
         [
             $"{context.Character.Name} ({classNames}) — remember to pick and commit class-granted skill proficiencies "
-            + "(per the class's PHB skill list, e.g. Fighter chooses 2, Rogue chooses 4) via a system_stats change: "
+            + "(per the class's PHB skill list, e.g. Fighter chooses 2, Rogue chooses 4) via a character_update systemStats patch: "
             + "systemStats.skillModifiers[skillName] = ability modifier + proficiencyBonus. "
             + "Background-granted skills are already derived automatically; class choices are not, since they're a player pick.",
         ];

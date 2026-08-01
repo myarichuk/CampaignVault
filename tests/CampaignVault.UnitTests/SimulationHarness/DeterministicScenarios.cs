@@ -92,7 +92,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         var context = await simulator.Interact(npcId);
         Assert.True(context.Success);
         Assert.Equal("Barliman Butterbur", context.Data!.Character.Name);
-        Assert.Equal(50f, context.Data!.Needs.ActiveNeeds["tiredness"]);
+        Assert.Equal(50f, context.Data!.Character.Needs.ActiveNeeds["tiredness"]);
         Assert.Equal(NarrativePhase.Resolution, simulator.CurrentPhase);
 
         // 4. Resolve (Reduce tiredness narratively)
@@ -109,7 +109,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
 
         // Final Assertion: Verify state survived and simulation applied
         var finalContext = await simulator.Interact(npcId);
-        var finalTiredness = finalContext.Data!.Needs.ActiveNeeds["tiredness"];
+        var finalTiredness = finalContext.Data!.Character.Needs.ActiveNeeds["tiredness"];
 
         // Calculation: 50 (start) - 20 (resolve) + 8 (1 day simulation at 0.8 rate) = 38
         Assert.Equal(38f, finalTiredness);

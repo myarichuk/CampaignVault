@@ -12,18 +12,32 @@ public static class ClimateResolver
 {
     public const int MaxAncestryDepth = 8;
 
-    public static async Task<ClimateZone> ResolveEffectiveZoneAsync(
+    public static Task<ClimateZone> ResolveEffectiveZoneAsync(
         IAsyncDocumentSession session,
         Location location,
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        ResolveEffectiveZoneAsync(session, location.Id, location.ParentLocationId, location.ClimateZone, ct);
+
+    public static Task<ClimateZone> ResolveEffectiveZoneAsync(
+        IAsyncDocumentSession session,
+        LocationDetailView location,
+        CancellationToken ct = default) =>
+        ResolveEffectiveZoneAsync(session, location.Id, location.ParentLocationId, location.ClimateZone, ct);
+
+    private static async Task<ClimateZone> ResolveEffectiveZoneAsync(
+        IAsyncDocumentSession session,
+        string locationId,
+        string? parentLocationId,
+        ClimateZone? ownClimateZone,
+        CancellationToken ct)
     {
-        if (location.ClimateZone.HasValue)
+        if (ownClimateZone.HasValue)
         {
-            return location.ClimateZone.Value;
+            return ownClimateZone.Value;
         }
 
-        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { location.Id };
-        var currentParentId = location.ParentLocationId;
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { locationId };
+        var currentParentId = parentLocationId;
         var depth = 0;
 
         while (!string.IsNullOrEmpty(currentParentId) && depth < MaxAncestryDepth)

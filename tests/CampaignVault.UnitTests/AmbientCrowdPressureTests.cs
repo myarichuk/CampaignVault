@@ -62,12 +62,12 @@ public class AmbientCrowdPressureContributorTests
         var scene = new SceneView
         {
             IsLocationAnchored = true,
-            Location = new Location
+            Location = LocationDetailView.From(new Location
             {
                 Id = "locations/training-hall",
                 Name = "Training Hall",
                 AmbientCrowd = "About 25 warriors and mercenaries training"
-            },
+            }),
             PresentNPCs =
             [
                 new NpcPresenceSummary(
@@ -101,13 +101,13 @@ public class AmbientCrowdPressureContributorTests
         var scene = new SceneView
         {
             IsLocationAnchored = true,
-            Location = new Location
+            Location = LocationDetailView.From(new Location
             {
                 Id = "locations/driftwood-tavern",
                 Name = "The Driftwood Tavern",
                 AmbientCrowd = null,
                 PointsOfInterest = []
-            },
+            }),
             PresentNPCs = [],
             RecentEvents = []
         };
@@ -131,13 +131,13 @@ public class AmbientCrowdPressureContributorTests
         var scene = new SceneView
         {
             IsLocationAnchored = true,
-            Location = new Location
+            Location = LocationDetailView.From(new Location
             {
                 Id = "locations/quiet-study",
                 Name = "Quiet Study",
                 AmbientCrowd = null,
                 PointsOfInterest = ["A cluttered writing desk"]
-            },
+            }),
             PresentNPCs = [],
             RecentEvents = []
         };
@@ -159,12 +159,12 @@ public class AmbientCrowdPressureContributorTests
         var scene = new SceneView
         {
             IsLocationAnchored = true,
-            Location = new Location
+            Location = LocationDetailView.From(new Location
             {
                 Id = "locations/tavern",
                 Name = "Tavern",
                 AmbientCrowd = "8-15 locals nursing drinks"
-            },
+            }),
             PresentNPCs = [],
             RecentEvents =
             [

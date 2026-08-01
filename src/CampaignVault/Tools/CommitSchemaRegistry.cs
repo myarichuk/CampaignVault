@@ -186,14 +186,6 @@ internal static class CommitSchemaRegistry
             SideEffects: [],
             CoCommitHints: []),
 
-        new("system_stats", "World",
-            "Patch or bootstrap a character's ruleset-specific stats (partial merge).",
-            ["characterId", "systemStats"],
-            [],
-            HasSideEffects: false,
-            SideEffects: [],
-            CoCommitHints: []),
-
         new("location_update", "World",
             "Granular updates to an existing location (exits, PoIs, tags, state).",
             ["locationId"],

@@ -10,14 +10,70 @@ public record PlotThreadMinimal(
     PlotThreadState State,
     int TensionLevel);
 
+/// <summary>
+/// Wire-facing projection of <see cref="Character"/> for response views (NpcContextView, PartyMemberView) —
+/// drops pure engine bookkeeping the LLM never needs for narration: Schedule (internal simulation
+/// routines — CurrentLocationId/CurrentActivity already surface the result), TagProvenance (event-id
+/// provenance for tags/features, not narrative content), the five rest-recovery counters (gate HP/resource
+/// pool math internally; their effects are already visible via CurrentHp/SystemStats), CampaignName, and
+/// LastUpdated. Includes Psychology/Social/Needs/SystemStats — read those off this object rather than a
+/// top-level copy, to avoid shipping them twice on the wire.
+/// </summary>
+public record CharacterDetailView(
+    string Id,
+    string Name,
+    string? ClassLevel,
+    int ExperiencePoints,
+    int CurrentHp,
+    int MaxHp,
+    string? Notes,
+    List<string> DistinctiveFeatures,
+    string? CurrentAppearance,
+    List<string> VisualTags,
+    bool KeepAlive,
+    bool IsPc,
+    bool IsPartyCompanion,
+    string? CurrentLocationId,
+    string? CurrentActivity,
+    int? DepartedAtDay,
+    string? DepartedFromLocationId,
+    PsychologyProfile Psychology,
+    SocialProfile Social,
+    NeedsProfile Needs,
+    SystemExtension SystemStats)
+{
+    public static CharacterDetailView From(Character c) => new(
+        c.Id,
+        c.Name,
+        c.ClassLevel,
+        c.ExperiencePoints,
+        c.CurrentHp,
+        c.MaxHp,
+        c.Notes,
+        c.DistinctiveFeatures,
+        c.CurrentAppearance,
+        c.VisualTags,
+        c.KeepAlive,
+        c.IsPc,
+        c.IsPartyCompanion,
+        c.CurrentLocationId,
+        c.CurrentActivity,
+        c.DepartedAtDay,
+        c.DepartedFromLocationId,
+        c.Psychology,
+        c.Social,
+        c.Needs,
+        c.SystemStats);
+}
+
 public class NpcContextView
 {
-    public Character Character { get; set; } = null!;
-    public PsychologyProfile Psychology { get; set; } = null!;
-    public SocialProfile Social { get; set; } = null!;
-    public NeedsProfile Needs { get; set; } = null!;
-    public SystemExtension SystemStats { get; set; } = null!;
-    public IEnumerable<Event> RecentInteractions { get; set; } = [];
+    /// <summary>
+    /// Character projection, including Psychology/Social/Needs/SystemStats — read those off
+    /// this object rather than a top-level copy, to avoid shipping them twice on the wire.
+    /// </summary>
+    public CharacterDetailView Character { get; set; } = null!;
+    public IEnumerable<EventSummaryView> RecentInteractions { get; set; } = [];
     public string? BehavioralSummary { get; set; }
 
     /// <summary>

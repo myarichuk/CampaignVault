@@ -65,7 +65,7 @@ public class MemoryDecayPressureContributorTests
 
         var scene = new SceneView
         {
-            Location = new Location { Id = "locations/rusty-nail", Name = "Rusty Nail" },
+            Location = LocationDetailView.From(new Location { Id = "locations/rusty-nail", Name = "Rusty Nail" }),
             PresentNPCs = [npc]
         };
 

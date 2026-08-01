@@ -30,6 +30,9 @@ public static class JsonSanitizer
             case Models.Location loc:
                 SanitizeDictionary(loc.Metadata);
                 break;
+            case Models.LocationDetailView ldv:
+                SanitizeDictionary(ldv.Metadata);
+                break;
             case Models.Item item:
                 SanitizeDictionary(item.Properties);
                 break;
@@ -162,27 +165,9 @@ public static class JsonSanitizer
                 break;
             case Models.SceneView scene:
                 Sanitize(scene.Location);
-                foreach (var it in scene.VisibleItems)
-                {
-                    Sanitize(it);
-                }
 
-                if (scene.PresentNPCs != null)
-                {
-                    foreach (var npc in scene.PresentNPCs)
-                    {
-                        if (npc.HeldItems == null)
-                        {
-                            continue;
-                        }
-
-                        foreach (var it in npc.HeldItems)
-                        {
-                            Sanitize(it);
-                        }
-                    }
-                }
-
+                // PresentNPCs' EquippedItems/CarriedItems are ItemSummaryView (no raw Properties dict),
+                // so no sanitization needed there.
                 break;
             case IEnumerable<object> seq:
                 foreach (var item in seq)

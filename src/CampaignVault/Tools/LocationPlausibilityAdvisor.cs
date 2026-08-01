@@ -30,7 +30,7 @@ internal static class LocationPlausibilityAdvisor
         { "doctor", new LocationProfile("Doctor's Office", staffRoles: ["Doctor", "Physician"], threshold: 1) },
     };
 
-    public static string? GenerateSuggestion(Location? location, int npcCountAtLocation = 0)
+    public static string? GenerateSuggestion(LocationDetailView? location, int npcCountAtLocation = 0)
     {
         if (location == null || string.IsNullOrEmpty(location.Name) || location.Type == LocationType.Region || location.Type == LocationType.Settlement)
         {
@@ -114,7 +114,7 @@ internal static class LocationPlausibilityAdvisor
                description.Contains("deserted", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static List<string> CheckMetadataCompleteness(Location location)
+    private static List<string> CheckMetadataCompleteness(LocationDetailView location)
     {
         var gaps = new List<string>();
 

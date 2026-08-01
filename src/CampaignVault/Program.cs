@@ -196,6 +196,8 @@ mcpServerBuilder
         McpToolTelemetryFilter.Register(filters);
         McpToolErrorFilter.Register(filters);
         McpResponseCleaner.Register(filters);
+        SystemStatsSchemaSimplifier.Register(filters);
+        McpSchemaDeduplicator.Register(filters); //TODO: evaluate - not sure its helpful
     });
 
 builder.Services.AddGrpc();

@@ -394,9 +394,9 @@ When a `knowledge_update` is derived from a specific logged event, set `sourceEv
 
 **Required for all combatants** (KeepAlive OR maxHp > 0):
 1. **HP**: `maxHp` (+ optional `currentHp`) — or omit `maxHp` and let the ruleset bootstrap pipeline derive it
-2. **systemStats**: ruleset-specific combat stats via `systemStats` on `world_build` or `system_stats` patch
+2. **systemStats**: ruleset-specific combat stats via `systemStats` on `world_build` (create) or `character_update` (patch — partial merge onto existing stats, never replaces wholesale)
 
-**Auto-bootstrap (omit maxHp for PCs):** Pipeline runs at `world_build`, `system_stats` patch, and `level_up`. PCs: omit `maxHp` — supply typed bootstrap fields. Creature stat blocks: `systemStats.statBlockHp` or `maxHp` (skips HP formula only; AC/proficiency still derive). `currentHp` alone = wounded at create.
+**Auto-bootstrap (omit maxHp for PCs):** Pipeline runs at `world_build`, `character_update`'s systemStats patch, and `level_up`. PCs: omit `maxHp` — supply typed bootstrap fields. Creature stat blocks: `systemStats.statBlockHp` or `maxHp` (skips HP formula only; AC/proficiency still derive). `currentHp` alone = wounded at create.
 
 **Typed bootstrap fields (NOT in `attributes` — numbers only there):**
 - **5e**: `hitDie` (e.g. ""d12""), `level`, `constitution`, `hpMode` (`average` | `rolled`), `classLevel` fallback; **multiclass**: `classLevels` array; **casters**: `spellcastingAbility`, optional `spellSaveDc`/`spellAttackBonus`
@@ -431,7 +431,7 @@ PF2e auto-bootstrap, via `world_build`:
 { ""character"": { ""id"": ""chars/level2-fighter"", ""name"": ""Elara"", ""keepAlive"": true, ""classLevel"": ""Human Fighter 2"", ""systemStats"": { ""$system"": ""pf2e"", ""classHpPerLevel"": 10, ""ancestryHp"": 8, ""level"": 2, ""constitutionMod"": 2, ""armorClass"": 19, ""strengthMod"": 4, ""skillModifiers"": { ""Perception"": 8, ""Athletics"": 9 } } } }
 
 Patch stats on existing character:
-{ ""$type"": ""system_stats"", ""characterId"": ""chars/campaign-thorin"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 16, ""strength"": 16, ""skillModifiers"": { ""Athletics"": 5 } } }
+{ ""$type"": ""character_update"", ""characterId"": ""chars/campaign-thorin"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 16, ""strength"": 16, ""skillModifiers"": { ""Athletics"": 5 } } }
 
 ## Ruleset Actions (Combat, Spells & Skill Checks)
 

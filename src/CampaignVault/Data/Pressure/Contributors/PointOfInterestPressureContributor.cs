@@ -31,7 +31,7 @@ public sealed class PointOfInterestPressureContributor : IPressureContributor
             return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
 
         var loc = ctx.Scene.Location;
-        var unmaterialized = PointOfInterestHeuristics.GetUnmaterializedPois(loc);
+        var unmaterialized = PointOfInterestHeuristics.GetUnmaterializedPois(loc.PointsOfInterest, loc.PointOfInterestDetails);
 
         var hasRecentActivity = (ctx.Scene.RecentEvents?.Any() ?? false) || ctx.PartyPresent;
 

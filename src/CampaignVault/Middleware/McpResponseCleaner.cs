@@ -7,7 +7,11 @@ namespace CampaignVault.Middleware;
 
 /// <summary>
 /// Strips semantic vector fields from MCP tool responses to conserve token context,
-/// while keeping them stored in RavenDB for search operations.
+/// while keeping them stored in RavenDB for search operations. Also collapses the redundant
+/// text Content block down to just the narrative Summary when StructuredContent is present —
+/// the MCP SDK always serializes the full return value into Content as a text fallback for
+/// clients that don't read StructuredContent, which otherwise doubles the effective payload
+/// size of every structured tool response.
 /// </summary>
 internal static class McpResponseCleaner
 {
@@ -35,10 +39,40 @@ internal static class McpResponseCleaner
                 {
                     // If cleaning fails, return original result
                 }
+
+                TryCollapseContentToSummary(result);
             }
 
             return result;
         });
+    }
+
+    /// <summary>
+    /// Replaces the SDK's default full-JSON-dump Content block with just the ToolResult's
+    /// Summary text, since StructuredContent already carries the complete data. Leaves Content
+    /// untouched if no non-empty "summary" string is present, so nothing is ever silently dropped
+    /// to an empty response.
+    /// </summary>
+    private static void TryCollapseContentToSummary(CallToolResult result)
+    {
+        if (result.StructuredContent is not { } structured || structured.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        if (!structured.TryGetProperty("summary", out var summaryProp) ||
+            summaryProp.ValueKind != JsonValueKind.String)
+        {
+            return;
+        }
+
+        var summary = summaryProp.GetString();
+        if (string.IsNullOrEmpty(summary))
+        {
+            return;
+        }
+
+        result.Content = [new TextContentBlock { Text = summary }];
     }
 
     private static JsonElement StripVectorsFromElement(JsonElement element)

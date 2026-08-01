@@ -231,7 +231,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
 
     private static WorldChange[] BuildDnd5eBootstrapCommit(string locId, string pcId, string enemyId) =>
     [
-        new SystemStatsChange
+        new CharacterUpdate
         {
             CharacterId = pcId,
             SystemStats = new Dnd5eExtension
@@ -244,7 +244,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
                 SavingThrowModifiers = new Dictionary<string, int> { { "Constitution", 4 } }
             }
         },
-        new SystemStatsChange
+        new CharacterUpdate
         {
             CharacterId = enemyId,
             SystemStats = new Dnd5eExtension
@@ -261,7 +261,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
 
     private static WorldChange[] BuildPf2eBootstrapCommit(string locId, string pcId, string enemyId) =>
     [
-        new SystemStatsChange
+        new CharacterUpdate
         {
             CharacterId = pcId,
             SystemStats = new Pf2eExtension
@@ -274,7 +274,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
                 SavingThrowModifiers = new Dictionary<string, int> { { "Fortitude", 9 }, { "Reflex", 7 }, { "Will", 6 } }
             }
         },
-        new SystemStatsChange
+        new CharacterUpdate
         {
             CharacterId = enemyId,
             SystemStats = new Pf2eExtension
@@ -335,7 +335,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         new QuestProgressHandler(),
         new ItemUpdateHandler(new TestFakeEmbeddingService()),
         new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator()),
-        new SystemStatsChangeHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator()),
+        new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator()),
         RulesetDataTestHelper.CreateLevelUpHandler(),
         new KnowledgeUpdateHandler(),
         new RulesetActionHandler(selector, keys),

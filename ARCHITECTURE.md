@@ -205,7 +205,7 @@ Consumption goes through `ResourceChangeHandler` via `$type: "resource"` commits
 `CharacterBootstrapOrchestrator` runs each ruleset's ordered `ICharacterBootstrapPipeline` when:
 
 - `character_create` / `upsert_character` omits `maxHp` (or `maxHp <= 0`)
-- `system_stats` patch leaves `maxHp <= 0`
+- `character_update`'s systemStats patch leaves `maxHp <= 0`
 - `level_up` commits incremental HP gains
 
 PCs omit `maxHp`; the pipeline derives HP from typed `systemStats` fields. Creature stat blocks use `maxHp` or `systemStats.statBlockHp` — these skip HP formula only; defense/proficiency steps still run. Steps live under `Rulesets/Bootstrap/`. Defense steps emit `[BOOTSTRAP HINT]` messages with copy-paste `item_create` armor JSON when worn armor is missing.

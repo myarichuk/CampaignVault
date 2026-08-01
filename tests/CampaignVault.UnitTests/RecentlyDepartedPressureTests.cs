@@ -25,7 +25,7 @@ public class RecentlyDepartedPressureTests : IClassFixture<RavenDBFixture>
         var scene = new SceneView
         {
             IsLocationAnchored = true,
-            Location = new Location
+            Location = LocationDetailView.From(new Location
             {
                 Id = locId,
                 Name = "Rusty Nail",
@@ -33,7 +33,7 @@ public class RecentlyDepartedPressureTests : IClassFixture<RavenDBFixture>
                 [
                     new DepartedNpcRecord("chars/mira", "Mira the Bard", 3, "transient eviction")
                 ]
-            }
+            })
         };
 
         var pressures = await new RecentlyDepartedPressureContributor().EvaluateAsync(new PressureContext(

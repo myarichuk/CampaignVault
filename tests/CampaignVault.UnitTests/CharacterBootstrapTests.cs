@@ -609,10 +609,10 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(existing);
         await session.SaveChangesAsync();
 
-        var handler = new SystemStatsChangeHandler(keys, BootstrapTestHelper.CreateOrchestrator());
+        var handler = new CharacterUpdateHandler(keys, BootstrapTestHelper.CreateOrchestrator());
         var summary = new List<string>();
         var ctx = CreateContext(session, "stats-patch", summary);
-        var result = await handler.ApplyAsync(new SystemStatsChange
+        var result = await handler.ApplyAsync(new CharacterUpdate
         {
             CharacterId = "chars/patched",
             SystemStats = new Dnd5eExtension { Dexterity = 16 },
