@@ -6,11 +6,14 @@ namespace CampaignVault.Tools;
 
 /// <summary>
 /// Help topics for focused, paginated manual sections.
+/// Large topical sections (patterns, combat, spells, world-pressure, visual-sandbox, quickstart) are now
+/// delivered as push-based guidance hints on tool responses instead of via get_help, reducing speculative
+/// pull-based fetching. This enum carries only session-0 procedural guidance, reference, and FAQ.
 /// </summary>
 internal enum HelpTopic
 {
-    /// <summary>Quickstart, golden rules, critical foundations (default, no topic param).</summary>
-    [Description("Default")]
+    /// <summary>Reference lookup only. The server pushes what you need automatically on tool responses; call this only to look up something you were not told.</summary>
+    [Description("Reference lookup")]
     None = 0,
 
     /// <summary>Initial world-building / session-0 seeding: recommended order, world_build example.</summary>
@@ -21,26 +24,6 @@ internal enum HelpTopic
     [Description("Guided campaign onboarding (session 0 Q&A) — when to use it vs create_campaign")]
     Onboarding,
 
-    /// <summary>Commit patterns: tavern walkthrough, quest lifecycle, wilderness, transients.</summary>
-    [Description("Commit patterns and narrative examples")]
-    Patterns,
-
-    /// <summary>Character bootstrap, ruleset actions, combat, status effects. Spellcasting routing/examples live under the separate Spells topic.</summary>
-    [Description("Combat and ruleset actions (non-spell)")]
-    Combat,
-
-    /// <summary>Spellcasting routing (attack/save/check/heal/utility) + copy-paste ruleset_action examples.</summary>
-    [Description("Spellcasting routing and examples")]
-    Spells,
-
-    /// <summary>WorldPressure system, pressure contributors, pressure-driven narrative.</summary>
-    [Description("World pressure and simulation")]
-    WorldPressure,
-
-    /// <summary>Tags, items, appearance, knowledge, physics sandbox.</summary>
-    [Description("Visual sandbox: item damage/wear/hidden-feature tracking, tags, appearance, knowledge")]
-    VisualSandbox,
-
     /// <summary>Full commit type enum cheat sheet with all discriminators.</summary>
     [Description("Commit type enum reference")]
     CommitEnum,
@@ -49,7 +32,7 @@ internal enum HelpTopic
     [Description("FAQ and laziness traps")]
     Faq,
 
-    /// <summary>Full MCP tool catalog grouped by category (absorbed the former list_tools tool).</summary>
+    /// <summary>Full MCP tool catalog grouped by category.</summary>
     [Description("MCP tool catalog")]
     Tools
 }
@@ -83,9 +66,9 @@ public class MetaTools : IMcpServerTool
 
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: onboarding, world-building, patterns, combat, spells, world-pressure, visual-sandbox (item damage/wear/hidden-feature tracking, tags, appearance, knowledge), commit-enum, tools (full MCP tool catalog), or faq. Each topic is self-contained with copy-paste examples.")]
+    [Description(@"REFERENCE LOOKUP. The server pushes what you need automatically on tool responses under `guidance`; follow it and do not call this speculatively. For session-0 setup questions, pass topic: 'onboarding' (guided Q&A — start_campaign_onboarding) or 'world-building' (seeding order). For quick reference: 'commit-enum' (valid $type discriminators) or 'tools' (MCP tool catalog). Guidance on patterns, combat, spells, world-pressure, and item tracking is delivered proactively on tool responses — do not fetch those sections via get_help.")]
     public Task<ToolResult<string>> GetHelp(
-        [Description("Optional help topic for focused deep-dive sections: 'onboarding' (guided session-0 Q&A — start_campaign_onboarding/submit_onboarding_answer/finalize_campaign_onboarding, and when to use it vs going straight to create_campaign), 'world-building' (session-0 seeding order + world_build example), 'patterns' (take_turn change examples), 'combat' (character bootstrap + non-spell ruleset actions), 'spells' (spell routing + copy-paste ruleset_action examples — separate from 'combat' to avoid pulling both when you only need one), 'world-pressure', 'visual-sandbox' (persistent item details: scratches/stains/secret compartments/damage, tags, appearance, knowledge), 'commit-enum', 'tools' (full MCP tool catalog grouped by category), 'faq'. Omit for lean quickstart.")]
+        [Description("Optional help topic: 'onboarding' (guided session-0 Q&A), 'world-building' (session-0 seeding order + world_build example), 'commit-enum' (valid change $type discriminators), 'tools' (full MCP tool catalog), or 'faq' (laziness traps + tips). Omit to get reference-lookup status. Guidance on patterns, combat, spells, world-pressure, and sandbox is delivered on tool responses under `guidance` — do not call get_help for those.")]
         string? topic = null)
     {
         var content = GetHelpContent(topic);
@@ -106,19 +89,6 @@ public class MetaTools : IMcpServerTool
 
             HelpTopic.WorldBuilding => DmHelpManual.WorldBuildingSection,
 
-            HelpTopic.Patterns => DmHelpManual.PatternsSection
-                .Replace("{{CONVERSATION_EXAMPLE}}", CommitHelpExamples.ConversationBatch.Trim(), StringComparison.Ordinal),
-
-            HelpTopic.Combat => DmHelpManual.CombatSection,
-
-            HelpTopic.Spells => DmHelpManual.SpellsSection
-                .Replace("{{SPELL_ROUTING}}", CommitSpellHelpExamples.RoutingGuide.Trim(), StringComparison.Ordinal)
-                .Replace("{{SPELL_EXAMPLES}}", CommitSpellHelpExamples.ExamplesSection.Trim(), StringComparison.Ordinal),
-
-            HelpTopic.WorldPressure => DmHelpManual.WorldPressureSection,
-
-            HelpTopic.VisualSandbox => DmHelpManual.VisualSandboxSection,
-
             HelpTopic.CommitEnum => DmHelpManual.CommitEnumSection
                 .Replace("{{COMMIT_ENUM_VALUES}}", CommitEnumCheatSheet.Full, StringComparison.Ordinal),
 
@@ -126,7 +96,7 @@ public class MetaTools : IMcpServerTool
 
             HelpTopic.Tools => "## MCP Tool Catalog\n\n" + ToolCatalog.FormatHelpIndex(),
 
-            _ => DmHelpManual.QuickstartSection
+            _ => "Reference lookup only. The server pushes what you need automatically on tool responses under `guidance`; follow it and don't call get_help speculatively. For session-0 setup: try topic=onboarding or topic=world-building. For reference: topic=commit-enum or topic=tools. Guidance on patterns, combat, spells, world-pressure, and sandbox is delivered on tool responses — do not fetch those sections here."
         };
     }
 }

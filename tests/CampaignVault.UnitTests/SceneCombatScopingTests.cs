@@ -89,14 +89,15 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
     public async Task GetHelp_IncludesToolIndexAndCommitEnumSections()
     {
         var meta = new MetaTools();
-        var quickstart = await meta.GetHelp();
+        var reference = await meta.GetHelp();
         var commitEnum = await meta.GetHelp("commit-enum");
-        var combat = await meta.GetHelp("combat");
+        var tools = await meta.GetHelp("tools");
 
-        Assert.True(quickstart.Success);
-        Assert.Contains("start_session", quickstart.Data!, StringComparison.Ordinal);
+        Assert.True(reference.Success);
+        Assert.Contains("Reference lookup", reference.Data!, StringComparison.Ordinal);
         Assert.Contains("Commit Enum Values", commitEnum.Data!, StringComparison.Ordinal);
         Assert.Contains("Region, Settlement, District, Building, Room, Wilderness", commitEnum.Data!, StringComparison.Ordinal);
-        Assert.Contains("chars/valen", combat.Data!, StringComparison.Ordinal);
+        // Combat guidance is now delivered on tool responses, not via get_help (Phase 3)
+        Assert.Contains("start_session", tools.Data!, StringComparison.Ordinal);
     }
 }

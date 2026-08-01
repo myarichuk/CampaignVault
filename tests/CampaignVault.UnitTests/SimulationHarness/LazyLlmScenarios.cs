@@ -865,35 +865,6 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task GetHelp_ContainsPhase7Examples()
-    {
-        var (tools, repo) = CreateScenarioHarness();
-        var rollSvc = new DefaultRollService();
-
-
-        var result = await tools.GetHelp("patterns");
-        Assert.True(result.Success);
-        Assert.Contains("Travel, Faction, Quest & Rumor", result.Data);
-        Assert.Contains("faction_reputation", result.Data);
-        Assert.Contains("quest_progress", result.Data);
-        Assert.Contains("destinationLocationId", result.Data);
-    }
-
-    [Fact]
-    public async Task GetHelp_ContainsPhase8SandboxExamples()
-    {
-        var (tools, repo) = CreateScenarioHarness();
-        var rollSvc = new DefaultRollService();
-
-
-        var result = await tools.GetHelp("visual-sandbox");
-        Assert.True(result.Success);
-        Assert.Contains("The Visual / Physics Sandbox", result.Data);
-        Assert.Contains("item_update", result.Data);
-        Assert.Contains("character_update", result.Data);
-    }
-
-    [Fact]
     public async Task LLM_UsesItemUpdate_And_CharacterUpdate_For_VisualState()
     {
         var (tools, repo) = CreateScenarioHarness();

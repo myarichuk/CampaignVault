@@ -857,21 +857,25 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task GetHelp_ContainsQuickstartAndToolIndex()
+    public async Task GetHelp_ContainsReferenceMessageAndToolIndex()
     {
         var tools = CreateTools();
 
-        var result = await tools.GetHelp();
+        var reference = await tools.GetHelp();
+        var toolIndex = await tools.GetHelp("tools");
 
-        Assert.True(result.Success);
-        Assert.Contains("Quickstart for Models", result.Data);
-        Assert.Contains("Campaign slug scoping", result.Data);
-        Assert.Contains("campaignName", result.Data);
-        Assert.Contains("list_campaigns", result.Data);
-        Assert.Contains("Tools by Category", result.Data);
-        Assert.Contains("`take_turn`", result.Data);
-        Assert.Contains("`get_entity`", result.Data);
-        Assert.Contains("`start_session`", result.Data);
+        Assert.True(reference.Success);
+        // Guidance is pushed on tool responses, not pulled via get_help (Phase 3)
+        Assert.Contains("Reference lookup", reference.Data);
+        Assert.Contains("push", reference.Data);
+        Assert.Contains("guidance", reference.Data);
+
+        // Tool index is available via topic=tools
+        Assert.True(toolIndex.Success);
+        Assert.Contains("list_campaigns", toolIndex.Data);
+        Assert.Contains("`take_turn`", toolIndex.Data);
+        Assert.Contains("`get_entity`", toolIndex.Data);
+        Assert.Contains("`start_session`", toolIndex.Data);
     }
 
     [Fact]

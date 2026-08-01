@@ -293,14 +293,8 @@ public class LlmToolingRegressionTests
             surfaces.Add(($"tool description: {tool.Name}", tool.Description ?? ""));
         }
 
-        surfaces.Add(("DmHelpManual.Quickstart", CampaignVault.Tools.DmHelpManual.QuickstartSection));
-        surfaces.Add(("DmHelpManual.Patterns", CampaignVault.Tools.DmHelpManual.PatternsSection));
-        surfaces.Add(("DmHelpManual.Combat", CampaignVault.Tools.DmHelpManual.CombatSection));
-        surfaces.Add(("DmHelpManual.Spells", CampaignVault.Tools.DmHelpManual.SpellsSection
-            .Replace("{{SPELL_ROUTING}}", CommitSpellHelpExamples.RoutingGuide, StringComparison.Ordinal)
-            .Replace("{{SPELL_EXAMPLES}}", CommitSpellHelpExamples.ExamplesSection, StringComparison.Ordinal)));
-        surfaces.Add(("DmHelpManual.WorldPressure", CampaignVault.Tools.DmHelpManual.WorldPressureSection));
-        surfaces.Add(("DmHelpManual.VisualSandbox", CampaignVault.Tools.DmHelpManual.VisualSandboxSection));
+        // Large topical sections (Quickstart, Patterns, Combat, Spells, WorldPressure, VisualSandbox)
+        // are now delivered as push-based guidance hints on tool responses (Phase 3), not via get_help.
         surfaces.Add(("DmHelpManual.CommitEnum", CampaignVault.Tools.DmHelpManual.CommitEnumSection));
         surfaces.Add(("DmHelpManual.Faq", CampaignVault.Tools.DmHelpManual.FaqSection));
         surfaces.Add(("DmHelpManual.WorldBuilding", CampaignVault.Tools.DmHelpManual.WorldBuildingSection));
