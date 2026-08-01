@@ -103,7 +103,7 @@ Call `get_help topic=tools` for the full catalog. The surface is deliberately sm
 
 95%+ of the world is ephemeral flavor that lives ONLY in your current narration/context. Only *meaningful* interactions (that will be referenced again, combat, theft, named recurring NPCs, discovered secret doors the party will use) should be anchored via `take_turn`. The engine owns linking, GC of transients, visit tracking, and nags you *immediately* on the next `get_entity` or world-state refresh with **exact, copy-paste-ready JSON** when you (or prior LLM turns) were lazy/incomplete.
 
-Treat every string in `WorldPressure` that starts with `ENGINE WARNING:` or `NARRATIVE PROMPT:` as a **mandatory high-priority directive**. Paste the example JSON into your next `take_turn` call. This defeats the ""silly factor"" of being forced to output perfect polymorphic arrays for every tavern bard or crate.
+Treat every string in `WorldPressure` that starts with `ENGINE WARNING:` or `NARRATIVE PROMPT:` as a **mandatory high-priority directive**. Fold the example JSON into the **same `changes[]` array** as whatever you're already committing for this beat — never fire a separate `take_turn` just for the fix. This defeats the ""silly factor"" of being forced to output perfect polymorphic arrays for every tavern bard or crate.
 ";
 
     internal const string PatternsSection = @"# Change Patterns & Narrative Examples
@@ -433,13 +433,9 @@ PF2e auto-bootstrap, via `world_build`:
 Patch stats on existing character:
 { ""$type"": ""character_update"", ""characterId"": ""chars/campaign-thorin"", ""systemStats"": { ""$system"": ""dnd5e"", ""armorClass"": 16, ""strength"": 16, ""skillModifiers"": { ""Athletics"": 5 } } }
 
-## Ruleset Actions (Combat, Spells & Skill Checks)
+## Ruleset Actions (Combat & Skill Checks)
 
-Use `ruleset_action` inside `take_turn`'s changes for attacks, spells, skills, grapples, and item use. The engine rolls and returns results — narrate from the response. **The engine auto-applies `hp` deltas from ruleset_action — do not also commit separate `hp` for the same hit.**
-
-**After any spell, include `status` separately for concentration/charm/etc.** Spend spell slots via `$type: ""resource""` (poolName: spell_slots_N, delta: -1, spellName required for validation); the engine validates spell level vs. slot level, and spending below 0 HARD-FAILS the batch (e.g. ""Insufficient spell_slots_3 for Valen: has 0, needs 1."") — check remaining pool via the character's full-detail view (get_entity or take_turn's fullDetailCharacterId) before spending, or catch the error and adjust the spell/slot choice. Grants above max still clamp silently.
-
-{{SPELL_ROUTING}}
+Use `ruleset_action` inside `take_turn`'s changes for attacks, skills, grapples, and item use. Spellcasting uses the same `$type` but has its own routing, slot-spend, and concentration rules — see `get_help topic=spells` before casting anything. The engine rolls and returns results — narrate from the response. **The engine auto-applies `hp` deltas from ruleset_action — do not also commit separate `hp` for the same hit.**
 
 - **$type**: `""ruleset_action""`
 - **characterId**: Acting character.
@@ -449,12 +445,10 @@ Use `ruleset_action` inside `take_turn`'s changes for attacks, spells, skills, g
 - **actionCategory**: `""Spell""` for magic; `""Social""` / `""Survival""` nudges utility inference when `resolution` omitted.
 - **isReaction**: set `true` for a reaction (e.g. an opportunity attack when a foe disengages or moves away) — consumes the character's reaction slot instead of an action, and bypasses the whose-turn check; optional `reactionTrigger` (e.g. ""opportunity_attack"") is logged for context.
 
-**SavingThrow vs Spell:** `SavingThrow` = **actor** rolls one save. `Spell` + `parameters.resolution: ""save""` = **each target** rolls in **one batch** (Fireball). Never Fireball as six separate SavingThrows.
-
-{{SPELL_EXAMPLES}}
+**SavingThrow vs Spell:** `SavingThrow` = **actor** rolls one save. `Spell` + `parameters.resolution: ""save""` = **each target** rolls in **one batch** (Fireball) — full spell routing at `get_help topic=spells`. Never Fireball as six separate SavingThrows.
 
 **Common parameters:**
-- **All**: `resolution` (Spell: attack|save|check|utility|heal), `dc`, `skill`, `save`, `halfOnSave` (5e default true), `healDice`/`healBonus`/`healAmount`
+- **All**: `resolution` (Spell: attack|save|check|utility|heal — see topic=spells), `dc`, `skill`, `save`, `halfOnSave` (5e default true), `healDice`/`healBonus`/`healAmount`
 - **5e/PF2e**: `bonus`/`toHitBonus`, `damageDice`, `damageBonus`, `ac`, `mapPenalty` (PF2e), `spellAttackBonus` (override)
 
 - **advantageState**: `""Advantage""`, `""Disadvantage""`, `""None""` (5e native).
@@ -514,6 +508,17 @@ Use `status` inside `take_turn` to add effects, including mechanical modifiers.
 One tool: `combat(action: ""start"" | ""next"" | ""end"" | ""status"")` controls the encounter lifecycle (initiative, turn order, round-based effect expiry). All in-combat actions — attacks, spells, checks — go through `take_turn` with `ruleset_action`; the engine enforces turn order and action economy against the active encounter. Statuses applied via take_turn survive and modify future rolls.
 ";
 
+    internal const string SpellsSection = @"# Spellcasting
+
+Spells go through `ruleset_action` (same $type as attacks/skill checks) with `actionType: ""Spell""`. This topic is separate from `get_help topic=combat` so you only pull ~5K chars of spell-specific detail when you actually need it.
+
+**After any spell, include `status` separately for concentration/charm/etc.** Spend spell slots via `$type: ""resource""` (poolName: spell_slots_N, delta: -1, spellName required for validation); the engine validates spell level vs. slot level, and spending below 0 HARD-FAILS the batch (e.g. ""Insufficient spell_slots_3 for Valen: has 0, needs 1.""); check remaining pool via the character's full-detail view (get_entity or take_turn's fullDetailCharacterId) before spending, or catch the error and adjust the spell/slot choice. Grants above max still clamp silently.
+
+{{SPELL_ROUTING}}
+
+{{SPELL_EXAMPLES}}
+";
+
     internal const string WorldPressureSection = @"# World Pressure & Simulation
 
 ## WorldPressure System
@@ -548,12 +553,12 @@ Each pressure surfaces with a brief explanation and often includes **suggested c
 
 ## After Seeing a Pressure
 
-Your **next** action should usually be a `take_turn` using the exact snippet provided (adapted with real IDs/names). Then narrate the outcome. The engine will clear the pressure on subsequent reads.
+**One narrative beat = one `take_turn` call.** Fold the suggested JSON (adapted with real IDs/names) into the **same `changes[]` array** you're already committing for the current beat, alongside a single `narrative` covering all of it — do not fire a separate `take_turn` just for the pressure fix. The engine will clear the pressure on subsequent reads.
 
 Example workflow:
 1. A scene fetch returns `NARRATIVE PROMPT: ""Tavern has ambient crowd but no anchored NPCs. Promote an interactable character.""` with suggested JSON.
-2. You `world_build` for Bram the barkeep (optional step to flesh out flavor).
-3. You `take_turn` the suggested JSON (or adapt it with a conversation event).
+2. You `world_build` for Bram the barkeep (a separate call is fine here — `world_build` is the one-door entity-creation tool, distinct from `take_turn`).
+3. ONE `take_turn` call: `changes[]` holds the suggested JSON plus whatever change represents the current beat (e.g. a `conversation` event), narrated together in one `narrative`.
 4. Next scene fetch: pressure cleared.
 
 If you keep seeing the same pressure, you likely skipped the change or it doesn't match the pressure's expectation.

@@ -153,7 +153,7 @@ Via world_build:
 This rest commit recovers eligible resource pools and settles tiredness immediately, per the rest type (LongRest ⊃ ShortRest ⊃ PerTurn hierarchy) — no separate advance_world call needed.
 """;
 
-    internal const string HelpSection = RoutingGuide + """
+    internal const string ExamplesSection = """
 
 **Fireball (save — all targets, one commit):**
 """ + FireballSave + """

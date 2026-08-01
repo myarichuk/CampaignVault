@@ -58,6 +58,8 @@ Do **not** call `get_entity` before every beat just to "be safe." Prefer the lig
 
 *Why it matters:* The engine is the single source of truth. If you narrate first, you create phantom outcomes the engine never recorded — the party returns next session and finds their "victory" didn't persist. Extra full dumps also waste context and slow the loop.
 
+**Worked example** — party approaches a trapped door: (1) commit `ruleset_action` (Perception/Investigation) via `take_turn` with `includeWorldState: true`; (2) narrate from the result, roll/DC woven inline — success: "your eye catches a glint of wire at the hinge (Perception 18 vs DC 15) — you disarm it quietly"; failure: "the door swings open. Three paces in, your boot catches something. The floor lurches—"; (3) any discovered items/position changes are already in the response — persist ownership (`$type: "item"`/`item_transfer`) in the same or next batch. Only call `get_entity` first if you genuinely don't know whether the trap even exists.
+
 ---
 
 ## Scene Context: Prefer Summaries, Deep-Dive Only When Required
@@ -116,29 +118,15 @@ Not "She is weary and has given up hope." Instead: she doesn't move when you ent
 
 ---
 
-## Handling Uncertainty: The Full Cycle
-
-*Scene:* Party approaches a trapped door.
-
-*Right (efficient):*
-1. Commit `ruleset_action` (Perception/Investigation) via `take_turn` with `includeWorldState: true`.
-2. Narrate the outcome **from the engine result**, weaving the roll/DC inline: success — "your eye catches a glint of wire at the hinge (Perception 18 vs DC 15) — you disarm it quietly"; failure — "the door swings open. Three paces in, your boot catches something. The floor lurches—".
-3. Any discovered items, position changes, or consequences are already in the response. Persist ownership with `$type: "item"` / `item_transfer` in the same or next batch if needed.
-
-Only call `get_entity` first if you genuinely do not know whether a trap (or similar) even exists. **The roll determines the narration, never the reverse.**
-
----
-
 ## ENGINE WARNINGs & NARRATIVE PROMPTs
 
-When any response surfaces ENGINE WARNING or NARRATIVE PROMPT in WorldPressure:
+When any response surfaces ENGINE WARNING or NARRATIVE PROMPT in WorldPressure, fold the fix into the **same `take_turn` call** you're already making for the current beat — never a dedicated call just for the fix:
 
-1. Pause the pure-narration moment.
-2. Resolve atomically with `take_turn` + the suggested fix + `includeWorldState: true`.
-3. Verify the warning is gone in the response — don't assume success just because the call didn't error.
-4. Narrate the consequence into the scene.
+1. Add the suggested fix JSON to the `changes[]` array you're about to commit anyway (or, if nothing else is pending, commit it alone with `includeWorldState: true`).
+2. Verify the warning is gone in the response — don't assume success just because the call didn't error.
+3. Narrate the consequence as part of the same beat, in the same response cycle — not a follow-up call.
 
-Example: engine warns "NPC 'Kergil' is transient and will evict if party leaves." → commit `character_update` with `keepAlive: true` + a nudge, `includeWorldState: true` → confirm WorldPressure is clear → narrate: "As the party turns to leave, Kergil steps forward. 'Wait. I'm staying.'"
+Example: engine warns "NPC 'Kergil' is transient and will evict if party leaves." One `take_turn`: `changes[]` = `character_update` with `keepAlive: true` + a nudge, `includeWorldState: true` → confirm WorldPressure is clear → narrate: "As the party turns to leave, Kergil steps forward. 'Wait. I'm staying.'"
 
 ---
 

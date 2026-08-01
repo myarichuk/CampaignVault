@@ -17,6 +17,8 @@ A **bundle** is a set of `WorldChange` types that logically belong together — 
 - `ruleset_action` + `engagement_relation` (skill check shifts trust/suspicion)
 - `ruleset_action` + `character_update` + `event` (combat damage wounds someone)
 - `engagement_relation` + `event` (establish a new relationship, log it)
+- `ruleset_action` + `event` + `activity` (an attack triggers an immediate cascading consequence — alarm bells, guards mobilizing — still one beat, one call)
+- Any ENGINE WARNING/pressure fix + the beat you were already about to commit — never a dedicated call just for the fix
 
 ❌ **Incoherent bundles**:
 - `ruleset_action` (attack) + `item_update` (unrelated item state) — use two separate take_turn calls
@@ -39,9 +41,14 @@ Valen tries to seduce the guard.
 
 **Example: No**
 ```
-Valen attacks the guard, the guard takes damage, and alarm bells ring across the fort.
-→ Three beats: attack, alarm (event), and fort reaction (NPC activities)
-→ Three separate take_turn calls
+Valen attacks the guard this turn. Two rounds later, after regrouping, the guard's allies set an ambush down the corridor.
+→ Two turns separated by an intervening player decision/round
+→ Two separate take_turn calls, one per turn
+
+(Contrast: the attack + the alarm it triggers + guards mobilizing in response are
+all IMMEDIATE, same-beat consequences of one action — that's a cohesive bundle,
+ONE take_turn call: ruleset_action + event + activity. Don't split cascading
+same-beat consequences just because they touch different WorldChange types.)
 ```
 
 ### 2. **Does the outcome change character state?**

@@ -25,9 +25,13 @@ internal enum HelpTopic
     [Description("Commit patterns and narrative examples")]
     Patterns,
 
-    /// <summary>Character bootstrap, ruleset actions, combat, spells, status effects.</summary>
-    [Description("Combat and ruleset actions")]
+    /// <summary>Character bootstrap, ruleset actions, combat, status effects. Spellcasting routing/examples live under the separate Spells topic.</summary>
+    [Description("Combat and ruleset actions (non-spell)")]
     Combat,
+
+    /// <summary>Spellcasting routing (attack/save/check/heal/utility) + copy-paste ruleset_action examples.</summary>
+    [Description("Spellcasting routing and examples")]
+    Spells,
 
     /// <summary>WorldPressure system, pressure contributors, pressure-driven narrative.</summary>
     [Description("World pressure and simulation")]
@@ -77,9 +81,9 @@ public class MetaTools : IMcpServerTool
 
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: onboarding, world-building, patterns, combat, world-pressure, visual-sandbox (item damage/wear/hidden-feature tracking, tags, appearance, knowledge), commit-enum, tools (full MCP tool catalog), or faq. Each topic is self-contained with copy-paste examples.")]
+    [Description(@"SYSTEM DISCOVERABILITY: CALL THIS FIRST (with no topic). Returns lean quickstart + golden rules. For focused deep dives, pass topic: onboarding, world-building, patterns, combat, spells, world-pressure, visual-sandbox (item damage/wear/hidden-feature tracking, tags, appearance, knowledge), commit-enum, tools (full MCP tool catalog), or faq. Each topic is self-contained with copy-paste examples.")]
     public Task<ToolResult<string>> GetHelp(
-        [Description("Optional help topic for focused deep-dive sections: 'onboarding' (guided session-0 Q&A — start_campaign_onboarding/submit_onboarding_answer/finalize_campaign_onboarding, and when to use it vs going straight to create_campaign), 'world-building' (session-0 seeding order + world_build example), 'patterns' (take_turn change examples), 'combat' (ruleset actions), 'world-pressure', 'visual-sandbox' (persistent item details: scratches/stains/secret compartments/damage, tags, appearance, knowledge), 'commit-enum', 'tools' (full MCP tool catalog grouped by category), 'faq'. Omit for lean quickstart.")]
+        [Description("Optional help topic for focused deep-dive sections: 'onboarding' (guided session-0 Q&A — start_campaign_onboarding/submit_onboarding_answer/finalize_campaign_onboarding, and when to use it vs going straight to create_campaign), 'world-building' (session-0 seeding order + world_build example), 'patterns' (take_turn change examples), 'combat' (character bootstrap + non-spell ruleset actions), 'spells' (spell routing + copy-paste ruleset_action examples — separate from 'combat' to avoid pulling both when you only need one), 'world-pressure', 'visual-sandbox' (persistent item details: scratches/stains/secret compartments/damage, tags, appearance, knowledge), 'commit-enum', 'tools' (full MCP tool catalog grouped by category), 'faq'. Omit for lean quickstart.")]
         string? topic = null)
     {
         var content = GetHelpContent(topic);
@@ -103,9 +107,11 @@ public class MetaTools : IMcpServerTool
             HelpTopic.Patterns => DmHelpManual.PatternsSection
                 .Replace("{{CONVERSATION_EXAMPLE}}", CommitHelpExamples.ConversationBatch.Trim(), StringComparison.Ordinal),
 
-            HelpTopic.Combat => DmHelpManual.CombatSection
-                .Replace("{{SPELL_EXAMPLES}}", CommitSpellHelpExamples.HelpSection.Trim(), StringComparison.Ordinal)
-                .Replace("{{SPELL_ROUTING}}", CommitSpellHelpExamples.RoutingGuide.Trim(), StringComparison.Ordinal),
+            HelpTopic.Combat => DmHelpManual.CombatSection,
+
+            HelpTopic.Spells => DmHelpManual.SpellsSection
+                .Replace("{{SPELL_ROUTING}}", CommitSpellHelpExamples.RoutingGuide.Trim(), StringComparison.Ordinal)
+                .Replace("{{SPELL_EXAMPLES}}", CommitSpellHelpExamples.ExamplesSection.Trim(), StringComparison.Ordinal),
 
             HelpTopic.WorldPressure => DmHelpManual.WorldPressureSection,
 

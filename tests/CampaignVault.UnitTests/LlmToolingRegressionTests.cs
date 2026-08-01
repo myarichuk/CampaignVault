@@ -86,7 +86,7 @@ public class LlmToolingRegressionTests
     [Fact]
     public void CommitSpellHelpExamples_IncludesConcentrationAndHpGuidance()
     {
-        Assert.Contains("Concentration", CommitSpellHelpExamples.HelpSection);
+        Assert.Contains("Concentration", CommitSpellHelpExamples.ExamplesSection);
         Assert.Contains("Do NOT also commit", CommitSpellHelpExamples.RoutingGuide);
         Assert.Contains("SkillCheck", CommitSpellHelpExamples.RoutingGuide);
     }
@@ -331,6 +331,9 @@ public class LlmToolingRegressionTests
         surfaces.Add(("DmHelpManual.Quickstart", CampaignVault.Tools.DmHelpManual.QuickstartSection));
         surfaces.Add(("DmHelpManual.Patterns", CampaignVault.Tools.DmHelpManual.PatternsSection));
         surfaces.Add(("DmHelpManual.Combat", CampaignVault.Tools.DmHelpManual.CombatSection));
+        surfaces.Add(("DmHelpManual.Spells", CampaignVault.Tools.DmHelpManual.SpellsSection
+            .Replace("{{SPELL_ROUTING}}", CommitSpellHelpExamples.RoutingGuide, StringComparison.Ordinal)
+            .Replace("{{SPELL_EXAMPLES}}", CommitSpellHelpExamples.ExamplesSection, StringComparison.Ordinal)));
         surfaces.Add(("DmHelpManual.WorldPressure", CampaignVault.Tools.DmHelpManual.WorldPressureSection));
         surfaces.Add(("DmHelpManual.VisualSandbox", CampaignVault.Tools.DmHelpManual.VisualSandboxSection));
         surfaces.Add(("DmHelpManual.CommitEnum", CampaignVault.Tools.DmHelpManual.CommitEnumSection));
