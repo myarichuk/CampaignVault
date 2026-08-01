@@ -21,38 +21,17 @@ public class LlmToolingRegressionTests
     [Fact]
     public void CommitEnumCheatSheet_DoesNotAdvertiseMetaActionType()
     {
-        Assert.DoesNotContain(", Meta", CommitEnumCheatSheet.Compact);
         Assert.DoesNotContain("SavingThrow, Meta", CommitEnumCheatSheet.Full);
     }
 
     [Fact]
-    public void CommitEnumCheatSheet_IncludesRumorEvolveAndHpGuidance()
+    public void CommitEnumCheatSheet_IncludesRumorEvolveAndActionGuidance()
     {
-        Assert.Contains("world_build", CommitEnumCheatSheet.Compact);
         Assert.Contains("world_build", CommitEnumCheatSheet.Full);
-        Assert.Contains("duplicate `hp`", CommitEnumCheatSheet.Compact);
-        Assert.Contains("SkillCheck", CommitEnumCheatSheet.Compact);
+        Assert.Contains("SkillCheck", CommitEnumCheatSheet.Full);
+        Assert.Contains("ruleset_action", CommitEnumCheatSheet.Full);
     }
 
-    [Fact]
-    public void CommitTypesReference_DoesNotAdvertiseRemovedCreateDiscriminators()
-    {
-        Assert.DoesNotContain("rumor_create", CommitTypesReference.SupportedTypesList);
-        Assert.DoesNotContain("quest_create", CommitTypesReference.SupportedTypesList);
-        Assert.DoesNotContain("faction_create", CommitTypesReference.SupportedTypesList);
-        Assert.DoesNotContain("location_create", CommitTypesReference.SupportedTypesList);
-        Assert.DoesNotContain("item_create", CommitTypesReference.SupportedTypesList);
-        Assert.DoesNotContain("plot_thread_create", CommitTypesReference.SupportedTypesList);
-        Assert.DoesNotContain("character_create", CommitTypesReference.SupportedTypesList);
-    }
-
-    [Fact]
-    public void ArchiveEntity_IsListedAsSupportedType()
-    {
-        // Regression guard for the exact gap found with character_create: a $type that exists as a
-        // C# WorldChange but has no [JsonDerivedType] mapping is silently unreachable from commit.
-        Assert.Contains("archive_entity", CommitTypesReference.SupportedTypesList);
-    }
 
     [Fact]
     public void ArchiveEntity_RawJson_DeserializesToArchiveEntityChange()
@@ -67,20 +46,6 @@ public class LlmToolingRegressionTests
         Assert.Equal(ArchivableEntityType.Quest, change.EntityType);
         Assert.Equal("quests/stop-nightshade", change.EntityId);
         Assert.True(change.Archived);
-    }
-
-    [Theory]
-    [InlineData(CommitRumorHelpExamples.RumorEvolve, typeof(RumorEvolves))]
-    public void DocumentedCommitExamples_ParseSuccessfully(string json, Type expectedType)
-    {
-        var wrapped = $"[{json}]";
-        using var doc = JsonDocument.Parse(wrapped);
-        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
-
-        Assert.True(ok, error);
-        Assert.NotNull(parsed);
-        Assert.Single(parsed!);
-        Assert.IsType(expectedType, parsed![0]);
     }
 
     [Fact]

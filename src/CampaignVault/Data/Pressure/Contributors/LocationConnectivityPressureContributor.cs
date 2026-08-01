@@ -6,6 +6,13 @@ public sealed class LocationConnectivityPressureContributor : IPressureContribut
 {
     public const string MissingReverseLinkGroupingKey = "Location:MissingReverseLink";
 
+    private readonly ILogger<LocationConnectivityPressureContributor>? _logger;
+
+    public LocationConnectivityPressureContributor(ILogger<LocationConnectivityPressureContributor>? logger = null)
+    {
+        _logger = logger;
+    }
+
     public PressureScope Scope => PressureScope.Scene;
     public int Order => 20;
 
@@ -39,7 +46,7 @@ public sealed class LocationConnectivityPressureContributor : IPressureContribut
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Pressure check error: {ex.Message}");
+                _logger?.LogWarning(ex, "Location connectivity pressure check failed");
             }
         }
 
@@ -68,7 +75,7 @@ public sealed class LocationConnectivityPressureContributor : IPressureContribut
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Pressure check error: {ex.Message}");
+                _logger?.LogWarning(ex, "Location connectivity pressure check failed");
             }
         }
 

@@ -6,17 +6,6 @@ namespace CampaignVault.Tests;
 public class CommitEnumCheatSheetTests
 {
     [Fact]
-    public void Compact_ListsCommonEnumMistakes()
-    {
-        Assert.Contains("Settlement", CommitEnumCheatSheet.Compact);
-        Assert.Contains("Conversation", CommitEnumCheatSheet.Compact);
-        Assert.Contains("City/Town", CommitEnumCheatSheet.Compact);
-        Assert.Contains("Narrative", CommitEnumCheatSheet.Compact);
-        Assert.Contains("involved", CommitEnumCheatSheet.Compact);
-        Assert.Contains("participants", CommitEnumCheatSheet.Compact);
-    }
-
-    [Fact]
     public void Full_IncludesRulesetActionTypes()
     {
         Assert.Contains("SkillCheck", CommitEnumCheatSheet.Full);
@@ -27,16 +16,14 @@ public class CommitEnumCheatSheetTests
     }
 
     [Fact]
-    public void Compact_IncludesSceneInterruptCategory()
+    public void Full_ListsCommonEnumMistakesAndGuidance()
     {
-        Assert.Contains("SceneInterrupt", CommitEnumCheatSheet.Compact);
-    }
-
-    [Fact]
-    public void Compact_IncludesWorldBuildRumor_AndOmitsMeta()
-    {
-        Assert.Contains("world_build", CommitEnumCheatSheet.Compact);
-        Assert.Contains("rumors", CommitEnumCheatSheet.Compact);
-        Assert.DoesNotContain(", Meta", CommitEnumCheatSheet.Compact);
+        Assert.Contains("Settlement", CommitEnumCheatSheet.Full);
+        Assert.Contains("Conversation", CommitEnumCheatSheet.Full);
+        Assert.Contains("Narrative", CommitEnumCheatSheet.Full);
+        Assert.Contains("involved", CommitEnumCheatSheet.Full);
+        Assert.Contains("world_build", CommitEnumCheatSheet.Full);
+        Assert.Contains("rumors", CommitEnumCheatSheet.Full);
+        Assert.DoesNotContain(", Meta", CommitEnumCheatSheet.Full);
     }
 }

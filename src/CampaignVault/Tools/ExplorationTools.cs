@@ -59,33 +59,6 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         }, saveChanges: true);
     }
 
-    internal Task<ToolResult<SessionBriefingView>> GetSessionBriefing(
-        string campaignName,
-        string? partyLocationId = null)
-    {
-        return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var worldState = await GetWorldState(campaignName, partyLocationId).ConfigureAwait(false);
-            if (!worldState.Success || worldState.Data == null)
-            {
-                return new ToolResult<SessionBriefingView>(false, Error: worldState.Error ?? "Failed to fetch world state");
-            }
-
-            var party = await GetParty(campaignName).ConfigureAwait(false);
-            if (!party.Success || party.Data == null)
-            {
-                return new ToolResult<SessionBriefingView>(false, Error: party.Error ?? "Failed to fetch party roster");
-            }
-
-            var briefing = new SessionBriefingView(worldState.Data, party.Data);
-            var partyText = party.Data.Count > 0
-                ? $"party: {string.Join(", ", party.Data.Select(m => $"{m.Name}"))}"
-                : "no party members";
-            return new ToolResult<SessionBriefingView>(true, briefing,
-                $"Session briefing retrieved for campaign '{effective}' ({partyText}).",
-                WorldPressure: worldState.WorldPressure);
-        }, saveChanges: true);
-    }
-
     internal Task<ToolResult<SceneView>> GetScene(
         [Description("The unique ID of the location.")] string locationId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,

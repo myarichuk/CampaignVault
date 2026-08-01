@@ -5,41 +5,6 @@ namespace CampaignVault.Tools;
 /// </summary>
 internal static class CommitEnumCheatSheet
 {
-    internal const string Compact = """
-
-**COMMIT ENUM VALUES (use these exact strings — case-sensitive):**
-- `world_build.locations[].type` → Region, Settlement, District, Building, Room, Wilderness
-  - Common mistakes: City/Town → **Settlement**; Tavern/Inn/Shop → **Building**
-- `world_build.locations[].climateZone` → Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean
-- `world_build.items[].equipZones` (equip path — set once, not on item_equip) → Head, Face, Neck, Torso, Back, Waist, Hands, Wrists, Legs, Feet, MainHand, OffHand, Ring, Accessory
-- `world_build.items[].equipLayer` (equip path — set once, not on item_equip) → Base, Armor, Outer, Held
-- `event.category` → Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure
-  - **Conversation MUST have `involved`: [`chars/pc`, `chars/npc`]**. Narrative→Conversation. Field is `involved` NOT `participants`.
-- New rumor → use `world_build` (rumors[]: `id`, `regionLocationId`, `subject`, `text`; starts Nascent)
-- `rumor` (evolve, via commit) → `rumorId`, `newState`: Nascent, Spreading, Peak, Fading, Resolved, Forgotten
-- `quest_progress.newState` / quest overall → Open, InProgress, Complete, Failed, Skipped
-- `world_build.quests[].urgency` → Low, Normal, Urgent, Critical
-- `ruleset_action.actionType` → Attack, Spell, SkillCheck, ContestedCheck, OpposedCheck (alias), UseItem, Recovery, SavingThrow
-- `ruleset_action.parameters.resolution` (Spell) → attack, save, check, utility, heal
-- `ruleset_action.parameters.save` → 5e: Strength/Dexterity/Constitution/Intelligence/Wisdom/Charisma; PF2e: Fortitude/Reflex/Will
-- `ruleset_action.parameters.halfOnSave` → true/false (5e save spells default true)
-- `SavingThrow` = actor resists; `Spell`+`resolution:save` = all targetIds roll in ONE commit (NOT per-target SavingThrow)
-- `SkillCheck` = non-magic skills; `Spell`+`resolution:check` = magic (Detect Magic). Engine auto-applies hp — no duplicate `hp` commits
-- `ruleset_action.advantageState` → None, Advantage, Disadvantage
-- `ruleset_action.actionCategory` → Melee, Ranged, Spell, Maneuver, Social, Survival
-- `systemStats.classLevels` (5e multiclass) → [{ "class": "Fighter", "level": 5 }, { "class": "Wizard", "level": 5 }]
-- `level_up.classGained` (5e multiclass) → e.g. "Wizard" — which class gained the level
-- `knowledge_update.source` → Witnessed, Heard, Told, Experienced, Trauma, Conditioned
-- `knowledge_update.valence` → Positive, Negative, Neutral, Traumatic
-- `engagement_relation.category` → Physical, Social, Medical, Attention, Proximity
-- `engagement_relation.restrictionLevel` → None, Soft, Hard
-- `level_up.levelsGained` → positive integer (default 1); `hpMode` (5e) → average, rolled
-- PCs: omit `maxHp` on create — use `systemStats.hitDie`/`level`/`constitution`; creatures use `statBlockHp` or `maxHp`
-- Party currency → `$type: "resource"`, `poolName`: `gold` (dnd5e/pf2e), `delta`: ±N
-
-Full enum tables: call `get_help` → section **Commit Enum Values**.
-""";
-
     internal const string Full = """
 
 ## Commit Enum Values (exact strings)
