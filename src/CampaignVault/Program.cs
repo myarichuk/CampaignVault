@@ -2,6 +2,7 @@ using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using CampaignVault.Data;
 using CampaignVault.Middleware;
+using CampaignVault.Schema;
 using CampaignVault.Services;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -147,6 +148,9 @@ builder.Services.AddSingleton<ILocalEmbeddingService>(sp => sp.GetRequiredServic
 
 builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
     containerBuilder.RegisterAssemblyModules(typeof(Program).Assembly));
+
+// Install pre-built tool schemas at startup (Phase 2 optimization)
+builder.Services.AddCampaignVaultToolSchemas();
 
 // CORS configuration (Issue #16 from code review)
 // - Default (or "*"): AllowAnyOrigin (current behavior, convenient for local MCP + LLM clients)
