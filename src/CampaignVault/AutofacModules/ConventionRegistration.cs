@@ -2,6 +2,7 @@ using System.Reflection;
 using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Guidance;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Scenes;
@@ -43,6 +44,7 @@ internal static class ConventionRegistration
     {
         RegisterCollection<ISimulationRule>(builder, assembly);
         RegisterCollection<IPressureContributor>(builder, assembly);
+        RegisterCollection<IGuidanceContributor>(builder, assembly);
         RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
         RegisterCollection<IRulesetModule>(builder, assembly);
 
@@ -131,6 +133,7 @@ internal static class ConventionRegistration
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
         builder.RegisterType<EncounterResolver>().InstancePerLifetimeScope();
         builder.RegisterType<CharacterBootstrapOrchestrator>().InstancePerLifetimeScope();
+        builder.RegisterType<GuidanceOrchestrator>().As<IGuidanceOrchestrator>().InstancePerLifetimeScope();
     }
 
     private static void RegisterStartupValidation(ContainerBuilder builder)
