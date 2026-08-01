@@ -4,6 +4,9 @@ using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Models;
 
+// Metadata attributes for commit types - placed here for convenient import in WorldChanges.cs
+// These enable reflection-based schema generation and test drift detection.
+
 /// <summary>
 /// Base for all atomic, composable world mutations that can be sent to <c>commit</c>.
 /// The LLM must include the exact <c>$type</c> discriminator so the server knows which concrete change to apply.
@@ -167,6 +170,8 @@ public class SceneInterruptCheck : WorldChange
 }
 
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
+[CommitCategory("Combat")]
+[CommitHotTier]
 public class HpChange : WorldChange
 {
     [Description("ID of the character whose HP to modify (e.g. 'chars/grog' or 'chars/elara-voss'). Must exist.")]
@@ -179,6 +184,8 @@ public class HpChange : WorldChange
 }
 
 /// <summary>Move/transfer an existing item to a new holder (character, location, or another container item).</summary>
+[CommitCategory("World")]
+[CommitHotTier]
 public class ItemTransfer : WorldChange
 {
     [Description("ID of the item being moved (e.g. 'items/iron-key-17').")]
@@ -199,6 +206,8 @@ public class ItemTransfer : WorldChange
 /// The LLM DM is the sole author of the effect's stat modifiers, expiration, and recovery hint.
 /// The MCP stores the effect and auto-expires it when ExpiresAtDay or ExpiresAtRound is reached.
 /// </summary>
+[CommitCategory("Combat")]
+[CommitHotTier]
 public class StatusChange : WorldChange
 {
     [Description("ID of the character receiving the status (e.g. 'chars/grog').")]
@@ -233,6 +242,8 @@ public class StatusRemove : WorldChange
 /// Record a noteworthy occurrence in the world. Use Category='Unresolved' for open plot threads the party should care about.
 /// These appear in get_scene, recall_history, and get_world_state.
 /// </summary>
+[CommitCategory("Narrative")]
+[CommitHotTier]
 public class EventOccurred : WorldChange
 {
     [Description("Short human-readable summary of what happened. This becomes the main text of the event log entry.")]
@@ -320,6 +331,8 @@ public class RumorCreate : WorldChange
 }
 
 /// <summary>Apply a numeric delta to the relationship score between two characters. Range is typically -100 to +100.</summary>
+[CommitCategory("Narrative")]
+[CommitHotTier]
 public class RelationshipChange : WorldChange
 {
     [Description("ID of the character whose opinion of the target is changing (e.g. 'chars/elara-voss').")]
@@ -343,6 +356,8 @@ public class RelationshipChange : WorldChange
 /// Establish, update, or remove a pairwise engagement state between two entities (grapple, embrace, watch, etc.).
 /// For zone/distance positioning, use a future spatial-position change instead.
 /// </summary>
+[CommitCategory("World")]
+[CommitHotTier]
 public class EngagementRelationChange : WorldChange
 {
     [Description("ID of the character initiating or anchoring the relation (e.g. 'chars/bard').")]
@@ -501,6 +516,8 @@ public class AttributeChange : WorldChange
 /// Directly override an NPC's CurrentMood (short emotional state string shown in get_scene).
 /// Prefer using simulation rules + MoodChange deltas when possible; this is for strong narrative moments.
 /// </summary>
+[CommitCategory("Narrative")]
+[CommitHotTier]
 public class MoodChange : WorldChange
 {
     [Description("ID of the character whose mood to set.")]
@@ -517,6 +534,8 @@ public class MoodChange : WorldChange
 /// This immediately affects what get_scene returns for that NPC's CurrentActivity and CurrentLocationId.
 /// Use liberally at the end of roleplay or combat so the world model stays in sync with the story.
 /// </summary>
+[CommitCategory("Narrative")]
+[CommitHotTier]
 public class ActivityChange : WorldChange
 {
     [Description("ID of the character whose activity/location is changing (e.g. 'chars/bram-ironarm').")]
@@ -584,6 +603,9 @@ public class ActivityChange : WorldChange
 ///   "spellResolution" – alias for resolution
 /// Multiclass/spellcasting bootstrap lives on systemStats (character_create), NOT here: classLevels, spellcastingAbility, spellSaveDc.
 /// </summary>
+[CommitCategory("Combat")]
+[CommitHotTier]
+[CommitSideEffects("hp", "status", "engagement_relation")]
 public class RulesetAction : WorldChange
 {
     [Description("ID of the acting character (attacker, caster, skill user, or item user).")]
@@ -834,11 +856,11 @@ public class ScheduleChange : WorldChange
 }
 
 /// <summary>
-/// Create a new item (spontaneous loot, generated artifacts) in the world.
-/// </summary>
-/// <summary>
 /// Record a party or character travel between two connected locations.
 /// </summary>
+[CommitCategory("World")]
+[CommitHotTier]
+[CommitSideEffects("need", "activity", "event")]
 public class TravelChange : WorldChange
 {
     [Description("ID of the character traveling (e.g. 'chars/grog').")]
