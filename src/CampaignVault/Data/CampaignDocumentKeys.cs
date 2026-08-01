@@ -58,5 +58,12 @@ public sealed class CampaignDocumentKeys
     public string StateOnboarding(string campaignName) =>
         $"campaigns/{Normalize(campaignName)}/state/onboarding";
 
+    /// <summary>
+    /// Returns the document ID for the campaign's guidance hint ledger.
+    /// Tracks delivered hints to enforce once-per-campaign delivery.
+    /// </summary>
+    public string StateGuidance(string campaignName) =>
+        $"campaigns/{Normalize(campaignName)}/state/guidance";
+
     private static string Normalize(string name) => CampaignSlug.Canonicalize(name);
 }

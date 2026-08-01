@@ -11,9 +11,10 @@ public class ToolResult<T>
     public string? Error { get; set; }
     public string[]? WorldPressure { get; set; }
     public JsonElement? RetryExample { get; set; }
+    public string[]? Guidance { get; set; }
 
     public ToolResult() { }
-    public ToolResult(bool Success, T? Data = default, string? Summary = null, string? Error = null, string[]? WorldPressure = null, JsonElement? RetryExample = null)
+    public ToolResult(bool Success, T? Data = default, string? Summary = null, string? Error = null, string[]? WorldPressure = null, JsonElement? RetryExample = null, string[]? Guidance = null)
     {
         this.Success = Success;
         this.Data = Data;
@@ -21,6 +22,7 @@ public class ToolResult<T>
         this.Error = Error;
         this.WorldPressure = WorldPressure;
         this.RetryExample = RetryExample;
+        this.Guidance = Guidance;
     }
 }
 

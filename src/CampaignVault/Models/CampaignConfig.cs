@@ -45,6 +45,24 @@ public class CampaignConfig
     public int MaxPressuresPerResponse { get; set; } = 5;
 
     /// <summary>
+    /// Maximum number of guidance hints to surface in a single tool response.
+    /// Defaults to 2.
+    /// </summary>
+    public int MaxGuidanceHintsPerResponse { get; set; } = 2;
+
+    /// <summary>
+    /// Maximum characters (text + example) for guidance hints in a single tool response.
+    /// Defaults to 600 chars (~150 tokens).
+    /// </summary>
+    public int MaxGuidanceCharsPerResponse { get; set; } = 600;
+
+    /// <summary>
+    /// When true, guidance hints are collected and delivered on tool responses.
+    /// Defaults to true.
+    /// </summary>
+    public bool GuidanceEnabled { get; set; } = true;
+
+    /// <summary>
     /// The number of in-game days a pressure nag is suppressed after being surfaced.
     /// Defaults to 1 (meaning it stays hidden for 1 day, then reappears if ignored).
     /// </summary>
