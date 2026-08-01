@@ -132,62 +132,12 @@ public class LlmToolingRegressionTests
         Assert.Contains("Did you mean 'Nascent'?", enriched);
     }
 
-    [Fact]
-    public void TryNormalize_FlattenedUpsertLocation_WrapsIntoLocationKey()
-    {
-        var args = new JsonObject
-        {
-            ["id"] = "locations/rusty-nail",
-            ["name"] = "The Rusty Nail",
-            ["description"] = "A dim tavern near the docks.",
-            ["type"] = "Building",
-            ["campaignName"] = "dragon-heist",
-        };
-
-        var modified = ToolCallExamples.TryNormalize("upsert_location", args, out var rewrites);
-
-        Assert.True(modified);
-        Assert.Contains("flattened→location", rewrites);
-        Assert.True(args.ContainsKey("location"));
-        var location = args["location"]!.AsObject();
-        Assert.Equal("locations/rusty-nail", location["id"]!.GetValue<string>());
-        Assert.Equal("The Rusty Nail", location["name"]!.GetValue<string>());
-        // campaignName is a sibling parameter of the tool, not part of the location payload,
-        // but the flattening repair wraps the whole top-level object — the handler still finds
-        // campaignName inside the wrapper only if it was present at the root before wrapping.
-        Assert.Equal("dragon-heist", args["campaignName"]!.GetValue<string>());
-    }
-
-    [Fact]
-    public void TryNormalize_ProperlyWrappedUpsertCharacter_IsLeftUnmodified()
-    {
-        var args = new JsonObject
-        {
-            ["character"] = new JsonObject { ["id"] = "chars/valen", ["name"] = "Valen" },
-            ["campaignName"] = "dragon-heist",
-        };
-
-        var modified = ToolCallExamples.TryNormalize("upsert_character", args, out var rewrites);
-
-        Assert.False(modified);
-        Assert.Empty(rewrites);
-        Assert.True(args.ContainsKey("character"));
-    }
-
     [Theory]
-    [InlineData("upsert_character")]
-    [InlineData("upsert_location")]
-    [InlineData("upsert_item")]
-    [InlineData("upsert_creature")]
-    [InlineData("upsert_faction")]
-    [InlineData("upsert_quest")]
-    [InlineData("upsert_lore")]
-    [InlineData("upsert_rumor")]
-    [InlineData("upsert_plot_thread")]
-    [InlineData("upsert_spell")]
-    [InlineData("upsert_feat")]
     [InlineData("world_build")]
-    public void ToolCallExamples_UpsertRegistryEntries_HaveRetryTemplates(string toolName)
+    [InlineData("take_turn")]
+    [InlineData("get_entity")]
+    [InlineData("combat")]
+    public void ToolCallExamples_LiveRegistryEntries_HaveRetryTemplates(string toolName)
     {
         Assert.True(ToolCallExamples.TryGet(toolName, out var example));
         var (summary, retryExample) = ToolCallExamples.BuildDeserializationErrorResponse(toolName, "boom");
@@ -195,6 +145,22 @@ public class LlmToolingRegressionTests
         Assert.Contains("boom", summary);
         Assert.NotNull(retryExample);
         Assert.Equal(toolName, example.ToolName);
+    }
+
+    [Fact]
+    public void ToolCallExamples_Registry_OnlyContainsLiveTools()
+    {
+        // Dead upsert_* tools (upsert_character, location, item, creature, faction, quest, lore,
+        // rumor, plot_thread, spell, feat) were removed from the registry in Phase 3.6.
+        // Verify that every remaining entry is in ToolCatalog (preventing 41% dead-code reaccumulation).
+        var liveTools = ToolCatalog.GetByCategory(null).Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var registryTools = new[] { "world_build", "take_turn", "get_entity", "combat" };
+        foreach (var toolName in registryTools)
+        {
+            Assert.True(ToolCallExamples.TryGet(toolName, out _), $"Registry entry '{toolName}' should exist");
+            Assert.Contains(toolName, liveTools, StringComparer.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
