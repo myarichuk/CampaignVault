@@ -189,9 +189,12 @@ public class LlmToolingRegressionTests
         Assert.True(start >= 0 && end > start);
 
         var prompt = content[(start + 7)..end].Trim();
+        // After Phase 3.7 trim: ~3KB, well under the 12k limit
         Assert.InRange(prompt.Length, 1, 12_000);
+        // Key terms that should remain in the trimmed prompt
         Assert.Contains("world_build", prompt);
-        Assert.Contains("do NOT commit HP separately", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("take_turn", prompt);
+        Assert.Contains("guidance", prompt, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
