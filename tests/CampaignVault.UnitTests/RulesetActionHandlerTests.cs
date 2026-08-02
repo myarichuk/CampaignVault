@@ -39,7 +39,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
         return new RulesetModuleSelector(modules);
     }
 
-    private async Task StoreConfigAsync(Raven.Client.Documents.Session.IAsyncDocumentSession session, RulesetSystem activeSystem)
+    private async Task StoreConfigAsync(Raven.Client.Documents.Session.IAsyncDocumentSession session, string activeSystem)
     {
         await session.StoreAsync(new CampaignConfig { Id = _keys.Config(_campaign), ActiveSystem = activeSystem });
         await session.SaveChangesAsync();

@@ -127,7 +127,7 @@ public class SystemHandbookTests : IClassFixture<RavenDBFixture>
     }
 
     private static SystemHandbookResponse BuildHandbook(
-        RulesetSystem system,
+        string system,
         string? rulesetDataDir = null)
     {
         var dir = rulesetDataDir ?? Path.Combine(Path.GetTempPath(), "cv_handbook_" + Guid.NewGuid());

@@ -13,7 +13,7 @@ namespace CampaignVault.Tests;
 
 public class BootstrapStepTests
 {
-    private static BootstrapContext CreateContext(Character character, RulesetSystem system, int? explicitMaxHp = null) =>
+    private static BootstrapContext CreateContext(Character character, string system, int? explicitMaxHp = null) =>
         new()
         {
             Character = character,

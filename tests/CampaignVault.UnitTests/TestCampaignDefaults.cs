@@ -23,8 +23,9 @@ internal static class TestCampaignDefaults
     }
 
     public static async Task EnsureExistsAsync(CampaignTools tools, string slug = Slug,
-        RulesetSystem system = RulesetSystem.Dnd5e)
+        string? system = null)
     {
+        system ??= RulesetSystem.Dnd5e;
         var created = await tools.CreateCampaign(slug, system);
         if (!created.Success && created.Error != "AlreadyExists")
         {

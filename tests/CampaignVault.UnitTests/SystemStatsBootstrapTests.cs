@@ -164,7 +164,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
     [Theory]
     [InlineData(RulesetSystem.Dnd5e, false)]
     [InlineData(RulesetSystem.Pathfinder2e, false)]
-    public void SystemStatsCompleteness_FactoryDefaults_AreIncomplete(RulesetSystem system, bool expectedComplete)
+    public void SystemStatsCompleteness_FactoryDefaults_AreIncomplete(string system, bool expectedComplete)
     {
         var character = new Character
         {

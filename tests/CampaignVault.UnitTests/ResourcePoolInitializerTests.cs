@@ -229,7 +229,7 @@ public class ResourcePoolInitializerTests
     [Theory]
     [InlineData(RulesetSystem.Dnd5e)]
     [InlineData(RulesetSystem.Pathfinder2e)]
-    public void InitializePools_Dnd5eOrPf2e_GrantsGoldPool(RulesetSystem system)
+    public void InitializePools_Dnd5eOrPf2e_GrantsGoldPool(string system)
     {
         var character = new Character
         {
@@ -290,7 +290,7 @@ public class ResourcePoolInitializerTests
     [InlineData(RulesetSystem.Dnd5e, "dnd5e")]
     [InlineData(RulesetSystem.Pathfinder2e, "pf2e")]
     [InlineData(RulesetSystem.Narrative, "narrative")]
-    public void ToSlug_ReturnsCanonicalSlug(RulesetSystem system, string expected)
+    public void ToSlug_ReturnsCanonicalSlug(string system, string expected)
     {
         Assert.Equal(expected, system.ToSlug());
     }

@@ -113,7 +113,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         string locId,
         string pcId,
         string enemyId,
-        RulesetSystem system,
+        string system,
         WorldChange[] bootstrapChanges)
     {
         using (var session = _store.OpenAsyncSession())

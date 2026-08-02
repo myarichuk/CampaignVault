@@ -127,7 +127,7 @@ public class ResourcePoolStage2Tests
     [InlineData(RulesetSystem.Dnd5e, 4, 3)]   // wizard 5: 4×1st, 3×2nd
     [InlineData(RulesetSystem.Pathfinder2e, 1, 1)]
     public void Initializer_YamlPools_WizardLevel5_CreatesExpectedSpellSlots(
-        RulesetSystem system, int expectedSlots1, int expectedSlots2)
+        string system, int expectedSlots1, int expectedSlots2)
     {
         var character = new Character
         {

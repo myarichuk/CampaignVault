@@ -197,7 +197,7 @@ public class IdentityDefinitionTests
         string systemSlug,
         string featName,
         string poolName,
-        RulesetSystem system,
+        string system,
         int defaultMax = 2,
         IReadOnlyList<string>? applicableClasses = null,
         IReadOnlyDictionary<int, int>? levelToMaxMap = null)
