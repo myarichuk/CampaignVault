@@ -32,7 +32,7 @@ public class Campaign
     /// Once initialized/locked, changing this is prevented (or requires explicit force + audit).
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public RulesetSystem System { get; set; } = RulesetSystem.Dnd5e;
+    public string System { get; set; } = RulesetSystem.Dnd5e;
 
     /// <summary>
     /// Whether the ruleset system has been locked for this campaign.

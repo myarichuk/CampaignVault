@@ -11,8 +11,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class CreatureDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<CreatureDefinition>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, CreatureDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<CreatureDefinition>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, CreatureDefinition>?> _cache = new();
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -24,7 +24,7 @@ public class CreatureDefinitionProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         Assembly embeddedAssembly,
@@ -37,7 +37,7 @@ public class CreatureDefinitionProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, CreatureDefinition> GetCreaturesForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, CreatureDefinition> GetCreaturesForSystem(string system)
     {
         lock (_lock)
         {
@@ -59,7 +59,7 @@ public class CreatureDefinitionProvider : IRulesetYamlProvider
         }
     }
 
-    public bool TryGet(RulesetSystem system, string creatureName, [NotNullWhen(true)] out CreatureDefinition? creature)
+    public bool TryGet(string system, string creatureName, [NotNullWhen(true)] out CreatureDefinition? creature)
     {
         var creatures = GetCreaturesForSystem(system);
         return creatures.TryGetValue(creatureName, out creature);

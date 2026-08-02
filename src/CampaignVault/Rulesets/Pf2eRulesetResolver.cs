@@ -32,7 +32,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             [hpStep, profStep, spellStep]);
     }
 
-    public override RulesetSystem System => RulesetSystem.Pathfinder2e;
+    public override string System => RulesetSystem.Pathfinder2e;
 
     public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
 

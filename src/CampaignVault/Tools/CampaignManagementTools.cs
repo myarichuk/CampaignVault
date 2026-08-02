@@ -39,7 +39,7 @@ public class CampaignManagementTools(
     }
 
     internal Task<ToolResult<CampaignConfig>> SetActiveSystem(
-        RulesetSystem activeSystem,
+        string activeSystem,
         string campaignName,
         Dictionary<string, string>? systemOptions = null)
     {
@@ -84,7 +84,7 @@ Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dra
         [Description(ToolParameterDescriptions.CampaignSlugRequired)]
         string name,
         [Description("Initial ruleset system. This will be locked.")]
-        RulesetSystem initialSystem,
+        string initialSystem,
         [Description("Optional human-friendly display name.")]
         string? displayName = null,
         [Description("Optional free-text tags describing the kind(s) of story this campaign tells (e.g. ['political intrigue'], ['dungeon crawl'], ['horror investigation']). Steers how the LLM should judge event importance on commit — see the Narrative Focus section in get_help. Update later with take_turn's campaign_update change ($type: campaign_update, narrativeFocus: [...]).")]

@@ -24,7 +24,7 @@ public static class CreatureQueryBuilder
         IAsyncDocumentSession session,
         CampaignRepository repository,
         CreatureDefinitionProvider srdProvider,
-        RulesetSystem system,
+        string system,
         string? campaignName = null,
         string? nameQuery = null,
         int? levelMin = null,
@@ -168,7 +168,7 @@ public static class CreatureQueryBuilder
     }
 
     public static CreatureListResponse ToResponse(
-        RulesetSystem system,
+        string system,
         CreatureQueryPage page)
     {
         return new CreatureListResponse

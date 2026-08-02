@@ -7,7 +7,7 @@ namespace CampaignVault.Rulesets;
 
 public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResolution, ICombatRuleset where TStats : SystemExtension, new()
 {
-    public abstract RulesetSystem System { get; }
+    public abstract string System { get; }
     public IActionResolution Actions => this;
     public ICombatRuleset Combat => this;
     public virtual ICharacterBootstrapPipeline Bootstrap => NullCharacterBootstrapPipeline.Instance;

@@ -65,7 +65,7 @@ public interface IRulesetPressureContributor : IPressureContributor;
 
 public interface IRulesetModule
 {
-    RulesetSystem System { get; }
+    string System { get; }
     IActionResolution Actions { get; }
     ICombatRuleset Combat { get; }
     ICharacterBootstrapPipeline Bootstrap { get; }

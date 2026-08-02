@@ -16,7 +16,7 @@ public static class SpellQueryBuilder
 
     public static SpellQueryPage QueryPage(
         SpellDefinitionProvider provider,
-        RulesetSystem system,
+        string system,
         string className,
         ClassDefinitionProvider classProvider,
         int? level = null,
@@ -115,7 +115,7 @@ public static class SpellQueryBuilder
     }
 
     public static SpellListResponse ToResponse(
-        RulesetSystem system,
+        string system,
         string className,
         int? level,
         SpellQueryPage page,

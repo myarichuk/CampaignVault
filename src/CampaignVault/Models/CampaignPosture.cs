@@ -13,7 +13,7 @@ public record PartyMemberSummary(string Id, string Name, bool IsPc);
 public record CampaignPosture(
     string Slug,
     string DisplayName,
-    RulesetSystem System,
+    string System,
     bool IsSystemLocked,
     IReadOnlyList<PartyMemberSummary> Pcs,
     IReadOnlyList<PartyMemberSummary> Companions,
@@ -24,7 +24,7 @@ public record CampaignPosture(
 public record CampaignSuggestion(
     string Slug,
     string DisplayName,
-    RulesetSystem System,
+    string System,
     int PcCount,
     string? LastEventSummary);
 

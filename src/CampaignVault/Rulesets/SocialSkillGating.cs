@@ -15,7 +15,7 @@ public static class SocialSkillGating
     private static readonly string[] Pf2eSocialSkills =
         ["Diplomacy", "Deception", "Intimidation", "Performance", "Society"];
 
-    public static bool ShouldApplyRelationshipModifier(RulesetSystem system, RulesetAction action, string skillName)
+    public static bool ShouldApplyRelationshipModifier(string system, RulesetAction action, string skillName)
     {
         if (action.ActionCategory == ActionCategory.Social)
         {

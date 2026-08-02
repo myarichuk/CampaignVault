@@ -11,8 +11,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ResourcePoolProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<ResourcePoolTemplate>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, ResourcePoolTemplate>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<ResourcePoolTemplate>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, ResourcePoolTemplate>?> _cache = new();
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -24,7 +24,7 @@ public class ResourcePoolProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         Assembly embeddedAssembly,
@@ -37,7 +37,7 @@ public class ResourcePoolProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, ResourcePoolTemplate> GetPoolsForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, ResourcePoolTemplate> GetPoolsForSystem(string system)
     {
         lock (_lock)
         {

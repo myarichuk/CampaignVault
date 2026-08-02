@@ -203,7 +203,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
     private void RecordClassResolutionEcho(
         ChangeContext context,
         Character character,
-        RulesetSystem system,
+        string system,
         string? classLevelInput)
     {
         if (string.IsNullOrWhiteSpace(classLevelInput))
@@ -243,7 +243,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
     private Task ApplyBootstrapAsync(
         Character character,
-        RulesetSystem activeSystem,
+        string activeSystem,
         int? explicitMaxHp,
         int? explicitCurrentHp,
         HitPointDerivationMode? hpMode,
@@ -651,7 +651,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
 internal static class CharacterHandlerHelpers
 {
-    public static async Task<RulesetSystem> ResolveActiveSystemAsync(ChangeContext context, CampaignDocumentKeys keys,
+    public static async Task<string> ResolveActiveSystemAsync(ChangeContext context, CampaignDocumentKeys keys,
         CancellationToken ct)
     {
         if (context.Session == null || string.IsNullOrEmpty(context.CampaignName))

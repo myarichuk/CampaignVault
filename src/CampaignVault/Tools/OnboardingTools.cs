@@ -234,11 +234,8 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
                 ? factionsObj?.ToString() ?? ""
                 : "";
 
-            // Parse system enum
-            if (!Enum.TryParse<RulesetSystem>(systemStr, true, out var system))
-            {
-                system = RulesetSystem.Dnd5e;
-            }
+            // Validate system id (accept user input as-is, or default to Dnd5e)
+            var system = string.IsNullOrWhiteSpace(systemStr) ? RulesetSystem.Dnd5e : systemStr;
 
             // Build narrative focus from collected answers
             var narrativeFocus = new List<string>();
@@ -399,7 +396,7 @@ public class OnboardingFinalizeResponse
 {
     public bool CampaignCreated { get; set; }
     public string CampaignName { get; set; } = null!;
-    public RulesetSystem System { get; set; }
+    public string System { get; set; }
     public List<string> NarrativeFocus { get; set; } = [];
     public Dictionary<string, object> CollectedAnswers { get; set; } = [];
     public Dictionary<string, string> WorldBuildingFlags { get; set; } = [];

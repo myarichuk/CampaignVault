@@ -11,8 +11,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ConditionDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<ConditionDefinition>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, ConditionDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<ConditionDefinition>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, ConditionDefinition>?> _cache = new();
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -24,7 +24,7 @@ public class ConditionDefinitionProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         Assembly embeddedAssembly,
@@ -37,7 +37,7 @@ public class ConditionDefinitionProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, ConditionDefinition> GetConditionsForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, ConditionDefinition> GetConditionsForSystem(string system)
     {
         lock (_lock)
         {
@@ -59,7 +59,7 @@ public class ConditionDefinitionProvider : IRulesetYamlProvider
         }
     }
 
-    public bool TryGet(RulesetSystem system, string conditionName, out ConditionDefinition? condition)
+    public bool TryGet(string system, string conditionName, out ConditionDefinition? condition)
     {
         var conditions = GetConditionsForSystem(system);
         return conditions.TryGetValue(conditionName, out condition);

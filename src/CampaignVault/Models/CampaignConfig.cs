@@ -23,12 +23,13 @@ public class CampaignConfig
     /// <summary>
     /// The active TTRPG ruleset for this campaign.
     /// Determines which IRulesetResolver handles RulesetAction WorldChanges.
-    /// 
+    ///
     /// This value is locked at the Campaign level once the campaign is initialized
     /// (see first-class Campaign model + InitializeCampaign tool).
+    ///
+    /// String ID enables plugin-contributed systems backed by YAML data.
     /// </summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public RulesetSystem ActiveSystem { get; set; } = RulesetSystem.Dnd5e;
+    public string ActiveSystem { get; set; } = RulesetSystem.Dnd5e;
 
 /// <summary>
     /// Optional house-rule overrides passed to resolvers.

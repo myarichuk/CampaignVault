@@ -39,7 +39,7 @@ public static class SystemStatsUpgradeHelper
     public static async Task UpgradeSystemStatsIfNeededAsync(
         IAsyncDocumentSession session,
         Character character,
-        RulesetSystem activeSystem,
+        string activeSystem,
         ClassDefinitionProvider? classProvider = null,
         BackgroundDefinitionProvider? backgroundProvider = null,
         CampaignDocumentKeys? keys = null,

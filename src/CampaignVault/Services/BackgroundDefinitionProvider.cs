@@ -9,8 +9,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class BackgroundDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<BackgroundDefinition>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, BackgroundDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<BackgroundDefinition>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, BackgroundDefinition>?> _cache = new();
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -22,7 +22,7 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         Assembly embeddedAssembly,
@@ -35,7 +35,7 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, BackgroundDefinition> GetBackgroundsForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, BackgroundDefinition> GetBackgroundsForSystem(string system)
     {
         lock (_lock)
         {
@@ -57,7 +57,7 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
         }
     }
 
-    public bool TryGet(RulesetSystem system, string backgroundName, out BackgroundDefinition? background)
+    public bool TryGet(string system, string backgroundName, out BackgroundDefinition? background)
     {
         var backgrounds = GetBackgroundsForSystem(system);
         return backgrounds.TryGetValue(backgroundName, out background);

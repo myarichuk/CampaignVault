@@ -11,7 +11,7 @@ public static class SystemHandbookBuilder
     public const string SpellDiscoveryNote =
         "For spell lists by class and level, call get_spells (use level filter and offset/limit pagination — full lists are large).";
 
-    private static readonly IReadOnlyDictionary<RulesetSystem, string[]> CoverageNotes = new Dictionary<RulesetSystem, string[]>
+    private static readonly IReadOnlyDictionary<string, string[]> CoverageNotes = new Dictionary<string, string[]>
     {
         [RulesetSystem.Pathfinder2e] =
         [
@@ -26,7 +26,7 @@ public static class SystemHandbookBuilder
     };
 
     public static SystemHandbookResponse Build(
-        RulesetSystem system,
+        string system,
         ClassDefinitionProvider classProvider,
         RaceDefinitionProvider raceProvider,
         BackgroundDefinitionProvider backgroundProvider,

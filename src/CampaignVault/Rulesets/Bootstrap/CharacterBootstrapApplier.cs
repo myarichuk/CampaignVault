@@ -8,7 +8,7 @@ internal static class CharacterBootstrapApplier
     public static async Task ApplyCreationBootstrapAsync(
         CharacterBootstrapOrchestrator bootstrap,
         Character character,
-        RulesetSystem activeSystem,
+        string activeSystem,
         int? commitMaxHp,
         int? commitCurrentHp,
         BootstrapTrigger trigger,

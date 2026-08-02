@@ -10,8 +10,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class RaceDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<RaceDefinition>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, RaceDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<RaceDefinition>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, RaceDefinition>?> _cache = new();
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -23,7 +23,7 @@ public class RaceDefinitionProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         string subfolder,
@@ -37,7 +37,7 @@ public class RaceDefinitionProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, RaceDefinition> GetRacesForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, RaceDefinition> GetRacesForSystem(string system)
     {
         lock (_lock)
         {
@@ -59,7 +59,7 @@ public class RaceDefinitionProvider : IRulesetYamlProvider
         }
     }
 
-    public bool TryGet(RulesetSystem system, string raceName, out RaceDefinition? race)
+    public bool TryGet(string system, string raceName, out RaceDefinition? race)
     {
         var races = GetRacesForSystem(system);
         return races.TryGetValue(raceName, out race);

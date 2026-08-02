@@ -15,7 +15,7 @@ public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, IComb
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
     }
 
-    public RulesetSystem System => RulesetSystem.Narrative;
+    public string System => RulesetSystem.Narrative;
 
     public IActionResolution Actions => this;
 

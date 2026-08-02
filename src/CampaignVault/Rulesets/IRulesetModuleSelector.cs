@@ -4,31 +4,36 @@ namespace CampaignVault.Rulesets;
 
 public interface IRulesetModuleSelector
 {
-    IRulesetModule GetModule(RulesetSystem system);
+    IRulesetModule GetModule(string system);
 }
 
 public class RulesetModuleSelector : IRulesetModuleSelector
 {
-    private readonly Dictionary<RulesetSystem, IRulesetModule> _modules;
+    private readonly Dictionary<string, IRulesetModule> _modules;
 
     public RulesetModuleSelector(IEnumerable<IRulesetModule>? modules)
     {
-        _modules = modules?.ToDictionary(m => m.System) ?? new Dictionary<RulesetSystem, IRulesetModule>();
-
-        foreach (var system in Enum.GetValues<RulesetSystem>())
+        if (modules == null)
         {
-            if (!_modules.ContainsKey(system))
+            _modules = new Dictionary<string, IRulesetModule>(StringComparer.OrdinalIgnoreCase);
+        }
+        else
+        {
+            _modules = new Dictionary<string, IRulesetModule>(StringComparer.OrdinalIgnoreCase);
+            foreach (var module in modules)
             {
-                throw new InvalidOperationException($"Startup Validation Failed: No IRulesetModule registered for system: {system}");
+                _modules[module.System] = module;
             }
         }
     }
 
-    public IRulesetModule GetModule(RulesetSystem system)
+    public IRulesetModule GetModule(string system)
     {
         if (!_modules.TryGetValue(system, out var module))
         {
-            throw new InvalidOperationException($"The requested ruleset system '{Enum.GetName(typeof(RulesetSystem), system)}' is not supported or not registered.");
+            throw new InvalidOperationException(
+                $"Ruleset system '{system}' is not supported or not registered. " +
+                $"Available systems: {string.Join(", ", _modules.Keys)}");
         }
 
         return module;

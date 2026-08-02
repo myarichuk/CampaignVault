@@ -12,8 +12,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ClassDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<ClassDefinition>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, ClassDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<ClassDefinition>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, ClassDefinition>?> _cache = new();
     private readonly Lock _lock = new();
     private readonly ILogger? _logger;
 
@@ -25,7 +25,7 @@ public class ClassDefinitionProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         Assembly embeddedAssembly,
@@ -38,7 +38,7 @@ public class ClassDefinitionProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, ClassDefinition> GetClassesForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, ClassDefinition> GetClassesForSystem(string system)
     {
         lock (_lock)
         {
@@ -64,7 +64,7 @@ public class ClassDefinitionProvider : IRulesetYamlProvider
     /// Finds the best-matching class definition for a class name string using alias substring matching.
     /// Returns the definition whose longest alias is found in <paramref name="className"/>.
     /// </summary>
-    public bool TryResolveClass(RulesetSystem system, string className, [NotNullWhen(true)] out ClassDefinition? classDef)
+    public bool TryResolveClass(string system, string className, [NotNullWhen(true)] out ClassDefinition? classDef)
     {
         var classes = GetClassesForSystem(system);
         classDef = null;

@@ -17,7 +17,7 @@ public class CustomFeat : ICampaignScopedEntity, IArchivable
 
     public string Name { get; set; } = null!;
 
-    public RulesetSystem System { get; set; }
+    public string System { get; set; }
 
     public string? Description { get; set; }
 

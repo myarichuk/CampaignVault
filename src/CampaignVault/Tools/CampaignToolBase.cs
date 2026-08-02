@@ -123,7 +123,7 @@ public abstract class CampaignToolBase
         }
     }
 
-    protected async Task<Campaign> GetOrCreateCampaignMetaAsync(IAsyncDocumentSession session, string normalizedName, RulesetSystem defaultSystem, string? displayName = null, bool forceLock = false)
+    protected async Task<Campaign> GetOrCreateCampaignMetaAsync(IAsyncDocumentSession session, string normalizedName, string defaultSystem, string? displayName = null, bool forceLock = false)
     {
         var campaignId = _keys.Meta(normalizedName);
         var campaign = await session.LoadAsync<Campaign>(campaignId);

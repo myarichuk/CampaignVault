@@ -173,11 +173,11 @@ public class CampaignTools(
     public Task<ToolResult<CampaignConfig>> GetConfig(string campaignName) =>
         management.GetConfig(campaignName);
 
-    public Task<ToolResult<CampaignConfig>> SetActiveSystem(RulesetSystem activeSystem,
+    public Task<ToolResult<CampaignConfig>> SetActiveSystem(string activeSystem,
         Dictionary<string, string>? systemOptions = null, string? campaignName = TestDefaultCampaignSlug) =>
         management.SetActiveSystem(activeSystem, ResolveCampaign(campaignName), systemOptions);
 
-    public Task<ToolResult<Campaign>> CreateCampaign(string name, RulesetSystem system, string? displayName = null) =>
+    public Task<ToolResult<Campaign>> CreateCampaign(string name, string system, string? displayName = null) =>
         management.CreateCampaign(name, system, displayName);
 
     public Task<ToolResult<List<Campaign>>> ListCampaigns() => management.ListCampaigns();

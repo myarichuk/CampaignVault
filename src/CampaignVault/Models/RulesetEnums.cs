@@ -4,14 +4,14 @@ namespace CampaignVault.Models;
 
 /// <summary>
 /// The active TTRPG ruleset for this campaign. Controls which IRulesetResolver
-/// is selected by the RulesetActionHandler.
+/// is selected by the RulesetActionHandler. System IDs are open strings to enable
+/// plugin-contributed systems backed only by YAML data.
 /// </summary>
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum RulesetSystem
+public static class RulesetSystem
 {
-    Dnd5e,
-    Pathfinder2e,
-    Narrative
+    public const string Dnd5e = "dnd5e";
+    public const string Pathfinder2e = "pf2e";
+    public const string Narrative = "narrative";
 }
 
 /// <summary>

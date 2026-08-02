@@ -61,7 +61,7 @@ public static class XpThresholdCalculator
     /// <summary>
     /// Gets the XP required to reach the specified level for the given system and progression type.
     /// </summary>
-    public static int GetXpForLevel(RulesetSystem system, int level, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
+    public static int GetXpForLevel(string system, int level, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
     {
         if (customThresholds?.TryGetValue(level, out var customXp) == true)
         {
@@ -93,7 +93,7 @@ public static class XpThresholdCalculator
     /// <summary>
     /// Gets the current level based on XP for the given system and progression type.
     /// </summary>
-    public static int GetLevelFromXp(RulesetSystem system, int xp, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
+    public static int GetLevelFromXp(string system, int xp, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
     {
         if (progression == XpProgressionType.Milestone)
         {
@@ -113,7 +113,7 @@ public static class XpThresholdCalculator
     /// <summary>
     /// Gets the XP required to reach the next level from the current level.
     /// </summary>
-    public static int GetXpToNextLevel(RulesetSystem system, int currentLevel, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
+    public static int GetXpToNextLevel(string system, int currentLevel, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
     {
         var nextLevel = Math.Min(currentLevel + 1, 20);
         var currentXp = GetXpForLevel(system, currentLevel, progression, customThresholds);
@@ -124,7 +124,7 @@ public static class XpThresholdCalculator
     /// <summary>
     /// Checks if a character has enough XP to level up.
     /// </summary>
-    public static bool CanLevelUp(RulesetSystem system, int currentLevel, int xp, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
+    public static bool CanLevelUp(string system, int currentLevel, int xp, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
     {
         if (progression == XpProgressionType.Milestone)
         {

@@ -1845,7 +1845,7 @@ public class CampaignRepository
     /// Retrieves CustomCreatures for a given ruleset system and campaign, with a safety-bounded query.
     /// Campaign visibility and archive filters are applied server-side, before the take-limit.
     /// </summary>
-    public async Task<List<CustomCreature>> GetCustomCreaturesForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
+    public async Task<List<CustomCreature>> GetCustomCreaturesForSystemAsync(IAsyncDocumentSession session, string system, string? campaignName = null, int take = 500)
     {
         var effective = ResolveCampaign(campaignName);
         var creatures = await session.Query<CustomCreature>()
@@ -1916,7 +1916,7 @@ public class CampaignRepository
         return result;
     }
 
-    public async Task<List<CustomSpell>> GetCustomSpellsForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
+    public async Task<List<CustomSpell>> GetCustomSpellsForSystemAsync(IAsyncDocumentSession session, string system, string? campaignName = null, int take = 500)
     {
         var effective = ResolveCampaign(campaignName);
         var spells = await session.Query<CustomSpell, CustomSpell_Search>()
@@ -1983,7 +1983,7 @@ public class CampaignRepository
         return result;
     }
 
-    public async Task<List<CustomFeat>> GetCustomFeatsForSystemAsync(IAsyncDocumentSession session, RulesetSystem system, string? campaignName = null, int take = 500)
+    public async Task<List<CustomFeat>> GetCustomFeatsForSystemAsync(IAsyncDocumentSession session, string system, string? campaignName = null, int take = 500)
     {
         var effective = ResolveCampaign(campaignName);
         var feats = await session.Query<CustomFeat, CustomFeat_Search>()

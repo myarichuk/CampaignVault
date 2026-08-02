@@ -11,8 +11,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class FeatDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<FeatDefinition>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, FeatDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<FeatDefinition>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, FeatDefinition>?> _cache = new();
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -24,7 +24,7 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         string subfolder,
@@ -38,7 +38,7 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, FeatDefinition> GetFeatsForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, FeatDefinition> GetFeatsForSystem(string system)
     {
         lock (_lock)
         {
@@ -60,7 +60,7 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
         }
     }
 
-    public bool TryGet(RulesetSystem system, string featName, [NotNullWhen(true)] out FeatDefinition? feat)
+    public bool TryGet(string system, string featName, [NotNullWhen(true)] out FeatDefinition? feat)
     {
         var feats = GetFeatsForSystem(system);
         return feats.TryGetValue(featName, out feat);

@@ -1,15 +1,13 @@
 namespace CampaignVault.Models;
 
 /// <summary>
-/// Canonical slug strings for ruleset systems, used in resource pool schemas and campaign config.
+/// RulesetSystem constants are already in slug form (e.g. "dnd5e", "pf2e", "narrative").
+/// This extension is provided for backwards compatibility; it returns the input unchanged.
 /// </summary>
 public static class RulesetSystemExtensions
 {
-    public static string ToSlug(this RulesetSystem system) => system switch
-    {
-        RulesetSystem.Dnd5e => "dnd5e",
-        RulesetSystem.Pathfinder2e => "pf2e",
-        RulesetSystem.Narrative => "narrative",
-        _ => system.ToString().ToLowerInvariant()
-    };
+    /// <summary>
+    /// Returns the input unchanged. RulesetSystem constants are already in canonical slug form.
+    /// </summary>
+    public static string ToSlug(this string systemId) => systemId;
 }

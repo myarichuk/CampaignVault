@@ -23,7 +23,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         _featProvider = featProvider;
     }
 
-    public void InitializePools(Character? character, RulesetSystem system, CampaignConfig? campaignConfig)
+    public void InitializePools(Character? character, string system, CampaignConfig? campaignConfig)
     {
         if (character?.SystemStats == null)
         {
@@ -87,7 +87,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
 
     private void AddFeatGrantedPools(
         Character character,
-        RulesetSystem system,
+        string system,
         IReadOnlyDictionary<string, ResourcePoolTemplate> schemas,
         IReadOnlyList<ClassLevelEntry> classLevels,
         int characterLevel,
@@ -130,7 +130,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
     private static bool TryAddPool(
         string poolName,
         ResourcePoolTemplate template,
-        RulesetSystem system,
+        string system,
         IReadOnlyList<ClassLevelEntry> classLevels,
         int characterLevel,
         int casterLevel,
@@ -153,7 +153,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         return true;
     }
 
-    private static IReadOnlyList<string> CollectFeatNames(SystemExtension stats, RulesetSystem system) =>
+    private static IReadOnlyList<string> CollectFeatNames(SystemExtension stats, string system) =>
         system switch
         {
             RulesetSystem.Dnd5e when stats is Dnd5eExtension dnd => dnd.Feats,
@@ -169,7 +169,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
     private static bool TryResolveLevelForPool(
         string poolName,
         ResourcePoolTemplate template,
-        RulesetSystem system,
+        string system,
         IReadOnlyList<ClassLevelEntry> classLevels,
         int characterLevel,
         int casterLevel,

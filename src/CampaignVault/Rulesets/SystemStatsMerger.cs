@@ -13,7 +13,7 @@ public static class SystemStatsMerger
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public static SystemExtension CreateDefault(RulesetSystem system) => system switch
+    public static SystemExtension CreateDefault(string system) => system switch
     {
         RulesetSystem.Dnd5e => new Dnd5eExtension(),
         RulesetSystem.Pathfinder2e => new Pf2eExtension(),
@@ -37,14 +37,14 @@ public static class SystemStatsMerger
             ?? throw new InvalidOperationException("Failed to deserialize merged system stats.");
     }
 
-    private static RulesetSystem GetRulesetFromType(Type type) => type switch
+    private static string GetRulesetFromType(Type type) => type switch
     {
         _ when type == typeof(Dnd5eExtension) => RulesetSystem.Dnd5e,
         _ when type == typeof(Pf2eExtension) => RulesetSystem.Pathfinder2e,
         _ => RulesetSystem.Dnd5e
     };
 
-    public static bool TryValidateRuleset(SystemExtension stats, RulesetSystem activeSystem, out string? error)
+    public static bool TryValidateRuleset(SystemExtension stats, string activeSystem, out string? error)
     {
         var expected = activeSystem switch
         {
@@ -63,7 +63,7 @@ public static class SystemStatsMerger
         return false;
     }
 
-    public static SystemExtension CoerceToRuleset(SystemExtension stats, RulesetSystem activeSystem)
+    public static SystemExtension CoerceToRuleset(SystemExtension stats, string activeSystem)
     {
         if (TryValidateRuleset(stats, activeSystem, out _))
         {

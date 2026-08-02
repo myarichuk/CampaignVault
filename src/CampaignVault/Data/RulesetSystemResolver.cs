@@ -7,7 +7,7 @@ namespace CampaignVault.Data;
 /// </summary>
 public static class RulesetSystemResolver
 {
-    public static bool TryFromStats(SystemExtension stats, out RulesetSystem system)
+    public static bool TryFromStats(SystemExtension stats, out string system)
     {
         system = stats switch
         {
@@ -19,7 +19,7 @@ public static class RulesetSystemResolver
         return stats is Dnd5eExtension or Pf2eExtension;
     }
 
-    public static RulesetSystem FromStats(SystemExtension stats)
+    public static string FromStats(SystemExtension stats)
     {
         if (!TryFromStats(stats, out var system))
         {

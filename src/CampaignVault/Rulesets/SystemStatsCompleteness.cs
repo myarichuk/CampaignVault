@@ -7,7 +7,7 @@ public static class SystemStatsCompleteness
     public static bool IsCombatant(Character character) =>
         character.KeepAlive || character.MaxHp > 0;
 
-    public static bool IsComplete(Character character, RulesetSystem activeSystem)
+    public static bool IsComplete(Character character, string activeSystem)
     {
         if (!IsCombatant(character))
         {
@@ -22,7 +22,7 @@ public static class SystemStatsCompleteness
         };
     }
 
-    public static IReadOnlyList<string> GetMissingFields(Character character, RulesetSystem activeSystem)
+    public static IReadOnlyList<string> GetMissingFields(Character character, string activeSystem)
     {
         if (!IsCombatant(character) || IsComplete(character, activeSystem))
         {
@@ -37,7 +37,7 @@ public static class SystemStatsCompleteness
         };
     }
 
-    public static string BuildExampleCommit(Character character, RulesetSystem activeSystem)
+    public static string BuildExampleCommit(Character character, string activeSystem)
     {
         var id = character.Id;
 
@@ -56,7 +56,7 @@ public static class SystemStatsCompleteness
         };
     }
 
-    public static string BuildStatBlockExampleCommit(Character character, RulesetSystem activeSystem)
+    public static string BuildStatBlockExampleCommit(Character character, string activeSystem)
     {
         var id = character.Id;
 

@@ -22,7 +22,7 @@ public enum BootstrapTrigger
 public sealed class BootstrapContext
 {
     public required Character Character { get; init; }
-    public required RulesetSystem ActiveSystem { get; init; }
+    public required string ActiveSystem { get; init; }
     public BootstrapTrigger Trigger { get; init; } = BootstrapTrigger.Create;
     public int? ExplicitMaxHp { get; init; }
     public int? ExplicitCurrentHp { get; init; }

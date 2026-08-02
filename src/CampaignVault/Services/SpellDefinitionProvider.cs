@@ -9,8 +9,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class SpellDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<SpellDefinition>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, SpellDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<SpellDefinition>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, SpellDefinition>?> _cache = new();
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -22,7 +22,7 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         Assembly embeddedAssembly,
@@ -35,7 +35,7 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, SpellDefinition> GetSpellsForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, SpellDefinition> GetSpellsForSystem(string system)
     {
         lock (_lock)
         {
@@ -57,14 +57,14 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
         }
     }
 
-    public bool TryGet(RulesetSystem system, string spellName, out SpellDefinition? spell)
+    public bool TryGet(string system, string spellName, out SpellDefinition? spell)
     {
         var spells = GetSpellsForSystem(system);
         return spells.TryGetValue(spellName, out spell);
     }
 
     public IReadOnlyList<SpellDefinition> QuerySpells(
-        RulesetSystem system,
+        string system,
         string? className = null,
         int? level = null,
         ClassDefinitionProvider? classProvider = null)
@@ -90,7 +90,7 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
     public static bool SpellMatchesClass(
         SpellDefinition spell,
         string className,
-        RulesetSystem system,
+        string system,
         ClassDefinitionProvider? classProvider)
     {
         if (classProvider?.TryResolveClass(system, className, out var classDef) == true && classDef != null)

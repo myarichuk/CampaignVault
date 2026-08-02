@@ -75,6 +75,11 @@ public static class RavenStartup
             await timeHourMigration.ExecuteAsync();
             logger.LogInformation("✓ CampaignTime hours migration: completed");
 
+            // Migrate RulesetSystem from enum to string id (member-name → slug form)
+            var systemIdMigration = new MigrateRulesetSystemToString(documentStore);
+            await systemIdMigration.ExecuteAsync(ct);
+            logger.LogInformation("✓ RulesetSystem string id migration: completed");
+
             // Repair corrupted Event documents
             var repairLogger = loggerFactory.CreateLogger<EventDataRepair>();
             var repair = new EventDataRepair(repairLogger);

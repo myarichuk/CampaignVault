@@ -12,8 +12,8 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ProgressionDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<RulesetSystem, RulesetTemplateLoader<ProgressionDefinition>> _loaders = new();
-    private readonly Dictionary<RulesetSystem, IReadOnlyDictionary<string, ProgressionDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<ProgressionDefinition>> _loaders = new();
+    private readonly Dictionary<string, IReadOnlyDictionary<string, ProgressionDefinition>?> _cache = new();
     private readonly Lock _lock = new();
     private readonly ILogger? _logger;
 
@@ -25,7 +25,7 @@ public class ProgressionDefinitionProvider : IRulesetYamlProvider
     }
 
     private void Register(
-        RulesetSystem system,
+        string system,
         string rulesetDataDirectory,
         string systemSlug,
         Assembly embeddedAssembly,
@@ -38,7 +38,7 @@ public class ProgressionDefinitionProvider : IRulesetYamlProvider
             logger);
     }
 
-    public IReadOnlyDictionary<string, ProgressionDefinition> GetProgressionsForSystem(RulesetSystem system)
+    public IReadOnlyDictionary<string, ProgressionDefinition> GetProgressionsForSystem(string system)
     {
         lock (_lock)
         {
@@ -63,7 +63,7 @@ public class ProgressionDefinitionProvider : IRulesetYamlProvider
     /// <summary>
     /// Gets the progression definition for a specific class in a system.
     /// </summary>
-    public bool TryGetProgression(RulesetSystem system, string className, [NotNullWhen(true)] out ProgressionDefinition? progression)
+    public bool TryGetProgression(string system, string className, [NotNullWhen(true)] out ProgressionDefinition? progression)
     {
         var progressions = GetProgressionsForSystem(system);
         progression = null;
@@ -97,7 +97,7 @@ public class ProgressionDefinitionProvider : IRulesetYamlProvider
     /// <summary>
     /// Gets the level definition for a specific class at a specific level.
     /// </summary>
-    public LevelDefinition? GetLevelDefinition(RulesetSystem system, string className, int level)
+    public LevelDefinition? GetLevelDefinition(string system, string className, int level)
     {
         if (TryGetProgression(system, className, out var progression))
         {
@@ -110,7 +110,7 @@ public class ProgressionDefinitionProvider : IRulesetYamlProvider
     /// <summary>
     /// Gets all pending choices for a character leveling up to the specified level.
     /// </summary>
-    public List<LevelUpChoiceDefinition> GetPendingChoices(RulesetSystem system, string className, int newLevel)
+    public List<LevelUpChoiceDefinition> GetPendingChoices(string system, string className, int newLevel)
     {
         var choices = new List<LevelUpChoiceDefinition>();
         

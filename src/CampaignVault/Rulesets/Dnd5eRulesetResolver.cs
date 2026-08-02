@@ -30,7 +30,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             [hpStep, profStep, passiveStep, spellStep]);
     }
 
-    public override RulesetSystem System => RulesetSystem.Dnd5e;
+    public override string System => RulesetSystem.Dnd5e;
 
     public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
 
