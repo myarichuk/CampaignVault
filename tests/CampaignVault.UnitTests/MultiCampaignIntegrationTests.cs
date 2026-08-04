@@ -62,7 +62,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
 
         Assert.True(upsertResult.Success);
         Assert.Contains("No campaign ruleset is configured yet", upsertResult.Summary);
-        Assert.Contains("Dnd5e", upsertResult.Summary);
+        Assert.Contains("dnd5e", upsertResult.Summary);
 
         var configResult = await tools.GetConfig(slug);
         Assert.True(configResult.Success);
