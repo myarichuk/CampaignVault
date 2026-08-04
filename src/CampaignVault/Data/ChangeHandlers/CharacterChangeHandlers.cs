@@ -117,7 +117,8 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
                 existing.SystemStats = SystemStatsMerger.Merge(
                     existing.SystemStats ?? SystemStatsMerger.CreateDefault(existingSystem),
-                    SystemStatsMerger.CoerceToRuleset(cc.SystemStats, existingSystem));
+                    SystemStatsMerger.CoerceToRuleset(cc.SystemStats, existingSystem),
+                    existingSystem);
             }
 
             var activeSystemForExisting =
@@ -152,7 +153,8 @@ public class CharacterCreateHandler : IWorldChangeHandler
         {
             systemStats = SystemStatsMerger.Merge(
                 systemStats,
-                SystemStatsMerger.CoerceToRuleset(cc.SystemStats, activeSystem));
+                SystemStatsMerger.CoerceToRuleset(cc.SystemStats, activeSystem),
+                activeSystem);
         }
 
         var newChar = new Character
@@ -620,7 +622,8 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
             character.SystemStats = SystemStatsMerger.Merge(
                 character.SystemStats ?? SystemStatsMerger.CreateDefault(activeSystem),
-                SystemStatsMerger.CoerceToRuleset(cu.SystemStats, activeSystem));
+                SystemStatsMerger.CoerceToRuleset(cu.SystemStats, activeSystem),
+                activeSystem);
 
             await CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
                 _bootstrap, character, activeSystem, null, null, BootstrapTrigger.SystemStatsPatch, context, ct: ct);

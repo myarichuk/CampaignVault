@@ -20,10 +20,11 @@ public static class SystemStatsMerger
         _ => new SystemExtension()
     };
 
-    public static SystemExtension Merge(SystemExtension target, SystemExtension source)
+    public static SystemExtension Merge(SystemExtension target, SystemExtension source, string? activeSystem = null)
     {
         var targetType = target.GetType();
-        var factory = CreateDefault(GetRulesetFromType(targetType));
+        // If activeSystem is provided, use it to create the factory; otherwise infer from type (backward compatible)
+        var factory = activeSystem != null ? CreateDefault(activeSystem) : CreateDefault(GetRulesetFromType(targetType));
         var targetNode = JsonSerializer.SerializeToNode(target, targetType, JsonOptions) as JsonObject
             ?? throw new InvalidOperationException("Failed to serialize target system stats.");
         var sourceNode = JsonSerializer.SerializeToNode(source, source.GetType(), JsonOptions) as JsonObject
