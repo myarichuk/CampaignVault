@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using CampaignVault.Data.Templates;
-using CampaignVault.Models;
 
 namespace CampaignVault.Services;
 
@@ -11,29 +10,35 @@ namespace CampaignVault.Services;
 /// </summary>
 public class CreatureDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<CreatureDefinition>> _loaders = new();
-    private readonly Dictionary<string, IReadOnlyDictionary<string, CreatureDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<CreatureDefinition>> _loaders =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IReadOnlyDictionary<string, CreatureDefinition>?> _cache =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
     public CreatureDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", embeddedAssembly, logger);
-        Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", embeddedAssembly, logger);
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["creatures"]);
+        foreach (var (systemSlug, subfolder) in discovered)
+        {
+            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+        }
     }
 
     private void Register(
         string system,
         string rulesetDataDirectory,
         string systemSlug,
+        string subfolder,
         Assembly embeddedAssembly,
         ILogger? logger)
     {
         _loaders[system] = new RulesetTemplateLoader<CreatureDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, "creatures"),
+            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
             embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.creatures",
+            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
             logger);
     }
 

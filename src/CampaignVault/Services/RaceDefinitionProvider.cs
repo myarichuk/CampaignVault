@@ -1,6 +1,5 @@
 using System.Reflection;
 using CampaignVault.Data.Templates;
-using CampaignVault.Models;
 
 namespace CampaignVault.Services;
 
@@ -10,16 +9,21 @@ namespace CampaignVault.Services;
 /// </summary>
 public class RaceDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<RaceDefinition>> _loaders = new();
-    private readonly Dictionary<string, IReadOnlyDictionary<string, RaceDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<RaceDefinition>> _loaders =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IReadOnlyDictionary<string, RaceDefinition>?> _cache =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
     public RaceDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", "races", embeddedAssembly, logger);
-        Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", "ancestries", embeddedAssembly, logger);
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["races", "ancestries"]);
+        foreach (var (systemSlug, subfolder) in discovered)
+        {
+            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+        }
     }
 
     private void Register(

@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using CampaignVault.Data.Templates;
-using CampaignVault.Models;
 
 namespace CampaignVault.Services;
 
@@ -11,16 +10,21 @@ namespace CampaignVault.Services;
 /// </summary>
 public class FeatDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<FeatDefinition>> _loaders = new();
-    private readonly Dictionary<string, IReadOnlyDictionary<string, FeatDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<FeatDefinition>> _loaders =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IReadOnlyDictionary<string, FeatDefinition>?> _cache =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
     public FeatDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", "feats", embeddedAssembly, logger);
-        Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", "feats", embeddedAssembly, logger);
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["feats"]);
+        foreach (var (systemSlug, subfolder) in discovered)
+        {
+            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+        }
     }
 
     private void Register(

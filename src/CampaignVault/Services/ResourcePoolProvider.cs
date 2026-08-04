@@ -11,29 +11,35 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ResourcePoolProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<ResourcePoolTemplate>> _loaders = new();
-    private readonly Dictionary<string, IReadOnlyDictionary<string, ResourcePoolTemplate>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<ResourcePoolTemplate>> _loaders =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IReadOnlyDictionary<string, ResourcePoolTemplate>?> _cache =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
     public ResourcePoolProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", embeddedAssembly, logger);
-        Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", embeddedAssembly, logger);
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["pools"]);
+        foreach (var (systemSlug, subfolder) in discovered)
+        {
+            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+        }
     }
 
     private void Register(
         string system,
         string rulesetDataDirectory,
         string systemSlug,
+        string subfolder,
         Assembly embeddedAssembly,
         ILogger? logger)
     {
         _loaders[system] = new RulesetTemplateLoader<ResourcePoolTemplate>(
-            Path.Combine(rulesetDataDirectory, systemSlug, "pools"),
+            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
             embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.pools",
+            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
             logger);
     }
 

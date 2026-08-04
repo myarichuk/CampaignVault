@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using CampaignVault.Data.Templates;
-using CampaignVault.Models;
 
 namespace CampaignVault.Services;
 
@@ -12,29 +11,35 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ClassDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<ClassDefinition>> _loaders = new();
-    private readonly Dictionary<string, IReadOnlyDictionary<string, ClassDefinition>?> _cache = new();
+    private readonly Dictionary<string, RulesetTemplateLoader<ClassDefinition>> _loaders =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IReadOnlyDictionary<string, ClassDefinition>?> _cache =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lock = new();
     private readonly ILogger? _logger;
 
     public ClassDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        Register(RulesetSystem.Dnd5e, rulesetDataDirectory, "dnd5e", embeddedAssembly, logger);
-        Register(RulesetSystem.Pathfinder2e, rulesetDataDirectory, "pf2e", embeddedAssembly, logger);
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["classes"]);
+        foreach (var (systemSlug, subfolder) in discovered)
+        {
+            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+        }
     }
 
     private void Register(
         string system,
         string rulesetDataDirectory,
         string systemSlug,
+        string subfolder,
         Assembly embeddedAssembly,
         ILogger? logger)
     {
         _loaders[system] = new RulesetTemplateLoader<ClassDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, "classes"),
+            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
             embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.classes",
+            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
             logger);
     }
 
