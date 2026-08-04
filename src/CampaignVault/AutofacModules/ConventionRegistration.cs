@@ -32,21 +32,39 @@ internal static class ConventionRegistration
 
     public static void Register(ContainerBuilder builder, Assembly assembly, string rulesetDataDirectory)
     {
-        RegisterMarkerCollections(builder, assembly);
-        RegisterRulesetData(builder, assembly, rulesetDataDirectory);
-        RegisterDefaultImplementations(builder, assembly);
-        RegisterNameMatchedServices(builder, assembly);
+        Register(builder, new[] { assembly }, rulesetDataDirectory);
+    }
+
+    public static void Register(ContainerBuilder builder, IReadOnlyList<Assembly> assemblies, string rulesetDataDirectory)
+    {
+        if (assemblies.Count == 0)
+            throw new ArgumentException("At least one assembly must be provided", nameof(assemblies));
+
+        var mainAssembly = assemblies[0];
+
+        RegisterMarkerCollections(builder, assemblies);
+        RegisterRulesetData(builder, mainAssembly, rulesetDataDirectory);
+        RegisterDefaultImplementations(builder, mainAssembly);
+        RegisterNameMatchedServices(builder, mainAssembly);
         RegisterApplicationCore(builder);
         RegisterStartupValidation(builder);
     }
 
     private static void RegisterMarkerCollections(ContainerBuilder builder, Assembly assembly)
     {
-        RegisterCollection<ISimulationRule>(builder, assembly);
-        RegisterCollection<IPressureContributor>(builder, assembly);
-        RegisterCollection<IGuidanceContributor>(builder, assembly);
-        RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
-        RegisterCollection<IRulesetModule>(builder, assembly);
+        RegisterMarkerCollections(builder, new[] { assembly });
+    }
+
+    private static void RegisterMarkerCollections(ContainerBuilder builder, IReadOnlyList<Assembly> assemblies)
+    {
+        foreach (var assembly in assemblies)
+        {
+            RegisterCollection<ISimulationRule>(builder, assembly);
+            RegisterCollection<IPressureContributor>(builder, assembly);
+            RegisterCollection<IGuidanceContributor>(builder, assembly);
+            RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
+            RegisterCollection<IRulesetModule>(builder, assembly);
+        }
 
         // Register tools explicitly to ensure dependency order: ExplorationTools before DeepDiveTools
         builder.RegisterType<ExplorationTools>()
@@ -54,16 +72,20 @@ internal static class ConventionRegistration
             .As<IMcpServerTool>()
             .InstancePerLifetimeScope();
 
-        builder.RegisterAssemblyTypes(assembly)
-            .Where(t => t.IsAssignableTo<IMcpServerTool>() && !t.IsAbstract && t.Name != nameof(ExplorationTools))
-            .As<IMcpServerTool>()
-            .InstancePerLifetimeScope();
+        // Register MCP tools and change handlers from all assemblies
+        foreach (var assembly in assemblies)
+        {
+            builder.RegisterAssemblyTypes(assembly)
+                .Where(t => t.IsAssignableTo<IMcpServerTool>() && !t.IsAbstract && t.Name != nameof(ExplorationTools))
+                .As<IMcpServerTool>()
+                .InstancePerLifetimeScope();
 
-        builder.RegisterAssemblyTypes(assembly)
-            .Where(t => t.IsAssignableTo<IWorldChangeHandler>() && !t.IsAbstract)
-            .AsSelf()
-            .As<IWorldChangeHandler>()
-            .InstancePerLifetimeScope();
+            builder.RegisterAssemblyTypes(assembly)
+                .Where(t => t.IsAssignableTo<IWorldChangeHandler>() && !t.IsAbstract)
+                .AsSelf()
+                .As<IWorldChangeHandler>()
+                .InstancePerLifetimeScope();
+        }
     }
 
     private static void RegisterCollection<TService>(ContainerBuilder builder, Assembly assembly)
