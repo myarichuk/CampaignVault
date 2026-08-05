@@ -36,6 +36,36 @@ public sealed class WorldChangeDispatcher(
     private readonly ClassDefinitionProvider? _classProvider = classProvider;
     private readonly BackgroundDefinitionProvider? _backgroundProvider = backgroundProvider;
 
+    private readonly Dictionary<Type, IWorldChangeHandler> _handlersByChangeType = BuildHandlerDictionary(handlers ?? []);
+
+
+    private static Dictionary<Type, IWorldChangeHandler> BuildHandlerDictionary(IEnumerable<IWorldChangeHandler> handlers)
+    {
+        var dict = new Dictionary<Type, IWorldChangeHandler>();
+        var handlerList = handlers.ToList();
+
+        var worldChangeType = typeof(WorldChange);
+        var changeTypes = worldChangeType.Assembly.GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface && worldChangeType.IsAssignableFrom(t))
+            .ToList();
+
+        foreach (var handler in handlerList)
+        {
+            foreach (var changeType in changeTypes)
+            {
+                var testInstance = Activator.CreateInstance(changeType) as WorldChange;
+                if (testInstance != null && handler.ShouldHandle(testInstance))
+                {
+                    if (!dict.ContainsKey(changeType))
+                    {
+                        dict[changeType] = handler;
+                    }
+                }
+            }
+        }
+
+        return dict;
+    }
 
     /// <summary>
     /// Returns the first handler that claims this change (if any).
@@ -43,15 +73,7 @@ public sealed class WorldChangeDispatcher(
     /// </summary>
     public IWorldChangeHandler? FindHandler(WorldChange change)
     {
-        foreach (var h in _handlers)
-        {
-            if (h.ShouldHandle(change))
-            {
-                return h;
-            }
-        }
-
-        return null;
+        return _handlersByChangeType.TryGetValue(change.GetType(), out var handler) ? handler : null;
     }
 
     public async Task<CommitResult> DispatchAsync(
@@ -224,27 +246,7 @@ public sealed class WorldChangeDispatcher(
             context.BatchIndex = changeIndex;
             try
             {
-                IWorldChangeHandler? chosen = null;
-                var claimCount = 0;
-
-                foreach (var handler in _handlers)
-                {
-                    if (handler.ShouldHandle(change))
-                    {
-                        claimCount++;
-                        if (chosen is null)
-                        {
-                            chosen = handler;
-                        }
-                    }
-                }
-
-                if (claimCount > 1)
-                {
-                    _logger.LogWarning(
-                        "Multiple handlers claimed change of type {ChangeType}. This is a bug - ShouldHandle predicates must be mutually exclusive. Using first registered handler.",
-                        change.GetType().Name);
-                }
+                var chosen = FindHandler(change);
 
                 if (chosen is null)
                 {

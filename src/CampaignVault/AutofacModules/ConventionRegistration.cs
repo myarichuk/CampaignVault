@@ -7,6 +7,7 @@ using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Scenes;
 using CampaignVault.Data.Templates;
+using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Tools;
@@ -168,7 +169,52 @@ internal static class ConventionRegistration
                 throw new InvalidOperationException(
                     "Startup validation failed: no IWorldChangeHandler instances were registered.");
             }
+
+            ValidateHandlerCoverage(handlers);
         });
+    }
+
+    private static void ValidateHandlerCoverage(IEnumerable<IWorldChangeHandler> handlers)
+    {
+        var handlerList = handlers.ToList();
+        var worldChangeType = typeof(WorldChange);
+        var changeTypes = worldChangeType.Assembly.GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface && worldChangeType.IsAssignableFrom(t))
+            .ToList();
+
+        var handlerClaims = new Dictionary<Type, List<string>>();
+        foreach (var changeType in changeTypes)
+        {
+            handlerClaims[changeType] = [];
+            var testInstance = Activator.CreateInstance(changeType) as WorldChange;
+            if (testInstance != null)
+            {
+                foreach (var handler in handlerList)
+                {
+                    if (handler.ShouldHandle(testInstance))
+                    {
+                        handlerClaims[changeType].Add(handler.GetType().Name);
+                    }
+                }
+            }
+        }
+
+        var duplicates = handlerClaims.Where(kv => kv.Value.Count > 1).ToList();
+        if (duplicates.Any())
+        {
+            var msg = string.Join("; ", duplicates.Select(kv =>
+                $"{kv.Key.Name} claimed by [{string.Join(", ", kv.Value)}]"));
+            throw new InvalidOperationException(
+                $"Startup validation failed: multiple handlers claim the same change types. {msg}");
+        }
+
+        var unhandled = handlerClaims.Where(kv => kv.Value.Count == 0).ToList();
+        if (unhandled.Any())
+        {
+            var msg = string.Join(", ", unhandled.Select(kv => kv.Key.Name));
+            throw new InvalidOperationException(
+                $"Startup validation failed: no handler claims these change types: {msg}");
+        }
     }
 
     private static Type[] GetCampaignVaultServiceInterfaces(Type type) =>
