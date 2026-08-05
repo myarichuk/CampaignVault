@@ -665,12 +665,12 @@ public class CampaignRepository
 
         foreach (var l in locs)
         {
-            SanitizeLocation(l);
+            JsonSanitizer.Sanitize(l);
         }
 
         foreach (var item in items)
         {
-            SanitizeItem(item);
+            JsonSanitizer.Sanitize(item);
         }
 
         foreach (var ev in events)
@@ -1184,38 +1184,6 @@ public class CampaignRepository
     /// <summary>
     /// Applies JSON sanitization to an Event's Details (prevents JsonElement leakage).
     /// </summary>
-    public void SanitizeEvent(Event ev)
-    {
-        JsonSanitizer.Sanitize(ev);
-    }
-
-    /// <summary>
-    /// Sanitizes Location.Metadata. Safe to call multiple times.
-    /// </summary>
-    public void SanitizeLocation(Location? loc)
-    {
-        JsonSanitizer.Sanitize(loc);
-    }
-
-    /// <summary>
-    /// Sanitizes Item.Properties. Safe to call multiple times.
-    /// </summary>
-    public void SanitizeItem(Item? item)
-    {
-        JsonSanitizer.Sanitize(item);
-    }
-
-    /// <summary>
-    /// Universal sanitization entry point. Delegates to the central JsonSanitizer.
-    /// </summary>
-    public void SanitizeEntity(object? entity) => JsonSanitizer.Sanitize(entity);
-
-    /// <summary>
-    /// Best-effort deep sanitization of tool response payloads before STJ serialization
-    /// in the MCP layer. Delegates to the central JsonSanitizer.
-    /// </summary>
-    public void SanitizeForToolResponse(object? value) => JsonSanitizer.SanitizeForToolResponse(value);
-
     /// <summary>
     /// Creates or updates a piece of Lore, handling creation/update timestamps.
     /// </summary>
@@ -1409,7 +1377,7 @@ public class CampaignRepository
             }
         }
 
-        SanitizeLocation(result);
+        JsonSanitizer.Sanitize(result);
         await EnrichSemanticVectorAsync(result);
         return result;
     }
@@ -1440,7 +1408,7 @@ public class CampaignRepository
         var locations = await q.Take(limit).ToListAsync();
         foreach (var l in locations)
         {
-            SanitizeLocation(l);
+            JsonSanitizer.Sanitize(l);
         }
 
         if (!string.IsNullOrEmpty(effective))
@@ -1606,7 +1574,7 @@ public class CampaignRepository
             return null;
         }
 
-        SanitizeLocation(loc);
+        JsonSanitizer.Sanitize(loc);
         return loc;
     }
 
@@ -1757,7 +1725,7 @@ public class CampaignRepository
             }
         }
 
-        SanitizeItem(result);
+        JsonSanitizer.Sanitize(result);
         foreach (var detail in result.ItemDetails)
         {
             await EnrichSemanticVectorAsync(detail);

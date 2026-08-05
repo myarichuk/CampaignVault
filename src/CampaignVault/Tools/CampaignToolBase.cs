@@ -118,7 +118,7 @@ public abstract class CampaignToolBase
                 }
             }
 
-            _repository.SanitizeForToolResponse(result.Data);
+            JsonSanitizer.SanitizeForToolResponse(result.Data);
             return result;
         }
     }

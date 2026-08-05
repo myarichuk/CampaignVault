@@ -629,7 +629,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
             foreach (var ev in npcEvents)
             {
-                _repository.SanitizeEvent(ev);
+                JsonSanitizer.Sanitize(ev);
             }
 
             var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);

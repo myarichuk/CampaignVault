@@ -148,7 +148,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
             foreach (var ev in npcEvents)
             {
-                _repository.SanitizeEvent(ev);   // reuses the central sanitization logic
+                JsonSanitizer.Sanitize(ev);
             }
 
             var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
