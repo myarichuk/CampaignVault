@@ -2353,6 +2353,17 @@ public class CampaignRepository
     /// Includes the stuck-party query logic from ExplorationTools, ensuring consistent behavior across call sites.
     /// Returns full event list; callers decide how much to display (ExplorationTools uses all, take_turn takes first 5).
     /// </summary>
+    /// <summary>
+    /// Builds a complete WorldStateView including scene assembly, pressure evaluation, and NPC synthesis.
+    ///
+    /// Note: IPressureOrchestrator is passed as a parameter rather than injected because:
+    /// - PressureOrchestrator doesn't depend on CampaignRepository (no cycle blocking injection)
+    /// - This is a design pattern: making the dependency explicit at the call site
+    /// - Allows callers to control which orchestrator instance is used
+    ///
+    /// Future refactoring (Phase 5.1.4): CampaignSession unit-of-work will own the session lifecycle
+    /// and reduce this parameter to improve the method signature.
+    /// </summary>
     public async Task<WorldStateView> BuildWorldStateAsync(
         IAsyncDocumentSession session,
         string? campaignName,
