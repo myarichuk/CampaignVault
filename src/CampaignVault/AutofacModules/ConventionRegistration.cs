@@ -10,6 +10,7 @@ using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Services;
 using CampaignVault.Tools;
 
 namespace CampaignVault.AutofacModules;
@@ -148,11 +149,16 @@ internal static class ConventionRegistration
 
     private static void RegisterApplicationCore(ContainerBuilder builder)
     {
+        builder.RegisterGeneric(typeof(Microsoft.Extensions.Logging.Abstractions.NullLogger<>))
+            .As(typeof(Microsoft.Extensions.Logging.ILogger<>))
+            .SingleInstance();
+
         builder.RegisterType<CampaignDocumentKeys>().SingleInstance();
         builder.RegisterType<WorldChangeDispatcher>().InstancePerLifetimeScope();
         builder.RegisterType<SceneAssembler>().InstancePerLifetimeScope();
         builder.RegisterType<SceneNpcMerger>().InstancePerLifetimeScope();
         builder.RegisterType<SceneFactionSummaryFactory>().InstancePerLifetimeScope();
+        builder.RegisterType<EntitySuggester>().As<IEntitySuggester>().InstancePerLifetimeScope();
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
         builder.RegisterType<EncounterResolver>().InstancePerLifetimeScope();
         builder.RegisterType<CharacterBootstrapOrchestrator>().InstancePerLifetimeScope();

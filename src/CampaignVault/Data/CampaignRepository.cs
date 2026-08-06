@@ -24,6 +24,7 @@ public class CampaignRepository
     private readonly ILocalEmbeddingService _embeddingService;
     private readonly ClassDefinitionProvider _classProvider;
     private readonly BackgroundDefinitionProvider _backgroundProvider;
+    private readonly IEntitySuggester _entitySuggester;
 
     private string ResolveCampaign(string? campaignName)
     {
@@ -52,7 +53,8 @@ public class CampaignRepository
         INpcInitiativeService initiativeService,
         ILocalEmbeddingService embeddingService,
         ClassDefinitionProvider classProvider,
-        BackgroundDefinitionProvider backgroundProvider)
+        BackgroundDefinitionProvider backgroundProvider,
+        IEntitySuggester entitySuggester)
     {
         _store = store;
         _simulationEngine = simulationEngine;
@@ -65,6 +67,7 @@ public class CampaignRepository
         _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
         _classProvider = classProvider ?? throw new ArgumentNullException(nameof(classProvider));
         _backgroundProvider = backgroundProvider ?? throw new ArgumentNullException(nameof(backgroundProvider));
+        _entitySuggester = entitySuggester ?? throw new ArgumentNullException(nameof(entitySuggester));
     }
 
     private Task EnrichSemanticVectorAsync(IHasSemanticVector entity)
@@ -1968,185 +1971,21 @@ public class CampaignRepository
         string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var rawQuery = nameQuery.Trim();
-        var cleanQuery = rawQuery;
-        if (cleanQuery.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["locations/".Length..];
-        }
-        else if (cleanQuery.StartsWith("locs/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["locs/".Length..];
-        }
-
-        if (string.IsNullOrWhiteSpace(cleanQuery))
-        {
-            return [];
-        }
-
-        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "locations/");
-
-        try
-        {
-            var suggestions = await session.Query<Location, Location_Search>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-                .Take(3).ToListAsync();
-
-            if (suggestions.Count < 3)
-            {
-                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-                var byNameQuery = session.Query<Location, Location_Search>()
-                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                    .Search(x => x.Name, cleanQuery + "*");
-
-                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
-                {
-                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-                }
-
-                var byName = await byNameQuery.Take(3).ToListAsync();
-
-                foreach (var item in byName)
-                {
-                    if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
-                    {
-                        suggestions.Add(item);
-                    }
-                }
-            }
-
-            return suggestions;
-        }
-        catch (TimeoutException ex)
-        {
-            _logger.LogWarning(ex, "SuggestLocationsAsync timed out waiting for index; returning empty results.");
-            return [];
-        }
+        return await _entitySuggester.SuggestLocationsAsync(session, nameQuery, effective);
     }
 
     public async Task<List<Character>> SuggestCharactersAsync(IAsyncDocumentSession session, string nameQuery,
         string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var rawQuery = CanonicalId.NormalizeAlias(nameQuery.Trim());
-        var cleanQuery = rawQuery;
-        if (cleanQuery.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["chars/".Length..];
-        }
-
-        if (string.IsNullOrWhiteSpace(cleanQuery))
-        {
-            return [];
-        }
-
-        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "chars/");
-
-        try
-        {
-            var suggestions = await session.Query<Character, Character_Search>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-                .Take(3).ToListAsync();
-
-            if (suggestions.Count < 3)
-            {
-                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-                var byNameQuery = session.Query<Character, Character_Search>()
-                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                    .Search(x => x.Name, cleanQuery + "*");
-
-                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
-                {
-                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-                }
-
-                var byName = await byNameQuery.Take(3).ToListAsync();
-
-                foreach (var item in byName)
-                {
-                    if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
-                    {
-                        suggestions.Add(item);
-                    }
-                }
-            }
-
-            return suggestions;
-        }
-        catch (TimeoutException ex)
-        {
-            _logger.LogWarning(ex, "SuggestCharactersAsync timed out waiting for index; returning empty.");
-            return [];
-        }
+        return await _entitySuggester.SuggestCharactersAsync(session, nameQuery, effective);
     }
 
     public async Task<List<Item>> SuggestItemsAsync(IAsyncDocumentSession session, string nameQuery,
         string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var rawQuery = nameQuery.Trim();
-        var cleanQuery = rawQuery;
-        if (cleanQuery.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["items/".Length..];
-        }
-        else if (cleanQuery.StartsWith("item/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["item/".Length..];
-        }
-
-        if (string.IsNullOrWhiteSpace(cleanQuery))
-        {
-            return [];
-        }
-
-        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "items/");
-
-        try
-        {
-            var suggestions = await session.Query<Item, Item_Search>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-                .Take(3).ToListAsync();
-
-            if (suggestions.Count < 3)
-            {
-                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-                var byNameQuery = session.Query<Item, Item_Search>()
-                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                    .Search(x => x.Name, cleanQuery + "*");
-
-                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
-                {
-                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-                }
-
-                var byName = await byNameQuery.Take(3).ToListAsync();
-
-                foreach (var item in byName)
-                {
-                    if (suggestions.All(s => s.Id != item.Id) && suggestions.Count < 3)
-                    {
-                        suggestions.Add(item);
-                    }
-                }
-            }
-
-            return suggestions;
-        }
-        catch (TimeoutException ex)
-        {
-            _logger.LogWarning(ex, "SuggestItemsAsync timed out waiting for index; returning empty.");
-            return [];
-        }
+        return await _entitySuggester.SuggestItemsAsync(session, nameQuery, effective);
     }
 
     /// <summary>
@@ -2156,59 +1995,7 @@ public class CampaignRepository
         string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var rawQuery = nameQuery.Trim();
-        var cleanQuery = rawQuery;
-        if (cleanQuery.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["factions/".Length..];
-        }
-
-        if (string.IsNullOrWhiteSpace(cleanQuery))
-        {
-            return [];
-        }
-
-        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "factions/");
-
-        try
-        {
-            var suggestions = await session.Query<Faction, Faction_Search>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-                .Take(3).ToListAsync();
-
-            if (suggestions.Count < 3)
-            {
-                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-                var byNameQuery = session.Query<Faction, Faction_Search>()
-                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                    .Search(x => x.Name, cleanQuery + "*");
-
-                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
-                {
-                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-                }
-
-                var byName = await byNameQuery.Take(3).ToListAsync();
-
-                foreach (var f in byName)
-                {
-                    if (suggestions.All(s => s.Id != f.Id) && suggestions.Count < 3)
-                    {
-                        suggestions.Add(f);
-                    }
-                }
-            }
-
-            return suggestions;
-        }
-        catch (TimeoutException ex)
-        {
-            _logger.LogWarning(ex, "SuggestFactionsAsync timed out waiting for index; returning empty.");
-            return [];
-        }
+        return await _entitySuggester.SuggestFactionsAsync(session, nameQuery, effective);
     }
 
     /// <summary>
@@ -2218,59 +2005,7 @@ public class CampaignRepository
         string? campaignName = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var rawQuery = nameQuery.Trim();
-        var cleanQuery = rawQuery;
-        if (cleanQuery.StartsWith("quests/", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanQuery = cleanQuery["quests/".Length..];
-        }
-
-        if (string.IsNullOrWhiteSpace(cleanQuery))
-        {
-            return [];
-        }
-
-        var canonicalIdPrefix = BuildCanonicalIdPrefix(cleanQuery, "quests/");
-
-        try
-        {
-            var suggestions = await session.Query<Quest, Quest_Search>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                .Where(x => x.Id.StartsWith(rawQuery) || x.Id.StartsWith(canonicalIdPrefix))
-                .Take(3).ToListAsync();
-
-            if (suggestions.Count < 3)
-            {
-                var queryVector = await _embeddingService.GenerateEmbeddingAsync(cleanQuery);
-                var byNameQuery = session.Query<Quest, Quest_Search>()
-                    .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                    .Where(x => x.CampaignName == effective || x.CampaignName == null)
-                    .Search(x => x.Title, cleanQuery + "*");
-
-                if (queryVector is { Length: EmbeddingModelPaths.VectorDimensions })
-                {
-                    byNameQuery = byNameQuery.VectorSearch(f => f.WithField(x => x.SemanticVector), v => v.ByEmbedding(queryVector));
-                }
-
-                var byName = await byNameQuery.Take(3).ToListAsync();
-
-                foreach (var q in byName)
-                {
-                    if (suggestions.All(s => s.Id != q.Id) && suggestions.Count < 3)
-                    {
-                        suggestions.Add(q);
-                    }
-                }
-            }
-
-            return suggestions;
-        }
-        catch (TimeoutException ex)
-        {
-            _logger.LogWarning(ex, "SuggestQuestsAsync timed out waiting for index; returning empty.");
-            return [];
-        }
+        return await _entitySuggester.SuggestQuestsAsync(session, nameQuery, effective);
     }
 
     public async Task<List<Quest>> GetActiveQuestsAsync(IAsyncDocumentSession session, string? campaignName = null,
