@@ -40,7 +40,7 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
         [Description("Optional current party location ID — anchors world-state scoping. Omit if unknown.")] string? partyLocationId = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var sessionLog = await _repo.GetSessionLogAsync(session, effective);
+            var sessionLog = await _repo.GetSessionLogAsync(new CampaignSession(session, effective));
             var openSession = sessionLog?.Sessions.FirstOrDefault(s => s.IsOpen);
 
             var view = new SessionStartView { Title = title };
@@ -54,7 +54,7 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
             else
             {
                 var newNumber = (sessionLog?.Sessions.Count ?? 0) + 1;
-                var time = await _repo.GetTimeAsync(session, effective);
+                var time = await _repo.GetTimeAsync(new CampaignSession(session, effective));
 
                 var record = new SessionLog.SessionRecord
                 {
@@ -145,7 +145,7 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
         [Description("LLM-authored recap text describing key events and outcomes")] string recapText)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var sessionLog = await _repo.GetSessionLogAsync(session, effective);
+            var sessionLog = await _repo.GetSessionLogAsync(new CampaignSession(session, effective));
             var openSession = sessionLog?.Sessions.FirstOrDefault(s => s.IsOpen);
 
             if (openSession == null)
@@ -153,7 +153,7 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
                     Error: "No open session to end.");
 
             openSession.EndedAtUtc = DateTime.UtcNow;
-            var time = await _repo.GetTimeAsync(session, effective);
+            var time = await _repo.GetTimeAsync(new CampaignSession(session, effective));
             openSession.InWorldEndDay = (int)time.TotalDaysElapsed;
             openSession.InWorldEndTimeOfDay = time.GetTimeOfDayName();
             openSession.RecapText = recapText;

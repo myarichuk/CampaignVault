@@ -318,7 +318,7 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
         // Session-tracked load; cheap even though UpsertCharacterAsync loads the same ID again below.
         var existedBefore = !string.IsNullOrWhiteSpace(character.Id)
             && await s.LoadAsync<Character>(character.Id) is not null;
-        var merged = await _repository.UpsertCharacterAsync(s, character, effective);
+        var merged = await _repository.UpsertCharacterAsync(new CampaignSession(s, effective), character);
 
         var hp = BootstrapHpResolver.Resolve(merged, null,
             character.CurrentHp > 0 ? character.CurrentHp : null);
@@ -383,7 +383,7 @@ This is the only tool that creates a new location. During play, use commit's loc
 
     private async Task<ToolResult<Location>> ApplyLocationUpsertAsync(IAsyncDocumentSession s, LocationUpsertRequest location, string effective)
     {
-        var merged = await _repository.UpsertLocationAsync(s, location, effective);
+        var merged = await _repository.UpsertLocationAsync(new CampaignSession(s, effective), location);
         var warning = await WarnDanglingReferencesAsync(s,
             ("controllingFactionId", location.ControllingFactionId));
         var summary = $"Location upserted (campaign context: {effective}).{warning}";
@@ -403,7 +403,7 @@ This is the only tool that creates a new location. During play, use commit's loc
 
     private async Task<ToolResult<Lore>> ApplyLoreUpsertAsync(IAsyncDocumentSession s, LoreUpsertRequest lore, string effective)
     {
-        var merged = await _repository.UpsertLoreAsync(s, lore, effective);
+        var merged = await _repository.UpsertLoreAsync(new CampaignSession(s, effective), lore);
         return new ToolResult<Lore>(true, merged, $"Lore upserted (campaign context: {effective}).");
     }
 
@@ -421,7 +421,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     private async Task<ToolResult<Item>> ApplyItemUpsertAsync(IAsyncDocumentSession s, ItemUpsertRequest item, string effective)
     {
         var alreadyExisted = await s.LoadAsync<Item>(CanonicalId.Normalize(item.Id, CanonicalId.Items)) != null;
-        var merged = await _repository.UpsertItemAsync(s, item, effective);
+        var merged = await _repository.UpsertItemAsync(new CampaignSession(s, effective), item);
         var message = $"Item upserted (campaign context: {effective}).";
         var nudges = ItemUpsertSanityChecker.GetNudges(item, alreadyExisted);
         if (nudges.Count > 0)
@@ -461,7 +461,7 @@ This is the only tool that creates a new location. During play, use commit's loc
 
     private async Task<ToolResult<PlotThread>> ApplyPlotThreadUpsertAsync(IAsyncDocumentSession s, PlotThreadUpsertRequest plotThread, string effective)
     {
-        var merged = await _repository.UpsertPlotThreadAsync(s, plotThread, effective);
+        var merged = await _repository.UpsertPlotThreadAsync(new CampaignSession(s, effective), plotThread);
         var refs = (plotThread.InvolvedEntityIds ?? [])
             .Select((id, i) => ($"involvedEntityIds[{i}]", (string?)id));
         var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
@@ -539,7 +539,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     private async Task<ToolResult<Faction>> ApplyFactionUpsertAsync(IAsyncDocumentSession s, FactionUpsertRequest faction, string effective)
     {
         var wasNew = await s.LoadAsync<Models.Faction>(faction.Id) is null;
-        var merged = await _repository.UpsertFactionAsync(s, faction, effective);
+        var merged = await _repository.UpsertFactionAsync(new CampaignSession(s, effective), faction);
         var refs = (faction.TerritoryLocationIds ?? [])
             .Select((id, i) => ($"territoryLocationIds[{i}]", (string?)id))
             .Concat((faction.KnownLeaderIds ?? []).Select((id, i) => ($"knownLeaderIds[{i}]", (string?)id)));
@@ -562,7 +562,7 @@ This is the only tool that creates a new location. During play, use commit's loc
 
     private async Task<ToolResult<Quest>> ApplyQuestUpsertAsync(IAsyncDocumentSession s, QuestUpsertRequest quest, string effective)
     {
-        var merged = await _repository.UpsertQuestAsync(s, quest, effective);
+        var merged = await _repository.UpsertQuestAsync(new CampaignSession(s, effective), quest);
         var refs = new List<(string, string?)> { ("giverId", quest.GiverId) }
             .Concat((quest.RelatedLocationIds ?? []).Select((id, i) => ($"relatedLocationIds[{i}]", (string?)id)))
             .Concat((quest.RelatedFactionIds ?? []).Select((id, i) => ($"relatedFactionIds[{i}]", (string?)id)));
@@ -612,7 +612,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var descriptors = await _repository.GetGlobalNeedDescriptorsAsync(session, effective);
+            var descriptors = await _repository.GetGlobalNeedDescriptorsAsync(new CampaignSession(session, effective));
             return new ToolResult<Dictionary<string, string>>(true, descriptors,
                 descriptors.Count > 0
                     ? $"Retrieved {descriptors.Count} need descriptors for campaign '{effective}'."

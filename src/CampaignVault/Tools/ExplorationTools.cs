@@ -65,9 +65,9 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var scene = await _repository.GetSceneAsync(session, locationId, effective, markVisited: partyPresent);
-            var time = await _repository.GetTimeAsync(session, effective);
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var scene = await _repository.GetSceneAsync(new CampaignSession(session, effective), locationId, markVisited: partyPresent);
+            var time = await _repository.GetTimeAsync(new CampaignSession(session, effective));
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
 
             var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, scene.Location);
             var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, time.Hour);
@@ -132,14 +132,14 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         }
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var npc = await _repository.GetCharacterAsync(session, characterId, effective);
+            var npc = await _repository.GetCharacterAsync(new CampaignSession(session, effective), characterId);
             if (npc == null)
             {
                 var suggestion = EntitySeedingAdvisor.GenerateSuggestion(characterId, effective);
                 return new ToolResult<NpcContextView>(false, Error: "NotFound", Summary: suggestion);
             }
 
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
 
             // Filtered at the index level (involvedCharacterId) and importance-ranked so the budget
             // doesn't silently drop older Core/Important events that genuinely involve this NPC.
@@ -155,7 +155,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
             var knownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
             // Merge global + per-NPC descriptors (per-NPC wins) for full context
-            var globalDescriptors = await _repository.GetGlobalNeedDescriptorsAsync(session, effective);
+            var globalDescriptors = await _repository.GetGlobalNeedDescriptorsAsync(new CampaignSession(session, effective));
             var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)
@@ -183,7 +183,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
                 .ToList();
 
-            var time = await _repository.GetTimeAsync(session, effective);
+            var time = await _repository.GetTimeAsync(new CampaignSession(session, effective));
             string[]? initiativePressure = null;
             var urgentInitiatives = enrichment.ActiveInitiatives
                 .Where(i => i.Urgency >= MemoryUrgency.High)
@@ -296,14 +296,14 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         [Description("Optional. Only return events where this character ID appears in 'involved' — i.e. ground-truth presence, not subjective memory.")] string? involvedCharacterId = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
             var effectiveLimit = limit ?? config.EventContextBudgetRecall;
 
             // Empty query: pure browse, ranked by importance then recency (same as ambient context).
             // Non-empty query: unchanged keyword-priority-then-vector relevance via QueryEventsAsync/Hybrid.
             IEnumerable<Event> results = string.IsNullOrWhiteSpace(query)
                 ? await _repository.SelectRecentEventsAsync(session, effective, effectiveLimit, locationId, involvedCharacterId)
-                : await _repository.QueryEventsAsync(session, query, null, effectiveLimit, effective, locationId, involvedCharacterId);
+                : await _repository.QueryEventsAsync(new CampaignSession(session, effective), query, null, effectiveLimit, locationId, involvedCharacterId);
 
             return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events (campaign: {effective}).");
         }, saveChanges: false);
@@ -315,7 +315,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var npc = await _repository.GetCharacterAsync(session, characterId, effective);
+            var npc = await _repository.GetCharacterAsync(new CampaignSession(session, effective), characterId);
             if (npc == null)
             {
                 var suggestion = EntitySeedingAdvisor.GenerateSuggestion(characterId, effective);
@@ -324,7 +324,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
             // Merge global descriptors (from DefineNeedDescriptor) with per-NPC ones.
             // Per-NPC descriptors take precedence on conflicts.
-            var globalDescriptors = await _repository.GetGlobalNeedDescriptorsAsync(session, effective);
+            var globalDescriptors = await _repository.GetGlobalNeedDescriptorsAsync(new CampaignSession(session, effective));
             var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
             var mergedDescriptors = new Dictionary<string, string>(globalDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npcDescriptors)

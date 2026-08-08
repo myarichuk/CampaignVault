@@ -90,7 +90,7 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var existing = await _repository.GetActiveCombatAsync(session, effective);
+            var existing = await _repository.GetActiveCombatAsync(new CampaignSession(session, effective));
             if (existing?.IsActive == true && !overwriteActive)
             {
                 return new ToolResult<CombatEncounter>(false,
@@ -363,7 +363,7 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var encounter = await _repository.GetActiveCombatAsync(session, effective);
+            var encounter = await _repository.GetActiveCombatAsync(new CampaignSession(session, effective));
             if (encounter?.IsActive != true)
             {
                 return new ToolResult<object>(true, new { Status = "No active combat." },
@@ -383,7 +383,7 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
 
     private async Task<IRulesetModule> GetActiveModuleAsync(IAsyncDocumentSession session, string effective)
     {
-        var config = await _repository.GetCampaignConfigAsync(session, effective);
+        var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
         return _rulesetSelector.GetModule(config.ActiveSystem);
     }
 }

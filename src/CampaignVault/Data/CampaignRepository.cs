@@ -616,7 +616,7 @@ public class CampaignRepository
         if (simResult.Deltas.Count > 0)
         {
             _logger.LogDebug("Applying {DeltaCount} simulation deltas", simResult.Deltas.Count);
-            await StageChangesAsync(session, simResult.Deltas.ToArray(), effective);
+            await StageChangesAsync(new CampaignSession(session, effective), simResult.Deltas.ToArray());
         }
 
         return simResult;
@@ -1640,7 +1640,7 @@ public class CampaignRepository
         }
         else
         {
-            var currentDay = (await GetTimeAsync(session, effectiveCampaignName)).TotalDaysElapsed;
+            var currentDay = (await GetTimeAsync(new CampaignSession(session, effectiveCampaignName))).TotalDaysElapsed;
             result = new Item
             {
                 Id = item.Id,
@@ -2790,7 +2790,7 @@ public class CampaignRepository
 
     internal async Task<NpcSummaryView?> BuildNpcSummaryAsync(IAsyncDocumentSession session, string characterId, string campaignName)
     {
-        var npc = await GetCharacterAsync(session, characterId, campaignName);
+        var npc = await GetCharacterAsync(new CampaignSession(session, campaignName), characterId);
         if (npc == null)
             return null;
 
@@ -2818,7 +2818,7 @@ public class CampaignRepository
 
     internal async Task<SceneSummaryView?> BuildSceneSummaryAsync(IAsyncDocumentSession session, string locationId, string campaignName)
     {
-        var scene = await GetSceneAsync(session, locationId, campaignName, markVisited: false);
+        var scene = await GetSceneAsync(new CampaignSession(session, campaignName), locationId, markVisited: false);
         if (scene?.Location == null)
             return null;
 

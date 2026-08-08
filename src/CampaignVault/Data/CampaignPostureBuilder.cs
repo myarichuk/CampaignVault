@@ -47,7 +47,7 @@ public static class CampaignPostureBuilder
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var recentEvents = await repository.QueryEventsAsync(session, null, null, 1, slug);
+        var recentEvents = await repository.QueryEventsAsync(new CampaignSession(session, slug), null, null, 1);
         var lastSessionSummary = recentEvents?.FirstOrDefault()?.Summary ?? null;
 
         var entryHint = ResolveEntryHint(isNewCampaign, pcs.Count, companions.Count);

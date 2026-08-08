@@ -202,7 +202,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         var request = ctx.Request!;
         var changes = request.Changes!;
 
-        var commitResult = await _repository.StageChangesAsync(ctx.Session, changes, ctx.Campaign);
+        var commitResult = await _repository.StageChangesAsync(new CampaignSession(ctx.Session, ctx.Campaign), changes);
         if (!commitResult.Success)
         {
             var errorMsg = "NO CHANGES WERE SAVED — the entire batch was rolled back because at least one " +
@@ -219,7 +219,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         result.EntityCollisions = commitResult.EntityCollisions;
         result.NarrativeReminder = commitResult.NarrativeReminder;
 
-        var commitTime = await _repository.GetTimeAsync(ctx.Session, ctx.Campaign);
+        var commitTime = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
         var sceneEvent = new Event
         {
             Id = "events/" + Guid.NewGuid(),
@@ -609,7 +609,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
         try
         {
-            var npc = await _repository.GetCharacterAsync(ctx.Session, characterId, ctx.Campaign);
+            var npc = await _repository.GetCharacterAsync(new CampaignSession(ctx.Session, ctx.Campaign), characterId);
             if (npc == null)
             {
                 Warn(ctx, $"Full NPC detail: '{characterId}' not found.");
@@ -623,7 +623,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
             var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
 
-            var config = await _repository.GetCampaignConfigAsync(ctx.Session, ctx.Campaign);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign));
             var npcEvents = await _repository.SelectRecentEventsAsync(ctx.Session, ctx.Campaign,
                 config.EventContextBudgetNpc, involvedCharacterId: characterId);
 
@@ -660,7 +660,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
         try
         {
-            var scene = await _repository.GetSceneAsync(ctx.Session, locationId, ctx.Campaign, markVisited: false);
+            var scene = await _repository.GetSceneAsync(new CampaignSession(ctx.Session, ctx.Campaign), locationId, markVisited: false);
             if (scene != null)
             {
                 ctx.Result.FullScene = scene;
@@ -782,7 +782,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 effective);
 
             var timeDoc = result.NewTime;
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
 
             var orchestratorPressures = await _pressureOrchestrator.CollectAndCapAsync(
                 PressureScope.World,

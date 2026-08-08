@@ -33,7 +33,7 @@ public class CampaignManagementTools(
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
             return new ToolResult<CampaignConfig>(true, config, $"Campaign configuration retrieved for '{effective}'.");
         }, saveChanges: false);
     }
@@ -56,7 +56,7 @@ public class CampaignManagementTools(
                     $"The ruleset for campaign '{effective}' is locked to {campaign.System}. Cannot change to {activeSystem}.");
             }
 
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
             config.ActiveSystem = activeSystem;
             config.SystemOptions = systemOptions ?? [];
             await _repository.UpsertCampaignConfigAsync(session, config, effective);
@@ -267,7 +267,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
             var homebrewFeats = await _repository.GetCustomFeatsForSystemAsync(session, config.ActiveSystem, effective);
             var handbook = SystemHandbookBuilder.Build(
                 config.ActiveSystem,
@@ -296,7 +296,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
             var system = config.ActiveSystem;
             var homebrew = await _repository.GetCustomSpellsForSystemAsync(session, system, effective);
             var page = SpellQueryBuilder.QueryPage(
@@ -317,7 +317,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var character = await _repository.GetCharacterAsync(session, characterId, effective);
+            var character = await _repository.GetCharacterAsync(new CampaignSession(session, effective), characterId);
             if (character == null)
             {
                 return new ToolResult<PendingLevelUpChoicesResponse>(
@@ -419,7 +419,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var config = await _repository.GetCampaignConfigAsync(session, effective);
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
             var system = config.ActiveSystem;
             var page = await CreatureQueryBuilder.QueryPageAsync(
                 session, _repository, creatureProvider, system, effective,
