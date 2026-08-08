@@ -91,11 +91,11 @@ public class CampaignRepository
     ///
     /// Use this for all atomic world mutations coming from tools or simulation rules.
     /// </summary>
-    public async Task<CommitResult> StageChangesAsync(IAsyncDocumentSession session, WorldChange[]? changes,
-        string? campaignName = null)
+    public async Task<CommitResult> StageChangesAsync(CampaignSession campaignSession, WorldChange[]? changes)
     {
         changes ??= [];
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
 
         _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes for campaign {Campaign}", changes.Length,
             effective);
@@ -104,14 +104,14 @@ public class CampaignRepository
         // TravelChangeHandler) that move CampaignTime.TotalDaysElapsed directly via AdvanceHours.
         // GetTimeAsync returns the same session-tracked instance handlers mutate, so this reads
         // whatever value the dispatch left behind — no extra query needed.
-        var time = await GetTimeAsync(session, effective);
+        var time = await GetTimeAsync(campaignSession);
         var daysBefore = time.TotalDaysElapsed;
 
         var result = await _changeDispatcher.DispatchAsync(
             session,
             changes,
             effective,
-            () => GetTimeAsync(session, effective),
+            () => GetTimeAsync(campaignSession),
             async () =>
             {
                 var camp = await session.LoadAsync<Campaign>(_keys.Meta(effective));
@@ -177,10 +177,11 @@ public class CampaignRepository
     /// Fetches the synthesized state of a location, including NPCs present, visible items, local rumors, and recent events.
     /// This is the primary read operation used by the LLM when entering a new scene.
     /// </summary>
-    public async Task<SceneView> GetSceneAsync(IAsyncDocumentSession session, string locationId,
-        string? campaignName = null, bool markVisited = false)
+    public async Task<SceneView> GetSceneAsync(CampaignSession campaignSession, string locationId,
+        bool markVisited = false)
     {
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
         var location = await session
             .Include<Location>(x => x.ParentLocationId)
             .LoadAsync<Location>(locationId);
@@ -200,13 +201,14 @@ public class CampaignRepository
         string effectiveCampaign,
         bool markVisited)
     {
+        var campaignSession = new CampaignSession(session, effectiveCampaign);
         var regionId = location.ParentLocationId ?? locationId;
         var targetIds = await GetSceneTargetIdsAsync(session, locationId, effectiveCampaign);
         var npcsFromIndex = await LoadSceneNpcsFromIndexAsync(session, targetIds);
         var npcsFromSimulation = await LoadSceneNpcsFromSimulationAsync(session, targetIds);
         var rumors = (await QueryRumorsAsync(session, null, regionId, null, 5, effectiveCampaign)).ToList();
         var items = await LoadVisibleSceneItemsAsync(session, locationId, effectiveCampaign);
-        var config = await GetCampaignConfigAsync(session, effectiveCampaign);
+        var config = await GetCampaignConfigAsync(campaignSession);
         var events = await LoadSceneEventsAsync(session, locationId, effectiveCampaign, config.EventContextBudgetAmbient);
 
         foreach (var npc in npcsFromIndex.Concat(npcsFromSimulation))
@@ -216,8 +218,8 @@ public class CampaignRepository
 
         JsonSanitizer.Sanitize(location);
 
-        var time = await GetTimeAsync(session, effectiveCampaign);
-        var globalDescriptors = await GetGlobalNeedDescriptorsAsync(session, effectiveCampaign);
+        var time = await GetTimeAsync(campaignSession);
+        var globalDescriptors = await GetGlobalNeedDescriptorsAsync(campaignSession);
         var campaign = await LoadOrCreateCampaignMetaAsync(session, effectiveCampaign);
         var recentCampaignEvents = await InitiativeQueryHelper.QueryRecentCampaignEventsAsync(
             session, effectiveCampaign, time.TotalDaysElapsed);
@@ -418,9 +420,9 @@ public class CampaignRepository
         IReadOnlyList<Event>? recentEvents = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var config = await GetCampaignConfigAsync(session, effective);
+        var config = await GetCampaignConfigAsync(new CampaignSession(session, effective));
         var campaign = await LoadOrCreateCampaignMetaAsync(session, effective);
-        var time = await GetTimeAsync(session, effective);
+        var time = await GetTimeAsync(new CampaignSession(session, effective));
 
         Location? location = null;
         if (!string.IsNullOrWhiteSpace(npc.CurrentLocationId))
@@ -489,7 +491,7 @@ public class CampaignRepository
         string? campaignName = null, int? hours = null)
     {
         var effective = ResolveCampaign(campaignName);
-        var time = await GetTimeAsync(session, effective);
+        var time = await GetTimeAsync(new CampaignSession(session, effective));
 
         var daysBefore = time.TotalDaysElapsed;
         double daysPassedForSim;
@@ -583,7 +585,7 @@ public class CampaignRepository
         var activeWorldEvents = await SimulationQueryHelper.QueryPendingWorldEventsAsync(session, effective, ct: CancellationToken.None);
 
         // Build context and run the pluggable simulation engine (rules emit deltas)
-        var config = await GetCampaignConfigAsync(session, effective);
+        var config = await GetCampaignConfigAsync(new CampaignSession(session, effective));
         var simContext = new SimulationContext(time, activeRumors, npcs, session, daysPassed, effective, activeFactions,
             activeQuests, config, activePlotThreads, activeWorldEvents);
 
@@ -761,11 +763,12 @@ public class CampaignRepository
     /// <summary>
     /// Retrieves historical narrative events, optionally filtered by hybrid keyword/semantic search or event category.
     /// </summary>
-    public async Task<IEnumerable<Event>> QueryEventsAsync(IAsyncDocumentSession session, string? query,
-        EventCategory? category, int limit = 10, string? campaignName = null, string? locationId = null,
+    public async Task<IEnumerable<Event>> QueryEventsAsync(CampaignSession campaignSession, string? query,
+        EventCategory? category, int limit = 10, string? locationId = null,
         string? involvedCharacterId = null)
     {
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
         List<Event> events;
 
         if (!string.IsNullOrWhiteSpace(query))
@@ -871,35 +874,30 @@ public class CampaignRepository
     /// Migrates legacy SystemExtension to the appropriate derived type (Dnd5eExtension/Pf2eExtension) based
     /// on campaign's active ruleset, ensuring access to ruleset-specific properties like SkillModifiers.
     /// </summary>
-    public async Task<Character?> GetCharacterAsync(IAsyncDocumentSession session, string identifier,
-        string? campaignName = null)
+    public async Task<Character?> GetCharacterAsync(CampaignSession campaignSession, string identifier)
     {
-        // campaignName accepted for API consistency / future entity namespacing or filtering.
-        // Current implementation uses direct ID or name lookup (entities are caller-ID-controlled).
-        var effective = ResolveCampaign(campaignName);
-        var character = await session.LoadAsync<Character>(identifier);
+        var effective = campaignSession.EffectiveCampaign;
+        var character = await campaignSession.Session.LoadAsync<Character>(identifier);
         if (character != null)
         {
             if (!IsVisibleInCampaign(character.CampaignName, effective))
                 return null;
-            await UpgradeSystemStatsIfNeededAsync(session, character, effective);
+            await UpgradeSystemStatsIfNeededAsync(campaignSession.Session, character, effective);
             return character;
         }
 
-        character = await session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
+        character = await campaignSession.Session.Query<Character>().FirstOrDefaultAsync(x => x.Name == identifier);
         if (character != null && IsVisibleInCampaign(character.CampaignName, effective))
         {
-            await UpgradeSystemStatsIfNeededAsync(session, character, effective);
+            await UpgradeSystemStatsIfNeededAsync(campaignSession.Session, character, effective);
             return character;
         }
 
-        // Corax does not support .Fuzzy(); use wildcard substring as last-resort name match.
-        // Misspelled names from LLM tool calls are caught by semantic vector search in UnifiedSearchAsync.
-        var fuzzy = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+        var fuzzy = await campaignSession.Session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .Search(x => x.Name, "*" + identifier + "*").FirstOrDefaultAsync();
         if (fuzzy != null && IsVisibleInCampaign(fuzzy.CampaignName, effective))
         {
-            await UpgradeSystemStatsIfNeededAsync(session, fuzzy, effective);
+            await UpgradeSystemStatsIfNeededAsync(campaignSession.Session, fuzzy, effective);
             return fuzzy;
         }
 
@@ -924,8 +922,7 @@ public class CampaignRepository
     /// Inserts or updates a character in the database, safely mutating tracked entities to preserve concurrency.
     /// Also waits for the Character/Search index to catch up to prevent stale queries.
     /// </summary>
-    public async Task<Character> UpsertCharacterAsync(IAsyncDocumentSession session, CharacterUpsertRequest character,
-        string? campaignName = null)
+    public async Task<Character> UpsertCharacterAsync(CampaignSession campaignSession, CharacterUpsertRequest character)
     {
         if (string.IsNullOrWhiteSpace(character.Id))
         {
@@ -934,7 +931,7 @@ public class CampaignRepository
 
         character.Id = CanonicalId.Normalize(character.Id, CanonicalId.Characters);
 
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
         var effectiveCampaignName = character.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
         {
@@ -947,13 +944,10 @@ public class CampaignRepository
             throw new ArgumentException(partyError);
         }
 
-        var existing = await session.LoadAsync<Character>(character.Id);
+        var existing = await campaignSession.Session.LoadAsync<Character>(character.Id);
         Character result;
         if (existing != null)
         {
-            // Mutate the already-tracked entity in place. This is the safest pattern
-            // with OptimisticConcurrencyMode.Writes + Raven change tracking.
-            // Scalars always overwrite; rich sub-objects preserve the existing value when omitted.
             existing.Name = character.Name;
             existing.ClassLevel = character.ClassLevel;
             existing.CurrentHp = character.CurrentHp;
@@ -1003,13 +997,12 @@ public class CampaignRepository
                 LastUpdated = DateTime.UtcNow,
                 CampaignName = effectiveCampaignName,
             };
-            await session.StoreAsync(result, null, result.Id);
+            await campaignSession.Session.StoreAsync(result, null, result.Id);
         }
 
         await EnrichSemanticVectorAsync(result);
 
-        // Help keep the Character/Search index fresh after writes that affect Schedule or CurrentLocation.
-        session.Advanced.WaitForIndexesAfterSaveChanges(
+        campaignSession.Session.Advanced.WaitForIndexesAfterSaveChanges(
             timeout: TimeSpan.FromSeconds(3),
             throwOnTimeout: false,
             indexes: ["Character/Search"]);
@@ -1021,15 +1014,15 @@ public class CampaignRepository
     /// Retrieves the current time for the specified campaign. Returns a new time object initialized with
     /// campaign lore settings if none exists yet.
     /// </summary>
-    public async Task<CampaignTime> GetTimeAsync(IAsyncDocumentSession session, string? campaignName = null)
+    public async Task<CampaignTime> GetTimeAsync(CampaignSession campaignSession)
     {
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
         var id = _keys.StateTime(effective);
-        var time = await session.LoadAsync<CampaignTime>(id);
+        var time = await campaignSession.Session.LoadAsync<CampaignTime>(id);
         if (time == null)
         {
             var campaignId = _keys.Meta(effective);
-            var campaign = await session.LoadAsync<Campaign>(campaignId);
+            var campaign = await campaignSession.Session.LoadAsync<Campaign>(campaignId);
             var lore = campaign?.LoreSettings ?? new();
 
             time = new()
@@ -1041,53 +1034,47 @@ public class CampaignRepository
                 Day = lore.Day,
                 Hour = lore.StartingHour
             };
-            await session.StoreAsync(time, id);
+            await campaignSession.Session.StoreAsync(time, id);
         }
 
         return time;
     }
 
-    /// <summary>
-    /// Saves the provided time object for the specified campaign, updating its last modified timestamp.
-    /// </summary>
-    public async Task SaveTimeAsync(IAsyncDocumentSession session, CampaignTime time, string? campaignName = null)
+    public async Task SaveTimeAsync(CampaignSession campaignSession, CampaignTime time)
     {
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
         time.Id = _keys.StateTime(effective);
         time.LastUpdated = DateTime.UtcNow;
-        await session.StoreAsync(time);
+        await campaignSession.Session.StoreAsync(time);
     }
 
-    /// <summary>
-    /// Retrieves the configuration for the specified campaign, initializing a new default config if missing.
-    /// </summary>
-    public async Task<CampaignConfig> GetCampaignConfigAsync(IAsyncDocumentSession session, string? campaignName = null)
+    public async Task<CampaignConfig> GetCampaignConfigAsync(CampaignSession campaignSession)
     {
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
         var id = _keys.Config(effective);
-        var config = await session.LoadAsync<CampaignConfig>(id);
+        var config = await campaignSession.Session.LoadAsync<CampaignConfig>(id);
         if (config == null)
         {
             config = new() { Id = id };
-            await session.StoreAsync(config, id);
+            await campaignSession.Session.StoreAsync(config, id);
         }
 
         return config;
     }
 
-    public async Task<SessionLog?> GetSessionLogAsync(IAsyncDocumentSession session, string? campaignName = null)
+    public async Task<SessionLog?> GetSessionLogAsync(CampaignSession campaignSession)
     {
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
         var id = $"{effective}/state/sessions";
-        var sessionLog = await session.LoadAsync<SessionLog>(id);
+        var sessionLog = await campaignSession.Session.LoadAsync<SessionLog>(id);
         return sessionLog;
     }
 
-    public async Task<CombatEncounter?> GetActiveCombatAsync(IAsyncDocumentSession session, string? campaignName = null)
+    public async Task<CombatEncounter?> GetActiveCombatAsync(CampaignSession campaignSession)
     {
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
         var id = _keys.CombatCurrent(effective);
-        var encounter = await session.LoadAsync<CombatEncounter>(id);
+        var encounter = await campaignSession.Session.LoadAsync<CombatEncounter>(id);
         return encounter?.IsActive == true ? encounter : null;
     }
 
@@ -1107,10 +1094,10 @@ public class CampaignRepository
     /// Returns globally defined need descriptors (populated via the DefineNeedDescriptor tool).
     /// These act as a shared dictionary that individual NPCs can reference or override via Mind.NeedDescriptors.
     /// </summary>
-    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(IAsyncDocumentSession session,
-        string? campaignName = null)
+    public async Task<Dictionary<string, string>> GetGlobalNeedDescriptorsAsync(CampaignSession campaignSession)
     {
-        var effective = ResolveCampaign(campaignName);
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
         var docId = _keys.NeedDescriptors(effective);
         var config = await session.LoadAsync<NeedDescriptorsConfig>(docId);
         var source = config?.Descriptors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -1149,7 +1136,7 @@ public class CampaignRepository
         // Set SessionId to the currently open session (if one exists)
         if (string.IsNullOrEmpty(@event.SessionId))
         {
-            var sessionLog = await GetSessionLogAsync(session, effective);
+            var sessionLog = await GetSessionLogAsync(new CampaignSession(session, effective));
             var openSession = sessionLog?.Sessions.FirstOrDefault(s => s.IsOpen);
             if (openSession != null)
             {
@@ -1190,16 +1177,17 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a piece of Lore, handling creation/update timestamps.
     /// </summary>
-    public async Task<Lore> UpsertLoreAsync(IAsyncDocumentSession session, LoreUpsertRequest lore, string? campaignName = null)
+    public async Task<Lore> UpsertLoreAsync(CampaignSession campaignSession, LoreUpsertRequest lore)
     {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+
         if (string.IsNullOrWhiteSpace(lore.Id))
         {
             throw new ArgumentException("Lore.Id is required for upsert.");
         }
 
         lore.Id = CanonicalId.Normalize(lore.Id, CanonicalId.Lore);
-
-        var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = lore.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
         {
@@ -1279,16 +1267,17 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a Location, handling sanitization of arbitrary metadata.
     /// </summary>
-    public async Task<Location> UpsertLocationAsync(IAsyncDocumentSession session, LocationUpsertRequest location, string? campaignName = null)
+    public async Task<Location> UpsertLocationAsync(CampaignSession campaignSession, LocationUpsertRequest location)
     {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+
         if (string.IsNullOrWhiteSpace(location.Id))
         {
             throw new ArgumentException("Location.Id is required for upsert.");
         }
 
         location.Id = CanonicalId.Normalize(location.Id, CanonicalId.Locations);
-
-        var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = location.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
         {
@@ -1444,7 +1433,7 @@ public class CampaignRepository
         rumor.LastUpdated = DateTime.UtcNow;
         if (rumor.DayCreated == 0)
         {
-            var t = await GetTimeAsync(session, effective);
+            var t = await GetTimeAsync(new CampaignSession(session, effective));
             rumor.DayCreated = t.TotalDaysElapsed;
             rumor.LastStateChangeDay = t.TotalDaysElapsed;
         }
@@ -1509,7 +1498,7 @@ public class CampaignRepository
         }
         else
         {
-            var t = await GetTimeAsync(session, effective);
+            var t = await GetTimeAsync(new CampaignSession(session, effective));
             result = new Rumor
             {
                 Id = rumor.Id,
@@ -1597,8 +1586,11 @@ public class CampaignRepository
     /// Inserts or updates an Item, sanitizing arbitrary properties and preserving optimistic concurrency on edits.
     /// Rich collection fields (Tags/DistinctiveFeatures/Properties) are preserved when omitted from the request.
     /// </summary>
-    public async Task<Item> UpsertItemAsync(IAsyncDocumentSession session, ItemUpsertRequest item, string? campaignName = null)
+    public async Task<Item> UpsertItemAsync(CampaignSession campaignSession, ItemUpsertRequest item)
     {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+
         if (string.IsNullOrWhiteSpace(item.Id))
         {
             throw new ArgumentException("Item.Id is required for upsert.");
@@ -1606,8 +1598,6 @@ public class CampaignRepository
 
         item.Id = CanonicalId.Normalize(item.Id, CanonicalId.Items);
         item.HolderId = CanonicalId.NormalizeAlias(item.HolderId);
-
-        var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = item.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
         {
@@ -2109,8 +2099,8 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
 
         // Core state queries
-        var time = await GetTimeAsync(session, effective);
-        var config = await GetCampaignConfigAsync(session, effective);
+        var time = await GetTimeAsync(new CampaignSession(session, effective));
+        var config = await GetCampaignConfigAsync(new CampaignSession(session, effective));
 
         // Party location (optional; resolved first for region-scoped queries)
         Location? location = null;
@@ -2250,8 +2240,11 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a Faction document.
     /// </summary>
-    public async Task UpsertFactionAsync(IAsyncDocumentSession session, Faction faction, string? campaignName = null)
+    public async Task UpsertFactionAsync(CampaignSession campaignSession, Faction faction)
     {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+
         if (string.IsNullOrWhiteSpace(faction.Id))
         {
             throw new ArgumentException("Faction.Id is required for upsert.");
@@ -2259,7 +2252,6 @@ public class CampaignRepository
 
         faction.Id = CanonicalId.Normalize(faction.Id, CanonicalId.Factions);
 
-        var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(faction.CampaignName))
         {
             faction.CampaignName = effective;
@@ -2295,8 +2287,11 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a Faction from a tool-facing request. List fields are preserved when omitted.
     /// </summary>
-    public async Task<Faction> UpsertFactionAsync(IAsyncDocumentSession session, FactionUpsertRequest faction, string? campaignName = null)
+    public async Task<Faction> UpsertFactionAsync(CampaignSession campaignSession, FactionUpsertRequest faction)
     {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+
         if (string.IsNullOrWhiteSpace(faction.Id))
         {
             throw new ArgumentException("Faction.Id is required for upsert.");
@@ -2304,7 +2299,6 @@ public class CampaignRepository
 
         faction.Id = CanonicalId.Normalize(faction.Id, CanonicalId.Factions);
 
-        var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = faction.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
         {
@@ -2475,23 +2469,24 @@ public class CampaignRepository
     /// Creates or updates a PlotThread, e.g. bulk-seeding clues or bumping TensionLevel. Rich collection
     /// fields (Clues/InvolvedEntityIds/ForeshadowingHooks) are preserved when omitted from the request.
     /// </summary>
-    public async Task<PlotThread> UpsertPlotThreadAsync(IAsyncDocumentSession session, PlotThreadUpsertRequest thread, string? campaignName = null)
+    public async Task<PlotThread> UpsertPlotThreadAsync(CampaignSession campaignSession, PlotThreadUpsertRequest thread)
     {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+
         if (string.IsNullOrWhiteSpace(thread.Id))
         {
             throw new ArgumentException("PlotThread.Id is required for upsert.");
         }
 
         thread.Id = CanonicalId.Normalize(thread.Id, CanonicalId.PlotThreads);
-
-        var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = thread.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
         {
             effectiveCampaignName = effective;
         }
 
-        var currentDay = (await GetTimeAsync(session, effective)).TotalDaysElapsed;
+        var currentDay = (await GetTimeAsync(new CampaignSession(session, effective))).TotalDaysElapsed;
 
         var existing = await session.LoadAsync<PlotThread>(thread.Id);
         PlotThread result;
@@ -2560,7 +2555,7 @@ public class CampaignRepository
             effectiveCampaignName = effective;
         }
 
-        var currentDay = (await GetTimeAsync(session, effective)).TotalDaysElapsed;
+        var currentDay = (await GetTimeAsync(new CampaignSession(session, effective))).TotalDaysElapsed;
 
         var existing = await session.LoadAsync<WorldEvent>(eventRequest.Id);
         WorldEvent result;
@@ -2618,8 +2613,11 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a Quest document.
     /// </summary>
-    public async Task UpsertQuestAsync(IAsyncDocumentSession session, Quest quest, string? campaignName = null)
+    public async Task UpsertQuestAsync(CampaignSession campaignSession, Quest quest)
     {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+
         if (string.IsNullOrWhiteSpace(quest.Id))
         {
             throw new ArgumentException("Quest.Id is required for upsert.");
@@ -2627,7 +2625,6 @@ public class CampaignRepository
 
         quest.Id = CanonicalId.Normalize(quest.Id, CanonicalId.Quests);
 
-        var effective = ResolveCampaign(campaignName);
         if (string.IsNullOrEmpty(quest.CampaignName))
         {
             quest.CampaignName = effective;
@@ -2665,8 +2662,11 @@ public class CampaignRepository
     /// <summary>
     /// Creates or updates a Quest from a tool-facing request. List fields are preserved when omitted.
     /// </summary>
-    public async Task<Quest> UpsertQuestAsync(IAsyncDocumentSession session, QuestUpsertRequest quest, string? campaignName = null)
+    public async Task<Quest> UpsertQuestAsync(CampaignSession campaignSession, QuestUpsertRequest quest)
     {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+
         if (string.IsNullOrWhiteSpace(quest.Id))
         {
             throw new ArgumentException("Quest.Id is required for upsert.");
@@ -2674,14 +2674,13 @@ public class CampaignRepository
 
         quest.Id = CanonicalId.Normalize(quest.Id, CanonicalId.Quests);
 
-        var effective = ResolveCampaign(campaignName);
         var effectiveCampaignName = quest.CampaignName;
         if (string.IsNullOrEmpty(effectiveCampaignName))
         {
             effectiveCampaignName = effective;
         }
 
-        var currentDay = (await GetTimeAsync(session, effective)).TotalDaysElapsed;
+        var currentDay = (await GetTimeAsync(new CampaignSession(session, effective))).TotalDaysElapsed;
 
         var existing = await session.LoadAsync<Quest>(quest.Id);
         Quest result;

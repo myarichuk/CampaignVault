@@ -73,6 +73,15 @@ public class RavenDBFixture : IDisposable
         return scope.Resolve<CampaignRepository>();
     }
 
+    public CampaignSession CreateCampaignSession(IAsyncDocumentSession session, string campaignName = TestCampaignDefaults.Slug)
+    {
+        if (!CampaignSlug.TryCanonicalize(campaignName, out var effective))
+        {
+            throw new ArgumentException($"Invalid campaign name: {campaignName}");
+        }
+        return new CampaignSession(session, effective);
+    }
+
     public void Dispose()
     {
         if (_isSharedStore)
