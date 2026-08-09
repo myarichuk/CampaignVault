@@ -34,7 +34,7 @@ public class TimeStalenessTrackingTests : IClassFixture<RavenDBFixture>
 
         using var session = _fixture.Store.OpenAsyncSession();
         const string charId = "chars/staleness-1";
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 }, campaign);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
         await session.SaveChangesAsync();
 
         await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1 }], campaign);
@@ -55,7 +55,7 @@ public class TimeStalenessTrackingTests : IClassFixture<RavenDBFixture>
 
         using var session = _fixture.Store.OpenAsyncSession();
         const string charId = "chars/staleness-2";
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 }, campaign);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
         await session.SaveChangesAsync();
 
         await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1 }], campaign);
@@ -77,7 +77,7 @@ public class TimeStalenessTrackingTests : IClassFixture<RavenDBFixture>
 
         using var session = _fixture.Store.OpenAsyncSession();
         const string charId = "chars/staleness-3";
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 }, campaign);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
         await session.SaveChangesAsync();
 
         await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1 }], campaign);

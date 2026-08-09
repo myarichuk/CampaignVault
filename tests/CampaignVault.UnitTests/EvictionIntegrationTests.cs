@@ -43,8 +43,8 @@ public class EvictionIntegrationTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign
         };
 
-        await repo.UpsertLocationAsync(session, location, campaign);
-        await repo.UpsertCharacterAsync(session, character, campaign);
+        await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, campaign), location);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaign), character);
         await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 1 }, campaign);
         await session.SaveChangesAsync();
 

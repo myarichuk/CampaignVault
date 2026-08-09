@@ -120,7 +120,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
 
         var id = "npcs/gandalf-" + Guid.NewGuid();
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = id, Name = "Gandalf the Grey" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = id, Name = "Gandalf the Grey" });
         await session.SaveChangesAsync();
 
         // Wait for indexing (with timeout to prevent CI hangs)
@@ -142,7 +142,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         }
 
         // Wildcard (substring) match — Corax does not support .Fuzzy(); substring is the last-resort path
-        var result = await repo.GetCharacterAsync(session, "Gand", TestCampaignDefaults.Slug);
+        var result = await repo.GetCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), "Gand");
         Assert.NotNull(result);
         Assert.Equal("Gandalf the Grey", result!.Name);
     }
@@ -294,8 +294,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             await Task.Delay(50);
         }
 
-        var time = await repo.GetTimeAsync(session, TestCampaignDefaults.Slug);
-        var config = await repo.GetCampaignConfigAsync(session, TestCampaignDefaults.Slug);
+        var time = await repo.GetTimeAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug));
+        var config = await repo.GetCampaignConfigAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug));
         var contributor = new CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor();
         var ctx = new CampaignVault.Data.Pressure.PressureContext("test-campaign", time, config, session);
         var allPressures = (await contributor.EvaluateAsync(ctx)).ToList();
@@ -408,7 +408,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 40f }
             }
         };
-        await repo.UpsertCharacterAsync(session, npc, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc);
         await session.SaveChangesAsync();
 
         // Wait for indexing to ensure AdvanceWorld can find the rumor and NPC (with timeout)
@@ -526,7 +526,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 95f, ["thirst"] = 100f }
             }
         };
-        await repo.UpsertCharacterAsync(session, npc, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc);
         await session.SaveChangesAsync();
 
         // Wait for RavenDB indexes to catch up so the SimulationContext can find the scheduled NPC
@@ -586,7 +586,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             CurrentLocationId = locId, // <-- set directly (sim state), no Schedule
             CurrentActivity = "lurking in shadows"
         };
-        await repo.UpsertCharacterAsync(session, npc, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc);
         await session.SaveChangesAsync();
 
         // Wait for the (now extended) Character/Search index
@@ -689,7 +689,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
 
         var charId = "npcs/sanitize-npc-" + Guid.NewGuid();
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = charId, Name = "Sanitize NPC" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = charId, Name = "Sanitize NPC" });
 
         var eventId = "events/npc-involved-" + Guid.NewGuid();
         var json = JsonSerializer.Serialize(new { secret = 42, tags = new[] { "test" } });
@@ -750,7 +750,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Social = new SocialProfile { Relationships = new Dictionary<string, int>() },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 5f } }
         };
-        await repo.UpsertCharacterAsync(session, character, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), character);
 
         var targetId = "chars/target-1-" + Guid.NewGuid();
         await repo.UpsertCharacterAsync(session,
@@ -1603,7 +1603,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
 
         // 1. Check repository uses the selected test campaign context
-        var config = await repo.GetCampaignConfigAsync(session, TestCampaignDefaults.Slug);
+        var config = await repo.GetCampaignConfigAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug));
         Assert.NotNull(config);
         Assert.Equal("campaigns/test-campaign/config", config.Id);
         Assert.Equal(RulesetSystem.Dnd5e, config.ActiveSystem);
@@ -1615,7 +1615,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await repo.UpsertCampaignConfigAsync(session, config, TestCampaignDefaults.Slug);
         await session.SaveChangesAsync();
 
-        var reloaded = await repo.GetCampaignConfigAsync(session, TestCampaignDefaults.Slug);
+        var reloaded = await repo.GetCampaignConfigAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug));
         Assert.Equal(RulesetSystem.Pathfinder2e, reloaded.ActiveSystem);
         Assert.Equal("true", reloaded.SystemOptions["mapEnabled"]);
 
@@ -1840,13 +1840,13 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // 1. Initial Insert
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = charId, Name = "Semantic NPC", Notes = "Some lore notes" }, TestCampaignDefaults.Slug);
-            await repo.UpsertLoreAsync(session, new LoreUpsertRequest { Id = loreId, Title = "Semantic Lore", Content = "Some content" }, TestCampaignDefaults.Slug);
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Semantic Loc", Description = "Some description", Type = LocationType.Room }, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = charId, Name = "Semantic NPC", Notes = "Some lore notes" });
+            await repo.UpsertLoreAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LoreUpsertRequest { Id = loreId, Title = "Semantic Lore", Content = "Some content" });
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Semantic Loc", Description = "Some description", Type = LocationType.Room });
             await repo.UpsertRumorAsync(session, new Rumor { Id = rumorId, Subject = "Semantic Rumor", CurrentText = "Some text" }, TestCampaignDefaults.Slug);
-            await repo.UpsertItemAsync(session, new ItemUpsertRequest { Id = itemId, Name = "Semantic Item", Description = "Some description" }, TestCampaignDefaults.Slug);
-            await repo.UpsertFactionAsync(session, new Faction { Id = factionId, Name = "Semantic Faction", Description = "Some description" }, TestCampaignDefaults.Slug);
-            await repo.UpsertQuestAsync(session, new Quest { Id = questId, Title = "Semantic Quest", DmNotes = "Some notes" }, TestCampaignDefaults.Slug);
+            await repo.UpsertItemAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new ItemUpsertRequest { Id = itemId, Name = "Semantic Item", Description = "Some description" });
+            await repo.UpsertFactionAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction { Id = factionId, Name = "Semantic Faction", Description = "Some description" });
+            await repo.UpsertQuestAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Quest { Id = questId, Title = "Semantic Quest", DmNotes = "Some notes" });
             await repo.LogEventAsync(session, new Event { Id = eventId, Summary = "Semantic Event", Category = EventCategory.Simulation }, TestCampaignDefaults.Slug);
             await session.SaveChangesAsync();
         }
@@ -1890,13 +1890,13 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // 3. Update with empty text to clear vectors
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = charId, Name = "", Notes = "" }, TestCampaignDefaults.Slug);
-            await repo.UpsertLoreAsync(session, new LoreUpsertRequest { Id = loreId, Title = "", Content = "" }, TestCampaignDefaults.Slug);
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "", Description = "", Type = LocationType.Room }, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = charId, Name = "", Notes = "" });
+            await repo.UpsertLoreAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LoreUpsertRequest { Id = loreId, Title = "", Content = "" });
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "", Description = "", Type = LocationType.Room });
             await repo.UpsertRumorAsync(session, new Rumor { Id = rumorId, Subject = "", CurrentText = "" }, TestCampaignDefaults.Slug);
-            await repo.UpsertItemAsync(session, new ItemUpsertRequest { Id = itemId, Name = "", Description = "" }, TestCampaignDefaults.Slug);
-            await repo.UpsertFactionAsync(session, new Faction { Id = factionId, Name = "", Description = "" }, TestCampaignDefaults.Slug);
-            await repo.UpsertQuestAsync(session, new Quest { Id = questId, Title = "", DmNotes = "" }, TestCampaignDefaults.Slug);
+            await repo.UpsertItemAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new ItemUpsertRequest { Id = itemId, Name = "", Description = "" });
+            await repo.UpsertFactionAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction { Id = factionId, Name = "", Description = "" });
+            await repo.UpsertQuestAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Quest { Id = questId, Title = "", DmNotes = "" });
             // Event doesn't have an update method (LogEvent creates new), so we only test the rest for updates.
             await session.SaveChangesAsync();
         }
@@ -1934,11 +1934,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
         var id = "npcs/keepalive-" + Guid.NewGuid();
 
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = id, Name = "Important NPC", KeepAlive = true }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = id, Name = "Important NPC", KeepAlive = true });
         await session.SaveChangesAsync();
 
         // Second upsert to simulate an update
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = id, Name = "Important NPC", KeepAlive = true }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = id, Name = "Important NPC", KeepAlive = true });
         await session.SaveChangesAsync();
 
         var npc = await session.LoadAsync<Character>(id);
@@ -2006,7 +2006,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
         var id = "npcs/appearance-event-" + Guid.NewGuid();
 
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = id, Name = "Guard" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = id, Name = "Guard" });
         await session.SaveChangesAsync();
 
         var result = await repo.StageChangesAsync(session, [
@@ -2044,8 +2044,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var actorId = "npcs/talker-" + Guid.NewGuid();
         var targetId = "npcs/listener-" + Guid.NewGuid();
 
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = actorId, Name = "Talker" }, TestCampaignDefaults.Slug);
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = targetId, Name = "Listener" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = actorId, Name = "Talker" });
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = targetId, Name = "Listener" });
         await session.SaveChangesAsync();
 
         var establishResult = await repo.StageChangesAsync(session, [
@@ -2078,10 +2078,10 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var npc2 = "npcs/patron2-" + Guid.NewGuid();
         var npc3 = "npcs/patron3-" + Guid.NewGuid();
 
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = pcId, Name = "PC" }, TestCampaignDefaults.Slug);
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = npc1, Name = "Patron 1" }, TestCampaignDefaults.Slug);
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = npc2, Name = "Patron 2" }, TestCampaignDefaults.Slug);
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = npc3, Name = "Patron 3" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = pcId, Name = "PC" });
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = npc1, Name = "Patron 1" });
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = npc2, Name = "Patron 2" });
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = npc3, Name = "Patron 3" });
         await session.SaveChangesAsync();
 
         var result = await repo.StageChangesAsync(session, [
@@ -2103,8 +2103,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var actorId = "npcs/captor-" + Guid.NewGuid();
         var targetId = "npcs/captive-" + Guid.NewGuid();
 
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = actorId, Name = "Captor" }, TestCampaignDefaults.Slug);
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = targetId, Name = "Captive" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = actorId, Name = "Captor" });
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = targetId, Name = "Captive" });
         await session.SaveChangesAsync();
 
         var establishResult = await repo.StageChangesAsync(session, [
@@ -2135,7 +2135,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
         var id = "npcs/status-event-" + Guid.NewGuid();
 
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = id, Name = "Shackled Prisoner" }, TestCampaignDefaults.Slug);
+        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = id, Name = "Shackled Prisoner" });
         await session.SaveChangesAsync();
 
         var addResult = await repo.StageChangesAsync(session, [
@@ -2277,7 +2277,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 new LocationUpsertRequest { Id = id, Name = "Test Room", Type = LocationType.Room, LastVisitedDay = 1 }, TestCampaignDefaults.Slug);
 
             // Fast forward time to day 5
-            var time = await repo.GetTimeAsync(session, TestCampaignDefaults.Slug);
+            var time = await repo.GetTimeAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug));
             time.TotalDaysElapsed = 5;
             await repo.SaveTimeAsync(session, time, TestCampaignDefaults.Slug);
             await session.SaveChangesAsync();
@@ -2306,7 +2306,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Activity Room" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Activity Room" });
 
             var npc = new CharacterUpsertRequest
             {
@@ -2315,7 +2315,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 CurrentActivity = null,
                 Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
             };
-            await repo.UpsertCharacterAsync(session, npc, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc);
             await session.SaveChangesAsync();
         }
 
@@ -2351,7 +2351,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Provenance Room" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Provenance Room" });
             await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
             {
                 Id = charId,
@@ -2404,7 +2404,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Quest Hub" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Quest Hub" });
 
             var quest = new Quest
             {
@@ -2419,7 +2419,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                     new QuestObjective("Obj 2", QuestState.Complete)
                 ]
             };
-            await repo.UpsertQuestAsync(session, quest, TestCampaignDefaults.Slug);
+            await repo.UpsertQuestAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), quest);
 
             var faction = new Faction
             {
@@ -2428,7 +2428,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 InfluenceLevel = 50,
                 TerritoryLocationIds = [locId]
             };
-            await repo.UpsertFactionAsync(session, faction, TestCampaignDefaults.Slug);
+            await repo.UpsertFactionAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), faction);
 
             var npc = new CharacterUpsertRequest
             {
@@ -2440,7 +2440,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 },
                 Schedule = new Schedule { DefaultLocationId = locId, Routines = [] }
             };
-            await repo.UpsertCharacterAsync(session, npc, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc);
 
             await repo.LogEventAsync(session, new Event
             {
@@ -2584,7 +2584,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = -100 // ensure no interrupt regardless of terrain base chance
         };
 
-        var successResult = await repo.StageChangesAsync(session, [successTravel], TestCampaignDefaults.Slug);
+        var successResult = await repo.StageChangesAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), [successTravel]);
         Assert.True(successResult.Success,
             "Full commit via StageChangesAsync should succeed for travel using exit metadata");
 
@@ -2656,7 +2656,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 100 // high risk; combined with always-0 random in the rule, guarantees first-bucket interrupt
         };
 
-        var intResult = await intRepo.StageChangesAsync(session, [interruptTravel], TestCampaignDefaults.Slug);
+        var intResult = await intRepo.StageChangesAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), [interruptTravel]);
         Assert.True(intResult.Success);
 
         await session.SaveChangesAsync();
@@ -2699,7 +2699,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = parentId, Name = "Parent Location" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = parentId, Name = "Parent Location" });
             await repo.UpsertLocationAsync(session,
                 new LocationUpsertRequest { Id = childId, Name = "Child Location", ParentLocationId = parentId }, TestCampaignDefaults.Slug);
 
@@ -2718,8 +2718,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 Schedule = new Schedule { DefaultLocationId = childId, Routines = [] }
             };
 
-            await repo.UpsertCharacterAsync(session, npc1, TestCampaignDefaults.Slug);
-            await repo.UpsertCharacterAsync(session, npc2, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc1);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc2);
             await session.SaveChangesAsync();
         }
 
@@ -2851,7 +2851,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Merge Location" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Merge Location" });
 
             var npc = new CharacterUpsertRequest
             {
@@ -2864,7 +2864,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                     Routines = []
                 }
             };
-            await repo.UpsertCharacterAsync(session, npc, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc);
             await session.SaveChangesAsync();
         }
 
@@ -2986,7 +2986,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Desc Location" }, campaignName);
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, campaignName), new LocationUpsertRequest { Id = locId, Name = "Desc Location" });
 
             // Set global need descriptors
             await repo.SetNeedDescriptorAsync(session, "hunger", "Feeling a bit hungry", campaignName);
@@ -3004,7 +3004,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                     NeedDescriptors = new Dictionary<string, string> { { "hunger", "NPC specific hunger" } }
                 }
             };
-            await repo.UpsertCharacterAsync(session, npc, campaignName);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaignName), npc);
             await session.SaveChangesAsync();
         }
 
@@ -3037,7 +3037,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         // Case 1: Combat is active and at the correct location
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Combat Location" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Combat Location" });
             var combat = new CombatEncounter
             {
                 Id = combatDocId,
@@ -3097,7 +3097,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Faction Location" }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Faction Location" });
 
             // Faction A: Hostile toward Faction B
             var factionA = new Faction
@@ -3124,8 +3124,8 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 }
             };
 
-            await repo.UpsertFactionAsync(session, factionA, TestCampaignDefaults.Slug);
-            await repo.UpsertFactionAsync(session, factionB, TestCampaignDefaults.Slug);
+            await repo.UpsertFactionAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), factionA);
+            await repo.UpsertFactionAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), factionB);
 
             // NPC has reputation with Faction A
             var npc = new CharacterUpsertRequest
@@ -3142,7 +3142,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
                 },
                 Schedule = new Schedule { DefaultLocationId = locId }
             };
-            await repo.UpsertCharacterAsync(session, npc, TestCampaignDefaults.Slug);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), npc);
             await session.SaveChangesAsync();
         }
 
@@ -3300,7 +3300,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest { Id = charId, Name = "Witness" }, campaignName);
+            await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaignName), new CharacterUpsertRequest { Id = charId, Name = "Witness" });
             await repo.UpsertItemAsync(session, new ItemUpsertRequest
             {
                 Id = itemId,

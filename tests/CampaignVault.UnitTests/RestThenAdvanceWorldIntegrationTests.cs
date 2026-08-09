@@ -48,7 +48,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
             }
         }, campaign);
 
-        await repo.UpsertLocationAsync(session, new LocationUpsertRequest { Id = locId, Name = "Inn", Type = LocationType.Room }, campaign);
+        await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, campaign), new LocationUpsertRequest { Id = locId, Name = "Inn", Type = LocationType.Room });
         await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 10 }, campaign);
         await session.SaveChangesAsync();
 
