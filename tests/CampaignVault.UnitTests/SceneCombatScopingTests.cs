@@ -39,7 +39,7 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            var scene = await _repo.GetSceneAsync(session, locId, other);
+            var scene = await _repo.GetSceneAsync(_fixture.CreateCampaignSession(session, other), locId);
             Assert.False(scene.IsLocationAnchored);
             Assert.Equal("[Unanchored]", scene.Location.Name);
         }
@@ -71,13 +71,13 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
         SceneView sceneA;
         using (var session = _store.OpenAsyncSession())
         {
-            sceneA = await _repo.GetSceneAsync(session, locId, campA);
+            sceneA = await _repo.GetSceneAsync(_fixture.CreateCampaignSession(session, campA), locId);
         }
 
         SceneView sceneB;
         using (var session = _store.OpenAsyncSession())
         {
-            sceneB = await _repo.GetSceneAsync(session, locId, campB);
+            sceneB = await _repo.GetSceneAsync(_fixture.CreateCampaignSession(session, campB), locId);
         }
 
         Assert.NotNull(sceneA.ActiveCombat);

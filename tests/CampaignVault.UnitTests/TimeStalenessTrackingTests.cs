@@ -34,14 +34,14 @@ public class TimeStalenessTrackingTests : IClassFixture<RavenDBFixture>
 
         using var session = _fixture.Store.OpenAsyncSession();
         const string charId = "chars/staleness-1";
-        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
+        await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
         await session.SaveChangesAsync();
 
-        await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1 }], campaign);
+        await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, campaign), [new HpChange { CharacterId = charId, Delta = -1 }]);
         await session.SaveChangesAsync();
         Assert.Equal(1, (await LoadCampaignAsync(session, campaign)).CommitsSinceTimeRecorded);
 
-        await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1 }], campaign);
+        await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, campaign), [new HpChange { CharacterId = charId, Delta = -1 }]);
         await session.SaveChangesAsync();
         Assert.Equal(2, (await LoadCampaignAsync(session, campaign)).CommitsSinceTimeRecorded);
     }
@@ -55,15 +55,15 @@ public class TimeStalenessTrackingTests : IClassFixture<RavenDBFixture>
 
         using var session = _fixture.Store.OpenAsyncSession();
         const string charId = "chars/staleness-2";
-        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
+        await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
         await session.SaveChangesAsync();
 
-        await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1 }], campaign);
-        await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1 }], campaign);
+        await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, campaign), [new HpChange { CharacterId = charId, Delta = -1 }]);
+        await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, campaign), [new HpChange { CharacterId = charId, Delta = -1 }]);
         await session.SaveChangesAsync();
         Assert.Equal(2, (await LoadCampaignAsync(session, campaign)).CommitsSinceTimeRecorded);
 
-        await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1, MinutesElapsed = 20 }], campaign);
+        await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, campaign), [new HpChange { CharacterId = charId, Delta = -1, MinutesElapsed = 20 }]);
         await session.SaveChangesAsync();
         Assert.Equal(0, (await LoadCampaignAsync(session, campaign)).CommitsSinceTimeRecorded);
     }
@@ -77,16 +77,16 @@ public class TimeStalenessTrackingTests : IClassFixture<RavenDBFixture>
 
         using var session = _fixture.Store.OpenAsyncSession();
         const string charId = "chars/staleness-3";
-        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
+        await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest { Id = charId, Name = "Test", KeepAlive = true, MaxHp = 10 });
         await session.SaveChangesAsync();
 
-        await repo.StageChangesAsync(session, [new HpChange { CharacterId = charId, Delta = -1 }], campaign);
+        await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, campaign), [new HpChange { CharacterId = charId, Delta = -1 }]);
         await session.SaveChangesAsync();
         Assert.Equal(1, (await LoadCampaignAsync(session, campaign)).CommitsSinceTimeRecorded);
 
         // days=0 is the explicit "run the sweep now" pattern (see RestThenAdvanceWorldIntegrationTests) —
         // still counts as time recorded even though the calendar itself doesn't move.
-        await repo.AdvanceWorldAsync(session, 0, 12, campaign);
+        await repo.AdvanceWorldAsync(_fixture.CreateCampaignSession(session, campaign), 0, 12);
         await session.SaveChangesAsync();
         Assert.Equal(0, (await LoadCampaignAsync(session, campaign)).CommitsSinceTimeRecorded);
     }

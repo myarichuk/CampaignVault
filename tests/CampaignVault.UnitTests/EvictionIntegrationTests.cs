@@ -43,14 +43,14 @@ public class EvictionIntegrationTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign
         };
 
-        await repo.UpsertLocationAsync(fixture.CreateCampaignSession(session, campaign), location);
-        await repo.UpsertCharacterAsync(fixture.CreateCampaignSession(session, campaign), character);
-        await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 1 }, campaign);
+        await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, campaign), location);
+        await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaign), character);
+        await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 1 });
         await session.SaveChangesAsync();
 
         // Advance time enough to trigger eviction (TransientEvictionRule checks if location was visited
         // recently; with LastVisitedDay=1 and advancing to day 3+, the NPC should be evicted).
-        await repo.AdvanceWorldAsync(session, 3, 12, campaign);
+        await repo.AdvanceWorldAsync(_fixture.CreateCampaignSession(session, campaign), 3, 12);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
         await session.SaveChangesAsync();
 
@@ -64,7 +64,7 @@ public class EvictionIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Equal(4, departed.DepartedAtDay); // After advancing 3 days from day 1
 
         // Query events and assert Departure event exists.
-        var events = await repo.QueryEventsAsync(session, null, EventCategory.Departure, 10, campaign);
+        var events = await repo.QueryEventsAsync(_fixture.CreateCampaignSession(session, campaign), null, EventCategory.Departure, 10);
         var departureEvent = Assert.Single(events);
         Assert.Equal(EventCategory.Departure, departureEvent.Category);
         Assert.Contains(charId, departureEvent.Involved!);

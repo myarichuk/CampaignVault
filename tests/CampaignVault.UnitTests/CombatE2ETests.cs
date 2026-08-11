@@ -111,7 +111,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         // Verify the attack dealt damage
         using (var session = _store.OpenAsyncSession())
         {
-            var goblin = await repo.GetCharacterAsync(fixture.CreateCampaignSession(session, campaignName), goblinId);
+            var goblin = await repo.GetCharacterAsync(_fixture.CreateCampaignSession(session, campaignName), goblinId);
             Assert.NotNull(goblin);
             Assert.True(goblin.CurrentHp < 15); // Damage was applied
         }

@@ -226,11 +226,10 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             // Mark it ambient-persistent while still at the location, then move it onto the character.
-            var toCharacter = await repo.StageChangesAsync(session,
-            [
+            var toCharacter = await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, slug), [
                 new ItemUpdate { ItemId = "items/wb-xfer-armor", AmbientPersistenceNote = "left on the armor rack", AmbientExpiresAtDay = 5 },
                 new ItemTransfer { ItemId = "items/wb-xfer-armor", ToHolderId = "chars/wb-xfer-foo" },
-            ], slug);
+            ]);
             Assert.True(toCharacter.Success, string.Join("; ", toCharacter.Summary));
             await session.SaveChangesAsync();
         }
@@ -244,10 +243,9 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var equip = await repo.StageChangesAsync(session,
-            [
+            var equip = await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, slug), [
                 new ItemEquip { CharacterId = "chars/wb-xfer-foo", ItemId = "items/wb-xfer-armor" },
-            ], slug);
+            ]);
             Assert.True(equip.Success, string.Join("; ", equip.Summary));
             await session.SaveChangesAsync();
         }

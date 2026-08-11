@@ -104,7 +104,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
                 Type = LocationType.Wilderness,
                 CurrentState = "Peaceful meadow"
             }, campaign);
-            await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 5 }, campaign);
+            await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 5 });
             await session.SaveChangesAsync();
         }
 
@@ -164,7 +164,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
                 Type = LocationType.Room,
                 CurrentState = "Quiet evening crowd"
             }, campaign);
-            await repo.SaveTimeAsync(session, new CampaignTime { TotalDaysElapsed = 5 }, campaign);
+            await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 5 });
             await session.SaveChangesAsync();
         }
 
