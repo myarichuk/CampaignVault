@@ -222,12 +222,10 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Upsert characters with explicit campaign for scoping (no BC for legacy needed)
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertCharacterAsync(session,
-                new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, RulesetSystem.Pathfinder2e), new CharacterUpsertRequest
                     { Id = "chars/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
                 "campaign-a");
-            await repo.UpsertCharacterAsync(session,
-                new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, createB.Summary), new CharacterUpsertRequest
                     { Id = "chars/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10, KeepAlive = true },
                 "campaign-b");
             await session.SaveChangesAsync();
@@ -239,8 +237,8 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         await tools.StartCombat("loc-1", ["chars/char-1"], "campaign-a");
 
         // Setup Campaign B (Pathfinder 2e)
-        var createB = await tools.CreateCampaign("campaign-b", RulesetSystem.Pathfinder2e);
-        Assert.True(createB.Success, createB.Summary);
+        var createB = await tools.CreateCampaign("campaign-b");
+        Assert.True(createB.Success);
         await tools.StartCombat("loc-2", ["chars/char-2"], "campaign-b");
 
         // Verify Campaign B

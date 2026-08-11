@@ -46,7 +46,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 Type = LocationType.Room,
                 CampaignName = "test-campaign"
             };
-            await repo.UpsertLocationAsync(session, loc, "test-campaign");
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, campaignSlug), loc, "test-campaign");
             await session.SaveChangesAsync();
 
     
@@ -104,7 +104,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
 
         const string campaignSlug = "characterlenienttest";
-        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignSlug);
+        await TestCampaignDefaults.EnsureExistsAsync(tools);
 
         using (var session = _store.OpenAsyncSession())
         {

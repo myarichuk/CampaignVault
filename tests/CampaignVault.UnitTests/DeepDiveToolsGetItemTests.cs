@@ -26,14 +26,14 @@ public class DeepDiveToolsGetItemTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            await repo.UpsertItemAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new ItemUpsertRequest
             {
                 Id = itemId,
                 Name = "Battered Shield",
                 Description = "A dented shield.",
                 HolderId = "locations/armory",
                 ItemDetails = [new ItemDetailUpsertRequest { Name = "Dent", Description = "A large dent near the rim." }],
-            }, TestCampaignDefaults.Slug);
+            });
             await session.SaveChangesAsync();
         }
 
@@ -55,13 +55,13 @@ public class DeepDiveToolsGetItemTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            await repo.UpsertItemAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new ItemUpsertRequest
             {
                 Id = itemId,
                 Name = "Real Item",
                 Description = "An item that exists.",
                 HolderId = "locations/armory",
-            }, TestCampaignDefaults.Slug);
+            });
             await session.SaveChangesAsync();
         }
 

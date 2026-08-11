@@ -32,7 +32,7 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
         using var session = _store.OpenAsyncSession();
 
         var locId = "locations/scope-test-" + Guid.NewGuid();
-        await repo.UpsertLocationAsync(session, new LocationUpsertRequest
+        await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, selector), new LocationUpsertRequest
         {
             Id = locId,
             Name = "Empty Room",
@@ -54,8 +54,7 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
             new NarrativeRulesetResolver(rollSvc)
         ]);
         var pm = new PressureManager(new CampaignDocumentKeys());
-        var orchestrator = new PressureOrchestrator(_fixture.Container.Resolve<IEnumerable<IPressureContributor>>(), pm,
-            selector);
+        var orchestrator = new PressureOrchestrator(_fixture.Container.Resolve<IEnumerable<IPressureContributor>>(), pm);
 
         var worldCtx = new PressureContext("scope-test", time, config, session,
             Scene: scene, RequestedLocationId: locId);

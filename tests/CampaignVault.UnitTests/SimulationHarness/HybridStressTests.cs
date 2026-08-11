@@ -39,19 +39,18 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
         for (var i = 0; i < 3; i++)
         {
             var id = $"npcs/fuzzer-{i}-" + Guid.NewGuid();
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest
             {
                 Id = id,
                 Name = $"Fuzz NPC {i}",
                 Schedule = new Schedule { DefaultLocationId = regionId },
                 Social = new SocialProfile(),
                 Needs = new NeedsProfile()
-            }, TestCampaignDefaults.Slug);
+            });
             npcs.Add(id);
         }
 
-        await repo.UpsertLocationAsync(session,
-            new LocationUpsertRequest { Id = regionId, Name = "Fuzz Test Ground", Type = LocationType.Region }, TestCampaignDefaults.Slug);
+        await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = regionId, Name = "Fuzz Test Ground", Type = LocationType.Region });
         await session.SaveChangesAsync();
 
         // RUN LOOP

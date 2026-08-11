@@ -36,9 +36,8 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
         var locId = "locations/tavern-" + Guid.NewGuid();
         var npcId = "npcs/innkeeper-" + Guid.NewGuid();
 
-        await repo.UpsertLocationAsync(session,
-            new LocationUpsertRequest { Id = locId, Name = "The Prancing Pony", Type = LocationType.Building }, TestCampaignDefaults.Slug);
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+        await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "The Prancing Pony", Type = LocationType.Building });
+        await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest
         {
             Id = npcId,
             Name = "Barliman Butterbur",
@@ -48,7 +47,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
                 Routines = [new Routine { Activity = "Serving", Condition = "Evening", LocationId = locId }]
             },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 50f } }
-        }, TestCampaignDefaults.Slug);
+        });
         await session.SaveChangesAsync();
 
         // Wait for indexes (with timeout to prevent CI hangs)

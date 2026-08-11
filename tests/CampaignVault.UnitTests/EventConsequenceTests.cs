@@ -97,13 +97,13 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, campaign), new LocationUpsertRequest
             {
                 Id = locId,
                 Name = "Forest Clearing",
                 Type = LocationType.Wilderness,
                 CurrentState = "Peaceful meadow"
-            }, campaign);
+            });
             await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 5 });
             await session.SaveChangesAsync();
         }
@@ -157,13 +157,13 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, campaign), new LocationUpsertRequest
             {
                 Id = locId,
                 Name = "Tavern Floor",
                 Type = LocationType.Room,
                 CurrentState = "Quiet evening crowd"
-            }, campaign);
+            });
             await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 5 });
             await session.SaveChangesAsync();
         }

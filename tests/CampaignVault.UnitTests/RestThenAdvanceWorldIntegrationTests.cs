@@ -33,7 +33,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
         const string charId = "chars/rest-test";
         const string locId = "locations/inn";
 
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+        await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest
         {
             Id = charId,
             Name = "Rest Test",
@@ -46,7 +46,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
                     ["spell_slots_1"] = new() { Current = 0, Max = 4, Recovery = RecoveryType.LongRest }
                 }
             }
-        }, campaign);
+        });
 
         await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, campaign), new LocationUpsertRequest { Id = locId, Name = "Inn", Type = LocationType.Room });
         await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 10 });
@@ -96,7 +96,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
         using var session = _fixture.Store.OpenAsyncSession();
         const string charId = "chars/daily-test";
 
-        await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+        await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaign), new CharacterUpsertRequest
         {
             Id = charId,
             Name = "Daily Test",
@@ -108,7 +108,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
                     ["daily_pool"] = new() { Current = 0, Max = 5, Recovery = RecoveryType.Daily }
                 }
             }
-        }, campaign);
+        });
         await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 10 });
         await session.SaveChangesAsync();
 

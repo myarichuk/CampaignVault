@@ -169,8 +169,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertFactionAsync(session,
-                new Faction { Id = fid, Name = "Guild of Tests", InfluenceLevel = 10 }, TestCampaignDefaults.Slug);
+            await repo.UpsertFactionAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction { Id = fid, Name = "Guild of Tests", InfluenceLevel = 10 });
             await session.SaveChangesAsync();
         }
 
@@ -222,8 +221,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertQuestAsync(session,
-                new Quest { Id = qid, Title = "Test Quest", OverallState = QuestState.Open }, TestCampaignDefaults.Slug);
+            await repo.UpsertQuestAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Quest { Id = qid, Title = "Test Quest", OverallState = QuestState.Open });
             await session.SaveChangesAsync();
         }
 
@@ -242,8 +240,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertQuestAsync(session,
-                new Quest { Id = qid, Title = "Real Quest", OverallState = QuestState.Open }, TestCampaignDefaults.Slug);
+            await repo.UpsertQuestAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Quest { Id = qid, Title = "Real Quest", OverallState = QuestState.Open });
             await session.SaveChangesAsync();
         }
 
@@ -325,12 +322,12 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await session.StoreAsync(time);
 
             // Deadline in 2 days -> should emit a pressure in GetScene
-            await repo.UpsertQuestAsync(session, new Quest
+            await repo.UpsertQuestAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Quest
             {
                 Id = questId, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12,
                 RelatedLocationIds =
                     [locId]
-            }, TestCampaignDefaults.Slug);
+            });
 
             await session.SaveChangesAsync();
         }
@@ -381,21 +378,21 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertFactionAsync(session, new Faction
+            await repo.UpsertFactionAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction
             {
                 Id = factionId,
                 Name = "Test Faction",
                 TerritoryLocationIds = [locId]
-            }, TestCampaignDefaults.Slug);
+            });
 
-            await repo.UpsertLocationAsync(session, new LocationUpsertRequest
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest
             {
                 Id = locId,
                 Name = "Faction HQ",
                 ControllingFactionId = factionId
-            }, TestCampaignDefaults.Slug);
+            });
 
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest
             {
                 Id = charId,
                 Name = "Rep Tester",
@@ -408,7 +405,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                         { factionId, -60 }
                     }
                 }
-            }, TestCampaignDefaults.Slug);
+            });
 
             await session.SaveChangesAsync();
         }
@@ -456,8 +453,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await session.StoreAsync(time);
 
             // Deadline in 2 days
-            await repo.UpsertQuestAsync(session,
-                new Quest { Id = qid, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12 }, slug);
+            await repo.UpsertQuestAsync(_fixture.CreateCampaignSession(session, slug), new Quest { Id = qid, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12 });
 
             var npc = new CharacterUpsertRequest
             {
@@ -632,7 +628,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertFactionAsync(session, new Faction
+            await repo.UpsertFactionAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction
             {
                 Id = factionId,
                 Name = "War Merchants",
@@ -642,17 +638,17 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                     {
                         ["Weapon"] = 2.0f
                     }
-            }, TestCampaignDefaults.Slug);
+            });
 
             await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Market" });
 
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest
             {
                 Id = charId,
                 Name = "PC",
                 CurrentLocationId = locId,
                 KeepAlive = true
-            }, TestCampaignDefaults.Slug);
+            });
 
             await session.StoreAsync(new Item
             {
@@ -685,7 +681,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertFactionAsync(session, new Faction
+            await repo.UpsertFactionAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction
             {
                 Id = factionId,
                 Name = "Arcane Scribes",
@@ -695,17 +691,17 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                     {
                         ["spell scrolls"] = 2.0f
                     }
-            }, TestCampaignDefaults.Slug);
+            });
 
             await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Scriptorium" });
 
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest
             {
                 Id = charId,
                 Name = "PC",
                 CurrentLocationId = locId,
                 KeepAlive = true
-            }, TestCampaignDefaults.Slug);
+            });
 
             await session.StoreAsync(new Item
             {
@@ -757,27 +753,27 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             var configId = new CampaignDocumentKeys().Config(campaignName);
             await session.StoreAsync(new CampaignConfig { Id = configId });
 
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaignName), new CharacterUpsertRequest
             {
                 Id = "characters/pc-1-" + Guid.NewGuid(),
                 Name = "PC Hero",
                 IsPc = true,
                 KeepAlive = true
-            }, campaignName);
+            });
 
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaignName), new CharacterUpsertRequest
             {
                 Id = "characters/companion-1-" + Guid.NewGuid(),
                 Name = "Wolf Companion",
                 IsPartyCompanion = true
-            }, campaignName);
+            });
 
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaignName), new CharacterUpsertRequest
             {
                 Id = "characters/npc-1-" + Guid.NewGuid(),
                 Name = "Transient Bard",
                 KeepAlive = true
-            }, campaignName);
+            });
 
             await session.SaveChangesAsync();
         }
@@ -887,8 +883,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(session,
-                new LocationUpsertRequest { Id = locId, Name = "Tool Visit Location", LastVisitedDay = 0 }, TestCampaignDefaults.Slug);
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = locId, Name = "Tool Visit Location", LastVisitedDay = 0 });
 
             var time = await repo.GetTimeAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug));
             time.TotalDaysElapsed = 7;

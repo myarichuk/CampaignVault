@@ -184,7 +184,7 @@ public class PlotThreadResponseShapeTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         // Act: Get NPC context (which loads associated plot threads)
-        var result = await repository.GetCharacterAsync(fixture.CreateCampaignSession(session, _campaignName), "chars/response-test-npc");
+        var result = await repository.GetCharacterAsync(_fixture.CreateCampaignSession(session, _campaignName), "chars/response-test-npc");
         var threads = await repository.GetPlotThreadsReferencingEntityAsync(session, "chars/response-test-npc", _campaignName);
         var minimal = threads.Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel)).ToList();
 

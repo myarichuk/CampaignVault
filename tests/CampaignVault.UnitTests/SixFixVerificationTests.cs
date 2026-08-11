@@ -198,15 +198,15 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             var configId = new CampaignDocumentKeys().Config(campaignName);
             await session.StoreAsync(new CampaignConfig { Id = configId });
 
-            await repo.UpsertCharacterAsync(session, new CharacterUpsertRequest
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaignName), new CharacterUpsertRequest
             {
                 Id = pcId,
                 Name = "Detail Bearer",
                 IsPc = true,
                 KeepAlive = true,
-            }, campaignName);
+            });
 
-            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            await repo.UpsertItemAsync(_fixture.CreateCampaignSession(session, campaignName), new ItemUpsertRequest
             {
                 Id = equippedItemId,
                 Name = "Notched Blade",
@@ -218,16 +218,16 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
                     new ItemDetailUpsertRequest { Name = "Notch", Description = "A notch near the hilt." },
                     new ItemDetailUpsertRequest { Name = "Old rust", Description = "Long since cleaned." },
                 ],
-            }, campaignName);
+            });
 
-            await repo.UpsertItemAsync(session, new ItemUpsertRequest
+            await repo.UpsertItemAsync(_fixture.CreateCampaignSession(session, campaignName), new ItemUpsertRequest
             {
                 Id = carriedItemId,
                 Name = "Plain Pouch",
                 Description = "A pouch.",
                 HolderId = pcId,
                 IsEquipped = false,
-            }, campaignName);
+            });
 
             await session.SaveChangesAsync();
         }
