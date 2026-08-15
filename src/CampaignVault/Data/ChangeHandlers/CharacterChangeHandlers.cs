@@ -36,7 +36,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("characterId is required.");
         }
 
-        var existing = context.Session != null ? await context.Session.LoadAsync<Character>(cc.CharacterId, ct) : null;
+        var existing = await context.Session.LoadAsync<Character>(cc.CharacterId, ct);
         if (existing != null)
         {
             if (!string.IsNullOrEmpty(context.CampaignName)
@@ -127,7 +127,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
                 BootstrapTrigger.Create, context, ct);
 
             // Reinitialize resource pools if needed (in case level/class changed)
-            var campaignConfigExisting = context.Session != null && !string.IsNullOrEmpty(context.CampaignName)
+            var campaignConfigExisting = !string.IsNullOrEmpty(context.CampaignName)
                 ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
                 : null;
             _poolInitializer.InitializePools(existing, activeSystemForExisting, campaignConfigExisting);
@@ -189,14 +189,14 @@ public class CharacterCreateHandler : IWorldChangeHandler
         await ApplyBootstrapAsync(newChar, activeSystem, cc.MaxHp, cc.CurrentHp, null, BootstrapTrigger.Create, context, ct);
 
         // Initialize resource pools (spell slots, focus points, action points, etc.)
-        var campaignConfig = context.Session != null && !string.IsNullOrEmpty(context.CampaignName)
+        var campaignConfig = !string.IsNullOrEmpty(context.CampaignName)
             ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
             : null;
         _poolInitializer.InitializePools(newChar, activeSystem, campaignConfig);
 
         RecordClassResolutionEcho(context, newChar, activeSystem, cc.ClassLevel);
 
-        await context.Session!.StoreAsync(newChar, ct);
+        await context.Session.StoreAsync(newChar, ct);
         context.RegisterNewCharacter(newChar);
 
         return ChangeHandlerResult.Ok;
@@ -303,9 +303,7 @@ public class LevelUpChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(levelUp.CharacterId, out var character))
         {
-            character = context.Session != null
-                ? await context.Session.LoadAsync<Character>(levelUp.CharacterId, ct)
-                : null;
+            character = await context.Session.LoadAsync<Character>(levelUp.CharacterId, ct);
             if (character == null)
             {
                 return ChangeHandlerResult.Failure($"Character '{levelUp.CharacterId}' not found.");
@@ -363,7 +361,7 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             character.CurrentHp += character.MaxHp - previousMax;
         }
 
-        var campaignConfig = context.Session != null && !string.IsNullOrEmpty(context.CampaignName)
+        var campaignConfig = !string.IsNullOrEmpty(context.CampaignName)
             ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
             : null;
         _poolInitializer.InitializePools(character, activeSystem, campaignConfig);
@@ -445,7 +443,7 @@ public class ScheduleChangeHandler : IWorldChangeHandler
         var sc = (ScheduleChange)change;
         if (!context.Characters.TryGetValue(sc.CharacterId, out var c))
         {
-            c = context.Session != null ? await context.Session.LoadAsync<Character>(sc.CharacterId, ct) : null;
+            c = await context.Session.LoadAsync<Character>(sc.CharacterId, ct);
             if (c == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(sc.CharacterId);
@@ -492,7 +490,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         var cu = (CharacterUpdate)change;
         if (string.IsNullOrWhiteSpace(cu.CharacterId)) return ChangeHandlerResult.Failure("characterId is required.");
 
-        var character = context.Session != null ? await context.Session.LoadAsync<Character>(cu.CharacterId, ct) : null;
+        var character = await context.Session.LoadAsync<Character>(cu.CharacterId, ct);
         if (character == null)
             return ChangeHandlerResult.Failure($"Character '{cu.CharacterId}' not found. Cannot update.");
 
@@ -657,7 +655,7 @@ internal static class CharacterHandlerHelpers
     public static async Task<string> ResolveActiveSystemAsync(ChangeContext context, CampaignDocumentKeys keys,
         CancellationToken ct)
     {
-        if (context.Session == null || string.IsNullOrEmpty(context.CampaignName))
+        if (string.IsNullOrEmpty(context.CampaignName))
         {
             return RulesetSystem.Dnd5e;
         }
@@ -686,7 +684,7 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
             return ChangeHandlerResult.Ok;
         }
 
-        var character = context.Session != null ? await context.Session.LoadAsync<Character>(ku.CharacterId, ct) : null;
+        var character = await context.Session.LoadAsync<Character>(ku.CharacterId, ct);
         if (character == null)
             return ChangeHandlerResult.Failure($"Character '{ku.CharacterId}' not found. Cannot update knowledge.");
 
