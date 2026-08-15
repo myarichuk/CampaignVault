@@ -31,8 +31,15 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
         var repo = _fixture.CreateRepository();
         using var session = _store.OpenAsyncSession();
 
+        var rollSvc = new DefaultRollService();
+        var selector = new RulesetModuleSelector([
+            new Dnd5eRulesetResolver(rollSvc),
+            new Pf2eRulesetResolver(rollSvc),
+            new NarrativeRulesetResolver(rollSvc)
+        ]);
+
         var locId = "locations/scope-test-" + Guid.NewGuid();
-        await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, selector), new LocationUpsertRequest
+        await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, "scope-test"), new LocationUpsertRequest
         {
             Id = locId,
             Name = "Empty Room",
@@ -40,21 +47,15 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
             Exits = [],
             PointsOfInterest = [],
             AmbientCrowd = null
-        }, "scope-test");
+        });
         await session.SaveChangesAsync();
 
-        var time = await repo.GetTimeAsync(session, "scope-test");
-        var config = await repo.GetCampaignConfigAsync(session, "scope-test");
-        var scene = await repo.GetSceneAsync(session, locId, "scope-test");
+        var time = await repo.GetTimeAsync(_fixture.CreateCampaignSession(session, "scope-test"));
+        var config = await repo.GetCampaignConfigAsync(_fixture.CreateCampaignSession(session, "scope-test"));
+        var scene = await repo.GetSceneAsync(_fixture.CreateCampaignSession(session, "scope-test"), locId);
 
-        var rollSvc = new DefaultRollService();
-        var selector = new RulesetModuleSelector([
-            new Dnd5eRulesetResolver(rollSvc),
-            new Pf2eRulesetResolver(rollSvc),
-            new NarrativeRulesetResolver(rollSvc)
-        ]);
         var pm = new PressureManager(new CampaignDocumentKeys());
-        var orchestrator = new PressureOrchestrator(_fixture.Container.Resolve<IEnumerable<IPressureContributor>>(), pm);
+        var orchestrator = new PressureOrchestrator(_fixture.Container.Resolve<IEnumerable<IPressureContributor>>(), pm, selector);
 
         var worldCtx = new PressureContext("scope-test", time, config, session,
             Scene: scene, RequestedLocationId: locId);

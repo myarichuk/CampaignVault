@@ -1,3 +1,4 @@
+using System;
 using Autofac;
 using CampaignVault.Data;
 using System.Threading.Tasks;
@@ -22,6 +23,6 @@ public class CampaignRepositoryResolveTests : IClassFixture<RavenDBFixture>
 
         using var session = _fixture.Store.OpenAsyncSession();
 
-        await Assert.ThrowsAsync<CampaignNotSelectedException>(() => repo.GetCampaignConfigAsync(session));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => repo.GetCampaignConfigAsync(new CampaignSession(session, null!)));
     }
 }

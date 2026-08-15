@@ -80,7 +80,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
 
         // 2. Explore — use direct repo call on this session for reliable presence check after simulation
         // (tool path opens new sessions; direct call is more deterministic in tests)
-        var directScene = await repo.GetSceneAsync(session, locId, TestCampaignDefaults.Slug);
+        var directScene = await repo.GetSceneAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), locId);
         Assert.Contains(directScene.PresentNPCs, n => n.Id == npcId);
 
         var scene = await simulator.Explore(locId);

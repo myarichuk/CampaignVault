@@ -46,7 +46,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 Type = LocationType.Room,
                 CampaignName = "test-campaign"
             };
-            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, campaignSlug), loc, "test-campaign");
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, "test-campaign"), loc);
             await session.SaveChangesAsync();
 
     
@@ -79,7 +79,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 Type = LocationType.Room,
                 CampaignName = "LenientTest"
             };
-            await repo.UpsertLocationAsync(session, loc, "LenientTest");
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, "LenientTest"), loc);
             await session.SaveChangesAsync();
         }
 

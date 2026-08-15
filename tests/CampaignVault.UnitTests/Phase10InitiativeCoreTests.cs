@@ -224,7 +224,7 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
             throwOnTimeout: true,
             indexes: ["Character/Search"]);
 
-        var scene = await repo.GetSceneAsync(session, locId, "scene-tension");
+        var scene = await repo.GetSceneAsync(_fixture.CreateCampaignSession(session, "scene-tension"), locId);
         var npc = scene.PresentNPCs.Single();
 
         Assert.True(npc.BehavioralTension > 20);

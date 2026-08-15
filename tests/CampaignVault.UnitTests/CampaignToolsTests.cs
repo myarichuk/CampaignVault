@@ -448,7 +448,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, slug), new LocationUpsertRequest { Id = locId, Name = "Some Loc" });
-            var time = await repo.GetTimeAsync(_fixture.CreateCampaignSession(_fixture.CreateCampaignSession(session, slug)));
+            var time = await repo.GetTimeAsync(_fixture.CreateCampaignSession(session, slug));
             time.TotalDaysElapsed = 10;
             await session.StoreAsync(time);
 

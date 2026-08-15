@@ -159,6 +159,10 @@ internal static class ConventionRegistration
         builder.RegisterType<SceneNpcMerger>().InstancePerLifetimeScope();
         builder.RegisterType<SceneFactionSummaryFactory>().InstancePerLifetimeScope();
         builder.RegisterType<EntitySuggester>().As<IEntitySuggester>().InstancePerLifetimeScope();
+        builder.RegisterType<ItemManager>().As<IItemManager>().InstancePerLifetimeScope();
+        builder.RegisterType<LocationManager>().As<ILocationManager>().InstancePerLifetimeScope();
+        builder.RegisterType<CharacterManager>().As<ICharacterManager>().InstancePerLifetimeScope();
+        builder.RegisterType<EntityManager>().As<IEntityManager>().InstancePerLifetimeScope();
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
         builder.RegisterType<EncounterResolver>().InstancePerLifetimeScope();
         builder.RegisterType<CharacterBootstrapOrchestrator>().InstancePerLifetimeScope();

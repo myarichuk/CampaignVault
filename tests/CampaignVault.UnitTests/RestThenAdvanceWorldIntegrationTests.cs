@@ -75,7 +75,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
 
         // advance_world's ResourceRecoveryRule sweep must be a no-op here — it's a defense-in-depth
         // fallback guarded by the same idempotency check, not a second source of recovery.
-        await repo.AdvanceWorldAsync(_fixture.CreateCampaignSession(session, campaign), 0, 12);
+        await repo.AdvanceWorldAsync(session, 0, 12, campaign);
         await session.SaveChangesAsync();
 
         var afterAdvance = await session.LoadAsync<Character>(charId);
@@ -112,7 +112,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
         await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 10 });
         await session.SaveChangesAsync();
 
-        await repo.AdvanceWorldAsync(_fixture.CreateCampaignSession(session, campaign), 0, 12);
+        await repo.AdvanceWorldAsync(session, 0, 12, campaign);
         await session.SaveChangesAsync();
 
         var afterFirst = await session.LoadAsync<Character>(charId);
@@ -125,14 +125,14 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
         await session.SaveChangesAsync();
 
         // Same day: must NOT recover again.
-        await repo.AdvanceWorldAsync(_fixture.CreateCampaignSession(session, campaign), 0, 12);
+        await repo.AdvanceWorldAsync(session, 0, 12, campaign);
         await session.SaveChangesAsync();
 
         var sameDay = await session.LoadAsync<Character>(charId);
         Assert.Equal(2, sameDay.SystemStats!.ResourcePools["daily_pool"].Current);
 
         // Next day: recovers again.
-        await repo.AdvanceWorldAsync(_fixture.CreateCampaignSession(session, campaign), 1, 12);
+        await repo.AdvanceWorldAsync(session, 1, 12, campaign);
         await session.SaveChangesAsync();
 
         var nextDay = await session.LoadAsync<Character>(charId);

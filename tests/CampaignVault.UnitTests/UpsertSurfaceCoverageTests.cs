@@ -23,8 +23,8 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         var repository = _fixture.CreateRepository();
 
-        var faction = await repository.UpsertFactionAsync(session,
-            new FactionUpsertRequest { Id = "factions/thieves", Name = "Thieves Guild" }, "test-camp");
+        var faction = await repository.UpsertFactionAsync(_fixture.CreateCampaignSession(session, "test-camp"),
+            new FactionUpsertRequest { Id = "factions/thieves", Name = "Thieves Guild" });
         await session.SaveChangesAsync();
 
         Assert.Equal("Thieves Guild", faction.Name);
@@ -41,8 +41,8 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         var repository = _fixture.CreateRepository();
 
-        var quest = await repository.UpsertQuestAsync(session,
-            new QuestUpsertRequest { Id = "quests/find-ring", Title = "Find the Ring" }, "test-camp");
+        var quest = await repository.UpsertQuestAsync(_fixture.CreateCampaignSession(session, "test-camp"),
+            new QuestUpsertRequest { Id = "quests/find-ring", Title = "Find the Ring" });
         await session.SaveChangesAsync();
 
         Assert.Equal("Find the Ring", quest.Title);
@@ -127,14 +127,14 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         var repository = _fixture.CreateRepository();
 
-        await repository.UpsertLocationAsync(session,
+        await repository.UpsertLocationAsync(_fixture.CreateCampaignSession(session, "test-camp"),
             new LocationUpsertRequest
             {
                 Id = "locations/forgotten-crypt",
                 Name = "ZzArchivedCryptUnique",
                 Description = "A crypt nobody visits anymore.",
                 IsArchived = true
-            }, "test-camp");
+            });
         await session.SaveChangesAsync();
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
@@ -158,7 +158,7 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
         });
         await session.SaveChangesAsync();
 
-        await repository.UpsertItemAsync(session,
+        await repository.UpsertItemAsync(_fixture.CreateCampaignSession(session, "test-camp"),
             new ItemUpsertRequest
             {
                 Id = "items/forgotten-coin",
@@ -166,11 +166,11 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
                 Description = "A dusty old coin.",
                 HolderId = "locations/scene-test-room",
                 IsArchived = true
-            }, "test-camp");
+            });
         await session.SaveChangesAsync();
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
-        var scene = await repository.GetSceneAsync(verifySession, "locations/scene-test-room", "test-camp");
+        var scene = await repository.GetSceneAsync(_fixture.CreateCampaignSession(verifySession, "test-camp"), "locations/scene-test-room");
         Assert.DoesNotContain(scene.VisibleItems, i => i.Id == "items/forgotten-coin");
 
         var reloaded = await verifySession.LoadAsync<Item>("items/forgotten-coin");

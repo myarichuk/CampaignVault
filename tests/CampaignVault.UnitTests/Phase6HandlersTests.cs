@@ -38,7 +38,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             ConnectionDescription = "A sturdy oak door"
         };
 
-        var child = await repository.UpsertLocationAsync(session, request, "test-camp");
+        var child = await repository.UpsertLocationAsync(_fixture.CreateCampaignSession(session, "test-camp"), request);
         await session.SaveChangesAsync();
 
         // Check if child got the reverse exit to the parent (derived)
