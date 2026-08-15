@@ -16,7 +16,7 @@
 | **4** | Plugin system (RulesetSystem enum → string) | ⏳ Pending | Data-only plugins, then code plugins |
 | **5.1** | Split CampaignRepository (3,155→1,975 lines) | ✅ **COMPLETE** | CampaignSession wrapping ✅; Sanitize* deleted ✅; Suggest* extracted ✅; Upsert* methods extracted ✅ (4 services created: ItemManager, LocationManager, CharacterManager, EntityManager) |
 | **5.2** | Dispatcher dict lookup (48→1 handler resolution) | ✅ **COMPLETE** | BuildHandlerDictionary caches Type→Handler mapping at startup; FindHandler does O(1) dict lookup |
-| **5.3** | Delete null-session test path | 🔄 In Progress | ChangeContextTestHelper created; 70 production null-checks + 54 test sites remain |
+| **5.3** | Delete null-session test path | 🔄 In Progress | 2/24 handler files cleaned (14 null-checks removed); 56 remain + 54 test sites |
 | **5.4** | ID-prefix classifier fix | ⏳ Pending | Full prefix match, consolidate duplicates |
 | **5.5** | Dedupe Suggest* (560 lines) | ⏳ Pending | Extract IEntityResolver |
 | **5.6** | Rule ordering validation | ⏳ Pending | Fail on Order collisions, phase enum |
