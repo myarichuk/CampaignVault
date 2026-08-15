@@ -22,7 +22,7 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(equip.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(equip.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(equip.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(equip.CharacterId);
@@ -37,7 +37,7 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
 
         if (!context.Items.TryGetValue(equip.ItemId, out var item))
         {
-            item = context.Session != null ? await context.Session.LoadAsync<Item>(equip.ItemId, ct) : null;
+            item = await context.Session.LoadAsync<Item>(equip.ItemId, ct);
             if (item == null)
             {
                 var hints = await context.SuggestItemMatchAsync(equip.ItemId);
@@ -235,7 +235,7 @@ public sealed class ItemUnequipHandler : IWorldChangeHandler
 
         if (!context.Items.TryGetValue(unequip.ItemId, out var item))
         {
-            item = context.Session != null ? await context.Session.LoadAsync<Item>(unequip.ItemId, ct) : null;
+            item = await context.Session.LoadAsync<Item>(unequip.ItemId, ct);
             if (item == null)
             {
                 var hints = await context.SuggestItemMatchAsync(unequip.ItemId);
@@ -263,7 +263,7 @@ public sealed class ItemUnequipHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(unequip.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(unequip.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(unequip.CharacterId, ct);
             if (character == null)
             {
                 var msg = $"Character {unequip.CharacterId} not found.";
