@@ -16,7 +16,7 @@
 | **4** | Plugin system (RulesetSystem enum → string) | ⏳ Pending | Data-only plugins, then code plugins |
 | **5.1** | Split CampaignRepository (3,155→1,975 lines) | ✅ **COMPLETE** | CampaignSession wrapping ✅; Sanitize* deleted ✅; Suggest* extracted ✅; Upsert* methods extracted ✅ (4 services created: ItemManager, LocationManager, CharacterManager, EntityManager) |
 | **5.2** | Dispatcher dict lookup (48→1 handler resolution) | ✅ **COMPLETE** | BuildHandlerDictionary caches Type→Handler mapping at startup; FindHandler does O(1) dict lookup |
-| **5.3** | Delete null-session test path | ⏳ Pending | Kill ChangeContext test constructor |
+| **5.3** | Delete null-session test path | 🔄 In Progress | ChangeContextTestHelper created; 70 production null-checks + 54 test sites remain |
 | **5.4** | ID-prefix classifier fix | ⏳ Pending | Full prefix match, consolidate duplicates |
 | **5.5** | Dedupe Suggest* (560 lines) | ⏳ Pending | Extract IEntityResolver |
 | **5.6** | Rule ordering validation | ⏳ Pending | Fail on Order collisions, phase enum |
@@ -64,6 +64,33 @@
 
 - [x] **5.1.1:** Document `BuildWorldStateAsync` DI cycle
   - Analysis complete; cycle documented in commit message
+
+---
+
+## Phase 5.3 — Work-in-Progress Details
+
+**Scope:** Delete null-session test path to eliminate 43+ defensive `context.Session != null` checks  
+**Status:** Infrastructure in place; large refactoring remains
+
+### Completed
+- Created `ChangeContextTestHelper.Create()` to simplify test code creation
+- Documented all 70+ production null-check sites
+- Identified 54 test sites using old test-only constructor signature
+
+### Remaining Work (High-to-low impact)
+1. **Production code cleanup** (70+ changes across 24 files):
+   - HpChangeHandler, ItemEquipHandler, CharacterChangeHandlers (most checks, ~30 total)
+   - ItemTransferHandler, TravelChangeHandler (nested logic, ~15 checks)
+   - EventOccurredHandler, CampaignUpdateChangeHandler, RumorEvolvesHandler (conditional blocks)
+   
+2. **Test updates** (54 sites):
+   - Replace `new ChangeContext(sessionForTests: null, ...)` with `ChangeContextTestHelper.Create(...)`
+   - Replace ternary `context.Session != null ? ... : null` with direct calls
+
+### Strategy for future work
+- Update production handlers one at a time; run tests after each change
+- Batch test updates by file (e.g., all Phase6HandlersTests at once)
+- Delete test-only constructor only after all tests updated
 
 ---
 

@@ -105,9 +105,9 @@ public sealed class ChangeContext
         InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
+
     /// <summary>
-    /// Test-only constructor that allows null session for pure dispatcher selection / result aggregation tests
-    /// that use fake handlers which never touch Session, GetCurrentTime, or LogEvent.
+    /// Test-only constructor that allows null session for dispatcher tests using fake handlers.
     /// </summary>
     internal ChangeContext(
         IAsyncDocumentSession? sessionForTests,
@@ -123,7 +123,7 @@ public sealed class ChangeContext
         string? campaignName = null,
         CampaignConfig? config = null)
     {
-        Session = sessionForTests!; // may be null; only for tests with fake handlers
+        Session = sessionForTests!;
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
         _items = items ?? throw new ArgumentNullException(nameof(items));
         _locations = locations ?? throw new ArgumentNullException(nameof(locations));
