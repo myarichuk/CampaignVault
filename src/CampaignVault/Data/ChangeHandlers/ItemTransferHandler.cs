@@ -40,7 +40,7 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
 
         var destinationItem = context.Items.GetValueOrDefault(transfer.ToHolderId);
 
-        if (!destinationExists && context.Session != null)
+        if (!destinationExists)
         {
             // Try loading from session if not in context
             try
@@ -67,7 +67,7 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Destination {transfer.ToHolderId} does not exist. Item {transfer.ItemId} not transferred.");
         }
 
-        if (destinationItem != null && context.Session != null)
+        if (destinationItem != null)
         {
             var nestingError = await ContainerResolver.ValidateNestingAsync(context.Session, item, destinationItem, ct);
             if (nestingError != null)
@@ -105,7 +105,7 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
                 {
                     await ArmorParameterResolver.ApplyAsync(previousHolder, context, ct);
                 }
-                else if (context.Session != null)
+                else
                 {
                     var prevChar = await context.Session.LoadAsync<Character>(previousHolderId, ct);
                     if (prevChar != null)

@@ -16,11 +16,6 @@ public sealed class RumorEvolvesHandler : IWorldChangeHandler
     {
         var rumor = (RumorEvolves)change;
 
-        if (context.Session is null)
-        {
-            throw new InvalidOperationException("RumorEvolvesHandler requires a non-null session for Patch operations.");
-        }
-
         var existing = await context.Session.LoadAsync<Rumor>(rumor.RumorId, ct);
         if (existing is null)
         {
@@ -53,10 +48,6 @@ public sealed class RumorCreateHandler : IWorldChangeHandler
         CancellationToken ct = default)
     {
         var rc = (RumorCreate)change;
-        if (context.Session is null)
-        {
-            throw new InvalidOperationException("RumorCreateHandler requires a non-null session.");
-        }
 
         var existing = await context.Session.LoadAsync<Rumor>(rc.RumorId, ct);
         if (existing is not null)
