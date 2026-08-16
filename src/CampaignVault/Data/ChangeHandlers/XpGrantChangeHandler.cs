@@ -15,9 +15,7 @@ public sealed class XpGrantChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(xpGrant.CharacterId, out var character))
         {
-            character = context.Session != null
-                ? await context.Session.LoadAsync<Character>(xpGrant.CharacterId, ct)
-                : null;
+            character = await context.Session.LoadAsync<Character>(xpGrant.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(xpGrant.CharacterId);
