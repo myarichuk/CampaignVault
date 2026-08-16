@@ -19,7 +19,7 @@ public sealed class ItemPersistenceSurfacedHandler : IWorldChangeHandler
 
         if (!context.Items.TryGetValue(surfaced.ItemId, out var item))
         {
-            item = context.Session != null ? await context.Session.LoadAsync<Item>(surfaced.ItemId, ct) : null;
+            item = await context.Session.LoadAsync<Item>(surfaced.ItemId, ct);
             if (item == null)
             {
                 return ChangeHandlerResult.Failure($"Item '{surfaced.ItemId}' not found.");

@@ -21,7 +21,7 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
 
         if (!context.Characters.TryGetValue(hp.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(hp.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(hp.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(hp.CharacterId);

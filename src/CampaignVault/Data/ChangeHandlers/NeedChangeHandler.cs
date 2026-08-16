@@ -15,7 +15,7 @@ public sealed class NeedChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(nc.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(nc.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(nc.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(nc.CharacterId);

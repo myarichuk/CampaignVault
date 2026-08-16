@@ -126,7 +126,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         {
             if (!context.Characters.TryGetValue(item.HolderId, out var wearer))
             {
-                wearer = context.Session != null ? await context.Session.LoadAsync<Character>(item.HolderId, ct) : null;
+                wearer = await context.Session.LoadAsync<Character>(item.HolderId, ct);
                 if (wearer != null) context.RegisterNewCharacter(wearer);
             }
 

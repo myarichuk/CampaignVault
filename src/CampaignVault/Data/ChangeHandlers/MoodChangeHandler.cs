@@ -15,7 +15,7 @@ public sealed class MoodChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(mood.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(mood.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(mood.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(mood.CharacterId);

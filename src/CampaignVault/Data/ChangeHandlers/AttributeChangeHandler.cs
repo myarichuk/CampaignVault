@@ -15,7 +15,7 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(attr.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(attr.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(attr.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(attr.CharacterId);

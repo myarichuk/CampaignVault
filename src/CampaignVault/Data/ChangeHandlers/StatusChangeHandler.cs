@@ -175,7 +175,7 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
     {
         if (!context.Characters.TryGetValue(remove.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(remove.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(remove.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(remove.CharacterId);

@@ -20,7 +20,7 @@ public sealed class ItemUseHandler : IWorldChangeHandler
 
         if (!context.Items.TryGetValue(use.ItemId, out var item))
         {
-            item = context.Session != null ? await context.Session.LoadAsync<Item>(use.ItemId, ct) : null;
+            item = await context.Session.LoadAsync<Item>(use.ItemId, ct);
             if (item == null)
             {
                 var hints = await context.SuggestItemMatchAsync(use.ItemId);

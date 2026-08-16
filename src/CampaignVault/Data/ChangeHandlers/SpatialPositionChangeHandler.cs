@@ -12,7 +12,7 @@ public sealed class SpatialPositionChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(src.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(src.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(src.CharacterId, ct);
             if (character == null) return ChangeHandlerResult.Failure($"Character {src.CharacterId} not found.");
             context.RegisterNewCharacter(character);
         }

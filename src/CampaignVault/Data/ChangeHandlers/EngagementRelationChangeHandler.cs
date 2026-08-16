@@ -19,7 +19,7 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(src.TargetId, out var target))
         {
-            target = context.Session != null ? await context.Session.LoadAsync<Character>(src.TargetId, ct) : null;
+            target = await context.Session.LoadAsync<Character>(src.TargetId, ct);
             if (target == null) return ChangeHandlerResult.Failure($"Target {src.TargetId} not found.");
             context.RegisterNewCharacter(target);
         }
