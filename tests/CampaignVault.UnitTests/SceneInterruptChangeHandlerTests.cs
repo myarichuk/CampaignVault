@@ -7,13 +7,23 @@ using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
+using Raven.Client.Documents.Session;
 using Xunit;
 
 namespace CampaignVault.Tests;
 
-public class SceneInterruptChangeHandlerTests
+[Collection("RavenDB")]
+public class SceneInterruptChangeHandlerTests : IClassFixture<RavenDBFixture>
 {
+    private readonly RavenDBFixture _fixture;
+
+    public SceneInterruptChangeHandlerTests(RavenDBFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     private static ChangeContext CreateContext(
+        IAsyncDocumentSession session,
         Character character,
         Location location,
         IEnumerable<Character>? otherNpcs = null,
@@ -32,7 +42,7 @@ public class SceneInterruptChangeHandlerTests
             NullLogger<WorldChangeDispatcher>.Instance);
 
         return new ChangeContext(
-            null!,
+            session,
             characters,
             new Dictionary<string, Item>(),
             new Dictionary<string, Location> { [location.Id] = location },
@@ -47,147 +57,162 @@ public class SceneInterruptChangeHandlerTests
     [Fact]
     public async Task ApplyAsync_WhenRollSucceeds_SpawnsCrowdFigure()
     {
-        var resolver = new EncounterResolver(() => 0.0);
-        var handler = new SceneInterruptChangeHandler(resolver);
-        var dispatched = new List<WorldChange>();
-        var dispatcher = new WorldChangeDispatcher(
-            [new CapturingHandler(dispatched)],
-            new CampaignDocumentKeys(),
-            NullLogger<WorldChangeDispatcher>.Instance);
-
-        var character = new Character
+        using (var session = _fixture.Store.OpenAsyncSession())
         {
-            Id = "chars/valen",
-            Name = "Valen",
-            CurrentLocationId = "locations/hall",
-            VisualTags = ["bloody", "wanted"]
-        };
-        var location = new Location
-        {
-            Id = "locations/hall",
-            Name = "Training Hall",
-            Type = LocationType.Building,
-            AmbientCrowd = "25 warriors and mercenaries"
-        };
+            var resolver = new EncounterResolver(() => 0.0);
+            var handler = new SceneInterruptChangeHandler(resolver);
+            var dispatched = new List<WorldChange>();
+            var dispatcher = new WorldChangeDispatcher(
+                [new CapturingHandler(dispatched)],
+                new CampaignDocumentKeys(),
+                NullLogger<WorldChangeDispatcher>.Instance);
 
-        var result = await handler.ApplyAsync(new SceneInterruptCheck
-        {
-            CharacterId = "chars/valen",
-            LocationId = "locations/hall",
-            RiskModifier = 30,
-            Notes = "Famous wanted face"
-        }, CreateContext(character, location, dispatcher: dispatcher), CancellationToken.None);
+            var character = new Character
+            {
+                Id = "chars/valen",
+                Name = "Valen",
+                CurrentLocationId = "locations/hall",
+                VisualTags = ["bloody", "wanted"]
+            };
+            var location = new Location
+            {
+                Id = "locations/hall",
+                Name = "Training Hall",
+                Type = LocationType.Building,
+                AmbientCrowd = "25 warriors and mercenaries"
+            };
 
-        Assert.True(result.Success);
-        Assert.Contains("INTERRUPT", result.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(dispatched, d => d is EventOccurred e && e.Category == EventCategory.SceneInterrupt);
-        Assert.Contains(dispatched, d => d is CharacterCreate);
+            var result = await handler.ApplyAsync(new SceneInterruptCheck
+            {
+                CharacterId = "chars/valen",
+                LocationId = "locations/hall",
+                RiskModifier = 30,
+                Notes = "Famous wanted face"
+            }, CreateContext(session, character, location, dispatcher: dispatcher), CancellationToken.None);
+
+            Assert.True(result.Success);
+            Assert.Contains("INTERRUPT", result.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(dispatched, d => d is EventOccurred e && e.Category == EventCategory.SceneInterrupt);
+            Assert.Contains(dispatched, d => d is CharacterCreate);
+        }
     }
 
     [Fact]
     public async Task ApplyAsync_WhenRollFails_ReturnsNoReaction()
     {
-        var resolver = new EncounterResolver(() => 0.99);
-        var handler = new SceneInterruptChangeHandler(resolver);
-        var character = new Character
+        using (var session = _fixture.Store.OpenAsyncSession())
         {
-            Id = "chars/valen",
-            Name = "Valen",
-            CurrentLocationId = "locations/hall"
-        };
-        var location = new Location
-        {
-            Id = "locations/hall",
-            Name = "Hall",
-            AmbientCrowd = "A crowd"
-        };
+            var resolver = new EncounterResolver(() => 0.99);
+            var handler = new SceneInterruptChangeHandler(resolver);
+            var character = new Character
+            {
+                Id = "chars/valen",
+                Name = "Valen",
+                CurrentLocationId = "locations/hall"
+            };
+            var location = new Location
+            {
+                Id = "locations/hall",
+                Name = "Hall",
+                AmbientCrowd = "A crowd"
+            };
 
-        var result = await handler.ApplyAsync(new SceneInterruptCheck
-        {
-            CharacterId = "chars/valen",
-            LocationId = "locations/hall"
-        }, CreateContext(character, location), CancellationToken.None);
+            var result = await handler.ApplyAsync(new SceneInterruptCheck
+            {
+                CharacterId = "chars/valen",
+                LocationId = "locations/hall"
+            }, CreateContext(session, character, location), CancellationToken.None);
 
-        Assert.True(result.Success);
-        Assert.Contains("no reaction", result.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.True(result.Success);
+            Assert.Contains("no reaction", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
     public async Task ApplyAsync_FailsWithoutCrowdContext()
     {
-        var handler = new SceneInterruptChangeHandler(new EncounterResolver(() => 0.0));
-        var character = new Character
+        using (var session = _fixture.Store.OpenAsyncSession())
         {
-            Id = "chars/valen",
-            Name = "Valen",
-            CurrentLocationId = "locations/clearing"
-        };
-        var location = new Location { Id = "locations/clearing", Name = "Clearing" };
+            var handler = new SceneInterruptChangeHandler(new EncounterResolver(() => 0.0));
+            var character = new Character
+            {
+                Id = "chars/valen",
+                Name = "Valen",
+                CurrentLocationId = "locations/clearing"
+            };
+            var location = new Location { Id = "locations/clearing", Name = "Clearing" };
 
-        var result = await handler.ApplyAsync(new SceneInterruptCheck
-        {
-            CharacterId = "chars/valen",
-            LocationId = "locations/clearing"
-        }, CreateContext(character, location), CancellationToken.None);
+            var result = await handler.ApplyAsync(new SceneInterruptCheck
+            {
+                CharacterId = "chars/valen",
+                LocationId = "locations/clearing"
+            }, CreateContext(session, character, location), CancellationToken.None);
 
-        Assert.False(result.Success);
-        Assert.Contains("ambientCrowd", result.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.False(result.Success);
+            Assert.Contains("ambientCrowd", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
     public async Task ApplyAsync_FailsDuringActiveCombat()
     {
-        var handler = new SceneInterruptChangeHandler(new EncounterResolver(() => 0.0));
-        var character = new Character
+        using (var session = _fixture.Store.OpenAsyncSession())
         {
-            Id = "chars/valen",
-            Name = "Valen",
-            CurrentLocationId = "locations/hall"
-        };
-        var location = new Location
-        {
-            Id = "locations/hall",
-            Name = "Hall",
-            AmbientCrowd = "Crowd"
-        };
+            var handler = new SceneInterruptChangeHandler(new EncounterResolver(() => 0.0));
+            var character = new Character
+            {
+                Id = "chars/valen",
+                Name = "Valen",
+                CurrentLocationId = "locations/hall"
+            };
+            var location = new Location
+            {
+                Id = "locations/hall",
+                Name = "Hall",
+                AmbientCrowd = "Crowd"
+            };
 
-        var result = await handler.ApplyAsync(
-            new SceneInterruptCheck { CharacterId = "chars/valen", LocationId = "locations/hall" },
-            CreateContext(character, location, activeCombat: new CombatEncounter { Id = "combat/1", LocationId = "locations/hall" }),
-            CancellationToken.None);
+            var result = await handler.ApplyAsync(
+                new SceneInterruptCheck { CharacterId = "chars/valen", LocationId = "locations/hall" },
+                CreateContext(session, character, location, activeCombat: new CombatEncounter { Id = "combat/1", LocationId = "locations/hall" }),
+                CancellationToken.None);
 
-        Assert.False(result.Success);
-        Assert.Contains("combat", result.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.False(result.Success);
+            Assert.Contains("combat", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
     public async Task ApplyAsync_AllowsThreePresentNpcsWithoutAmbientCrowd()
     {
-        var resolver = new EncounterResolver(() => 0.0);
-        var handler = new SceneInterruptChangeHandler(resolver);
-        var character = new Character
+        using (var session = _fixture.Store.OpenAsyncSession())
         {
-            Id = "chars/valen",
-            Name = "Valen",
-            CurrentLocationId = "locations/plaza"
-        };
-        var location = new Location { Id = "locations/plaza", Name = "Plaza" };
-        var others = new[]
-        {
-            new Character { Id = "chars/a", CurrentLocationId = "locations/plaza" },
-            new Character { Id = "chars/b", CurrentLocationId = "locations/plaza" },
-            new Character { Id = "chars/c", CurrentLocationId = "locations/plaza" }
-        };
+            var resolver = new EncounterResolver(() => 0.0);
+            var handler = new SceneInterruptChangeHandler(resolver);
+            var character = new Character
+            {
+                Id = "chars/valen",
+                Name = "Valen",
+                CurrentLocationId = "locations/plaza"
+            };
+            var location = new Location { Id = "locations/plaza", Name = "Plaza" };
+            var others = new[]
+            {
+                new Character { Id = "chars/a", CurrentLocationId = "locations/plaza" },
+                new Character { Id = "chars/b", CurrentLocationId = "locations/plaza" },
+                new Character { Id = "chars/c", CurrentLocationId = "locations/plaza" }
+            };
 
-        var result = await handler.ApplyAsync(new SceneInterruptCheck
-        {
-            CharacterId = "chars/valen",
-            LocationId = "locations/plaza",
-            RiskModifier = 40
-        }, CreateContext(character, location, others), CancellationToken.None);
+            var result = await handler.ApplyAsync(new SceneInterruptCheck
+            {
+                CharacterId = "chars/valen",
+                LocationId = "locations/plaza",
+                RiskModifier = 40
+            }, CreateContext(session, character, location, others), CancellationToken.None);
 
-        Assert.True(result.Success);
-        Assert.Contains("INTERRUPT", result.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.True(result.Success);
+            Assert.Contains("INTERRUPT", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private sealed class CapturingHandler : IWorldChangeHandler
