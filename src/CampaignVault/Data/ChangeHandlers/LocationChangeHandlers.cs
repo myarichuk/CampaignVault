@@ -12,7 +12,7 @@ public class LocationUpdateHandler : IWorldChangeHandler
         
         if (!context.Locations.TryGetValue(lu.LocationId, out var loc))
         {
-            loc = context.Session != null ? await context.Session.LoadAsync<Location>(lu.LocationId, ct) : null;
+            loc = await context.Session.LoadAsync<Location>(lu.LocationId, ct);
             if (loc == null)
             {
                 var hints = await context.SuggestLocationMatchAsync(lu.LocationId);
@@ -65,7 +65,7 @@ public class LocationUpdateHandler : IWorldChangeHandler
             {
                 var exitTargetId = lu.AddExit.TargetLocationId;
                 var exitTargetExists = context.Locations.ContainsKey(exitTargetId)
-                    || (context.Session != null && await context.Session.LoadAsync<Location>(exitTargetId, ct) != null);
+                    || (await context.Session.LoadAsync<Location>(exitTargetId, ct) != null);
                 if (!exitTargetExists)
                 {
                     context.RecordMessage(
@@ -226,7 +226,7 @@ public class LocationUpdateHandler : IWorldChangeHandler
         var targetId = forwardExit.TargetLocationId;
         if (!context.Locations.TryGetValue(targetId, out var targetLoc))
         {
-            targetLoc = context.Session != null ? await context.Session.LoadAsync<Location>(targetId, ct) : null;
+            targetLoc = await context.Session.LoadAsync<Location>(targetId, ct);
             if (targetLoc == null)
             {
                 return;

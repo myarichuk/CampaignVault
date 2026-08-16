@@ -31,11 +31,6 @@ public sealed class ArchiveEntityChangeHandler : IWorldChangeHandler
                 "and simply stop referencing it.");
         }
 
-        if (context.Session == null)
-        {
-            return ChangeHandlerResult.Failure("No session available to archive entities.");
-        }
-
         IArchivable? entity = ac.EntityType switch
         {
             ArchivableEntityType.Location => await context.Session.LoadAsync<Location>(ac.EntityId, ct),
