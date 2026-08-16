@@ -15,7 +15,7 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
 
         if (!context.Characters.TryGetValue(rel.CharacterId, out var source))
         {
-            source = context.Session != null ? await context.Session.LoadAsync<Character>(rel.CharacterId, ct) : null;
+            source = await context.Session.LoadAsync<Character>(rel.CharacterId, ct);
             if (source == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(rel.CharacterId);

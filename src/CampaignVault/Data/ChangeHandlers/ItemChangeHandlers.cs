@@ -16,7 +16,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         var iu = (ItemUpdate)change;
         if (string.IsNullOrWhiteSpace(iu.ItemId)) return ChangeHandlerResult.Failure("itemId is required.");
 
-        var item = context.Session != null ? await context.Session.LoadAsync<Item>(iu.ItemId, ct) : null;
+        var item = await context.Session.LoadAsync<Item>(iu.ItemId, ct);
         if (item == null) return ChangeHandlerResult.Failure($"Item '{iu.ItemId}' not found. Cannot update.");
 
         var stateBefore = item.CurrentState;

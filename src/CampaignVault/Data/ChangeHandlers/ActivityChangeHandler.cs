@@ -15,7 +15,7 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
         
         if (!context.Characters.TryGetValue(act.CharacterId, out var character))
         {
-            character = context.Session != null ? await context.Session.LoadAsync<Character>(act.CharacterId, ct) : null;
+            character = await context.Session.LoadAsync<Character>(act.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(act.CharacterId);
@@ -54,7 +54,7 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
         {
             var destination = context.Locations.TryGetValue(act.NewLocationId, out var loc)
                 ? loc
-                : context.Session != null ? await context.Session.LoadAsync<Location>(act.NewLocationId, ct) : null;
+                : await context.Session.LoadAsync<Location>(act.NewLocationId, ct);
             if (destination != null)
             {
                 LocationPoiMaterializer.Apply(destination, act.PoiName, act.PoiDetails);
