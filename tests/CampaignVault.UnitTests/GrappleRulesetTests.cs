@@ -15,8 +15,7 @@ public class GrappleRulesetTests
     private ChangeContext CreateContext(params Character[] characters)
     {
         var charDict = characters.ToDictionary(c => c.Id);
-        return new ChangeContext(
-            sessionForTests: null,
+        return ChangeContextTestHelper.Create(
             characters: charDict,
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
@@ -24,8 +23,7 @@ public class GrappleRulesetTests
             quests: new Dictionary<string, Quest>(),
             logger: NullLogger.Instance,
             summary: [],
-            dispatcher: new WorldChangeDispatcher([], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null);
+            dispatcher: new WorldChangeDispatcher([], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance));
     }
 
     [Fact]
@@ -111,8 +109,7 @@ public class GrappleRulesetTests
         };
         var destination = new Location { Id = "loc_2", Name = "Forest" };
 
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: new Dictionary<string, Character> { { character.Id, character } },
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location> { { destination.Id, destination } },
@@ -121,8 +118,7 @@ public class GrappleRulesetTests
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: new WorldChangeDispatcher([new TravelChangeHandler(new EncounterResolver())], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
-            activeCombat: null,
-            campaignName: null);
+            activeCombat: null);
 
         var result = await new TravelChangeHandler(new EncounterResolver()).ApplyAsync(
             new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2" },

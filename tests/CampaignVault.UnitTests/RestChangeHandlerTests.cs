@@ -27,16 +27,13 @@ public class RestChangeHandlerTests
             SecurityModifier = -50 // Ensure max danger
         };
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { ["chars/1"] = new Character { Id = "chars/1", CurrentLocationId = "loc/1" } },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location> { ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Wilderness } },
-            new Dictionary<string, Faction>(),
-            new Dictionary<string, Quest>(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
-            [],
-            new WorldChangeDispatcher([], new CampaignVault.Data.CampaignDocumentKeys(), Microsoft.Extensions.Logging.Abstractions.NullLogger<WorldChangeDispatcher>.Instance)
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { ["chars/1"] = new Character { Id = "chars/1", CurrentLocationId = "loc/1" } },
+            locations: new Dictionary<string, Location> { ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Wilderness } },
+            factions: new Dictionary<string, Faction>(),
+            quests: new Dictionary<string, Quest>(),
+            logger: Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
+            summary: []
         );
 
         // Act
@@ -79,19 +76,15 @@ public class RestChangeHandlerTests
         var rule = new EncounterResolver(() => 1.0);
         var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [charId] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [charId] = character },
+            locations: new Dictionary<string, Location>
             {
                 ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
             },
-            null,
-            null,
-            NullLogger.Instance,
-            summary,
-            dispatcher);
+            logger: NullLogger.Instance,
+            summary: summary,
+            dispatcher: dispatcher);
 
         var result = await handler.ApplyAsync(new RestChange
         {
@@ -135,19 +128,15 @@ public class RestChangeHandlerTests
         var rule = new EncounterResolver(() => 1.0);
         var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [charId] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [charId] = character },
+            locations: new Dictionary<string, Location>
             {
                 ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
             },
-            null,
-            null,
-            NullLogger.Instance,
-            summary,
-            dispatcher);
+            logger: NullLogger.Instance,
+            summary: summary,
+            dispatcher: dispatcher);
 
         var result = await handler.ApplyAsync(new RestChange
         {
@@ -192,19 +181,15 @@ public class RestChangeHandlerTests
         var rule = new EncounterResolver(() => 1.0);
         var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [charId] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [charId] = character },
+            locations: new Dictionary<string, Location>
             {
                 ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
             },
-            null,
-            null,
-            NullLogger.Instance,
-            summary,
-            dispatcher);
+            logger: NullLogger.Instance,
+            summary: summary,
+            dispatcher: dispatcher);
 
         var result = await handler.ApplyAsync(new RestChange
         {
@@ -245,19 +230,15 @@ public class RestChangeHandlerTests
         var rule = new EncounterResolver(() => 1.0);
         var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [charId] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [charId] = character },
+            locations: new Dictionary<string, Location>
             {
                 ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
             },
-            null,
-            null,
-            NullLogger.Instance,
-            summary,
-            dispatcher);
+            logger: NullLogger.Instance,
+            summary: summary,
+            dispatcher: dispatcher);
 
         var result = await handler.ApplyAsync(new RestChange
         {
@@ -294,16 +275,13 @@ public class RestChangeHandlerTests
         var rule = new EncounterResolver(() => 0.0); // guarantees interrupt
         var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [charId] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location> { ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Wilderness } },
-            new Dictionary<string, Faction>(),
-            new Dictionary<string, Quest>(),
-            NullLogger.Instance,
-            [],
-            new WorldChangeDispatcher([], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance));
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [charId] = character },
+            locations: new Dictionary<string, Location> { ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Wilderness } },
+            factions: new Dictionary<string, Faction>(),
+            quests: new Dictionary<string, Quest>(),
+            logger: NullLogger.Instance,
+            summary: []);
 
         var result = await handler.ApplyAsync(new RestChange
         {
@@ -338,19 +316,15 @@ public class RestChangeHandlerTests
         var rule = new EncounterResolver(() => 1.0);
         var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [charId] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [charId] = character },
+            locations: new Dictionary<string, Location>
             {
                 ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
             },
-            null,
-            null,
-            NullLogger.Instance,
-            summary,
-            dispatcher);
+            logger: NullLogger.Instance,
+            summary: summary,
+            dispatcher: dispatcher);
 
         var result = await handler.ApplyAsync(new RestChange
         {
@@ -385,19 +359,15 @@ public class RestChangeHandlerTests
         var rule = new EncounterResolver(() => 1.0);
         var handler = new RestChangeHandler(rule, RulesetDataTestHelper.CreateConditionProvider());
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [charId] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [charId] = character },
+            locations: new Dictionary<string, Location>
             {
                 ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Settlement }
             },
-            null,
-            null,
-            NullLogger.Instance,
-            summary,
-            dispatcher);
+            logger: NullLogger.Instance,
+            summary: summary,
+            dispatcher: dispatcher);
 
         var result = await handler.ApplyAsync(new RestChange
         {
@@ -424,16 +394,13 @@ public class RestChangeHandlerTests
             new CampaignDocumentKeys(),
             NullLogger<WorldChangeDispatcher>.Instance);
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [charId] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>(),
-            null,
-            null,
-            NullLogger.Instance,
-            summary,
-            dispatcher);
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [charId] = character },
+            items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
+            logger: NullLogger.Instance,
+            summary: summary,
+            dispatcher: dispatcher);
 
         var result = await handler.ApplyAsync(new StatusChange
         {

@@ -51,8 +51,7 @@ public class TravelEngagementClearingTests
             NullLogger<WorldChangeDispatcher>.Instance
         );
 
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: characters,
             items: new Dictionary<string, Item>(),
             locations: locations,
@@ -61,8 +60,7 @@ public class TravelEngagementClearingTests
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: dispatcher,
-            activeCombat: null,
-            campaignName: null
+            activeCombat: null
         );
 
         var traveler = characters.Values.First(c => c.CurrentLocationId != null || characters.Count == 1);
@@ -247,8 +245,7 @@ public class TravelEngagementClearingTests
             new CampaignDocumentKeys(),
             NullLogger<WorldChangeDispatcher>.Instance
         );
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: characters,
             items: new Dictionary<string, Item>(),
             locations: locations,
@@ -257,8 +254,7 @@ public class TravelEngagementClearingTests
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: dispatcher,
-            activeCombat: null,
-            campaignName: null
+            activeCombat: null
         );
 
         var change = new TravelChange { CharacterId = traveler.Id, DestinationLocationId = destination.Id, TravelCostHoursOverride = 4.0 };

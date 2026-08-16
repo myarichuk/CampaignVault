@@ -990,18 +990,17 @@ public class WorldChangeDispatcherTests
         });
 
         var dispatcher = CreateDispatcher(hpHandler);
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character>(),
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>(),
-            new Dictionary<string, Faction>(),
-            new Dictionary<string, Quest>(),
-            NullLogger<WorldChangeDispatcher>.Instance,
-            [],
-            dispatcher,
-            null,
-            "test_campaign");
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character>(),
+            items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
+            factions: new Dictionary<string, Faction>(),
+            quests: new Dictionary<string, Quest>(),
+            logger: NullLogger<WorldChangeDispatcher>.Instance,
+            summary: [],
+            dispatcher: dispatcher,
+            activeCombat: null,
+            campaignName: "test_campaign");
 
         var targetId = "chars/goblin-42";
         await dispatcher.DispatchMutationAsync(context, new HpChange { CharacterId = targetId, Delta = -3 });

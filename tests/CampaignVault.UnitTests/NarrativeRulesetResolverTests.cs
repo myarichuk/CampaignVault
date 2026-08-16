@@ -61,9 +61,13 @@ public class NarrativeRulesetResolverTests
 
         var chars = new Dictionary<string, Character> { { _actor.Id, _actor } };
         var dispatcher = new WorldChangeDispatcher([], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
-        var context = new ChangeContext(
-            null, chars, new Dictionary<string, Item>(), new Dictionary<string, Location>(),
-            null, null, NullLogger.Instance, [], dispatcher
+        var context = ChangeContextTestHelper.Create(
+            characters: chars,
+            items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
+            logger: NullLogger.Instance,
+            summary: [],
+            dispatcher: dispatcher
         );
 
         var output = await _resolver.Actions.ResolveAsync(context, action);
@@ -99,9 +103,14 @@ public class NarrativeRulesetResolverTests
 
         var chars = new Dictionary<string, Character> { { _actor.Id, _actor }, { target.Id, target } };
         var dispatcher = new WorldChangeDispatcher([], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
-        var context = new ChangeContext(
-            null, chars, new Dictionary<string, Item>(), new Dictionary<string, Location>(),
-            null, null, NullLogger.Instance, [], dispatcher, config: new CampaignConfig());
+        var context = ChangeContextTestHelper.Create(
+            characters: chars,
+            items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
+            logger: NullLogger.Instance,
+            summary: [],
+            dispatcher: dispatcher,
+            config: new CampaignConfig());
 
         var output = await _resolver.Actions.ResolveAsync(context, action);
 
@@ -129,9 +138,13 @@ public class NarrativeRulesetResolverTests
 
         var chars = new Dictionary<string, Character> { { _actor.Id, _actor }, { _target.Id, _target } };
         var dispatcher = new WorldChangeDispatcher([], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
-        var context = new ChangeContext(
-            null, chars, new Dictionary<string, Item>(), new Dictionary<string, Location>(),
-            null, null, NullLogger.Instance, [], dispatcher
+        var context = ChangeContextTestHelper.Create(
+            characters: chars,
+            items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
+            logger: NullLogger.Instance,
+            summary: [],
+            dispatcher: dispatcher
         );
 
         var output = await _resolver.Actions.ResolveAsync(context, action);

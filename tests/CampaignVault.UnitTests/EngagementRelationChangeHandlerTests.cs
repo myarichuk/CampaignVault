@@ -13,8 +13,7 @@ public class EngagementRelationChangeHandlerTests
     private ChangeContext CreateContext(params Character[] characters)
     {
         var charDict = characters.ToDictionary(c => c.Id);
-        return new ChangeContext(
-            sessionForTests: null,
+        return ChangeContextTestHelper.Create(
             characters: charDict,
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
@@ -24,8 +23,7 @@ public class EngagementRelationChangeHandlerTests
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 [new EngagementRelationChangeHandler()],
-                new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null);
+                new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance));
     }
 
     [Fact]

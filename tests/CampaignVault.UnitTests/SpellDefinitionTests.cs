@@ -172,8 +172,7 @@ public class SpellDefinitionTests
         var handler = new ResourceChangeHandler(Spells);
         var character = MakeWizardWithSlots();
         var summary = new List<string>();
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: new Dictionary<string, Character> { [character.Id] = character },
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
@@ -184,8 +183,7 @@ public class SpellDefinitionTests
             dispatcher: new WorldChangeDispatcher(
                 [],
                 new CampaignDocumentKeys(),
-                NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null);
+                NullLogger<WorldChangeDispatcher>.Instance));
 
         var result = await handler.ApplyAsync(new ResourceChange
         {
@@ -205,8 +203,7 @@ public class SpellDefinitionTests
         var handler = new ResourceChangeHandler(Spells);
         var character = MakeWizardWithSlots();
         var summary = new List<string>();
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: new Dictionary<string, Character> { [character.Id] = character },
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
@@ -217,8 +214,7 @@ public class SpellDefinitionTests
             dispatcher: new WorldChangeDispatcher(
                 [],
                 new CampaignDocumentKeys(),
-                NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null);
+                NullLogger<WorldChangeDispatcher>.Instance));
 
         var result = await handler.ApplyAsync(new ResourceChange
         {

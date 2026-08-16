@@ -28,7 +28,7 @@ public class Pf2eRulesetResolverTests
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: new WorldChangeDispatcher(
-                new IWorldChangeHandler[0], 
+                new IWorldChangeHandler[0],
                 new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             campaignName: null
         );

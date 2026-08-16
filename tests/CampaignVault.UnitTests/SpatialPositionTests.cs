@@ -46,8 +46,7 @@ public class SpatialPositionTests
     public async Task SpatialPositionChangeHandler_SetsAndRemovesPosition()
     {
         var character = new Character { Id = "char_1", SystemStats = new SystemExtension() };
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: new Dictionary<string, Character> { { character.Id, character } },
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
@@ -57,8 +56,7 @@ public class SpatialPositionTests
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 [new SpatialPositionChangeHandler()],
-                new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null);
+                new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance));
 
         var handler = new SpatialPositionChangeHandler();
         var set = new SpatialPositionChange

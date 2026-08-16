@@ -15,22 +15,21 @@ public class EncounterResolverTests
     private ChangeContext CreateContext(Dictionary<string, string>? options = null)
     {
         options ??= new Dictionary<string, string>();
-        
+
         var dispatcher = new WorldChangeDispatcher(
-            [], 
+            [],
             new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
 
-        var context = new ChangeContext(
-            null!, // Session
-            new Dictionary<string, Character>(),
-            new Dictionary<string, Item>(), // Items
-            new Dictionary<string, Location>(),
-            new Dictionary<string, Faction>(),
-            new Dictionary<string, Quest>(),
-            NullLogger.Instance,
-            [],
-            dispatcher);
-        
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character>(),
+            items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
+            factions: new Dictionary<string, Faction>(),
+            quests: new Dictionary<string, Quest>(),
+            logger: NullLogger.Instance,
+            summary: [],
+            dispatcher: dispatcher);
+
         context.GetSystemOptionsAsync = () => Task.FromResult(options);
         return context;
     }

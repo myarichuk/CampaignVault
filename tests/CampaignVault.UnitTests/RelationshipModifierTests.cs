@@ -117,20 +117,15 @@ public class RelationshipModifierTests
 
         var charDict = new Dictionary<string, Character> { { "actor", actor }, { "target", target } };
 
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: charDict,
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
-            factions: null,
-            quests: null,
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 new IWorldChangeHandler[0],
-                new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null,
-            config: null
+                new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance)
         );
 
         var action = new RulesetAction
@@ -165,19 +160,15 @@ public class RelationshipModifierTests
         var charDict = new Dictionary<string, Character> { { "actor", actor }, { "target", target } };
         var config = new CampaignConfig();
 
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: charDict,
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
-            factions: null,
-            quests: null,
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 new IWorldChangeHandler[0],
                 new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null,
             config: config
         );
 
@@ -213,19 +204,15 @@ public class RelationshipModifierTests
         var charDict = new Dictionary<string, Character> { { "actor", actor }, { "target", target } };
         var config = new CampaignConfig();
 
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: charDict,
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
-            factions: null,
-            quests: null,
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 new IWorldChangeHandler[0],
                 new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null,
             config: config
         );
 
@@ -266,19 +253,15 @@ public class RelationshipModifierTests
         var charDict = new Dictionary<string, Character> { { "actor", actor }, { "target", target } };
         var config = new CampaignConfig();
 
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: charDict,
             items: new Dictionary<string, Item>(),
             locations: new Dictionary<string, Location>(),
-            factions: null,
-            quests: null,
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: new WorldChangeDispatcher(
                 new IWorldChangeHandler[0],
                 new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
-            campaignName: null,
             config: config
         );
 

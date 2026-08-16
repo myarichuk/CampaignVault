@@ -99,16 +99,15 @@ public class RulesetDataDiTests
             }
         };
 
-        var context = new ChangeContext(
-            null!,
-            new Dictionary<string, Character> { [character.Id] = character },
-            new Dictionary<string, Item>(),
-            new Dictionary<string, Location>(),
-            new Dictionary<string, Faction>(),
-            new Dictionary<string, Quest>(),
-            NullLogger.Instance,
-            [],
-            new WorldChangeDispatcher(
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { [character.Id] = character },
+            items: new Dictionary<string, Item>(),
+            locations: new Dictionary<string, Location>(),
+            factions: new Dictionary<string, Faction>(),
+            quests: new Dictionary<string, Quest>(),
+            logger: NullLogger.Instance,
+            summary: [],
+            dispatcher: new WorldChangeDispatcher(
                 [],
                 new CampaignDocumentKeys(),
                 NullLogger<WorldChangeDispatcher>.Instance));

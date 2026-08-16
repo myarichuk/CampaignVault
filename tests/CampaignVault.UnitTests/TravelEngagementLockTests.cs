@@ -41,8 +41,7 @@ public class TravelEngagementLockTests
             NullLogger<WorldChangeDispatcher>.Instance
         );
 
-        var context = new ChangeContext(
-            sessionForTests: null,
+        var context = ChangeContextTestHelper.Create(
             characters: charDict,
             items: new Dictionary<string, Item>(),
             locations: locDict,
@@ -51,8 +50,7 @@ public class TravelEngagementLockTests
             logger: NullLogger.Instance,
             summary: [],
             dispatcher: dispatcher,
-            activeCombat: null,
-            campaignName: null
+            activeCombat: null
         );
 
         var handler = new TravelChangeHandler(new EncounterResolver());
