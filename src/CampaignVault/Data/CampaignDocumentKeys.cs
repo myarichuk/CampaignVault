@@ -65,5 +65,11 @@ public sealed class CampaignDocumentKeys
     public string StateGuidance(string campaignName) =>
         $"campaigns/{Normalize(campaignName)}/state/guidance";
 
+    /// <summary>
+    /// Returns the document ID for the campaign's take_turn Full/Delta reseed cursor.
+    /// </summary>
+    public string StateTurnCursor(string campaignName) =>
+        $"campaigns/{Normalize(campaignName)}/state/turn-cursor";
+
     private static string Normalize(string name) => CampaignSlug.Canonicalize(name);
 }

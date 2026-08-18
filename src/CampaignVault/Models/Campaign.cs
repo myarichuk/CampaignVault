@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace CampaignVault.Models;
 
 /// <summary>
@@ -31,7 +29,6 @@ public class Campaign
     /// The (locked) TTRPG ruleset for this specific campaign.
     /// Once initialized/locked, changing this is prevented (or requires explicit force + audit).
     /// </summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public string System { get; set; } = RulesetSystem.Dnd5e;
 
     /// <summary>

@@ -68,14 +68,6 @@ internal static class WorldBuildSchemaBuilder
                     ["items"] = new JsonObject { ["type"] = "object" },
                     ["description"] = "Plot threads to upsert"
                 }
-            },
-            ["$defs"] = new JsonObject
-            {
-                ["systemExtension"] = new JsonObject
-                {
-                    ["type"] = "object",
-                    ["description"] = "Ruleset-specific system extension"
-                }
             }
         };
 

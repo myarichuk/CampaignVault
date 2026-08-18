@@ -994,11 +994,14 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
     {
         var tools = CreateTools();
 
-        // Act: take_turn with world state request
+        // Act: take_turn with world state request. ForceFullReseed pins this to Full mode so the
+        // assertions below (which check the full WorldState shape) are deterministic regardless of
+        // how many prior take_turn calls against this shared test campaign advanced the reseed cursor.
         var request = new TakeTurnRequest
         {
             Changes = null,
-            IncludeWorldState = true
+            IncludeWorldState = true,
+            ForceFullReseed = true
         };
 
         var result = await tools.TakeTurn(request);
@@ -1032,11 +1035,13 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             },
             TestCampaignDefaults.Slug);
 
-        // Act: take_turn with party inclusion
+        // Act: take_turn with party inclusion. ForceFullReseed pins this to Full mode so the assertion
+        // below (full Party shape) is deterministic regardless of the shared test campaign's reseed cursor.
         var request = new TakeTurnRequest
         {
             Changes = null,
-            IncludeParty = true
+            IncludeParty = true,
+            ForceFullReseed = true
         };
 
         var result = await tools.TakeTurn(request);

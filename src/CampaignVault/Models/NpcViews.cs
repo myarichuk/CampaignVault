@@ -124,4 +124,8 @@ public class NpcSummaryView
     public Dictionary<string, float> KnownNeeds { get; set; } = [];
     public List<ItemSummaryView>? Equipped { get; set; }
     public List<ItemSummaryView>? Carried { get; set; }
+
+    /// <summary>RP-advisory initiative/memory enrichment, present only for the up-to-2 NPCs selected this
+    /// take_turn call (see MutationTools.SelectAndEnrichInitiativeAsync). Null for everyone else.</summary>
+    public NpcInitiativeEnrichment? Initiative { get; set; }
 }

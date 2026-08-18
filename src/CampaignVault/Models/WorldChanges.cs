@@ -80,6 +80,7 @@ public abstract class WorldChange
 /// Attempt to pass time resting. The engine calculates the danger of the location and the LLM's security modifier
 /// to determine if the rest is interrupted by an encounter.
 /// </summary>
+[Description("Attempt to rest; the engine may interrupt it with an encounter based on location danger.")]
 public class RestChange : WorldChange
 {
     [Description("ID of the character attempting to rest.")]
@@ -111,6 +112,7 @@ public class RestChange : WorldChange
 /// <summary>
 /// Grant or deduct experience points to a character.
 /// </summary>
+[Description("Grant or deduct experience points to a character.")]
 public class XpGrantChange : WorldChange
 {
     [Description("ID of the character receiving XP (e.g., 'chars/hero').")]
@@ -150,6 +152,7 @@ public enum XpSource
 /// ENGINE MACRO: Rolls crowd reaction internally and may emit a derived ActivityChange promoting
 /// a transient from the crowd. Cooldown: one interrupt per location per day.
 /// </summary>
+[Description("Roll whether the ambient crowd interrupts a tense scene; may spawn a transient NPC activity.")]
 public class SceneInterruptCheck : WorldChange
 {
     [Description("ID of the location where the scene beat occurred.")]
@@ -172,6 +175,7 @@ public class SceneInterruptCheck : WorldChange
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
 [CommitCategory("Combat")]
 [CommitHotTier]
+[Description("Adjust a character's current HP by a delta. Positive heals, negative damages.")]
 public class HpChange : WorldChange
 {
     [Description("ID of the character whose HP to modify (e.g. 'chars/grog' or 'chars/elara-voss'). Must exist.")]
@@ -186,6 +190,7 @@ public class HpChange : WorldChange
 /// <summary>Move/transfer an existing item to a new holder (character, location, or another container item).</summary>
 [CommitCategory("World")]
 [CommitHotTier]
+[Description("Move/transfer an existing item to a new holder (character, location, or container item).")]
 public class ItemTransfer : WorldChange
 {
     [Description("ID of the item being moved (e.g. 'items/iron-key-17').")]
@@ -208,6 +213,7 @@ public class ItemTransfer : WorldChange
 /// </summary>
 [CommitCategory("Combat")]
 [CommitHotTier]
+[Description("Add a structured status effect (condition) to a character, with optional modifiers and expiration.")]
 public class StatusChange : WorldChange
 {
     [Description("ID of the character receiving the status (e.g. 'chars/grog').")]
@@ -227,6 +233,7 @@ public class StatusChange : WorldChange
 }
 
 /// <summary>Remove a named status/condition from a character (case-insensitive match). Removes all matching entries.</summary>
+[Description("Remove a named status/condition from a character (case-insensitive match).")]
 public class StatusRemove : WorldChange
 {
     [Description("ID of the character whose status to remove (e.g. 'chars/grog').")]
@@ -244,6 +251,7 @@ public class StatusRemove : WorldChange
 /// </summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
+[Description("Record a noteworthy occurrence in the world; appears in get_scene, recall_history, get_world_state.")]
 public class EventOccurred : WorldChange
 {
     [Description("Short human-readable summary of what happened. This becomes the main text of the event log entry.")]
@@ -294,6 +302,7 @@ public class EventOccurred : WorldChange
 }
 
 /// <summary>Change the state of an existing rumor and optionally rewrite its current text.</summary>
+[Description("Change the state of an existing rumor and optionally rewrite its current text.")]
 public class RumorEvolves : WorldChange
 {
     [Description("ID of the rumor to evolve (e.g. 'rumors/bandit-activity-in-woods'). Must already exist.")]
@@ -311,6 +320,7 @@ public class RumorEvolves : WorldChange
 }
 
 /// <summary>Seed a new rumor. State starts at Nascent; advance via <see cref="RumorEvolves"/> ($type rumor).</summary>
+[Description("Seed a new rumor at Nascent state.")]
 public class RumorCreate : WorldChange
 {
     [Description("Unique rumor ID (e.g. 'rumors/nightshade-gang'). Namespace with campaign slug when campaign-specific.")]
@@ -333,6 +343,7 @@ public class RumorCreate : WorldChange
 /// <summary>Apply a numeric delta to the relationship score between two characters. Range is typically -100 to +100.</summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
+[Description("Apply a numeric delta to the relationship score between two characters (-100 to +100).")]
 public class RelationshipChange : WorldChange
 {
     [Description("ID of the character whose opinion of the target is changing (e.g. 'chars/elara-voss').")]
@@ -358,6 +369,7 @@ public class RelationshipChange : WorldChange
 /// </summary>
 [CommitCategory("World")]
 [CommitHotTier]
+[Description("Establish, update, or remove a pairwise engagement state between two entities (grapple, embrace, watch).")]
 public class EngagementRelationChange : WorldChange
 {
     [Description("ID of the character initiating or anchoring the relation (e.g. 'chars/bard').")]
@@ -391,6 +403,7 @@ public class EngagementRelationChange : WorldChange
 /// Establish, update, or remove relative zone/distance positioning for a character.
 /// For pairwise grapple/embrace anchors, use <see cref="EngagementRelationChange"/> instead.
 /// </summary>
+[Description("Establish, update, or remove relative zone/distance positioning for a character.")]
 public class SpatialPositionChange : WorldChange
 {
     [Description("ID of the character whose position is being set (e.g. 'chars/drunk').")]
@@ -421,6 +434,7 @@ public class SpatialPositionChange : WorldChange
 /// (bidirectional mirroring, no-op detection, history logging) is identical either way. Prefer the
 /// bare engagement_relation/spatial_position types for single-purpose updates.
 /// </summary>
+[Description("Composite convenience: set engagement and/or spatial position against a target in one commit.")]
 public class SceneSetupChange : WorldChange
 {
     [Description("ID of the character whose engagement/position is being set (e.g. 'chars/bard').")]
@@ -477,6 +491,7 @@ public class SceneSetupSpatial
 }
 
 /// <summary>Adjust one of a character's open-ended psychological or physical needs (hunger, thirst, tiredness; paranoia, obsession, wanderlust, bloodlust, guilt, despair, or other custom needs).</summary>
+[Description("Adjust one of a character's open-ended needs (hunger, thirst, stress, or custom narrative needs).")]
 public class NeedChange : WorldChange
 {
     [Description("ID of the character whose need is changing (e.g. 'chars/grog').")]
@@ -493,6 +508,7 @@ public class NeedChange : WorldChange
 }
 
 /// <summary>Set or delta an arbitrary narrative attribute on a character (willpower, temperature, morale, corruption, reputation, etc.).</summary>
+[Description("Set or delta an arbitrary narrative attribute on a character (willpower, morale, corruption, etc.).")]
 public class AttributeChange : WorldChange
 {
     [Description("ID of the character receiving the attribute change.")]
@@ -518,6 +534,7 @@ public class AttributeChange : WorldChange
 /// </summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
+[Description("Directly override an NPC's current emotional mood string shown in get_scene.")]
 public class MoodChange : WorldChange
 {
     [Description("ID of the character whose mood to set.")]
@@ -536,6 +553,7 @@ public class MoodChange : WorldChange
 /// </summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
+[Description("Update what an NPC is currently doing and/or where they're located; syncs get_scene.")]
 public class ActivityChange : WorldChange
 {
     [Description("ID of the character whose activity/location is changing (e.g. 'chars/bram-ironarm').")]
@@ -606,6 +624,7 @@ public class ActivityChange : WorldChange
 [CommitCategory("Combat")]
 [CommitHotTier]
 [CommitSideEffects("hp", "status", "engagement_relation")]
+[Description("Perform a ruleset-mechanical action (attack, save, skill check, spell) with system-specific resolution.")]
 public class RulesetAction : WorldChange
 {
     [Description("ID of the acting character (attacker, caster, skill user, or item user).")]
@@ -661,6 +680,7 @@ public class RulesetAction : WorldChange
 /// Apply granular updates to an existing location.
 /// Useful for opening new paths without full upserts.
 /// </summary>
+[Description("Create-and-link a new location, or apply granular field updates to an existing one.")]
 public class LocationUpdate : WorldChange
 {
     [Description("The ID of the location to update.")]
@@ -743,6 +763,7 @@ public class LocationUpdate : WorldChange
 /// <summary>
 /// Create a new transient (or persistent) character at runtime.
 /// </summary>
+[Description("Create a new transient or persistent character at runtime.")]
 public class CharacterCreate : WorldChange
 {
     [Description("The unique ID of the new character (e.g., 'chars/cloaked_figure_42').")]
@@ -805,6 +826,7 @@ public class CharacterCreate : WorldChange
 /// <summary>
 /// Increase a character's level and apply ruleset-specific HP gains.
 /// </summary>
+[Description("Increase a character's level and apply ruleset-specific HP gains.")]
 public class LevelUpChange : WorldChange
 {
     [Description("ID of the character gaining levels (e.g. 'chars/kergil').")]
@@ -844,6 +866,7 @@ public class LevelUpChange : WorldChange
 /// <summary>
 /// Change or set a character's schedule, effectively promoting or demoting them.
 /// </summary>
+[Description("Change or set a character's schedule (promotes/demotes persistence).")]
 public class ScheduleChange : WorldChange
 {
     [Description("The ID of the character to update.")]
@@ -861,6 +884,7 @@ public class ScheduleChange : WorldChange
 [CommitCategory("World")]
 [CommitHotTier]
 [CommitSideEffects("need", "activity", "event")]
+[Description("Record a party or character traveling between two connected locations.")]
 public class TravelChange : WorldChange
 {
     [Description("ID of the character traveling (e.g. 'chars/grog').")]
@@ -891,6 +915,7 @@ public class TravelChange : WorldChange
 /// <summary>
 /// Adjust a character's reputation with a specific faction.
 /// </summary>
+[Description("Adjust a character's reputation with a specific faction.")]
 public class FactionReputationChange : WorldChange
 {
     [Description("The ID of the character.")]
@@ -913,6 +938,7 @@ public class FactionReputationChange : WorldChange
 /// <summary>
 /// Update global stance or influence of a faction.
 /// </summary>
+[Description("Update a faction's global stance or influence.")]
 public class FactionStateChange : WorldChange
 {
     [Description("The ID of the faction.")]
@@ -942,6 +968,7 @@ public class FactionStateChange : WorldChange
 /// <summary>
 /// Advance or fail an objective in a quest.
 /// </summary>
+[Description("Advance or fail an objective in an existing quest.")]
 public class QuestProgress : WorldChange
 {
     [Description("The ID of the quest to progress.")]
@@ -972,6 +999,7 @@ public class QuestProgress : WorldChange
 /// <summary>
 /// Create a new faction.
 /// </summary>
+[Description("Update an existing item's state, category, tags, or features.")]
 public class ItemUpdate : WorldChange
 {
     [Description("ID of the item being updated.")]
@@ -1074,6 +1102,7 @@ public class ItemDetailUpsertRequest
     public int? ReviewIntervalDays { get; set; }
 }
 
+[Description("Update a character's appearance/tags, or bootstrap/patch their ruleset systemStats.")]
 public class CharacterUpdate : WorldChange
 {
     [Description("ID of the character being updated.")]
@@ -1129,6 +1158,7 @@ public class CharacterUpdate : WorldChange
     public bool? ClearDeparture { get; set; }
 }
 
+[Description("Record what a character knows about a topic, with an importance weight.")]
 public class KnowledgeUpdate : WorldChange
 {
     [Description("ID of the character whose memory is updating.")]
@@ -1205,6 +1235,7 @@ public class PlotClueDto
 /// Update a plot thread's state, tension, notes, resolution condition, or involved entities.
 /// Use to manually escalate/de-escalate tension, shift state, or append new foreshadowing.
 /// </summary>
+[Description("Update a plot thread's state, tension, notes, resolution condition, or involved entities.")]
 public class PlotThreadProgress : WorldChange
 {
     [Description("ID of the plot thread to update (e.g. 'plot-threads/guild-infiltration').")]
@@ -1254,6 +1285,7 @@ public class PlotThreadProgress : WorldChange
 /// This resets the staleness timer (prevents the 'no engagement' pressure) and logs the event.
 /// Pair with EventOccurred to record the narrative moment of discovery.
 /// </summary>
+[Description("Mark a clue in a plot thread as discovered by the party.")]
 public class PlotThreadClueDiscovered : WorldChange
 {
     [Description("ID of the plot thread containing the clue (e.g. 'plot-threads/guild-infiltration').")]
@@ -1279,6 +1311,7 @@ public class PlotThreadClueDiscovered : WorldChange
 /// Positive delta = recovery (long rest, short rest, end of encounter).
 /// Negative delta = expenditure (spell cast, ability used).
 /// </summary>
+[Description("Spend or recover a resource pool (spell slot, focus point, action point).")]
 public class ResourceChange : WorldChange
 {
     [Description("Character ID whose resource is changing (e.g. 'chars/wizard-1').")]
@@ -1310,6 +1343,7 @@ public class ResourceChange : WorldChange
 /// Simulation-internal: marks that pool recovery for a completed rest has been applied.
 /// Emitted by ResourceRecoveryRule during advance_world; not intended for LLM commit use.
 /// </summary>
+[Description("Simulation-internal: acknowledges resource-pool recovery after a rest. Not for LLM use.")]
 public class RestRecoveryAck : WorldChange
 {
     [JsonPropertyName("characterId")]
@@ -1360,6 +1394,7 @@ public enum ArchivableEntityType
 /// counterpart to the internal IsArchived flag most entity upserts already accept — see C1 in
 /// the tool-usage audit for why this was previously undiscoverable during play.
 /// </summary>
+[Description("Soft-archive (or restore) an entity, hiding it from default search/scene/list results.")]
 public class ArchiveEntityChange : WorldChange
 {
     [Description("The kind of entity being archived/restored. Character is not supported — see this $type's schema description.")]
@@ -1380,6 +1415,7 @@ public class ArchiveEntityChange : WorldChange
 /// Lets the DM shift the campaign's center of gravity (dungeon crawl → political thriller)
 /// via take_turn without a dedicated management tool.
 /// </summary>
+[Description("Update campaign-level meta (currently narrative focus tags).")]
 public class CampaignUpdateChange : WorldChange
 {
     [Description("Full replacement list of narrative focus tags (e.g. ['political intrigue', 'court politics']). Pass every tag you want retained — this replaces the whole list, it does not append.")]
@@ -1398,6 +1434,7 @@ public class CampaignUpdateChange : WorldChange
 /// IncompatibleWithEquippedTags are zone/layer-independent prerequisite/incompatibility declarations
 /// that always hard-fail (never auto-resolved by ReplaceConflicts, unlike slot conflicts).
 /// </summary>
+[Description("Equip a carried item into one of its equip zones, subject to layering/conflict rules.")]
 public class ItemEquip : WorldChange
 {
     [Description("ID of the character equipping the item.")]
@@ -1414,6 +1451,7 @@ public class ItemEquip : WorldChange
 }
 
 /// <summary>Unequip a currently equipped item. The item remains carried (HolderId unchanged).</summary>
+[Description("Unequip a currently equipped item; it remains carried.")]
 public class ItemUnequip : WorldChange
 {
     [Description("ID of the character unequipping the item.")]
@@ -1432,6 +1470,7 @@ public class ItemUnequip : WorldChange
 /// Restores (positive delta) clamp to MaxCharges. Reaching 0 charges just logs — the LLM decides via
 /// a follow-up commit (item_update/archive_entity/item_transfer) whether the empty container becomes debris.
 /// </summary>
+[Description("Spend or restore charges/doses on a limited-use item.")]
 public class ItemUse : WorldChange
 {
     [Description("ID of the item being used. Must have MaxCharges set (via world_build).")]
@@ -1452,6 +1491,7 @@ public class ItemUse : WorldChange
 /// Emitted by AmbientItemDecayRule during advance_world; not intended for LLM commit use. Idempotent —
 /// the item's fate is still decided by the LLM via a follow-up archive_entity/item_transfer/item_update.
 /// </summary>
+[Description("Simulation-internal: marks an ambient item's expiry as surfaced to the DM. Not for LLM use.")]
 public class ItemPersistenceSurfaced : WorldChange
 {
     [JsonPropertyName("itemId")]
@@ -1463,6 +1503,7 @@ public class ItemPersistenceSurfaced : WorldChange
 /// Emitted by MemorySalienceDecayRule; applied by MemoryDecayHandler.
 /// Maps memory entry key to (newSalience, newUrgency, evict) tuples for batch memory mutation.
 /// </summary>
+[Description("Simulation-internal: adjusts or evicts character memory saliencies/urgencies. Not for LLM use.")]
 public class MemoryDecay : WorldChange
 {
     [JsonPropertyName("characterId")]
@@ -1477,6 +1518,7 @@ public class MemoryDecay : WorldChange
 /// Transitions a WorldEvent's status or stamps LastTriggeredDay for recurring events.
 /// Can be emitted by WorldEventRule during simulation or committed by the DM for freeform narrative resolutions.
 /// </summary>
+[Description("Transition a world event's status or stamp its last-triggered day.")]
 public class WorldEventStatusChange : WorldChange
 {
     [JsonPropertyName("worldEventId")]

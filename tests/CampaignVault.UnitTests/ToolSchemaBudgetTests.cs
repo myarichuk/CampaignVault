@@ -44,6 +44,31 @@ public class ToolSchemaBudgetTests
 
         // Verify $defs section exists
         Assert.Contains("$defs", json);
+
+        // Every "#/$defs/<name>" ref must actually resolve to a key in $defs.
+        using var doc = JsonDocument.Parse(json);
+        var defNames = doc.RootElement.TryGetProperty("$defs", out var defs)
+            ? defs.EnumerateObject().Select(p => p.Name).ToHashSet()
+            : [];
+
+        var danglingRefs = System.Text.RegularExpressions.Regex
+            .Matches(json, "\"\\$ref\"\\s*:\\s*\"#/\\$defs/([^\"]+)\"")
+            .Select(m => m.Groups[1].Value)
+            .Distinct()
+            .Where(name => !defNames.Contains(name))
+            .ToList();
+
+        Assert.True(danglingRefs.Count == 0,
+            $"Found $ref(s) pointing at nonexistent $defs entries: {string.Join(", ", danglingRefs)}");
+    }
+
+    [Fact]
+    public void TakeTurnSchema_ExposesForceFullReseed()
+    {
+        var schema = TakeTurnSchemaBuilder.Build(JsonOptions);
+        var json = schema.GetRawText();
+
+        Assert.Contains("\"forceFullReseed\"", json);
     }
 
     [Fact]

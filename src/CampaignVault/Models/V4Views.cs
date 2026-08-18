@@ -257,6 +257,13 @@ public class CommitResult
     public string? NarrativeReminder { get; set; }
     /// <summary>Remaining commit token budget (approximate). Replenishes 10 tokens/10s up to 50.</summary>
     public int? RateLimitTokensRemaining { get; set; }
+    /// <summary>WorldChanges applied by the simulation tick (needs/memory decay, staleness, etc.) that
+    /// ran synchronously because this commit crossed a day boundary. Empty unless a RestChange/TravelChange
+    /// (or similar) advanced the calendar. Populated so callers (e.g. take_turn's delta mode) can see ambient
+    /// drift that would otherwise be silently persisted with no trace in the response.</summary>
+    public List<WorldChange> AmbientDeltas { get; set; } = [];
+    /// <summary>Persisted narrative text from the same simulation tick that produced <see cref="AmbientDeltas"/>.</summary>
+    public List<string> AmbientNarrativeSummaries { get; set; } = [];
 }
 
 /// <summary>Rich eviction record returned from advance_world for transient NPC departures.</summary>
@@ -380,7 +387,10 @@ public record SceneClimateSummary(
 public record PartyMemberView(
     CharacterDetailView Character,
     List<ItemSummaryView>? Equipped = null,
-    List<ItemSummaryView>? Carried = null)
+    List<ItemSummaryView>? Carried = null,
+    /// <summary>RP-advisory initiative/memory enrichment, present only for the up-to-2 NPCs selected this
+    /// take_turn call. Always null for player characters (RP initiative is NPC-only).</summary>
+    NpcInitiativeEnrichment? Initiative = null)
 {
     public string Id => Character.Id;
     public string Name => Character.Name;

@@ -1,8 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
-using CampaignVault.Models;
 
 namespace CampaignVault.Schema;
 
@@ -70,10 +67,29 @@ internal static class TakeTurnSchemaBuilder
                 ["partyLocationId"] = new JsonObject
                 {
                     ["type"] = "string",
-                    ["description"] = "Location ID for WorldState scoping"
+                    ["description"] = "Location ID for WorldState scoping and the capped NPC initiative/memory candidate pool"
+                },
+                ["fullDetailCharacterId"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "NPC ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
+                },
+                ["fullDetailLocationId"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Location ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
+                },
+                ["forceFullReseed"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["default"] = false,
+                    ["description"] = "Force a full-detail response (Party/WorldState instead of PartyDelta/WorldStateDelta) and reset the reseed counter. Use after your own context was compacted/summarized."
                 }
             },
-            ["required"] = new JsonArray("changes", "narrative"),
+            ["dependentRequired"] = new JsonObject
+            {
+                ["changes"] = new JsonArray("narrative")
+            },
             ["$defs"] = BuildDefs(options)
         };
 
@@ -118,25 +134,21 @@ internal static class TakeTurnSchemaBuilder
             ["description"] = "Minutes of in-game time this beat took"
         };
 
-        defs["systemExtension"] = new JsonObject
-        {
-            ["type"] = "object",
-            ["description"] = "Ruleset-specific system extension",
-            ["oneOf"] = new JsonArray(
-                new JsonObject { ["$ref"] = "#/$defs/dnd5eExtension" },
-                new JsonObject { ["$ref"] = "#/$defs/pf2eExtension" }
-            )
-        };
-
         return defs;
     }
 
     private static JsonObject BuildVariantDef(CommitVariantModel variant)
     {
+        var summary = TruncateDescription(variant.Summary, 60);
+        if (!variant.IsHotTier)
+        {
+            summary = $"{summary} (field details: get_commit_schema type='{variant.Discriminator}')";
+        }
+
         var def = new JsonObject
         {
             ["type"] = "object",
-            ["description"] = TruncateDescription(variant.Summary, 60),
+            ["description"] = summary,
             ["properties"] = new JsonObject()
         };
 
@@ -148,20 +160,37 @@ internal static class TakeTurnSchemaBuilder
             ["type"] = "string"
         };
 
-        // Add fields (abbreviated for cold-tier)
+        // Hot-tier variants (used on nearly every turn) get full per-field descriptions inline.
+        // Cold-tier variants keep field names/types (needed to construct a valid payload) but drop
+        // descriptions — get_commit_schema already exists as an on-demand lookup for rarely-used
+        // types, so this text is a recurring tools/list cost for guidance that's rarely read.
         foreach (var field in variant.Fields)
         {
             if (field.JsonName == "minutesElapsed")
             {
                 properties[field.JsonName] = new JsonObject { ["$ref"] = "#/$defs/minutesElapsed" };
             }
+            else if (field.JsonName == "systemStats")
+            {
+                properties[field.JsonName] = variant.IsHotTier
+                    ? new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["description"] = "Ruleset-specific combat stats. Optional \"$system\": \"dnd5e\"|\"pf2e\" discriminator " +
+                            "(omit for system-agnostic fields only). Common bootstrap keys: armorClass, strength, dexterity, " +
+                            "constitution, intelligence, wisdom, charisma, hitDie, level, classLevels."
+                    }
+                    : new JsonObject { ["type"] = "object" };
+            }
             else
             {
-                properties[field.JsonName] = new JsonObject
-                {
-                    ["type"] = GetJsonType(field.ClrType),
-                    ["description"] = TruncateDescription(field.Description, 50)
-                };
+                properties[field.JsonName] = variant.IsHotTier
+                    ? new JsonObject
+                    {
+                        ["type"] = GetJsonType(field.ClrType),
+                        ["description"] = TruncateDescription(field.Description, 50)
+                    }
+                    : new JsonObject { ["type"] = GetJsonType(field.ClrType) };
             }
         }
 

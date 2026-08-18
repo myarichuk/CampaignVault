@@ -267,6 +267,19 @@ public class CampaignConfig
     /// Defaults to true.
     /// </summary>
     public bool AutoLevelUpPrompt { get; set; } = true;
+
+    /// <summary>
+    /// Number of take_turn calls between forced full-detail reseeds when delta mode is active.
+    /// Imprecision is fine — this is a token-budget heuristic, not a correctness guarantee.
+    /// Defaults to 30.
+    /// </summary>
+    public int DeltaModeReseedIntervalTurns { get; set; } = 30;
+
+    /// <summary>
+    /// Master switch for take_turn's Full/Delta response alternation. When false, every call behaves
+    /// as a full reseed (pre-delta-mode behavior). Defaults to true.
+    /// </summary>
+    public bool DeltaModeEnabled { get; set; } = true;
 }
 
 /// <summary>

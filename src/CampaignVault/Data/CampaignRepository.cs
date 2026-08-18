@@ -132,7 +132,21 @@ public class CampaignRepository
                 _logger.LogInformation(
                     "Commit advanced the calendar by {ElapsedDays} day(s) for campaign {Campaign}; running simulation tick",
                     elapsedDays, effective);
-                await RunSimulationTickAsync(session, effective, time, elapsedDays);
+                var ambientResult = await RunSimulationTickAsync(session, effective, time, elapsedDays);
+                if (ambientResult.Deltas.Count > 0)
+                {
+                    result.AmbientDeltas.AddRange(ambientResult.Deltas);
+                    var ambientInvolved = ambientResult.Deltas
+                        .SelectMany(_changeDispatcher.ExtractInvolvedEntityIds)
+                        .Where(id => !string.IsNullOrEmpty(id));
+                    result.InvolvedEntities = result.InvolvedEntities
+                        .Concat(ambientInvolved)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                }
+
+                result.AmbientNarrativeSummaries.AddRange(
+                    ambientResult.Narratives.Where(n => n.Persist).Select(n => n.Text));
             }
         }
 
@@ -303,6 +317,27 @@ public class CampaignRepository
             .ToListAsync();
         return npcs.ToList();
     }
+
+    /// <summary>
+    /// Cheap "who's present at this location" lookup — the same NPC set get_scene would enrich, without
+    /// the rest of scene assembly (items, rumors, quests, factions). Used by take_turn's capped
+    /// initiative/memory selection so it doesn't need a full GetSceneAsync just to build a candidate pool.
+    /// </summary>
+    public async Task<List<Character>> GetPresentNpcsAsync(IAsyncDocumentSession session, string locationId, string campaignName)
+    {
+        var targetIds = await GetSceneTargetIdsAsync(session, locationId, campaignName);
+        var npcsFromIndex = await LoadSceneNpcsFromIndexAsync(session, targetIds);
+        var npcsFromSimulation = await LoadSceneNpcsFromSimulationAsync(session, targetIds);
+        return npcsFromIndex
+            .Concat(npcsFromSimulation)
+            .DistinctBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Entity-ID extraction used elsewhere for InvolvedEntities tracking, exposed for callers
+    /// (e.g. take_turn's initiative candidate pool) that need it outside the dispatch loop.</summary>
+    public IEnumerable<string> ExtractInvolvedEntityIds(WorldChange change) =>
+        _changeDispatcher.ExtractInvolvedEntityIds(change);
 
     private async Task<List<Item>> LoadVisibleSceneItemsAsync(
         IAsyncDocumentSession session,
@@ -1076,6 +1111,18 @@ public class CampaignRepository
         var id = _keys.CombatCurrent(effective);
         var encounter = await campaignSession.Session.LoadAsync<CombatEncounter>(id);
         return encounter?.IsActive == true ? encounter : null;
+    }
+
+    /// <summary>
+    /// Loads the campaign's take_turn reseed cursor, or null if take_turn has never been called for
+    /// this campaign (the caller should treat that as "first-ever call = Full" rather than auto-creating
+    /// here, since the absence of the document is itself meaningful).
+    /// </summary>
+    public async Task<TurnCursor?> GetTurnCursorAsync(CampaignSession campaignSession)
+    {
+        var effective = campaignSession.EffectiveCampaign;
+        var id = _keys.StateTurnCursor(effective);
+        return await campaignSession.Session.LoadAsync<TurnCursor>(id);
     }
 
     /// <summary>

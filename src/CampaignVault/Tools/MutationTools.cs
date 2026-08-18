@@ -76,6 +76,22 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         public string Campaign { get; } = campaign;
         public IAsyncDocumentSession Session { get; } = session;
         public TurnResult Result { get; } = new();
+
+        /// <summary>Full vs delta response mode, decided once per call from the campaign's TurnCursor.</summary>
+        public TurnMode Mode { get; set; } = TurnMode.Full;
+
+        /// <summary>WorldChanges applied this turn — the caller's own Changes[] plus any ambient simulation
+        /// deltas (needs/memory decay) that ran synchronously because a commit crossed a day boundary.
+        /// Empty for pure-query calls. This is the source of truth for delta-mode section builders.</summary>
+        public IReadOnlyList<WorldChange> AppliedChanges { get; set; } = [];
+
+        /// <summary>Persisted ambient simulation narrative text from this turn (see CommitResult.AmbientNarrativeSummaries).</summary>
+        public IReadOnlyList<string> AmbientNarrativeSummaries { get; set; } = [];
+
+        /// <summary>NPCs selected this call for RP-initiative/memory enrichment (capped, see
+        /// SelectAndEnrichInitiativeAsync), keyed by character ID so Npcs/Party/PartyDelta section
+        /// builders can attach the same computed enrichment without recomputing it per section.</summary>
+        public Dictionary<string, NpcInitiativeEnrichment> InitiativeByNpcId { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     [ToolCategory("Mutation & time")]
@@ -93,6 +109,8 @@ One take_turn call carries optional mutations (Changes+Narrative) and optional r
 
 AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes (explicitly requested extraCharacterIds/extraLocationIds are always served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
 
+FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state. A full reseed happens periodically (server-configured) and can be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity/get_scene/get_world_state. Independent of mode, up to 2 NPCs per call carry RP-advisory initiative/memory ('initiative' field) — one is a party companion when one is present — so you get a 'who might act/speak next' signal even without calling get_scene.
+
 Pure queries (no Changes): omit Changes, provide at least one refresh param, and the response will refresh specific entities without mutations. Examples: includeWorldState=true to get campaign state, includeParty=true to get party summaries, or extraCharacterIds=[id] to refresh specific NPCs. Check the 'warnings' array in the response for any section that could not be assembled.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
         [Description("Bundled turn request: MUST contain EITHER (1) Changes with Narrative, OR (2) at least one refresh parameter. Passing neither will be rejected. Mutations: Changes+Narrative. Refresh params: AutoRefreshInvolved (default true), ExtraCharacterIds, ExtraLocationIds, IncludeWorldState, IncludeParty, FullDetailCharacterId, FullDetailLocationId.")]
@@ -109,14 +127,15 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                                    (request.ExtraCharacterIds?.Length > 0) ||
                                    (request.ExtraLocationIds?.Length > 0) ||
                                    !string.IsNullOrEmpty(request.FullDetailCharacterId) ||
-                                   !string.IsNullOrEmpty(request.FullDetailLocationId);
+                                   !string.IsNullOrEmpty(request.FullDetailLocationId) ||
+                                   request.ForceFullReseed;
 
             if (!hasRefreshParams)
             {
                 return Task.FromResult(new ToolResult<TurnResult>(
                     false,
                     Error: ToolErrors.InvalidArgument,
-                    Summary: "This take_turn call has no Changes and no refresh parameters (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, fullDetailLocationId). Did you mean to commit world changes? Pass at least one refresh param if this is a pure-query call."));
+                    Summary: "This take_turn call has no Changes and no refresh parameters (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, fullDetailLocationId, forceFullReseed). Did you mean to commit world changes? Pass at least one refresh param if this is a pure-query call."));
             }
         }
 
@@ -150,6 +169,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         {
             var ctx = new TurnContext(request, effective, session);
 
+            await DecideTurnModeAsync(ctx);
+
             if (hasChanges)
             {
                 var commitFailure = await CommitChangesAsync(ctx);
@@ -159,14 +180,63 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 }
             }
 
+            if (ctx.Request?.AutoRefreshInvolved != false)
+            {
+                await SelectAndEnrichInitiativeAsync(ctx);
+            }
+
             await RefreshInvolvedEntitiesAsync(ctx);
             await IncludePartyAsync(ctx);
+            await EnsureInitiativeSurfacedAsync(ctx);
             await IncludeWorldStateAsync(ctx);
             await IncludeFullNpcDetailAsync(ctx);
             await IncludeFullSceneDetailAsync(ctx);
 
             return Finalize(ctx, rateLimiter);
         }, saveChanges: true);
+    }
+
+    /// <summary>
+    /// Decides Full vs Delta for this call and persists the updated TurnCursor (via the already-open
+    /// session — no extra SaveChangesAsync needed, ExecuteAsync's saveChanges:true covers it). Absence of
+    /// a cursor document means take_turn has never been called for this campaign — naturally Full.
+    /// Imprecision (e.g. a retried commit double-incrementing the counter) is accepted; this is a
+    /// token-budget heuristic, not a correctness guarantee.
+    /// </summary>
+    private async Task DecideTurnModeAsync(TurnContext ctx)
+    {
+        var campaignSession = new CampaignSession(ctx.Session, ctx.Campaign);
+        var config = await _repository.GetCampaignConfigAsync(campaignSession);
+        var cursor = await _repository.GetTurnCursorAsync(campaignSession);
+
+        var isNewCursor = cursor == null;
+        var mode =
+            !config.DeltaModeEnabled ? TurnMode.Full :
+            cursor == null ? TurnMode.Full :
+            ctx.Request?.ForceFullReseed == true ? TurnMode.Full :
+            cursor.ForcedFullReseedPending ? TurnMode.Full :
+            cursor.TurnsSinceReseed >= config.DeltaModeReseedIntervalTurns ? TurnMode.Full :
+            TurnMode.Delta;
+
+        var turnCursor = cursor ?? new TurnCursor { Id = _keys.StateTurnCursor(ctx.Campaign), CampaignName = ctx.Campaign };
+        if (mode == TurnMode.Full)
+        {
+            turnCursor.TurnsSinceReseed = 0;
+            turnCursor.ForcedFullReseedPending = false;
+            turnCursor.LastFullReseedUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            turnCursor.TurnsSinceReseed++;
+        }
+
+        if (isNewCursor)
+        {
+            await ctx.Session.StoreAsync(turnCursor, turnCursor.Id);
+        }
+
+        ctx.Mode = mode;
+        ctx.Result.Mode = mode;
     }
 
     /// <summary>Static request validation that needs no session. Returns null when the request is valid.</summary>
@@ -218,6 +288,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         result.InvolvedEntities = commitResult.InvolvedEntities;
         result.EntityCollisions = commitResult.EntityCollisions;
         result.NarrativeReminder = commitResult.NarrativeReminder;
+        ctx.AppliedChanges = changes.Concat(commitResult.AmbientDeltas).ToList();
+        ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
 
         var commitTime = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
         var sceneEvent = new Event
@@ -415,6 +487,183 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             ? reminder
             : result.NarrativeReminder + " " + reminder;
 
+    private const int InitiativeCap = 2;
+
+    /// <summary>
+    /// Surfaces RP-advisory initiative/memory for up to 2 NPCs this call, independent of includeParty/
+    /// autoRefreshInvolved/Mode — so take_turn alone (without a get_scene call) still carries a "who might
+    /// act/speak next" signal. Candidate pool: NPCs present at the party's current location, unioned with
+    /// any NPCs this turn's changes touched (fallback when location isn't resolvable). Selection: one
+    /// guaranteed slot for a randomly-chosen party companion if the pool has one, remaining slot(s) filled
+    /// by other NPCs. Results are cached on ctx.InitiativeByNpcId so Npcs/Party/PartyDelta section builders
+    /// can attach them without recomputing.
+    /// </summary>
+    private async Task SelectAndEnrichInitiativeAsync(TurnContext ctx)
+    {
+        var pool = new Dictionary<string, Character>(StringComparer.OrdinalIgnoreCase);
+
+        var locationId = ctx.Request?.PartyLocationId;
+        if (string.IsNullOrWhiteSpace(locationId))
+        {
+            var pc = await ctx.Session.Query<Character>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+                .Where(c => c.CampaignName == ctx.Campaign && c.IsPc && c.CurrentLocationId != null)
+                .FirstOrDefaultAsync();
+            locationId = pc?.CurrentLocationId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(locationId))
+        {
+            try
+            {
+                var present = await _repository.GetPresentNpcsAsync(ctx.Session, locationId, ctx.Campaign);
+                foreach (var npc in present)
+                {
+                    pool.TryAdd(npc.Id, npc);
+                }
+            }
+            catch (Exception ex)
+            {
+                Warn(ctx, $"Initiative candidate lookup failed for location '{locationId}': {ex.Message}", ex);
+            }
+        }
+
+        var touchedCharacterIds = ctx.AppliedChanges
+            .SelectMany(_repository.ExtractInvolvedEntityIds)
+            .Where(id => id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var id in touchedCharacterIds)
+        {
+            if (pool.ContainsKey(id))
+            {
+                continue;
+            }
+
+            var npc = await _repository.GetCharacterAsync(new CampaignSession(ctx.Session, ctx.Campaign), id);
+            if (npc != null)
+            {
+                pool.TryAdd(id, npc);
+            }
+        }
+
+        if (pool.Count == 0)
+        {
+            return;
+        }
+
+        var companions = pool.Values.Where(c => c.IsPartyCompanion).ToList();
+        var selected = new List<Character>();
+        if (companions.Count > 0)
+        {
+            selected.Add(companions[Random.Shared.Next(companions.Count)]);
+        }
+
+        // Prefer a non-companion NPC for the remaining slot(s) — the companion slot above already
+        // guarantees companion coverage, so this spreads the signal to the environment instead of
+        // potentially filling both slots with companions.
+        foreach (var candidate in pool.Values)
+        {
+            if (selected.Count >= InitiativeCap)
+            {
+                break;
+            }
+
+            if (candidate.IsPc || candidate.IsPartyCompanion || selected.Any(s => s.Id == candidate.Id))
+            {
+                continue;
+            }
+
+            selected.Add(candidate);
+        }
+
+        // Fallback: if the pool has no (more) non-companion NPCs, fill remaining slot(s) from whoever's left.
+        foreach (var candidate in pool.Values)
+        {
+            if (selected.Count >= InitiativeCap)
+            {
+                break;
+            }
+
+            if (candidate.IsPc || selected.Any(s => s.Id == candidate.Id))
+            {
+                continue;
+            }
+
+            selected.Add(candidate);
+        }
+
+        foreach (var npc in selected)
+        {
+            try
+            {
+                var enrichment = await _repository.EnrichNpcInitiativeAsync(
+                    ctx.Session, npc, ctx.Campaign, "take_turn", includeTensionBreakdown: false);
+                ctx.InitiativeByNpcId[npc.Id] = enrichment;
+            }
+            catch (Exception ex)
+            {
+                Warn(ctx, $"Initiative enrichment failed for '{npc.Id}': {ex.Message}", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enrich (above) has a persisted side effect — it marks surfaced initiative candidates as consumed
+    /// on the campaign doc via IInitiativeSuppressionStore, so the same candidate won't resurface next
+    /// time (here or in get_scene) — so an enrichment that never reaches the model is worse than a no-op:
+    /// it silently burns candidates for nothing. Npcs/Party/PartyDelta only attach the cached enrichment
+    /// to NPCs they already happen to include (via InvolvedEntities/extraCharacterIds, or includeParty).
+    /// This guarantees every NPC actually selected in SelectAndEnrichInitiativeAsync ends up visible
+    /// somewhere in the response — appending a lightweight NpcSummaryView to Npcs if it isn't already
+    /// covered by Npcs/Party/PartyDelta — so the work done (and the suppression state spent) always pays off.
+    /// </summary>
+    private async Task EnsureInitiativeSurfacedAsync(TurnContext ctx)
+    {
+        if (ctx.InitiativeByNpcId.Count == 0)
+        {
+            return;
+        }
+
+        var alreadySurfaced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var n in ctx.Result.Npcs ?? [])
+        {
+            alreadySurfaced.Add(n.CharacterId);
+        }
+
+        foreach (var p in ctx.Result.Party ?? [])
+        {
+            alreadySurfaced.Add(p.Id);
+        }
+
+        foreach (var d in ctx.Result.PartyDelta ?? [])
+        {
+            alreadySurfaced.Add(d.EntityId);
+        }
+
+        foreach (var npcId in ctx.InitiativeByNpcId.Keys)
+        {
+            if (alreadySurfaced.Contains(npcId))
+            {
+                continue;
+            }
+
+            try
+            {
+                var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, npcId, ctx.Campaign);
+                if (summary != null)
+                {
+                    summary.Initiative = ctx.InitiativeByNpcId[npcId];
+                    (ctx.Result.Npcs ??= []).Add(summary);
+                }
+            }
+            catch (Exception ex)
+            {
+                Warn(ctx, $"Initiative surfacing failed for '{npcId}': {ex.Message}", ex);
+            }
+        }
+    }
+
     /// <summary>
     /// Fetches lightweight summaries for refreshed entities. Explicitly requested extras are queued
     /// before auto-involved IDs, so the 6-NPC/3-scene caps never silently drop something the caller asked for.
@@ -512,6 +761,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                     var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, charId, ctx.Campaign);
                     if (summary != null)
                     {
+                        summary.Initiative = ctx.InitiativeByNpcId.GetValueOrDefault(charId);
                         result.Npcs.Add(summary);
                     }
                     else
@@ -541,26 +791,62 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
 
-            var partyMembers = new List<PartyMemberView>();
-            foreach (var member in party)
+            if (ctx.Mode == TurnMode.Full)
             {
-                try
+                var partyMembers = new List<PartyMemberView>();
+                foreach (var member in party)
                 {
-                    var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, member.Id, ctx.Campaign);
-                    if (summary != null)
+                    try
                     {
-                        partyMembers.Add(new PartyMemberView(CharacterDetailView.From(member), summary.Equipped, summary.Carried));
+                        var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, member.Id, ctx.Campaign);
+                        if (summary != null)
+                        {
+                            partyMembers.Add(new PartyMemberView(
+                                CharacterDetailView.From(member),
+                                summary.Equipped,
+                                summary.Carried,
+                                ctx.InitiativeByNpcId.GetValueOrDefault(member.Id)));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Warn(ctx, $"Party summary failed for '{member.Id}': {ex.Message}", ex);
                     }
                 }
-                catch (Exception ex)
+
+                if (partyMembers.Count > 0)
                 {
-                    Warn(ctx, $"Party summary failed for '{member.Id}': {ex.Message}", ex);
+                    ctx.Result.Party = partyMembers;
                 }
             }
-
-            if (partyMembers.Count > 0)
+            else
             {
-                ctx.Result.Party = partyMembers;
+                var deltas = new List<EntityChangeDelta>();
+                foreach (var member in party)
+                {
+                    var memberChanges = ctx.AppliedChanges
+                        .Where(c => _repository.ExtractInvolvedEntityIds(c).Contains(member.Id, StringComparer.OrdinalIgnoreCase))
+                        .ToList();
+                    var hasInitiative = ctx.InitiativeByNpcId.TryGetValue(member.Id, out var initiative);
+
+                    if (memberChanges.Count == 0 && !hasInitiative)
+                    {
+                        continue;
+                    }
+
+                    deltas.Add(new EntityChangeDelta
+                    {
+                        EntityId = member.Id,
+                        Name = member.Name,
+                        Changes = memberChanges,
+                        Initiative = initiative
+                    });
+                }
+
+                if (deltas.Count > 0)
+                {
+                    ctx.Result.PartyDelta = deltas;
+                }
             }
         }
         catch (Exception ex)
@@ -579,19 +865,44 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         try
         {
             var worldState = await _repository.BuildWorldStateAsync(ctx.Session, ctx.Campaign, ctx.Request.PartyLocationId, _pressureOrchestrator);
-            // take_turn context uses fewer events (first 5) vs kickoff's full list
-            ctx.Result.WorldState = new WorldStateView(
-                worldState.Time,
-                worldState.ActiveRumors,
-                worldState.RecentEvents.Take(5),
-                worldState.PartyLocation,
-                worldState.WorldPressure,
-                worldState.ActiveQuests,
-                worldState.RelevantFactions,
-                worldState.LastKnownTravel,
-                worldState.SuggestedCommitExamples
-            );
-            ctx.Result.WorldState.WorldPressureItems = worldState.WorldPressureItems;
+
+            if (ctx.Mode == TurnMode.Full)
+            {
+                // take_turn context uses fewer events (first 5) vs kickoff's full list
+                ctx.Result.WorldState = new WorldStateView(
+                    worldState.Time,
+                    worldState.ActiveRumors,
+                    worldState.RecentEvents.Take(5),
+                    worldState.PartyLocation,
+                    worldState.WorldPressure,
+                    worldState.ActiveQuests,
+                    worldState.RelevantFactions,
+                    worldState.LastKnownTravel,
+                    worldState.SuggestedCommitExamples
+                );
+                ctx.Result.WorldState.WorldPressureItems = worldState.WorldPressureItems;
+            }
+            else
+            {
+                var newEvents = new List<string>();
+                if (!string.IsNullOrWhiteSpace(ctx.Request?.Narrative))
+                {
+                    newEvents.Add(ctx.Request!.Narrative!);
+                }
+
+                newEvents.AddRange(ctx.AmbientNarrativeSummaries);
+
+                ctx.Result.WorldStateDelta = new WorldStateDeltaView
+                {
+                    Time = worldState.Time,
+                    WorldPressure = worldState.WorldPressure,
+                    RumorChanges = ctx.AppliedChanges.OfType<RumorEvolves>().ToList(),
+                    QuestChanges = ctx.AppliedChanges.OfType<QuestProgress>().ToList(),
+                    FactionReputationChanges = ctx.AppliedChanges.OfType<FactionReputationChange>().ToList(),
+                    FactionStateChanges = ctx.AppliedChanges.OfType<FactionStateChange>().ToList(),
+                    NewEvents = newEvents.Count > 0 ? newEvents : null
+                };
+            }
         }
         catch (Exception ex)
         {
@@ -762,6 +1073,20 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var result = await _repository.AdvanceWorldAsync(session, days, resultingHour, effective, hours);
+
+            // advance_world can run simulation ticks outside the take_turn pipeline — force the next
+            // take_turn call to Full so ambient drift from this skip isn't missed by delta mode.
+            var turnCursor = await _repository.GetTurnCursorAsync(new CampaignSession(session, effective));
+            if (turnCursor == null)
+            {
+                await session.StoreAsync(
+                    new TurnCursor { Id = _keys.StateTurnCursor(effective), CampaignName = effective, ForcedFullReseedPending = true },
+                    _keys.StateTurnCursor(effective));
+            }
+            else
+            {
+                turnCursor.ForcedFullReseedPending = true;
+            }
 
             var partyIds = await session.Query<Character, Character_Search>()
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))

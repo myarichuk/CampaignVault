@@ -507,6 +507,18 @@ public sealed class WorldChangeDispatcher(
         ExtractInvolvedIds(change, null, null, null, null, null, context.InvolvedEntities);
     }
 
+    /// <summary>
+    /// Public entry point for callers outside the dispatch loop (e.g. CampaignRepository merging
+    /// ambient simulation deltas into a commit's InvolvedEntities) that need the same entity-ID
+    /// extraction used during normal change dispatch, without the rest of the dispatch pipeline.
+    /// </summary>
+    public IEnumerable<string> ExtractInvolvedEntityIds(WorldChange change)
+    {
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        ExtractInvolvedIds(change, null, null, null, null, null, ids);
+        return ids;
+    }
+
     private void ExtractInvolvedIds(
         WorldChange change,
         HashSet<string>? characterIds = null,

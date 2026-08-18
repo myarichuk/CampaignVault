@@ -3,6 +3,16 @@ using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
 
+/// <summary>Whether a take_turn response is a full state snapshot or a delta since the last snapshot.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum TurnMode
+{
+    /// <summary>Full section payloads (Party, WorldState) — same shape as pre-delta-mode take_turn.</summary>
+    Full,
+    /// <summary>Only what changed this turn (PartyDelta, WorldStateDelta) — full detail remains available via get_entity/get_scene.</summary>
+    Delta
+}
+
 /// <summary>
 /// Request to take_turn: optional mutations + optional refresh/query specifications.
 /// Null/empty Changes = pure query; populated Changes = mutation with auto-refresh of touched entities.
@@ -45,7 +55,7 @@ public class TakeTurnRequest
     public bool IncludeWorldState { get; set; } = false;
 
     [Description(
-        "Location ID anchoring WorldState scoping (only used if IncludeWorldState=true). Omit to skip location-based scoping — rumors/quests/factions are then filtered only by party affiliations, and PartyLocation comes back null.")]
+        "Location ID anchoring WorldState scoping (used if IncludeWorldState=true) and the capped NPC initiative/memory candidate pool (see take_turn's own description). Omit to skip location-based WorldState scoping — rumors/quests/factions are then filtered only by party affiliations, PartyLocation comes back null — and the initiative pool falls back to a PC's CurrentLocationId, then to NPCs touched by this turn's Changes.")]
     [JsonPropertyName("partyLocationId")]
     public string? PartyLocationId { get; set; }
 
@@ -58,6 +68,11 @@ public class TakeTurnRequest
         "Location ID to fetch in full detail (SceneView with all details) instead of summary. Use sparingly; only one full detail per call.")]
     [JsonPropertyName("fullDetailLocationId")]
     public string? FullDetailLocationId { get; set; }
+
+    [Description(
+        "Force a full-detail response (Party/WorldState instead of PartyDelta/WorldStateDelta) and reset the campaign's periodic reseed counter, regardless of how many delta turns have elapsed. Use after your own context was compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial state. Default false.")]
+    [JsonPropertyName("forceFullReseed")]
+    public bool ForceFullReseed { get; set; } = false;
 }
 
 /// <summary>
@@ -66,6 +81,11 @@ public class TakeTurnRequest
 /// </summary>
 public class TurnResult
 {
+    [Description("Full or Delta. Full: Party/WorldState carry complete snapshots (same shape as before delta mode existed). " +
+        "Delta: PartyDelta/WorldStateDelta carry only what changed this turn instead — call get_entity/get_scene for full detail " +
+        "on anything not covered by the delta, or pass forceFullReseed=true on the next call for a complete resync.")]
+    public TurnMode Mode { get; set; } = TurnMode.Full;
+
     [Description("True if a mutation was successfully committed; false if this was a query-only call or commit failed.")]
     public bool Committed { get; set; }
 
@@ -96,11 +116,20 @@ public class TurnResult
     [Description("Entity IDs that were dropped from Npcs/Scenes due to refresh caps (6 NPCs / 3 scenes). Re-request these explicitly via extraCharacterIds/extraLocationIds if needed.")]
     public List<string>? RefreshTruncatedIds { get; set; }
 
-    [Description("Full party member summaries (if includeParty=true); otherwise null.")]
+    [Description("Full party member summaries (if includeParty=true AND mode=full); otherwise null. See PartyDelta for mode=delta.")]
     public List<PartyMemberView>? Party { get; set; }
 
-    [Description("World state including rumors, active quests, faction standings, and campaign time (if includeWorldState=true); otherwise null.")]
+    [Description("Delta-mode party entries (if includeParty=true AND mode=delta); otherwise null. One entry per party member with " +
+        "a change this turn, plus any member selected for initiative/memory enrichment even with zero changes. Call get_entity for a " +
+        "member's full current state.")]
+    public List<EntityChangeDelta>? PartyDelta { get; set; }
+
+    [Description("World state including rumors, active quests, faction standings, and campaign time (if includeWorldState=true AND mode=full); otherwise null. See WorldStateDelta for mode=delta.")]
     public WorldStateView? WorldState { get; set; }
+
+    [Description("Delta-mode world state (if includeWorldState=true AND mode=delta); otherwise null. Only rumor/quest/faction changes " +
+        "from this turn, plus current time/pressure (always populated). Call get_world_state for the full picture.")]
+    public WorldStateDeltaView? WorldStateDelta { get; set; }
 
     [Description("Full NPC context view for the requested NPC (if fullDetailCharacterId was provided); includes all relationships, history, and behavior synthesis. Otherwise null.")]
     public NpcContextView? FullNpcContext { get; set; }
@@ -110,4 +139,52 @@ public class TurnResult
 
     [Description("Non-fatal problems encountered while assembling this response (failed refreshes, missing entities, world-state errors). Null when every requested section succeeded. Check this whenever an expected section came back null.")]
     public List<string>? Warnings { get; set; }
+}
+
+/// <summary>
+/// Delta-mode world-state view: only the rumor/quest/faction WorldChanges actually applied this turn,
+/// rather than the full active-rumors/quests/factions lists BuildWorldStateAsync would return. Time and
+/// WorldPressure are always populated (small, fixed-shape, and needed every turn regardless of mode).
+/// </summary>
+public class WorldStateDeltaView
+{
+    [Description("Current campaign time — always populated.")]
+    public CampaignTime? Time { get; set; }
+
+    [Description("Active world pressure nags — always populated, same as WorldStateView.WorldPressure.")]
+    public IEnumerable<string> WorldPressure { get; set; } = [];
+
+    [Description("Rumors that changed state this turn (RumorEvolves commits applied). Empty if none.")]
+    public List<RumorEvolves>? RumorChanges { get; set; }
+
+    [Description("Quest objectives that progressed this turn (QuestProgress commits applied). Empty if none.")]
+    public List<QuestProgress>? QuestChanges { get; set; }
+
+    [Description("Character-faction reputation changes applied this turn. Empty if none.")]
+    public List<FactionReputationChange>? FactionReputationChanges { get; set; }
+
+    [Description("Faction stance/influence changes applied this turn. Empty if none.")]
+    public List<FactionStateChange>? FactionStateChanges { get; set; }
+
+    [Description("Narrative text for this turn: the caller's own narrative plus any persisted ambient simulation narratives.")]
+    public List<string>? NewEvents { get; set; }
+}
+
+/// <summary>
+/// Delta-mode entry for one party/scene entity: only the WorldChanges applied to it this turn, plus
+/// (for NPCs selected this call) RP-initiative/memory enrichment. Call get_entity for full current state.
+/// </summary>
+public class EntityChangeDelta
+{
+    [Description("Character ID this delta is for.")]
+    public string EntityId { get; set; } = null!;
+
+    [Description("Character name, for display without a follow-up lookup.")]
+    public string? Name { get; set; }
+
+    [Description("WorldChanges applied to this entity this turn (echoes the committed change objects — each is already a delta, e.g. NeedChange carries {Need, Delta}).")]
+    public List<WorldChange> Changes { get; set; } = [];
+
+    [Description("RP-advisory initiative/memory enrichment, present only for the up-to-2 NPCs selected this call (see take_turn's tool description). Null otherwise, and always null for player characters.")]
+    public NpcInitiativeEnrichment? Initiative { get; set; }
 }
