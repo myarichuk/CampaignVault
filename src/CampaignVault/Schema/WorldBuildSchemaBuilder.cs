@@ -15,60 +15,88 @@ internal static class WorldBuildSchemaBuilder
         // In full implementation, would build schemas for all UpsertRequest types
         // similar to how TakeTurnSchemaBuilder handles WorldChange variants
 
+        var batchProperties = new JsonObject
+        {
+            ["locations"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Locations to create or update. Dispatched first (parentLocationId/exits target other locations in this same array)."
+            },
+            ["factions"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Factions to create or update. Dispatched after locations (territoryLocationIds may reference them)."
+            },
+            ["creatures"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Homebrew creature stat-block templates to create or update."
+            },
+            ["spells"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Homebrew spells to create or update."
+            },
+            ["feats"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Homebrew feats/perks to create or update."
+            },
+            ["characters"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Characters/NPCs to create or update. Dispatched after locations/factions (currentLocationId may reference them). Bootstrap (HP/defense derivation) runs per element."
+            },
+            ["items"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Items to create or update. Dispatched after characters (holderId may reference a character just created in this batch)."
+            },
+            ["quests"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Quests to create or update. Dispatched after characters/locations/factions (giverId/relatedLocationIds/relatedFactionIds may reference them)."
+            },
+            ["plotThreads"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "Plot threads to create or update. Dispatched after characters/locations/factions/quests (involvedEntityIds may reference them)."
+            },
+            ["worldEvents"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "object" },
+                ["description"] = "World events to create or update. Dispatched after plot threads (effects/conditions may reference them)."
+            }
+        };
+
         var root = new JsonObject
         {
             ["type"] = "object",
             ["properties"] = new JsonObject
             {
-                ["locations"] = new JsonObject
+                ["batch"] = new JsonObject
                 {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "object" },
-                    ["description"] = "Locations to upsert"
+                    ["type"] = "object",
+                    ["properties"] = batchProperties,
+                    ["description"] = "Batch of entities to create/update, grouped by kind. Each array is optional — include only the kinds you're seeding in this call."
                 },
-                ["characters"] = new JsonObject
+                ["campaignName"] = new JsonObject
                 {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "object" },
-                    ["description"] = "Characters to upsert"
-                },
-                ["quests"] = new JsonObject
-                {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "object" },
-                    ["description"] = "Quests to upsert"
-                },
-                ["items"] = new JsonObject
-                {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "object" },
-                    ["description"] = "Items to upsert"
-                },
-                ["factions"] = new JsonObject
-                {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "object" },
-                    ["description"] = "Factions to upsert"
-                },
-                ["rumors"] = new JsonObject
-                {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "object" },
-                    ["description"] = "Rumors to upsert"
-                },
-                ["worldEvents"] = new JsonObject
-                {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "object" },
-                    ["description"] = "World events to upsert"
-                },
-                ["plotThreads"] = new JsonObject
-                {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "object" },
-                    ["description"] = "Plot threads to upsert"
+                    ["type"] = "string",
+                    ["description"] = "Campaign name (required)"
                 }
-            }
+            },
+            ["required"] = new JsonArray("batch", "campaignName")
         };
 
         using var doc = JsonDocument.Parse(root.ToJsonString());

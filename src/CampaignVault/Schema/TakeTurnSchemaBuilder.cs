@@ -15,81 +15,96 @@ internal static class TakeTurnSchemaBuilder
         // In a full implementation, this would use JsonSchemaExporter to generate per-variant
         // schemas and build the tiered structure with $defs
 
+        var requestProperties = new JsonObject
+        {
+            ["changes"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject
+                {
+                    ["$ref"] = "#/$defs/worldChange"
+                },
+                ["description"] = "Array of world changes (mutations) to commit"
+            },
+            ["narrative"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Narrative summary of what happened"
+            },
+            ["autoRefreshInvolved"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["default"] = true,
+                ["description"] = "Auto-refresh entities touched by changes"
+            },
+            ["extraCharacterIds"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "string" },
+                ["description"] = "Additional NPC IDs to refresh"
+            },
+            ["extraLocationIds"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "string" },
+                ["description"] = "Additional location IDs to refresh"
+            },
+            ["includeParty"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["default"] = false,
+                ["description"] = "Include full Party member summaries"
+            },
+            ["includeWorldState"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["default"] = false,
+                ["description"] = "Include WorldState in response"
+            },
+            ["partyLocationId"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Location ID for WorldState scoping and the capped NPC initiative/memory candidate pool"
+            },
+            ["fullDetailCharacterId"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "NPC ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
+            },
+            ["fullDetailLocationId"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Location ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
+            },
+            ["forceFullReseed"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["default"] = false,
+                ["description"] = "Force a full-detail response (Party/WorldState instead of PartyDelta/WorldStateDelta) and reset the reseed counter. Use after your own context was compacted/summarized."
+            }
+        };
+
         var root = new JsonObject
         {
             ["type"] = "object",
             ["properties"] = new JsonObject
             {
-                ["changes"] = new JsonObject
+                ["request"] = new JsonObject
                 {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject
+                    ["type"] = "object",
+                    ["properties"] = requestProperties,
+                    ["dependentRequired"] = new JsonObject
                     {
-                        ["$ref"] = "#/$defs/worldChange"
-                    },
-                    ["description"] = "Array of world changes (mutations) to commit"
+                        ["changes"] = new JsonArray("narrative")
+                    }
                 },
-                ["narrative"] = new JsonObject
+                ["campaignName"] = new JsonObject
                 {
                     ["type"] = "string",
-                    ["description"] = "Narrative summary of what happened"
-                },
-                ["autoRefreshInvolved"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["default"] = true,
-                    ["description"] = "Auto-refresh entities touched by changes"
-                },
-                ["extraCharacterIds"] = new JsonObject
-                {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "string" },
-                    ["description"] = "Additional NPC IDs to refresh"
-                },
-                ["extraLocationIds"] = new JsonObject
-                {
-                    ["type"] = "array",
-                    ["items"] = new JsonObject { ["type"] = "string" },
-                    ["description"] = "Additional location IDs to refresh"
-                },
-                ["includeParty"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["default"] = false,
-                    ["description"] = "Include full Party member summaries"
-                },
-                ["includeWorldState"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["default"] = false,
-                    ["description"] = "Include WorldState in response"
-                },
-                ["partyLocationId"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Location ID for WorldState scoping and the capped NPC initiative/memory candidate pool"
-                },
-                ["fullDetailCharacterId"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "NPC ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
-                },
-                ["fullDetailLocationId"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Location ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
-                },
-                ["forceFullReseed"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["default"] = false,
-                    ["description"] = "Force a full-detail response (Party/WorldState instead of PartyDelta/WorldStateDelta) and reset the reseed counter. Use after your own context was compacted/summarized."
+                    ["description"] = "Campaign name (required)"
                 }
             },
-            ["dependentRequired"] = new JsonObject
-            {
-                ["changes"] = new JsonArray("narrative")
-            },
+            ["required"] = new JsonArray("request", "campaignName"),
             ["$defs"] = BuildDefs(options)
         };
 
