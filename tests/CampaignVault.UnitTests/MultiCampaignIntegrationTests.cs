@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Models;
@@ -121,6 +122,28 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var secondCreate = await management.CreateCampaign(slug, RulesetSystem.Dnd5e);
         Assert.False(secondCreate.Success);
         Assert.Equal("AlreadyExists", secondCreate.Error);
+
+        // The served WorldState.Time must reflect the reseeded year, not just Campaign.LoreSettings.
+        var worldStateAfter = await exploration.GetWorldState(campaignName: slug);
+        Assert.True(worldStateAfter.Success);
+        Assert.Equal(900, worldStateAfter.Data!.Time.Year);
+    }
+
+    [Fact]
+    public async Task CreateCampaign_FreshSlug_WorldStateReflectsLoreYear()
+    {
+        var repo = _fixture.CreateRepository();
+        var exploration = TestCampaignToolsFactory.CreateTool<ExplorationTools>(_fixture, repo);
+        var management = TestCampaignToolsFactory.CreateTool<CampaignManagementTools>(_fixture, repo);
+        var slug = "fresh-year-world-" + Guid.NewGuid().ToString("N")[..8];
+
+        var createResult = await management.CreateCampaign(slug, RulesetSystem.Dnd5e, loreYear: 250);
+        Assert.True(createResult.Success);
+        Assert.Equal(250, createResult.Data!.LoreSettings.Year);
+
+        var worldState = await exploration.GetWorldState(campaignName: slug);
+        Assert.True(worldState.Success);
+        Assert.Equal(250, worldState.Data!.Time.Year);
     }
 
     [Fact]
@@ -352,5 +375,66 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.True(currentB.Success);
         Assert.Equal(slugA, currentA.Data!.Campaign.Name);
         Assert.Equal(slugB, currentB.Data!.Campaign.Name);
+    }
+
+    [Theory]
+    [InlineData("1492 DR", 1492, "DR")]
+    [InlineData("the Age of Dragons, year 20", 20, null)]
+    [InlineData("present day", 1492, null)]
+    [InlineData("Third Age", 1492, "Third Age")]
+    public async Task FinalizeOnboarding_StartingEraAnswer_ParsesIntoLoreYearAndReachesWorldState(
+        string startingEraAnswer, int expectedYear, string? expectedEpochContains)
+    {
+        var repo = _fixture.CreateRepository();
+        var onboarding = TestCampaignToolsFactory.CreateTool<OnboardingTools>(_fixture, repo);
+        var exploration = TestCampaignToolsFactory.CreateTool<ExplorationTools>(_fixture, repo);
+        var slug = "onboard-era-" + Guid.NewGuid().ToString("N")[..8];
+
+        var start = await onboarding.StartCampaignOnboarding(slug);
+        Assert.True(start.Success);
+
+        // Answer questions in whatever order the catalog presents them until ready to finalize,
+        // giving the StartingEra question our test value and generic-but-valid answers otherwise.
+        OnboardingQuestion? current = start.Data!.CurrentQuestion;
+        var guard = 0;
+        while (current != null)
+        {
+            Assert.True(++guard < 30, "Onboarding question loop did not terminate.");
+
+            string answer = current.Key switch
+            {
+                OnboardingQuestionCatalog.StartingEra => startingEraAnswer,
+                OnboardingQuestionCatalog.System => "Dnd5e",
+                OnboardingQuestionCatalog.WorldSetting => "solo",
+                OnboardingQuestionCatalog.SoloCompanions => "no",
+                OnboardingQuestionCatalog.PlotSource => "generated-surprise",
+                OnboardingQuestionCatalog.SideQuestGeneration => "on-the-fly",
+                _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
+                _ => "A reasonable free-text answer for this question."
+            };
+
+            var submit = await onboarding.SubmitOnboardingAnswer(slug, answer);
+            Assert.True(submit.Success, submit.Summary);
+            current = submit.Data!.CurrentQuestion;
+        }
+
+        var finalize = await onboarding.FinalizeCampaignOnboarding(slug);
+        Assert.True(finalize.Success, finalize.Summary);
+
+        // When the starting-era answer had no digit, finalize must surface that the year was
+        // defaulted rather than silently dropping the user's intent.
+        var noDigit = !Regex.IsMatch(startingEraAnswer, @"\d");
+        Assert.Equal(noDigit, finalize.Data!.NextSteps.Any(s => s.Contains("No numeric year found")));
+
+        var worldState = await exploration.GetWorldState(campaignName: slug);
+        Assert.True(worldState.Success);
+        Assert.Equal(expectedYear, worldState.Data!.Time.Year);
+        if (expectedEpochContains != null)
+        {
+            Assert.Contains(expectedEpochContains, worldState.Data.Time.Epoch);
+        }
+
+        // The formatted date should always be a usable sentence carrying the same Year.
+        Assert.Contains($"Year {expectedYear}", worldState.Data.Time.FormattedDate);
     }
 }

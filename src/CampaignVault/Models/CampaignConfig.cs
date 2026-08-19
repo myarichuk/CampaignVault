@@ -183,10 +183,10 @@ public class CampaignConfig
     public int DispositionMinTokenLength { get; set; } = 3;
     public Dictionary<string, List<string>> DispositionKeywordExpansions { get; set; } = [];
 
-    public List<string> GratitudeHeuristicTokens { get; set; } =
-    [
-        "gift", "gave", "granted", "necklace", "reward", "favor", "saved", "rescued"
-    ];
+    // Deliberately empty by default — see GratitudeHeuristicHelper.DefaultTokens for the fallback.
+    // RavenDB's deserializer appends onto (rather than replaces) a pre-populated List<T> property,
+    // so a non-empty default here doubles on every load and compounds permanently on load-then-save.
+    public List<string> GratitudeHeuristicTokens { get; set; } = [];
 
     public int InitiativeSuppressionRetentionDays { get; set; } = 30;
 

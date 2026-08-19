@@ -99,4 +99,12 @@ public class CampaignTime
             >= 21 and < 24 => "Dusk",
             _ => "Night"
         };
+
+    /// <summary>
+    /// Human-readable in-world date, e.g. "Day 12, Month 3, Year 1492 (Current Era) — Morning".
+    /// Rides along wherever CampaignTime itself is serialized (WorldStateView.Time, AdvanceWorld results,
+    /// etc.) so the DM-LLM has an actual sentence to narrate/reference instead of having to assemble
+    /// one from the raw Year/Month/Day/Epoch fields itself.
+    /// </summary>
+    public string FormattedDate => $"Day {Day}, Month {Month}, Year {Year} ({Epoch}) — {GetTimeOfDayName()}";
 }

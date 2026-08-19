@@ -89,6 +89,8 @@ Most changes accept `minutesElapsed`:
 
 Time accumulates and immediately nudges hunger/thirst/tiredness.
 
+**Calendar date:** `WorldStateView.Time.FormattedDate` (e.g. "Day 12, Month 3, Year 1492 (Current Era) — Morning") is a ready-to-narrate sentence — use it directly rather than assembling one from the raw `Year`/`Month`/`Day`/`Epoch` fields. Reference it when a scene calls for grounding the party in time (a new day, a festival, "how long have we been here"), not on every beat.
+
 ## Narrow vs. Broad Mutations
 
 - **Broad scope** (structural changes: field rewrites, entity creation) → `world_build`

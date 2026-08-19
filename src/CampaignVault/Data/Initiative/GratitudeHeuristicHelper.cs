@@ -21,6 +21,17 @@ internal static class GratitudeHeuristicHelper
         ItemCategory.Clothing
     ];
 
+    /// <summary>
+    /// Fallback tokens used when CampaignConfig.GratitudeHeuristicTokens is empty (the config
+    /// property itself defaults to empty — RavenDB's deserializer appends onto rather than
+    /// replaces a pre-populated List&lt;T&gt; property, so a non-empty default there would double
+    /// on every load, and permanently on any load-then-save cycle).
+    /// </summary>
+    public static readonly IReadOnlyList<string> DefaultTokens =
+    [
+        "gift", "gave", "granted", "necklace", "reward", "favor", "saved", "rescued"
+    ];
+
     public static bool IsStructuredGratitudeBeat(string? beat) =>
         !string.IsNullOrWhiteSpace(beat) && StructuredGratitudeBeats.Contains(beat);
 

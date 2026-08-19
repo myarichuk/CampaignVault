@@ -30,7 +30,11 @@ public sealed class RelationalInitiativeProvider : INpcInitiativeSignalProvider
                     "Recently received kindness — may want to reciprocate with hospitality, a favor, or a sincere thank-you.",
                     75));
             }
-            else if (GratitudeHeuristicHelper.SummaryMatchesHeuristic(ev.Summary, ctx.Config.GratitudeHeuristicTokens))
+            else if (GratitudeHeuristicHelper.SummaryMatchesHeuristic(
+                         ev.Summary,
+                         ctx.Config.GratitudeHeuristicTokens is { Count: > 0 }
+                             ? ctx.Config.GratitudeHeuristicTokens
+                             : GratitudeHeuristicHelper.DefaultTokens))
             {
                 var related = ev.Involved.FirstOrDefault(id => !id.Equals(npc.Id, StringComparison.OrdinalIgnoreCase)) ?? "recent";
                 AddCandidate(candidates, seenKeys, new InitiativeCandidate(

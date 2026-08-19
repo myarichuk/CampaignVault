@@ -48,13 +48,21 @@ Write-Host "Plugin installed to $pluginDestDir\campaign-vault.js"
 $opencodeJsonPath = Join-Path $TargetDir "opencode.json"
 if (-not (Test-Path $opencodeJsonPath)) {
     $json = @{
+        mcp = @{
+            "campaign-vault" = @{
+                type = "remote"
+                url = "http://localhost:5275"
+                enabled = $true
+            }
+        }
         plugin = @("file://.opencode/plugin/campaign-vault.js")
-    } | ConvertTo-Json -Depth 3
+    } | ConvertTo-Json -Depth 5
     [System.IO.File]::WriteAllText($opencodeJsonPath, $json, [System.Text.UTF8Encoding]::new($false))
-    Write-Host "Created $opencodeJsonPath with plugin registration"
+    Write-Host "Created $opencodeJsonPath with MCP server + plugin registration"
 } else {
     Write-Host "opencode.json already exists at $opencodeJsonPath"
-    Write-Host 'Add this to your existing opencode.json manually:'
+    Write-Host "Ensure these are in your opencode.json:"
+    Write-Host '  "mcp": { "campaign-vault": { "type": "remote", "url": "http://localhost:5275", "enabled": true } }'
     Write-Host '  "plugin": ["file://.opencode/plugin/campaign-vault.js"]'
 }
 

@@ -251,6 +251,12 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
             campaign.Metadata["onboarding_completed"] = DateTime.UtcNow.ToString("O");
             await session.StoreAsync(campaign);
 
+            // ParseStartingEra only extracts a Year when the answer contains a digit; a purely
+            // named era ("the Third Age") leaves Year at its 1492 default with no signal to the
+            // caller that no explicit year was actually derived from what the user said.
+            var startingEraHadNoYearDigit = !string.IsNullOrWhiteSpace(startingEraStr)
+                && !Regex.IsMatch(startingEraStr, @"\d");
+
             // A phantom CampaignTime doc may already exist (GetTimeAsync auto-vivifies with default
             // lore on any read against this slug before onboarding finishes) — reseed it to the lore
             // actually chosen here rather than silently keeping the earlier default. Mirrors
@@ -292,8 +298,11 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
                     {
                         "Campaign meta created and system locked.",
                         "Ready for world_build to seed starter entities (locations, NPCs, factions, quests, plot threads).",
-                        "After world seeding, start_session can be called to begin session 1."
-                    },
+                        "After world seeding, start_session can be called to begin session 1.",
+                    }.Concat(startingEraHadNoYearDigit
+                        ? new[] { $"No numeric year found in starting-era answer '{startingEraStr}' — Year defaulted to {campaign.LoreSettings.Year}. There is currently no tool to change it after creation; mention this to the user if a specific year mattered." }
+                        : [])
+                    .ToList(),
                     Summary = $"Onboarding finalized for '{campaignNameFromAnswer}'. Use world_build to populate the world with starter entities."
                 },
                 $"Onboarding finalized for '{campaignNameFromAnswer}'.");

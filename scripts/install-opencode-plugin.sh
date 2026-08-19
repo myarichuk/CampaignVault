@@ -40,13 +40,21 @@ OPENCODE_JSON="$TARGET_DIR/opencode.json"
 if [[ ! -f "$OPENCODE_JSON" ]]; then
     cat > "$OPENCODE_JSON" <<EOF
 {
+  "mcp": {
+    "campaign-vault": {
+      "type": "remote",
+      "url": "http://localhost:5275",
+      "enabled": true
+    }
+  },
   "plugin": ["file://.opencode/plugin/campaign-vault.js"]
 }
 EOF
-    echo "Created $OPENCODE_JSON with plugin registration"
+    echo "Created $OPENCODE_JSON with MCP server + plugin registration"
 else
     echo "opencode.json already exists at $OPENCODE_JSON"
-    echo "Add this to your existing opencode.json manually:"
+    echo "Ensure these are in your opencode.json:"
+    echo '  "mcp": { "campaign-vault": { "type": "remote", "url": "http://localhost:5275", "enabled": true } }'
     echo '  "plugin": ["file://.opencode/plugin/campaign-vault.js"]'
 fi
 

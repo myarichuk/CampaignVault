@@ -5,12 +5,13 @@
   "description": "opencode plugin that mechanically enforces CampaignVault's pressure-escalation, STATUS BAR, state-persistence, and no-invented-rolls rules.",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && esbuild dist/index.js --bundle --format=esm --outfile=dist/bundled.js --external:@opencode-ai/plugin && mv dist/bundled.js dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "^1.18.0",
+    "esbuild": "^0.21.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }

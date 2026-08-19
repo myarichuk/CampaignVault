@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using CampaignVault.Models;
 using CampaignVault.Tools;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 
 namespace CampaignVault.Middleware;
@@ -80,6 +81,8 @@ internal static partial class McpToolErrorFilter
                 "Pass the campaign slug (e.g. dragon-heist). Call list_campaigns to discover slugs.",
             ("get_rules_reference", "kind") =>
                 "Pass 'handbook', 'spells' (requires className), or 'creatures'.",
+            ("end_session", "recapText") =>
+                "Provide an LLM-authored recap of key events and outcomes from the session.",
             _ =>
                 $"Call get_help (topic=tools for the full catalog) for the expected argument names and examples."
         };
@@ -95,6 +98,8 @@ internal static partial class McpToolErrorFilter
             ("get_entity", "entityId") => "get_entity(\"chars/innkeeper\")",
             ("combat", "locationId") or ("combat", "combatantIds") =>
                 "combat(action: \"start\", locationId: \"locations/tavern\", combatantIds: [\"chars/hero\"])",
+            ("end_session", "recapText") =>
+                "end_session(campaignName: \"dragon-heist\", recapText: \"The party cleared the cellar and negotiated a truce with the goblins.\")",
             _ => null
         };
 
@@ -152,7 +157,7 @@ internal static partial class McpToolErrorFilter
         {
             IsError = true,
             Content = [new TextContentBlock { Text = text }],
-            StructuredContent = JsonSerializer.SerializeToElement(payload),
+            StructuredContent = JsonSerializer.SerializeToElement(payload, McpJsonUtilities.DefaultOptions),
         };
     }
 }
