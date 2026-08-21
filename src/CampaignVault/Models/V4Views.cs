@@ -280,6 +280,9 @@ public class AdvanceResult
 {
     public CampaignTime NewTime { get; set; } = null!;
     public List<string> SimulatorEvents { get; set; } = [];
+    /// <summary>Structured pressure items (Severity, GroupingKey, SuggestedCommitJson) — kept for in-process
+    /// use but not serialized to the LLM: the ToolResult.WorldPressure display strings carry the same content.</summary>
+    [JsonIgnore]
     public List<WorldPressureItem> WorldPressure { get; set; } = [];
     /// <summary>IDs of transient NPCs evicted during this advance. Re-introduce important ones via keepAlive or schedule_change.</summary>
     public List<string> EvictedNpcIds { get; set; } = [];

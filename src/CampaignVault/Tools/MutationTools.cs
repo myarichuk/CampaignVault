@@ -937,11 +937,6 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             else
             {
                 var newEvents = new List<string>();
-                if (!string.IsNullOrWhiteSpace(ctx.Request?.Narrative))
-                {
-                    newEvents.Add(ctx.Request!.Narrative!);
-                }
-
                 newEvents.AddRange(ctx.AmbientNarrativeSummaries);
 
                 ctx.Result.WorldStateDelta = new WorldStateDeltaView

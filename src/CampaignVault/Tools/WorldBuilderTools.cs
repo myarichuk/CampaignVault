@@ -96,7 +96,7 @@ See get_help topic=world-building for a full copy-paste example and recommended 
                 ? string.Join(", ", result.Kinds.Select(kv => $"{kv.Key}: {kv.Value.Created} created/{kv.Value.Updated} updated"))
                 : "no entities";
             var needText = result.NeedDescriptorsSet > 0 ? $", needDescriptors: {result.NeedDescriptorsSet} set" : "";
-            var warningsText = warnings.Count > 0 ? $" Warnings: {string.Join(" | ", warnings)}" : "";
+            var warningsText = warnings.Count > 0 ? $", {warnings.Count} warning(s)" : "";
             var summary = $"world_build completed (campaign: {effective}). {counts}{needText}.{warningsText}";
 
             return new ToolResult<WorldBuildResult>(true, result, summary);

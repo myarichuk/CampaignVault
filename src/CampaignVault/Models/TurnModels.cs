@@ -166,7 +166,7 @@ public class WorldStateDeltaView
     [Description("Faction stance/influence changes applied this turn. Empty if none.")]
     public List<FactionStateChange>? FactionStateChanges { get; set; }
 
-    [Description("Narrative text for this turn: the caller's own narrative plus any persisted ambient simulation narratives.")]
+    [Description("Ambient narrative summaries from world simulation this turn (not the caller's own narrative, which is already in context).")]
     public List<string>? NewEvents { get; set; }
 }
 
