@@ -654,6 +654,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 if (summary != null)
                 {
                     summary.Initiative = ctx.InitiativeByNpcId[npcId];
+                    if (ShouldStripUnchangedGear(ctx, npcId))
+                    {
+                        summary.Equipped = null;
+                        summary.Carried = null;
+                    }
                     (ctx.Result.Npcs ??= []).Add(summary);
                 }
             }
@@ -663,6 +668,43 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             }
         }
     }
+
+    /// <summary>
+    /// True if this change could have altered the given character's equipment or ruleset stats
+    /// (the fields <see cref="ShouldStripUnchangedGear"/> strips on mode=delta). Mirrors the type-level
+    /// precedent in <see cref="SideEffectDuplicationGuard"/>: an explicit switch over the handful of
+    /// WorldChange types that actually touch gear/stats, rather than the broad
+    /// ExtractInvolvedEntityIds used for pressure/InvolvedEntities tracking — that one also matches
+    /// purely narrative changes (activity, event, mood) that reference the character without
+    /// changing anything worth re-sending.
+    /// </summary>
+    private static bool AffectsGearOrStats(WorldChange change, string characterId)
+    {
+        var eq = StringComparer.OrdinalIgnoreCase;
+        return change switch
+        {
+            ItemTransfer it => eq.Equals(it.ToHolderId, characterId),
+            ItemEquip ie => eq.Equals(ie.CharacterId, characterId),
+            ItemUnequip iu => eq.Equals(iu.CharacterId, characterId),
+            HpChange hp => eq.Equals(hp.CharacterId, characterId),
+            StatusChange sc => eq.Equals(sc.CharacterId, characterId),
+            StatusRemove sr => eq.Equals(sr.CharacterId, characterId),
+            ResourceChange rc => eq.Equals(rc.CharacterId, characterId),
+            LevelUpChange lc => eq.Equals(lc.CharacterId, characterId),
+            CharacterUpdate cu => cu.SystemStats != null && eq.Equals(cu.CharacterId, characterId),
+            RulesetAction ra => eq.Equals(ra.CharacterId, characterId) || ra.TargetIds.Any(t => eq.Equals(t, characterId)),
+            CharacterCreate cc => eq.Equals(cc.CharacterId, characterId),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// On mode=delta, blanks EquippedItems/CarriedItems/SystemStats for an NPC whose gear/stats
+    /// weren't touched this turn — the client already has last-known values from the last full
+    /// reseed (or a prior delta that did change them). Full mode always leaves data untouched.
+    /// </summary>
+    private bool ShouldStripUnchangedGear(TurnContext ctx, string characterId) =>
+        ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsGearOrStats(c, characterId));
 
     /// <summary>
     /// Fetches lightweight summaries for refreshed entities. Explicitly requested extras are queued
@@ -736,6 +778,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                     var summary = await _repository.BuildSceneSummaryAsync(ctx.Session, locationId, ctx.Campaign);
                     if (summary != null)
                     {
+                        summary.PresentNPCs = summary.PresentNPCs
+                            .Select(npc => ShouldStripUnchangedGear(ctx, npc.Id)
+                                ? npc with { SystemStats = null, EquippedItems = null, CarriedItems = null }
+                                : npc)
+                            .ToList();
                         result.Scenes.Add(summary);
                     }
                     else
@@ -762,6 +809,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                     if (summary != null)
                     {
                         summary.Initiative = ctx.InitiativeByNpcId.GetValueOrDefault(charId);
+                        if (ShouldStripUnchangedGear(ctx, charId))
+                        {
+                            summary.Equipped = null;
+                            summary.Carried = null;
+                        }
                         result.Npcs.Add(summary);
                     }
                     else

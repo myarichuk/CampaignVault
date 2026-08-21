@@ -6,12 +6,12 @@ using ModelContextProtocol.Protocol;
 namespace CampaignVault.Middleware;
 
 /// <summary>
-/// Strips semantic vector fields from MCP tool responses to conserve token context,
-/// while keeping them stored in RavenDB for search operations. Also collapses the redundant
-/// text Content block down to just the narrative Summary when StructuredContent is present —
-/// the MCP SDK always serializes the full return value into Content as a text fallback for
-/// clients that don't read StructuredContent, which otherwise doubles the effective payload
-/// size of every structured tool response.
+/// Strips semantic vector fields from MCP tool responses to conserve token context, while
+/// keeping them stored in RavenDB for search operations. Also re-serializes the cleaned
+/// StructuredContent back into the text Content block, replacing the SDK's raw (vector-laden)
+/// dump — most MCP hosts (opencode among them) only forward Content into the model's context,
+/// not StructuredContent, so Content has to carry the real, cleaned data rather than a summary
+/// stand-in. StructuredContent is left populated too, for hosts that do read it.
 /// </summary>
 internal static class McpResponseCleaner
 {
@@ -21,6 +21,13 @@ internal static class McpResponseCleaner
     // Ordinal comparison would never match those keys, silently defeating this filter.
     private static readonly HashSet<string> VectorFieldsToStrip =
         new(IHasSemanticVector.StrippedFields, StringComparer.OrdinalIgnoreCase);
+
+    // WriteIndented defaults to false, but stated explicitly so a future edit can't silently
+    // reintroduce pretty-printed whitespace into every tool response's Content block.
+    private static readonly JsonSerializerOptions ContentSerializerOptions = new()
+    {
+        WriteIndented = false,
+    };
 
     public static void Register(IMcpRequestFilterBuilder filters)
     {
@@ -33,14 +40,14 @@ internal static class McpResponseCleaner
             {
                 try
                 {
-                    result.StructuredContent = StripVectorsFromElement(result.StructuredContent.Value);
+                    var cleaned = StripVectorsFromElement(result.StructuredContent.Value);
+                    result.StructuredContent = cleaned;
+                    SyncContentToCleanedStructuredContent(result, cleaned);
                 }
                 catch
                 {
                     // If cleaning fails, return original result
                 }
-
-                TryCollapseContentToSummary(result);
             }
 
             return result;
@@ -48,31 +55,16 @@ internal static class McpResponseCleaner
     }
 
     /// <summary>
-    /// Replaces the SDK's default full-JSON-dump Content block with just the ToolResult's
-    /// Summary text, since StructuredContent already carries the complete data. Leaves Content
-    /// untouched if no non-empty "summary" string is present, so nothing is ever silently dropped
-    /// to an empty response.
+    /// Replaces the SDK's default Content dump (serialized before vector-stripping ran, so it
+    /// still carries raw semanticVector/embeddingTextHash arrays) with a compact re-serialization
+    /// of the already-cleaned StructuredContent. Most MCP hosts only forward Content into the
+    /// model's context, so this — not StructuredContent — is the copy that actually needs to be
+    /// both complete and vector-free.
     /// </summary>
-    private static void TryCollapseContentToSummary(CallToolResult result)
+    private static void SyncContentToCleanedStructuredContent(CallToolResult result, JsonElement cleaned)
     {
-        if (result.StructuredContent is not { } structured || structured.ValueKind != JsonValueKind.Object)
-        {
-            return;
-        }
-
-        if (!structured.TryGetProperty("summary", out var summaryProp) ||
-            summaryProp.ValueKind != JsonValueKind.String)
-        {
-            return;
-        }
-
-        var summary = summaryProp.GetString();
-        if (string.IsNullOrEmpty(summary))
-        {
-            return;
-        }
-
-        result.Content = [new TextContentBlock { Text = summary }];
+        var text = JsonSerializer.Serialize(cleaned, ContentSerializerOptions);
+        result.Content = [new TextContentBlock { Text = text }];
     }
 
     private static JsonElement StripVectorsFromElement(JsonElement element)

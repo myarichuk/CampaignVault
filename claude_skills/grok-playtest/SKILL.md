@@ -171,6 +171,8 @@ Document key decisions and discoveries at the end of each session outside the en
 - [ ] One visual/psychological detail per mention, not a dump?
 - [ ] If multi-NPC, did I show social geometry and competing stakes?
 - [ ] Roll results woven inline after the engine returns them?
+- [ ] If `ruleset_action` had `targetIds`, did I skip adding a separate `engagement_relation` for the same pair (it's auto-applied)?
+- [ ] Did a `ruleset_action`/`status`/combat change get paired with an `event` in the same batch (they don't auto-log one)?
 
 *Between sessions:*
 - [ ] Key decisions noted externally?

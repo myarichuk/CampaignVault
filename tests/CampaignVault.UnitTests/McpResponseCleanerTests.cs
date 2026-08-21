@@ -74,63 +74,78 @@ public class McpResponseCleanerTests
         Assert.Equal("Something happened", output.GetProperty("matches")[1].GetProperty("summary").GetString());
     }
 
-    private static void CollapseContentToSummary(CallToolResult result)
+    private static void SyncContent(CallToolResult result, JsonElement cleaned)
     {
         var method = typeof(McpResponseCleaner).GetMethod(
-            "TryCollapseContentToSummary",
+            "SyncContentToCleanedStructuredContent",
             BindingFlags.NonPublic | BindingFlags.Static);
         Assert.NotNull(method);
-        method!.Invoke(null, [result]);
+        method!.Invoke(null, [result, cleaned]);
     }
 
+    /// <summary>
+    /// Content must carry the full, cleaned payload — most MCP hosts (e.g. opencode) only ever
+    /// forward Content into the model's context, never StructuredContent, so a summary-only
+    /// Content block silently starves the model of the data it just asked for.
+    /// </summary>
     [Fact]
-    public void CollapsesContentToSummary_WhenStructuredContentHasSummary()
+    public void SyncsContentToFullCleanedData_NotJustSummary()
     {
         var structured = JsonDocument.Parse(
             """{"success":true,"summary":"World updated with 2 changes.","data":{"committed":true,"npcs":[{"name":"Old Owen"}]}}"""
         ).RootElement;
         var result = new CallToolResult
         {
-            Content = [new TextContentBlock { Text = JsonSerializer.Serialize(structured) }],
+            Content = [new TextContentBlock { Text = "stale SDK dump" }],
             StructuredContent = structured,
         };
 
-        CollapseContentToSummary(result);
+        SyncContent(result, structured);
 
         var block = Assert.Single(result.Content);
         var text = Assert.IsType<TextContentBlock>(block);
-        Assert.Equal("World updated with 2 changes.", text.Text);
+        Assert.Contains("World updated with 2 changes.", text.Text);
+        Assert.Contains("Old Owen", text.Text);
+        Assert.Contains("committed", text.Text);
     }
 
     [Fact]
-    public void LeavesContentUntouched_WhenSummaryMissing()
+    public void SyncedContent_ContainsNoVectorFields()
     {
-        var structured = JsonDocument.Parse("""{"success":true,"data":{"committed":true}}""").RootElement;
-        var original = new TextContentBlock { Text = "original text" };
+        var raw = JsonDocument.Parse(
+            """{"id":"chars/eli-harlan","name":"Eli","semanticVector":[0.1,0.2,0.3],"embeddingTextHash":"ABC123"}"""
+        ).RootElement;
+        var cleaned = StripVectors(raw);
         var result = new CallToolResult
         {
-            Content = [original],
-            StructuredContent = structured,
+            Content = [new TextContentBlock { Text = "stale SDK dump" }],
+            StructuredContent = raw,
         };
 
-        CollapseContentToSummary(result);
+        SyncContent(result, cleaned);
 
-        Assert.Same(original, Assert.Single(result.Content));
+        var text = Assert.IsType<TextContentBlock>(Assert.Single(result.Content));
+        Assert.DoesNotContain("semanticVector", text.Text);
+        Assert.DoesNotContain("embeddingTextHash", text.Text);
+        Assert.Contains("Eli", text.Text);
     }
 
     [Fact]
-    public void LeavesContentUntouched_WhenSummaryIsEmpty()
+    public void SyncedContent_IsCompact_NoIndentationWhitespace()
     {
-        var structured = JsonDocument.Parse("""{"success":true,"summary":"","data":{}}""").RootElement;
-        var original = new TextContentBlock { Text = "original text" };
+        var structured = JsonDocument.Parse(
+            """{"success":true,"summary":"ok","data":{"a":1,"b":2}}"""
+        ).RootElement;
         var result = new CallToolResult
         {
-            Content = [original],
+            Content = [new TextContentBlock { Text = "stale SDK dump" }],
             StructuredContent = structured,
         };
 
-        CollapseContentToSummary(result);
+        SyncContent(result, structured);
 
-        Assert.Same(original, Assert.Single(result.Content));
+        var text = Assert.IsType<TextContentBlock>(Assert.Single(result.Content));
+        Assert.DoesNotContain("\n", text.Text);
+        Assert.DoesNotContain("  ", text.Text);
     }
 }

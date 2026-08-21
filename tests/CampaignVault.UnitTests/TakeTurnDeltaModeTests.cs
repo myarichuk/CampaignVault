@@ -261,6 +261,89 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(companionSummary.Initiative);
     }
 
+    /// <summary>
+    /// Regression guard for the RefreshInvolvedEntitiesAsync gear-duplication fix: on mode=delta,
+    /// EquippedItems/CarriedItems/SystemStats for a refreshed NPC — whether surfaced via top-level
+    /// Npcs (ExtraCharacterIds) or nested in Scenes[].PresentNPCs (ExtraLocationIds) — should only be
+    /// populated when something this turn actually touched that NPC's gear/stats (item/character
+    /// update/ruleset_action/etc). An untouched NPC's gear was previously re-sent in full on every
+    /// single delta turn even though it never changes turn to turn.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_StripsUnchangedGear_ButKeepsItWhenTouchedThisTurn()
+    {
+        var slug = NewSlug("gearstrip");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-tavern";
+        var companionId = $"chars/{slug}-comp";
+        var daggerId = $"items/{slug}-dagger";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Tavern" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertItemAsync(cs, new ItemUpsertRequest
+            {
+                Id = daggerId,
+                Name = "Dagger",
+                Description = "A plain dagger.",
+                HolderId = companionId,
+                CoreCategory = ItemCategory.Weapon,
+                EquipZones = [EquipZone.Accessory],
+                EquipLayer = EquipLayer.Held,
+                IsEquipped = true
+            });
+            await session.SaveChangesAsync();
+        }
+
+        Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = changes,
+            Narrative = changes != null ? "The companion acts." : null,
+            ExtraCharacterIds = [companionId],
+            ExtraLocationIds = [locId]
+        }, slug);
+
+        // Call 1: Full (first-ever call) — gear always populated regardless of mode.
+        var seed = await Refresh();
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+        var seedNpc = Assert.Single(seed.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.NotNull(seedNpc.Equipped);
+        Assert.NotEmpty(seedNpc.Equipped!);
+        var seedScenePc = Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.NotNull(seedScenePc.EquippedItems);
+        Assert.NotEmpty(seedScenePc.EquippedItems!);
+
+        // Call 2: Delta, nothing touches the companion's gear/stats this turn -> stripped in both shapes.
+        var untouched = await Refresh([new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery, Involved = [companionId] }]);
+        Assert.True(untouched.Success, untouched.Summary);
+        Assert.Equal(TurnMode.Delta, untouched.Data!.Mode);
+        var untouchedNpc = Assert.Single(untouched.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.Null(untouchedNpc.Equipped);
+        Assert.Null(untouchedNpc.Carried);
+        var untouchedScenePc = Assert.Single(untouched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.Null(untouchedScenePc.EquippedItems);
+        Assert.Null(untouchedScenePc.CarriedItems);
+        Assert.Null(untouchedScenePc.SystemStats);
+
+        // Call 3: Delta, an ItemUnequip touches the companion's gear this turn -> full detail returned.
+        var touched = await Refresh([new ItemUnequip { CharacterId = companionId, ItemId = daggerId }]);
+        Assert.True(touched.Success, touched.Summary);
+        Assert.Equal(TurnMode.Delta, touched.Data!.Mode);
+        var touchedNpc = Assert.Single(touched.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.NotNull(touchedNpc.Carried);
+        Assert.NotEmpty(touchedNpc.Carried!);
+        var touchedScenePc = Assert.Single(touched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.NotNull(touchedScenePc.CarriedItems);
+        Assert.NotEmpty(touchedScenePc.CarriedItems!);
+    }
+
     [Fact]
     public async Task Initiative_CapsAtTwo_AndIncludesOneCompanionPlusOneOther()
     {
