@@ -25,7 +25,7 @@ public class CommitSchemaDriftTests
             .ToList();
 
         var discriminatorsFromAttrs = new HashSet<string>(
-            derivedTypeAttrs.Select(attr => (string)attr.TypeDiscriminator ?? attr.DerivedType.Name)
+            derivedTypeAttrs.Select(attr => (string?)attr.TypeDiscriminator ?? attr.DerivedType.Name)
         );
 
         // Check that every discriminator has a registry entry

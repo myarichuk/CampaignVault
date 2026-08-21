@@ -7,7 +7,7 @@ namespace CampaignVault.Data;
 /// </summary>
 public static class RulesetSystemResolver
 {
-    public static bool TryFromStats(SystemExtension stats, out string system)
+    public static bool TryFromStats(SystemExtension stats, out string? system)
     {
         system = stats switch
         {
@@ -27,6 +27,6 @@ public static class RulesetSystemResolver
                 $"Cannot resolve ruleset system from {stats.GetType().Name}.");
         }
 
-        return system;
+        return system!;
     }
 }

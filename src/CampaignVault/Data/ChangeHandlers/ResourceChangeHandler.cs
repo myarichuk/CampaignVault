@@ -108,7 +108,7 @@ public class ResourceChangeHandler : IWorldChangeHandler
                 "[WARNING] Cannot resolve ruleset system for spell validation; spend was applied.");
             return null;
         }
-        if (!_spellProvider.TryGet(system, rc.SpellName, out var spell) || spell == null)
+        if (!_spellProvider.TryGet(system!, rc.SpellName, out var spell) || spell == null)
         {
             context.RecordMessage(
                 $"[WARNING] spellName '{rc.SpellName}' did not match any known {system} spell definition. " +

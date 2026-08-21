@@ -61,7 +61,7 @@ public class RestRecoveryLogicTests
     [Fact]
     public void BuildTirednessRecoveryDelta_NoNeedsProfile_ReturnsNull()
     {
-        var character = new Character { Id = "chars/1", Needs = null };
+        var character = new Character { Id = "chars/1", Needs = null! };
 
         var delta = RestRecoveryLogic.BuildTirednessRecoveryDelta(character, RestType.LongRest, baseline: 20);
 

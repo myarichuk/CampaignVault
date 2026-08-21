@@ -20,7 +20,7 @@ public static class ConditionExpiryEvaluator
         if (!RulesetSystemResolver.TryFromStats(stats, out var system))
             return null;
 
-        return provider.TryGet(system, conditionName, out var def) ? def : null;
+        return provider.TryGet(system!, conditionName, out var def) ? def : null;
     }
 
     /// <summary>

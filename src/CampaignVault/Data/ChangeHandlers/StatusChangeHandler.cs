@@ -151,11 +151,11 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
             return;
         }
 
-        if (_conditionProvider.TryGet(system, effect.ConditionName, out _))
+        if (_conditionProvider.TryGet(system!, effect.ConditionName, out _))
             return;
 
         const int maxSample = 8;
-        var knownNames = _conditionProvider.GetConditionsForSystem(system).Keys
+        var knownNames = _conditionProvider.GetConditionsForSystem(system!).Keys
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var sample = string.Join(", ", knownNames.Take(maxSample));

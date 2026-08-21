@@ -267,7 +267,7 @@ public class CustomCreatureUpsertRequest
 
     public string Name { get; set; } = null!;
 
-    public string System { get; set; }
+    public string? System { get; set; }
 
     public string? Description { get; set; }
 
@@ -369,7 +369,7 @@ public class CustomSpellUpsertRequest
 
     public string Name { get; set; } = null!;
 
-    public string System { get; set; }
+    public string? System { get; set; }
 
     public string? Description { get; set; }
 
@@ -397,7 +397,7 @@ public class CustomFeatUpsertRequest
 
     public string Name { get; set; } = null!;
 
-    public string System { get; set; }
+    public string? System { get; set; }
 
     public string? Description { get; set; }
 

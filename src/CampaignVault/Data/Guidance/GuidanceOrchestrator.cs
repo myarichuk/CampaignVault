@@ -52,7 +52,7 @@ internal sealed class GuidanceOrchestrator : IGuidanceOrchestrator
         var filtered = contributed
             .Where(h => ignoreLedger ||
                 ledger?.Delivered.TryGetValue(h.Key, out var delivery) != true ||
-                (h.RepeatAfterDays.HasValue && ctx.Time != null &&
+                (h.RepeatAfterDays.HasValue && ctx.Time != null && delivery != null &&
                  ctx.Time.TotalDaysElapsed - delivery.Day >= h.RepeatAfterDays.Value))
             .OrderByDescending(h => h.Priority)
             .ToList();

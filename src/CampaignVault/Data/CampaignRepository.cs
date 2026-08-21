@@ -2474,7 +2474,7 @@ public class CampaignRepository
         var allReferencedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var clue in thread.Clues.Where(c => c?.InvolvedEntityIds != null))
         {
-            foreach (var id in clue.InvolvedEntityIds.Where(id => !string.IsNullOrWhiteSpace(id)))
+            foreach (var id in clue.InvolvedEntityIds!.Where(id => !string.IsNullOrWhiteSpace(id)))
             {
                 allReferencedIds.Add(id);
             }

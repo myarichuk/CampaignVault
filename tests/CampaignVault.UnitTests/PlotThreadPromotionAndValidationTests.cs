@@ -124,7 +124,7 @@ public class PlotThreadPromotionAndValidationTests : IClassFixture<RavenDBFixtur
         var thread = await repository.GetPlotThreadAsync(session, "plot-threads/valid-clues", _campaignName);
 
         // Act
-        var missingIds = await repository.ValidateClueEntityReferencesAsync(session, thread, _campaignName);
+        var missingIds = await repository.ValidateClueEntityReferencesAsync(session, thread!, _campaignName);
 
         // Assert
         Assert.Empty(missingIds);
@@ -139,7 +139,7 @@ public class PlotThreadPromotionAndValidationTests : IClassFixture<RavenDBFixtur
         var thread = await repository.GetPlotThreadAsync(session, "plot-threads/missing-clues", _campaignName);
 
         // Act
-        var missingIds = await repository.ValidateClueEntityReferencesAsync(session, thread, _campaignName);
+        var missingIds = await repository.ValidateClueEntityReferencesAsync(session, thread!, _campaignName);
 
         // Assert
         Assert.Equal(2, missingIds.Count);
@@ -156,7 +156,7 @@ public class PlotThreadPromotionAndValidationTests : IClassFixture<RavenDBFixtur
         var thread = await repository.GetPlotThreadAsync(session, "plot-threads/mixed-clues", _campaignName);
 
         // Act
-        var missingIds = await repository.ValidateClueEntityReferencesAsync(session, thread, _campaignName);
+        var missingIds = await repository.ValidateClueEntityReferencesAsync(session, thread!, _campaignName);
 
         // Assert: Should find missing references but not valid ones
         Assert.Equal(2, missingIds.Count);
@@ -174,7 +174,7 @@ public class PlotThreadPromotionAndValidationTests : IClassFixture<RavenDBFixtur
         {
             Id = "plot-threads/test",
             Title = "Test",
-            Clues = null
+            Clues = null!
         };
         var repository = _fixture.CreateRepository();
         using var session = _fixture.Store.OpenAsyncSession();

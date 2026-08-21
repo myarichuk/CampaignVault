@@ -148,7 +148,7 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
             var sessionLog = await _repo.GetSessionLogAsync(new CampaignSession(session, effective));
             var openSession = sessionLog?.Sessions.FirstOrDefault(s => s.IsOpen);
 
-            if (openSession == null)
+            if (openSession == null || sessionLog == null)
                 return new ToolResult<object>(false,
                     Error: "No open session to end.");
 

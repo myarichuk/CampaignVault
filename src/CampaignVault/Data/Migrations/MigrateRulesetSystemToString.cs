@@ -68,7 +68,7 @@ public class MigrateRulesetSystemToString
         var spells = await session.Query<CustomSpell>().ToListAsync();
         foreach (var spell in spells)
         {
-            if (systemMapping.TryGetValue(spell.System, out var newSystemId))
+            if (spell.System != null && systemMapping.TryGetValue(spell.System, out var newSystemId))
             {
                 spell.System = newSystemId;
                 migratedCount++;
@@ -79,7 +79,7 @@ public class MigrateRulesetSystemToString
         var feats = await session.Query<CustomFeat>().ToListAsync();
         foreach (var feat in feats)
         {
-            if (systemMapping.TryGetValue(feat.System, out var newSystemId))
+            if (feat.System != null && systemMapping.TryGetValue(feat.System, out var newSystemId))
             {
                 feat.System = newSystemId;
                 migratedCount++;
@@ -90,7 +90,7 @@ public class MigrateRulesetSystemToString
         var creatures = await session.Query<CustomCreature>().ToListAsync();
         foreach (var creature in creatures)
         {
-            if (systemMapping.TryGetValue(creature.System, out var newSystemId))
+            if (creature.System != null && systemMapping.TryGetValue(creature.System, out var newSystemId))
             {
                 creature.System = newSystemId;
                 migratedCount++;

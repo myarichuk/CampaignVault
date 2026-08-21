@@ -405,7 +405,7 @@ public class OnboardingFinalizeResponse
 {
     public bool CampaignCreated { get; set; }
     public string CampaignName { get; set; } = null!;
-    public string System { get; set; }
+    public string? System { get; set; }
     public List<string> NarrativeFocus { get; set; } = [];
     public Dictionary<string, object> CollectedAnswers { get; set; } = [];
     public Dictionary<string, string> WorldBuildingFlags { get; set; } = [];

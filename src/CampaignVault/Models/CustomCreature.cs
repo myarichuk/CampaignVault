@@ -18,7 +18,7 @@ public class CustomCreature : ICampaignScopedEntity, IArchivable
 
     public string Name { get; set; } = null!;
 
-    public string System { get; set; }
+    public string? System { get; set; }
 
     public string? Description { get; set; }
 

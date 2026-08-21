@@ -23,7 +23,7 @@ public class PlotThread_Search : AbstractIndexCreationTask<PlotThread>
                 ClueDescriptions = t.Clues != null ? t.Clues.Select(c => c.Description) : new string[0],
                 AllInvolvedEntityIds = t.InvolvedEntityIds.Concat(
                     t.Clues != null
-                        ? t.Clues.Where(c => c.InvolvedEntityIds != null).SelectMany(c => c.InvolvedEntityIds)
+                        ? t.Clues.Where(c => c.InvolvedEntityIds != null).SelectMany(c => c.InvolvedEntityIds!)
                         : new List<string>()).ToList(),
                 SemanticVector = CreateVector(t.SemanticVector)
             };

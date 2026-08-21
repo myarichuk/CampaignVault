@@ -684,7 +684,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
                 EntityTypeDisplay = "Creature";
                 IsCharacter = false;
                 Badge1Label = "System:";
-                Badge1Value = cc.System.ToString();
+                Badge1Value = cc.System?.ToString() ?? "Unknown";
                 Badge2Label = "CR:";
                 Badge2Value = cc.ChallengeRating ?? "";
             }

@@ -868,7 +868,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         // Start combat
         var startCombat = await tools.StartCombat(locationId, [elaraId, goblin1Id, goblin2Id], campaignName: campaign);
         Assert.True(startCombat.Success, startCombat.Summary);
-        Assert.True(startCombat.Data.IsActive);
+        Assert.True(startCombat.Data!.IsActive);
         Assert.Equal(3, startCombat.Data.Combatants.Count);
 
         var initialActiveTurnId = startCombat.Data.ActiveTurnId;
@@ -945,7 +945,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         // End combat
         var endCombat = await tools.EndCombat(campaignName: campaign);
         Assert.True(endCombat.Success, endCombat.Summary);
-        Assert.False(endCombat.Data.IsActive);
+        Assert.False(endCombat.Data!.IsActive);
 
         // Verify final state
         var elaraFinal = await GetCharacter(elaraId, campaign);
