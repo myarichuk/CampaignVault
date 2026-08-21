@@ -154,6 +154,108 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.True(result3.WorldPressure.Length >= 2);
     }
 
+    /// <summary>
+    /// Regression guard for the PressureManager key-collision fix: a character with no ruleset
+    /// stats trips two independent EngineWarning contributors —
+    /// IncompleteSystemStatsPressureContributor ("uninitialized systemStats") and
+    /// CharacterDistressPressureContributor ("no MaxHp set") — both keyed only by Severity:EntityId
+    /// before this fix. Since their Text (and thus signature) differ, each call's cooldown write from
+    /// one contributor made the other look "changed" to the next call, so the pair perpetually
+    /// re-surfaced instead of respecting PressureCooldownDays. Two consecutive pure-query take_turn
+    /// calls (no changes at all) must suppress on the second call.
+    /// </summary>
+    [Fact]
+    public async Task PureQuery_TwiceInARow_SuppressesEvenWithCollidingContributors()
+    {
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        var campaignName = "pressure-collision-" + Guid.NewGuid().ToString("N")[..8];
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
+        var repo = _fixture.CreateRepository();
+
+        var npcId = $"chars/{campaignName}-owen";
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, campaignName);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = npcId, Name = "Owen", KeepAlive = true });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, campaignName);
+        Assert.True(seed.Success, seed.Summary);
+        var seedPressure = (seed.Data!.Mode == TurnMode.Full ? seed.Data.WorldState?.WorldPressure : seed.Data.WorldStateDelta?.WorldPressure)
+            ?.FirstOrDefault(p => p.Contains(npcId, StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(seedPressure);
+
+        var second = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, campaignName);
+        var secondPressure = (second.Data!.Mode == TurnMode.Full ? second.Data.WorldState?.WorldPressure : second.Data.WorldStateDelta?.WorldPressure)
+            ?.FirstOrDefault(p => p.Contains(npcId, StringComparison.OrdinalIgnoreCase));
+        Assert.Null(secondPressure);
+    }
+
+    /// <summary>
+    /// Regression guard for the StageChangesAsync cooldown-clearing fix: a character merely
+    /// *mentioned* by a [NarrativeOnly] change (event, activity) shouldn't have their pending
+    /// pressure cooldown reset — only a structural change (character_update, etc.) that could
+    /// plausibly have fixed the underlying issue should. Before the fix, EventOccurred/ActivityChange
+    /// referencing an NPC cleared their cooldown every turn, so an EngineWarning like "uninitialized
+    /// systemStats" nagged on every single conversational beat instead of once per
+    /// PressureCooldownDays.
+    /// </summary>
+    [Fact]
+    public async Task NarrativeOnlyChanges_DontClearPressureCooldown_ButStructuralChangesDo()
+    {
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        var campaignName = "pressure-narrative-" + Guid.NewGuid().ToString("N")[..8];
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
+        var repo = _fixture.CreateRepository();
+
+        var locId = $"locations/{campaignName}-tavern";
+        var npcId = $"chars/{campaignName}-owen";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, campaignName);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Tavern" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = npcId, Name = "Owen", KeepAlive = true, CurrentLocationId = locId });
+            await session.SaveChangesAsync();
+        }
+
+        Task<ToolResult<TurnResult>> Turn(WorldChange[]? changes) => tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = changes,
+            Narrative = changes != null ? "Beat." : null,
+            IncludeWorldState = true
+        }, campaignName);
+
+        string? PressureFor(ToolResult<TurnResult> r) =>
+            (r.Data!.Mode == TurnMode.Full ? r.Data.WorldState?.WorldPressure : r.Data.WorldStateDelta?.WorldPressure)
+            ?.FirstOrDefault(p => p.Contains(npcId, StringComparison.OrdinalIgnoreCase));
+
+        // Call 1 (Full, seed): the uninitialized-systemStats EngineWarning surfaces for Owen.
+        var seed = await Turn(null);
+        Assert.True(seed.Success, seed.Summary);
+        Assert.NotNull(PressureFor(seed));
+
+        // Call 2: purely narrative changes name Owen (event.involved, activity.characterId) but fix
+        // nothing about him -> cooldown must NOT clear -> warning stays suppressed.
+        var narrative = await Turn([
+            new EventOccurred { Summary = "Idle chatter at the bar.", Category = EventCategory.Discovery, Involved = [npcId] },
+            new ActivityChange { CharacterId = npcId, NewActivity = "Sweeping the floor" }
+        ]);
+        Assert.True(narrative.Success, narrative.Summary);
+        Assert.Null(PressureFor(narrative));
+
+        // Call 3: a structural change actually touches Owen -> cooldown clears -> warning resurfaces
+        // (still unresolved, since KeepAlive alone doesn't bootstrap stats).
+        var structural = await Turn([
+            new CharacterUpdate { CharacterId = npcId, KeepAlive = true }
+        ]);
+        Assert.True(structural.Success, structural.Summary);
+        Assert.NotNull(PressureFor(structural));
+    }
+
     [Fact]
     public async Task FilterAndCapAsync_BatchesSimilarAlerts()
     {
@@ -352,8 +454,8 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             Assert.Equal(5, camp.PressureCooldowns.Count);
 
             // Travel and Location MUST be registered
-            Assert.True(camp.PressureCooldowns.ContainsKey($"{PressureSeverity.EngineWarning}:chars/2")); // Travel
-            Assert.True(camp.PressureCooldowns.ContainsKey($"{PressureSeverity.EngineWarning}:locs/1"));  // Location
+            Assert.True(camp.PressureCooldowns.ContainsKey($"{PressureSeverity.EngineWarning}:Travel:Interrupted:chars/2")); // Travel
+            Assert.True(camp.PressureCooldowns.ContainsKey($"{PressureSeverity.EngineWarning}:Location:MissingData:locs/1"));  // Location
 
             // The exact missing two could be any of the Narrative ones (since they sort stably but might be arbitrary).
             // But we can assert 2 are missing.
@@ -443,7 +545,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         {
             var campaign = new Campaign { Name = campaignName, Id = keys.Meta(campaignName) };
             // Simulate a pre-existing cooldown entry written before LastSignature existed.
-            campaign.PressureCooldowns[$"{PressureSeverity.NarrativePrompt}:chars/1"] = new PressureState(1, 0);
+            campaign.PressureCooldowns[$"{PressureSeverity.NarrativePrompt}:Character:Morale:chars/1"] = new PressureState(1, 0);
             await session.StoreAsync(campaign);
             await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
             await session.SaveChangesAsync();

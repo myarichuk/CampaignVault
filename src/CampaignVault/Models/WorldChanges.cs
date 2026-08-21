@@ -251,6 +251,7 @@ public class StatusRemove : WorldChange
 /// </summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
+[NarrativeOnly]
 [Description("Record a noteworthy occurrence in the world; appears in get_scene, recall_history, get_world_state.")]
 public class EventOccurred : WorldChange
 {
@@ -369,6 +370,7 @@ public class RelationshipChange : WorldChange
 /// </summary>
 [CommitCategory("World")]
 [CommitHotTier]
+[NarrativeOnly]
 [Description("Establish, update, or remove a pairwise engagement state between two entities (grapple, embrace, watch).")]
 public class EngagementRelationChange : WorldChange
 {
@@ -403,6 +405,7 @@ public class EngagementRelationChange : WorldChange
 /// Establish, update, or remove relative zone/distance positioning for a character.
 /// For pairwise grapple/embrace anchors, use <see cref="EngagementRelationChange"/> instead.
 /// </summary>
+[NarrativeOnly]
 [Description("Establish, update, or remove relative zone/distance positioning for a character.")]
 public class SpatialPositionChange : WorldChange
 {
@@ -434,6 +437,7 @@ public class SpatialPositionChange : WorldChange
 /// (bidirectional mirroring, no-op detection, history logging) is identical either way. Prefer the
 /// bare engagement_relation/spatial_position types for single-purpose updates.
 /// </summary>
+[NarrativeOnly]
 [Description("Composite convenience: set engagement and/or spatial position against a target in one commit.")]
 public class SceneSetupChange : WorldChange
 {
@@ -534,6 +538,7 @@ public class AttributeChange : WorldChange
 /// </summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
+[NarrativeOnly]
 [Description("Directly override an NPC's current emotional mood string shown in get_scene.")]
 public class MoodChange : WorldChange
 {
@@ -553,6 +558,7 @@ public class MoodChange : WorldChange
 /// </summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
+[NarrativeOnly]
 [Description("Update what an NPC is currently doing and/or where they're located; syncs get_scene.")]
 public class ActivityChange : WorldChange
 {
@@ -1158,6 +1164,7 @@ public class CharacterUpdate : WorldChange
     public bool? ClearDeparture { get; set; }
 }
 
+[NarrativeOnly]
 [Description("Record what a character knows about a topic, with an importance weight.")]
 public class KnowledgeUpdate : WorldChange
 {

@@ -158,10 +158,23 @@ public class CampaignRepository
             {
                 var involvedEntities = result.InvolvedEntities;
 
-                if (involvedEntities.Count > 0)
+                // Only clear pressure cooldowns for entities actually touched by a structural change
+                // (one not [NarrativeOnly]) this turn — a character merely *named* in a conversation
+                // event or activity update didn't have anything fixed about them, so their pending
+                // nag shouldn't reset and resurface next turn just because they were mentioned.
+                // Ambient simulation deltas (need/memory decay) are always structural.
+                var structuralIds = changes
+                    .Where(c => !Attribute.IsDefined(c.GetType(), typeof(NarrativeOnlyAttribute)))
+                    .Concat(result.AmbientDeltas)
+                    .SelectMany(_changeDispatcher.ExtractInvolvedEntityIds)
+                    .Where(id => !string.IsNullOrEmpty(id))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (structuralIds.Count > 0)
                 {
                     var keysToRemove = campaign.PressureCooldowns.Keys
-                        .Where(k => involvedEntities.Any(e => k.EndsWith($":{e}", StringComparison.OrdinalIgnoreCase)))
+                        .Where(k => structuralIds.Any(e => k.EndsWith($":{e}", StringComparison.OrdinalIgnoreCase)))
                         .ToList();
 
                     foreach (var k in keysToRemove)

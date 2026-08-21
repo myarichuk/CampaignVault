@@ -50,7 +50,14 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
 
         foreach (var p in pressures)
         {
-            var key = $"{p.Severity}:{p.EntityId}";
+            // GroupingKey is part of the key, not just Severity:EntityId — two different contributors
+            // can both flag the same entity at EngineWarning (e.g. IncompleteSystemStatsPressureContributor's
+            // "uninitialized systemStats" and CharacterDistressPressureContributor's "no MaxHp set" are both
+            // triggered by the same unbootstrapped character). Without GroupingKey in the key, those two
+            // differently-worded nags collide on one cooldown slot and perpetually look "changed" to each
+            // other, defeating the cooldown entirely — the entity nags every turn instead of once per
+            // PressureCooldownDays.
+            var key = $"{p.Severity}:{p.GroupingKey}:{p.EntityId}";
             var signature = PressureHelpers.ComputeContentSignature(p.Text);
             if (campaign.PressureCooldowns.TryGetValue(key, out var state))
             {
