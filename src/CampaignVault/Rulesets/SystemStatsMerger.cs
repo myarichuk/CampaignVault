@@ -22,9 +22,25 @@ public static class SystemStatsMerger
 
     public static SystemExtension Merge(SystemExtension target, SystemExtension source, string? activeSystem = null)
     {
+        // targetType serializes `target` using ITS OWN actual runtime type — that has to match
+        // exactly, or SerializeToNode throws (you can't serialize an object "as" a more-derived type
+        // it isn't actually an instance of). `target` can legitimately still be the base
+        // SystemExtension here: a character loaded from RavenDB before SystemExtensionNewtonsoftConverter
+        // existed, or one whose stored document still predates it, hasn't been upgraded yet.
         var targetType = target.GetType();
-        // If activeSystem is provided, use it to create the factory; otherwise infer from type (backward compatible)
-        var factory = activeSystem != null ? CreateDefault(activeSystem) : CreateDefault(GetRulesetFromType(targetType));
+
+        // resultType is what the MERGE OUTPUT should be: the active ruleset's concrete type. This is
+        // deliberately NOT targetType — using target.GetType() here was the actual data-loss bug:
+        // if `target` was still the degraded base type, the final Deserialize below would construct a
+        // plain SystemExtension and silently discard every dnd5e/pf2e-specific key (ArmorClass,
+        // ability scores, hitDie, skillModifiers, ...) that DeepMerge had just correctly merged into
+        // targetNode as loose JSON properties. Resolving from activeSystem instead means a single
+        // correct character_update self-heals a previously-degraded character's SystemStats type,
+        // rather than perpetuating the degradation on every subsequent merge.
+        var resolvedSystem = activeSystem ?? GetRulesetFromType(targetType);
+        var factory = CreateDefault(resolvedSystem);
+        var resultType = factory.GetType();
+
         var targetNode = JsonSerializer.SerializeToNode(target, targetType, JsonOptions) as JsonObject
             ?? throw new InvalidOperationException("Failed to serialize target system stats.");
         var sourceNode = JsonSerializer.SerializeToNode(source, source.GetType(), JsonOptions) as JsonObject
@@ -34,7 +50,7 @@ public static class SystemStatsMerger
 
         DeepMerge(targetNode, sourceNode, factoryNode);
 
-        return JsonSerializer.Deserialize(targetNode, targetType, JsonOptions) as SystemExtension
+        return JsonSerializer.Deserialize(targetNode, resultType, JsonOptions) as SystemExtension
             ?? throw new InvalidOperationException("Failed to deserialize merged system stats.");
     }
 

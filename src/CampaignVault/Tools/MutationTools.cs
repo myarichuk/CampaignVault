@@ -120,6 +120,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     {
         var hasChanges = request?.Changes is { Length: > 0 };
 
+        if (hasChanges && request!.MinutesElapsed is > 0)
+        {
+            ApplyMinutesElapsedFallback(request);
+        }
+
         // Validate that this isn't an empty call with no purpose
         if (!hasChanges && request != null)
         {
@@ -239,6 +244,32 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         ctx.Result.Mode = mode;
     }
 
+    /// <summary>
+    /// Applies the request-level MinutesElapsed fallback to the first eligible change in the batch when
+    /// no individual change already carries its own MinutesElapsed. Excludes RestChange/TravelChange,
+    /// which advance time via their own hour fields (see WorldChangeDispatcher.ApplyMicroTimeNudgeAsync).
+    /// Assigns to a single change (not every change) so the batch's stated duration isn't multiplied by
+    /// the number of changes in it.
+    /// </summary>
+    private static void ApplyMinutesElapsedFallback(TakeTurnRequest request)
+    {
+        if (request.Changes is not { Length: > 0 } changes)
+        {
+            return;
+        }
+
+        if (changes.Any(c => c.MinutesElapsed is > 0))
+        {
+            return;
+        }
+
+        var target = changes.FirstOrDefault(c => c is not RestChange and not TravelChange);
+        if (target != null)
+        {
+            target.MinutesElapsed = request.MinutesElapsed;
+        }
+    }
+
     /// <summary>Static request validation that needs no session. Returns null when the request is valid.</summary>
     private static Task<ToolResult<TurnResult>>? ValidateChanges(TakeTurnRequest request)
     {
@@ -292,13 +323,15 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
 
         var commitTime = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+        var (involvedNonLocationIds, involvedLocationIds) = SplitInvolvedByType(commitResult.InvolvedEntities);
         var sceneEvent = new Event
         {
             Id = "events/" + Guid.NewGuid(),
             CampaignName = ctx.Campaign,
             Summary = request.Narrative!,
             Category = EventCategory.SceneCommit,
-            Involved = commitResult.InvolvedEntities,
+            Involved = involvedNonLocationIds,
+            RelatedLocationIds = involvedLocationIds.Count > 0 ? involvedLocationIds : null,
             DayLogged = (int)commitTime.TotalDaysElapsed,
             Details = ExtractEventDetails(changes),
             RelatedEntityId = ExtractPrimaryActor(commitResult.InvolvedEntities)
@@ -428,6 +461,41 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         if (factsDiscovered.Count > 0) details["factsDiscovered"] = factsDiscovered;
 
         return details.Count > 0 ? details : null;
+    }
+
+    /// <summary>
+    /// Pulls location IDs out of a raw InvolvedEntities set into a separate list, leaving every other
+    /// entity type (characters, factions, quests, items) in place. Handlers populate InvolvedEntities
+    /// with everything the batch touched, not just characters — e.g. TravelChangeHandler adds the
+    /// destination location ID alongside the traveling character's ID (see
+    /// WorldChangeDispatcher/ChangeContext.InvolvedEntities) — so without this split, location IDs end
+    /// up in Event.Involved instead of Event.RelatedLocationIds (the dedicated, queried field; see
+    /// CampaignRepository's LocationId-or-RelatedLocationIds lookups). Only locations are pulled out
+    /// here: faction/quest/item IDs are intentionally left in Involved because pressure contributors
+    /// (e.g. FactionRecentEventPressureContributor) scan SceneCommit.Involved for those IDs to resolve
+    /// pressure, and there is no dedicated field for them yet.
+    /// </summary>
+    private static (List<string> RemainingIds, List<string> LocationIds) SplitInvolvedByType(
+        List<string> involvedEntities)
+    {
+        var remaining = new List<string>();
+        var locIds = new List<string>();
+
+        foreach (var id in involvedEntities)
+        {
+            if (string.IsNullOrEmpty(id)) continue;
+
+            if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
+            {
+                locIds.Add(id);
+            }
+            else
+            {
+                remaining.Add(id);
+            }
+        }
+
+        return (remaining, locIds);
     }
 
     /// <summary>Extracts the primary actor (typically the first player character) from involved entities.</summary>

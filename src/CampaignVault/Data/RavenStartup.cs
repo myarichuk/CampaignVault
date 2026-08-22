@@ -20,9 +20,11 @@ public static class RavenStartup
         // query) — the default 30-request session guard is tuned for typical CRUD request handlers,
         // not this fan-out. Raised per RavenDB's own guidance once call-count reduction isn't
         // reasonable without giving up the plugin-style rule/contributor architecture.
+        var conventions = new Raven.Client.Documents.Conventions.DocumentConventions { MaxNumberOfRequestsPerSession = 200 };
+        RavenSerializationConventions.Configure(conventions);
         var databaseOptions = new DatabaseOptions("CampaignVault")
         {
-            Conventions = new Raven.Client.Documents.Conventions.DocumentConventions { MaxNumberOfRequestsPerSession = 200 },
+            Conventions = conventions,
         };
         var documentStore = EmbeddedServer.Instance.GetDocumentStore(databaseOptions);
 
@@ -79,6 +81,31 @@ public static class RavenStartup
             var systemIdMigration = new MigrateRulesetSystemToString(documentStore);
             await systemIdMigration.ExecuteAsync(ct);
             logger.LogInformation("✓ RulesetSystem string id migration: completed");
+
+            // Upgrade characters whose SystemStats collapsed to the base type before
+            // SystemExtensionNewtonsoftConverter existed — see RepairDegradedSystemStats for why.
+            var systemStatsRepair = new RepairDegradedSystemStats(documentStore);
+            var (systemStatsRepaired, systemStatsDetails) = await systemStatsRepair.ExecuteAsync(ct);
+            if (systemStatsRepaired > 0)
+            {
+                logger.LogWarning("████████████████████████████████████████████████████████████████");
+                logger.LogWarning($"⚠️  DEGRADED SYSTEMSTATS REPAIRED: {systemStatsRepaired} character(s) had SystemStats collapsed to the base type");
+                logger.LogWarning("████████████████████████████████████████████████████████████████");
+                foreach (var detail in systemStatsDetails)
+                {
+                    logger.LogWarning($"  • {detail}");
+                }
+                logger.LogWarning("");
+                logger.LogWarning("Ruleset-specific fields (ArmorClass, ability scores, hitDie, skillModifiers, ...) on these");
+                logger.LogWarning("characters were already lost before this repair ran and could not be recovered (no RavenDB");
+                logger.LogWarning("revisions configured). They will surface as IncompleteSystemStats/UninitializedHp ENGINE");
+                logger.LogWarning("WARNINGs on next use, same as a newly-created character, prompting a fresh bootstrap commit.");
+                logger.LogWarning("████████████████████████████████████████████████████████████████");
+            }
+            else
+            {
+                logger.LogInformation("✓ SystemStats type validation: no degraded characters found");
+            }
 
             // Repair corrupted Event documents
             var repairLogger = loggerFactory.CreateLogger<EventDataRepair>();

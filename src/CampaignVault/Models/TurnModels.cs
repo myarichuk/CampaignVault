@@ -30,6 +30,11 @@ public class TakeTurnRequest
     public string? Narrative { get; set; }
 
     [Description(
+        "Fallback batch duration in minutes, used ONLY if none of the individual Changes[] already carries its own MinutesElapsed. Each WorldChange also has its own 'minutesElapsed' field — prefer setting it there per-change; this top-level field exists so a whole-batch duration ('this exchange took about 5 minutes') still advances needs/time even if you forgot to set it per-change. Ignored if any change in the batch already has MinutesElapsed set, and ignored for rest/travel changes (they advance time via their own hour fields).")]
+    [JsonPropertyName("minutesElapsed")]
+    public int? MinutesElapsed { get; set; }
+
+    [Description(
         "Automatically refresh summary state for entities touched by Changes (default true). Set false for bulk/seeding commits to save bandwidth.")]
     [JsonPropertyName("autoRefreshInvolved")]
     public bool AutoRefreshInvolved { get; set; } = true;

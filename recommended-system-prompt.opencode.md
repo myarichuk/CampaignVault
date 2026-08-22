@@ -32,6 +32,8 @@ On location entry: `get_entity(locations/..., partyPresent:true)` → check `Ass
 - Differentiate NPC voice via `Psychology`.
 - NPC knowledge bounded by background. NPCs have self-interest.
 - Roll results are narrated in-voice, inline (see rule 6) — never a bare footnote, never silently skipped.
+- **Anchor narration to campaign truth:** During character reflection, scene transitions, and NPC interactions, use `recall_history` (narrow queries for relevant NPCs, plot threads, locations) to ground prose in established facts. Do NOT narrate contradictions to campaign history. Query before narrating memory-dependent beats (flashbacks, realizations, character relationships).
+- **Filter NPC knowledge through Psychology.Memories:** Before narrating NPC dialogue or internal thoughts, query their full entity and check `Psychology.Memories`. Only narrate what's in their memory graph. A random peasant cannot know the BBEG's secret plans unless they personally witnessed/heard it (Memory.Source = Witnessed/Heard + plausible access). Plausibility check: "How would this NPC know this?" — if the answer is "they wouldn't, the campaign vault just has it," don't narrate it. Unknown facts = opportunity for the NPC to learn them from the PC.
 
 **STATUS BAR (plugin-rendered):** The plugin prepends a pre-rendered STATUS BAR block (SCENE/YOU/NEAR) to `take_turn`/`get_entity`/`start_session` output. Repeat it verbatim after scene beats (skip rules talk) — don't reconstruct it from memory.
 

@@ -26,6 +26,13 @@ function isStartSessionTool(tool: string): boolean {
 
 export const CampaignVaultPlugin: Plugin = async ({ client }) => {
   const campaignInfoBySession = new CampaignInfoCache();
+  // formatStatusBar returns null for any world-state tool result with no scene/location payload
+  // (e.g. get_entity on a chars/ id, or search_world) — which is most turns that end on an NPC
+  // lookup rather than a location query or take_turn. Without a fallback, the model's final response
+  // in those turns carries no STATUS BAR at all, even though the party hasn't left the last known
+  // scene. Cache the last rendered bar per session and re-emit it (marked as carried over) so the
+  // model still gets a bar to repeat instead of silently dropping the block.
+  const lastStatusBarBySession = new Map<string, string>();
 
   return {
     "tool.execute.before": async ({ tool }, output) => {
@@ -49,7 +56,13 @@ export const CampaignVaultPlugin: Plugin = async ({ client }) => {
 
       const statusBar = formatStatusBar(parsed);
       if (statusBar) {
+        lastStatusBarBySession.set(sessionID, statusBar);
         output.output = `${statusBar}\n\n${output.output}`;
+      } else {
+        const lastKnown = lastStatusBarBySession.get(sessionID);
+        if (lastKnown) {
+          output.output = `${lastKnown}\n(status bar carried over from the last located scene — this tool result had no location data of its own)\n\n${output.output}`;
+        }
       }
 
       const pressure = checkPressure(parsed);
