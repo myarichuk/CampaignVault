@@ -2,7 +2,6 @@ using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
-using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using Raven.Client.Documents.Session;
 
@@ -449,8 +448,8 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a plot thread — DM-scaffolding for a story arc's clues, tension, and resolution condition (usually not player-visible). Use for bulk-seeding clues or bumping tensionLevel without re-sending every clue. Omitted fields are preserved: on an existing thread, omitting clues/involvedEntityIds/foreshadowingHooks keeps the stored value; providing one replaces it wholesale.")]
-    internal Task<ToolResult<PlotThread>> UpsertPlotThread(
+        "WORLD BUILDER TOOL: Create or update a plot thread — DM-scaffolding for a story arc's clues, tension, and resolution condition (usually not player-visible). Use for bulk-seeding clues or bumping tensionLevel without re-sending every clue. Omitted fields are preserved: on an existing thread, omitting clues/involvedEntityIds/foreshadowingHooks keeps the stored value; providing one replaces it wholesale. DmNotes is returned inside a 'gmOnly' envelope — backstage material for your own pacing/tension judgment, never to narrate verbatim.")]
+    internal Task<ToolResult<PlotThreadDetailView>> UpsertPlotThread(
         [Description("The plot thread to create or update. Strongly typed.")]
         PlotThreadUpsertRequest plotThread,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -459,19 +458,19 @@ This is the only tool that creates a new location. During play, use commit's loc
         return ExecuteForCampaignAsync(campaignName, (effective, s) => ApplyPlotThreadUpsertAsync(s, plotThread, effective));
     }
 
-    private async Task<ToolResult<PlotThread>> ApplyPlotThreadUpsertAsync(IAsyncDocumentSession s, PlotThreadUpsertRequest plotThread, string effective)
+    private async Task<ToolResult<PlotThreadDetailView>> ApplyPlotThreadUpsertAsync(IAsyncDocumentSession s, PlotThreadUpsertRequest plotThread, string effective)
     {
         var merged = await _repository.UpsertPlotThreadAsync(new CampaignSession(s, effective), plotThread);
         var refs = (plotThread.InvolvedEntityIds ?? [])
             .Select((id, i) => ($"involvedEntityIds[{i}]", (string?)id));
         var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
         var summary = $"PlotThread upserted (campaign context: {effective}).{warning}";
-        return new ToolResult<PlotThread>(true, merged, summary);
+        return new ToolResult<PlotThreadDetailView>(true, PlotThreadDetailView.From(merged), summary);
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a world event (scheduled, time-based, or conditional). Scripted consequences that auto-fire based on triggers, with optional prevention conditions. Omitted fields are preserved: on an existing event, omitting involvedEntityIds/effects keeps the stored value; providing one replaces it wholesale.")]
-    internal Task<ToolResult<WorldEvent>> UpsertWorldEvent(
+        "WORLD BUILDER TOOL: Create or update a world event (scheduled, time-based, or conditional). Scripted consequences that auto-fire based on triggers, with optional prevention conditions. Omitted fields are preserved: on an existing event, omitting involvedEntityIds/effects keeps the stored value; providing one replaces it wholesale. DmNotes is returned inside a 'gmOnly' envelope — backstage material for your own pacing/tension judgment, never to narrate verbatim.")]
+    internal Task<ToolResult<WorldEventDetailView>> UpsertWorldEvent(
         [Description("The world event to create or update. Strongly typed.")]
         WorldEventUpsertRequest worldEvent,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -480,7 +479,7 @@ This is the only tool that creates a new location. During play, use commit's loc
         return ExecuteForCampaignAsync(campaignName, (effective, s) => ApplyWorldEventUpsertAsync(s, worldEvent, effective));
     }
 
-    private async Task<ToolResult<WorldEvent>> ApplyWorldEventUpsertAsync(IAsyncDocumentSession s, WorldEventUpsertRequest worldEvent, string effective)
+    private async Task<ToolResult<WorldEventDetailView>> ApplyWorldEventUpsertAsync(IAsyncDocumentSession s, WorldEventUpsertRequest worldEvent, string effective)
     {
         var merged = await _repository.UpsertWorldEventAsync(s, worldEvent, effective);
         var refs = (worldEvent.InvolvedEntityIds ?? [])
@@ -488,7 +487,7 @@ This is the only tool that creates a new location. During play, use commit's loc
             .Concat([("actorId", worldEvent.ActorId)]);
         var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
         var summary = $"WorldEvent upserted (campaign context: {effective}).{warning}";
-        return new ToolResult<WorldEvent>(true, merged, summary);
+        return new ToolResult<WorldEventDetailView>(true, WorldEventDetailView.From(merged), summary);
     }
 
     [Description(

@@ -13,7 +13,9 @@ internal static partial class ModelEnumErrorHints
 {
     private static readonly IReadOnlyDictionary<string, Type> EnumTypesByName = BuildEnumLookup();
 
-    [GeneratedRegex(@"could not be converted to ([\w\.]+?)(?=\.\s|\s|$)", RegexOptions.CultureInvariant)]
+    // System.Text.Json renders nullable enum fields as "System.Nullable`1[Namespace.Type]" —
+    // match that wrapper first (capturing the inner type), falling back to a bare type name.
+    [GeneratedRegex(@"could not be converted to (?:System\.Nullable`1\[([\w\.]+)\]|([\w\.]+?)(?=\.\s|\s|$))", RegexOptions.CultureInvariant)]
     private static partial Regex EnumTypeRegex();
 
     [GeneratedRegex(@"Path:\s*(\$\[[^\]]+\](?:\.[\w]+)*)", RegexOptions.CultureInvariant)]
@@ -26,12 +28,14 @@ internal static partial class ModelEnumErrorHints
             ? JsonPathRegex().Match(message).Groups[1].Value
             : ex.Path;
 
-        if (!EnumTypeRegex().IsMatch(message))
+        var typeMatch = EnumTypeRegex().Match(message);
+        if (!typeMatch.Success)
         {
             return message;
         }
 
-        var typeName = EnumTypeRegex().Match(message).Groups[1].Value.TrimEnd('.');
+        var typeName = (typeMatch.Groups[1].Success ? typeMatch.Groups[1].Value : typeMatch.Groups[2].Value)
+            .TrimEnd('.');
         if (!TryResolveEnumType(typeName, out var enumType)
             && !TryResolveEnumFromPath(path, source, out enumType))
         {

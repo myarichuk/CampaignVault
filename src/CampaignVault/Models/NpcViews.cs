@@ -11,13 +11,23 @@ public record PlotThreadMinimal(
     int TensionLevel);
 
 /// <summary>
+/// GM/DM-eyes-only authored content. This is backstage material for your own use — judging pacing,
+/// tension, and what an NPC privately wants or knows — not something the player character already
+/// knows. Never narrate it verbatim or treat it as spoken/observed fact. Only surface it once the
+/// player actually discovers it through play (a clue, a conversation, a search, a document found
+/// in-world, etc).
+/// </summary>
+public record GmOnly(string? Notes);
+
+/// <summary>
 /// Wire-facing projection of <see cref="Character"/> for response views (NpcContextView, PartyMemberView) —
 /// drops pure engine bookkeeping the LLM never needs for narration: Schedule (internal simulation
 /// routines — CurrentLocationId/CurrentActivity already surface the result), TagProvenance (event-id
 /// provenance for tags/features, not narrative content), the five rest-recovery counters (gate HP/resource
 /// pool math internally; their effects are already visible via CurrentHp/SystemStats), CampaignName, and
 /// LastUpdated. Includes Psychology/Social/Needs/SystemStats — read those off this object rather than a
-/// top-level copy, to avoid shipping them twice on the wire.
+/// top-level copy, to avoid shipping them twice on the wire. Notes is fenced under GmOnly — see that
+/// type's doc comment for how to treat it.
 /// </summary>
 public record CharacterDetailView(
     string Id,
@@ -26,7 +36,7 @@ public record CharacterDetailView(
     int ExperiencePoints,
     int CurrentHp,
     int MaxHp,
-    string? Notes,
+    GmOnly GmOnly,
     List<string> DistinctiveFeatures,
     string? CurrentAppearance,
     List<string> VisualTags,
@@ -49,7 +59,7 @@ public record CharacterDetailView(
         c.ExperiencePoints,
         c.CurrentHp,
         c.MaxHp,
-        c.Notes,
+        new GmOnly(c.Notes),
         c.DistinctiveFeatures,
         c.CurrentAppearance,
         c.VisualTags,

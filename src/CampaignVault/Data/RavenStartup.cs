@@ -1,5 +1,4 @@
 using CampaignVault.Data.Migrations;
-using Microsoft.Extensions.Logging;
 using Raven.Client.Documents.Indexes;
 using Raven.Embedded;
 

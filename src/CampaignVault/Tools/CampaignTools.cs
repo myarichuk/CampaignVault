@@ -134,7 +134,7 @@ public class CampaignTools(
         string? campaignName = TestDefaultCampaignSlug) =>
         deepDive.GetFactionContext(factionId, ResolveCampaign(campaignName));
 
-    public Task<ToolResult<Quest>> GetQuestDetails(string questId, string? campaignName = TestDefaultCampaignSlug) =>
+    public Task<ToolResult<QuestDetailView>> GetQuestDetails(string questId, string? campaignName = TestDefaultCampaignSlug) =>
         deepDive.GetQuestDetails(questId, ResolveCampaign(campaignName));
 
     // --- World Builder ---

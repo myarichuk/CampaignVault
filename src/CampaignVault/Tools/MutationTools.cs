@@ -5,7 +5,6 @@ using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
-using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using Raven.Client.Documents.Session;
 

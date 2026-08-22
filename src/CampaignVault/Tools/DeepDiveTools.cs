@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
-using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
 namespace CampaignVault.Tools;
@@ -31,6 +30,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
 - 'quests/…' → full quest document (objectives, deadlines, rewards)
 - 'items/…' → full item document (including persistent ItemDetails: scratches, secret compartments, damage/wear)
 - 'plot-threads/…' → full plot thread (clues, foreshadowing, DM notes); pass the literal id 'plot-threads' to list all active threads
+Character/quest/plot-thread DM-only content (notes/DmNotes) is returned inside a 'gmOnly' envelope — that's backstage material for your own pacing/tension judgment, never something to narrate verbatim or treat as already known to the player character.
 Use search_world first when you only know a name, not the ID. To bundle a full-detail fetch WITH a mutation in one round-trip, use take_turn's fullDetailCharacterId/fullDetailLocationId instead. Requires campaignName.")]
     public async Task<ToolResult<object>> GetEntity(
         [Description("Exact entity ID with type prefix, e.g. 'chars/valen', 'locations/rusty-nail', 'quests/rats_01', 'factions/thieves-guild', 'items/battle-worn-sword', 'plot-threads/guild-infiltration' — or the literal 'plot-threads' to list all active threads.")]
@@ -122,21 +122,21 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
         }, saveChanges: false);
     }
 
-    internal Task<ToolResult<IReadOnlyList<PlotThread>>> ListPlotThreads(
+    internal Task<ToolResult<IReadOnlyList<PlotThreadDetailView>>> ListPlotThreads(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var threads = await _repository.GetActivePlotThreadsAsync(session, effective);
-            return new ToolResult<IReadOnlyList<PlotThread>>(
+            return new ToolResult<IReadOnlyList<PlotThreadDetailView>>(
                 true,
-                threads,
+                threads.Select(PlotThreadDetailView.From).ToList(),
                 $"{threads.Count} active plot thread(s) in campaign '{effective}'.");
         }, saveChanges: false);
     }
 
-    internal Task<ToolResult<PlotThread>> GetPlotThread(
+    internal Task<ToolResult<PlotThreadDetailView>> GetPlotThread(
         [Description("Exact plot thread ID e.g. 'plot-threads/guild-infiltration'.")]
         string plotThreadId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -146,7 +146,7 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
         {
             var thread = await _repository.GetPlotThreadAsync(session, plotThreadId, effective);
             if (thread == null)
-                return new ToolResult<PlotThread>(false, Error: "NotFound",
+                return new ToolResult<PlotThreadDetailView>(false, Error: "NotFound",
                     Summary: $"PlotThread '{plotThreadId}' not found. Pass 'plot-threads' to get_entity to list available threads.");
 
             // Validate clue entity references
@@ -160,11 +160,11 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
             if (clueWarning != null)
                 summary += " " + clueWarning;
 
-            return new ToolResult<PlotThread>(true, thread, summary);
+            return new ToolResult<PlotThreadDetailView>(true, PlotThreadDetailView.From(thread), summary);
         }, saveChanges: false);
     }
 
-    internal Task<ToolResult<Quest>> GetQuestDetails(
+    internal Task<ToolResult<QuestDetailView>> GetQuestDetails(
         [Description("Exact quest ID e.g. 'quests/rats_01'.")]
         string questId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -179,7 +179,7 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
                 var hint = suggestions.Any()
                     ? " Did you mean: " + string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Title})"))
                     : "";
-                return new ToolResult<Quest>(false, Error: "NotFound", Summary: $"Quest '{questId}' not found.{hint}");
+                return new ToolResult<QuestDetailView>(false, Error: "NotFound", Summary: $"Quest '{questId}' not found.{hint}");
             }
 
             // Query associated plot threads
@@ -188,7 +188,7 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
                 .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
                 .ToList();
 
-            return new ToolResult<Quest>(true, quest, $"Quest details for '{quest.Title}' (campaign: {effective}).");
+            return new ToolResult<QuestDetailView>(true, QuestDetailView.From(quest), $"Quest details for '{quest.Title}' (campaign: {effective}).");
         }, saveChanges: false);
     }
 

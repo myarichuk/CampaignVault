@@ -473,6 +473,132 @@ public record QuestSearchSummary(
 }
 
 /// <summary>
+/// Wire-facing projection of <see cref="Quest"/> for get_entity (quests/) full-detail responses —
+/// carries every narrative/mechanical field the raw entity has, except DmNotes is fenced under
+/// GmOnly (see that type's doc comment for how to treat it) instead of shipped as a flat field.
+/// </summary>
+public record QuestDetailView(
+    string Id,
+    string Title,
+    string? GiverId,
+    List<QuestObjective> Objectives,
+    QuestState OverallState,
+    string? Category,
+    QuestUrgency Urgency,
+    List<string> RelatedLocationIds,
+    List<string> RelatedFactionIds,
+    GmOnly GmOnly,
+    List<string>? VisibleToCharacterIds,
+    int? DeadlineDay,
+    int LastUpdatedDay,
+    List<PlotThreadMinimal> AssociatedPlotThreads)
+{
+    public static QuestDetailView From(Quest q) => new(
+        q.Id,
+        q.Title,
+        q.GiverId,
+        q.Objectives,
+        q.OverallState,
+        q.Category,
+        q.Urgency,
+        q.RelatedLocationIds,
+        q.RelatedFactionIds,
+        new GmOnly(q.DmNotes),
+        q.VisibleToCharacterIds,
+        q.DeadlineDay,
+        q.LastUpdatedDay,
+        q.AssociatedPlotThreads);
+}
+
+/// <summary>
+/// Wire-facing projection of <see cref="PlotThread"/> for get_entity (plot-threads/) full-detail
+/// responses — carries every narrative/mechanical field the raw entity has, except DmNotes is fenced
+/// under GmOnly (see that type's doc comment for how to treat it) instead of shipped as a flat field.
+/// </summary>
+public record PlotThreadDetailView(
+    string Id,
+    string Title,
+    string? Summary,
+    PlotThreadState State,
+    int TensionLevel,
+    List<PlotClue> Clues,
+    List<string> InvolvedEntityIds,
+    string? ResolutionCondition,
+    List<string> ForeshadowingHooks,
+    GmOnly GmOnly,
+    int DayCreated,
+    int LastUpdatedDay,
+    int? DeadlineDay,
+    int? ClimaxEnteredDay,
+    bool IsPlayerVisible)
+{
+    public static PlotThreadDetailView From(PlotThread t) => new(
+        t.Id,
+        t.Title,
+        t.Summary,
+        t.State,
+        t.TensionLevel,
+        t.Clues,
+        t.InvolvedEntityIds,
+        t.ResolutionCondition,
+        t.ForeshadowingHooks,
+        new GmOnly(t.DmNotes),
+        t.DayCreated,
+        t.LastUpdatedDay,
+        t.DeadlineDay,
+        t.ClimaxEnteredDay,
+        t.IsPlayerVisible);
+}
+
+/// <summary>
+/// Wire-facing projection of <see cref="WorldEvent"/> for world_build's UpsertWorldEvent echo —
+/// carries every field the raw entity has, except DmNotes is fenced under GmOnly (see that type's
+/// doc comment for how to treat it) instead of shipped as a flat field.
+/// </summary>
+public record WorldEventDetailView(
+    string Id,
+    string Title,
+    string? Description,
+    string? ActorId,
+    List<string> InvolvedEntityIds,
+    WorldEventTriggerType TriggerType,
+    int? IntervalDays,
+    int? TargetDay,
+    WorldEventCondition? Condition,
+    List<WorldEventEffect> Effects,
+    WorldEventStatus Status,
+    int? LastTriggeredDay,
+    int? TriggeredOnDay,
+    string? PreventedByEntityId,
+    WorldEventCondition? PreventionCondition,
+    int DayCreated,
+    int LastUpdatedDay,
+    bool IsPlayerVisible,
+    GmOnly GmOnly)
+{
+    public static WorldEventDetailView From(WorldEvent e) => new(
+        e.Id,
+        e.Title,
+        e.Description,
+        e.ActorId,
+        e.InvolvedEntityIds,
+        e.TriggerType,
+        e.IntervalDays,
+        e.TargetDay,
+        e.Condition,
+        e.Effects,
+        e.Status,
+        e.LastTriggeredDay,
+        e.TriggeredOnDay,
+        e.PreventedByEntityId,
+        e.PreventionCondition,
+        e.DayCreated,
+        e.LastUpdatedDay,
+        e.IsPlayerVisible,
+        new GmOnly(e.DmNotes));
+}
+
+/// <summary>
 /// Search-result projection of <see cref="Lore"/>. No get_entity route exists for lore/ — this keeps
 /// Content intact (only drops CampaignName/LastUpdated bookkeeping) since there's no full-detail fallback.
 /// </summary>
