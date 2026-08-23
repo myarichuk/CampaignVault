@@ -379,22 +379,10 @@ public class CampaignRepository
         string effectiveCampaign,
         int budget)
     {
-        // Primary query: use indexed locationId parameter
-        var primary = await SelectRecentEventsAsync(session, effectiveCampaign, budget, locationId: locationId);
-
-        // Fallback for legacy events that only recorded location via Involved
-        var legacy = (await SelectRecentEventsAsync(session, effectiveCampaign, budget))
-            .Where(e => string.IsNullOrEmpty(e.LocationId) && (e.RelatedLocationIds == null || !e.RelatedLocationIds.Any())
-                && e.Involved.Contains(locationId))
-            .ToList();
-
-        // Merge, dedupe by Id, re-rank by importance then recency, take budget
-        return primary.Concat(legacy)
-            .DistinctBy(e => e.Id)
-            .OrderByDescending(e => e.Importance)
-            .ThenByDescending(e => e.Timestamp)
-            .Take(budget)
-            .ToList();
+        // SelectRecentEventsAsync's locationId filter already matches LocationId, RelatedLocationIds,
+        // and Involved (SceneCommit events carry every touched entity — including locations — in
+        // Involved; see MutationTools.CommitChangesAsync), so a single indexed query covers it.
+        return await SelectRecentEventsAsync(session, effectiveCampaign, budget, locationId: locationId);
     }
 
     /// <summary>
@@ -436,7 +424,9 @@ public class CampaignRepository
 
         if (!string.IsNullOrEmpty(locationId))
         {
-            q = q.Where(x => x.LocationId == locationId || (x.RelatedLocationIds != null && x.RelatedLocationIds.Contains(locationId)));
+            q = q.Where(x => x.LocationId == locationId
+                || (x.RelatedLocationIds != null && x.RelatedLocationIds.Contains(locationId))
+                || x.Involved.Contains(locationId));
         }
 
         if (!string.IsNullOrEmpty(involvedCharacterId))
@@ -861,7 +851,9 @@ public class CampaignRepository
 
             if (!string.IsNullOrEmpty(locationId))
             {
-                q = q.Where(x => x.LocationId == locationId || (x.RelatedLocationIds != null && x.RelatedLocationIds.Contains(locationId)));
+                q = q.Where(x => x.LocationId == locationId
+                || (x.RelatedLocationIds != null && x.RelatedLocationIds.Contains(locationId))
+                || x.Involved.Contains(locationId));
             }
 
             if (!string.IsNullOrEmpty(involvedCharacterId))

@@ -138,7 +138,7 @@ public class CampaignTools(
         deepDive.GetQuestDetails(questId, ResolveCampaign(campaignName));
 
     // --- World Builder ---
-    public Task<ToolResult<Character>> UpsertCharacter(CharacterUpsertRequest character,
+    public Task<ToolResult<CharacterDetailView>> UpsertCharacter(CharacterUpsertRequest character,
         string? campaignName = TestDefaultCampaignSlug) =>
         worldBuilder.UpsertCharacter(character, ResolveCampaign(campaignName));
 

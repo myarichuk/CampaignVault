@@ -260,7 +260,7 @@ Put hitDie on dnd5e systemStats root (NOT in attributes). Class flavor goes in n
 This is the only tool that creates a new character. During play, use commit (level_up, activity, character_update, etc.) for changes to an existing one — do not re-call this to move or tweak a character you already created.
 
 Omitted fields are preserved: on an existing character, omitting psychology/social/needs/systemStats keeps the stored value; providing one replaces it wholesale.")]
-    internal Task<ToolResult<Character>> UpsertCharacter(
+    internal Task<ToolResult<CharacterDetailView>> UpsertCharacter(
         [Description("The character to create or update. Strongly typed.")]
         CharacterUpsertRequest character,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -293,14 +293,14 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
                 if (hints.Count > 0)
                 {
                     var hintsText = string.Join(" | ", hints);
-                    return new ToolResult<Character>(result.Success, result.Data, $"{result.Summary} {hintsText}", result.Error, result.WorldPressure, result.RetryExample);
+                    return new ToolResult<CharacterDetailView>(result.Success, result.Data, $"{result.Summary} {hintsText}", result.Error, result.WorldPressure, result.RetryExample);
                 }
             }
             return result;
         });
     }
 
-    private async Task<ToolResult<Character>> ApplyCharacterUpsertAsync(IAsyncDocumentSession s, CharacterUpsertRequest character, string effective)
+    private async Task<ToolResult<CharacterDetailView>> ApplyCharacterUpsertAsync(IAsyncDocumentSession s, CharacterUpsertRequest character, string effective)
     {
         var config = await s.LoadAsync<CampaignConfig>(_keys.Config(effective));
         var noConfigYet = config is null;
@@ -361,7 +361,7 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
         var summary = extras.Count > 0
             ? $"Character upserted (campaign: {effective}). {string.Join(" ", extras)}"
             : $"Character upserted (campaign context: {effective}).";
-        return new ToolResult<Character>(true, merged, summary);
+        return new ToolResult<CharacterDetailView>(true, CharacterDetailView.From(merged), summary);
     }
 
     [Description(@"WORLD BUILDER TOOL: Create or overwrite a location on the world map.
@@ -550,7 +550,7 @@ This is the only tool that creates a new location. During play, use commit's loc
 
     [Description(
         "WORLD BUILDER TOOL: Create or update a quest. Omitted fields are preserved: on an existing quest, omitting objectives/relatedLocationIds/relatedFactionIds keeps the stored value; providing one replaces it wholesale. For objective-state or narrative progress on an existing quest, prefer commit (quest_progress).")]
-    internal Task<ToolResult<Quest>> UpsertQuest(
+    internal Task<ToolResult<QuestDetailView>> UpsertQuest(
         [Description("The quest to create or update. Strongly typed.")]
         QuestUpsertRequest quest,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -559,7 +559,7 @@ This is the only tool that creates a new location. During play, use commit's loc
         return ExecuteForCampaignAsync(campaignName, (effective, s) => ApplyQuestUpsertAsync(s, quest, effective));
     }
 
-    private async Task<ToolResult<Quest>> ApplyQuestUpsertAsync(IAsyncDocumentSession s, QuestUpsertRequest quest, string effective)
+    private async Task<ToolResult<QuestDetailView>> ApplyQuestUpsertAsync(IAsyncDocumentSession s, QuestUpsertRequest quest, string effective)
     {
         var merged = await _repository.UpsertQuestAsync(new CampaignSession(s, effective), quest);
         var refs = new List<(string, string?)> { ("giverId", quest.GiverId) }
@@ -567,7 +567,7 @@ This is the only tool that creates a new location. During play, use commit's loc
             .Concat((quest.RelatedFactionIds ?? []).Select((id, i) => ($"relatedFactionIds[{i}]", (string?)id)));
         var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
         var summary = $"Quest upserted (campaign context: {effective}).{warning}";
-        return new ToolResult<Quest>(true, merged, summary);
+        return new ToolResult<QuestDetailView>(true, QuestDetailView.From(merged), summary);
     }
 
     [Description(

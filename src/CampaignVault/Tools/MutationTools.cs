@@ -322,15 +322,19 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
 
         var commitTime = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
-        var (involvedNonLocationIds, involvedLocationIds) = SplitInvolvedByType(commitResult.InvolvedEntities);
         var sceneEvent = new Event
         {
             Id = "events/" + Guid.NewGuid(),
             CampaignName = ctx.Campaign,
             Summary = request.Narrative!,
             Category = EventCategory.SceneCommit,
-            Involved = involvedNonLocationIds,
-            RelatedLocationIds = involvedLocationIds.Count > 0 ? involvedLocationIds : null,
+            // Every touched entity type (characters, locations, factions, quests, items) stays in
+            // Involved — there's no dedicated field for factions/quests/items, and pressure
+            // contributors (e.g. FactionRecentEventPressureContributor) already scan Involved for
+            // those; location-scoped queries already fall back to Involved too (see
+            // CampaignRepository's location-filtered event queries), so splitting locations into
+            // RelatedLocationIds bought nothing but an extra field to keep in sync.
+            Involved = commitResult.InvolvedEntities.Where(id => !string.IsNullOrEmpty(id)).ToList(),
             DayLogged = (int)commitTime.TotalDaysElapsed,
             Details = ExtractEventDetails(changes),
             RelatedEntityId = ExtractPrimaryActor(commitResult.InvolvedEntities)
@@ -460,41 +464,6 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         if (factsDiscovered.Count > 0) details["factsDiscovered"] = factsDiscovered;
 
         return details.Count > 0 ? details : null;
-    }
-
-    /// <summary>
-    /// Pulls location IDs out of a raw InvolvedEntities set into a separate list, leaving every other
-    /// entity type (characters, factions, quests, items) in place. Handlers populate InvolvedEntities
-    /// with everything the batch touched, not just characters — e.g. TravelChangeHandler adds the
-    /// destination location ID alongside the traveling character's ID (see
-    /// WorldChangeDispatcher/ChangeContext.InvolvedEntities) — so without this split, location IDs end
-    /// up in Event.Involved instead of Event.RelatedLocationIds (the dedicated, queried field; see
-    /// CampaignRepository's LocationId-or-RelatedLocationIds lookups). Only locations are pulled out
-    /// here: faction/quest/item IDs are intentionally left in Involved because pressure contributors
-    /// (e.g. FactionRecentEventPressureContributor) scan SceneCommit.Involved for those IDs to resolve
-    /// pressure, and there is no dedicated field for them yet.
-    /// </summary>
-    private static (List<string> RemainingIds, List<string> LocationIds) SplitInvolvedByType(
-        List<string> involvedEntities)
-    {
-        var remaining = new List<string>();
-        var locIds = new List<string>();
-
-        foreach (var id in involvedEntities)
-        {
-            if (string.IsNullOrEmpty(id)) continue;
-
-            if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
-            {
-                locIds.Add(id);
-            }
-            else
-            {
-                remaining.Add(id);
-            }
-        }
-
-        return (remaining, locIds);
     }
 
     /// <summary>Extracts the primary actor (typically the first player character) from involved entities.</summary>

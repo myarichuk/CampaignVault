@@ -8,9 +8,14 @@ namespace CampaignVault.Data;
 /// <summary>
 /// Self-healing migration for corrupted Event documents.
 ///
-/// BACKGROUND: The Involved field should ONLY contain character/NPC IDs. Location, item,
-/// faction, and quest IDs should use dedicated fields. This repair routine detects and fixes
-/// events that violate this contract, which can occur from legacy code or bugs.
+/// BACKGROUND: The Involved field holds every entity type a scene touched — character/NPC,
+/// faction, quest, item, and location IDs alike. There's no dedicated field for faction/quest/item
+/// references (pressure contributors such as FactionRecentEventPressureContributor read them
+/// straight out of Involved), and location-scoped queries already fall back to scanning Involved
+/// too (see CampaignRepository's location-filtered event queries and Event.TouchesLocation), so
+/// mixing all entity types in one list is the intended contract, not corruption. The only genuine
+/// corruption this repairs is malformed entries — null/empty strings — which can occur from legacy
+/// code or bugs.
 ///
 /// This is idempotent and safe to run on every startup. If no corruption is found, it
 /// exits silently. If corruption IS found, it logs prominently to alert the operator.
@@ -62,29 +67,16 @@ public class EventDataRepair
                 var batchFixed = 0;
                 foreach (var @event in events)
                 {
-                    var (wasCorrupted, charIds, locIds) = ExtractAndValidateInvolved(@event);
+                    var (wasCorrupted, keptIds) = ExtractAndValidateInvolved(@event);
 
                     if (wasCorrupted)
                     {
-                        // Repair: move non-character IDs to proper fields
-                        @event.Involved = charIds;
-
-                        if (locIds.Any())
-                        {
-                            if (@event.RelatedLocationIds == null)
-                                @event.RelatedLocationIds = locIds;
-                            else
-                            {
-                                var merged = new HashSet<string>(@event.RelatedLocationIds, StringComparer.OrdinalIgnoreCase);
-                                foreach (var loc in locIds)
-                                    merged.Add(loc);
-                                @event.RelatedLocationIds = merged.ToList();
-                            }
-                        }
+                        // Repair: drop malformed (null/empty) entries; everything else stays in Involved.
+                        @event.Involved = keptIds;
 
                         batchFixed++;
                         var detail = $"Event {FormatEventForLog(@event)}: " +
-                                    $"moved {locIds.Count} location(s) from Involved, kept {charIds.Count} character(s)";
+                                    $"dropped malformed entries, kept {keptIds.Count} entity ID(s)";
                         details.Add(detail);
                         _logger.LogWarning(detail);
                     }
@@ -120,14 +112,14 @@ public class EventDataRepair
     }
 
     /// <summary>
-    /// Check if an event's Involved field contains non-character IDs.
-    /// Returns (isCorrupted, characterIds, locationIds).
+    /// Check if an event's Involved field contains malformed (null/empty) entries. Every
+    /// well-formed entity reference — chars/, characters/, locations/, factions/, quests/, items/,
+    /// or otherwise — intentionally stays in Involved; see class remarks.
+    /// Returns (isCorrupted, keptIds): keptIds is Involved with malformed entries dropped.
     /// </summary>
-    private static (bool IsCorrupted, List<string> CharacterIds, List<string> LocationIds)
-        ExtractAndValidateInvolved(Event @event)
+    private static (bool IsCorrupted, List<string> KeptIds) ExtractAndValidateInvolved(Event @event)
     {
-        var charIds = new List<string>();
-        var locIds = new List<string>();
+        var keptIds = new List<string>();
         var isCorrupted = false;
 
         foreach (var id in @event.Involved)
@@ -138,31 +130,10 @@ public class EventDataRepair
                 continue;
             }
 
-            if (id.StartsWith("chars/", StringComparison.OrdinalIgnoreCase) ||
-                id.StartsWith("characters/", StringComparison.OrdinalIgnoreCase))
-            {
-                charIds.Add(id);
-            }
-            else if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
-            {
-                locIds.Add(id);
-                isCorrupted = true;
-            }
-            else if (id.StartsWith("factions/", StringComparison.OrdinalIgnoreCase) ||
-                     id.StartsWith("quests/", StringComparison.OrdinalIgnoreCase) ||
-                     id.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
-            {
-                // Non-character entity type in Involved field (corruption)
-                isCorrupted = true;
-            }
-            else
-            {
-                // Unrecognized ID format (potential corruption)
-                isCorrupted = true;
-            }
+            keptIds.Add(id);
         }
 
-        return (isCorrupted, charIds, locIds);
+        return (isCorrupted, keptIds);
     }
 
     private static string FormatEventForLog(Event @event)
