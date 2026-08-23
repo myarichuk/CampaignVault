@@ -68,7 +68,6 @@ public class EngagementRelationPressureTests
                     Name: character.Name,
                     CurrentActivity: "Active",
                     CurrentMood: "Loud",
-                    TopNeeds: new Dictionary<string, float>(),
                     KnownNeeds: new Dictionary<string, float>(),
                     NeedDescriptors: new Dictionary<string, string>(),
                     SystemStats: character.SystemStats)

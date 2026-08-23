@@ -91,6 +91,29 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         /// SelectAndEnrichInitiativeAsync), keyed by character ID so Npcs/Party/PartyDelta section
         /// builders can attach the same computed enrichment without recomputing it per section.</summary>
         public Dictionary<string, NpcInitiativeEnrichment> InitiativeByNpcId { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Delta-mode only: NPCs considered for initiative this turn but not selected, who still
+        /// carry a high-salience memory — populated by SelectAndEnrichInitiativeAsync, consumed by the
+        /// Npcs/PartyDelta builders (MemoryHint field) and Finalize (QuerySuggestions).</summary>
+        public Dictionary<string, string> MemoryHintsByNpcId { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>The TurnCursor loaded/created by DecideTurnModeAsync, tracked here so later steps
+        /// (DetectAndApplyReseedTriggersAsync) can escalate Mode/reset the SAME tracked instance instead
+        /// of re-fetching — the RavenDB session already has it in its first-level cache either way, but
+        /// this avoids two code paths computing "is this a new cursor" independently.</summary>
+        public TurnCursor Cursor { get; set; } = null!;
+
+        /// <summary>Pre-commit (characterId,targetId) -> relationship value snapshot, taken before
+        /// CommitChangesAsync applies any RelationshipChange in this batch. Used by
+        /// DetectAndApplyReseedTriggersAsync to detect a band crossing without reconstructing the old
+        /// value as "new - delta" (wrong once the handler's [-100,100] clamp or multiple RelationshipChange
+        /// entries for the same pair in one batch are in play).</summary>
+        public Dictionary<(string CharacterId, string TargetId), int> RelationshipBaselines { get; } =
+            new();
+
+        /// <summary>Campaign config loaded once by DecideTurnModeAsync — reused by later steps (e.g.
+        /// ChangedNeedsKeys' significance threshold) instead of re-fetching.</summary>
+        public CampaignConfig Config { get; set; } = null!;
     }
 
     [ToolCategory("Mutation & time")]
@@ -108,7 +131,7 @@ One take_turn call carries optional mutations (Changes+Narrative) and optional r
 
 AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes (explicitly requested extraCharacterIds/extraLocationIds are always served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
 
-FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state. A full reseed happens periodically (server-configured) and can be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity/get_scene/get_world_state. Independent of mode, up to 2 NPCs per call carry RP-advisory initiative/memory ('initiative' field) — one is a party companion when one is present — so you get a 'who might act/speak next' signal even without calling get_scene.
+FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state; NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and KnownNeeds is filtered to needs that moved >= 2 points (pass leanMode=true to cap that at the top 2 movers, for long multi-NPC scenes). A full reseed happens periodically (server-configured, ~22 turns) and escalates early — even mid-delta-run — on a major PC location change, a relationship shift crossing a ±40 band, or a significant plot-thread beat, once at least 3 delta turns have elapsed since the last reseed. It can also be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity/get_scene/get_world_state — check 'querySuggestions' in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via 'memoryHint'). Independent of mode, up to 2 NPCs per call carry RP-advisory initiative/memory ('initiative' field, memories compressed to topic+one-liner on delta turns) — one is a party companion when one is present — so you get a 'who might act/speak next' signal even without calling get_scene.
 
 Pure queries (no Changes): omit Changes, provide at least one refresh param, and the response will refresh specific entities without mutations. Examples: includeWorldState=true to get campaign state, includeParty=true to get party summaries, or extraCharacterIds=[id] to refresh specific NPCs. Check the 'warnings' array in the response for any section that could not be assembled.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
@@ -177,11 +200,15 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
             if (hasChanges)
             {
+                await SnapshotRelationshipBaselinesAsync(ctx);
+
                 var commitFailure = await CommitChangesAsync(ctx);
                 if (commitFailure != null)
                 {
                     return commitFailure;
                 }
+
+                await DetectAndApplyReseedTriggersAsync(ctx);
             }
 
             if (ctx.Request?.AutoRefreshInvolved != false)
@@ -239,9 +266,119 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             await ctx.Session.StoreAsync(turnCursor, turnCursor.Id);
         }
 
+        ctx.Cursor = turnCursor;
+        ctx.Config = config;
         ctx.Mode = mode;
         ctx.Result.Mode = mode;
     }
+
+    /// <summary>
+    /// Snapshots (characterId,targetId) -> current relationship value for every RelationshipChange in
+    /// this batch, before CommitChangesAsync applies them — see TurnContext.RelationshipBaselines for why
+    /// this can't be reconstructed as "new - delta" after the fact. Same session, so these loads are
+    /// first-level-cache hits (CommitChangesAsync/RelationshipChangeHandler will load the same characters).
+    /// </summary>
+    private static async Task SnapshotRelationshipBaselinesAsync(TurnContext ctx)
+    {
+        foreach (var change in ctx.Request!.Changes!)
+        {
+            if (change is not RelationshipChange rel)
+            {
+                continue;
+            }
+
+            var key = (rel.CharacterId, rel.TargetId);
+            if (ctx.RelationshipBaselines.ContainsKey(key))
+            {
+                continue;
+            }
+
+            var source = await ctx.Session.LoadAsync<Character>(rel.CharacterId);
+            ctx.RelationshipBaselines[key] = source?.Social?.Relationships?.GetValueOrDefault(rel.TargetId, 0) ?? 0;
+        }
+    }
+
+    /// <summary>
+    /// Escalation floor + trigger set for the review's "force full reseed on triggers" ask, run after
+    /// CommitChangesAsync (needs AppliedChanges + post-commit relationship values) and before the section
+    /// builders. Escalates a turn that DecideTurnModeAsync already picked Delta for, up to Full, when a
+    /// major location change, a large relationship shift, or a significant plot-thread beat happened THIS
+    /// turn. Gated on TurnsSinceReseed >= 3 so a single early relationship/location beat in a long social
+    /// scene doesn't defeat delta mode in exactly the case it exists for.
+    /// </summary>
+    private async Task DetectAndApplyReseedTriggersAsync(TurnContext ctx)
+    {
+        if (ctx.Mode != TurnMode.Delta || ctx.Cursor.TurnsSinceReseed < 3)
+        {
+            return;
+        }
+
+        if (!await AnyTriggerFiredAsync(ctx))
+        {
+            return;
+        }
+
+        ctx.Cursor.TurnsSinceReseed = 0;
+        ctx.Cursor.ForcedFullReseedPending = false;
+        ctx.Cursor.LastFullReseedUtc = DateTime.UtcNow;
+        ctx.Mode = TurnMode.Full;
+        ctx.Result.Mode = TurnMode.Full;
+    }
+
+    private async Task<bool> AnyTriggerFiredAsync(TurnContext ctx)
+    {
+        var checkedCharacterIds = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+        async Task<bool> IsPcAsync(string characterId)
+        {
+            if (checkedCharacterIds.TryGetValue(characterId, out var cached))
+            {
+                return cached;
+            }
+
+            var character = await ctx.Session.LoadAsync<Character>(characterId);
+            var isPc = character?.IsPc == true;
+            checkedCharacterIds[characterId] = isPc;
+            return isPc;
+        }
+
+        foreach (var change in ctx.AppliedChanges)
+        {
+            switch (change)
+            {
+                case ActivityChange { UpdateLocation: true } ac:
+                    if (await IsPcAsync(ac.CharacterId))
+                    {
+                        return true;
+                    }
+                    break;
+
+                case TravelChange tc:
+                    if (await IsPcAsync(tc.CharacterId))
+                    {
+                        return true;
+                    }
+                    break;
+
+                case RelationshipChange rel when ctx.RelationshipBaselines.TryGetValue(
+                    (rel.CharacterId, rel.TargetId), out var before):
+                    var after = Math.Clamp(before + rel.Delta, -100, 100);
+                    if (CrossedBand(before, after, 40))
+                    {
+                        return true;
+                    }
+                    break;
+
+                case PlotThreadProgress ptp when Math.Abs(ptp.TensionDelta ?? 0) >= 25 || ptp.NewState != null:
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool CrossedBand(int before, int after, int bandSize) =>
+        before / bandSize != after / bandSize;
 
     /// <summary>
     /// Applies the request-level MinutesElapsed fallback to the first eligible change in the batch when
@@ -635,14 +772,52 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             {
                 var enrichment = await _repository.EnrichNpcInitiativeAsync(
                     ctx.Session, npc, ctx.Campaign, "take_turn", includeTensionBreakdown: false);
-                ctx.InitiativeByNpcId[npc.Id] = enrichment;
+                ctx.InitiativeByNpcId[npc.Id] = ctx.Mode == TurnMode.Delta ? CompressForDelta(enrichment) : enrichment;
             }
             catch (Exception ex)
             {
                 Warn(ctx, $"Initiative enrichment failed for '{npc.Id}': {ex.Message}", ex);
             }
         }
+
+        if (ctx.Mode == TurnMode.Delta)
+        {
+            foreach (var npc in pool.Values)
+            {
+                if (selected.Any(s => s.Id == npc.Id))
+                {
+                    continue;
+                }
+
+                var topMemory = npc.Psychology?.Memories.Values
+                    .Where(m => m.Salience >= HighSalienceThreshold)
+                    .OrderByDescending(m => m.Salience)
+                    .FirstOrDefault();
+
+                if (topMemory != null)
+                {
+                    ctx.MemoryHintsByNpcId[npc.Id] =
+                        $"{npc.Name} still has a high-salience memory '{topMemory.Topic}' — consider get_entity/recall_history if the conversation drifts toward it.";
+                }
+            }
+        }
     }
+
+    private const double HighSalienceThreshold = 0.75;
+
+    /// <summary>Trims a full-mode NpcInitiativeEnrichment down to the delta-mode wire shape: memories
+    /// compressed to topic + one-line detail (see CompressedMemory) instead of full MemoryNode objects —
+    /// likely the largest field in a delta response otherwise, per review recommendation 3.</summary>
+    private static NpcInitiativeEnrichment CompressForDelta(NpcInitiativeEnrichment enrichment) => enrichment with
+    {
+        RelevantMemories = [],
+        CompressedMemories = enrichment.RelevantMemories
+            .Select(m => new CompressedMemory(m.Topic, Truncate(m.Details, 140)))
+            .ToList()
+    };
+
+    private static string Truncate(string text, int maxLength) =>
+        text.Length <= maxLength ? text : text[..maxLength].TrimEnd() + "…";
 
     /// <summary>
     /// Enrich (above) has a persisted side effect — it marks surfaced initiative candidates as consumed
@@ -694,15 +869,10 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
             try
             {
-                var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, npcId, ctx.Campaign);
+                var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, npcId, ctx.Campaign, BuildTrim(ctx, npcId));
                 if (summary != null)
                 {
                     summary.Initiative = ctx.InitiativeByNpcId[npcId];
-                    if (ShouldStripUnchangedGear(ctx, npcId))
-                    {
-                        summary.Equipped = null;
-                        summary.Carried = null;
-                    }
                     (ctx.Result.Npcs ??= []).Add(summary);
                 }
             }
@@ -749,6 +919,122 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     /// </summary>
     private bool ShouldStripUnchangedGear(TurnContext ctx, string characterId) =>
         ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsGearOrStats(c, characterId));
+
+    /// <summary>
+    /// True if this change could have altered the given character's narrative appearance (the fields
+    /// <see cref="ShouldStripUnchangedAppearance"/> strips on mode=delta). Same explicit-switch convention
+    /// as <see cref="AffectsGearOrStats"/> — appearance is comparatively static, so most delta turns won't
+    /// touch it at all.
+    /// </summary>
+    private static bool AffectsAppearance(WorldChange change, string characterId)
+    {
+        var eq = StringComparer.OrdinalIgnoreCase;
+        return change switch
+        {
+            CharacterUpdate cu => eq.Equals(cu.CharacterId, characterId) &&
+                (cu.AppearanceOverride != null || cu.TagsToAdd is { Count: > 0 } || cu.TagsToRemove is { Count: > 0 } ||
+                 cu.FeaturesToAdd is { Count: > 0 } || cu.FeaturesToRemove is { Count: > 0 }),
+            CharacterCreate cc => eq.Equals(cc.CharacterId, characterId),
+            _ => false
+        };
+    }
+
+    private bool ShouldStripUnchangedAppearance(TurnContext ctx, string characterId) =>
+        ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsAppearance(c, characterId));
+
+    /// <summary>
+    /// True if this change could have altered the given character's mood or activity (the fields that
+    /// gate BehavioralSummary regeneration on mode=delta — the summary is derived from these plus recent
+    /// events, so it's stale/unchanged whenever neither moved).
+    /// </summary>
+    private static bool AffectsMoodOrActivity(WorldChange change, string characterId)
+    {
+        var eq = StringComparer.OrdinalIgnoreCase;
+        return change switch
+        {
+            MoodChange mc => eq.Equals(mc.CharacterId, characterId),
+            ActivityChange ac => eq.Equals(ac.CharacterId, characterId) && ac.NewActivity != null,
+            _ => false
+        };
+    }
+
+    private bool ShouldSkipBehavioralSummary(TurnContext ctx, string characterId) =>
+        ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsMoodOrActivity(c, characterId));
+
+    /// <summary>
+    /// On mode=delta, returns the set of need names that moved >= config's NeedsChangeSignificanceThreshold
+    /// points this turn for this character — BuildNpcSummaryAsync uses this to filter KnownNeeds down to
+    /// what's actually driving behavior right now instead of re-sending the full needs dict every call.
+    /// Null (no filtering) on Full mode.
+    /// </summary>
+    private static IReadOnlyCollection<string>? ChangedNeedsKeys(TurnContext ctx, string characterId)
+    {
+        if (ctx.Mode != TurnMode.Delta)
+        {
+            return null;
+        }
+
+        var threshold = ctx.Config?.NeedsChangeSignificanceThreshold ?? 2f;
+        var eq = StringComparer.OrdinalIgnoreCase;
+        IEnumerable<string> movers = ctx.AppliedChanges
+            .OfType<NeedChange>()
+            .Where(nc => eq.Equals(nc.CharacterId, characterId) && Math.Abs(nc.Delta) >= threshold)
+            .GroupBy(nc => nc.Need, eq)
+            .Select(g => (Need: g.Key, MaxAbsDelta: g.Max(nc => Math.Abs(nc.Delta))))
+            .OrderByDescending(x => x.MaxAbsDelta)
+            .Select(x => x.Need);
+
+        if (ctx.Request?.LeanMode == true)
+        {
+            movers = movers.Take(2);
+        }
+
+        return movers.ToList();
+    }
+
+    private CampaignRepository.NpcSummaryTrim BuildTrim(TurnContext ctx, string characterId) => new(
+        StripAppearance: ShouldStripUnchangedAppearance(ctx, characterId),
+        SkipBehavioralSummary: ShouldSkipBehavioralSummary(ctx, characterId),
+        StripGear: ShouldStripUnchangedGear(ctx, characterId),
+        NeedsKeysToInclude: ChangedNeedsKeys(ctx, characterId));
+
+    /// <summary>
+    /// Applies the SAME delta-mode trim decision as BuildTrim/BuildNpcSummaryAsync to a scene-embedded
+    /// NpcPresenceSummary (Scenes[].PresentNPCs) — one source of truth for "did this NPC's
+    /// appearance/behavior/needs/gear change this turn" shared between the Npcs[] and Scenes[] shapes,
+    /// rather than a second independent implementation. Applied as a post-process here (not threaded into
+    /// SceneNpcPresenceFactory) because that factory is also used by get_scene, which has no delta-mode
+    /// concept — keeping it mode-agnostic avoids a "forgot to pass Full for get_scene" class of bug.
+    /// A no-op in Full mode (get_scene's only mode; take_turn's periodic/forced Full).
+    /// </summary>
+    private NpcPresenceSummary ApplyDeltaTrim(TurnContext ctx, NpcPresenceSummary npc)
+    {
+        if (ctx.Mode != TurnMode.Delta)
+        {
+            return npc;
+        }
+
+        var trim = BuildTrim(ctx, npc.Id);
+        var knownNeeds = trim.NeedsKeysToInclude != null
+            ? npc.KnownNeeds.Where(kv => trim.NeedsKeysToInclude.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value)
+            : npc.KnownNeeds;
+
+        return npc with
+        {
+            CurrentAppearance = trim.StripAppearance ? null : npc.CurrentAppearance,
+            VisualTags = trim.StripAppearance ? null : npc.VisualTags,
+            DistinctiveFeatures = trim.StripAppearance ? null : npc.DistinctiveFeatures,
+            BehavioralSummary = trim.SkipBehavioralSummary ? null : npc.BehavioralSummary,
+            KnownNeeds = knownNeeds,
+            SystemStats = trim.StripGear ? null : npc.SystemStats,
+            EquippedItems = trim.StripGear ? null : npc.EquippedItems,
+            CarriedItems = trim.StripGear ? null : npc.CarriedItems,
+            RelevantMemories = npc.RelevantMemories is { Count: > 0 } ? [] : npc.RelevantMemories,
+            CompressedMemories = npc.RelevantMemories is { Count: > 0 }
+                ? npc.RelevantMemories.Select(m => new CompressedMemory(m.Topic, Truncate(m.Details, 140))).ToList()
+                : null
+        };
+    }
 
     /// <summary>
     /// Fetches lightweight summaries for refreshed entities. Explicitly requested extras are queued
@@ -823,9 +1109,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                     if (summary != null)
                     {
                         summary.PresentNPCs = summary.PresentNPCs
-                            .Select(npc => ShouldStripUnchangedGear(ctx, npc.Id)
-                                ? npc with { SystemStats = null, EquippedItems = null, CarriedItems = null }
-                                : npc)
+                            .Select(npc => ApplyDeltaTrim(ctx, npc))
                             .ToList();
                         result.Scenes.Add(summary);
                     }
@@ -849,15 +1133,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             {
                 try
                 {
-                    var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, charId, ctx.Campaign);
+                    var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, charId, ctx.Campaign, BuildTrim(ctx, charId));
                     if (summary != null)
                     {
                         summary.Initiative = ctx.InitiativeByNpcId.GetValueOrDefault(charId);
-                        if (ShouldStripUnchangedGear(ctx, charId))
-                        {
-                            summary.Equipped = null;
-                            summary.Carried = null;
-                        }
+                        summary.MemoryHint = ctx.MemoryHintsByNpcId.GetValueOrDefault(charId);
                         result.Npcs.Add(summary);
                     }
                     else
@@ -935,7 +1215,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                         EntityId = member.Id,
                         Name = member.Name,
                         Changes = memberChanges,
-                        Initiative = initiative
+                        Initiative = initiative,
+                        MemoryHint = ctx.MemoryHintsByNpcId.GetValueOrDefault(member.Id)
                     });
                 }
 
@@ -1083,6 +1364,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         var result = ctx.Result;
 
         DedupeNpcsCoveredByScenes(result);
+        DedupeRumorsCoveredByWorldState(result);
+        PopulateQuerySuggestions(result);
 
         var stats = rateLimiter.GetStatistics();
         if (stats != null)
@@ -1099,6 +1382,45 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         }
 
         return new ToolResult<TurnResult>(true, result, successMsg);
+    }
+
+    /// <summary>
+    /// Review recommendation 4: "explicit querySuggestions" — models respond more reliably to a concrete
+    /// suggested call than to silently noticing something's thin and re-querying on their own. Built from
+    /// signals already computed this turn (RefreshTruncatedIds, MemoryHint) rather than a new heuristic
+    /// pass, so this stays cheap and stays in sync with what actually got dropped/hinted.
+    /// </summary>
+    private static void PopulateQuerySuggestions(TurnResult result)
+    {
+        var suggestions = new List<string>();
+
+        foreach (var id in result.RefreshTruncatedIds ?? [])
+        {
+            suggestions.Add(id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase)
+                ? $"get_entity {id}"
+                : $"get_scene {id}");
+        }
+
+        foreach (var npc in result.Npcs ?? [])
+        {
+            if (npc.MemoryHint != null)
+            {
+                suggestions.Add($"get_entity {npc.CharacterId} (full psychology + memories)");
+            }
+        }
+
+        foreach (var delta in result.PartyDelta ?? [])
+        {
+            if (delta.MemoryHint != null)
+            {
+                suggestions.Add($"get_entity {delta.EntityId} (full psychology + memories)");
+            }
+        }
+
+        if (suggestions.Count > 0)
+        {
+            result.QuerySuggestions = suggestions.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
     }
 
     /// <summary>
@@ -1155,6 +1477,42 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         }
 
         result.Npcs = npcs.Except(toDrop).ToList();
+    }
+
+    /// <summary>
+    /// WorldStateView.ActiveRumors and Scenes[]/FullScene's LocalRumors both come from the same
+    /// region-scoped QueryRumorsAsync call keyed off the same regionId (party location's parent, or the
+    /// scene's own location — normally identical), so on a call returning both, LocalRumors is usually a
+    /// near-total subset of ActiveRumors in a second wire shape. WorldState is the less frequently present
+    /// section (gated behind IncludeWorldState/reseed cadence) so it's kept; the overlap is dropped from
+    /// the scene-local lists instead.
+    /// </summary>
+    private static void DedupeRumorsCoveredByWorldState(TurnResult result)
+    {
+        if (result.WorldState?.ActiveRumors is not { } activeRumors)
+        {
+            return;
+        }
+
+        var worldRumorIds = new HashSet<string>(
+            activeRumors.Select(r => r.Id),
+            StringComparer.OrdinalIgnoreCase);
+        if (worldRumorIds.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var scene in result.Scenes ?? [])
+        {
+            scene.LocalRumors = scene.LocalRumors.Where(r => !worldRumorIds.Contains(r.Id)).ToList();
+        }
+
+        if (result.FullScene != null)
+        {
+            result.FullScene.LocalRumors = result.FullScene.LocalRumors
+                .Where(r => !worldRumorIds.Contains(r.Id))
+                .ToList();
+        }
     }
 
     private void Warn(TurnContext ctx, string message, Exception? ex = null)

@@ -78,6 +78,11 @@ public class TakeTurnRequest
         "Force a full-detail response (Party/WorldState instead of PartyDelta/WorldStateDelta) and reset the campaign's periodic reseed counter, regardless of how many delta turns have elapsed. Use after your own context was compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial state. Default false.")]
     [JsonPropertyName("forceFullReseed")]
     public bool ForceFullReseed { get; set; } = false;
+
+    [Description(
+        "Only meaningful when the response mode ends up Delta (ignored on Full). Trims NpcSummaryView entries (Npcs[], PartyDelta[]) further, capping KnownNeeds to the top 2 movers this turn instead of every need that moved >= 2 points — useful for long roommate/party scenes with many NPCs where even a lean delta adds up. Default false.")]
+    [JsonPropertyName("leanMode")]
+    public bool LeanMode { get; set; } = false;
 }
 
 /// <summary>
@@ -144,6 +149,9 @@ public class TurnResult
 
     [Description("Non-fatal problems encountered while assembling this response (failed refreshes, missing entities, world-state errors). Null when every requested section succeeded. Check this whenever an expected section came back null.")]
     public List<string>? Warnings { get; set; }
+
+    [Description("Concrete follow-up tool calls worth making before narrating further — populated when a memoryHint fired (get_entity/recall_history) or entities were dropped from Npcs/Scenes by the refresh cap (RefreshTruncatedIds). Models respond more reliably to an explicit suggested call than to silently querying more; null when nothing is flagged this turn.")]
+    public List<string>? QuerySuggestions { get; set; }
 }
 
 /// <summary>
@@ -192,4 +200,7 @@ public class EntityChangeDelta
 
     [Description("RP-advisory initiative/memory enrichment, present only for the up-to-2 NPCs selected this call (see take_turn's tool description). Null otherwise, and always null for player characters.")]
     public NpcInitiativeEnrichment? Initiative { get; set; }
+
+    [Description("Set when this NPC has a high-salience memory that exists but wasn't surfaced via Initiative this turn (wasn't one of the up-to-2 selected) — a nudge to call get_entity/recall_history rather than assume nothing relevant is aging in the background. Null otherwise.")]
+    public string? MemoryHint { get; set; }
 }

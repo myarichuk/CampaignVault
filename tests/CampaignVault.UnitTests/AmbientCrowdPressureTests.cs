@@ -75,7 +75,6 @@ public class AmbientCrowdPressureContributorTests
                     Name: "Sergeant",
                     CurrentActivity: "Watching",
                     CurrentMood: null,
-                    TopNeeds: [],
                     KnownNeeds: [],
                     NeedDescriptors: [])
             ],

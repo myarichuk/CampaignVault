@@ -271,15 +271,25 @@ public class CampaignConfig
     /// <summary>
     /// Number of take_turn calls between forced full-detail reseeds when delta mode is active.
     /// Imprecision is fine — this is a token-budget heuristic, not a correctness guarantee.
-    /// Defaults to 30.
+    /// Defaults to 22.
     /// </summary>
-    public int DeltaModeReseedIntervalTurns { get; set; } = 30;
+    public int DeltaModeReseedIntervalTurns { get; set; } = 22;
 
     /// <summary>
     /// Master switch for take_turn's Full/Delta response alternation. When false, every call behaves
     /// as a full reseed (pre-delta-mode behavior). Defaults to true.
     /// </summary>
     public bool DeltaModeEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Minimum |delta| (absolute value, single-turn max across all NeedChange entries for that need)
+    /// for a need to be considered a significant mover on mode=delta take_turn calls — needs below this
+    /// are filtered out of KnownNeeds rather than re-sent unchanged. Not derived from a fixed need scale:
+    /// core needs (hunger/thirst/tiredness/stress/fatigue) are documented 0-100, but needs are otherwise
+    /// unrestricted (the LLM can invent any name on any implicit scale), so this is a tunable heuristic,
+    /// not a calibrated constant. Defaults to 2.
+    /// </summary>
+    public float NeedsChangeSignificanceThreshold { get; set; } = 2f;
 }
 
 /// <summary>

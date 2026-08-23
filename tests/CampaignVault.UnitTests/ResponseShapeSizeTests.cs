@@ -197,7 +197,6 @@ public class ResponseShapeSizeTests
             Name: "Old Tam",
             CurrentActivity: "tending bar",
             CurrentMood: "wary",
-            TopNeeds: [],
             KnownNeeds: [],
             NeedDescriptors: [])
         {

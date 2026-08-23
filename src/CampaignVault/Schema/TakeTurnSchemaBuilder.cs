@@ -81,6 +81,12 @@ internal static class TakeTurnSchemaBuilder
                 ["type"] = "boolean",
                 ["default"] = false,
                 ["description"] = "Force a full-detail response (Party/WorldState instead of PartyDelta/WorldStateDelta) and reset the reseed counter. Use after your own context was compacted/summarized."
+            },
+            ["leanMode"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["default"] = false,
+                ["description"] = "Only meaningful when the response ends up delta mode. Caps NPC KnownNeeds at the top 2 movers this turn instead of every need that moved >= 2 points. Useful for long multi-NPC scenes."
             }
         };
 

@@ -191,7 +191,6 @@ public record NpcPresenceSummary(
     string Name,
     string? CurrentActivity,
     string? CurrentMood,
-    Dictionary<string, float> TopNeeds,
     /// <summary>
     /// Known needs for this NPC (key → current value). The vocabulary is open — the LLM is encouraged to invent new narrative-appropriate needs.
     /// </summary>
@@ -241,9 +240,13 @@ public record NpcPresenceSummary(
     /// Advisory-only "whose move is it" hint for this NPC — never a hard gate. Null means this NPC has
     /// no pressing reason to act/speak next.
     /// </summary>
-    TurnIntentSignal? TurnIntent = null)
+    TurnIntentSignal? TurnIntent = null,
+    /// <summary>Populated instead of RelevantMemories (which is emptied) on take_turn delta-mode
+    /// responses — same memories, compressed to topic + one-line detail. Null on Full mode / outside
+    /// take_turn (e.g. get_scene), where RelevantMemories carries the full MemoryNode objects.</summary>
+    IReadOnlyList<CompressedMemory>? CompressedMemories = null)
 {
-    public NpcPresenceSummary() : this(null!, null!, null!, null!, null!, null!, null!) { }
+    public NpcPresenceSummary() : this(null!, null!, null!, null!, null!, null!) { }
 }
 
 public class CommitResult
@@ -296,9 +299,9 @@ public class AdvanceResult
     public int DaysAdvanced { get; set; }
 }
 
-public record RumorSummary(string Subject, string CurrentText, RumorState State)
+public record RumorSummary(string Id, string Subject, string CurrentText, RumorState State)
 {
-    public RumorSummary() : this(null!, null!, default!) { }
+    public RumorSummary() : this(null!, null!, null!, default!) { }
 }
 
 public record LocationSummary(string Id, string Name, LocationType Type)

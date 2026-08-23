@@ -90,7 +90,7 @@ public sealed class SceneAssembler
         {
             Location = LocationDetailView.From(context.Location),
             PresentNPCs = presenceSummaries,
-            LocalRumors = context.Rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)).ToList(),
+            LocalRumors = context.Rumors.Select(r => new RumorSummary(r.Id, r.Subject, r.CurrentText, r.State)).ToList(),
             VisibleItems = context.Items.Select(ItemSummaryView.From).ToList(),
             RecentEvents = context.Events,
             RecentEventSummaries = context.Events.Select(EventSummaryView.From).ToList(),

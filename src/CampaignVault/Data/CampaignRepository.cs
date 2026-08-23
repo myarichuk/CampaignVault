@@ -2257,7 +2257,7 @@ public class CampaignRepository
         // Build the view
         var view = new WorldStateView(
             CampaignTimeView.From(time),
-            rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
+            rumors.Select(r => new RumorSummary(r.Id, r.Subject, r.CurrentText, r.State)),
             events.Select(EventSummaryView.From),
             locSummary,
             PressureManager.ToDisplayStrings(pressureItems),
@@ -2840,29 +2840,65 @@ public class CampaignRepository
     }
 
 
-    internal async Task<NpcSummaryView?> BuildNpcSummaryAsync(IAsyncDocumentSession session, string characterId, string campaignName)
+    /// <summary>
+    /// Delta-mode trimming for BuildNpcSummaryAsync. Every flag/set defaults to "include everything"
+    /// (Full-mode behavior, and the behavior for callers outside take_turn like get_npc_summary) — the
+    /// caller opts INTO stripping by passing what changed this turn, so the skips happen at the query
+    /// layer (no recent-events fetch / behavioral synthesis, no item query) rather than fetching then
+    /// discarding the result.
+    /// </summary>
+    internal readonly record struct NpcSummaryTrim(
+        bool StripAppearance = false,
+        bool SkipBehavioralSummary = false,
+        bool StripGear = false,
+        IReadOnlyCollection<string>? NeedsKeysToInclude = null);
+
+    internal async Task<NpcSummaryView?> BuildNpcSummaryAsync(
+        IAsyncDocumentSession session, string characterId, string campaignName, NpcSummaryTrim trim = default)
     {
         var npc = await GetCharacterAsync(new CampaignSession(session, campaignName), characterId);
         if (npc == null)
             return null;
 
-        var recentEvents = await SelectRecentEventsAsync(session, campaignName, budget: 3, involvedCharacterId: characterId);
-        var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, recentEvents);
+        string? behavioralSummary = null;
+        if (!trim.SkipBehavioralSummary)
+        {
+            var recentEvents = await SelectRecentEventsAsync(session, campaignName, budget: 3, involvedCharacterId: characterId);
+            behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, recentEvents);
+        }
 
-        var heldItems = await session.Query<Item>()
-            .Where(i => i.HolderId == characterId && !i.IsArchived)
-            .Customize(x => x.WaitForNonStaleResults())
-            .ToListAsync();
+        List<ItemSummaryView>? equipped = null;
+        List<ItemSummaryView>? carried = null;
+        if (!trim.StripGear)
+        {
+            var heldItems = await session.Query<Item>()
+                .Where(i => i.HolderId == characterId && !i.IsArchived)
+                .Customize(x => x.WaitForNonStaleResults())
+                .ToListAsync();
+
+            equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
+            carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+        }
+
+        var knownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
+        if (trim.NeedsKeysToInclude != null)
+        {
+            knownNeeds = knownNeeds
+                .Where(kv => trim.NeedsKeysToInclude.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
 
         var summary = new NpcSummaryView
         {
             CharacterId = npc.Id,
             Name = npc.Name,
-            CurrentAppearance = npc.CurrentAppearance ?? "",
+            CurrentAppearance = trim.StripAppearance ? null : npc.CurrentAppearance ?? "",
+            CurrentActivity = npc.CurrentActivity,
+            CurrentMood = npc.Psychology?.CurrentMood,
             BehavioralSummary = behavioralSummary,
-            KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
-            Equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList(),
-            Carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList()
+            KnownNeeds = knownNeeds,
+            Equipped = equipped,
+            Carried = carried
         };
 
         return summary;

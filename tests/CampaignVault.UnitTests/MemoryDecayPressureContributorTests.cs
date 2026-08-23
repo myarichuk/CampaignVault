@@ -58,7 +58,6 @@ public class MemoryDecayPressureContributorTests
             Name: "Valen",
             CurrentActivity: "Standing at the bar",
             CurrentMood: "Wary",
-            TopNeeds: new Dictionary<string, float>(),
             KnownNeeds: new Dictionary<string, float>(),
             NeedDescriptors: new Dictionary<string, string>(),
             Memories: new Dictionary<string, MemoryNode> { [memory.Topic] = memory });

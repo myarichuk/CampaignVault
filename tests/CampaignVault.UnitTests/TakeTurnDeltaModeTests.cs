@@ -501,4 +501,420 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.Contains(villagerId, withInitiative);
         Assert.Equal(2, withInitiative.Count);
     }
+
+    /// <summary>
+    /// Reseed-trigger escalation floor: a relationship shift crossing a +/-40 band on an EARLY delta
+    /// turn (TurnsSinceReseed &lt; 3) must NOT escalate, or a single early relationship beat would defeat
+    /// delta mode in exactly the long-social-scene case it exists for.
+    /// </summary>
+    [Fact]
+    public async Task ReseedTrigger_RelationshipBand_DoesNotEscalate_BeforeFloor()
+    {
+        var slug = NewSlug("trigger-floor");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var pcId = $"chars/{slug}-pc";
+        var npcId = $"chars/{slug}-npc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = npcId, Name = "NPC", MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        // TurnsSinceReseed is 0 here (first delta turn) -> below the floor of 3.
+        var escalated = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new RelationshipChange { CharacterId = npcId, TargetId = pcId, Delta = 45, Reason = "Saved my life." }],
+            Narrative = "The NPC is overwhelmed with gratitude."
+        }, slug);
+        Assert.True(escalated.Success, escalated.Summary);
+        Assert.Equal(TurnMode.Delta, escalated.Data!.Mode);
+    }
+
+    /// <summary>
+    /// Once past the escalation floor (TurnsSinceReseed &gt;= 3), a relationship shift crossing a +/-40
+    /// band forces the response to Full and resets the reseed counter, same as the periodic path.
+    /// </summary>
+    [Fact]
+    public async Task ReseedTrigger_RelationshipBand_Escalates_AfterFloor()
+    {
+        var slug = NewSlug("trigger-rel");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var pcId = $"chars/{slug}-pc";
+        var npcId = $"chars/{slug}-npc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = npcId, Name = "NPC", MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        // Advance TurnsSinceReseed to 3 with three quiet delta turns (each a pure query refresh, no
+        // relationship-affecting changes) before the triggering turn.
+        for (var i = 0; i < 3; i++)
+        {
+            var quiet = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+            Assert.Equal(TurnMode.Delta, quiet.Data!.Mode);
+        }
+
+        var escalated = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new RelationshipChange { CharacterId = npcId, TargetId = pcId, Delta = 45, Reason = "Saved my life." }],
+            Narrative = "The NPC is overwhelmed with gratitude."
+        }, slug);
+        Assert.True(escalated.Success, escalated.Summary);
+        Assert.Equal(TurnMode.Full, escalated.Data!.Mode);
+
+        // Escalation resets the cursor, so the immediately following turn is Delta again.
+        var afterEscalation = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Equal(TurnMode.Delta, afterEscalation.Data!.Mode);
+    }
+
+    /// <summary>
+    /// A PC's location change (ActivityChange.UpdateLocation) is a reseed trigger, same floor rules
+    /// as the relationship-band trigger.
+    /// </summary>
+    [Fact]
+    public async Task ReseedTrigger_PcLocationChange_Escalates_AfterFloor()
+    {
+        var slug = NewSlug("trigger-loc");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var pcId = $"chars/{slug}-pc";
+        var locAId = $"locations/{slug}-a";
+        var locBId = $"locations/{slug}-b";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locAId, Name = "A" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locBId, Name = "B" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        for (var i = 0; i < 3; i++)
+        {
+            var quiet = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+            Assert.Equal(TurnMode.Delta, quiet.Data!.Mode);
+        }
+
+        var escalated = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new ActivityChange { CharacterId = pcId, NewLocationId = locBId, UpdateLocation = true }],
+            Narrative = "The party moves to B."
+        }, slug);
+        Assert.True(escalated.Success, escalated.Summary);
+        Assert.Equal(TurnMode.Full, escalated.Data!.Mode);
+    }
+
+    /// <summary>
+    /// KnownNeeds in delta mode is filtered to needs that moved >= 2 points this turn; a need that
+    /// changed by less than that is omitted. LeanMode further caps the surfaced set at 2 movers.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_FiltersKnownNeeds_ToSignificantMoversThisTurn()
+    {
+        var slug = NewSlug("needsfilter");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        var delta = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new NeedChange { CharacterId = companionId, Need = "hunger", Delta = 5 },
+                new NeedChange { CharacterId = companionId, Need = "boredom", Delta = 1 }
+            ],
+            Narrative = "The companion grows hungry but stays entertained.",
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.True(delta.Success, delta.Summary);
+        Assert.Equal(TurnMode.Delta, delta.Data!.Mode);
+
+        var npc = Assert.Single(delta.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.Contains("hunger", npc.KnownNeeds.Keys);
+        Assert.DoesNotContain("boredom", npc.KnownNeeds.Keys);
+    }
+
+    /// <summary>
+    /// CampaignConfig.NeedsChangeSignificanceThreshold governs the KnownNeeds mover cutoff — a campaign
+    /// that raises it should stop surfacing deltas the default (2) would have let through.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_NeedsSignificanceThreshold_IsConfigurable()
+    {
+        var slug = NewSlug("needsthreshold");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            var config = await repo.GetCampaignConfigAsync(cs);
+            config.NeedsChangeSignificanceThreshold = 10f;
+            await repo.UpsertCampaignConfigAsync(session, config, slug);
+
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        var delta = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NeedChange { CharacterId = companionId, Need = "hunger", Delta = 5 }],
+            Narrative = "The companion grows a little hungry.",
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.True(delta.Success, delta.Summary);
+        Assert.Equal(TurnMode.Delta, delta.Data!.Mode);
+
+        var npc = Assert.Single(delta.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.DoesNotContain("hunger", npc.KnownNeeds.Keys);
+    }
+
+    /// <summary>
+    /// Appearance and BehavioralSummary are omitted on delta turns that didn't touch either, and
+    /// populated again on a turn that does.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_OmitsAppearanceAndBehavioralSummary_WhenUnchanged_ButIncludesWhenTouched()
+    {
+        var slug = NewSlug("appearance");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = companionId,
+                Name = "Companion",
+                IsPartyCompanion = true,
+                CurrentAppearance = "Travel-worn but cheerful",
+                MaxHp = 10,
+                CurrentHp = 10
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+        var seedNpc = Assert.Single(seed.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.NotNull(seedNpc.CurrentAppearance);
+        Assert.NotNull(seedNpc.BehavioralSummary);
+
+        var untouched = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery, Involved = [companionId] }],
+            Narrative = "Nothing changes about the companion.",
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.Equal(TurnMode.Delta, untouched.Data!.Mode);
+        var untouchedNpc = Assert.Single(untouched.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.Null(untouchedNpc.CurrentAppearance);
+        Assert.Null(untouchedNpc.BehavioralSummary);
+
+        var touched = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new MoodChange { CharacterId = companionId, NewMood = "elated" }],
+            Narrative = "The companion's mood brightens.",
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.Equal(TurnMode.Delta, touched.Data!.Mode);
+        var touchedNpc = Assert.Single(touched.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.NotNull(touchedNpc.BehavioralSummary);
+        Assert.Equal("elated", touchedNpc.CurrentMood);
+    }
+
+    /// <summary>
+    /// RefreshTruncatedIds populate a corresponding QuerySuggestions entry.
+    /// </summary>
+    [Fact]
+    public async Task QuerySuggestions_PopulatedFromRefreshTruncatedIds()
+    {
+        var slug = NewSlug("querysugg");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var extraIds = Enumerable.Range(0, 7).Select(i => $"chars/{slug}-npc-{i}").ToArray();
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            foreach (var id in extraIds)
+            {
+                await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+                { Id = id, Name = id, MaxHp = 10, CurrentHp = 10 });
+            }
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = extraIds }, slug);
+        Assert.True(result.Success, result.Summary);
+        Assert.NotNull(result.Data!.RefreshTruncatedIds);
+        Assert.NotEmpty(result.Data.RefreshTruncatedIds!);
+        Assert.NotNull(result.Data.QuerySuggestions);
+        Assert.Contains(result.Data.QuerySuggestions!, s => s.Contains(result.Data.RefreshTruncatedIds!.First()));
+    }
+
+    /// <summary>
+    /// Regression guard: Scenes[].PresentNPCs (built by the shared SceneNpcPresenceFactory, also used
+    /// by get_scene) must get the SAME delta-mode leanness as the standalone Npcs[] shape — appearance
+    /// and behavioral summary omitted when unchanged this turn, needs filtered to significant movers —
+    /// via MutationTools.ApplyDeltaTrim reusing BuildTrim as the single source of truth, applied as a
+    /// post-process so the mode-agnostic factory (and get_scene, which has no delta concept) stay untouched.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_TrimsScenePresentNpcs_SameAsNpcsShape()
+    {
+        var slug = NewSlug("scenetrim");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-tavern";
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Tavern" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = companionId,
+                Name = "Companion",
+                IsPartyCompanion = true,
+                CurrentLocationId = locId,
+                CurrentAppearance = "Travel-worn but cheerful",
+                MaxHp = 10,
+                CurrentHp = 10
+            });
+            await session.SaveChangesAsync();
+        }
+
+        Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = changes,
+            Narrative = changes != null ? "The companion acts." : null,
+            ExtraLocationIds = [locId]
+        }, slug);
+
+        var seed = await Refresh();
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+        var seedPresence = Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.NotNull(seedPresence.CurrentAppearance);
+        Assert.NotNull(seedPresence.BehavioralSummary);
+
+        var untouched = await Refresh([new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery, Involved = [companionId] }]);
+        Assert.True(untouched.Success, untouched.Summary);
+        Assert.Equal(TurnMode.Delta, untouched.Data!.Mode);
+        var untouchedPresence = Assert.Single(untouched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.Null(untouchedPresence.CurrentAppearance);
+        Assert.Null(untouchedPresence.BehavioralSummary);
+
+        var touched = await Refresh([new MoodChange { CharacterId = companionId, NewMood = "elated" }]);
+        Assert.True(touched.Success, touched.Summary);
+        Assert.Equal(TurnMode.Delta, touched.Data!.Mode);
+        var touchedPresence = Assert.Single(touched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.NotNull(touchedPresence.BehavioralSummary);
+        Assert.Equal("elated", touchedPresence.CurrentMood);
+    }
+
+    /// <summary>
+    /// WorldStateView.ActiveRumors and Scenes[].LocalRumors are both resolved from the same region-scoped
+    /// query when the party's location and the refreshed scene's location share a region — a rumor there
+    /// should only be sent once (in ActiveRumors), not duplicated into the scene's LocalRumors too.
+    /// </summary>
+    [Fact]
+    public async Task TakeTurn_DedupesRumorsBetweenWorldStateAndScenes()
+    {
+        var slug = NewSlug("rumordedup");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-square";
+        var rumorId = $"rumors/{slug}-fire";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Town Square" });
+            await repo.UpsertRumorAsync(session, new RumorUpsertRequest
+            {
+                Id = rumorId,
+                RegionLocationId = locId,
+                Subject = "the fire",
+                CurrentText = "They say the granary fire wasn't an accident.",
+                State = RumorState.Spreading
+            }, slug);
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            PartyLocationId = locId,
+            ExtraLocationIds = [locId],
+            IncludeWorldState = true
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.Contains(result.Data!.WorldState!.ActiveRumors, r => r.Id == rumorId);
+
+        var scene = Assert.Single(result.Data.Scenes!, s => s.Location.Id == locId);
+        Assert.DoesNotContain(scene.LocalRumors, r => r.Id == rumorId);
+    }
 }

@@ -22,11 +22,6 @@ public sealed class SceneNpcPresenceFactory
 
         foreach (var npc in context.PresentNpcs)
         {
-            var topNeeds = npc.Needs.ActiveNeeds
-                .OrderByDescending(kv => kv.Value)
-                .Take(3)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
-
             var knownNeeds = npc.Needs.ActiveNeeds.ToDictionary(kv => kv.Key, kv => kv.Value);
             var needDescriptors = new Dictionary<string, string>(context.GlobalNeedDescriptors, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in npc.Needs.NeedDescriptors)
@@ -60,7 +55,6 @@ public sealed class SceneNpcPresenceFactory
                 Name: npc.Name,
                 CurrentActivity: npc.CurrentActivity ?? "Idle at default location",
                 CurrentMood: npc.Psychology.CurrentMood,
-                TopNeeds: topNeeds,
                 KnownNeeds: knownNeeds,
                 NeedDescriptors: needDescriptors,
                 BehavioralSummary: _behaviorSynthesizer.GenerateSummary(npc, context.Time, context.RecentSceneEvents),
