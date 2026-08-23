@@ -917,4 +917,121 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         var scene = Assert.Single(result.Data.Scenes!, s => s.Location.Id == locId);
         Assert.DoesNotContain(scene.LocalRumors, r => r.Id == rumorId);
     }
+
+    [Fact]
+    public async Task PartyFingerprint_IsEchoedAndStableAcrossQueryOnlyCalls()
+    {
+        var slug = NewSlug("fingerprint-stable");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-hub";
+        var pcId = $"chars/{slug}-pc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var first = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.True(first.Success, first.Summary);
+        Assert.False(string.IsNullOrEmpty(first.Data!.PartyFingerprint));
+        Assert.Contains(pcId, first.Data.PartyFingerprint);
+
+        // Correctly echoing the previous fingerprint with no party changes in between should never
+        // itself trigger a forced full reseed or a drift advisory.
+        var second = await tools.TakeTurn(new TakeTurnRequest
+        {
+            IncludeWorldState = true,
+            ClientPartyFingerprint = first.Data.PartyFingerprint
+        }, slug);
+        Assert.True(second.Success, second.Summary);
+        Assert.Equal(TurnMode.Delta, second.Data!.Mode);
+        Assert.Equal(first.Data.PartyFingerprint, second.Data.PartyFingerprint);
+        Assert.Null(second.Data.NarrativeReminder);
+    }
+
+    [Fact]
+    public async Task PartyFingerprint_MismatchForcesFullReseedWithAdvisory()
+    {
+        var slug = NewSlug("fingerprint-drift");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-hub";
+        var pcId = $"chars/{slug}-pc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var first = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.True(first.Success, first.Summary);
+
+        var second = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Equal(TurnMode.Delta, second.Data!.Mode);
+
+        // Simulate a client that missed a delta: echo a stale/bogus fingerprint on the next call.
+        var driftTurn = await tools.TakeTurn(new TakeTurnRequest
+        {
+            IncludeWorldState = true,
+            ClientPartyFingerprint = "chars/does-not-exist:1/1@nowhere"
+        }, slug);
+        Assert.True(driftTurn.Success, driftTurn.Summary);
+        Assert.Equal(TurnMode.Full, driftTurn.Data!.Mode);
+        Assert.NotNull(driftTurn.Data.NarrativeReminder);
+        Assert.Contains("clientPartyFingerprint", driftTurn.Data.NarrativeReminder);
+
+        // Drift-forced reseed resets the cadence like any other full reseed.
+        var afterDrift = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Equal(TurnMode.Delta, afterDrift.Data!.Mode);
+    }
+
+    [Fact]
+    public async Task WorldSequence_IncrementsOnlyOnCommittedMutations()
+    {
+        var slug = NewSlug("worldseq");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-hub";
+        var pcId = $"chars/{slug}-pc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var pureQuery = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.True(pureQuery.Success, pureQuery.Summary);
+        Assert.Equal(0, pureQuery.Data!.WorldSequence);
+
+        var mutation = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NeedChange { CharacterId = pcId, Need = "hunger", Delta = 5 }],
+            Narrative = "PC grows hungry.",
+            IncludeWorldState = true
+        }, slug);
+        Assert.True(mutation.Success, mutation.Summary);
+        Assert.Equal(1, mutation.Data!.WorldSequence);
+
+        var anotherPureQuery = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Equal(1, anotherPureQuery.Data!.WorldSequence);
+    }
 }

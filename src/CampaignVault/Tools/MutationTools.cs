@@ -136,7 +136,9 @@ One take_turn call carries optional mutations (Changes+Narrative) and optional r
 
 AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes (explicitly requested extraCharacterIds/extraLocationIds are always served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
 
-FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state; NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and KnownNeeds is filtered to needs that moved >= 2 points (pass leanMode=true to cap that at the top 2 movers, for long multi-NPC scenes). A full reseed happens periodically (server-configured, ~22 turns) and escalates early — even mid-delta-run — on a major PC location change, a relationship shift crossing a ±40 band, or a significant plot-thread beat, once at least 3 delta turns have elapsed since the last reseed. It can also be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity for a single character/location, or by setting includeParty/includeWorldState on this same take_turn call for broader state — check 'querySuggestions' in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via 'memoryHint'). Independent of mode, up to 2 NPCs per call carry RP-advisory initiative/memory ('initiative' field, memories compressed to topic+one-liner on delta turns) — one is a party companion when one is present — so you get a 'who might act/speak next' signal without an extra call.
+FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state; NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and KnownNeeds is filtered to needs that moved >= 2 points (pass leanMode=true to cap that at the top 2 movers, for long multi-NPC scenes). A full reseed happens periodically (server-configured, default every 40 turns) and escalates early — even mid-delta-run — on a major PC location change, a relationship shift crossing a ±40 band, a significant plot-thread beat (once at least 3 delta turns have elapsed since the last reseed), or a party-fingerprint mismatch (see below). It can also be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity for a single character/location, or by setting includeParty/includeWorldState on this same take_turn call for broader state — check 'querySuggestions' in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via 'memoryHint'). Independent of mode, up to 2 NPCs per call carry RP-advisory initiative/memory ('initiative' field, memories compressed to topic+one-liner on delta turns) — one is a party companion when one is present — so you get a 'who might act/speak next' signal without an extra call.
+
+DRIFT PROTECTION: every response carries 'partyFingerprint' (a readable ""charId:hp/maxHp@locationId"" list for the party). Pass it back as clientPartyFingerprint on your NEXT take_turn call, unchanged. If it doesn't match what the server computed, that means you missed or misread a prior delta — the server forces a full resync and flags it in the response, so you don't keep narrating from a stale mental model (e.g. treating a PC as still in a location they already left). You can also eyeball the fingerprint yourself each turn as a sanity check against your own understanding of the party's state.
 
 Pure queries (no Changes): omit Changes, provide at least one refresh param, and the response will refresh specific entities without mutations. Examples: includeWorldState=true to get campaign state, includeParty=true to get party summaries, or extraCharacterIds=[id] to refresh specific NPCs. Check the 'warnings' array in the response for any section that could not be assembled.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
@@ -227,6 +229,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             await IncludeWorldStateAsync(ctx);
             await IncludeFullNpcDetailAsync(ctx);
             await IncludeFullSceneDetailAsync(ctx);
+            await RefreshPartyFingerprintAsync(ctx);
 
             return Finalize(ctx, rateLimiter);
         }, saveChanges: true);
@@ -248,12 +251,14 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         var isNewCursor = cursor == null;
         var clientForced = ctx.Request?.ForceFullReseed == true;
         var repeatedForce = clientForced && cursor is { TurnsSinceReseed: < 2, ConsecutiveClientForcedReseeds: >= 1 };
+        var driftDetected = DetectPartyFingerprintDrift(ctx, cursor);
 
         var mode =
             !config.DeltaModeEnabled ? TurnMode.Full :
             cursor == null ? TurnMode.Full :
             clientForced ? TurnMode.Full :
             cursor.ForcedFullReseedPending ? TurnMode.Full :
+            driftDetected ? TurnMode.Full :
             cursor.TurnsSinceReseed >= config.DeltaModeReseedIntervalTurns ? TurnMode.Full :
             TurnMode.Delta;
 
@@ -262,6 +267,19 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             ctx.ReseedAdvisory = "Note: forceFullReseed was set again right after a prior reseed — " +
                 "if you're missing specific state, get_entity targets it more cheaply than another full reseed.";
         }
+        else if (driftDetected)
+        {
+            ctx.ReseedAdvisory = "Note: your clientPartyFingerprint didn't match the server's last-known party state — " +
+                "forcing a full resync since you may have missed or misread a prior delta. Trust this response over your " +
+                "own narrative model of the party.";
+        }
+
+        _logger.LogDebug(
+            "take_turn mode decision (campaign {Campaign}): mode={Mode} turnsSinceReseed={TurnsSinceReseed} " +
+            "reseedIntervalTurns={ReseedIntervalTurns} isNewCursor={IsNewCursor} clientForced={ClientForced} " +
+            "forcedPending={ForcedPending} driftDetected={DriftDetected}",
+            ctx.Campaign, mode, cursor?.TurnsSinceReseed ?? 0, config.DeltaModeReseedIntervalTurns,
+            isNewCursor, clientForced, cursor?.ForcedFullReseedPending ?? false, driftDetected);
 
         var turnCursor = cursor ?? new TurnCursor { Id = _keys.StateTurnCursor(ctx.Campaign), CampaignName = ctx.Campaign };
         if (mode == TurnMode.Full)
@@ -285,6 +303,75 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         ctx.Config = config;
         ctx.Mode = mode;
         ctx.Result.Mode = mode;
+    }
+
+    /// <summary>
+    /// Compares the client's echoed ClientPartyFingerprint (what it believes the party looked like as of
+    /// the last response) against the server's LastPartyFingerprint (what the server actually sent last
+    /// time). A mismatch means the client missed or misread a prior delta — logged as one of three
+    /// distinct Debug outcomes (echo-absent/echo-match/echo-mismatch) so it's obvious at a glance whether
+    /// this mechanism is even receiving echoes, since an LLM client can silently stop echoing an opaque-ish
+    /// field. Absence is never treated as drift — only a genuine mismatch forces a reseed.
+    /// </summary>
+    private bool DetectPartyFingerprintDrift(TurnContext ctx, TurnCursor? cursor)
+    {
+        var clientValue = ctx.Request?.ClientPartyFingerprint;
+
+        if (string.IsNullOrEmpty(clientValue))
+        {
+            _logger.LogDebug("take_turn party fingerprint (campaign {Campaign}): echo-absent", ctx.Campaign);
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(cursor?.LastPartyFingerprint))
+        {
+            // Nothing to compare against yet (first call, or server never computed one) - not a mismatch.
+            _logger.LogDebug("take_turn party fingerprint (campaign {Campaign}): echo-absent (no prior server value)", ctx.Campaign);
+            return false;
+        }
+
+        if (string.Equals(clientValue, cursor.LastPartyFingerprint, StringComparison.Ordinal))
+        {
+            _logger.LogDebug("take_turn party fingerprint (campaign {Campaign}): echo-match", ctx.Campaign);
+            return false;
+        }
+
+        _logger.LogWarning(
+            "take_turn party fingerprint MISMATCH (campaign {Campaign}): expected '{Expected}', client echoed '{Actual}' — forcing full reseed",
+            ctx.Campaign, cursor.LastPartyFingerprint, clientValue);
+        return true;
+    }
+
+    /// <summary>
+    /// Readable fingerprint of current party (PC + companion) state: "charId:hp/maxHp@locationId" per
+    /// member, sorted by ID for determinism. Deliberately readable rather than an opaque hash — an LLM
+    /// client can sanity-check it against its own narrative model directly, not just detect a dropped
+    /// response. Mirrors IncludePartyAsync's WaitForNonStaleResults customization so a checksum computed
+    /// immediately after a commit reflects what was just written, not a stale index read.
+    /// </summary>
+    private async Task<string> ComputePartyFingerprintAsync(TurnContext ctx)
+    {
+        var party = await ctx.Session.Query<Character>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+            .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
+            .ToListAsync();
+
+        return string.Join(",", party
+            .OrderBy(c => c.Id, StringComparer.Ordinal)
+            .Select(c => $"{c.Id}:{c.CurrentHp}/{c.MaxHp}@{c.CurrentLocationId ?? "?"}"));
+    }
+
+    /// <summary>
+    /// Recomputes the party fingerprint as of the end of this call (post-commit if there was one), stores
+    /// it on the cursor for next turn's drift check, and echoes it + WorldSequence in the result. Runs
+    /// unconditionally (not just on mutation turns) so a pure-query call still keeps the drift check alive.
+    /// </summary>
+    private async Task RefreshPartyFingerprintAsync(TurnContext ctx)
+    {
+        var fingerprint = await ComputePartyFingerprintAsync(ctx);
+        ctx.Cursor.LastPartyFingerprint = fingerprint;
+        ctx.Result.PartyFingerprint = fingerprint;
+        ctx.Result.WorldSequence = ctx.Cursor.WorldSequence;
     }
 
     /// <summary>
@@ -332,6 +419,10 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         {
             return;
         }
+
+        _logger.LogDebug(
+            "take_turn mode decision (campaign {Campaign}): escalated Delta->Full mid-turn (location/relationship/plot trigger, turnsSinceReseed was {TurnsSinceReseed})",
+            ctx.Campaign, ctx.Cursor.TurnsSinceReseed);
 
         ctx.Cursor.TurnsSinceReseed = 0;
         ctx.Cursor.ForcedFullReseedPending = false;
@@ -463,6 +554,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                            "(not just the failed item).\n" + string.Join("\n", commitResult.Summary);
             return new ToolResult<TurnResult>(false, new TurnResult(), Summary: errorMsg, Error: "ValidationError");
         }
+
+        ctx.Cursor.WorldSequence++;
 
         var result = ctx.Result;
         result.Committed = true;

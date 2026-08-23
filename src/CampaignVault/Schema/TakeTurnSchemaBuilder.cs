@@ -98,6 +98,11 @@ internal static class TakeTurnSchemaBuilder
                 ["type"] = "boolean",
                 ["default"] = false,
                 ["description"] = "Only meaningful when the response ends up delta mode. Caps NPC KnownNeeds at the top 2 movers this turn instead of every need that moved >= 2 points. Useful for long multi-NPC scenes."
+            },
+            ["clientPartyFingerprint"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Echo back the previous response's partyFingerprint unchanged, so the server can detect drift and force a resync if it doesn't match. Omit if you don't have a prior value."
             }
         };
 

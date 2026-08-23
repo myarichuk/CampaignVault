@@ -88,6 +88,14 @@ public class TakeTurnRequest
         "Override the auto-created SceneCommit event's importance (default Important). Use Trivial for pure flavor/banter beats with no new information; omit otherwise.")]
     [JsonPropertyName("narrativeImportance")]
     public MemoryImportance? NarrativeImportance { get; set; }
+
+    [Description(
+        "Echo back the 'partyFingerprint' value from the PREVIOUS take_turn response, unchanged. Lets the server detect narrative " +
+        "drift (e.g. a delta you missed) independent of the periodic reseed cadence: if this doesn't match what the server computed " +
+        "last turn, the response is forced to Full and a resync advisory is added. Omit on your very first call for a session, or " +
+        "whenever you don't have a prior value handy — an omitted value is never treated as a mismatch.")]
+    [JsonPropertyName("clientPartyFingerprint")]
+    public string? ClientPartyFingerprint { get; set; }
 }
 
 /// <summary>
@@ -157,6 +165,15 @@ public class TurnResult
 
     [Description("Concrete follow-up tool calls worth making before narrating further — populated when a memoryHint fired (get_entity/recall_history) or entities were dropped from Npcs/Scenes by the refresh cap (RefreshTruncatedIds). Models respond more reliably to an explicit suggested call than to silently querying more; null when nothing is flagged this turn.")]
     public List<string>? QuerySuggestions { get; set; }
+
+    [Description("Readable fingerprint of current party state ('charId:hp/maxHp@locationId', one per PC/companion, sorted by ID) — pass this back " +
+        "as clientPartyFingerprint on your NEXT take_turn call so the server can catch drift (a missed or misread delta) before it compounds. " +
+        "Also useful to self-check your own narrative model against right now: if this doesn't match what you believe about the party, trust this.")]
+    public string? PartyFingerprint { get; set; }
+
+    [Description("Monotonically increasing counter, bumped once per committed take_turn mutation for this campaign (never on pure-query calls). " +
+        "Not currently used for gap detection server-side — informational, for logging/debugging state sync issues.")]
+    public long WorldSequence { get; set; }
 }
 
 /// <summary>

@@ -37,4 +37,15 @@ public class TurnCursor
     /// </summary>
     [JsonPropertyName("consecutiveClientForcedReseeds")]
     public int ConsecutiveClientForcedReseeds { get; set; }
+
+    /// <summary>Monotonically increasing, bumped once per committed take_turn mutation. Never reset.
+    /// Informational for now (logging/debugging state sync) — not yet used for gap-based reseed decisions.</summary>
+    [JsonPropertyName("worldSequence")]
+    public long WorldSequence { get; set; }
+
+    /// <summary>Readable fingerprint of party state as of the end of the last take_turn call ("charId:hp/maxHp@locationId",
+    /// sorted by ID). Compared against the client's echoed TakeTurnRequest.ClientPartyFingerprint on the next call to
+    /// detect narrative drift (a delta the client missed or misread) independent of the periodic reseed cadence.</summary>
+    [JsonPropertyName("lastPartyFingerprint")]
+    public string? LastPartyFingerprint { get; set; }
 }
