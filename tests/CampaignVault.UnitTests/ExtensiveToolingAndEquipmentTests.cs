@@ -971,7 +971,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(result.Data);
         // WorldPressure should be present (even if empty for new campaign)
         var resultJson = JsonSerializer.Serialize(result.Data);
-        Assert.Contains("campaign", resultJson, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("worldPressure", resultJson, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

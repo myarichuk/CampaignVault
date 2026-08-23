@@ -154,7 +154,7 @@ public class TurnResult
 public class WorldStateDeltaView
 {
     [Description("Current campaign time — always populated.")]
-    public CampaignTime? Time { get; set; }
+    public CampaignTimeView? Time { get; set; }
 
     [Description("Active world pressure nags — always populated, same as WorldStateView.WorldPressure.")]
     public IEnumerable<string> WorldPressure { get; set; } = [];

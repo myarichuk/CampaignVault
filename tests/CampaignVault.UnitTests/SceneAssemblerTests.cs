@@ -249,7 +249,10 @@ public class SceneAssemblerTests
         Assert.True(scene.IsLocationAnchored);
         Assert.Equal(9, location.LastVisitedDay);
         Assert.Equal("The party travel in after dusk.", scene.LastKnownTravel);
-        Assert.Same(combat, scene.ActiveCombat);
+        Assert.NotNull(scene.ActiveCombat);
+        Assert.Equal(combat.LocationId, scene.ActiveCombat!.LocationId);
+        Assert.Equal(combat.Round, scene.ActiveCombat.Round);
+        Assert.Equal(combat.IsActive, scene.ActiveCombat.IsActive);
         Assert.Single(scene.PresentNPCs);
         Assert.Single(scene.LocalRumors);
         Assert.Single(scene.VisibleItems);

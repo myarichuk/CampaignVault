@@ -22,7 +22,7 @@
 | **5.6** | Rule ordering validation | ⏳ Pending | Fail on Order collisions, phase enum |
 | **5.7** | Unsafe retry loop fix | ⏳ Pending | Make actions idempotent or scope retry |
 | **5.8** | Query performance optimization | 🔄 Documented | 84× WaitForNonStaleResults calls; RavenDB constraint prevents parallel session queries; per-method optimization needed |
-| **5.9** | Response-shape redundancy | ⏳ Pending | Dedupe NpcPresenceSummary, TurnResult NPCs |
+| **5.9** | Response-shape redundancy | ✅ **COMPLETE** | `MutationTools.DedupeNpcsCoveredByScenes` (called from `Finalize`) drops a `TurnResult.Npcs` entry when the same NPC is already covered by a refreshed `Scenes[].PresentNPCs`, merging any `Initiative` data onto the surviving `NpcPresenceSummary` first; `EnsureInitiativeSurfacedAsync` also now treats scene-covered NPCs as already surfaced. Also stripped 3 raw-entity bookkeeping leaks found along the way: `WorldStateView`/`WorldStateDeltaView.Time` (new `CampaignTimeView`), `SceneView.ActiveCombat` (new `CombatEncounterView`), `NpcPresenceSummary.TagProvenance` (`[JsonIgnore]`, matching its `Memories` sibling). |
 | **5.10** | Test isolation fix | ⏳ Pending | One DB mode, move RavenDBFixture, lower MaxRequests |
 | **5.11** | Delete CampaignTools facade | ⏳ Pending | Move test helpers, delete legacy |
 | **5.12** | DI cleanups | ⏳ Pending | Static mutable state, two containers, hosted service |
@@ -149,7 +149,7 @@ Implements Phase 2.3's #1 recommendation (per-call response payload, the largest
 - **Capped NPC initiative/memory surfacing (mode-independent, new):** up to 2 NPCs per call now carry RP-advisory initiative/memory (`NpcInitiativeEnrichment`, reusing the existing `CampaignRepository.EnrichNpcInitiativeAsync`/`DefaultRelevantMemorySelector` machinery already used by `get_scene`) — one guaranteed slot for a randomly-picked party companion when present, the other slot preferring a non-companion NPC at the party's current location. This runs regardless of `includeParty`/`Mode` (gated only by `autoRefreshInvolved`, honoring its existing bulk/seeding opt-out contract), so `take_turn` alone carries a "who might act/speak next" signal even without a `get_scene` call.
 - **Correctness fix caught in review before shipping:** `NpcInitiativeService.Enrich` has a persisted side effect — it marks surfaced candidates as consumed on the campaign doc via `IInitiativeSuppressionStore`, so a candidate that's enriched but never shown to the model is silently burned (worse than not enriching at all: a later `get_scene` call would find it already suppressed). The initial wiring only attached the cached enrichment when the selected NPC happened to already be in `Npcs` (via `InvolvedEntities`/`extraCharacterIds`) or `Party` (via `includeParty`) — meaning the common bare `take_turn(changes, narrative)` call computed and persisted the suppression state but never surfaced it anywhere. Fixed with a new `EnsureInitiativeSurfacedAsync` step that appends a lightweight `NpcSummaryView` to `Npcs` for any selected NPC not already covered by another section — guaranteeing every enrichment that's computed (and every suppression-store write that goes with it) is actually visible in the response.
 - **Tests:** new `tests/CampaignVault.UnitTests/TakeTurnDeltaModeTests.cs` (cursor mechanics incl. forced reseed and the `advance_world` gap, a deterministic ambient-drift regression guard — rigged `EncounterResolver`/minimal `DefaultSimulationEngine` so it doesn't depend on encounter-interruption RNG, delta-content correctness incl. a payload-size ratio check, the initiative-cap selection, and the bare-call initiative-surfacing regression guard above) plus a schema test in `ToolSchemaBudgetTests.cs`. Two pre-existing tests (`TakeTurn_WithIncludeWorldState_ReturnsWorldContext`, `TakeTurn_WithIncludeParty_ReturnsPartyMembers`) asserted on `Party`/`WorldState` against the shared test campaign and were now flaky depending on that campaign's accumulated reseed-cursor state — fixed by pinning them to `ForceFullReseed: true`, matching their actual intent (verify the full-detail shape). Full suite green: 1213 passed, 1 skipped (pre-existing), 0 failed.
-- **Not done:** the `Npcs`/`Scenes` auto-refresh section (already capped at 6/3, already summary-shaped) was deliberately left untouched — flagged as a possible future follow-up, not required to capture the bulk of the win.
+- **Not done at the time:** the `Npcs`/`Scenes` auto-refresh section (already capped at 6/3, already summary-shaped) was deliberately left untouched — flagged as a possible future follow-up, not required to capture the bulk of the win. **Done as of Phase 5.9** — see that row: an NPC covered by both a refreshed scene and the top-level `Npcs` list is now deduped, keeping the richer `Scenes[].PresentNPCs` entry.
 
 ---
 
@@ -164,6 +164,11 @@ Implements Phase 2.3's #1 recommendation (per-call response payload, the largest
 
 3. **Phase 5.8:** Query performance optimization (84× WaitForNonStaleResults calls)
    - **High-impact targets:** AdvanceWorld simulation (18s latency); EntitySuggester (10 calls)
+
+4. **Follow-up found during Phase 5.9:** `AdvanceResult.NewTime` (`Models/V4Views.cs`, the `advance_world`
+   tool's response) still returns a raw `CampaignTime` — same `Id`/`LastUpdated` bookkeeping leak as
+   `WorldStateView.Time` had before Phase 5.9 fixed it there. Same fix (`CampaignTimeView.From`) applies;
+   out of scope for 5.9 since it's a different tool's response shape.
 
 ---
 

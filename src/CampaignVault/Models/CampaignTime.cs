@@ -108,3 +108,21 @@ public class CampaignTime
     /// </summary>
     public string FormattedDate => $"Day {Day}, Month {Month}, Year {Year} ({Epoch}) — {GetTimeOfDayName()}";
 }
+
+/// <summary>
+/// Wire-facing projection of <see cref="CampaignTime"/> for WorldStateView/WorldStateDeltaView —
+/// drops Id (singleton-doc-key bookkeeping) and LastUpdated (write-time bookkeeping, not narrative
+/// content). Carries FormattedDate so the wire shape keeps the ready-to-narrate sentence.
+/// </summary>
+public record CampaignTimeView(
+    string Epoch,
+    int Year,
+    int Month,
+    int Day,
+    int Hour,
+    int TotalDaysElapsed,
+    string FormattedDate)
+{
+    public static CampaignTimeView From(CampaignTime t) => new(
+        t.Epoch, t.Year, t.Month, t.Day, t.Hour, t.TotalDaysElapsed, t.FormattedDate);
+}

@@ -2256,7 +2256,7 @@ public class CampaignRepository
 
         // Build the view
         var view = new WorldStateView(
-            time,
+            CampaignTimeView.From(time),
             rumors.Select(r => new RumorSummary(r.Subject, r.CurrentText, r.State)),
             events.Select(EventSummaryView.From),
             locSummary,

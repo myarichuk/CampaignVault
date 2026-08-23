@@ -677,6 +677,14 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             alreadySurfaced.Add(d.EntityId);
         }
 
+        foreach (var scene in ctx.Result.Scenes ?? [])
+        {
+            foreach (var presentNpc in scene.PresentNPCs)
+            {
+                alreadySurfaced.Add(presentNpc.Id);
+            }
+        }
+
         foreach (var npcId in ctx.InitiativeByNpcId.Keys)
         {
             if (alreadySurfaced.Contains(npcId))
@@ -1074,6 +1082,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     {
         var result = ctx.Result;
 
+        DedupeNpcsCoveredByScenes(result);
+
         var stats = rateLimiter.GetStatistics();
         if (stats != null)
         {
@@ -1089,6 +1099,62 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         }
 
         return new ToolResult<TurnResult>(true, result, successMsg);
+    }
+
+    /// <summary>
+    /// An NPC present in a refreshed Scenes[].PresentNPCs entry (NpcPresenceSummary) already carries
+    /// everything the parallel Npcs[] entry (NpcSummaryView) would — see RefreshInvolvedEntitiesAsync,
+    /// which builds the two independently with no cross-check — so a duplicate top-level Npcs[] entry
+    /// for the same id is redundant wire content. Drops it, merging any Initiative context onto the
+    /// surviving NpcPresenceSummary first so nothing is lost. In practice this merge is a no-op:
+    /// SceneNpcPresenceFactory always computes initiative enrichment for every present NPC, so the
+    /// scene-side entry already has equal-or-richer initiative data — the merge is a defensive
+    /// safety net, not the expected path.
+    /// </summary>
+    private static void DedupeNpcsCoveredByScenes(TurnResult result)
+    {
+        if (result.Npcs is not { Count: > 0 } npcs || result.Scenes is not { Count: > 0 } scenes)
+        {
+            return;
+        }
+
+        var sceneNpcIds = new HashSet<string>(
+            scenes.SelectMany(s => s.PresentNPCs.Select(n => n.Id)),
+            StringComparer.OrdinalIgnoreCase);
+
+        var toDrop = npcs.Where(n => sceneNpcIds.Contains(n.CharacterId)).ToList();
+        if (toDrop.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var dropped in toDrop)
+        {
+            if (dropped.Initiative == null)
+            {
+                continue;
+            }
+
+            foreach (var scene in scenes)
+            {
+                scene.PresentNPCs = scene.PresentNPCs
+                    .Select(n => n.Id.Equals(dropped.CharacterId, StringComparison.OrdinalIgnoreCase)
+                        && n.BehavioralTension == 0
+                        && (n.ActiveInitiatives?.Count ?? 0) == 0
+                        && n.TurnIntent == null
+                        ? n with
+                        {
+                            BehavioralTension = dropped.Initiative.BehavioralTension,
+                            ActiveInitiatives = dropped.Initiative.ActiveInitiatives,
+                            RelevantMemories = dropped.Initiative.RelevantMemories,
+                            TurnIntent = dropped.Initiative.TurnIntent
+                        }
+                        : n)
+                    .ToList();
+            }
+        }
+
+        result.Npcs = npcs.Except(toDrop).ToList();
     }
 
     private void Warn(TurnContext ctx, string message, Exception? ex = null)

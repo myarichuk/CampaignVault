@@ -263,11 +263,13 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
     /// <summary>
     /// Regression guard for the RefreshInvolvedEntitiesAsync gear-duplication fix: on mode=delta,
-    /// EquippedItems/CarriedItems/SystemStats for a refreshed NPC — whether surfaced via top-level
-    /// Npcs (ExtraCharacterIds) or nested in Scenes[].PresentNPCs (ExtraLocationIds) — should only be
-    /// populated when something this turn actually touched that NPC's gear/stats (item/character
+    /// EquippedItems/CarriedItems/SystemStats for a refreshed NPC should only be populated when
+    /// something this turn actually touched that NPC's gear/stats (item/character
     /// update/ruleset_action/etc). An untouched NPC's gear was previously re-sent in full on every
-    /// single delta turn even though it never changes turn to turn.
+    /// single delta turn even though it never changes turn to turn. Requests both ExtraCharacterIds
+    /// and ExtraLocationIds for the same NPC/location, so this also covers Finalize's
+    /// DedupeNpcsCoveredByScenes: the companion is covered by the refreshed scene, so it must never
+    /// appear in Npcs — only in Scenes[].PresentNPCs, which carries the gear-strip verdict there.
     /// </summary>
     [Fact]
     public async Task DeltaMode_StripsUnchangedGear_ButKeepsItWhenTouchedThisTurn()
@@ -313,20 +315,16 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         var seed = await Refresh();
         Assert.True(seed.Success, seed.Summary);
         Assert.Equal(TurnMode.Full, seed.Data!.Mode);
-        var seedNpc = Assert.Single(seed.Data.Npcs ?? [], n => n.CharacterId == companionId);
-        Assert.NotNull(seedNpc.Equipped);
-        Assert.NotEmpty(seedNpc.Equipped!);
+        Assert.DoesNotContain(seed.Data.Npcs ?? [], n => n.CharacterId == companionId);
         var seedScenePc = Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
         Assert.NotNull(seedScenePc.EquippedItems);
         Assert.NotEmpty(seedScenePc.EquippedItems!);
 
-        // Call 2: Delta, nothing touches the companion's gear/stats this turn -> stripped in both shapes.
+        // Call 2: Delta, nothing touches the companion's gear/stats this turn -> stripped.
         var untouched = await Refresh([new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery, Involved = [companionId] }]);
         Assert.True(untouched.Success, untouched.Summary);
         Assert.Equal(TurnMode.Delta, untouched.Data!.Mode);
-        var untouchedNpc = Assert.Single(untouched.Data.Npcs ?? [], n => n.CharacterId == companionId);
-        Assert.Null(untouchedNpc.Equipped);
-        Assert.Null(untouchedNpc.Carried);
+        Assert.DoesNotContain(untouched.Data.Npcs ?? [], n => n.CharacterId == companionId);
         var untouchedScenePc = Assert.Single(untouched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
         Assert.Null(untouchedScenePc.EquippedItems);
         Assert.Null(untouchedScenePc.CarriedItems);
@@ -336,12 +334,116 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         var touched = await Refresh([new ItemUnequip { CharacterId = companionId, ItemId = daggerId }]);
         Assert.True(touched.Success, touched.Summary);
         Assert.Equal(TurnMode.Delta, touched.Data!.Mode);
-        var touchedNpc = Assert.Single(touched.Data.Npcs ?? [], n => n.CharacterId == companionId);
-        Assert.NotNull(touchedNpc.Carried);
-        Assert.NotEmpty(touchedNpc.Carried!);
+        Assert.DoesNotContain(touched.Data.Npcs ?? [], n => n.CharacterId == companionId);
         var touchedScenePc = Assert.Single(touched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
         Assert.NotNull(touchedScenePc.CarriedItems);
         Assert.NotEmpty(touchedScenePc.CarriedItems!);
+    }
+
+    /// <summary>
+    /// Companion between the same-scope-but-Npcs-only case: gear-stripping still works correctly on
+    /// the Npcs shape when the NPC is requested without also refreshing its location as a scene (so
+    /// DedupeNpcsCoveredByScenes has nothing to drop and Npcs is the only surfaced shape).
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_StripsUnchangedGear_OnNpcsShape_WhenNoSceneRefreshed()
+    {
+        var slug = NewSlug("gearstrip-npcs");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-tavern";
+        var companionId = $"chars/{slug}-comp";
+        var daggerId = $"items/{slug}-dagger";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Tavern" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertItemAsync(cs, new ItemUpsertRequest
+            {
+                Id = daggerId,
+                Name = "Dagger",
+                Description = "A plain dagger.",
+                HolderId = companionId,
+                CoreCategory = ItemCategory.Weapon,
+                EquipZones = [EquipZone.Accessory],
+                EquipLayer = EquipLayer.Held,
+                IsEquipped = true
+            });
+            await session.SaveChangesAsync();
+        }
+
+        Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = changes,
+            Narrative = changes != null ? "The companion acts." : null,
+            ExtraCharacterIds = [companionId]
+        }, slug);
+
+        var seed = await Refresh();
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Null(seed.Data!.Scenes);
+        var seedNpc = Assert.Single(seed.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.NotNull(seedNpc.Equipped);
+        Assert.NotEmpty(seedNpc.Equipped!);
+
+        var untouched = await Refresh([new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery, Involved = [companionId] }]);
+        Assert.True(untouched.Success, untouched.Summary);
+        Assert.Equal(TurnMode.Delta, untouched.Data!.Mode);
+        var untouchedNpc = Assert.Single(untouched.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.Null(untouchedNpc.Equipped);
+        Assert.Null(untouchedNpc.Carried);
+    }
+
+    /// <summary>
+    /// Regression guard for the Npcs/Scenes[].PresentNPCs duplication fix (REFACTOR_STATUS 5.9): an
+    /// NPC that is both touched by Changes (lands in InvolvedEntities, auto-selected for initiative
+    /// via SelectAndEnrichInitiativeAsync) and located at a scene refreshed in the same call must
+    /// appear exactly once, via Scenes[].PresentNPCs, with initiative context intact.
+    /// </summary>
+    [Fact]
+    public async Task TakeTurn_NpcCoveredByRefreshedScene_AppearsOnlyOnceWithInitiativePreserved()
+    {
+        var slug = NewSlug("dedupe-npc");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-camp";
+        var pcId = $"chars/{slug}-pc";
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Camp" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new EventOccurred { Summary = "The companion keeps watch.", Category = EventCategory.Discovery, Involved = [companionId] }],
+            Narrative = "The party makes camp; the companion stays alert.",
+            ExtraLocationIds = [locId]
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        var data = result.Data!;
+
+        Assert.DoesNotContain(data.Npcs ?? [], n => n.CharacterId == companionId);
+
+        var scene = Assert.Single(data.Scenes!, s => s.Location.Id == locId);
+        var presence = Assert.Single(scene.PresentNPCs, n => n.Id == companionId);
+        Assert.True(presence.BehavioralTension != 0 || (presence.ActiveInitiatives?.Count ?? 0) > 0 || presence.TurnIntent != null,
+            "Expected initiative context to survive dedup via the scene-side NpcPresenceSummary.");
     }
 
     [Fact]

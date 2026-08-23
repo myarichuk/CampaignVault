@@ -90,7 +90,7 @@ public class SceneView
     /// If there is an active combat encounter in this location, its state is returned here.
     /// Informs the LLM of turn order and rounds.
     /// </summary>
-    public CombatEncounter? ActiveCombat { get; set; }
+    public CombatEncounterView? ActiveCombat { get; set; }
 
     public IEnumerable<ActiveQuestSummary>? ActiveQuests { get; set; }
     public IEnumerable<FactionPresenceSummary>? RelevantFactions { get; set; }
@@ -210,8 +210,10 @@ public record NpcPresenceSummary(
     List<string>? DistinctiveFeatures = null,
     /// <summary>
     /// Maps a tag/feature/appearance text to the event ID(s) that established it — objective ground
-    /// truth, distinct from this NPC's own subjective Memories below.
+    /// truth, distinct from this NPC's own subjective Memories below. Internal provenance, not
+    /// narrative content — not sent over the wire (same treatment as CharacterDetailView drops it).
     /// </summary>
+    [property: JsonIgnore]
     Dictionary<string, List<string>>? TagProvenance = null,
     /// <summary>
     /// Full memory dict — kept for in-process consumers (MemoryDecayPressureContributor scans every

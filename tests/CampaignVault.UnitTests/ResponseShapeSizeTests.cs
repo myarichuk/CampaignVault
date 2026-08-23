@@ -149,7 +149,7 @@ public class ResponseShapeSizeTests
         };
 
         var worldState = new WorldStateView(
-            new CampaignTime(),
+            CampaignTimeView.From(new CampaignTime()),
             [],
             [],
             pressure: ["ENGINE WARNING: location expects a crowd but none are anchored. Example: {...}"],
@@ -161,7 +161,56 @@ public class ResponseShapeSizeTests
         Assert.DoesNotContain("worldPressureItems", json);
         Assert.Contains("ENGINE WARNING", json);
 
+        // CampaignTime's Id (singleton-doc-key) and LastUpdated (write-time stamp) are bookkeeping,
+        // not narrative content — CampaignTimeView drops them but keeps FormattedDate.
+        Assert.DoesNotContain("\"id\"", json);
+        Assert.DoesNotContain("lastUpdated", json);
+        Assert.Contains("formattedDate", json);
+
         // But it's still readable in-process (tests / internal callers rely on this).
         Assert.Single(worldState.WorldPressureItems);
+    }
+
+    [Fact]
+    public void ActiveCombat_ProjectedView_DropsSingletonDocKeyId()
+    {
+        var scene = new SceneView
+        {
+            Location = LocationDetailView.From(new Location { Id = "locations/arena" }),
+            ActiveCombat = new CombatEncounterView("locations/arena", 2, [], "chars/example", true)
+        };
+
+        var json = JsonSerializer.Serialize(scene, WireOptions);
+
+        // CombatEncounter.Id is a singleton-doc-key ("campaigns/{name}/combat/current"), not narrative
+        // content — CombatEncounterView drops it but keeps round/isActive.
+        Assert.DoesNotContain("\"id\":\"campaigns", json);
+        Assert.Contains("\"round\":2", json);
+        Assert.Contains("\"isActive\":true", json);
+    }
+
+    [Fact]
+    public void NpcPresenceSummary_TagProvenance_ExcludedFromWireSerialization()
+    {
+        var presence = new NpcPresenceSummary(
+            Id: "chars/old-tam",
+            Name: "Old Tam",
+            CurrentActivity: "tending bar",
+            CurrentMood: "wary",
+            TopNeeds: [],
+            KnownNeeds: [],
+            NeedDescriptors: [])
+        {
+            TagProvenance = new Dictionary<string, List<string>> { ["gruff"] = ["events/first-meeting"] }
+        };
+
+        var json = JsonSerializer.Serialize(presence, WireOptions);
+
+        // TagProvenance is internal event-id provenance, not narrative content — not sent over the wire.
+        Assert.DoesNotContain("tagProvenance", json);
+
+        // But it's still readable in-process (same treatment as its Memories sibling).
+        Assert.NotNull(presence.TagProvenance);
+        Assert.Contains("gruff", presence.TagProvenance!.Keys);
     }
 }

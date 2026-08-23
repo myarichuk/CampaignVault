@@ -39,7 +39,7 @@ public class SeedCoverageSummary
 
 public class WorldStateView
 {
-    public CampaignTime Time { get; set; } = null!;
+    public CampaignTimeView Time { get; set; } = null!;
     public IEnumerable<RumorSummary> ActiveRumors { get; set; } = [];
     public IEnumerable<EventSummaryView> RecentEvents { get; set; } = [];
     public LocationSummary? PartyLocation { get; set; }
@@ -66,7 +66,7 @@ public class WorldStateView
     public SeedCoverageSummary? SeedCoverage { get; set; }
 
     public WorldStateView() { }
-    public WorldStateView(CampaignTime time, IEnumerable<RumorSummary> rumors, IEnumerable<EventSummaryView> events, LocationSummary? location = null, IEnumerable<string>? pressure = null, IEnumerable<ActiveQuestSummary>? activeQuests = null, IEnumerable<FactionPresenceSummary>? relevantFactions = null, string? lastKnownTravel = null, IEnumerable<string>? suggestedCommitExamples = null, IEnumerable<WorldPressureItem>? pressureItems = null)
+    public WorldStateView(CampaignTimeView time, IEnumerable<RumorSummary> rumors, IEnumerable<EventSummaryView> events, LocationSummary? location = null, IEnumerable<string>? pressure = null, IEnumerable<ActiveQuestSummary>? activeQuests = null, IEnumerable<FactionPresenceSummary>? relevantFactions = null, string? lastKnownTravel = null, IEnumerable<string>? suggestedCommitExamples = null, IEnumerable<WorldPressureItem>? pressureItems = null)
     {
         Time = time;
         ActiveRumors = rumors;

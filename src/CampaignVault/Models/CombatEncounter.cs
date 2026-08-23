@@ -45,3 +45,18 @@ public class CombatEncounter
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; }
 }
+
+/// <summary>
+/// Wire-facing projection of <see cref="CombatEncounter"/> for SceneView.ActiveCombat — drops Id
+/// (singleton-doc-key bookkeeping: "campaigns/{name}/combat/current"), not narrative content.
+/// </summary>
+public record CombatEncounterView(
+    string LocationId,
+    int Round,
+    List<CombatantState> Combatants,
+    string? ActiveTurnId,
+    bool IsActive)
+{
+    public static CombatEncounterView From(CombatEncounter c) => new(
+        c.LocationId, c.Round, c.Combatants, c.ActiveTurnId, c.IsActive);
+}

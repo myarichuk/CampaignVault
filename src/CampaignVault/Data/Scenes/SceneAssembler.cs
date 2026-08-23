@@ -106,13 +106,13 @@ public sealed class SceneAssembler
         };
     }
 
-    private static CombatEncounter? NormalizeActiveCombat(CombatEncounter? activeCombat, string locationId)
+    private static CombatEncounterView? NormalizeActiveCombat(CombatEncounter? activeCombat, string locationId)
     {
         if (activeCombat == null || !activeCombat.IsActive || activeCombat.LocationId != locationId)
         {
             return null;
         }
 
-        return activeCombat;
+        return CombatEncounterView.From(activeCombat);
     }
 }
