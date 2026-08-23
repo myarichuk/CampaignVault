@@ -66,6 +66,7 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | `valence` | Positive, Negative, Neutral, Traumatic |
 | `urgency` | Low, Normal, High, Urgent |
 | `importance` | Trivial, Important, Core |
+| `sourceEventIds` | **Required if `source` is Witnessed or Experienced.** Pass a client-chosen `eventId` on the paired event change in the same batch and reference it here — batch fails validation and rolls back entirely without it. |
 
 ### engagement_relation
 | Field | Valid values |

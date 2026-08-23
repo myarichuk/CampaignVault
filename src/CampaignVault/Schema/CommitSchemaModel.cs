@@ -10,7 +10,8 @@ internal sealed record CommitFieldModel(
     Type ClrType,
     bool IsRequired,
     string? Description,
-    IReadOnlyList<string>? EnumValues);
+    IReadOnlyList<string>? EnumValues,
+    string? RequiredHint);
 
 internal sealed record CommitVariantModel(
     string Discriminator,
@@ -78,7 +79,9 @@ internal static class CommitSchemaModel
                     enumValues = Enum.GetNames(pi.PropertyType).ToList();
                 }
 
-                fields.Add(new CommitFieldModel(jsonName, pi.PropertyType, isRequired, fieldDesc, enumValues));
+                var requiredHint = pi.GetCustomAttribute<CommitRequiredHintAttribute>()?.Hint;
+
+                fields.Add(new CommitFieldModel(jsonName, pi.PropertyType, isRequired, fieldDesc, enumValues, requiredHint));
             }
 
             // Get attributes

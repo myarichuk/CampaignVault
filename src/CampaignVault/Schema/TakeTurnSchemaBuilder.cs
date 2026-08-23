@@ -29,7 +29,18 @@ internal static class TakeTurnSchemaBuilder
             ["narrative"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "Narrative summary of what happened"
+                ["description"] = "Narrative summary of what happened (1-2 sentences; longer text is truncated at ~500 chars before it's stored as the event log entry)."
+            },
+            ["minutesElapsed"] = new JsonObject
+            {
+                ["type"] = "integer",
+                ["description"] = "Batch duration in minutes, applied to the first eligible change if none already has its own. Ignored for rest/travel changes."
+            },
+            ["narrativeImportance"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["enum"] = new JsonArray("Trivial", "Important", "Core"),
+                ["description"] = "Override this turn's event importance (default Important). Use Trivial for flavor/banter beats."
             },
             ["autoRefreshInvolved"] = new JsonObject
             {
@@ -148,13 +159,6 @@ internal static class TakeTurnSchemaBuilder
             }
         };
 
-        // Shared definitions for frequently repeated structures
-        defs["minutesElapsed"] = new JsonObject
-        {
-            ["type"] = "integer",
-            ["description"] = "Minutes of in-game time this beat took"
-        };
-
         return defs;
     }
 
@@ -187,11 +191,7 @@ internal static class TakeTurnSchemaBuilder
         // types, so this text is a recurring tools/list cost for guidance that's rarely read.
         foreach (var field in variant.Fields)
         {
-            if (field.JsonName == "minutesElapsed")
-            {
-                properties[field.JsonName] = new JsonObject { ["$ref"] = "#/$defs/minutesElapsed" };
-            }
-            else if (field.JsonName == "systemStats")
+            if (field.JsonName == "systemStats")
             {
                 properties[field.JsonName] = variant.IsHotTier
                     ? new JsonObject
@@ -202,6 +202,17 @@ internal static class TakeTurnSchemaBuilder
                             "constitution, intelligence, wisdom, charisma, hitDie, level, classLevels."
                     }
                     : new JsonObject { ["type"] = "object" };
+            }
+            else if (field.RequiredHint != null)
+            {
+                // Conditionally-required fields can fail validation and roll back the whole batch even
+                // though they're optional in the schema, so this hint always survives — regardless of
+                // tier and without the truncation limit applied to ordinary descriptions.
+                properties[field.JsonName] = new JsonObject
+                {
+                    ["type"] = GetJsonType(field.ClrType),
+                    ["description"] = field.RequiredHint
+                };
             }
             else
             {

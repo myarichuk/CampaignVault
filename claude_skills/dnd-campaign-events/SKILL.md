@@ -129,7 +129,7 @@ Every plot thread seeded via `world_build` MUST include:
 
 ## Campaign Time
 
-Campaign has a clock: `start_session` (and `take_turn` with `includeWorldState: true`) returns current campaign time (day, hour, weather, season). Most commits accept `minutesElapsed` to tick the clock. Use `advance_world` for larger skips.
+Campaign has a clock: `start_session` (and `take_turn` with `includeWorldState: true`) returns current campaign time (day, hour, weather, season). Set `minutesElapsed` on the top-level `take_turn` request to tick the clock (rest/travel use their own hour fields instead). Use `advance_world` for larger skips.
 
 ## Pressure-Driven Pacing
 
@@ -146,7 +146,7 @@ Use pressure as a narrative cue: when pressure peaks, events accelerate.
 - [ ] Are there ENGINE WARNINGs? → Resolve atomically before continuing
 - [ ] Did a quest milestone complete? → `quest_progress` commit
 - [ ] Did the party's relationship with a faction shift? → `faction_state`
-- [ ] Did significant time pass (hours/days)? → `advance_world` or `minutesElapsed` on commits
+- [ ] Did significant time pass (hours/days)? → `advance_world` or `minutesElapsed` on the take_turn request
 - [ ] Did a rumor evolve? → `rumor` commit with newState
 - [ ] Did a plot thread escalate? → `plot_thread_progress`
 - [ ] Is pressure climbing? → Narrate mounting stakes, escalate NPC actions

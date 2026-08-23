@@ -42,7 +42,7 @@ public class MetaTools : IMcpServerTool
 {
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for the $type discriminators used inside take_turn's changes[] array — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use — e.g. for scratches, stains, secret compartments, or other lasting item damage/wear, look at item_update's upsertItemDetail. Filter by category to reduce output. NOTE: every $type below (except rest/travel, which have their own hour fields) also accepts an optional 'minutesElapsed' field — not listed per-entry since it's universal — to nudge hunger/thirst/tiredness during an ordinary scene without waiting for rest/advance_world.")]
+    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for the $type discriminators used inside take_turn's changes[] array — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use — e.g. for scratches, stains, secret compartments, or other lasting item damage/wear, look at item_update's upsertItemDetail. Filter by category to reduce output. NOTE: individual $type entries don't expose their own minutesElapsed in this schema — use the top-level take_turn request's minutesElapsed field to nudge hunger/thirst/tiredness during an ordinary scene without waiting for rest/advance_world; it applies to the first eligible change in the batch.")]
     public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
         [Description("Optional filter over change $type categories: Combat, Narrative, World, PlotThread. Omit to return all.")]
         string? category = null,
@@ -52,7 +52,7 @@ public class MetaTools : IMcpServerTool
         var schema = CommitSchemaRegistry.GetAll(category, type);
         return Task.FromResult(new ToolResult<IReadOnlyList<CommitTypeSchema>>(
             true, schema,
-            $"Returned {schema.Count} commit type schemas{(type != null ? $" for type '{type}'" : category != null ? $" for category '{category}'" : "")}. Side-effect types are marked hasSideEffects=true — do not duplicate their auto-mutations. Reminder: every type here (except rest/travel) also accepts an optional 'minutesElapsed' to nudge needs during ordinary scenes."));
+            $"Returned {schema.Count} commit type schemas{(type != null ? $" for type '{type}'" : category != null ? $" for category '{category}'" : "")}. Side-effect types are marked hasSideEffects=true — do not duplicate their auto-mutations."));
     }
 
     internal Task<ToolResult<IReadOnlyList<ToolCatalogEntry>>> ListTools(string? category = null)

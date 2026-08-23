@@ -135,10 +135,10 @@ Deploy to Fly.io for a real production setup with persistent storage.
 
 | What you want | Tool |
 |---|---|
-| Start a session | `get_world_state` — time, active quests, NPCs in crisis |
-| Enter a location | `get_scene` — people, items, rumors, combat state |
-| Understand an NPC | `get_npc_context` — psychology, memories, current mood |
-| Resolve an action | `commit` — HP changes, item transfers, time passing, events |
+| Start a session | `start_session` — time, active quests, NPCs in crisis |
+| Enter a location | `get_entity` on a `locations/…` id — people, items, rumors, combat state |
+| Understand an NPC | `get_entity` on a `chars/…` id — psychology, memories, needs, current mood |
+| Resolve an action | `take_turn` — HP changes, item transfers, time passing, events, bundled fresh state |
 | Find something | `search_world` — keyword search across everything |
 | Progress time | `advance_world` — days/weeks pass, simulation rules fire |
 
@@ -224,21 +224,21 @@ See [LICENSING.md](./LICENSING.md) for complete game-content attribution and leg
 ## Features
 - **Living World Simulation**: Background processes naturally decay rumors, accumulate NPC tiredness, and surface aging unresolved events as pressure via `DefaultSimulationEngine` and its simulation rules.
 - **Multi-System Ruleset Engine**: Full polymorphic support for **D&D 5e**, **Pathfinder 2e**, and a brand new **Narrative** ruleset featuring a d6 Oracle. The C# MCP handles math, advantage, 4-degrees of success, and dice pools deterministically.
-- **Structured Combat Encounters**: Start, advance, and resolve tactical combat with ruleset initiative rolls at `start_combat`, turn-order tracking, and HP/status mutations applied atomically via `commit`.
-- **Scene-Centric Workflow**: Load entire locations, NPCs, rumors, and visible items in a single call (`get_scene`). The LLM instantly receives the `ActiveCombat` state and `SystemStats` (AC, SPECIAL, Temperature, WarmthRating, MovementModifier, etc.) for everyone present.
+- **Structured Combat Encounters**: Start, advance, and resolve tactical combat with ruleset initiative rolls via `combat(action: "start")`, turn-order tracking, and HP/status mutations applied atomically via `take_turn`.
+- **Scene-Centric Workflow**: Load an entire location's NPCs, rumors, and visible items in a single call (`get_entity` on a `locations/…` id). The LLM instantly receives the `ActiveCombat` state and `SystemStats` (AC, SPECIAL, Temperature, WarmthRating, MovementModifier, etc.) for everyone present.
 - **Psychological NPC Minds**: NPCs have Wants, Fears, Moods, and Relationships. The engine synthesizes behavioral summaries to help the LLM roleplay them authentically.
-- **Atomic Scene Resolution**: Commit an entire combat's worth of HP deltas, item transfers, and status changes in one transaction (`commit`).
-- **Situational Awareness**: `get_world_state`, `get_scene`, and `advance_world` surface `WorldPressure`—proactive alerts about ticking clocks and background events. `get_npc_context` can also surface urgent initiative pressures.
+- **Atomic Scene Resolution**: Commit an entire combat's worth of HP deltas, item transfers, and status changes in one transaction (`take_turn`).
+- **Situational Awareness**: `take_turn` (with `includeWorldState`), `get_entity`, and `advance_world` surface `WorldPressure`—proactive alerts about ticking clocks and background events. `get_entity` on a character can also surface urgent initiative pressures.
 - **Unified Search**: Keyword/wildcard search across lore, characters, and locations in one shot (`search_world`).
 
 ## Recent Updates
 - **Equipment-Derived Movement Modifier**: Characters now track `MovementModifier` computed from equipped items' `speedModifier` properties (negative = penalty, positive = bonus). Same pattern as `WarmthRating`: narrative-only, recomputed on every `item_equip`/`item_unequip`, not enforced by travel. The LLM can assign `speedModifier` to any item based on narrative context (heavy armor, uncomfortable sandals, enchanted boots, etc.) — not hardcoded restraints.
-- **Outfit Batch UX**: Multi-item outfit swaps work by committing multiple `item_equip`/`item_unequip` changes in a single atomic `commit` call (one JSON array). No separate outfit tool needed. `equipZones`/`equipLayer` are set once via `world_build` (or `item_update`), not on `item_equip`.
+- **Outfit Batch UX**: Multi-item outfit swaps work by committing multiple `item_equip`/`item_unequip` changes in a single atomic `take_turn` call (one JSON array). No separate outfit tool needed. `equipZones`/`equipLayer` are set once via `world_build` (or `item_update`), not on `item_equip`.
 - **Climate & Weather**: Locations carry a `climateZone` (Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean, inherited from parent if unset); ambient temperature varies by zone and time of day. Characters' felt temperature = ambient + equipped-item `WarmthRating` — insulation helps in the cold and hurts in the heat (furs are protective in the Arctic, dangerous in the Desert). Sustained extremes surface as narrative pressure; there's no automatic mechanical penalty, the consequence call stays with the DM-LLM.
 - **World Seeding via `world_build`**: One atomic batch call seeds an entire campaign's opening state — locations, factions, characters, items, quests, plot threads, lore, rumors, and homebrew creatures/spells/feats — in a fixed dependency order with all-or-nothing rollback on a bad entry. Replaces the older one-tool-per-entity-kind upsert surface. See `get_help topic=world-building`.
 - **Engagement Relations & Spatial Positioning**: Pairwise scene anchors (`engagement_relation`: category + freeform verb) vs. relative placement (`spatial_position`: distance band, bearing, zone). Category defaults control travel blocks and scene pressure; ruleset resolvers auto-establish/clear grapple engagements on contested maneuver checks. See `get_help` and `ARCHITECTURE.md`.
-- **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `create_campaign`, `list_campaigns`, and `set_active_system` (with system lock-in). Every campaign-scoped tool requires an explicit **`campaignName`** slug — the MCP HTTP transport is stateless (no session selection). Shared-universe canon (no `CampaignName`) appears in every campaign; campaign-owned entities are slug-tagged.
-- **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Narrative), and dedicated combat turn tracking (`start_combat`, `next_turn`, `end_combat`) natively wired into `get_scene`.
+- **Multi-Campaign Support**: Per-campaign singletons (time, combat, config) with `create_campaign` and `list_campaigns` (ruleset system lock-in is set at creation and read back via `get_config`). Every campaign-scoped tool requires an explicit **`campaignName`** slug — the MCP HTTP transport is stateless (no session selection). Shared-universe canon (no `CampaignName`) appears in every campaign; campaign-owned entities are slug-tagged.
+- **Ruleset Integration & Combat**: `RulesetAction` mutations, a polymorphic `SystemExtension` for stats, deterministic resolvers (D&D 5e, PF2e, Narrative), and dedicated combat turn tracking (`combat(action: "start"/"next"/"end")`) natively wired into `get_entity`'s location detail.
 - **Correctness & Reliability**: `HpChange` clamps to `MaxHp`, `AttributeChange` uses `isDelta`, and status modifiers/expiry are active.
 - **Character Bootstrap Pipeline**: Per-ruleset HP/defense/proficiency derivation when PCs omit `maxHp` on create/upsert; `level_up` for incremental gains. Put `hitDie`/`level` on typed `systemStats` (not `attributes`). Creature stat blocks use `statBlockHp` or `maxHp` (HP formula only — AC/proficiency still derive).
 
@@ -248,58 +248,50 @@ See [LICENSING.md](./LICENSING.md) for complete game-content attribution and leg
 
 | Tool | Purpose |
 |------|---------|
-| `get_current_campaign` | Campaign context for a slug: ruleset, lock-in, party posture |
-| `get_world_state` | Session kickoff: time, rumors, recent events, pressures (`Data.WorldPressure`) |
-| `get_scene` | Location, NPCs, items, rumors, `ActiveCombat`, `SystemStats`, pressures (`ToolResult.WorldPressure`) |
-| `get_npc_context` | Deep NPC psychology, memories, initiative signals |
-| `get_npc_needs` | Current needs + merged descriptors |
-| `get_need_descriptors` | Per-campaign shared need descriptions |
-| `search_world` | Keyword search across lore, characters, locations |
-| `recall_history` | Keyword search over past event summaries |
+| `start_session` | Session kickoff: time, rumors, recent events, party roster, pressures |
+| `get_entity` | Deep dive on ONE entity by ID — chars (psychology, memories, needs, initiative signals), locations (NPCs, items, rumors, `ActiveCombat`, `SystemStats`), factions, quests, items, or plot-threads, all with pressures (`ToolResult.WorldPressure`) |
+| `search_world` | Keyword/semantic search across lore, characters, locations |
+| `recall_history` | Query past event summaries |
 | `get_help` | Built-in DM manual and copy-paste patterns |
+| `get_commit_schema` | Machine-readable field schema for `take_turn`'s change `$type`s |
 
 ### Mutation & time
 
 | Tool | Purpose |
 |------|---------|
-| `commit` | Universal atomic write (`WorldChange[]` with `$type` discriminators) |
+| `take_turn` | Unified turn tool: atomic `WorldChange[]` mutations (`$type` discriminators) plus bundled fresh state (party/world-state/full-detail refresh) in one round-trip |
 | `advance_world` | Fast-forward days, run simulation rules, return pressures |
 
 ### Combat & rulesets
 
 | Tool | Purpose |
 |------|---------|
-| `get_config` / `set_active_system` | Read or set active ruleset (D&D 5e, PF2e, Narrative) |
-| `start_combat` / `next_turn` / `end_combat` | Initiative at start, turn tracking, round-based status expiry |
+| `get_config` | Read active ruleset (D&D 5e, PF2e, Narrative) and house-rule options |
+| `combat` | Combat lifecycle via `action`: `"start"` (roll initiative), `"next"` (advance turn), `"end"`, `"status"` |
 
 ### Campaign management
 
 | Tool | Purpose |
 |------|---------|
 | `create_campaign` / `list_campaigns` | Create and list campaigns (pass slug as `campaignName` on all other tools) |
-
-### Deep dives
-
-| Tool | Purpose |
-|------|---------|
-| `get_faction_context` | Full faction document (stances, territory, `EconomicDemand`) |
-| `get_quest_details` | Full quest document (objectives, deadlines, progress timestamps) |
+| `get_rules_reference` | Ruleset reference lookup |
 
 ### World builder
 
 | Tool | Purpose |
 |------|---------|
 | `world_build` | Atomic batch create/update for any entity kind (locations, factions, characters, items, quests, plotThreads, lore, rumors, creatures, spells, feats) — the primary tool for initial seeding and major structural work |
-| `define_need_descriptor` / `get_need_descriptors` | Per-campaign shared descriptions for custom NPC needs |
 
-During actual play, strongly prefer `commit` (especially with `activity` changes) over re-calling `world_build`. Call `get_help topic=world-building` for the seeding-order guide and a copy-paste example.
+During actual play, strongly prefer `take_turn` (especially with `activity` changes) over re-calling `world_build`. Call `get_help topic=world-building` for the seeding-order guide and a copy-paste example.
 
-**Open-World Flavor, Transients & Laziness Mitigation**: The system is deliberately designed so an LLM performing the DM role can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted — new entities via `world_build`, incremental changes via small `commit` payloads.
+> Note: per-campaign shared need descriptors (`NeedDescriptorsConfig`) exist as a data model but aren't currently exposed through any registered tool — there's no `get_need_descriptors`/`define_need_descriptor` today despite being referenced below; treat that as a known gap, not a working feature.
 
-- `get_scene` returns `PointsOfInterest` (light list) and uses `AmbientCrowd` hints for flavor without creating documents.
+**Open-World Flavor, Transients & Laziness Mitigation**: The system is deliberately designed so an LLM performing the DM role can be "lazy" or exploratory without breaking the world model. Most narration (crowds, one-off details, unnamed NPCs) stays ephemeral. Only meaningful things are persisted — new entities via `world_build`, incremental changes via small `take_turn` payloads.
+
+- `get_entity` (location) returns `PointsOfInterest` (light list) and uses `AmbientCrowd` hints for flavor without creating documents.
 - The engine auto-links maps when a new location's `world_build` entry sets `connectedFromLocationId`.
 - Transients (created without `schedule` + `keepAlive:false`) are auto-evicted by `TransientEvictionRule` during `advance_world` when areas go "cold".
-- **Critical**: `get_scene`, `get_world_state`, and `advance_world` return `WorldPressure` containing `ENGINE WARNING:` and `NARRATIVE PROMPT:` items. These include **exact copy-paste JSON** for the `commit` needed to fix hallucinations, dead-ends, empty-but-expected-crowds, broken links, etc. Treat them as mandatory directives. Call `get_help` for the full "Lazy Tavern" walkthrough and patterns.
+- **Critical**: `get_entity`, `take_turn` (with `includeWorldState`), and `advance_world` return `WorldPressure` containing `ENGINE WARNING:` and `NARRATIVE PROMPT:` items. These include **exact copy-paste JSON** for the `take_turn` change needed to fix hallucinations, dead-ends, empty-but-expected-crowds, broken links, etc. Treat them as mandatory directives. Call `get_help` for the full "Lazy Tavern" walkthrough and patterns.
 - This directly addresses the "silly factor" of forcing perfect polymorphic JSON arrays for every flavor element the LLM narrates.
 
 See `get_help` for the full DM manual (engagements, spatial positions, grapple patterns). See `ARCHITECTURE.md` for scoping, simulation, engagement/spatial design, and ruleset integration. See [recommended-system-prompt.md](./recommended-system-prompt.md) for a copy-paste LLM system prompt (or [recommended-system-prompt.opencode.md](./recommended-system-prompt.opencode.md) plus [opencode Integration](#opencode-integration) below if you're using opencode).
@@ -307,11 +299,11 @@ See `get_help` for the full DM manual (engagements, spatial positions, grapple p
 ## Open-World & Sandbox Mechanics
 
 The engine provides deep structural tracking for macro-mechanics:
-- **Location Physics & Tags**: Add temporary tags (e.g., `["wet", "smoky"]`), narrative states, or distinctive features directly to Locations, Characters, and Items via `commit`. The engine will pressure you when tags impact a scene. You are the physics engine: interpret the tags and narrate accordingly!
+- **Location Physics & Tags**: Add temporary tags (e.g., `["wet", "smoky"]`), narrative states, or distinctive features directly to Locations, Characters, and Items via `take_turn`. The engine will pressure you when tags impact a scene. You are the physics engine: interpret the tags and narrate accordingly!
 - **Epistemic Drift & Memories**: Use `knowledge_update` to record key facts in an NPC's `Memories`. Over time, trivial and important memories will "decay", and the engine will pressure you to reflect memory loss, epistemic drift, or confusion.
-- **Factions & Economy**: Track influence, wealth, and stance matrices. Background rules shift their influence over time, and factions dynamically demand resources (`EconomicDemand`). If a faction is desperate for "spell scrolls" and the party has them, `get_scene` will surface the pressure. Use `get_faction_context` to do a deep dive.
-- **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the LLM doesn't forget them. Use `get_quest_details` to pull the full quest document (objectives, deadlines, rewards, and per-objective progress timestamps).
-- **Travel**: Record journeys with `$type: travel` in `commit` (applies exit distance, tiredness, time advance, and optional random encounters). Hard `engagement_relation` entries block travel until cleared. If you call `get_scene` with `partyPresent=true` but no `KeepAlive` PC is at that location, the engine raises `Location:MissingTravelCommit` with ready `travel` JSON. Interrupted en-route travel surfaces `Travel:Interrupted` pressure until you resolve the encounter and commit another `travel`.
+- **Factions & Economy**: Track influence, wealth, and stance matrices. Background rules shift their influence over time, and factions dynamically demand resources (`EconomicDemand`). If a faction is desperate for "spell scrolls" and the party has them, `get_entity` on the location will surface the pressure. Use `get_entity` on the `factions/…` id to do a deep dive.
+- **Quests**: Manage long-term objectives with strict state tracking (Open, InProgress, Complete, Failed). Quests decay towards deadlines as time passes, emitting `Quest:Stale` and `Quest:ApproachingDeadline` pressures so the LLM doesn't forget them. Use `get_entity` on the `quests/…` id to pull the full quest document (objectives, deadlines, rewards, and per-objective progress timestamps).
+- **Travel**: Record journeys with `$type: travel` in `take_turn` (applies exit distance, tiredness, time advance, and optional random encounters). Hard `engagement_relation` entries block travel until cleared. If you call `get_entity` on a location with `partyPresent=true` but no `KeepAlive` PC is at that location, the engine raises `Location:MissingTravelCommit` with ready `travel` JSON. Interrupted en-route travel surfaces `Travel:Interrupted` pressure until you resolve the encounter and commit another `travel`.
 - **Engagements & Spatial Positions**: Use `engagement_relation` for unresolved pairwise beats (grapples, hugs, tending wounds) and `spatial_position` for relative placement (e.g. drunk `Near` the party at the bar). Combat grapples are handled by `ruleset_action`; commit engagements manually for RP beats. Call `get_help` for copy-paste patterns and clearance (`verb` / `distanceBand` null).
 
 
@@ -321,13 +313,11 @@ The engine provides deep structural tracking for macro-mechanics:
 The NPC "Mind" system is intentionally open-ended. There is no closed list of needs.
 
 - **Invent any need.** The system is completely unrestricted: `paranoia`, `wanderlust`, `obsession`, `debt_pressure`, `homesickness`, `vengeance`, whatever fits the narrative. Custom needs automatically get evocative activity-conflict framings.
-- Discover needs at runtime via `get_npc_needs`, `get_scene`, `get_npc_context`, and `get_need_descriptors`.
-- Use `define_need_descriptor` to create **per-campaign** shared descriptions for custom needs. These are automatically merged into NPC views (per-NPC descriptors override).
-- For initial world building, `world_build` exists. In practice, many users find `commit` (with rich `event` + `relationship` + `activity` + `need` changes — the `$type` discriminators `commit` actually expects, backed by the `EventOccurred`/`RelationshipChange`/`ActivityChange`/`NeedChange` C# types) to be the more reliable way to evolve the world during play.
+- Discover needs at runtime via `get_entity` on a character ID (includes current needs; merged descriptors are planned but not yet exposed — see the note above on `NeedDescriptorsConfig`).
+- Per-campaign shared need descriptors are not yet wired up to a tool — see the note under [Core Tool Surface](#core-tool-surface) above.
+- For initial world building, `world_build` exists. In practice, many users find `take_turn` (with rich `event` + `relationship` + `activity` + `need` changes — the `$type` discriminators it actually expects, backed by the `EventOccurred`/`RelationshipChange`/`ActivityChange`/`NeedChange` C# types) to be the more reliable way to evolve the world during play.
 
-Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom needs + descriptors, Schedule + Routines, equipment via Items). The simulation and behavioral synthesis will make much better use of that data than shallow characters.
-
-**Shared Need Descriptors**: Use `define_need_descriptor` to create reusable descriptions for custom needs (e.g. "homesickness") within the active campaign. They are stored at `campaigns/{name}/config/need-descriptors` and automatically appear (merged) in `get_npc_needs`, `get_npc_context`, and `get_scene`. Use `get_need_descriptors` to list what is defined for the campaign.
+Richly seed key NPCs early with deep `Mind` data (Wants/Fears/Knows, custom needs, Schedule + Routines, equipment via Items). The simulation and behavioral synthesis will make much better use of that data than shallow characters.
 
 
 
@@ -424,7 +414,7 @@ Pass **`campaignName`** (campaign slug) on every campaign-scoped tool call. Ther
 
 Code is in `src/CampaignVault/`. Key folders:
 - **Models:** Character, Scene, NPC Mind, ruleset extensions
-- **Tools:** LLM-facing APIs (`get_scene`, `commit`, etc.)
+- **Tools:** LLM-facing APIs (`get_entity`, `take_turn`, etc.)
 - **Rulesets:** D&D 5e, Pathfinder 2e, Narrative resolvers
 - **Simulation:** Background rules (time, NPC mood, quest decay, etc.)
 
@@ -441,20 +431,20 @@ Test suite: `tests/CampaignVault.Tests/` and `tests/CampaignVault.IntegrationTes
 
 ## Client Compatibility Notes (as of latest testing)
 
-- `commit` is the most reliable mutation tool across clients.
+- `take_turn`'s `changes[]` array is the most reliable mutation path across clients.
 - The individual `upsert_character`/`upsert_location`/etc. tools were retired in favor of a single `world_build` batch tool (struct-of-typed-arrays: `characters[]`, `locations[]`, etc.) — one call seeds everything atomically instead of one round-trip per entity. See `get_help topic=world-building`.
-- `commit` exposes the full discriminated-union `WorldChange[]` shape directly (with rich per-variant and per-field `[Description]` annotations + `$type` discriminators). This is the clean .NET / STJ polymorphic form Gemini and similar models recommend. A non-exposed `Commit(string json)` fallback remains for clients that still struggle with complex input schemas.
-- Use the `activity` change type inside `commit` when narrative implies an NPC should have a new `CurrentActivity` / `CurrentLocationId` (this keeps `get_scene` consistent without requiring `advance_world`).
+- `take_turn`'s `changes[]` exposes the full discriminated-union `WorldChange[]` shape directly (hot-tier variants carry rich per-variant and per-field `[Description]` annotations + `$type` discriminators inline; cold-tier variants are looked up on demand via `get_commit_schema`). This is the clean .NET / STJ polymorphic form Gemini and similar models recommend.
+- Use the `activity` change type inside `take_turn` when narrative implies an NPC should have a new `CurrentActivity` / `CurrentLocationId` (this keeps `get_entity`'s scene view consistent without requiring `advance_world`).
 
 **Recommended seeding / world-building pattern**:
 
-Use `world_build` for initial seeding (session 0) — one atomic batch call rather than one tool invocation per entity. For incremental changes during play, do as much as possible in a single `commit` call. Example `commit` batch when introducing a new NPC into an existing scene:
+Use `world_build` for initial seeding (session 0) — one atomic batch call rather than one tool invocation per entity. For incremental changes during play, do as much as possible in a single `take_turn` call. Example `take_turn` batch when introducing a new NPC into an existing scene:
 
 - One `event` describing the arrival / introduction
 - One or more `activity` changes to place NPCs where the narrative says they are
 - Relationship deltas, need adjustments, mood, etc.
 
-See the `commit` tool description and `get_help` for detailed guidance and copy-paste examples.
+See the `take_turn` tool description and `get_help` for detailed guidance and copy-paste examples.
 
 Full history of robustness improvements lives in the git log and the regression tests in `CampaignRepositoryTests.cs`.
 

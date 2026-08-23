@@ -156,15 +156,15 @@ Rule output: narrative strings (logged as simulation events), `WorldChange` delt
 
 Read-side tools call `PressureOrchestrator.CollectAndCapAsync` with a scope:
 
-- **World** — `get_world_state`
-- **Scene** — `get_scene`
-- **Npc** — `get_npc_context` (urgent initiative pressures)
+- **World** — `take_turn` with `includeWorldState: true` (and `start_session`)
+- **Scene** — `get_entity` on a location ID (internally still routed through the `get_scene` codepath, not a standalone MCP tool as of Phase C.2)
+- **Npc** — `get_entity` on a character ID (internally still routed through `get_npc_context`; urgent initiative pressures)
 
 Contributors include rumor aging, unresolved events, character distress (including temperature extremes from `ClimateExposureRule`'s felt-temp reading), quest deadlines, travel interruptions, engagement locks, location integrity/hallucination/connectivity, faction economy/territory, memory decay, climate/gear mismatch (`ClimateShiftPressureContributor`), ambient item expiry nags (`AmbientItemExpiryPressureContributor` — reads the flag `AmbientItemDecayRule` set, distinct rule vs. contributor split), and more. Rulesets can add contributors via `IRulesetPressureContributor` (e.g. D&D 5e exhaustion).
 
 `PressureManager` deduplicates, caps volume, and escalates repeated nags to `ENGINE WARNING:` after configurable suppression counts (`CampaignConfig.PressureEscalationCount`). Cooldown/escalation tracking (`Campaign.PressureCooldowns`, keyed `Severity:EntityId`) now also compares a normalized content signature (`PressureHelpers.ComputeContentSignature` — SHA-256 of the pressure `Text` with digits stripped, so "morale 8%" and "morale 3%" still share suppression state as the same underlying nag) against the last-surfaced signature: a materially different `Text` under the same key is treated as a fresh nag (fresh escalation cycle) instead of inheriting stale suppression state or being silently dropped by `PressureOrchestrator`'s merge (which now includes the signature in its dedup key). `advance_world` runs with cooldowns disabled, so it dedupes `SimulatorEvents` directly by content signature before building pressure items, since cooldown-based suppression isn't available on that path.
 
-**Response shape:** `get_scene` and `advance_world` attach formatted pressure strings on `ToolResult.WorldPressure`. `get_world_state` embeds them in `Data.WorldPressure` on the view object.
+**Response shape:** `get_entity` (location) and `advance_world` attach formatted pressure strings on `ToolResult.WorldPressure`. `take_turn`'s WorldState/WorldStateDelta section embeds them in `Data.WorldPressure` on the view object.
 
 ## Ruleset Architecture
 
@@ -210,17 +210,17 @@ Consumption goes through `ResourceChangeHandler` via `$type: "resource"` commits
 
 PCs omit `maxHp`; the pipeline derives HP from typed `systemStats` fields. Creature stat blocks use `maxHp` or `systemStats.statBlockHp` — these skip HP formula only; defense/proficiency steps still run. Steps live under `Rulesets/Bootstrap/`. Defense steps emit `[BOOTSTRAP HINT]` messages with copy-paste `item_create` armor JSON when worn armor is missing.
 
-Combat flow: `start_combat` rolls initiative once per combatant, sorts turn order, stores `CombatEncounter` at the campaign key (`CombatantState.HasActedThisRound` + `CombatEncounter.ActiveTurnId` — a single pointer to whose turn it is, hard-enforced elsewhere via a "NotYourTurn" check). `next_turn` advances turns and expires round-based status effects. HP and status mutations during combat go through `commit`, not the turn tools. `get_scene` returns `ActiveCombat` when combat is active at that location.
+Combat flow: `start_combat` rolls initiative once per combatant, sorts turn order, stores `CombatEncounter` at the campaign key (`CombatantState.HasActedThisRound` + `CombatEncounter.ActiveTurnId` — a single pointer to whose turn it is, hard-enforced elsewhere via a "NotYourTurn" check). `next_turn` advances turns and expires round-based status effects. HP and status mutations during combat go through `commit`, not the turn tools. `get_entity` (location) returns `ActiveCombat` when combat is active at that location.
 
 ## NPC Initiative (read-side)
 
-`NpcInitiativeService` synthesizes behavioral initiative signals (relational, memory, need/activity conflict, disposition) for `get_npc_context` and scene NPC enrichment. This is narrative prompting, not combat turn order.
+`NpcInitiativeService` synthesizes behavioral initiative signals (relational, memory, need/activity conflict, disposition) for `get_entity` (character) and scene NPC enrichment. This is narrative prompting, not combat turn order.
 
 **Turn-intent signal:** `Enrich` also computes an advisory `TurnIntentSignal` (`Holder: "npc"`, `Reason`, `Confidence`) when `BehavioralTension >= CampaignConfig.BehavioralTensionSpeakingThreshold` (0-100 scale, default 60) and the top initiative candidate's `Urgency` is at least `High` — pure aggregation of signals already computed by `Enrich`, no new data source. Projected per-NPC into `NpcContextView.TurnIntent` and `NpcPresenceSummary.TurnIntent`; `SceneAssembler.Assemble` aggregates across all present NPCs into `SceneView.TurnIntentCharacterId` (the highest-`BehavioralTension` NPC among those with `Holder == "npc"`, or `null` for "open turn"). Unlike combat's `ActiveTurnId`, this is advisory only — it shares no round/action-budget machinery and is never enforced; the DM should still use judgment.
 
 ## Environmental & Economic Simulation
 
-- **Location state:** `CurrentState`, `VisualTags`, `DistinctiveFeatures`, `PointsOfInterest`, `AmbientCrowd` — surfaced in `get_scene` and monitored by `LocationFlavorPressureContributor`.
+- **Location state:** `CurrentState`, `VisualTags`, `DistinctiveFeatures`, `PointsOfInterest`, `AmbientCrowd` — surfaced via `get_entity` (location) and monitored by `LocationFlavorPressureContributor`.
 - **Faction economics:** `Faction.EconomicDemand` dictionaries; `FactionEcosystemRule` simulates decay/recovery; `FactionEconomyPressureContributor` surfaces opportunities when the party carries demanded items.
 - **Travel:** `TravelChangeHandler` + `EncounterResolver` apply time/need costs, optional random encounters, interrupted-travel activity states, and Hard engagement locks.
 

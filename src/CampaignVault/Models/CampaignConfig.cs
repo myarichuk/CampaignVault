@@ -270,10 +270,12 @@ public class CampaignConfig
 
     /// <summary>
     /// Number of take_turn calls between forced full-detail reseeds when delta mode is active.
-    /// Imprecision is fine — this is a token-budget heuristic, not a correctness guarantee.
-    /// Defaults to 22.
+    /// Imprecision is fine — this is a token-budget heuristic, not a correctness guarantee. Signal-driven
+    /// triggers (DetectAndApplyReseedTriggersAsync) already force an earlier reseed on major location/
+    /// relationship/plot-tension beats; this interval is a backstop for slow drift and caller-forgotten
+    /// forceFullReseed, not the primary reseed mechanism. Defaults to 40.
     /// </summary>
-    public int DeltaModeReseedIntervalTurns { get; set; } = 22;
+    public int DeltaModeReseedIntervalTurns { get; set; } = 40;
 
     /// <summary>
     /// Master switch for take_turn's Full/Delta response alternation. When false, every call behaves

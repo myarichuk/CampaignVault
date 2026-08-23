@@ -114,6 +114,11 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         /// <summary>Campaign config loaded once by DecideTurnModeAsync — reused by later steps (e.g.
         /// ChangedNeedsKeys' significance threshold) instead of re-fetching.</summary>
         public CampaignConfig Config { get; set; } = null!;
+
+        /// <summary>Set by DecideTurnModeAsync when the client repeats ForceFullReseed shortly after
+        /// already being reseeded — appended to NarrativeReminder in Finalize (not in CommitChangesAsync,
+        /// which unconditionally overwrites NarrativeReminder and is never reached by pure-query calls).</summary>
+        public string? ReseedAdvisory { get; set; }
     }
 
     [ToolCategory("Mutation & time")]
@@ -131,7 +136,7 @@ One take_turn call carries optional mutations (Changes+Narrative) and optional r
 
 AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes (explicitly requested extraCharacterIds/extraLocationIds are always served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
 
-FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state; NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and KnownNeeds is filtered to needs that moved >= 2 points (pass leanMode=true to cap that at the top 2 movers, for long multi-NPC scenes). A full reseed happens periodically (server-configured, ~22 turns) and escalates early — even mid-delta-run — on a major PC location change, a relationship shift crossing a ±40 band, or a significant plot-thread beat, once at least 3 delta turns have elapsed since the last reseed. It can also be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity/get_scene/get_world_state — check 'querySuggestions' in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via 'memoryHint'). Independent of mode, up to 2 NPCs per call carry RP-advisory initiative/memory ('initiative' field, memories compressed to topic+one-liner on delta turns) — one is a party companion when one is present — so you get a 'who might act/speak next' signal even without calling get_scene.
+FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state; NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and KnownNeeds is filtered to needs that moved >= 2 points (pass leanMode=true to cap that at the top 2 movers, for long multi-NPC scenes). A full reseed happens periodically (server-configured, ~22 turns) and escalates early — even mid-delta-run — on a major PC location change, a relationship shift crossing a ±40 band, or a significant plot-thread beat, once at least 3 delta turns have elapsed since the last reseed. It can also be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity for a single character/location, or by setting includeParty/includeWorldState on this same take_turn call for broader state — check 'querySuggestions' in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via 'memoryHint'). Independent of mode, up to 2 NPCs per call carry RP-advisory initiative/memory ('initiative' field, memories compressed to topic+one-liner on delta turns) — one is a party companion when one is present — so you get a 'who might act/speak next' signal without an extra call.
 
 Pure queries (no Changes): omit Changes, provide at least one refresh param, and the response will refresh specific entities without mutations. Examples: includeWorldState=true to get campaign state, includeParty=true to get party summaries, or extraCharacterIds=[id] to refresh specific NPCs. Check the 'warnings' array in the response for any section that could not be assembled.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
@@ -241,13 +246,22 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         var cursor = await _repository.GetTurnCursorAsync(campaignSession);
 
         var isNewCursor = cursor == null;
+        var clientForced = ctx.Request?.ForceFullReseed == true;
+        var repeatedForce = clientForced && cursor is { TurnsSinceReseed: < 2, ConsecutiveClientForcedReseeds: >= 1 };
+
         var mode =
             !config.DeltaModeEnabled ? TurnMode.Full :
             cursor == null ? TurnMode.Full :
-            ctx.Request?.ForceFullReseed == true ? TurnMode.Full :
+            clientForced ? TurnMode.Full :
             cursor.ForcedFullReseedPending ? TurnMode.Full :
             cursor.TurnsSinceReseed >= config.DeltaModeReseedIntervalTurns ? TurnMode.Full :
             TurnMode.Delta;
+
+        if (repeatedForce)
+        {
+            ctx.ReseedAdvisory = "Note: forceFullReseed was set again right after a prior reseed — " +
+                "if you're missing specific state, get_entity targets it more cheaply than another full reseed.";
+        }
 
         var turnCursor = cursor ?? new TurnCursor { Id = _keys.StateTurnCursor(ctx.Campaign), CampaignName = ctx.Campaign };
         if (mode == TurnMode.Full)
@@ -260,6 +274,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         {
             turnCursor.TurnsSinceReseed++;
         }
+        turnCursor.ConsecutiveClientForcedReseeds = clientForced ? turnCursor.ConsecutiveClientForcedReseeds + 1 : 0;
 
         if (isNewCursor)
         {
@@ -320,6 +335,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
         ctx.Cursor.TurnsSinceReseed = 0;
         ctx.Cursor.ForcedFullReseedPending = false;
+        ctx.Cursor.ConsecutiveClientForcedReseeds = 0;
         ctx.Cursor.LastFullReseedUtc = DateTime.UtcNow;
         ctx.Mode = TurnMode.Full;
         ctx.Result.Mode = TurnMode.Full;
@@ -463,8 +479,9 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         {
             Id = "events/" + Guid.NewGuid(),
             CampaignName = ctx.Campaign,
-            Summary = request.Narrative!,
+            Summary = Truncate(request.Narrative!, MaxNarrativeSummaryLength),
             Category = EventCategory.SceneCommit,
+            Importance = request.NarrativeImportance ?? MemoryImportance.Important,
             // Every touched entity type (characters, locations, factions, quests, items) stays in
             // Involved — there's no dedicated field for factions/quests/items, and pressure
             // contributors (e.g. FactionRecentEventPressureContributor) already scan Involved for
@@ -664,7 +681,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
     /// <summary>
     /// Surfaces RP-advisory initiative/memory for up to 2 NPCs this call, independent of includeParty/
-    /// autoRefreshInvolved/Mode — so take_turn alone (without a get_scene call) still carries a "who might
+    /// autoRefreshInvolved/Mode — so take_turn alone (without a separate drill-down call) still carries a "who might
     /// act/speak next" signal. Candidate pool: NPCs present at the party's current location, unioned with
     /// any NPCs this turn's changes touched (fallback when location isn't resolvable). Selection: one
     /// guaranteed slot for a randomly-chosen party companion if the pool has one, remaining slot(s) filled
@@ -805,6 +822,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
     private const double HighSalienceThreshold = 0.75;
 
+    private const int MaxNarrativeSummaryLength = 500;
+
     /// <summary>Trims a full-mode NpcInitiativeEnrichment down to the delta-mode wire shape: memories
     /// compressed to topic + one-line detail (see CompressedMemory) instead of full MemoryNode objects —
     /// likely the largest field in a delta response otherwise, per review recommendation 3.</summary>
@@ -822,7 +841,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     /// <summary>
     /// Enrich (above) has a persisted side effect — it marks surfaced initiative candidates as consumed
     /// on the campaign doc via IInitiativeSuppressionStore, so the same candidate won't resurface next
-    /// time (here or in get_scene) — so an enrichment that never reaches the model is worse than a no-op:
+    /// time (here or via get_entity) — so an enrichment that never reaches the model is worse than a no-op:
     /// it silently burns candidates for nothing. Npcs/Party/PartyDelta only attach the cached enrichment
     /// to NPCs they already happen to include (via InvolvedEntities/extraCharacterIds, or includeParty).
     /// This guarantees every NPC actually selected in SelectAndEnrichInitiativeAsync ends up visible
@@ -1003,9 +1022,9 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     /// NpcPresenceSummary (Scenes[].PresentNPCs) — one source of truth for "did this NPC's
     /// appearance/behavior/needs/gear change this turn" shared between the Npcs[] and Scenes[] shapes,
     /// rather than a second independent implementation. Applied as a post-process here (not threaded into
-    /// SceneNpcPresenceFactory) because that factory is also used by get_scene, which has no delta-mode
-    /// concept — keeping it mode-agnostic avoids a "forgot to pass Full for get_scene" class of bug.
-    /// A no-op in Full mode (get_scene's only mode; take_turn's periodic/forced Full).
+    /// SceneNpcPresenceFactory) because that factory is also used by get_entity's location detail path,
+    /// which has no delta-mode concept — keeping it mode-agnostic avoids a "forgot to pass Full" class of bug.
+    /// A no-op in Full mode (get_entity's only mode; take_turn's periodic/forced Full).
     /// </summary>
     private NpcPresenceSummary ApplyDeltaTrim(TurnContext ctx, NpcPresenceSummary npc)
     {
@@ -1367,6 +1386,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         DedupeRumorsCoveredByWorldState(result);
         PopulateQuerySuggestions(result);
 
+        if (!string.IsNullOrEmpty(ctx.ReseedAdvisory))
+        {
+            AppendReminder(result, ctx.ReseedAdvisory);
+        }
+
         var stats = rateLimiter.GetStatistics();
         if (stats != null)
         {
@@ -1396,9 +1420,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
         foreach (var id in result.RefreshTruncatedIds ?? [])
         {
-            suggestions.Add(id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase)
-                ? $"get_entity {id}"
-                : $"get_scene {id}");
+            suggestions.Add($"get_entity {id}");
         }
 
         foreach (var npc in result.Npcs ?? [])

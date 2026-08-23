@@ -53,7 +53,7 @@ For insight checks (reading the NPC), omit targetIds:
 
 ## Conversation Events
 
-**Every dialogue exchange must be committed immediately:**
+**Every dialogue exchange must be committed immediately.** Set `minutesElapsed` on the top-level `take_turn` request, not inside the `event` object:
 
 ```json
 {
@@ -61,12 +61,11 @@ For insight checks (reading the NPC), omit targetIds:
   "category": "Conversation",
   "involved": ["chars/pc", "chars/npc-tavern-keeper"],
   "locationId": "locations/tavern",
-  "summary": "PC asks about rumors of bandits; innkeeper hints at militia involvement",
-  "minutesElapsed": 3
+  "summary": "PC asks about rumors of bandits; innkeeper hints at militia involvement"
 }
 ```
 
-For 3+ speakers, list all IDs directly in `involved`.
+For 3+ speakers, list all IDs directly in `involved`. For pure flavor/banter with nothing new or shifted, still commit but set `narrativeImportance: "Trivial"` on the request (and the event's own `importance` if set) so it doesn't crowd out real beats in recall/reseed budgets.
 
 ## NPC Trust & Self-Interest
 
@@ -113,4 +112,5 @@ If the NPC learns something new (local rumors, PC background, strategic intel):
 - [ ] Did words get exchanged? → Commit `event` (category: Conversation, involved: all speakers)
 - [ ] Did relationship shift? → `relationship` change in take_turn
 - [ ] Did the NPC learn something? → `knowledge_update`
-- [ ] Did time pass (banter, tense talk)? → `minutesElapsed` on the commit
+- [ ] Did time pass (banter, tense talk)? → `minutesElapsed` on the request
+- [ ] Was this pure flavor/banter with nothing new or shifted? → `narrativeImportance: "Trivial"` on the request

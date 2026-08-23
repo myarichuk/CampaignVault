@@ -93,6 +93,6 @@ Commit status changes:
 - [ ] Did I call `combat(action: "start")` to initialize?
 - [ ] Is this an action (attack/spell/move)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll result?
-- [ ] Did time pass (turn advanced)? → `combat(action: "next")` or minutesElapsed in the batch
+- [ ] Did time pass (turn advanced)? → `combat(action: "next")` or `minutesElapsed` on the take_turn request
 - [ ] Did HP/status change? → Only via `ruleset_action` or dedicated `status`/`hp` commits
 - [ ] Is someone grappling? → Include `engagement_relation` or let engine auto-create

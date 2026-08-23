@@ -9,7 +9,7 @@ public enum TurnMode
 {
     /// <summary>Full section payloads (Party, WorldState) — same shape as pre-delta-mode take_turn.</summary>
     Full,
-    /// <summary>Only what changed this turn (PartyDelta, WorldStateDelta) — full detail remains available via get_entity/get_scene.</summary>
+    /// <summary>Only what changed this turn (PartyDelta, WorldStateDelta) — full detail remains available via get_entity, or by setting includeParty/includeWorldState on the same take_turn call.</summary>
     Delta
 }
 
@@ -30,7 +30,7 @@ public class TakeTurnRequest
     public string? Narrative { get; set; }
 
     [Description(
-        "Fallback batch duration in minutes, used ONLY if none of the individual Changes[] already carries its own MinutesElapsed. Each WorldChange also has its own 'minutesElapsed' field — prefer setting it there per-change; this top-level field exists so a whole-batch duration ('this exchange took about 5 minutes') still advances needs/time even if you forgot to set it per-change. Ignored if any change in the batch already has MinutesElapsed set, and ignored for rest/travel changes (they advance time via their own hour fields).")]
+        "Batch duration in minutes ('this exchange took about 5 minutes'), applied to the first eligible change so needs/time advance even if no per-change minutesElapsed was set. Ignored if any change in the batch already has its own minutesElapsed, and ignored for rest/travel changes (they advance time via their own hour fields).")]
     [JsonPropertyName("minutesElapsed")]
     public int? MinutesElapsed { get; set; }
 
@@ -83,6 +83,11 @@ public class TakeTurnRequest
         "Only meaningful when the response mode ends up Delta (ignored on Full). Trims NpcSummaryView entries (Npcs[], PartyDelta[]) further, capping KnownNeeds to the top 2 movers this turn instead of every need that moved >= 2 points — useful for long roommate/party scenes with many NPCs where even a lean delta adds up. Default false.")]
     [JsonPropertyName("leanMode")]
     public bool LeanMode { get; set; } = false;
+
+    [Description(
+        "Override the auto-created SceneCommit event's importance (default Important). Use Trivial for pure flavor/banter beats with no new information; omit otherwise.")]
+    [JsonPropertyName("narrativeImportance")]
+    public MemoryImportance? NarrativeImportance { get; set; }
 }
 
 /// <summary>

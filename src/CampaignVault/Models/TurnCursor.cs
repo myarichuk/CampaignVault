@@ -28,4 +28,13 @@ public class TurnCursor
     /// </summary>
     [JsonPropertyName("forcedFullReseedPending")]
     public bool ForcedFullReseedPending { get; set; }
+
+    /// <summary>
+    /// Consecutive take_turn calls where the client set ForceFullReseed=true while TurnsSinceReseed was
+    /// still low (i.e., forcing again shortly after already being reseeded). Reset to 0 whenever
+    /// ForceFullReseed isn't set. Used only to surface an advisory hint — never suppresses the client's
+    /// explicit request.
+    /// </summary>
+    [JsonPropertyName("consecutiveClientForcedReseeds")]
+    public int ConsecutiveClientForcedReseeds { get; set; }
 }

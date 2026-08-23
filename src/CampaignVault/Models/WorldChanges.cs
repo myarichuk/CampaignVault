@@ -494,8 +494,11 @@ public class SceneSetupSpatial
     public string? Zone { get; set; }
 }
 
-/// <summary>Adjust one of a character's open-ended psychological or physical needs (hunger, thirst, tiredness; paranoia, obsession, wanderlust, bloodlust, guilt, despair, or other custom needs).</summary>
-[Description("Adjust one of a character's open-ended needs (hunger, thirst, stress, or custom narrative needs).")]
+/// <summary>Adjust one of a character's open-ended psychological or physical needs (hunger, thirst, tiredness;
+/// paranoia, obsession, wanderlust, bloodlust, guilt, despair, or other custom needs). For an explicit
+/// narrative push, not routine time-based drift — WorldChangeDispatcher.ApplyMicroTimeNudgeAsync already
+/// ticks hunger/thirst/tiredness automatically off elapsed minutes each turn.</summary>
+[Description("Explicit need push, not routine drift (engine auto-ticks needs).")]
 public class NeedChange : WorldChange
 {
     [Description("ID of the character whose need is changing (e.g. 'chars/grog').")]
@@ -1212,6 +1215,7 @@ public class KnowledgeUpdate : WorldChange
     public List<string>? RelatedEntityIds { get; set; }
 
     [Description("Ground-truth event ID(s) this memory derives from — provide a client-set 'eventId' on this event change, or a prior event's ID. REQUIRED when this memory is event-sourced. Lets later checks compare belief vs. what actually happened (misremembering, rumor drift).")]
+    [CommitRequiredHint("Required if source=Witnessed/Experienced, else batch fails.")]
     [JsonPropertyName("sourceEventIds")]
     public List<string>? SourceEventIds { get; set; }
 

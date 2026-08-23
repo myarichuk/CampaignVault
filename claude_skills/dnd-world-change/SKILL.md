@@ -82,12 +82,12 @@ Atomic all-or-nothing; if any change fails, the entire batch rolls back — **no
 
 ## Time Tracking
 
-Most changes accept `minutesElapsed`:
+Set `minutesElapsed` on the top-level `take_turn` request (sibling to `changes`/`narrative`), not inside individual changes:
 - Banter: 2–5 minutes
 - Tense interrogation: 60–180 minutes
 - Long rest: 480 minutes (8 hours)
 
-Time accumulates and immediately nudges hunger/thirst/tiredness.
+Time accumulates and immediately nudges hunger/thirst/tiredness. Rest/travel changes advance time via their own hour fields instead — don't also set `minutesElapsed` alongside them.
 
 **Calendar date:** `WorldStateView.Time.FormattedDate` (e.g. "Day 12, Month 3, Year 1492 (Current Era) — Morning") is a ready-to-narrate sentence — use it directly rather than assembling one from the raw `Year`/`Month`/`Day`/`Epoch` fields. Reference it when a scene calls for grounding the party in time (a new day, a festival, "how long have we been here"), not on every beat.
 
@@ -108,7 +108,7 @@ Example: Don't use take_turn changes to rewrite a character's entire Psychology.
 - [ ] Did I narrate a beat? → `take_turn` before player responds
 - [ ] Is this dialogue? → `event` with Conversation category + all speakers in `involved`
 - [ ] Did something change (mood, position, item)? → Include in the batch
-- [ ] Is time passing (banter, rest, travel)? → `minutesElapsed`
+- [ ] Is time passing (banter, rest, travel)? → `minutesElapsed` on the top-level request (rest/travel use their own hour fields instead)
 - [ ] Did a character level up or cast a spell? → Include `ruleset_action` or `resource` spend
 - [ ] Are multiple changes happening at once? → Batch them in one `take_turn` changes array
 - [ ] Did I send all required fields? → Check actionType, newState, intendedHours, locationId

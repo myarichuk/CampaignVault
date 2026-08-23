@@ -72,16 +72,19 @@ internal static class EventNoveltyAdvisor
 
         if (maxSimilarity < LowSimilarityThreshold)
         {
-            return (maxSimilarity, $"Hint: \"{newEvent.Summary}\" reads as novel vs. recent events (similarity {maxSimilarity:F2}) — if it reveals new information, consider Important/Core on any related knowledge_update and whether it should advance a plot_thread.");
+            return (maxSimilarity, $"Hint: \"{TruncateSummary(newEvent.Summary)}\" reads as novel vs. recent events (similarity {maxSimilarity:F2}) — if it reveals new information, consider Important/Core on any related knowledge_update and whether it should advance a plot_thread.");
         }
 
         if (maxSimilarity > HighSimilarityThreshold)
         {
-            return (maxSimilarity, $"Hint: \"{newEvent.Summary}\" closely echoes a recent event (similarity {maxSimilarity:F2}) — if this is reinforcement rather than new information, a Trivial-importance (or skipped) knowledge_update is probably enough.");
+            return (maxSimilarity, $"Hint: \"{TruncateSummary(newEvent.Summary)}\" closely echoes a recent event (similarity {maxSimilarity:F2}) — if this is reinforcement rather than new information, a Trivial-importance (or skipped) knowledge_update is probably enough.");
         }
 
         return (maxSimilarity, null);
     }
+
+    private static string TruncateSummary(string summary) =>
+        summary.Length <= 60 ? summary : summary[..60].TrimEnd() + "…";
 
     private static double CosineSimilarity(float[] a, float[] b)
     {

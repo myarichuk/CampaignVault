@@ -167,7 +167,7 @@ This lets tactical detail (cover, water, fire) persist as part of the world, not
 
 ## Time & Needs
 
-Travel and rest apply `minutesElapsed`. Hunger/thirst/tiredness advance immediately:
+Travel and rest advance time via their own hour fields (not `minutesElapsed` — that's for other changes, set on the top-level `take_turn` request). Hunger/thirst/tiredness advance immediately:
 - Short travel (2–4 hours): minor need ticks
 - Long travel (8+ hours): significant need progression
 - Rest recovers pools and clears tiredness instantly
@@ -181,7 +181,7 @@ Travel and rest apply `minutesElapsed`. Hunger/thirst/tiredness advance immediat
 - [ ] Did I fetch the scene (`get_entity` locations/ id, partyPresent: true) after arrival?
 - [ ] Is there a check (Perception, Investigation, Survival)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll?
-- [ ] Did time pass? → `minutesElapsed` on commits
+- [ ] Did time pass? → `minutesElapsed` on the request (rest/travel use their own hour fields instead)
 - [ ] Are they in a tactical waypoint? → `poiName`/`poiDetails` to persist it
 - [ ] Is the scene anchored at Settlement/Region level? → Descend to District/Building/Room first
 
