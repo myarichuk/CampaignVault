@@ -38,15 +38,43 @@ public class ModelEnumErrorHintsTests
     }
 
     [Fact]
-    public void Enrich_NonEnumConversionFailure_ReturnsMessageUnchanged()
+    public void Enrich_NumericConversionFailure_HintsExpectedNumber()
     {
+        // Reproduces the companion Grok Web failure: `salience` sent as a word (e.g. "High")
+        // instead of a 0.0-1.0 number. Not an enum, so there's no valid-values list — but the
+        // raw CLR message alone doesn't tell the model what shape is expected either.
         var raw = "The JSON value could not be converted to System.Nullable`1[System.Double]. " +
-                   "Path: $.changes[13].salience | LineNumber: 0 | BytePositionInLine: 2900.";
+                   "Path: $.changes[13].salience | LineNumber: 0 | BytePositionInLine: 3024.";
 
         JsonException ex;
         try
         {
-            throw new JsonException(raw, path: "$.changes[13].salience", lineNumber: 0, bytePositionInLine: 2900);
+            throw new JsonException(raw, path: "$.changes[13].salience", lineNumber: 0, bytePositionInLine: 3024);
+        }
+        catch (JsonException caught)
+        {
+            ex = caught;
+        }
+
+        var enriched = ModelEnumErrorHints.Enrich(ex);
+
+        Assert.Contains("Expected a JSON number", enriched);
+        Assert.StartsWith(raw, enriched);
+    }
+
+    [Fact]
+    public void Enrich_UnresolvedTypeName_ReturnsMessageUnchanged()
+    {
+        // A conversion failure to some type we don't recognize as either an enum or a
+        // numeric primitive (e.g. a nested object/DateTime) should pass through untouched
+        // rather than attach a misleading hint.
+        var raw = "The JSON value could not be converted to System.DateTime. " +
+                   "Path: $.changes[2].occurredAt | LineNumber: 0 | BytePositionInLine: 120.";
+
+        JsonException ex;
+        try
+        {
+            throw new JsonException(raw, path: "$.changes[2].occurredAt", lineNumber: 0, bytePositionInLine: 120);
         }
         catch (JsonException caught)
         {

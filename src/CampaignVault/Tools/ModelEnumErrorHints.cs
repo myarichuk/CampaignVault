@@ -39,7 +39,7 @@ internal static partial class ModelEnumErrorHints
         if (!TryResolveEnumType(typeName, out var enumType)
             && !TryResolveEnumFromPath(path, source, out enumType))
         {
-            return message;
+            return TryEnrichNumericMismatch(message, typeName, path, source);
         }
 
         var validList = string.Join(", ", Enum.GetNames(enumType));
@@ -59,6 +59,34 @@ internal static partial class ModelEnumErrorHints
         {
             hint += $" Did you mean '{alias}'?";
         }
+
+        return $"{message} {hint}";
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> PrimitiveTypeHints = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["System.Double"] = "Expected a JSON number (e.g. 0.75), not a word or quoted string.",
+        ["System.Single"] = "Expected a JSON number (e.g. 0.75), not a word or quoted string.",
+        ["System.Decimal"] = "Expected a JSON number (e.g. 0.75), not a word or quoted string.",
+        ["System.Int32"] = "Expected a JSON integer (e.g. 3), not a word or quoted string.",
+        ["System.Int64"] = "Expected a JSON integer (e.g. 3), not a word or quoted string.",
+        ["System.Boolean"] = "Expected a JSON boolean (true/false), not a quoted string.",
+    };
+
+    // Not an enum mismatch (e.g. `salience` sent as a word like "High" instead of a number) —
+    // give a concrete "expected a <type>" hint instead of the raw, unexplained CLR message.
+    private static string TryEnrichNumericMismatch(string message, string typeName, string? path, JsonElement? source)
+    {
+        if (!PrimitiveTypeHints.TryGetValue(typeName, out var expectedHint))
+        {
+            return message;
+        }
+
+        var badValue = source is { } root && !string.IsNullOrWhiteSpace(path)
+            ? TryReadValueAtPath(root, path)
+            : null;
+
+        var hint = badValue is null ? expectedHint : $"Got '{badValue}'. {expectedHint}";
 
         return $"{message} {hint}";
     }
