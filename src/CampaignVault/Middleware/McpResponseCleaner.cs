@@ -12,6 +12,14 @@ namespace CampaignVault.Middleware;
 /// dump — most MCP hosts (opencode among them) only forward Content into the model's context,
 /// not StructuredContent, so Content has to carry the real, cleaned data rather than a summary
 /// stand-in. StructuredContent is left populated too, for hosts that do read it.
+///
+/// The same tree walk also drops properties that carry no information beyond their own absence —
+/// empty containers ("field": [] / "field": {}) and explicit nulls ("field": null) — bottom-up, so a
+/// container that becomes empty purely from its children being stripped is caught in the same pass.
+/// Every response DTO here defaults its collections to non-null-but-empty rather than null, so this
+/// is pure wire-format hygiene, never a content decision. Present-but-falsy scalars ("", 0, false)
+/// ARE kept: those are readings, and an LLM must be able to tell "HP 0" from "HP not reported".
+/// Array *elements* are never removed either — an array's length is content.
 /// </summary>
 internal static class McpResponseCleaner
 {
@@ -34,97 +42,139 @@ internal static class McpResponseCleaner
         filters.AddCallToolFilter(next => async (request, cancellationToken) =>
         {
             var result = await next(request, cancellationToken);
-
-            // Only process successful tool calls with structured content
-            if (result.IsError != true && result.StructuredContent != null)
-            {
-                try
-                {
-                    var cleaned = StripVectorsFromElement(result.StructuredContent.Value);
-                    result.StructuredContent = cleaned;
-                    SyncContentToCleanedStructuredContent(result, cleaned);
-                }
-                catch
-                {
-                    // If cleaning fails, return original result
-                }
-            }
-
+            Apply(result);
             return result;
         });
     }
 
     /// <summary>
-    /// Replaces the SDK's default Content dump (serialized before vector-stripping ran, so it
-    /// still carries raw semanticVector/embeddingTextHash arrays) with a compact re-serialization
-    /// of the already-cleaned StructuredContent. Most MCP hosts only forward Content into the
-    /// model's context, so this — not StructuredContent — is the copy that actually needs to be
-    /// both complete and vector-free.
+    /// Cleans a tool result in place: parses its structured content once, strips it, and writes the one
+    /// cleaned tree back out to BOTH copies the protocol carries — compact text for Content (replacing
+    /// the SDK's own dump, which was serialized before stripping ran and so still carries raw
+    /// semanticVector/embeddingTextHash arrays) and a JsonElement for StructuredContent.
+    ///
+    /// Internal rather than private so tests exercise the real filter path end-to-end. They previously
+    /// reflected on two private halves, which meant a change to how those halves fit together — exactly
+    /// the kind of change that breaks the wire format — could not fail a test.
     /// </summary>
-    private static void SyncContentToCleanedStructuredContent(CallToolResult result, JsonElement cleaned)
+    internal static void Apply(CallToolResult result)
     {
-        var text = JsonSerializer.Serialize(cleaned, ContentSerializerOptions);
-        result.Content = [new TextContentBlock { Text = text }];
+        if (result.IsError == true || result.StructuredContent == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var cleaned = Clean(result.StructuredContent.Value);
+            if (cleaned == null)
+            {
+                return;
+            }
+
+            // Content first: it is the copy most MCP hosts actually forward to the model, and
+            // serializing the cleaned node straight to text skips a whole JsonElement round-trip
+            // over what can be a very large payload.
+            result.Content = [new TextContentBlock { Text = cleaned.ToJsonString(ContentSerializerOptions) }];
+            result.StructuredContent = JsonSerializer.SerializeToElement(cleaned);
+        }
+        catch
+        {
+            // If cleaning fails, leave the original result alone rather than dropping the response.
+        }
     }
 
-    private static JsonElement StripVectorsFromElement(JsonElement element)
+    /// <summary>
+    /// Parses the SDK's structured content once and strips it in place, returning the mutated tree.
+    /// Null for scalar payloads (nothing to strip) so the caller leaves the result untouched.
+    /// </summary>
+    internal static JsonNode? Clean(JsonElement element)
     {
-        if (element.ValueKind == JsonValueKind.Object)
+        switch (element.ValueKind)
         {
-            var obj = JsonNode.Parse(element.GetRawText()) as JsonObject;
-            if (obj != null)
-            {
+            case JsonValueKind.Object when JsonNode.Parse(element.GetRawText()) is JsonObject obj:
                 StripVectorsFromObject(obj);
-                return JsonSerializer.SerializeToElement(obj);
-            }
-        }
-        else if (element.ValueKind == JsonValueKind.Array)
-        {
-            var arr = JsonNode.Parse(element.GetRawText()) as JsonArray;
-            if (arr != null)
-            {
-                for (int i = 0; i < arr.Count; i++)
-                {
-                    if (arr[i] is JsonObject objInArr)
-                    {
-                        StripVectorsFromObject(objInArr);
-                    }
-                }
-                return JsonSerializer.SerializeToElement(arr);
-            }
-        }
+                return obj;
 
-        return element;
+            case JsonValueKind.Array when JsonNode.Parse(element.GetRawText()) is JsonArray arr:
+                StripVectorsFromArray(arr);
+                return arr;
+
+            default:
+                return null;
+        }
     }
 
     private static void StripVectorsFromObject(JsonObject obj)
     {
-        var keysToRemove = obj
-            .Where(kvp => VectorFieldsToStrip.Contains(kvp.Key))
-            .Select(kvp => kvp.Key)
-            .ToList();
+        // One pass: decide each property's fate (drop / recurse) and collect the drops, so the object
+        // is only mutated once at the end. Enumerating and removing in the same loop needs a defensive
+        // ToList() copy of the whole property set, which this avoids.
+        var keysToRemove = new List<string>();
+
+        foreach (var kvp in obj)
+        {
+            if (VectorFieldsToStrip.Contains(kvp.Key))
+            {
+                keysToRemove.Add(kvp.Key);
+                continue;
+            }
+
+            switch (kvp.Value)
+            {
+                case null:
+                // An explicit null says exactly what an absent key says, but costs the key name plus
+                // ":null" in every response. The delta-mode trims (e.g. ApplyLocationDeltaTrim) reset
+                // roughly a dozen fields per location to null precisely because the client already has
+                // them, so without this the "trim" still pays most of the wire cost it was added to
+                // avoid.
+                case JsonValue v when v.GetValueKind() == JsonValueKind.Null:
+                    keysToRemove.Add(kvp.Key);
+                    break;
+
+                case JsonObject nested:
+                    StripVectorsFromObject(nested);
+                    if (nested.Count == 0)
+                    {
+                        keysToRemove.Add(kvp.Key);
+                    }
+                    break;
+
+                case JsonArray array:
+                    StripVectorsFromArray(array);
+                    if (array.Count == 0)
+                    {
+                        keysToRemove.Add(kvp.Key);
+                    }
+                    break;
+            }
+        }
 
         foreach (var key in keysToRemove)
         {
             obj.Remove(key);
         }
+    }
 
-        // Recursively clean nested objects and arrays
-        foreach (var kvp in obj.ToList())
+    /// <summary>
+    /// Cleans every element of an array. Nested arrays recurse too — the previous version only
+    /// descended into elements that were objects, so a vector sitting inside an array-of-arrays (or an
+    /// object one array deeper) survived the strip entirely.
+    /// Elements themselves are never removed: an array's length is content (three combatants is not
+    /// the same as two), unlike an absent property.
+    /// </summary>
+    private static void StripVectorsFromArray(JsonArray array)
+    {
+        foreach (var element in array)
         {
-            if (kvp.Value is JsonObject nested)
+            switch (element)
             {
-                StripVectorsFromObject(nested);
-            }
-            else if (kvp.Value is JsonArray array)
-            {
-                for (int i = 0; i < array.Count; i++)
-                {
-                    if (array[i] is JsonObject objInArray)
-                    {
-                        StripVectorsFromObject(objInArray);
-                    }
-                }
+                case JsonObject objInArray:
+                    StripVectorsFromObject(objInArray);
+                    break;
+                case JsonArray nestedArray:
+                    StripVectorsFromArray(nestedArray);
+                    break;
             }
         }
     }

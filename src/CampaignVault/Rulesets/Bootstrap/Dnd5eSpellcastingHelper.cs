@@ -18,20 +18,25 @@ internal static class Dnd5eSpellcastingHelper
 
     public static string? InferSpellcastingAbility(IReadOnlyList<ClassLevelEntry> classLevels)
     {
-        foreach (var entry in classLevels.OrderByDescending(c => c.Level))
+        foreach (var entry in classLevels.OrderByDescending(c => c.Level).ThenBy(c => c.Class, StringComparer.Ordinal))
         {
-            foreach (var (className, ability) in ClassSpellcastingAbility)
+            var ability = InferSpellcastingAbility(entry.Class);
+            if (ability != null)
             {
-                if (entry.Class.Contains(className, StringComparison.OrdinalIgnoreCase))
-                {
-                    return ability;
-                }
+                return ability;
             }
         }
 
         return null;
     }
 
+    /// <summary>
+    /// Longest-name-wins rather than first-match: a Dictionary's enumeration order is an implementation
+    /// detail, so a first-match scan over a free-text class string that mentions two classes
+    /// ("Cleric/Wizard", "Bard College of Whispers") would resolve to whichever entry happened to come
+    /// first — a silently different spell save DC for the same character sheet. Ties break on the class
+    /// name so the result is stable.
+    /// </summary>
     public static string? InferSpellcastingAbility(string? classLevel)
     {
         if (string.IsNullOrWhiteSpace(classLevel))
@@ -39,15 +44,26 @@ internal static class Dnd5eSpellcastingHelper
             return null;
         }
 
+        string? bestClass = null;
+        string? bestAbility = null;
+
         foreach (var (className, ability) in ClassSpellcastingAbility)
         {
-            if (classLevel.Contains(className, StringComparison.OrdinalIgnoreCase))
+            if (!classLevel.Contains(className, StringComparison.OrdinalIgnoreCase))
             {
-                return ability;
+                continue;
+            }
+
+            if (bestClass == null
+                || className.Length > bestClass.Length
+                || (className.Length == bestClass.Length && string.CompareOrdinal(className, bestClass) < 0))
+            {
+                bestClass = className;
+                bestAbility = ability;
             }
         }
 
-        return null;
+        return bestAbility;
     }
 
     public static int GetAbilityModifier(Dnd5eExtension stats, string abilityName) =>

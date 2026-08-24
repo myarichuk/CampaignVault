@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CampaignVault.Middleware;
@@ -41,30 +40,22 @@ public class McpResponseCleanerBackendIntegrationTests : IClassFixture<RavenDBFi
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     /// <summary>
-    /// Runs a real ToolResult&lt;T&gt; through the same two steps McpResponseCleaner.Register's
-    /// filter applies on every successful call (strip vectors, then sync Content to the cleaned
-    /// StructuredContent), via reflection since both are private. Mirrors the reflection approach
-    /// already used in McpResponseCleanerTests.cs.
+    /// Runs a real ToolResult&lt;T&gt; through exactly what McpResponseCleaner.Register's filter applies
+    /// on every successful call. This used to reflect on two private halves and stitch them together
+    /// itself, which meant the stitching under test was the test's own, not the filter's; McpResponseCleaner.Apply
+    /// is now the one internal entry point and both halves run in their real order.
     /// </summary>
     private static string RunThroughCleanerPipeline<T>(ToolResult<T> toolResult)
     {
         var structured = JsonSerializer.SerializeToElement(toolResult, WireOptions);
 
-        var stripMethod = typeof(McpResponseCleaner).GetMethod(
-            "StripVectorsFromElement", BindingFlags.NonPublic | BindingFlags.Static);
-        Assert.NotNull(stripMethod);
-        var cleaned = (JsonElement)stripMethod!.Invoke(null, [structured])!;
-
         var result = new CallToolResult
         {
-            Content = [new TextContentBlock { Text = "unset — should be replaced by SyncContentToCleanedStructuredContent" }],
+            Content = [new TextContentBlock { Text = "unset — should be replaced by the cleaner" }],
             StructuredContent = structured,
         };
 
-        var syncMethod = typeof(McpResponseCleaner).GetMethod(
-            "SyncContentToCleanedStructuredContent", BindingFlags.NonPublic | BindingFlags.Static);
-        Assert.NotNull(syncMethod);
-        syncMethod!.Invoke(null, [result, cleaned]);
+        McpResponseCleaner.Apply(result);
 
         var block = Assert.Single(result.Content);
         return Assert.IsType<TextContentBlock>(block).Text;

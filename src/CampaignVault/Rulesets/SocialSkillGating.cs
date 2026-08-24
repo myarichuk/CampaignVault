@@ -9,11 +9,17 @@ namespace CampaignVault.Rulesets;
 /// </summary>
 public static class SocialSkillGating
 {
-    private static readonly string[] Dnd5eSocialSkills =
-        ["Persuasion", "Deception", "Intimidation", "Insight", "Performance"];
+    // The D&D names double as the cross-system fallback vocabulary: an LLM that has internalised 5e
+    // will reach for "Persuasion"/"Insight" even in a PF2e campaign, and a social check silently
+    // losing its relationship modifier because of that is invisible at the table — the roll just
+    // comes out wrong. So every system's set is (native skills ∪ D&D skills); the native list is
+    // what keeps a PF2e "Diplomacy" or "Society" check gated correctly.
+    private static readonly HashSet<string> Dnd5eSocialSkills =
+        new(["Persuasion", "Deception", "Intimidation", "Insight", "Performance"],
+            StringComparer.OrdinalIgnoreCase);
 
-    private static readonly string[] Pf2eSocialSkills =
-        ["Diplomacy", "Deception", "Intimidation", "Performance", "Society"];
+    private static readonly HashSet<string> Pf2eSocialSkills =
+        new(Dnd5eSocialSkills.Concat(["Diplomacy", "Society"]), StringComparer.OrdinalIgnoreCase);
 
     public static bool ShouldApplyRelationshipModifier(string system, RulesetAction action, string skillName)
     {
@@ -24,12 +30,11 @@ public static class SocialSkillGating
 
         var socialSkills = system switch
         {
-            RulesetSystem.Dnd5e => Dnd5eSocialSkills,
             RulesetSystem.Pathfinder2e => Pf2eSocialSkills,
             _ => Dnd5eSocialSkills
         };
 
-        return socialSkills.Any(s => string.Equals(s, skillName, StringComparison.OrdinalIgnoreCase));
+        return !string.IsNullOrWhiteSpace(skillName) && socialSkills.Contains(skillName.Trim());
     }
 
     /// <summary>

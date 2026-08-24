@@ -158,15 +158,15 @@ public class CampaignTools(
         worldBuilder.GetNeedDescriptors(ResolveCampaign(campaignName));
 
     // --- Combat ---
-    public Task<ToolResult<CombatEncounter>> StartCombat(string locationId, string[] participantIds,
+    public Task<ToolResult<CombatEncounterView>> StartCombat(string locationId, string[] participantIds,
         string? campaignName = TestDefaultCampaignSlug) =>
         combat.StartCombat(locationId, participantIds?.ToList() ?? [], ResolveCampaign(campaignName));
 
-    public Task<ToolResult<CombatEncounter>>
+    public Task<ToolResult<CombatEncounterView>>
         NextTurn(string? expectedActiveTurnId = null, string? campaignName = TestDefaultCampaignSlug) =>
         combat.NextTurn(ResolveCampaign(campaignName), expectedActiveTurnId);
 
-    public Task<ToolResult<CombatEncounter>> EndCombat(string? campaignName = TestDefaultCampaignSlug) =>
+    public Task<ToolResult<CombatEncounterView>> EndCombat(string? campaignName = TestDefaultCampaignSlug) =>
         combat.EndCombat(ResolveCampaign(campaignName));
 
     // --- Campaign Management ---

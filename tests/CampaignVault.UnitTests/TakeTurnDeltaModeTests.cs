@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -1033,5 +1034,148 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
         var anotherPureQuery = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
         Assert.Equal(1, anotherPureQuery.Data!.WorldSequence);
+    }
+
+    /// <summary>
+    /// Regression guard for the NeedDescriptors token-budget fix: the reference-text descriptor
+    /// dictionary on Scenes[].PresentNPCs (only shape that carries it — NpcSummaryView/Npcs[] has no
+    /// NeedDescriptors field at all) must get the SAME delta-mode significant-movers filter as
+    /// KnownNeeds, via MutationTools.ApplyDeltaTrim, instead of always re-sending the full merged
+    /// (global + per-NPC) descriptor set on every turn regardless of what actually moved.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_FiltersNeedDescriptors_SameAsKnownNeeds()
+    {
+        var slug = NewSlug("descriptorfilter");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-tavern";
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Tavern" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = companionId,
+                Name = "Companion",
+                IsPartyCompanion = true,
+                CurrentLocationId = locId,
+                MaxHp = 10,
+                CurrentHp = 10,
+                Needs = new NeedsProfile
+                {
+                    ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 10f, ["boredom"] = 10f },
+                    NeedDescriptors = new Dictionary<string, string>
+                    {
+                        ["hunger"] = "Custom hunger descriptor text.",
+                        ["boredom"] = "Custom boredom descriptor text."
+                    }
+                }
+            });
+            await session.SaveChangesAsync();
+        }
+
+        Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = changes,
+            Narrative = changes != null ? "The companion reacts." : null,
+            ExtraLocationIds = [locId]
+        }, slug);
+
+        // Full (first-ever call): both descriptors present.
+        var seed = await Refresh();
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+        var seedPresence = Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.Contains("hunger", seedPresence.NeedDescriptors.Keys);
+        Assert.Contains("boredom", seedPresence.NeedDescriptors.Keys);
+
+        // Delta: only hunger moved >= the significance threshold this turn -> only hunger's descriptor
+        // should ride along, same filter KnownNeeds already gets.
+        var delta = await Refresh(
+        [
+            new NeedChange { CharacterId = companionId, Need = "hunger", Delta = 5 },
+            new NeedChange { CharacterId = companionId, Need = "boredom", Delta = 1 }
+        ]);
+        Assert.True(delta.Success, delta.Summary);
+        Assert.Equal(TurnMode.Delta, delta.Data!.Mode);
+        var deltaPresence = Assert.Single(delta.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.Contains("hunger", deltaPresence.KnownNeeds.Keys);
+        Assert.DoesNotContain("boredom", deltaPresence.KnownNeeds.Keys);
+        Assert.Contains("hunger", deltaPresence.NeedDescriptors.Keys);
+        Assert.DoesNotContain("boredom", deltaPresence.NeedDescriptors.Keys);
+    }
+
+    /// <summary>
+    /// Regression guard for the Scenes[].Location token-budget fix: unlike PresentNPCs (already
+    /// delta-trimmed via ApplyDeltaTrim), the Location wrapper itself used to resend its full
+    /// description/exits/POIs/tags/metadata every single scene refresh regardless of mode — pure
+    /// waste on a multi-round combat/social turn sequence that keeps refreshing the same room. On an
+    /// untouched delta turn it should collapse to id/name/type/parent/danger/faction only; a
+    /// LocationUpdate targeting it, or a character's ActivityChange/TravelChange arrival into it,
+    /// restores full detail for that turn.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_StripsUnchangedLocationDetail_ButRestoresOnUpdateOrArrival()
+    {
+        var slug = NewSlug("locationtrim");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-shrine";
+        var pcId = $"chars/{slug}-pc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest
+            {
+                Id = locId,
+                Name = "Collapsed Shrine",
+                Description = "Rubble-strewn floor, one wall open to the night sky.",
+                Type = LocationType.Building
+            });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = changes,
+            Narrative = changes != null ? "Something happens." : null,
+            ExtraLocationIds = [locId]
+        }, slug);
+
+        // Full (first-ever call): full location detail.
+        var seed = await Refresh();
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+        var seedLoc = Assert.Single(seed.Data.Scenes!).Location;
+        Assert.Equal("Rubble-strewn floor, one wall open to the night sky.", seedLoc.Description);
+
+        // Delta, nothing touches this location this turn (an unrelated HP change on the PC) -> Location
+        // collapses to its identity fields; id/name survive so the client can still match it up.
+        var untouched = await Refresh([new HpChange { CharacterId = pcId, Delta = -3 }]);
+        Assert.True(untouched.Success, untouched.Summary);
+        Assert.Equal(TurnMode.Delta, untouched.Data!.Mode);
+        var untouchedLoc = Assert.Single(untouched.Data.Scenes!).Location;
+        Assert.Equal(locId, untouchedLoc.Id);
+        Assert.Equal("Collapsed Shrine", untouchedLoc.Name);
+        Assert.Equal("", untouchedLoc.Description);
+        Assert.Empty(untouchedLoc.Exits);
+
+        // Delta, a LocationUpdate targets this location this turn -> full detail restored.
+        var updated = await Refresh([new LocationUpdate { LocationId = locId, NewState = "A section of the roof has caved in." }]);
+        Assert.True(updated.Success, updated.Summary);
+        Assert.Equal(TurnMode.Delta, updated.Data!.Mode);
+        var updatedLoc = Assert.Single(updated.Data.Scenes!).Location;
+        Assert.Equal("Rubble-strewn floor, one wall open to the night sky.", updatedLoc.Description);
+        Assert.Equal("A section of the roof has caved in.", updatedLoc.CurrentState);
     }
 }

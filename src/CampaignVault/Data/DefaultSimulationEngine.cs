@@ -14,7 +14,7 @@ namespace CampaignVault.Data;
 public sealed class DefaultSimulationEngine : IWorldSimulationEngine
 {
 
-    private readonly IEnumerable<ISimulationRule> _rules;
+    private readonly IReadOnlyList<ISimulationRule> _rules;
     private readonly ILogger<DefaultSimulationEngine> _logger;
 
     public DefaultSimulationEngine(
@@ -33,7 +33,7 @@ public sealed class DefaultSimulationEngine : IWorldSimulationEngine
         var allEvictedIds = new List<string>();
         var allEvictedSummaries = new List<EvictedNpcSummary>();
 
-        _logger.LogInformation("Running simulation engine with {RuleCount} rules for {Days} days", _rules.Count(), context.DaysPassed);
+        _logger.LogInformation("Running simulation engine with {RuleCount} rules for {Days} days", _rules.Count, context.DaysPassed);
 
         foreach (var rule in _rules)
         {

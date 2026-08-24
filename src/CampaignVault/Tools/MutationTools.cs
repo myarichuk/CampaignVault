@@ -1111,6 +1111,52 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         NeedsKeysToInclude: ChangedNeedsKeys(ctx, characterId));
 
     /// <summary>
+    /// True if this change could have altered the given location's own descriptive state (the fields
+    /// <see cref="ApplyLocationDeltaTrim"/> strips on mode=delta), or represents someone newly arriving
+    /// there this turn — in which case the client needs the full room description even though the
+    /// Location document itself wasn't edited. Mirrors the per-character Affects* convention above.
+    /// </summary>
+    private static bool AffectsLocationDetail(WorldChange change, string locationId)
+    {
+        var eq = StringComparer.OrdinalIgnoreCase;
+        return change switch
+        {
+            LocationUpdate lu => eq.Equals(lu.LocationId, locationId),
+            ActivityChange ac => ac.UpdateLocation && eq.Equals(ac.NewLocationId, locationId),
+            TravelChange tc => eq.Equals(tc.DestinationLocationId, locationId),
+            _ => false
+        };
+    }
+
+    private bool ShouldStripUnchangedLocationDetail(TurnContext ctx, string locationId) =>
+        ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsLocationDetail(c, locationId));
+
+    /// <summary>
+    /// Trims a scene's LocationDetailView (already an immutable wire-record, detached from the tracked
+    /// RavenDB entity via LocationDetailView.From — no risk of the trim being mistaken for real data and
+    /// persisted) for a delta turn that didn't touch this location: id/name/type/parent/danger/faction
+    /// survive (cheap, and combat/faction-relevant even when static), everything else (description, exits,
+    /// POIs, ambient crowd, tags, metadata, recently-departed, climate) resets to its unset default. The
+    /// client already has the full picture from the last full reseed or a prior delta that changed it;
+    /// get_entity/get_scene always returns the complete current value regardless of mode.
+    /// </summary>
+    private static LocationDetailView ApplyLocationDeltaTrim(LocationDetailView loc) => loc with
+    {
+        Description = "",
+        Exits = [],
+        PointsOfInterest = [],
+        PointOfInterestDetails = [],
+        AmbientCrowd = null,
+        LastVisitedDay = null,
+        RecentlyDeparted = [],
+        Metadata = [],
+        CurrentState = null,
+        VisualTags = [],
+        DistinctiveFeatures = [],
+        ClimateZone = null
+    };
+
+    /// <summary>
     /// Applies the SAME delta-mode trim decision as BuildTrim/BuildNpcSummaryAsync to a scene-embedded
     /// NpcPresenceSummary (Scenes[].PresentNPCs) — one source of truth for "did this NPC's
     /// appearance/behavior/needs/gear change this turn" shared between the Npcs[] and Scenes[] shapes,
@@ -1130,6 +1176,13 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         var knownNeeds = trim.NeedsKeysToInclude != null
             ? npc.KnownNeeds.Where(kv => trim.NeedsKeysToInclude.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value)
             : npc.KnownNeeds;
+        // Same filter as KnownNeeds: the reference-text descriptors only need to travel alongside the
+        // need values that are actually moving this turn — the client already has the rest from the
+        // last full reseed, and re-sending the full campaign-wide descriptor dict for every present NPC
+        // every delta turn is pure repeated boilerplate (verified via token-budget measurement).
+        var needDescriptors = trim.NeedsKeysToInclude != null
+            ? npc.NeedDescriptors.Where(kv => trim.NeedsKeysToInclude.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value)
+            : npc.NeedDescriptors;
 
         return npc with
         {
@@ -1138,6 +1191,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             DistinctiveFeatures = trim.StripAppearance ? null : npc.DistinctiveFeatures,
             BehavioralSummary = trim.SkipBehavioralSummary ? null : npc.BehavioralSummary,
             KnownNeeds = knownNeeds,
+            NeedDescriptors = needDescriptors,
             SystemStats = trim.StripGear ? null : npc.SystemStats,
             EquippedItems = trim.StripGear ? null : npc.EquippedItems,
             CarriedItems = trim.StripGear ? null : npc.CarriedItems,
@@ -1223,6 +1277,10 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                         summary.PresentNPCs = summary.PresentNPCs
                             .Select(npc => ApplyDeltaTrim(ctx, npc))
                             .ToList();
+                        if (ShouldStripUnchangedLocationDetail(ctx, locationId))
+                        {
+                            summary.Location = ApplyLocationDeltaTrim(summary.Location);
+                        }
                         result.Scenes.Add(summary);
                     }
                     else
@@ -1636,6 +1694,14 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         (ctx.Result.Warnings ??= []).Add(message);
     }
 
+    // A single advance_world call runs every simulation rule exactly once for the whole span, no
+    // matter how long it is, so an over-large skip is both a silent loss of simulation fidelity and an
+    // unbounded calendar roll from one mistyped argument (hours:100000 is eleven in-world years). These
+    // caps are deliberately generous — a season-long montage still fits in one call — and the error
+    // text tells the caller to split rather than to give up.
+    private const int MaxAdvanceDays = 365;
+    private const int MaxAdvanceHours = 24 * 30;
+
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
@@ -1668,6 +1734,14 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                     toolName: "advance_world");
             }
 
+            if (hours.Value > MaxAdvanceHours)
+            {
+                return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "InvalidArgument",
+                    Summary: $"hours must be at most {MaxAdvanceHours} ({MaxAdvanceHours / 24} days). " +
+                             "For a longer jump use 'days', and split genuinely epic skips across several calls " +
+                             "so the simulation actually runs for each span."));
+            }
+
             if (days != 0 || resultingHour.HasValue)
             {
                 return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "InvalidArgument",
@@ -1678,6 +1752,12 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         {
             return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "BadRequest",
                 Summary: "Cannot advance zero or a negative number of days. Use 'hours' instead for a sub-day/overnight span."));
+        }
+        else if (days > MaxAdvanceDays)
+        {
+            return Task.FromResult(new ToolResult<AdvanceResult>(false, Error: "InvalidArgument",
+                Summary: $"days must be at most {MaxAdvanceDays}. Split a longer skip across several calls so the " +
+                         "simulation actually runs for each span rather than collapsing decades into one tick."));
         }
         else if (!resultingHour.HasValue)
         {

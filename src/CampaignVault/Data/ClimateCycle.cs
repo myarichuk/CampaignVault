@@ -28,7 +28,7 @@ public static class ClimateCycle
     private static float GetDiurnalMultiplier(int hour)
     {
         // Normalize hour to 0-1 range, offset so 12 (noon) = 0 in the sine curve
-        var normalizedHour = (hour - 6) / 12f; // 6am = -1, 6pm = +1
+        var normalizedHour = (hour - 6) / 12f; // 6am -> 0 (baseline), noon -> 0.5, 6pm -> 1
         return (float)Math.Sin(Math.PI * normalizedHour); // Smooth curve -1 to +1
     }
 

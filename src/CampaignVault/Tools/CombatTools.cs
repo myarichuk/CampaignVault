@@ -62,7 +62,7 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
         return new ToolResult<object>(r.Success, r.Data, r.Summary, r.Error, r.WorldPressure, r.RetryExample);
     }
 
-    internal Task<ToolResult<CombatEncounter>> StartCombat(
+    internal Task<ToolResult<CombatEncounterView>> StartCombat(
         [Description("The location ID where combat is happening.")]
         string locationId,
         [Description("List of character IDs participating in combat.")]
@@ -74,15 +74,15 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
     {
         if (string.IsNullOrWhiteSpace(locationId))
         {
-            return ToolArgumentErrors.Missing<CombatEncounter>(
+            return ToolArgumentErrors.Missing<CombatEncounterView>(
                 "locationId",
                 "Pass where combat occurs.",
                 exampleCall: "combat(action: \"start\", locationId: \"locations/tavern\", combatantIds: [\"chars/hero\"])");
         }
 
-        if (combatantIds?.Count == 0)
+        if (combatantIds is null or { Count: 0 })
         {
-            return Task.FromResult(new ToolResult<CombatEncounter>(
+            return Task.FromResult(new ToolResult<CombatEncounterView>(
                 false,
                 Error: "InvalidInput",
                 Summary: "Cannot start combat with zero combatants. Pass combatantIds (not combatants) — an array of character IDs, e.g. [\"chars/valen\", \"chars/guard\"]."));
@@ -93,11 +93,11 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
             var existing = await _repository.GetActiveCombatAsync(new CampaignSession(session, effective));
             if (existing?.IsActive == true && !overwriteActive)
             {
-                return new ToolResult<CombatEncounter>(false,
+                return new ToolResult<CombatEncounterView>(false,
                     Error: $"Combat already active at {existing.LocationId} (round {existing.Round}). " +
                            "Call combat(action: 'end') to abandon, or pass overwriteActive:true to force restart.");
             }
-            var uniqueIds = (combatantIds ?? []).Distinct().ToList();
+            var uniqueIds = combatantIds.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
 
             // Ensure all loaded characters have upgraded SystemStats (type coercion + SkillModifiers derivation).
@@ -112,14 +112,14 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
             {
                 if (!loadedCharacters.TryGetValue(id, out var character) || character is null)
                 {
-                    return new ToolResult<CombatEncounter>(false, Error: "NotFound",
+                    return new ToolResult<CombatEncounterView>(false, Error: "NotFound",
                         Summary: $"Character '{id}' not found.");
                 }
 
                 if (!CampaignEntityVisibility.IsVisibleInCampaign(character.CampaignName, effective))
                 {
                     CampaignEntityVisibility.TryGetInvisibilityReason(character, effective, out var reason);
-                    return new ToolResult<CombatEncounter>(false, Error: "InvalidInput",
+                    return new ToolResult<CombatEncounterView>(false, Error: "InvalidInput",
                         Summary: $"Combatant '{id}' is not available in campaign '{effective}'. {reason}");
                 }
 
@@ -135,7 +135,7 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
 
             if (validCharacters.Count == 0)
             {
-                return new ToolResult<CombatEncounter>(false, Error: "InvalidInput",
+                return new ToolResult<CombatEncounterView>(false, Error: "InvalidInput",
                     Summary: "None of the specified combatants are valid and alive.");
             }
 
@@ -177,11 +177,11 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
                 summary += $" Dropped {droppedForZeroHp.Count} combatant(s) with 0 or negative HP: {string.Join(", ", droppedForZeroHp)}.";
             }
 
-            return new ToolResult<CombatEncounter>(true, encounter, summary);
+            return new ToolResult<CombatEncounterView>(true, CombatEncounterView.From(encounter), summary);
         });
     }
 
-    internal Task<ToolResult<CombatEncounter>> NextTurn(
+    internal Task<ToolResult<CombatEncounterView>> NextTurn(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
         [Description(
@@ -194,13 +194,13 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
             var encounter = await session.LoadAsync<CombatEncounter>(combatId);
             if (encounter == null || !encounter.IsActive)
             {
-                return new ToolResult<CombatEncounter>(false, Error: "NotFound",
+                return new ToolResult<CombatEncounterView>(false, Error: "NotFound",
                     Summary: "No active combat encounter.");
             }
 
             if (!string.IsNullOrWhiteSpace(expectedActiveTurnId) && encounter.ActiveTurnId != expectedActiveTurnId)
             {
-                return new ToolResult<CombatEncounter>(false, Error: "StateDrift",
+                return new ToolResult<CombatEncounterView>(false, Error: "StateDrift",
                     Summary:
                     $"Expected active turn to be '{expectedActiveTurnId}' but it was '{encounter.ActiveTurnId}'. The combat state has drifted.");
             }
@@ -238,7 +238,7 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
                         characters.TryGetValue(c.CharacterId, out var character) && character != null &&
                         character.CurrentHp > 0))
                 {
-                    return new ToolResult<CombatEncounter>(false, Error: "CombatEnded",
+                    return new ToolResult<CombatEncounterView>(false, Error: "CombatEnded",
                         Summary: "No valid and alive combatants remain. Combat has ended or cannot proceed.");
                 }
 
@@ -284,11 +284,11 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
                 summary += " " + string.Join(" ", expiredMessages);
             }
 
-            return new ToolResult<CombatEncounter>(true, encounter, summary);
+            return new ToolResult<CombatEncounterView>(true, CombatEncounterView.From(encounter), summary);
         });
     }
 
-    internal Task<ToolResult<CombatEncounter>> EndCombat(
+    internal Task<ToolResult<CombatEncounterView>> EndCombat(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
@@ -298,7 +298,7 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
             var encounter = await session.LoadAsync<CombatEncounter>(combatId);
             if (encounter == null || !encounter.IsActive)
             {
-                return new ToolResult<CombatEncounter>(false, Error: "NotFound",
+                return new ToolResult<CombatEncounterView>(false, Error: "NotFound",
                     Summary: "No active combat encounter to end.");
             }
 
@@ -354,7 +354,7 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
                 summary += " " + string.Join(" ", expiredMessages);
             }
 
-            return new ToolResult<CombatEncounter>(true, encounter, summary);
+            return new ToolResult<CombatEncounterView>(true, CombatEncounterView.From(encounter), summary);
         });
     }
 

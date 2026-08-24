@@ -90,7 +90,15 @@ public class RelationshipModifierTests
     [InlineData(RulesetSystem.Dnd5e, "Persuasion", true)]
     [InlineData(RulesetSystem.Dnd5e, "Athletics", false)]
     [InlineData(RulesetSystem.Pathfinder2e, "Diplomacy", true)]
-    [InlineData(RulesetSystem.Pathfinder2e, "Persuasion", false)]
+    [InlineData(RulesetSystem.Pathfinder2e, "Society", true)]
+    [InlineData(RulesetSystem.Pathfinder2e, "Athletics", false)]
+    // A PF2e campaign still honours the D&D names. The gate exists to tell social checks from
+    // non-social ones, not to police vocabulary — and an LLM that has internalised 5e will reach for
+    // "Persuasion" whatever system is loaded. Refusing it there dropped the relationship modifier
+    // silently: no error, just a roll that came out wrong at the table. "Athletics" above is the case
+    // that matters, and it is still correctly excluded in both systems.
+    [InlineData(RulesetSystem.Pathfinder2e, "Persuasion", true)]
+    [InlineData(RulesetSystem.Pathfinder2e, "Insight", true)]
     public void SocialSkillGating_UsesPerRulesetSkillLists(string system, string skill, bool expected)
     {
         var action = new RulesetAction
