@@ -153,6 +153,64 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
         Assert.Contains(target.Exits, e => e.TargetLocationId == sourceId);
     }
 
+    /// <summary>
+    /// Regression guard for the "Schrodinger's world" fix: location_update's own doc comment promised
+    /// "Create-and-link a new location" but the handler used to unconditionally fail when LocationId
+    /// didn't exist. This locks in the actual create-on-the-fly path — a DM narrating "an hour into the
+    /// woods" should be able to spawn a real child Location (not just a POI string on the parent region)
+    /// in the same take_turn batch, with the reverse exit auto-repaired.
+    /// </summary>
+    [Fact]
+    public async Task LocationUpdate_CreatesNewLocation_WhenMissingAndNameProvided()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var parentId = "locations/region-" + System.Guid.NewGuid().ToString("N")[..8];
+        var newId = "locations/hollow-" + System.Guid.NewGuid().ToString("N")[..8];
+
+        var parent = new Location { Id = parentId, Name = "Sword Coast", Type = LocationType.Region, Exits = [] };
+        await session.StoreAsync(parent);
+        await session.SaveChangesAsync();
+
+        var handler = new LocationUpdateHandler();
+        var locations = new Dictionary<string, Location> { { parentId, parent } };
+        var ctx = CreateContext(session, locations, new CampaignConfig { AutoRepairLocationConnectivity = true });
+
+        var result = await handler.ApplyAsync(
+            new LocationUpdate
+            {
+                LocationId = newId,
+                Name = "Hidden Forest Hollow",
+                Description = "A secluded hollow a kilometer into the woods, tracks obscured.",
+                Type = LocationType.Wilderness,
+                ParentLocationId = parentId,
+                AddExit = new LocationExit(parentId, "Back toward the High Road")
+            },
+            ctx);
+
+        Assert.True(result.Success);
+        Assert.Contains("Created new location", result.Message);
+        Assert.True(locations.TryGetValue(newId, out var created));
+        Assert.Equal("Hidden Forest Hollow", created!.Name);
+        Assert.Equal(LocationType.Wilderness, created.Type);
+        Assert.Equal(parentId, created.ParentLocationId);
+        Assert.Contains(created.Exits, e => e.TargetLocationId == parentId);
+        Assert.Contains(parent.Exits, e => e.TargetLocationId == newId);
+    }
+
+    [Fact]
+    public async Task LocationUpdate_MissingLocation_FailsWithoutName()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var missingId = "locations/ghost-" + System.Guid.NewGuid().ToString("N")[..8];
+        var handler = new LocationUpdateHandler();
+        var ctx = CreateContext(session, new Dictionary<string, Location>(), new CampaignConfig());
+
+        var result = await handler.ApplyAsync(new LocationUpdate { LocationId = missingId, NewState = "Collapsed" }, ctx);
+
+        Assert.False(result.Success);
+        Assert.Contains("not found", result.Message);
+    }
+
     private static ChangeContext CreateContext(
         Raven.Client.Documents.Session.IAsyncDocumentSession session,
         Dictionary<string, Location> locations,

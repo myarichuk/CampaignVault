@@ -152,7 +152,9 @@ After arriving at a location:
 
 ## Wayfinding & Landmarks
 
-If fleeing/camping/hiding at a specific spot inside a broad location (not a marked landmark), set `poiName`/`poiDetails` on the activity or location update:
+Two different moves depending on how far/long/exposed the departure is — don't default to the lighter one just because it's a single field:
+
+**Staying inside the current location** (fleeing to a corner, hiding behind the bar, ducking into an alcove) — set `poiName`/`poiDetails` on the activity or location update. This is flavor persisted on the *existing* location, not a new place:
 
 ```json
 {
@@ -163,7 +165,34 @@ If fleeing/camping/hiding at a specific spot inside a broad location (not a mark
 }
 ```
 
-This lets tactical detail (cover, water, fire) persist as part of the world, not pure narration.
+**Leaving to a real, distinct spot** (an hour into the woods, off the road to make camp, down into an unmapped ravine) — `location_update` create-and-link a real child `Location` in the same `take_turn` batch, then `travel`/`activity` into it. Don't staple this onto the parent Region/Wilderness as a PoI — a giant location used as a catch-all destination misrepresents who else is "present" there (anyone else nominally at that same broad location shows up in the scene) and never gets its own exits/danger tuned for the spot:
+
+```json
+{
+  "changes": [
+    {
+      "$type": "location_update",
+      "locationId": "locations/sword-coast-hidden-hollow",
+      "name": "Hidden Forest Hollow",
+      "description": "A secluded hollow a kilometer into the trees, screened from the road.",
+      "type": "Wilderness",
+      "parentLocationId": "locations/sword-coast",
+      "dangerModifier": -10,
+      "addExit": { "targetLocationId": "locations/sword-coast", "description": "Back toward the High Road" }
+    },
+    {
+      "$type": "travel",
+      "characterId": "chars/lyra",
+      "destinationLocationId": "locations/sword-coast-hidden-hollow",
+      "travelCostHoursOverride": 0.5,
+      "encounterRiskModifier": -15
+    }
+  ],
+  "narrative": "Lyra leaves the road, picking a hidden hollow to camp for the night."
+}
+```
+
+`location_update` on a `locationId` that doesn't exist yet creates it (requires `name`; `type` defaults to `Room` if omitted — set it explicitly for outdoor spots). Pair `parentLocationId` with `addExit` back to where the party came from — with `autoRepairLocationConnectivity` on (the campaign default), the reverse exit is added on the target automatically, so both `travel` (this call) and a future return trip resolve correctly. Encounters remain possible both ways: `encounterRiskModifier` on the `travel` itself, and `securityModifier` on a follow-up `rest` change for risk while lingering there.
 
 ## Time & Needs
 

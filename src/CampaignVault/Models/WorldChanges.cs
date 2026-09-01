@@ -682,21 +682,22 @@ public class RulesetAction : WorldChange
 }
 
 /// <summary>
-/// Create a new location and automatically link it to an existing location.
-/// This prevents orphaned locations and counters LLM laziness.
-/// </summary>
-/// <summary>
-/// Apply granular updates to an existing location.
-/// Useful for opening new paths without full upserts.
+/// Create a new location and automatically link it to an existing location (prevents orphaned
+/// locations and counters LLM laziness), or apply granular field updates to an existing one —
+/// useful for opening new paths without a full upsert.
 /// </summary>
 [Description("Create-and-link a new location, or apply granular field updates to an existing one.")]
 public class LocationUpdate : WorldChange
 {
-    [Description("The ID of the location to update.")]
+    [Description("The ID of the location to update, or to create if it doesn't exist yet (e.g. 'locations/hidden-forest-hollow'). Creating requires 'name'; pair with parentLocationId and/or addExit to link it into the map instead of leaving it orphaned.")]
     [JsonPropertyName("locationId")]
     public string LocationId { get; set; } = null!;
 
-    [Description("Append a single exit if the target is not already present.")]
+    [Description("Creation only: the location's broad type (Region/Settlement/District/Building/Room/Wilderness). Defaults to Room if omitted. Ignored when updating an existing location.")]
+    [JsonPropertyName("type")]
+    public LocationType? Type { get; set; }
+
+    [Description("Append a single exit if the target is not already present. When creating a new location, add an exit back to wherever the party came from — if autoRepairLocationConnectivity is on (campaign default), the reverse exit is added automatically on the target.")]
     [JsonPropertyName("addExit")]
     public LocationExit? AddExit { get; set; }
 

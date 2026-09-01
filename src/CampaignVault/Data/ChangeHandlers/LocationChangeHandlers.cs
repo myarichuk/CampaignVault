@@ -9,20 +9,36 @@ public class LocationUpdateHandler : IWorldChangeHandler
     public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
     {
         var lu = (LocationUpdate)change;
-        
+        var createdNew = false;
+
         if (!context.Locations.TryGetValue(lu.LocationId, out var loc))
         {
             loc = await context.Session.LoadAsync<Location>(lu.LocationId, ct);
             if (loc == null)
             {
-                var hints = await context.SuggestLocationMatchAsync(lu.LocationId);
-                var msg = $"Location {lu.LocationId} not found.";
-                if (hints != null)
+                if (string.IsNullOrWhiteSpace(lu.Name))
                 {
-                    msg += $" Did you mean: {hints}?";
+                    var hints = await context.SuggestLocationMatchAsync(lu.LocationId);
+                    var msg = $"Location {lu.LocationId} not found. Pass 'name' to create it as a new location instead.";
+                    if (hints != null)
+                    {
+                        msg += $" Did you mean: {hints}?";
+                    }
+
+                    return ChangeHandlerResult.Failure(msg);
                 }
 
-                return ChangeHandlerResult.Failure(msg);
+                loc = new Location
+                {
+                    Id = lu.LocationId,
+                    Name = lu.Name,
+                    Description = lu.Description ?? "",
+                    Type = lu.Type ?? LocationType.Room,
+                    CampaignName = context.CampaignName,
+                    LastUpdated = DateTime.UtcNow
+                };
+                await context.Session.StoreAsync(loc, ct);
+                createdNew = true;
             }
             context.RegisterNewLocation(loc);
         }
@@ -214,7 +230,9 @@ public class LocationUpdateHandler : IWorldChangeHandler
             }
         }
         
-        return ChangeHandlerResult.Ok;
+        return createdNew
+            ? new ChangeHandlerResult(true, $"Created new location {loc.Id} ('{loc.Name}').")
+            : ChangeHandlerResult.Ok;
     }
 
     private static async Task TryAutoRepairReverseExitAsync(
