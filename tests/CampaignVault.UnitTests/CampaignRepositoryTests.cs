@@ -2662,8 +2662,14 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         }
     }
 
+    /// <summary>
+    /// Regression guard for the token-bloat/accuracy fix: presence used to expand to every sub-location
+    /// under the requested location (up to 20), so a broad Region scene could list NPCs scattered across
+    /// unrelated child locations as "present" — wrong for narration and expensive on the wire. Presence
+    /// is now scoped to the exact requested location only.
+    /// </summary>
     [Fact]
-    public async Task GetScene_Includes_Npcs_From_Child_Locations()
+    public async Task GetScene_Excludes_Npcs_From_Child_Locations()
     {
         var repo = _fixture.CreateRepository();
         var parentId = "locations/p-loc-" + Guid.NewGuid();
@@ -2702,7 +2708,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         {
             var scene = await repo.GetSceneAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), parentId);
             Assert.Contains(scene.PresentNPCs, n => n.Id == char1Id);
-            Assert.Contains(scene.PresentNPCs, n => n.Id == char2Id);
+            Assert.DoesNotContain(scene.PresentNPCs, n => n.Id == char2Id);
         }
     }
 

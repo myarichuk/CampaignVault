@@ -135,14 +135,17 @@ public class CampaignRepository
                 var ambientResult = await RunSimulationTickAsync(session, effective, time, elapsedDays);
                 if (ambientResult.Deltas.Count > 0)
                 {
+                    // Deliberately NOT merged into result.InvolvedEntities: this tick applies ambient
+                    // need/memory decay to every keepAlive character in the campaign (not just anyone
+                    // near the acting character), so unioning its touched IDs in here would balloon
+                    // InvolvedEntities — and everything downstream that reads it (the auto-logged
+                    // SceneCommit event's Involved list, RefreshInvolvedEntitiesAsync's auto-refresh
+                    // candidates) — with the entire campaign roster on every commit that crosses a day
+                    // boundary. AmbientDeltas is still recorded below for state-correctness consumers
+                    // (structuralIds pressure-cooldown clearing, delta-trim "did this NPC change"
+                    // checks via ctx.AppliedChanges) that need to know decay happened without treating
+                    // it as this turn's narrative involvement.
                     result.AmbientDeltas.AddRange(ambientResult.Deltas);
-                    var ambientInvolved = ambientResult.Deltas
-                        .SelectMany(_changeDispatcher.ExtractInvolvedEntityIds)
-                        .Where(id => !string.IsNullOrEmpty(id));
-                    result.InvolvedEntities = result.InvolvedEntities
-                        .Concat(ambientInvolved)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToList();
                 }
 
                 result.AmbientNarrativeSummaries.AddRange(
@@ -230,7 +233,7 @@ public class CampaignRepository
     {
         var campaignSession = new CampaignSession(session, effectiveCampaign);
         var regionId = location.ParentLocationId ?? locationId;
-        var targetIds = await GetSceneTargetIdsAsync(session, locationId, effectiveCampaign);
+        var targetIds = GetSceneTargetIds(locationId);
         var npcsFromIndex = await LoadSceneNpcsFromIndexAsync(session, targetIds);
         var npcsFromSimulation = await LoadSceneNpcsFromSimulationAsync(session, targetIds);
         var rumors = (await QueryRumorsAsync(session, null, regionId, null, 5, effectiveCampaign)).ToList();
@@ -298,16 +301,13 @@ public class CampaignRepository
         };
     }
 
-    private async Task<List<string>> GetSceneTargetIdsAsync(
-        IAsyncDocumentSession session,
-        string locationId,
-        string effectiveCampaign)
-    {
-        var subLocations = (await QueryLocationsAsync(session, null, null, locationId, 20, effectiveCampaign)).ToList();
-        var targetIds = new List<string> { locationId };
-        targetIds.AddRange(subLocations.Select(l => l.Id));
-        return targetIds;
-    }
+    /// <summary>
+    /// NPC presence is scoped to the exact requested location only — not its sub-locations. A broad
+    /// Region-type location can have dozens of child locations scattered across it, and pulling every
+    /// NPC anywhere under the region into PresentNPCs both misrepresents who's actually in the scene
+    /// and balloons the response with unrelated NPCs' full stats/equipment.
+    /// </summary>
+    private static List<string> GetSceneTargetIds(string locationId) => [locationId];
 
     private async Task<List<Character>> LoadSceneNpcsFromIndexAsync(IAsyncDocumentSession session,
         IReadOnlyCollection<string> targetIds)
@@ -338,7 +338,7 @@ public class CampaignRepository
     /// </summary>
     public async Task<List<Character>> GetPresentNpcsAsync(IAsyncDocumentSession session, string locationId, string campaignName)
     {
-        var targetIds = await GetSceneTargetIdsAsync(session, locationId, campaignName);
+        var targetIds = GetSceneTargetIds(locationId);
         var npcsFromIndex = await LoadSceneNpcsFromIndexAsync(session, targetIds);
         var npcsFromSimulation = await LoadSceneNpcsFromSimulationAsync(session, targetIds);
         return npcsFromIndex

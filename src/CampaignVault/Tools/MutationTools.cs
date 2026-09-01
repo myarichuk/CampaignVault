@@ -1533,6 +1533,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     {
         var result = ctx.Result;
 
+        DedupeScenesCoveredByFullScene(result);
         DedupeNpcsCoveredByScenes(result);
         DedupeRumorsCoveredByWorldState(result);
         PopulateQuerySuggestions(result);
@@ -1597,6 +1598,30 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     }
 
     /// <summary>
+    /// FullScene (IncludeFullSceneDetailAsync, driven by FullDetailLocationId) fetches the requested
+    /// location via GetSceneAsync independently of RefreshInvolvedEntitiesAsync's Scenes[] pass — so
+    /// when that same location is also auto-refreshed into Scenes[] (e.g. it's the destination of this
+    /// turn's travel change), the location's exits/rumors/recent-events/NPC roster gets sent twice on
+    /// the wire, once trimmed (Scenes[]) and once at full detail (FullScene). FullScene is always the
+    /// richer copy (untrimmed, plus items/memories/stats the Scenes[] entry strips), so the Scenes[]
+    /// entry for that location is pure duplication and safe to drop.
+    /// </summary>
+    private static void DedupeScenesCoveredByFullScene(TurnResult result)
+    {
+        if (result.FullScene?.Location?.Id is not { } fullSceneLocationId
+            || result.Scenes is not { Count: > 0 } scenes)
+        {
+            return;
+        }
+
+        var remaining = scenes
+            .Where(s => !fullSceneLocationId.Equals(s.Location?.Id, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        result.Scenes = remaining.Count > 0 ? remaining : null;
+    }
+
+    /// <summary>
     /// An NPC present in a refreshed Scenes[].PresentNPCs entry (NpcPresenceSummary) already carries
     /// everything the parallel Npcs[] entry (NpcSummaryView) would — see RefreshInvolvedEntitiesAsync,
     /// which builds the two independently with no cross-check — so a duplicate top-level Npcs[] entry
@@ -1608,20 +1633,40 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     /// </summary>
     private static void DedupeNpcsCoveredByScenes(TurnResult result)
     {
-        if (result.Npcs is not { Count: > 0 } npcs || result.Scenes is not { Count: > 0 } scenes)
+        if (result.Npcs is not { Count: > 0 } npcs)
         {
             return;
         }
 
         var sceneNpcIds = new HashSet<string>(
-            scenes.SelectMany(s => s.PresentNPCs.Select(n => n.Id)),
+            (result.Scenes ?? []).SelectMany(s => s.PresentNPCs.Select(n => n.Id))
+                .Concat((result.FullScene?.PresentNPCs ?? []).Select(n => n.Id)),
             StringComparer.OrdinalIgnoreCase);
+
+        if (sceneNpcIds.Count == 0)
+        {
+            return;
+        }
 
         var toDrop = npcs.Where(n => sceneNpcIds.Contains(n.CharacterId)).ToList();
         if (toDrop.Count == 0)
         {
             return;
         }
+
+        NpcPresenceSummary MergeInitiative(NpcPresenceSummary n, NpcSummaryView dropped) =>
+            n.Id.Equals(dropped.CharacterId, StringComparison.OrdinalIgnoreCase)
+                && n.BehavioralTension == 0
+                && (n.ActiveInitiatives?.Count ?? 0) == 0
+                && n.TurnIntent == null
+                ? n with
+                {
+                    BehavioralTension = dropped.Initiative!.BehavioralTension,
+                    ActiveInitiatives = dropped.Initiative.ActiveInitiatives,
+                    RelevantMemories = dropped.Initiative.RelevantMemories,
+                    TurnIntent = dropped.Initiative.TurnIntent
+                }
+                : n;
 
         foreach (var dropped in toDrop)
         {
@@ -1630,22 +1675,14 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 continue;
             }
 
-            foreach (var scene in scenes)
+            foreach (var scene in result.Scenes ?? [])
             {
-                scene.PresentNPCs = scene.PresentNPCs
-                    .Select(n => n.Id.Equals(dropped.CharacterId, StringComparison.OrdinalIgnoreCase)
-                        && n.BehavioralTension == 0
-                        && (n.ActiveInitiatives?.Count ?? 0) == 0
-                        && n.TurnIntent == null
-                        ? n with
-                        {
-                            BehavioralTension = dropped.Initiative.BehavioralTension,
-                            ActiveInitiatives = dropped.Initiative.ActiveInitiatives,
-                            RelevantMemories = dropped.Initiative.RelevantMemories,
-                            TurnIntent = dropped.Initiative.TurnIntent
-                        }
-                        : n)
-                    .ToList();
+                scene.PresentNPCs = scene.PresentNPCs.Select(n => MergeInitiative(n, dropped)).ToList();
+            }
+
+            if (result.FullScene != null)
+            {
+                result.FullScene.PresentNPCs = result.FullScene.PresentNPCs.Select(n => MergeInitiative(n, dropped)).ToList();
             }
         }
 

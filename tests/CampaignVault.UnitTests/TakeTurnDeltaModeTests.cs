@@ -144,6 +144,76 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.Contains(commitResult.AmbientDeltas, d => d is NeedChange nc && nc.CharacterId == charId);
     }
 
+    /// <summary>
+    /// Regression guard for the token-bloat fix: before this fix, every entity touched by the ambient
+    /// simulation tick (need/memory decay applied campaign-wide on a day-boundary crossing) got unioned
+    /// into CommitResult.InvolvedEntities — which feeds the auto-logged SceneCommit event's Involved
+    /// list and RefreshInvolvedEntitiesAsync's auto-refresh candidates. On a real campaign with a dozen+
+    /// keepAlive NPCs, this meant a single-character rest/travel action could drag the entire campaign
+    /// roster (companions, faction NPCs, their locations) into the response as "involved", ballooning
+    /// take_turn payloads to 40-50KB and rendering unrelated locations' full scene dossiers. Ambient
+    /// drift must still be applied and visible via AmbientDeltas (asserted above) — it just must not be
+    /// treated as this turn's narrative involvement.
+    /// </summary>
+    [Fact]
+    public async Task StageChangesAsync_AmbientDeltas_DoNotPolluteInvolvedEntities()
+    {
+        var slug = NewSlug("ambient-involved");
+        var repo = _fixture.CreateRepository(
+            engineOverride: new DefaultSimulationEngine(new ISimulationRule[] { new NeedsAccumulationRule() }),
+            overrides: b => b.RegisterInstance(new EncounterResolver(() => 1.0)).As<EncounterResolver>());
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var innId = $"locations/{slug}-inn";
+        var otherLocId = $"locations/{slug}-far-away";
+        var charId = $"chars/{slug}-companion";
+        var bystanderId = $"chars/{slug}-bystander";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = innId, Name = "Inn" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = otherLocId, Name = "Far Away" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = charId,
+                Name = "Rest Test Companion",
+                IsPartyCompanion = true,
+                CurrentLocationId = innId,
+                MaxHp = 10,
+                CurrentHp = 10
+            });
+            // A keepAlive NPC unrelated to this commit — the simulation tick still ticks its needs
+            // (NeedsAccumulationRule applies to every ScheduledNpc), but it must not surface as
+            // "involved" in a commit that never touched it directly.
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = bystanderId,
+                Name = "Unrelated Bystander",
+                IsPartyCompanion = true,
+                CurrentLocationId = otherLocId,
+                MaxHp = 10,
+                CurrentHp = 10
+            });
+            await session.SaveChangesAsync();
+        }
+
+        using var actSession = _fixture.Store.OpenAsyncSession();
+        var actCs = _fixture.CreateCampaignSession(actSession, slug);
+        var commitResult = await repo.StageChangesAsync(actCs, new WorldChange[]
+        {
+            new RestChange { CharacterId = charId, LocationId = innId, IntendedHours = 30, SecurityModifier = 0 }
+        });
+        await actSession.SaveChangesAsync();
+
+        Assert.True(commitResult.Success, string.Join("; ", commitResult.Summary));
+        Assert.Contains(commitResult.AmbientDeltas, d => d is NeedChange nc && nc.CharacterId == bystanderId);
+        Assert.Contains(charId, commitResult.InvolvedEntities);
+        Assert.DoesNotContain(bystanderId, commitResult.InvolvedEntities);
+        Assert.DoesNotContain(otherLocId, commitResult.InvolvedEntities);
+    }
+
     [Fact]
     public async Task DeltaMode_PartyAndWorldState_OnlyReflectThisTurnsChanges()
     {
@@ -260,6 +330,49 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
         var companionSummary = Assert.Single(data.Npcs ?? [], n => n.CharacterId == companionId);
         Assert.NotNull(companionSummary.Initiative);
+    }
+
+    /// <summary>
+    /// Regression guard for the token-bloat fix: FullDetailLocationId populates FullScene via
+    /// GetSceneAsync completely independently of RefreshInvolvedEntitiesAsync's Scenes[] pass. When the
+    /// requested full-detail location is also this turn's involved location (e.g. a travel
+    /// destination), both sections used to render the same location's exits/rumors/recent-events/NPC
+    /// roster — once trimmed in Scenes[], once at full detail in FullScene — doubling that location's
+    /// contribution to the response for zero informational gain. DedupeScenesCoveredByFullScene should
+    /// drop the redundant Scenes[] entry since FullScene is always the richer copy.
+    /// </summary>
+    [Fact]
+    public async Task FullDetailLocationId_DedupesAgainstAutoRefreshedScenes()
+    {
+        var slug = NewSlug("fullscene-dedupe");
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-dest";
+        var pcId = $"chars/{slug}-pc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            var repo = _fixture.CreateRepository();
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Destination" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new TravelChange { CharacterId = pcId, DestinationLocationId = locId }],
+            Narrative = "The PC arrives at the destination.",
+            FullDetailLocationId = locId
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        var data = result.Data!;
+        Assert.NotNull(data.FullScene);
+        Assert.Equal(locId, data.FullScene!.Location.Id);
+        Assert.DoesNotContain(data.Scenes ?? [], s => s.Location.Id.Equals(locId, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
