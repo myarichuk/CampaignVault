@@ -1,3 +1,4 @@
+using System.Reflection;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
@@ -319,6 +320,20 @@ public sealed class WorldChangeDispatcher(
     /// mistake or otherwise) — both already call CampaignTime.AdvanceHours themselves via their own
     /// handlers, so including them here would double-advance the clock and double-accumulate needs
     /// for the same stretch of time.
+    ///
+    /// Only characters actually on stage this batch (named via one of this turn's changes' CharacterId/
+    /// TargetId/TargetIds/Involved fields — see <see cref="CollectOnScreenCharacterIds"/>) get nudged,
+    /// not everyone in context.Characters: that dictionary is a preload cache and also holds anyone
+    /// merely *referenced* elsewhere in the payload (e.g. a knowledge_update's RelatedEntityIds pointing
+    /// at a dead/absent character mentioned in the conversation) — a background character who wasn't
+    /// part of this beat shouldn't accrue hunger for a scene they weren't in, and doing so used to leak
+    /// their ID into InvolvedEntities and the next auto-refresh's Npcs[] as if they were narratively
+    /// relevant this turn.
+    ///
+    /// Applies deltas directly (bypassing NeedChangeHandler/DispatchMutationAsync's per-need
+    /// context.RecordMessage) and emits one collapsed summary line for the whole nudge instead of one
+    /// line per need per character — same numeric effect, without flooding the LLM-facing summary with
+    /// near-zero-magnitude ambient noise on every commit that carries MinutesElapsed.
     /// </summary>
     private async Task ApplyMicroTimeNudgeAsync(
         ChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
@@ -331,29 +346,49 @@ public sealed class WorldChangeDispatcher(
             return;
         }
 
-        var days = minutesElapsed / 1440.0;
-        var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, days);
-
-        foreach (var character in context.Characters.Values)
+        var onScreenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var change in changes)
         {
-            if (character.Needs is null)
+            CollectOnScreenCharacterIds(change, onScreenIds);
+        }
+
+        if (onScreenIds.Count > 0)
+        {
+            var days = minutesElapsed / 1440.0;
+            var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, days);
+            var nudgedCharacterIds = new List<string>();
+
+            foreach (var character in context.Characters.Values)
             {
-                continue;
+                if (character.Needs is null || !onScreenIds.Contains(character.Id))
+                {
+                    continue;
+                }
+
+                var updatedNeeds = new Dictionary<string, float>(character.Needs.ActiveNeeds);
+                var changedAny = false;
+                foreach (var (need, delta) in perDayDeltas)
+                {
+                    var current = updatedNeeds.GetValueOrDefault(need, 0f);
+                    var effective = Math.Min(delta, 100f - current);
+                    if (effective > 0.0001f)
+                    {
+                        updatedNeeds[need] = current + effective;
+                        changedAny = true;
+                    }
+                }
+
+                if (changedAny)
+                {
+                    character.Needs.ActiveNeeds = updatedNeeds;
+                    nudgedCharacterIds.Add(character.Id);
+                }
             }
 
-            foreach (var (need, delta) in perDayDeltas)
+            if (nudgedCharacterIds.Count > 0)
             {
-                var current = character.Needs.ActiveNeeds.GetValueOrDefault(need, 0f);
-                var effective = Math.Min(delta, 100f - current);
-                if (effective > 0.0001f)
-                {
-                    await DispatchMutationAsync(context, new NeedChange
-                    {
-                        CharacterId = character.Id,
-                        Need = need,
-                        Delta = effective
-                    });
-                }
+                context.RecordMessage(
+                    $"Ambient needs drift ({minutesElapsed:0.##} min passing) applied to: {string.Join(", ", nudgedCharacterIds)}.");
             }
         }
 
@@ -361,6 +396,48 @@ public sealed class WorldChangeDispatcher(
         {
             var time = await getCurrentTimeAsync();
             time.AdvanceHours(minutesElapsed / 60);
+        }
+    }
+
+    /// <summary>
+    /// Narrow allowlist of "actual participant" fields (as opposed to merely-referenced ones like
+    /// RelatedEntityIds/SourceEventIds) used by <see cref="ApplyMicroTimeNudgeAsync"/> to decide who was
+    /// genuinely on stage this batch.
+    /// </summary>
+    private static readonly HashSet<string> OnScreenIdPropertyNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CharacterId", "TargetId", "TargetIds", "Involved"
+    };
+
+    private static void CollectOnScreenCharacterIds(WorldChange change, HashSet<string> ids)
+    {
+        foreach (var prop in change.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!OnScreenIdPropertyNames.Contains(prop.Name))
+            {
+                continue;
+            }
+
+            if (prop.PropertyType == typeof(string))
+            {
+                if (prop.GetValue(change) is string s && s.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+                {
+                    ids.Add(s);
+                }
+            }
+            else if (typeof(System.Collections.IEnumerable).IsAssignableFrom(prop.PropertyType))
+            {
+                if (prop.GetValue(change) is System.Collections.IEnumerable list)
+                {
+                    foreach (var item in list)
+                    {
+                        if (item is string s2 && s2.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ids.Add(s2);
+                        }
+                    }
+                }
+            }
         }
     }
 

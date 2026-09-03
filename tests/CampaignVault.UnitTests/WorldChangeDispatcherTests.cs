@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Data.ChangeHandlers;
@@ -978,6 +979,55 @@ public class WorldChangeDispatcherTests
         Assert.Equal(0f, pc.Needs!.ActiveNeeds["hunger"]);
         Assert.Equal(0, time.TotalDaysElapsed);
         Assert.Equal(6, time.Hour);
+    }
+
+    [Fact]
+    public async Task Dispatcher_MinutesElapsed_OnlyNudgesOnScreenCharacters_AndCollapsesSummaryToOneLine()
+    {
+        // chars/pc1 is on stage (named on the HpChange itself). chars/offscreen is preloaded into
+        // context.Characters (simulating e.g. a knowledge_update's RelatedEntityIds pulling in someone
+        // merely referenced in conversation, like a dead relative) but never appears on any change's
+        // CharacterId/TargetId/TargetIds/Involved field, so the ambient nudge must skip them entirely.
+        var pc = new Character
+        {
+            Id = "chars/pc1",
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 0f } }
+        };
+        var offscreen = new Character
+        {
+            Id = "chars/offscreen",
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 0f } }
+        };
+
+        var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(hpHandler, new NeedChangeHandler());
+
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character> { ["chars/pc1"] = pc, ["chars/offscreen"] = offscreen });
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 1440 }], // a full day
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.True(pc.Needs!.ActiveNeeds["hunger"] > 0f);
+        Assert.Equal(0f, offscreen.Needs!.ActiveNeeds["hunger"]);
+
+        // One collapsed line, not one "Need 'x' adjusted..." line per need.
+        var ambientLines = result.Summary.Where(s => s.Contains("Ambient needs drift")).ToList();
+        Assert.Single(ambientLines);
+        Assert.Contains("chars/pc1", ambientLines[0]);
+        Assert.DoesNotContain("chars/offscreen", ambientLines[0]);
+        Assert.DoesNotContain(result.Summary, s => s.StartsWith("Need '"));
     }
 
     [Fact]
