@@ -38,6 +38,14 @@ public class NeedsAccumulationRule : ISimulationRule
                 continue;
             }
 
+            // Dead characters don't get hungry. There's no persisted deceased/archived flag on
+            // Character (MaxHp can be 0 for entities that never had HP tracked at all, e.g. some
+            // non-combatant NPCs, so only skip once MaxHp confirms HP is actually tracked).
+            if (npc.MaxHp > 0 && npc.CurrentHp <= 0)
+            {
+                continue;
+            }
+
             // Accumulate core needs, but cap the delta so we don't emit meaningless " +120 when already at 100"
             // (CommitChangesAsync will still clamp, but this keeps summaries and rule output cleaner)
             void AddCappedNeed(string need, float baseAmount)
