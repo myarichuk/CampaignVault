@@ -227,7 +227,7 @@ Psychology (fear, pride, greed, loyalty) sets tone — never real-world social s
 ## Success Looks Like
 
 - Most turns are a single efficient `take_turn`.
-- Local rumors, gear, and appearance stay quiet on delta turns unless something actually changed them this turn (`rumor_evolves`/`rumor_create`, an equip/unequip, a mood/appearance edit) — you don't need to re-fetch to "keep them fresh."
+- Local rumors, gear, and appearance stay quiet on delta turns unless something actually changed them this turn (`$type: "rumor"` on an existing rumor, an equip/unequip, a mood/appearance edit) — you don't need to re-fetch to "keep them fresh."
 - Don't set `forceFullReseed: true` unless you actually need it (context was just compacted, or a fresh session start) — the engine already decides `mode: full` vs `delta` on its own each turn, and a same-location activity/POI update (e.g. walking to a different street in a town you're already in) stays delta-eligible on its own; you don't need to do anything to keep it lightweight.
 - Full dumps are rare and intentional.
 - Narration matches engine results, and NPC interactions feel psychology-driven, not arbitrary.

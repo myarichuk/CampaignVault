@@ -109,7 +109,7 @@ If the NPC learns something new (local rumors, PC background, strategic intel):
 }
 ```
 
-Local rumors on a scene refresh follow the same rule as gear/appearance: on a `mode: delta` turn, a scene's rumor list only includes rumors that were evolved (`rumor_evolves`) or created (`rumor_create`) this turn. An empty or shorter list doesn't mean rumors died out — it means none changed. Check `WorldState.ActiveRumors` (via `includeWorldState: true`) or `get_entity` for the full current picture.
+Local rumors on a scene refresh follow the same rule as gear/appearance: on a `mode: delta` turn, a scene's rumor list only includes rumors that changed state/text this turn (`$type: "rumor"`, evolving an *existing* rumor — new rumors are seeded via `world_build`, not a take_turn commit). An empty or shorter list doesn't mean rumors died out — it means none changed. Check `WorldState.ActiveRumors` (via `includeWorldState: true`) or `get_entity` for the full current picture.
 
 ## Social Checklist
 
