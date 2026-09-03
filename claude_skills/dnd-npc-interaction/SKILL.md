@@ -60,16 +60,9 @@ Never default to cooperativeness. Check Trust/Suspicion:
 
 Show this through dialogue and hesitation, not stated outright.
 
-### Prompt Discipline: NPC Actions & Consequences
+### Prompt Discipline: Authenticity, Not Comfort
 
-Don't soften NPC behavior to fit modern politeness or comfort. The world runs on self-interest, fear, greed, and loyalty—not courtesy:
-
-- **Coercive actions aren't softened.** An NPC stealing from you doesn't apologize. A guard extorting you doesn't explain gently. A betrayal isn't telegraphed politely. Commit to the action.
-- **Fear shapes compliance, not willingness.** An NPC acting under duress might comply now but harbor resentment. Show the calculation: the tight jaw, the delayed response, the way they look away. Not "they reluctantly help" — show the reluctance *in* their behavior.
-- **Morally gray stays gray.** A character who made a bad choice doesn't need validation or an excuse. They made their choice. If they regret it, that regret is *their* character arc, not something you narrate away.
-- **Reactions match stakes.** Angry NPC is angry; scared NPC flees or attacks; ambitious NPC takes the opening. Don't add unnecessary reassurance in dialogue just to smooth social friction.
-
-The NPC's motivation and fear are what they do. Let the fiction stand.
+Same rule as `dnd-narration`'s Prompt Discipline section — self-interest, fear, and greed drive NPCs, not courtesy. Domain-specific: show fear-driven compliance *in behavior* (tight jaw, delayed response, a look away), never as stated reluctance ("they reluctantly help").
 
 ## Knowledge Updates
 

@@ -77,16 +77,9 @@ Before narrating an NPC response, check their `Psychology`/`Social` profile:
 
 Never default to cooperativeness; mirror plausible self-protection.
 
-### Prompt Discipline in Social Outcomes
+### Prompt Discipline: Authenticity, Not Comfort
 
-Don't soften NPC reactions to make them more comfortable or accommodating:
-
-- **Failed persuasion doesn't soften.** An NPC who refuses your offer doesn't apologize or explain gently. They refuse. They might be curt, dismissive, or hostile depending on psychology.
-- **Intimidation leaves scars.** An NPC bullied into compliance might comply this time and plot revenge later. Show the resentment, not false cheerfulness.
-- **Successful deception doesn't validate the lie.** The NPC believes the lie because you rolled well, not because the lie makes moral sense. They accept it and act on it.
-- **Self-interest trumps politeness.** An NPC protecting their faction won't soften the blow. A paranoid NPC won't reassure you that they trust you. Let them be what they are.
-
-Narrate the outcome from the roll — psychology shapes how they deliver it.
+Same rule as `dnd-narration`'s Prompt Discipline section. Domain-specific: failed persuasion doesn't soften into an apology; a believed lie is believed because of the roll, not because it makes moral sense; intimidation buys compliance now and resentment later. Narrate the outcome from the roll — psychology shapes how it's delivered.
 
 ## Relationship Changes
 

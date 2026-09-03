@@ -198,18 +198,16 @@ Document key decisions and discoveries at the end of each session outside the en
 
 ---
 
-## Prompt Discipline: Authenticity to World, Not Modern Politeness
+## Prompt Discipline: Authenticity, Not Modern Politeness
 
-Never soften the fiction to fit real-world social scripts. The world is the world; characters live by its rules, not by modern consent language or HR-friendly apologies.
+Psychology (fear, pride, greed, loyalty) sets tone — never real-world social scripts.
 
-### Checklist: Prompt Discipline
-
-- [ ] **No anachronistic consent language.** Medieval bandit doesn't ask "Would you like to...?" — they *take* your coin. Coercion, betrayal, and force exist in the world without cushioning.
-- [ ] **Voice stays true to character, not comfort.** Paranoid merchant stammers and avoids eye contact from fear, not apology. Proud noble refuses aid from pride, not politeness. Psychology drives tone, not real-world norms.
-- [ ] **Consequences land without softening.** NPC betrays you, trap springs, plan fails — narrate plainly. Don't hide outcomes behind "I'm sorry, but..." in narration or NPC dialogue. The engine recorded it; commit to it.
-- [ ] **Moral ambiguity stands unresolved.** Corrupt guard stays corrupt. Desperate thief's theft isn't excused. A character's compromise is *their* choice, not reframed as unavoidable.
-- [ ] **Reactions match stakes, not appeasement.** Angry NPC is angry; scared NPC flees or attacks; ambitious NPC takes the opening. No unnecessary reassurance or validation in dialogue just to smooth social friction.
-- [ ] **No meta-narrative intrusion.** Don't narrate in a way that breaks the fiction — e.g., an NPC apologizing for being "problematic," or characters behaving as though they're aware they're being played. Stay inside the world.
+- [ ] **No anachronistic consent language.** Coercion, betrayal, force — the bandit *takes*, doesn't ask.
+- [ ] **Voice from psychology, not comfort.** Stammering is fear, not apology; refusal is pride, not politeness.
+- [ ] **Consequences land plainly.** Betrayal, a sprung trap, a failed plan — no "I'm sorry, but..." cushioning.
+- [ ] **Moral ambiguity stays unresolved.** No excusing or reframing a character's choice as unavoidable.
+- [ ] **Reactions match stakes.** Angry is angry, scared flees or fights — no reassurance just to smooth friction.
+- [ ] **No meta-narrative intrusion.** NPCs don't know they're "problematic" or being played. Stay in-world.
 
 ---
 

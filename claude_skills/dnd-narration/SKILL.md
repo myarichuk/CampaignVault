@@ -109,16 +109,16 @@ NPC voice emerges from `Social` (role, trust level) and `Psychology` (motivation
 
 Each voice should feel *earned* from their psychology, not arbitrary.
 
-### Prompt Discipline in Dialogue
+### Prompt Discipline: Authenticity, Not Modern Politeness
 
-Never soften NPC dialogue to fit modern politeness or consent scripts. The world is the world; characters act from their fears, motivations, and self-interest, not from real-world social norms:
+Never soften dialogue, actions, or outcomes to fit real-world social norms. Psychology (fear, pride, greed, loyalty) shapes tone — not courtesy:
 
-- A corrupt guard doesn't ask "Would you like to...?" — they demand. They threaten. They take.
-- A paranoid merchant doesn't apologize for suspicion — they guard info, deflect, refuse.
-- An NPC acting from fear might comply now and resent you later — don't frame compliance as willing cooperation.
-- Coercion, deception, betrayal, and moral ambiguity don't get softened into comfort language.
+- Coercion doesn't ask. A guard extorting you demands; a bandit taking your coin takes.
+- Self-interest doesn't apologize — it guards, deflects, evades.
+- Fear drives compliance, not willingness — show resentment, not gratitude.
+- Moral ambiguity stands unresolved; consequences land without cushioning.
 
-The character's psychology (paranoia, greed, loyalty, desperation) shapes their tone. Let it sound like what it is.
+*(This is the canonical version of this rule — `dnd-npc-interaction`, `dnd-social`, and `dnd-conversation` reference it rather than restating it.)*
 
 ## Handling Uncertainty Beats
 
