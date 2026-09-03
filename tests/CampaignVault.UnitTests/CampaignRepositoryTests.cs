@@ -2954,7 +2954,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task GetScene_Merges_Global_Need_Descriptors_With_Npc_Local_Descriptors_Correctly()
+    public async Task GetScene_SplitsGlobalNeedDescriptorsIntoLegend_NpcLocalDescriptorsStayOnNpc()
     {
         var repo = _fixture.CreateRepository();
         var locId = "locations/desc-loc-" + Guid.NewGuid();
@@ -2993,13 +2993,16 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             var npcSummary = scene.PresentNPCs.FirstOrDefault(n => n.Id == charId);
             Assert.NotNull(npcSummary);
 
-            // Check hunger: overridden by NPC specific hunger
+            // NPC-specific override stays on the per-NPC dict.
             Assert.True(npcSummary.NeedDescriptors.ContainsKey("hunger"));
             Assert.Equal("NPC specific hunger", npcSummary.NeedDescriptors["hunger"]);
 
-            // Check tiredness: falls back to global "A bit sleepy"
-            Assert.True(npcSummary.NeedDescriptors.ContainsKey("tiredness"));
-            Assert.Equal("A bit sleepy", npcSummary.NeedDescriptors["tiredness"]);
+            // No override for "tiredness" on this NPC — it's not duplicated per-NPC anymore, it's only
+            // in the scene-level legend (sent once, not once per present NPC).
+            Assert.False(npcSummary.NeedDescriptors.ContainsKey("tiredness"));
+            Assert.True(scene.NeedDescriptorLegend.ContainsKey("tiredness"));
+            Assert.Equal("A bit sleepy", scene.NeedDescriptorLegend["tiredness"]);
+            Assert.True(scene.NeedDescriptorLegend.ContainsKey("hunger"));
         }
     }
 

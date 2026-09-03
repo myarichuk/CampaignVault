@@ -69,6 +69,14 @@ public class SceneView
     public IEnumerable<RumorSummary> LocalRumors { get; set; } = [];
 
     /// <summary>
+    /// Campaign-wide need descriptor text (e.g. what "stress"/"fatigue" mean) shared by every present
+    /// NPC — sent once here instead of duplicated inside each NpcPresenceSummary.NeedDescriptors, which
+    /// now carries only per-NPC custom overrides. Look here first for a need name missing from an NPC's
+    /// own NeedDescriptors.
+    /// </summary>
+    public Dictionary<string, string> NeedDescriptorLegend { get; set; } = [];
+
+    /// <summary>
     /// Lightweight summaries of items visible/present at this location. Not full Item documents —
     /// see ItemSummaryView.
     /// </summary>
@@ -142,6 +150,9 @@ public class SceneSummaryView
     public LocationDetailView Location { get; set; } = null!;
     public IEnumerable<NpcPresenceSummary> PresentNPCs { get; set; } = [];
     public IEnumerable<RumorSummary> LocalRumors { get; set; } = [];
+
+    /// <summary>See SceneView.NeedDescriptorLegend — same "sent once per scene, not per NPC" treatment.</summary>
+    public Dictionary<string, string> NeedDescriptorLegend { get; set; } = [];
     public bool ActiveCombat { get; set; }
 }
 

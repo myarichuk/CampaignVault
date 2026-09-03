@@ -50,7 +50,7 @@ public class SceneAssemblerTests
     }
 
     [Fact]
-    public void SceneNpcPresenceFactory_MergesDescriptors_And_UsesInitiativeEnrichment()
+    public void SceneNpcPresenceFactory_KeepsOnlyPersonalDescriptors_And_UsesInitiativeEnrichment()
     {
         var behavior = Substitute.For<INpcBehaviorSynthesizer>();
         var initiative = Substitute.For<INpcInitiativeService>();
@@ -101,11 +101,6 @@ public class SceneAssemblerTests
             {
                 ["chars/alice"] = [new Item { Id = "items/ring", Name = "Ring", HolderId = "chars/alice" }]
             },
-            GlobalNeedDescriptors = new Dictionary<string, string>
-            {
-                ["hunger"] = "Global hunger descriptor",
-                ["tiredness"] = "Global tiredness descriptor"
-            },
             Time = new CampaignTime { TotalDaysElapsed = 12 },
             Config = new CampaignConfig(),
             Campaign = new Campaign { Id = "campaigns/camp-a/meta", Name = "camp-a", DisplayName = "Camp A" }
@@ -113,8 +108,11 @@ public class SceneAssemblerTests
 
         var summary = Assert.Single(result);
         Assert.Equal("Idle at default location", summary.CurrentActivity);
+        // Only this NPC's own custom override travels on the per-NPC dict — campaign-wide descriptor
+        // text (e.g. "tiredness") now goes once into SceneView.NeedDescriptorLegend instead, so it isn't
+        // repeated for every present NPC.
         Assert.Equal("Personal hunger descriptor", summary.NeedDescriptors["hunger"]);
-        Assert.Equal("Global tiredness descriptor", summary.NeedDescriptors["tiredness"]);
+        Assert.DoesNotContain("tiredness", summary.NeedDescriptors.Keys);
         Assert.Equal(42.5, summary.BehavioralTension);
         Assert.Equal("Alice looks ready to bolt.", summary.BehavioralSummary);
         Assert.Single(summary.ActiveInitiatives!);

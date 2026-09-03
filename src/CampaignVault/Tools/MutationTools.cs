@@ -1356,6 +1356,13 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                             summary.Location = ApplyLocationDeltaTrim(summary.Location);
                         }
                         summary.LocalRumors = ApplyRumorDeltaTrim(ctx, summary.LocalRumors);
+                        if (ctx.Mode == TurnMode.Delta)
+                        {
+                            // Campaign-wide legend text (what "stress"/"fatigue" mean) doesn't change
+                            // turn to turn — the client already has it from the last full reseed or a
+                            // prior delta scene.
+                            summary.NeedDescriptorLegend = [];
+                        }
                         result.Scenes.Add(summary);
                     }
                     else

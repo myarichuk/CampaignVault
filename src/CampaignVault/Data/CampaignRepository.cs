@@ -2915,6 +2915,7 @@ public class CampaignRepository
             Location = scene.Location,
             PresentNPCs = scene.PresentNPCs ?? [],
             LocalRumors = scene.LocalRumors ?? [],
+            NeedDescriptorLegend = scene.NeedDescriptorLegend,
             ActiveCombat = scene.ActiveCombat != null
         };
 

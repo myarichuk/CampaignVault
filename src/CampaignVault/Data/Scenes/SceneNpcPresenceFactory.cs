@@ -23,11 +23,10 @@ public sealed class SceneNpcPresenceFactory
         foreach (var npc in context.PresentNpcs)
         {
             var knownNeeds = npc.Needs.ActiveNeeds.ToDictionary(kv => kv.Key, kv => kv.Value);
-            var needDescriptors = new Dictionary<string, string>(context.GlobalNeedDescriptors, StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in npc.Needs.NeedDescriptors)
-            {
-                needDescriptors[kv.Key] = kv.Value;
-            }
+            // Only this NPC's custom overrides travel here — campaign-wide descriptor text (e.g.
+            // stress/fatigue) is shared by every present NPC and goes once into the scene-level
+            // NeedDescriptorLegend instead (SceneAssembler.Assemble), not repeated per NPC.
+            var needDescriptors = npc.Needs.NeedDescriptors;
 
             var initiativeContext = new NpcInitiativeContext
             {

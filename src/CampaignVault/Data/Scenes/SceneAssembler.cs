@@ -38,6 +38,7 @@ public sealed class SceneAssembler
             }),
             PresentNPCs = [],
             LocalRumors = [],
+            NeedDescriptorLegend = [],
             VisibleItems = [],
             RecentEvents = [],
             RecentEventSummaries = [],
@@ -65,7 +66,6 @@ public sealed class SceneAssembler
             RecentSceneEvents = context.Events,
             RecentCampaignEvents = context.RecentCampaignEvents,
             ItemsByHolder = context.ItemsByHolder,
-            GlobalNeedDescriptors = context.GlobalNeedDescriptors,
             Time = context.Time,
             Config = context.Config,
             Campaign = context.Campaign
@@ -91,6 +91,7 @@ public sealed class SceneAssembler
             Location = LocationDetailView.From(context.Location),
             PresentNPCs = presenceSummaries,
             LocalRumors = context.Rumors.Select(r => new RumorSummary(r.Id, r.Subject, r.CurrentText, r.State)).ToList(),
+            NeedDescriptorLegend = new Dictionary<string, string>(context.GlobalNeedDescriptors),
             VisibleItems = context.Items.Select(ItemSummaryView.From).ToList(),
             RecentEvents = context.Events,
             RecentEventSummaries = context.Events.Select(EventSummaryView.From).ToList(),
