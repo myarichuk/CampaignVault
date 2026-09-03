@@ -455,6 +455,76 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
     }
 
     /// <summary>
+    /// Regression guard: a RulesetAction of a pure-check type (SkillCheck here — same as SavingThrow,
+    /// ContestedCheck, OpposedCheck) referencing the acting character must NOT keep gear/stats visible
+    /// in delta mode, since neither ruleset resolver ever emits gear/stat mutations for those action
+    /// types (unlike Attack/Spell/UseItem/Recovery, which can).
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_StripsUnchangedGear_WhenOnlyASkillCheckTouchesTheCharacter()
+    {
+        var slug = NewSlug("gearstrip-check");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-street";
+        var companionId = $"chars/{slug}-comp";
+        var daggerId = $"items/{slug}-dagger";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Street" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10, Wisdom = 10 }
+            });
+            await repo.UpsertItemAsync(cs, new ItemUpsertRequest
+            {
+                Id = daggerId,
+                Name = "Dagger",
+                Description = "A plain dagger.",
+                HolderId = companionId,
+                CoreCategory = ItemCategory.Weapon,
+                EquipZones = [EquipZone.Accessory],
+                EquipLayer = EquipLayer.Held,
+                IsEquipped = true
+            });
+            await session.SaveChangesAsync();
+        }
+
+        Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = changes,
+            Narrative = changes != null ? "The companion checks." : null,
+            ExtraCharacterIds = [companionId],
+            ExtraLocationIds = [locId]
+        }, slug);
+
+        var seed = await Refresh();
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        var checkOnly = await Refresh([
+            new RulesetAction
+            {
+                CharacterId = companionId,
+                ActionName = "Perception",
+                ActionType = RulesetActionType.SkillCheck,
+                Parameters = new Dictionary<string, string> { ["skill"] = "Perception", ["dc"] = "14" }
+            }
+        ]);
+        Assert.True(checkOnly.Success, checkOnly.Summary);
+        Assert.Equal(TurnMode.Delta, checkOnly.Data!.Mode);
+        var checkOnlyScenePc = Assert.Single(checkOnly.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.Null(checkOnlyScenePc.EquippedItems);
+        Assert.Null(checkOnlyScenePc.CarriedItems);
+        Assert.Null(checkOnlyScenePc.SystemStats);
+    }
+
+    /// <summary>
     /// Companion between the same-scope-but-Npcs-only case: gear-stripping still works correctly on
     /// the Npcs shape when the NPC is requested without also refreshing its location as a scene (so
     /// DedupeNpcsCoveredByScenes has nothing to drop and Npcs is the only surfaced shape).
@@ -749,6 +819,59 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
     }
 
     /// <summary>
+    /// Regression guard: an ActivityChange with UpdateLocation:true but the SAME NewLocationId as the
+    /// character's current location (e.g. a POI-only move within one town) must NOT escalate to a full
+    /// reseed — only an actual location transition should. Same setup/floor as
+    /// ReseedTrigger_PcLocationChange_Escalates_AfterFloor, but the "escalated" call targets locA again.
+    /// </summary>
+    [Fact]
+    public async Task ReseedTrigger_PcSameLocationPoiUpdate_DoesNotEscalate_AfterFloor()
+    {
+        var slug = NewSlug("trigger-poi");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var pcId = $"chars/{slug}-pc";
+        var locAId = $"locations/{slug}-a";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locAId, Name = "A" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        for (var i = 0; i < 3; i++)
+        {
+            var quiet = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+            Assert.Equal(TurnMode.Delta, quiet.Data!.Mode);
+        }
+
+        var stillDelta = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new ActivityChange
+                {
+                    CharacterId = pcId,
+                    NewLocationId = locAId,
+                    UpdateLocation = true,
+                    NewActivity = "Walking the main street at an ordinary pace"
+                }
+            ],
+            Narrative = "The party walks the streets, staying put in A."
+        }, slug);
+        Assert.True(stillDelta.Success, stillDelta.Summary);
+        Assert.Equal(TurnMode.Delta, stillDelta.Data!.Mode);
+    }
+
+    /// <summary>
     /// KnownNeeds in delta mode is filtered to needs that moved >= 2 points this turn; a need that
     /// changed by less than that is omitted. LeanMode further caps the surfaced set at 2 movers.
     /// </summary>
@@ -1030,6 +1153,78 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
         var scene = Assert.Single(result.Data.Scenes!, s => s.Location.Id == locId);
         Assert.DoesNotContain(scene.LocalRumors, r => r.Id == rumorId);
+    }
+
+    /// <summary>
+    /// Regression guard: scene.LocalRumors must get the same delta-mode leanness as everything else —
+    /// only rumors this turn's changes actually evolved/created should be sent; untouched rumors are
+    /// already known to the client from the last full reseed. Runs with IncludeWorldState=false so
+    /// DedupeRumorsCoveredByWorldState (a separate mechanism, covered by the test above) can't mask this.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_StripsUnchangedLocalRumors_ButKeepsOnesTouchedThisTurn()
+    {
+        var slug = NewSlug("rumortrim");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-square";
+        var quietRumorId = $"rumors/{slug}-quiet";
+        var evolvingRumorId = $"rumors/{slug}-fire";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Town Square" });
+            await repo.UpsertRumorAsync(session, new RumorUpsertRequest
+            {
+                Id = quietRumorId,
+                RegionLocationId = locId,
+                Subject = "the well",
+                CurrentText = "The well water tastes odd lately.",
+                State = RumorState.Spreading
+            }, slug);
+            await repo.UpsertRumorAsync(session, new RumorUpsertRequest
+            {
+                Id = evolvingRumorId,
+                RegionLocationId = locId,
+                Subject = "the fire",
+                CurrentText = "They say the granary fire wasn't an accident.",
+                State = RumorState.Nascent
+            }, slug);
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locId] }, slug);
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+        var seedScene = Assert.Single(seed.Data.Scenes!, s => s.Location.Id == locId);
+        Assert.Contains(seedScene.LocalRumors, r => r.Id == quietRumorId);
+        Assert.Contains(seedScene.LocalRumors, r => r.Id == evolvingRumorId);
+
+        var untouched = await tools.TakeTurn(new TakeTurnRequest
+        {
+            ExtraLocationIds = [locId],
+            Changes = [new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery }],
+            Narrative = "Nothing rumor-related happens."
+        }, slug);
+        Assert.True(untouched.Success, untouched.Summary);
+        Assert.Equal(TurnMode.Delta, untouched.Data!.Mode);
+        var untouchedScene = Assert.Single(untouched.Data.Scenes!, s => s.Location.Id == locId);
+        Assert.Empty(untouchedScene.LocalRumors);
+
+        var evolved = await tools.TakeTurn(new TakeTurnRequest
+        {
+            ExtraLocationIds = [locId],
+            Changes = [new RumorEvolves { RumorId = evolvingRumorId, NewState = RumorState.Spreading }],
+            Narrative = "Word of the fire spreads."
+        }, slug);
+        Assert.True(evolved.Success, evolved.Summary);
+        Assert.Equal(TurnMode.Delta, evolved.Data!.Mode);
+        var evolvedScene = Assert.Single(evolved.Data.Scenes!, s => s.Location.Id == locId);
+        Assert.DoesNotContain(evolvedScene.LocalRumors, r => r.Id == quietRumorId);
+        Assert.Contains(evolvedScene.LocalRumors, r => r.Id == evolvingRumorId);
     }
 
     [Fact]

@@ -111,6 +111,12 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         public Dictionary<(string CharacterId, string TargetId), int> RelationshipBaselines { get; } =
             new();
 
+        /// <summary>Pre-commit characterId -> CurrentLocationId snapshot, taken before CommitChangesAsync
+        /// applies any ActivityChange/TravelChange in this batch. Used by DetectAndApplyReseedTriggersAsync
+        /// to tell an actual location transition apart from a same-location POI/activity update (both set
+        /// UpdateLocation:true) — only the former should escalate to a full reseed.</summary>
+        public Dictionary<string, string?> LocationBaselines { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>Campaign config loaded once by DecideTurnModeAsync — reused by later steps (e.g.
         /// ChangedNeedsKeys' significance threshold) instead of re-fetching.</summary>
         public CampaignConfig Config { get; set; } = null!;
@@ -207,7 +213,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
             if (hasChanges)
             {
-                await SnapshotRelationshipBaselinesAsync(ctx);
+                await SnapshotTurnBaselinesAsync(ctx);
 
                 var commitFailure = await CommitChangesAsync(ctx);
                 if (commitFailure != null)
@@ -375,28 +381,46 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
     }
 
     /// <summary>
-    /// Snapshots (characterId,targetId) -> current relationship value for every RelationshipChange in
-    /// this batch, before CommitChangesAsync applies them — see TurnContext.RelationshipBaselines for why
-    /// this can't be reconstructed as "new - delta" after the fact. Same session, so these loads are
-    /// first-level-cache hits (CommitChangesAsync/RelationshipChangeHandler will load the same characters).
+    /// Snapshots (characterId,targetId) -> current relationship value for every RelationshipChange, and
+    /// characterId -> CurrentLocationId for every location-touching ActivityChange/TravelChange, in this
+    /// batch, before CommitChangesAsync applies them — see TurnContext.RelationshipBaselines/
+    /// LocationBaselines for why these can't be reconstructed after the fact. Same session, so these loads
+    /// are first-level-cache hits (CommitChangesAsync's handlers will load the same characters).
     /// </summary>
-    private static async Task SnapshotRelationshipBaselinesAsync(TurnContext ctx)
+    private static async Task SnapshotTurnBaselinesAsync(TurnContext ctx)
     {
         foreach (var change in ctx.Request!.Changes!)
         {
-            if (change is not RelationshipChange rel)
+            switch (change)
             {
-                continue;
-            }
+                case RelationshipChange rel:
+                {
+                    var key = (rel.CharacterId, rel.TargetId);
+                    if (ctx.RelationshipBaselines.ContainsKey(key))
+                    {
+                        break;
+                    }
 
-            var key = (rel.CharacterId, rel.TargetId);
-            if (ctx.RelationshipBaselines.ContainsKey(key))
-            {
-                continue;
-            }
+                    var source = await ctx.Session.LoadAsync<Character>(rel.CharacterId);
+                    ctx.RelationshipBaselines[key] =
+                        source?.Social?.Relationships?.GetValueOrDefault(rel.TargetId, 0) ?? 0;
+                    break;
+                }
 
-            var source = await ctx.Session.LoadAsync<Character>(rel.CharacterId);
-            ctx.RelationshipBaselines[key] = source?.Social?.Relationships?.GetValueOrDefault(rel.TargetId, 0) ?? 0;
+                case ActivityChange { UpdateLocation: true } ac when !ctx.LocationBaselines.ContainsKey(ac.CharacterId):
+                {
+                    var character = await ctx.Session.LoadAsync<Character>(ac.CharacterId);
+                    ctx.LocationBaselines[ac.CharacterId] = character?.CurrentLocationId;
+                    break;
+                }
+
+                case TravelChange tc when !ctx.LocationBaselines.ContainsKey(tc.CharacterId):
+                {
+                    var character = await ctx.Session.LoadAsync<Character>(tc.CharacterId);
+                    ctx.LocationBaselines[tc.CharacterId] = character?.CurrentLocationId;
+                    break;
+                }
+            }
         }
     }
 
@@ -453,15 +477,18 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         {
             switch (change)
             {
+                // Only an actual location transition counts as "major" — a same-location POI/activity
+                // update also sets UpdateLocation:true (e.g. walking to a different street within the
+                // same town) and shouldn't force a full reseed on its own.
                 case ActivityChange { UpdateLocation: true } ac:
-                    if (await IsPcAsync(ac.CharacterId))
+                    if (LocationChanged(ctx, ac.CharacterId, ac.NewLocationId) && await IsPcAsync(ac.CharacterId))
                     {
                         return true;
                     }
                     break;
 
                 case TravelChange tc:
-                    if (await IsPcAsync(tc.CharacterId))
+                    if (LocationChanged(ctx, tc.CharacterId, tc.DestinationLocationId) && await IsPcAsync(tc.CharacterId))
                     {
                         return true;
                     }
@@ -486,6 +513,14 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
     private static bool CrossedBand(int before, int after, int bandSize) =>
         before / bandSize != after / bandSize;
+
+    /// <summary>True when the character's pre-commit location (see TurnContext.LocationBaselines) differs
+    /// from the new location this change applies. Missing baseline (shouldn't happen — populated by
+    /// SnapshotTurnBaselinesAsync for every location-touching change) is treated as "changed" so
+    /// the trigger fails open toward a full reseed rather than silently under-escalating.</summary>
+    private static bool LocationChanged(TurnContext ctx, string characterId, string? newLocationId) =>
+        !ctx.LocationBaselines.TryGetValue(characterId, out var before)
+        || !string.Equals(before, newLocationId, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Applies the request-level MinutesElapsed fallback to the first eligible change in the batch when
@@ -1018,6 +1053,13 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             ResourceChange rc => eq.Equals(rc.CharacterId, characterId),
             LevelUpChange lc => eq.Equals(lc.CharacterId, characterId),
             CharacterUpdate cu => cu.SystemStats != null && eq.Equals(cu.CharacterId, characterId),
+            // SkillCheck/SavingThrow/ContestedCheck/OpposedCheck are pure rolls — both ruleset resolvers
+            // (Dnd5e, Pf2e) never append to their `mutations` list for these action types (OpposedCheck
+            // routes through the same ContestedCheck resolver), so they can't have touched gear/stats.
+            // Attack/Spell/UseItem/Recovery can (damage, healing, resource/status changes), so those
+            // still count.
+            RulesetAction { ActionType: RulesetActionType.SkillCheck or RulesetActionType.SavingThrow
+                or RulesetActionType.ContestedCheck or RulesetActionType.OpposedCheck } => false,
             RulesetAction ra => eq.Equals(ra.CharacterId, characterId) || ra.TargetIds.Any(t => eq.Equals(t, characterId)),
             CharacterCreate cc => eq.Equals(cc.CharacterId, characterId),
             _ => false
@@ -1130,6 +1172,38 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
     private bool ShouldStripUnchangedLocationDetail(TurnContext ctx, string locationId) =>
         ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsLocationDetail(c, locationId));
+
+    /// <summary>
+    /// Rumors change rarely, but BuildSceneSummaryAsync/CampaignRepository.cs:2917 always populates the
+    /// scene's full LocalRumors list (id/subject/full text/state) regardless of mode, so a delta scene
+    /// refresh resends every local rumor's full text on essentially every turn even when nothing about
+    /// them changed. On delta turns, keep only the rumors this turn's changes actually touched (evolved
+    /// or newly created); the client already has the rest from the last full reseed or a prior delta.
+    /// Not gated by ShouldStripUnchangedLocationDetail — rumor state is independent of the location's own
+    /// descriptive fields, so a location-detail change shouldn't force full rumors, and vice versa.
+    /// </summary>
+    private static IEnumerable<RumorSummary> ApplyRumorDeltaTrim(TurnContext ctx, IEnumerable<RumorSummary> rumors)
+    {
+        if (ctx.Mode != TurnMode.Delta)
+        {
+            return rumors;
+        }
+
+        var rumorList = rumors as IReadOnlyCollection<RumorSummary> ?? rumors.ToList();
+        if (rumorList.Count == 0)
+        {
+            return rumorList;
+        }
+
+        var touchedRumorIds = new HashSet<string>(
+            ctx.AppliedChanges.OfType<RumorEvolves>().Select(r => r.RumorId)
+                .Concat(ctx.AppliedChanges.OfType<RumorCreate>().Select(r => r.RumorId)),
+            StringComparer.OrdinalIgnoreCase);
+
+        return touchedRumorIds.Count == 0
+            ? []
+            : rumorList.Where(r => touchedRumorIds.Contains(r.Id)).ToList();
+    }
 
     /// <summary>
     /// Trims a scene's LocationDetailView (already an immutable wire-record, detached from the tracked
@@ -1281,6 +1355,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                         {
                             summary.Location = ApplyLocationDeltaTrim(summary.Location);
                         }
+                        summary.LocalRumors = ApplyRumorDeltaTrim(ctx, summary.LocalRumors);
                         result.Scenes.Add(summary);
                     }
                     else
