@@ -11,7 +11,9 @@ namespace CampaignVault.Middleware;
 /// StructuredContent back into the text Content block, replacing the SDK's raw (vector-laden)
 /// dump — most MCP hosts (opencode among them) only forward Content into the model's context,
 /// not StructuredContent, so Content has to carry the real, cleaned data rather than a summary
-/// stand-in. StructuredContent is left populated too, for hosts that do read it.
+/// stand-in. StructuredContent is left populated too only when <see cref="IncludeStructuredContent"/>
+/// is opted in (env var MCP_INCLUDE_STRUCTURED_CONTENT=1) — the hosts that actually read it are the
+/// exception, and by default it would just double every response's token cost for nothing.
 ///
 /// The same tree walk also drops properties that carry no information beyond their own absence —
 /// empty containers ("field": [] / "field": {}) and explicit nulls ("field": null) — bottom-up, so a
@@ -23,6 +25,14 @@ namespace CampaignVault.Middleware;
 /// </summary>
 internal static class McpResponseCleaner
 {
+    /// <summary>
+    /// Whether to populate StructuredContent at all, in addition to Content. Set once at startup
+    /// from MCP_INCLUDE_STRUCTURED_CONTENT (see Program.cs); off by default. Public/settable rather
+    /// than DI-injected because this filter class, like its sibling request filters, is registered
+    /// as a bare static via IMcpRequestFilterBuilder before the DI container exists.
+    /// </summary>
+    public static bool IncludeStructuredContent { get; set; }
+
     // The MCP SDK serializes StructuredContent with a camelCase naming policy
     // (ModelContextProtocol.McpJsonUtilities.DefaultOptions), so the wire keys are
     // "semanticVector"/"embeddingTextHash", not the PascalCase nameof(...) values below.
@@ -48,10 +58,10 @@ internal static class McpResponseCleaner
     }
 
     /// <summary>
-    /// Cleans a tool result in place: parses its structured content once, strips it, and writes the one
-    /// cleaned tree back out to BOTH copies the protocol carries — compact text for Content (replacing
-    /// the SDK's own dump, which was serialized before stripping ran and so still carries raw
-    /// semanticVector/embeddingTextHash arrays) and a JsonElement for StructuredContent.
+    /// Cleans a tool result in place: parses its structured content once, strips it, and writes the
+    /// cleaned tree back out as compact text for Content (replacing the SDK's own dump, which was
+    /// serialized before stripping ran and so still carries raw semanticVector/embeddingTextHash
+    /// arrays), plus StructuredContent too when <see cref="IncludeStructuredContent"/> opts in.
     ///
     /// Internal rather than private so tests exercise the real filter path end-to-end. They previously
     /// reflected on two private halves, which meant a change to how those halves fit together — exactly
@@ -76,7 +86,9 @@ internal static class McpResponseCleaner
             // serializing the cleaned node straight to text skips a whole JsonElement round-trip
             // over what can be a very large payload.
             result.Content = [new TextContentBlock { Text = cleaned.ToJsonString(ContentSerializerOptions) }];
-            result.StructuredContent = JsonSerializer.SerializeToElement(cleaned);
+            result.StructuredContent = IncludeStructuredContent
+                ? JsonSerializer.SerializeToElement(cleaned)
+                : null;
         }
         catch
         {

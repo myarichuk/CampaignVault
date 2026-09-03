@@ -40,6 +40,14 @@ var httpsEnabled = string.Equals(
 var httpsCertPath = Environment.GetEnvironmentVariable("HTTPS_CERT_PATH");
 var httpsCertPassword = Environment.GetEnvironmentVariable("HTTPS_CERT_PASSWORD");
 
+// Most MCP hosts (opencode among them) only forward Content into the model's context and never
+// read StructuredContent at all, so populating it by default just doubles every response's token
+// cost for no benefit. Off unless a host that actually reads StructuredContent needs it.
+var mcpIncludeStructuredContent = string.Equals(
+    Environment.GetEnvironmentVariable("MCP_INCLUDE_STRUCTURED_CONTENT"),
+    "1",
+    StringComparison.OrdinalIgnoreCase);
+
 builder.WebHost.ConfigureKestrel(options =>
 {
     // MCP + HTTP health/info
@@ -201,6 +209,8 @@ mcpServerBuilder
         McpToolErrorFilter.Register(filters);
         McpResponseCleaner.Register(filters);
     });
+
+McpResponseCleaner.IncludeStructuredContent = mcpIncludeStructuredContent;
 
 builder.Services.AddGrpc();
 
