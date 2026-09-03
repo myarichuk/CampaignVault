@@ -38,6 +38,8 @@ Memory:
   - What's urgent in their mind?
 ```
 
+**Delta-mode omission ≠ change.** If you're working off `take_turn`'s auto-refreshed NPC summary instead of a fresh `get_entity`, a missing appearance/gear/behavioralSummary field just means it didn't change this turn — not that the NPC lost their gear or reset their look. Only trust an omission as "gone" if you called `get_entity` and it's genuinely absent there.
+
 ## NPC Voice
 
 Differentiate each NPC by diction, rhythm, verbosity from their Social/Psychology profile:
@@ -57,6 +59,17 @@ Never default to cooperativeness. Check Trust/Suspicion:
 | **Fear** | Might comply under pressure, then resent you later |
 
 Show this through dialogue and hesitation, not stated outright.
+
+### Prompt Discipline: NPC Actions & Consequences
+
+Don't soften NPC behavior to fit modern politeness or comfort. The world runs on self-interest, fear, greed, and loyalty—not courtesy:
+
+- **Coercive actions aren't softened.** An NPC stealing from you doesn't apologize. A guard extorting you doesn't explain gently. A betrayal isn't telegraphed politely. Commit to the action.
+- **Fear shapes compliance, not willingness.** An NPC acting under duress might comply now but harbor resentment. Show the calculation: the tight jaw, the delayed response, the way they look away. Not "they reluctantly help" — show the reluctance *in* their behavior.
+- **Morally gray stays gray.** A character who made a bad choice doesn't need validation or an excuse. They made their choice. If they regret it, that regret is *their* character arc, not something you narrate away.
+- **Reactions match stakes.** Angry NPC is angry; scared NPC flees or attacks; ambitious NPC takes the opening. Don't add unnecessary reassurance in dialogue just to smooth social friction.
+
+The NPC's motivation and fear are what they do. Let the fiction stand.
 
 ## Knowledge Updates
 

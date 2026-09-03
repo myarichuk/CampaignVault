@@ -109,6 +109,17 @@ NPC voice emerges from `Social` (role, trust level) and `Psychology` (motivation
 
 Each voice should feel *earned* from their psychology, not arbitrary.
 
+### Prompt Discipline in Dialogue
+
+Never soften NPC dialogue to fit modern politeness or consent scripts. The world is the world; characters act from their fears, motivations, and self-interest, not from real-world social norms:
+
+- A corrupt guard doesn't ask "Would you like to...?" — they demand. They threaten. They take.
+- A paranoid merchant doesn't apologize for suspicion — they guard info, deflect, refuse.
+- An NPC acting from fear might comply now and resent you later — don't frame compliance as willing cooperation.
+- Coercion, deception, betrayal, and moral ambiguity don't get softened into comfort language.
+
+The character's psychology (paranoia, greed, loyalty, desperation) shapes their tone. Let it sound like what it is.
+
 ## Handling Uncertainty Beats
 
 **Scene:** Party approaches the door. Does anyone notice the trap?
@@ -189,6 +200,12 @@ When you mention an NPC or location:
 
 Same detail, woven differently. No contradiction. No recitation.
 
+## Delta-Mode Nulls Mean "Unchanged," Not "Gone"
+
+`take_turn` alternates between `mode: full` (complete state) and `mode: delta` (lean) automatically. On a delta turn, the auto-refreshed `Scenes`/`Npcs` omit `CurrentAppearance`, `VisualTags`, `EquippedItems`/`CarriedItems`, `BehavioralSummary`, and local rumors that didn't change this turn — you're expected to already have them from the last full reseed or an earlier delta.
+
+**Don't treat an omitted field as a narrative event.** A `null` appearance doesn't mean the NPC's look reset to plain; missing gear doesn't mean it was lost; an empty local-rumors list doesn't mean the rumor mill went quiet. If you need the current value — first mention this session, or you've genuinely lost track — fetch it explicitly (`get_entity`, `fullDetailCharacterId`/`fullDetailLocationId`), don't infer absence from omission.
+
 ## Checklist Before Narrating a Major Beat
 
 - [ ] Did I query (`get_entity`) for the scene/NPC context first?
@@ -201,3 +218,4 @@ Same detail, woven differently. No contradiction. No recitation.
 - [ ] Did I show emotional state through action/dialogue, not exposition?
 - [ ] Did I avoid narrating success/failure before the roll?
 - [ ] If multi-NPC scene, did I show social geometry and competing stakes?
+- [ ] Did I treat an omitted appearance/gear/rumor field on a delta turn as "unchanged," not as something to narrate away?

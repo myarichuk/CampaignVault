@@ -77,6 +77,17 @@ Before narrating an NPC response, check their `Psychology`/`Social` profile:
 
 Never default to cooperativeness; mirror plausible self-protection.
 
+### Prompt Discipline in Social Outcomes
+
+Don't soften NPC reactions to make them more comfortable or accommodating:
+
+- **Failed persuasion doesn't soften.** An NPC who refuses your offer doesn't apologize or explain gently. They refuse. They might be curt, dismissive, or hostile depending on psychology.
+- **Intimidation leaves scars.** An NPC bullied into compliance might comply this time and plot revenge later. Show the resentment, not false cheerfulness.
+- **Successful deception doesn't validate the lie.** The NPC believes the lie because you rolled well, not because the lie makes moral sense. They accept it and act on it.
+- **Self-interest trumps politeness.** An NPC protecting their faction won't soften the blow. A paranoid NPC won't reassure you that they trust you. Let them be what they are.
+
+Narrate the outcome from the roll — psychology shapes how they deliver it.
+
 ## Relationship Changes
 
 After a significant social beat, commit relationship changes:
@@ -105,6 +116,8 @@ If the NPC learns something new (local rumors, PC background, strategic intel):
 }
 ```
 
+Local rumors on a scene refresh follow the same rule as gear/appearance: on a `mode: delta` turn, a scene's rumor list only includes rumors that were evolved (`rumor_evolves`) or created (`rumor_create`) this turn. An empty or shorter list doesn't mean rumors died out — it means none changed. Check `WorldState.ActiveRumors` (via `includeWorldState: true`) or `get_entity` for the full current picture.
+
 ## Social Checklist
 
 - [ ] Did I fetch the NPC full detail (`get_entity` chars/ id) to read Trust/Suspicion/Loyalty/Fear?
@@ -114,3 +127,4 @@ If the NPC learns something new (local rumors, PC background, strategic intel):
 - [ ] Did the NPC learn something? → `knowledge_update`
 - [ ] Did time pass (banter, tense talk)? → `minutesElapsed` on the request
 - [ ] Was this pure flavor/banter with nothing new or shifted? → `narrativeImportance: "Trivial"` on the request
+- [ ] Is the NPC response authentic to their self-interest/psychology, not softened by modern courtesy? → Refusal is refusal, compliance under duress shows resentment, ideology trumps comfort

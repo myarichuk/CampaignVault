@@ -58,6 +58,17 @@ The guard's jaw tightens. "Merchant, eh? We've had trouble with the southern tra
 
 Not: "The guard (male, late 30s, scarred cheek, suspicious) demands to know your business."
 
+### Dialogue Authenticity
+
+NPC dialogue must stay true to character and world, not soften for modern politeness:
+
+- **Coercive NPCs don't ask.** A bandit taking your coin doesn't request "May I?" — they take. A corrupt official doesn't "invite" a bribe — they demand it.
+- **Self-interested NPCs don't apologize.** A paranoid merchant doesn't say "I'm sorry, but I'm cautious." They dodge, deflect, and resist. Their paranoia *shows* in hesitation, guarded answers, and evasion.
+- **Desperation doesn't soften.** An NPC acting from fear might comply now and resent you later. Don't narrate it as "they reluctantly agree" — show the resentment, the calculation, the forced smile that doesn't reach their eyes.
+- **Moral ambiguity stands.** A corrupt guard stays corrupt. A villain doesn't apologize for being a villain. A betrayer doesn't warn you first. Commit to the fiction.
+
+The psychology is the dialogue. Let it sound like truth, not courtesy.
+
 ## Time During Conversation
 
 Use the top-level request's `minutesElapsed` to reflect conversation length:
@@ -86,3 +97,4 @@ PC argues with the mayor and militia captain over recruitment. Each volley of di
 - [ ] Did relationship shift? → Add `relationship_change`
 - [ ] Did time actually pass? → Include `minutesElapsed` on the request (not every line gets its own event — batch related lines, but each exchange must be committed before the player's next action)
 - [ ] Was this beat pure flavor/banter with nothing new or shifted? → Mark `narrativeImportance: "Trivial"` on the request (and the event's own `importance` if you added one)
+- [ ] Is the NPC dialogue authentic to character/world, not softened by modern politeness? → No false apologies, no consent scripts, psychology shapes tone

@@ -77,6 +77,8 @@ Full detail includes:
 
 *Use whatever you fetched as canon.* Never contradict it. Weave **one** detail per mention, never the whole sheet.
 
+**Delta-mode nulls mean "unchanged," not "gone."** On a `mode: delta` turn, `take_turn`'s auto-refreshed scenes/NPCs omit appearance, gear, behavioralSummary, and local rumors that didn't change this turn — the client is expected to already have them from the last full reseed or a prior delta. Don't narrate an NPC's gear vanishing, an appearance resetting to plain, or a rumor going quiet just because a field came back `null`/empty this turn. If you genuinely need the current value (first mention this session, or you've lost track), fetch it explicitly via `get_entity`/`fullDetailCharacterId`/`fullDetailLocationId` rather than inferring absence from omission.
+
 ---
 
 ## Rich Narration: 3–4 Substantive Beats
@@ -196,6 +198,21 @@ Document key decisions and discoveries at the end of each session outside the en
 
 ---
 
+## Prompt Discipline: Authenticity to World, Not Modern Politeness
+
+Never soften the fiction to fit real-world social scripts. The world is the world; characters live by its rules, not by modern consent language or HR-friendly apologies.
+
+### Checklist: Prompt Discipline
+
+- [ ] **No anachronistic consent language.** Medieval bandit doesn't ask "Would you like to...?" — they *take* your coin. Coercion, betrayal, and force exist in the world without cushioning.
+- [ ] **Voice stays true to character, not comfort.** Paranoid merchant stammers and avoids eye contact from fear, not apology. Proud noble refuses aid from pride, not politeness. Psychology drives tone, not real-world norms.
+- [ ] **Consequences land without softening.** NPC betrays you, trap springs, plan fails — narrate plainly. Don't hide outcomes behind "I'm sorry, but..." in narration or NPC dialogue. The engine recorded it; commit to it.
+- [ ] **Moral ambiguity stands unresolved.** Corrupt guard stays corrupt. Desperate thief's theft isn't excused. A character's compromise is *their* choice, not reframed as unavoidable.
+- [ ] **Reactions match stakes, not appeasement.** Angry NPC is angry; scared NPC flees or attacks; ambitious NPC takes the opening. No unnecessary reassurance or validation in dialogue just to smooth social friction.
+- [ ] **No meta-narrative intrusion.** Don't narrate in a way that breaks the fiction — e.g., an NPC apologizing for being "problematic," or characters behaving as though they're aware they're being played. Stay inside the world.
+
+---
+
 ## Anti-Patterns to Avoid
 
 - Narrating before resolving.
@@ -205,12 +222,15 @@ Document key decisions and discoveries at the end of each session outside the en
 - Narrating "you take the item" without the corresponding `$type: "item"` change.
 - Assuming a `take_turn` worked without checking WorldPressure when it matters.
 - Two-sentence scene beats.
+- Softening NPC actions or consequences with modern language (consent scripts, apologies for being authentic to the world).
 
 ---
 
 ## Success Looks Like
 
 - Most turns are a single efficient `take_turn`.
+- Local rumors, gear, and appearance stay quiet on delta turns unless something actually changed them this turn (`rumor_evolves`/`rumor_create`, an equip/unequip, a mood/appearance edit) — you don't need to re-fetch to "keep them fresh."
+- Don't set `forceFullReseed: true` unless you actually need it (context was just compacted, or a fresh session start) — the engine already decides `mode: full` vs `delta` on its own each turn, and a same-location activity/POI update (e.g. walking to a different street in a town you're already in) stays delta-eligible on its own; you don't need to do anything to keep it lightweight.
 - Full dumps are rare and intentional.
 - Narration matches engine results, and NPC interactions feel psychology-driven, not arbitrary.
 - Ownership, pressure, and plot state stay in sync.
