@@ -172,6 +172,40 @@ public class CampaignConfig
     public float TensionWeightRelational { get; set; } = 0.25f;
     public float TensionWeightDisposition { get; set; } = 0.20f;
 
+    /// <summary>
+    /// Weight for scene-local "idle beats without acting" stress (<see cref="Character.IdleSceneBeats"/>) —
+    /// independent of need/memory/relational/disposition state, so a companion who's been quietly present
+    /// through several beats of banter still accrues tension even with no backstory driving it. Renormalized
+    /// alongside the other four weights (see DefaultBehavioralTensionCalculator.NormalizeWeights), so this
+    /// doesn't need to be netted out of the others by hand.
+    /// </summary>
+    public float TensionWeightMomentum { get; set; } = 0.15f;
+
+    /// <summary>
+    /// Consecutive on-screen beats without acting before a companion/keepAlive NPC surfaces a Normal-urgency
+    /// "hasn't acted in a while" initiative candidate. See SceneMomentumInitiativeProvider.
+    /// </summary>
+    public int MomentumIdleBeatsNormalThreshold { get; set; } = 4;
+
+    /// <summary>
+    /// Consecutive idle beats before the momentum candidate escalates to High urgency — at which point it's
+    /// also mirrored into WorldPressure as a NARRATIVE PROMPT (see UrgentInitiativePressureContributor).
+    /// </summary>
+    public int MomentumIdleBeatsHighThreshold { get; set; } = 8;
+
+    /// <summary>
+    /// How many of the most-recent per-turn initiative-slot winners (Campaign.RecentInitiativeSlotNpcIds)
+    /// are tracked and penalized. See MutationTools.SelectAndEnrichInitiativeAsync.
+    /// </summary>
+    public int InitiativeCooldownSize { get; set; } = 5;
+
+    /// <summary>
+    /// Flat priority penalty applied when selecting this turn's single initiative-enrichment slot to any
+    /// NPC still in Campaign.RecentInitiativeSlotNpcIds — the anti-starvation term that keeps one
+    /// consistently-high-priority NPC (e.g. a bold, frequently-idle companion) from winning every turn.
+    /// </summary>
+    public float InitiativeCooldownPenalty { get; set; } = 30f;
+
     public float TensionValencePositive { get; set; } = 0.3f;
     public float TensionValenceNeutral { get; set; } = 0.5f;
     public float TensionValenceNegative { get; set; } = 0.8f;

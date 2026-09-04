@@ -37,7 +37,7 @@ Do **not** call `get_entity` before every beat just to "be safe." Prefer the lig
    - Then `take_turn` with `includeWorldState: true` + `includeParty: true` (or selective `extraCharacterIds` / `extraLocationIds`) for a light refresh.
    - Only call full `get_entity` on the active location (partyPresent:true) or a key NPC if the summaries are not enough.
 3. *Check for unresolved ENGINE WARNINGs.* Resolve them immediately via `take_turn` + `includeWorldState: true`.
-4. *Frame the session opener.* Narrate with 3–4 rich sensory beats. Re-anchor the party.
+4. *Frame the session opener.* This is an arrival/reveal moment — use the full 3–4 rich sensory beats to re-anchor the party.
 
 ---
 
@@ -81,19 +81,24 @@ Full detail includes:
 
 ---
 
-## Rich Narration: 3–4 Substantive Beats
+## Narration: Scale Beats to the Moment
 
-Each narrative moment should be *3–4 concrete sensory beats*, not 2–3 flat sentences.
+Not every beat earns the full treatment. Match richness to what's actually new:
 
-**Beat 1 — Sensory Arrival.** 2–3 concrete details: sight, sound, smell, touch. Not "You walk into the tavern." Yes: "The Salty Anchor roars with the smell of spiced ale and woodsmoke. A fiddle squeals over the din; someone's laughing too loud at the bar. The floor is tacky — last night's spills, probably."
+**Arrivals, reveals, first mention of an NPC/location this session — 3–4 beats:** sensory arrival (sight/sound/smell), spatial setup (who's where), psychological texture (shown, not told), and what's unresolved. "The Salty Anchor roars with spiced ale and woodsmoke. Kergil's in the corner booth, back to the wall. His jaw is clenched, dark rings under his eyes — when he sees you, something in his shoulders tightens. Fear? Guilt? He looks away and drinks before you can read it."
 
-**Beat 2 — Spatial Setup.** Where is everyone? Micro-geography, from the latest summary or full fetch. "Kergil sits at the corner booth, back to the wall, nursing a cup. Three sailors eye your gear from the counter."
+**Routine follow-ups (same scene, nothing new established) — 1–2 beats:** a reaction, a gesture, a line of dialogue. Don't re-describe a room already established or restate an NPC's whole state every exchange.
 
-**Beat 3 — Emotional / Psychological Texture.** Read from Psychology/Needs/Tension when you have it; show through behavior and dialogue, not exposition. "Kergil's jaw is clenched. He hasn't slept — dark rings under his eyes. When he sees you, something in his shoulders tightens."
+Then the party acts, you resolve via the engine, the cycle repeats.
 
-**Beat 4 — Ambiguity or Forward Momentum.** What's unresolved? What creates pressure? "But there's something else in his expression. Fear? Guilt? Before you can read it, he looks away and takes a drink."
+### Compression rules
+1. **One canonical detail per mention** — a visual tag, a voice quirk, a gesture, from `CurrentAppearance`/`VisualTags`/Psychology. Never the whole sheet, never twice.
+2. **Concrete over adjectives.** "Her scars are pale — years old" beats "beautiful." Anchor in the fiction, don't decorate.
+3. **NPC voice from Social/Psychology**, not arbitrary style (nervous merchant: short, apologetic; proud knight: formal, slow to admit fault).
+4. **Multi-NPC scenes:** show the social geometry — a second NPC's stake, a glance, a hand near a belt — not just PC/NPC-1 back-and-forth.
+5. **No exposition dumps.** Not "she is weary and has given up hope" — show it: she doesn't move, sighs, "What do you want?"
 
-Then the party acts. You resolve via the engine. The cycle repeats.
+Spend the full 3–4 beat treatment on moments that earn it — not on "you nod and Kergil keeps talking."
 
 ### Sensory detail rules
 1. **One per mention.** Describe an NPC once per scene: one visual tag (torn sleeve), one voice quirk (slurs S's), one gesture (taps their ring). Never recite the whole sheet.
@@ -132,6 +137,20 @@ Example: engine warns "NPC 'Kergil' is transient and will evict if party leaves.
 
 ---
 
+## New Locations: Seed Before You Narrate
+
+Arriving somewhere the engine doesn't know yet — no Settlement/District/Building entity, or an ENGINE WARNING flags a missing one — seed it via `world_build` in the same beat. Don't narrate a placeholder and leave it dangling; the next `get_entity` on it comes back empty and breaks continuity.
+
+Condensed checklist (full version lives in `dnd-exploration` for Claude Code sessions, but Grok Web doesn't load that — this is the whole thing):
+- **Settlement/region:** type, `ambientCrowd`, `dangerModifier`, one faction-flavor NPC (`keepAlive: true`, exists to make the world feel lived-in, not a quest-giver).
+- **3–5 named districts:** each with `ambientCrowd`, `dangerModifier`, a 2–3 detail description.
+- **2–3 buildings per district:** a tavern/inn, a shop/temple/guildhall, a landmark. Each gets `connectedFromLocationId` + `connectionDescription` set so it auto-links — don't create an orphan.
+- **2–4 `pointsOfInterest`** per district and building.
+- **At least one exit** everywhere — no dead ends.
+- **Plot threads seeded here** need `foreshadowingHooks` (2–4), `clues` (2–4, with a matching `items[]` entry — `holderId` set — for any physical clue, bidirectionally tagged: item gets `tags: ["clue:plot-threads/…"]`, clue's `involvedEntityIds` includes the item), and a testable `resolutionCondition`.
+
+If you catch yourself thinking "I'll seed that later" — stop, seed it now, in this `world_build` batch.
+
 ## Item Ownership (Frequently Missed)
 
 When a character takes, picks up, or is given an existing item:
@@ -139,6 +158,20 @@ When a character takes, picks up, or is given an existing item:
 - Do not narrate "you pocket the coin" without the ownership change — the engine will still show it on the location.
 
 New items that do not yet exist → seed via `world_build` first, then transfer.
+
+---
+
+## Persistent Physical State (Frequently Missed — Causes Drift)
+
+If narration changes something about a character's body or gear that should still be true several beats later, it needs a commit — not just prose. Without one, the next `take_turn`'s NPC/scene summary reflects the last *committed* state, silently reverting your narration (necklace vanishes, cut ropes are back on, a bandaged wound is gone) even though nothing contradicted it on-screen.
+
+- **Wearing/carrying something** (gifted item put on, weapon drawn and sheathed, cloak given away) → `item_equip` / `item_unequip` / `item_transfer` in the same batch as the narration beat, not just the moment it was first picked up.
+- **A condition that should persist** (bound/restrained, poisoned, prone, bleeding, blinded) → `status` (with `effect` for anything with a name) when applied, `status_remove` the instant narration undoes it (cutting bonds, healing, standing up). Removing bonds without a `status_remove` is why "freed" captives read as still bound later.
+- **A lasting appearance change** (scar, new outfit, dirt/blood that won't be washed off this scene) → `character_update`'s appearance/`visualTags` fields.
+
+Rule of thumb: if you'd be annoyed to see it reverted next scene, it needs a commit now, not just a sentence.
+
+Set `impliesPersistentPhysicalChange: true` on the paired `event` change when this applies — the engine cross-checks it against the batch and reminds you if the matching commit is missing. This only works if you actually set it; it's a self-check, not a safety net that reads your prose for you.
 
 ---
 
@@ -168,7 +201,9 @@ Document key decisions and discoveries at the end of each session outside the en
 - [ ] Did I pass `includeWorldState: true` when pressure or verification mattered?
 - [ ] Did I stay on summaries unless I truly needed full psychology / ItemDetails / new-location depth?
 - [ ] Did I include item ownership changes in the same batch when something was taken?
-- [ ] Is narration 3–4 rich beats, using concrete sensory detail (not adjectives alone)?
+- [ ] Did narration change a character's gear/condition/appearance in a way that should still be true next scene — and did I commit it (`item_equip`/`item_unequip`, `status`/`status_remove`, `character_update`) and flag `impliesPersistentPhysicalChange: true` on the event, rather than only narrating it?
+- [ ] Did I seed a brand-new location (`world_build`) before narrating a scene there, rather than leaving a placeholder?
+- [ ] Is narration scaled to the moment — full 3–4 beats for arrivals/reveals, 1–2 for routine follow-ups — using concrete sensory detail (not adjectives alone)?
 - [ ] Did I differentiate NPC voice via Psychology/Social, not arbitrary styles?
 - [ ] One visual/psychological detail per mention, not a dump?
 - [ ] If multi-NPC, did I show social geometry and competing stakes?

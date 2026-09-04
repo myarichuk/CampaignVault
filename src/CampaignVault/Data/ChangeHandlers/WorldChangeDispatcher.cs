@@ -291,6 +291,7 @@ public sealed class WorldChangeDispatcher(
         if (overallSuccess)
         {
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
+            ApplyMomentumTracking(context, changes);
             await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
         }
 
@@ -439,6 +440,90 @@ public sealed class WorldChangeDispatcher(
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Tracks Character.IdleSceneBeats for every on-screen (see <see cref="CollectOnScreenCharacterIds"/>)
+    /// party-companion/keepAlive NPC in this batch: reset to 0 (and IdleSceneLocationId updated) when they
+    /// acted this batch — the CharacterId of an ActivityChange or RulesetAction, or the InitiatorId of an
+    /// EventOccurred (see <see cref="CollectActingCharacterIds"/>) — otherwise incremented. Also reset
+    /// (without counting as an idle beat) when CurrentLocationId no longer matches the last-tracked
+    /// IdleSceneLocationId, since a new scene starts idleness over rather than carrying it across a travel/
+    /// activity move. Feeds SceneMomentumInitiativeProvider: a companion who's gone several beats without
+    /// their own verb eventually surfaces an "acts unprompted" nudge independent of need/relational/memory/
+    /// disposition state, which none of those track (see NpcInitiativeContext's other providers — none of
+    /// them respond to beats elapsed without a state change).
+    ///
+    /// Unlike ApplyMicroTimeNudgeAsync this doesn't require MinutesElapsed — plain narrated dialogue
+    /// (EventOccurred with no time cost) still counts as a beat, since that's exactly the "pure banter"
+    /// case this is meant to catch.
+    /// </summary>
+    private static void ApplyMomentumTracking(ChangeContext context, WorldChange[] changes)
+    {
+        var onScreenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var change in changes)
+        {
+            CollectOnScreenCharacterIds(change, onScreenIds);
+        }
+
+        if (onScreenIds.Count == 0)
+        {
+            return;
+        }
+
+        var actedIds = CollectActingCharacterIds(changes);
+
+        foreach (var character in context.Characters.Values)
+        {
+            if (character.IsPc || !onScreenIds.Contains(character.Id))
+            {
+                continue;
+            }
+
+            if (!character.IsPartyCompanion && !character.KeepAlive)
+            {
+                continue;
+            }
+
+            if (!string.Equals(character.IdleSceneLocationId, character.CurrentLocationId, StringComparison.OrdinalIgnoreCase))
+            {
+                character.IdleSceneLocationId = character.CurrentLocationId;
+                character.IdleSceneBeats = actedIds.Contains(character.Id) ? 0 : 1;
+                continue;
+            }
+
+            character.IdleSceneBeats = actedIds.Contains(character.Id)
+                ? 0
+                : Math.Min(character.IdleSceneBeats + 1, 999);
+        }
+    }
+
+    /// <summary>
+    /// Characters who were the *actor* (not merely a participant/target) of a change in this batch —
+    /// narrower than <see cref="CollectOnScreenCharacterIds"/>'s allowlist, which also counts a character
+    /// named as a RulesetAction's TargetIds or an EventOccurred's Involved even when they didn't do anything
+    /// themselves this beat.
+    /// </summary>
+    private static HashSet<string> CollectActingCharacterIds(WorldChange[] changes)
+    {
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var change in changes)
+        {
+            switch (change)
+            {
+                case ActivityChange ac when !string.IsNullOrWhiteSpace(ac.CharacterId):
+                    ids.Add(ac.CharacterId);
+                    break;
+                case RulesetAction ra when !string.IsNullOrWhiteSpace(ra.CharacterId):
+                    ids.Add(ra.CharacterId);
+                    break;
+                case EventOccurred eo when !string.IsNullOrWhiteSpace(eo.InitiatorId):
+                    ids.Add(eo.InitiatorId!);
+                    break;
+            }
+        }
+
+        return ids;
     }
 
     /// <summary>

@@ -138,6 +138,37 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public void Tension_MomentumStress_ScalesWithIdleSceneBeats_IndependentOfOtherState()
+    {
+        var calc = new DefaultBehavioralTensionCalculator();
+        var config = new CampaignConfig { MomentumIdleBeatsHighThreshold = 8 };
+
+        var idleNpc = new Character
+        {
+            Id = "chars/idle-companion",
+            Name = "Idle Companion",
+            Needs = new NeedsProfile(),
+            Social = new SocialProfile(),
+            IdleSceneBeats = 4
+        };
+        var busyNpc = new Character
+        {
+            Id = "chars/busy-companion",
+            Name = "Busy Companion",
+            Needs = new NeedsProfile(),
+            Social = new SocialProfile(),
+            IdleSceneBeats = 0
+        };
+
+        var idle = calc.Calculate(idleNpc, BuildTensionContext(config, npc: idleNpc), []);
+        var busy = calc.Calculate(busyNpc, BuildTensionContext(config, npc: busyNpc), []);
+
+        Assert.Equal(50f, idle.Breakdown.MomentumStress); // 4 / 8 * 100
+        Assert.Equal(0f, busy.Breakdown.MomentumStress);
+        Assert.True(idle.Tension > busy.Tension);
+    }
+
+    [Fact]
     public void DispositionMatcher_RespectsMinTokenLength()
     {
         var config = new CampaignConfig { DispositionMinTokenLength = 3 };

@@ -70,6 +70,19 @@ public class Character : ICampaignScopedEntity
     public string? CurrentLocationId { get; set; }
     public string? CurrentActivity { get; set; }
 
+    /// <summary>
+    /// Consecutive take_turn beats this NPC has been on-screen at <see cref="IdleSceneLocationId"/> without
+    /// acting themselves — no ActivityChange/RulesetAction with them as the actor, no EventOccurred with
+    /// them as InitiatorId. Tracked by WorldChangeDispatcher.ApplyMomentumTrackingAsync, consumed by
+    /// SceneMomentumInitiativeProvider. Resets to 0 whenever they act, or when CurrentLocationId no longer
+    /// matches IdleSceneLocationId (a new scene starts idleness over). Only tracked for IsPartyCompanion/
+    /// KeepAlive NPCs — transient background characters shouldn't accrue pressure toward unprompted action.
+    /// </summary>
+    public int IdleSceneBeats { get; set; }
+
+    /// <summary>Location IdleSceneBeats was last counted at. See <see cref="IdleSceneBeats"/>.</summary>
+    public string? IdleSceneLocationId { get; set; }
+
     /// <summary>Day the character last departed their anchored location (transient eviction). Null when present somewhere.</summary>
     public int? DepartedAtDay { get; set; }
 

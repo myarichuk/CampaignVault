@@ -631,7 +631,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task Initiative_CapsAtTwo_AndIncludesOneCompanionPlusOneOther()
+    public async Task Initiative_CapsAtOne_AndPicksHighestPriorityCandidate()
     {
         var slug = NewSlug("initiative");
         var repo = _fixture.CreateRepository();
@@ -651,7 +651,10 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
-            { Id = companionAId, Name = "Companion A", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            {
+                Id = companionAId, Name = "Companion A", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10,
+                Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 90f } }
+            });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionBId, Name = "Companion B", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
@@ -677,13 +680,10 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             .Distinct()
             .ToList();
 
-        Assert.True(withInitiative.Count <= 2,
-            $"Expected at most 2 NPCs with initiative, got {withInitiative.Count}: {string.Join(",", withInitiative)}");
-        Assert.Contains(withInitiative, id => id == companionAId || id == companionBId);
         Assert.DoesNotContain(pcId, withInitiative);
-        // With 2 companions + 1 non-companion NPC present, the fill slot should prefer the non-companion.
-        Assert.Contains(villagerId, withInitiative);
-        Assert.Equal(2, withInitiative.Count);
+        // Companion A's need stress dominates the priority score (needs+momentum, cheap in-memory
+        // estimate — see InitiativeSelectionScorer), so the single slot must go to it.
+        Assert.Equal([companionAId], withInitiative);
     }
 
     /// <summary>
@@ -1485,5 +1485,73 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         var updatedLoc = Assert.Single(updated.Data.Scenes!).Location;
         Assert.Equal("Rubble-strewn floor, one wall open to the night sky.", updatedLoc.Description);
         Assert.Equal("A section of the roof has caved in.", updatedLoc.CurrentState);
+    }
+
+    [Fact]
+    public async Task PhysicalStateReminder_FiresWhenFlaggedEventHasNoMatchingCommit()
+    {
+        var slug = NewSlug("physical-drift");
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var pcId = $"chars/{slug}-pc";
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var repo = _fixture.CreateRepository();
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest { Id = pcId, Name = "PC", IsPc = true });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Narrative = "The blade flashes and cuts the ropes at her wrists.",
+            Changes =
+            [
+                new EventOccurred
+                {
+                    Summary = "Freed the captive.", Category = EventCategory.Discovery, Involved = [pcId],
+                    ImpliesPersistentPhysicalChange = true
+                }
+            ]
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.NotNull(result.Data!.NarrativeReminder);
+        Assert.Contains("impliesPersistentPhysicalChange", result.Data.NarrativeReminder);
+    }
+
+    [Fact]
+    public async Task PhysicalStateReminder_StaysSilentWhenMatchingCommitPresent()
+    {
+        var slug = NewSlug("physical-nodrift");
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var pcId = $"chars/{slug}-pc";
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var repo = _fixture.CreateRepository();
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest { Id = pcId, Name = "PC", IsPc = true });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Narrative = "The blade flashes and cuts the ropes at her wrists.",
+            Changes =
+            [
+                new EventOccurred
+                {
+                    Summary = "Freed the captive.", Category = EventCategory.Discovery, Involved = [pcId],
+                    ImpliesPersistentPhysicalChange = true
+                },
+                new StatusRemove { CharacterId = pcId, Status = "Restrained" }
+            ]
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.Null(result.Data!.NarrativeReminder);
     }
 }

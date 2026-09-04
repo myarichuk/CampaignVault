@@ -40,6 +40,10 @@ You are persisting changes to the world: events, character state, items, relatio
 
 For a brand-new item (loot that didn't exist yet), create it via `world_build`'s `items[]` first, then transfer if needed.
 | Combat/Mechanics | `ruleset_action`, `status`, `hp`, `resource` | Dice rolls, HP, spell slots |
+
+**Persistent physical state (gear worn, conditions, lasting appearance changes) needs a commit, or it silently reverts next scene** — same failure mode as the item-pickup warning above. Putting on a gifted item → `item_equip`; cutting someone's bonds, ending a condition → `status_remove` (not just narration — "still bound" a few beats later is this bug); a scar or new outfit that should stick → `character_update`'s appearance fields; gear destroyed/dissolved/lost → `item_unequip`/`item_update`/`archive_entity`.
+
+Set `event.impliesPersistentPhysicalChange: true` on the paired `event` whenever a beat does this — the server checks it against what the batch actually committed and fires a `narrativeReminder` if they don't match, catching the case where you narrated the change but forgot the commit. This is a self-report, not a text scan: it only works if you actually set the flag, but unlike guessing from prose it never misfires on ordinary narration.
 | Activities | `activity`, `travel`, `rest` | Movement, waiting, recovery |
 | Quests/World | `quest_progress`, `rumor`, `faction_state`, `plot_thread_progress` | Story progression |
 | Locations | `location_update` | State, PoI materialization, danger modifier |

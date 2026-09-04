@@ -7,7 +7,8 @@ public static class InitiativeServiceFactory
         new RelationalInitiativeProvider(),
         new MemoryInitiativeProvider(),
         new NeedActivityConflictProvider(),
-        new DispositionInitiativeProvider()
+        new DispositionInitiativeProvider(),
+        new SceneMomentumInitiativeProvider()
     ];
 
     public static INpcInitiativeService CreateDefault(IEnumerable<INpcInitiativeSignalProvider>? providers = null)

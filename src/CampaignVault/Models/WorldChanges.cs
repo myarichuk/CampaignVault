@@ -272,6 +272,10 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("emotionalBeat")]
     public string? EmotionalBeat { get; set; }
 
+    [Description("Optional. Character ID of whoever drove this beat (the actor), when it's an NPC acting/initiating rather than merely being involved — e.g. a companion who speaks up unprompted. Include them in 'involved' too. Setting this resets that NPC's idle-scene-beats counter, so an unprompted NPC beat doesn't keep counting as idle.")]
+    [JsonPropertyName("initiatorId")]
+    public string? InitiatorId { get; set; }
+
     [Description("Optional. Item, character, or location ID this beat relates to.")]
     [JsonPropertyName("relatedEntityId")]
     public string? RelatedEntityId { get; set; }
@@ -283,6 +287,10 @@ public class EventOccurred : WorldChange
     [Description("Optional. Additional location IDs touched by a spillover beat, e.g. a bar fight that spills from the tavern into the alley outside.")]
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
+
+    [Description("Optional. Set true when this beat's narrative describes a lasting change to a character's gear or condition — worn/removed/destroyed item, applied/ended status, a scar or outfit that should stick — that should still be true next scene. When true, this batch must also include the matching commit (item_equip/item_unequip/item_update/status/status_remove/character_update/archive_entity) or a reminder fires; otherwise the change silently reverts (get_entity/get_scene reflect only what was committed, not what was narrated). Omit or leave false for beats with no lasting physical change.")]
+    [JsonPropertyName("impliesPersistentPhysicalChange")]
+    public bool? ImpliesPersistentPhysicalChange { get; set; }
 
     [Description("Optional client-chosen ID for this event (e.g. 'events/tavern-bar-fight-001'), so other changes in the SAME commit batch (e.g. knowledge_update.sourceEventIds) can reference it. Omit to let the engine generate one automatically — most events should omit this.")]
     [JsonPropertyName("eventId")]

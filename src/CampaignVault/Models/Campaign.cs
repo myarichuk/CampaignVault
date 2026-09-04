@@ -75,6 +75,16 @@ public class Campaign
     public Dictionary<string, InitiativeSurfacedState> InitiativeSurfaced { get; set; } = [];
 
     /// <summary>
+    /// Rotating window of the NPC IDs that most recently won the single per-turn initiative-enrichment
+    /// slot (MutationTools.SelectAndEnrichInitiativeAsync), most-recent first, capped at
+    /// CampaignConfig.InitiativeCooldownSize. Anyone in this list takes a priority penalty
+    /// (CampaignConfig.InitiativeCooldownPenalty) on the next few selections, so one high-priority NPC
+    /// (e.g. a consistently idle/bold companion) can't hog every turn's slot — the fairness/anti-
+    /// starvation half of the selection scheduler; raw priority (need/momentum stress) is the other half.
+    /// </summary>
+    public List<string> RecentInitiativeSlotNpcIds { get; set; } = [];
+
+    /// <summary>
     /// Free-text tags describing the kind(s) of story this campaign tells (e.g. "political intrigue",
     /// "dungeon crawl", "horror investigation"). No server-side genre->importance matrix — these steer
     /// the LLM's own judgment of event Importance on commit (see DmHelpManual's Narrative Focus section).

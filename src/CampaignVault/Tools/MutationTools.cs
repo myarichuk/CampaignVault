@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading.RateLimiting;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using ModelContextProtocol.Server;
@@ -142,7 +143,7 @@ One take_turn call carries optional mutations (Changes+Narrative) and optional r
 
 AUTO-REFRESH enabled by default (autoRefreshInvolved: true): the response includes lightweight summaries of any entities touched by the commit, capped at 6 NPCs and 3 scenes (explicitly requested extraCharacterIds/extraLocationIds are always served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
 
-FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state; NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and KnownNeeds is filtered to needs that moved >= 2 points (pass leanMode=true to cap that at the top 2 movers, for long multi-NPC scenes). A full reseed happens periodically (server-configured, default every 40 turns) and escalates early — even mid-delta-run — on a major PC location change, a relationship shift crossing a ±40 band, a significant plot-thread beat (once at least 3 delta turns have elapsed since the last reseed), or a party-fingerprint mismatch (see below). It can also be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity for a single character/location, or by setting includeParty/includeWorldState on this same take_turn call for broader state — check 'querySuggestions' in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via 'memoryHint'). Independent of mode, up to 2 NPCs per call carry RP-advisory initiative/memory ('initiative' field, memories compressed to topic+one-liner on delta turns) — one is a party companion when one is present — so you get a 'who might act/speak next' signal without an extra call.
+FULL/DELTA MODE (see 'mode' in the response): the campaign automatically alternates between full snapshots and delta-only responses to save tokens. On mode=full, includeParty/includeWorldState return complete Party/WorldState. On mode=delta (most calls), they return PartyDelta/WorldStateDelta instead — only what changed this turn, echoing the applied commit objects rather than full entity state; NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and KnownNeeds is filtered to needs that moved >= 2 points (pass leanMode=true to cap that at the top 2 movers, for long multi-NPC scenes). A full reseed happens periodically (server-configured, default every 40 turns) and escalates early — even mid-delta-run — on a major PC location change, a relationship shift crossing a ±40 band, a significant plot-thread beat (once at least 3 delta turns have elapsed since the last reseed), or a party-fingerprint mismatch (see below). It can also be forced any time with forceFullReseed=true — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view. Full detail for anything not covered by a delta is always available via get_entity for a single character/location, or by setting includeParty/includeWorldState on this same take_turn call for broader state — check 'querySuggestions' in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via 'memoryHint'). Independent of mode, the single highest-priority NPC this call carries RP-advisory initiative/memory ('initiative' field, memories compressed to topic+one-liner on delta turns) — chosen by a small scheduler (need/momentum priority, with a short cooldown so the same NPC can't win every turn) rather than randomly — so you get a 'who might act/speak next' signal without an extra call.
 
 DRIFT PROTECTION: every response carries 'partyFingerprint' (a readable ""charId:hp/maxHp@locationId"" list for the party). Pass it back as clientPartyFingerprint on your NEXT take_turn call, unchanged. If it doesn't match what the server computed, that means you missed or misread a prior delta — the server forces a full resync and flags it in the response, so you don't keep narrating from a stale mental model (e.g. treating a PC as still in a location they already left). You can also eyeball the fingerprint yourself each turn as a sanity check against your own understanding of the party's state.
 
@@ -760,7 +761,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             !string.IsNullOrEmpty(id) && id.StartsWith("chars/", StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>Appends commit-hygiene reminders (missing narrative event, missing PoI detail) without discarding earlier reminders.</summary>
+    /// <summary>Appends commit-hygiene reminders (missing narrative event, missing PoI detail, likely-missed
+    /// physical-state commit) without discarding earlier reminders.</summary>
     private static void ComposeReminders(WorldChange[] changes, TurnResult result)
     {
         var hasCombatMutation = changes.Any(c => c is HpChange or RulesetAction or StatusChange);
@@ -798,6 +800,16 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                     "but recorded no location detail. If the spot matters, add poiName/poiDetails.");
             }
         }
+
+        if (changes.OfType<EventOccurred>().Any(e => e.ImpliesPersistentPhysicalChange == true)
+            && !changes.Any(c => c is ItemEquip or ItemUnequip or ItemUpdate or StatusChange or StatusRemove
+                or CharacterUpdate or ArchiveEntityChange { EntityType: ArchivableEntityType.Item }))
+        {
+            AppendReminder(result,
+                "An event in this batch flagged impliesPersistentPhysicalChange=true, but the batch has no " +
+                "matching commit (item_equip/item_unequip/item_update/status/status_remove/character_update/" +
+                "archive_entity). Add it now — otherwise the change silently reverts next scene.");
+        }
     }
 
     private static void AppendReminder(TurnResult result, string reminder) =>
@@ -805,16 +817,19 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             ? reminder
             : result.NarrativeReminder + " " + reminder;
 
-    private const int InitiativeCap = 2;
+    private const int InitiativeCap = 1;
 
     /// <summary>
-    /// Surfaces RP-advisory initiative/memory for up to 2 NPCs this call, independent of includeParty/
-    /// autoRefreshInvolved/Mode — so take_turn alone (without a separate drill-down call) still carries a "who might
-    /// act/speak next" signal. Candidate pool: NPCs present at the party's current location, unioned with
-    /// any NPCs this turn's changes touched (fallback when location isn't resolvable). Selection: one
-    /// guaranteed slot for a randomly-chosen party companion if the pool has one, remaining slot(s) filled
-    /// by other NPCs. Results are cached on ctx.InitiativeByNpcId so Npcs/Party/PartyDelta section builders
-    /// can attach them without recomputing.
+    /// Surfaces RP-advisory initiative/memory for the single highest-priority NPC this call, independent of
+    /// includeParty/autoRefreshInvolved/Mode — so take_turn alone (without a separate drill-down call) still
+    /// carries a "who might act/speak next" signal. Candidate pool: NPCs present at the party's current
+    /// location, unioned with any NPCs this turn's changes touched (fallback when location isn't
+    /// resolvable). Selection is a small scheduler, not a random pick: InitiativeSelectionScorer ranks the
+    /// pool by cheap need+momentum priority, then Campaign.RecentInitiativeSlotNpcIds applies a cooldown
+    /// penalty to whoever won recently (CampaignConfig.InitiativeCooldownPenalty/Size) so one
+    /// high-priority NPC can't hog every turn's slot — priority is the CPU-time-slice analogue, the
+    /// cooldown is the anti-starvation term. Result is cached on ctx.InitiativeByNpcId so Npcs/Party/
+    /// PartyDelta section builders can attach it without recomputing.
     /// </summary>
     private async Task SelectAndEnrichInitiativeAsync(TurnContext ctx)
     {
@@ -870,45 +885,31 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             return;
         }
 
-        var companions = pool.Values.Where(c => c.IsPartyCompanion).ToList();
-        var selected = new List<Character>();
-        if (companions.Count > 0)
+        var candidates = pool.Values.Where(c => !c.IsPc).ToList();
+        if (candidates.Count == 0)
         {
-            selected.Add(companions[Random.Shared.Next(companions.Count)]);
+            return;
         }
 
-        // Prefer a non-companion NPC for the remaining slot(s) — the companion slot above already
-        // guarantees companion coverage, so this spreads the signal to the environment instead of
-        // potentially filling both slots with companions.
-        foreach (var candidate in pool.Values)
+        var config = await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+        var campaignDoc = await ctx.Session.LoadAsync<Campaign>(_keys.Meta(ctx.Campaign));
+        var recentWinners = campaignDoc?.RecentInitiativeSlotNpcIds ?? [];
+
+        var winner = candidates
+            .OrderByDescending(c => InitiativeSelectionScorer.EstimatePriority(c, config, recentWinners))
+            .First();
+        var selected = new List<Character> { winner };
+
+        if (campaignDoc != null)
         {
-            if (selected.Count >= InitiativeCap)
+            campaignDoc.RecentInitiativeSlotNpcIds.RemoveAll(id => id.Equals(winner.Id, StringComparison.OrdinalIgnoreCase));
+            campaignDoc.RecentInitiativeSlotNpcIds.Insert(0, winner.Id);
+            var cooldownSize = Math.Max(0, config.InitiativeCooldownSize);
+            if (campaignDoc.RecentInitiativeSlotNpcIds.Count > cooldownSize)
             {
-                break;
+                campaignDoc.RecentInitiativeSlotNpcIds.RemoveRange(
+                    cooldownSize, campaignDoc.RecentInitiativeSlotNpcIds.Count - cooldownSize);
             }
-
-            if (candidate.IsPc || candidate.IsPartyCompanion || selected.Any(s => s.Id == candidate.Id))
-            {
-                continue;
-            }
-
-            selected.Add(candidate);
-        }
-
-        // Fallback: if the pool has no (more) non-companion NPCs, fill remaining slot(s) from whoever's left.
-        foreach (var candidate in pool.Values)
-        {
-            if (selected.Count >= InitiativeCap)
-            {
-                break;
-            }
-
-            if (candidate.IsPc || selected.Any(s => s.Id == candidate.Id))
-            {
-                continue;
-            }
-
-            selected.Add(candidate);
         }
 
         foreach (var npc in selected)
@@ -1258,8 +1259,15 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             ? npc.NeedDescriptors.Where(kv => trim.NeedsKeysToInclude.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value)
             : npc.NeedDescriptors;
 
+        // CurrentActivity/CurrentMood share AffectsMoodOrActivity's gate with BehavioralSummary (the
+        // latter is derived from the former plus recent events) — an NPC nobody touched this turn
+        // collapses down to just Id/Name/roster flags plus whatever emergent initiative signal
+        // (BehavioralTension/ActiveInitiatives/TurnIntent/CompressedMemories) live state still carries;
+        // those come from current state, not AppliedChanges, so they're never gated here.
         return npc with
         {
+            CurrentActivity = trim.SkipBehavioralSummary ? null : npc.CurrentActivity,
+            CurrentMood = trim.SkipBehavioralSummary ? null : npc.CurrentMood,
             CurrentAppearance = trim.StripAppearance ? null : npc.CurrentAppearance,
             VisualTags = trim.StripAppearance ? null : npc.VisualTags,
             DistinctiveFeatures = trim.StripAppearance ? null : npc.DistinctiveFeatures,

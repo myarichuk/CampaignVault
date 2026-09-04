@@ -50,6 +50,9 @@ public class Event : ICampaignScopedEntity
     /// <summary>Optional relational beat from EventOccurred (e.g. gratitude, gift_received).</summary>
     public string? EmotionalBeat { get; set; }
 
+    /// <summary>Character ID of whoever drove this beat, when set on EventOccurred. See EventOccurred.InitiatorId.</summary>
+    public string? InitiatorId { get; set; }
+
     /// <summary>Optional related entity ID from EventOccurred (item, character, location).</summary>
     public string? RelatedEntityId { get; set; }
 

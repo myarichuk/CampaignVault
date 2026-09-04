@@ -1057,4 +1057,112 @@ public class WorldChangeDispatcherTests
 
         Assert.Contains(targetId, context.InvolvedEntities);
     }
+
+    private static (WorldChangeDispatcher Dispatcher, IAsyncDocumentSession Session) CreateMomentumDispatcher(
+        Dictionary<string, Character> characters, params IWorldChangeHandler[] handlers)
+    {
+        var dispatcher = CreateDispatcher(handlers);
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(characters);
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+        return (dispatcher, mockSession);
+    }
+
+    private static readonly TestHandler EventHandler = new("Event", c => c is EventOccurred, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+    private static readonly TestHandler ActivityHandler = new("Activity", c => c is ActivityChange, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+
+    [Fact]
+    public async Task Momentum_CompanionOnScreenButNotActing_IncrementsIdleSceneBeats()
+    {
+        var companion = new Character { Id = "chars/companion", IsPartyCompanion = true, CurrentLocationId = "locations/inn", IdleSceneLocationId = "locations/inn", IdleSceneBeats = 2 };
+        var (dispatcher, session) = CreateMomentumDispatcher(
+            new Dictionary<string, Character> { ["chars/companion"] = companion }, EventHandler);
+
+        await dispatcher.DispatchAsync(
+            session,
+            [new EventOccurred { Summary = "Chit-chat", Category = EventCategory.Conversation, Involved = ["chars/pc1", "chars/companion"] }],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.Equal(3, companion.IdleSceneBeats);
+    }
+
+    [Fact]
+    public async Task Momentum_EventInitiatorId_ResetsIdleSceneBeatsToZero()
+    {
+        var companion = new Character { Id = "chars/companion", IsPartyCompanion = true, CurrentLocationId = "locations/inn", IdleSceneLocationId = "locations/inn", IdleSceneBeats = 5 };
+        var (dispatcher, session) = CreateMomentumDispatcher(
+            new Dictionary<string, Character> { ["chars/companion"] = companion }, EventHandler);
+
+        await dispatcher.DispatchAsync(
+            session,
+            [new EventOccurred { Summary = "Companion changes the subject", Category = EventCategory.Conversation, Involved = ["chars/pc1", "chars/companion"], InitiatorId = "chars/companion" }],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.Equal(0, companion.IdleSceneBeats);
+    }
+
+    [Fact]
+    public async Task Momentum_ActivityChangeForCompanion_ResetsIdleSceneBeatsToZero()
+    {
+        var companion = new Character { Id = "chars/companion", IsPartyCompanion = true, CurrentLocationId = "locations/inn", IdleSceneLocationId = "locations/inn", IdleSceneBeats = 6 };
+        var (dispatcher, session) = CreateMomentumDispatcher(
+            new Dictionary<string, Character> { ["chars/companion"] = companion }, ActivityHandler);
+
+        await dispatcher.DispatchAsync(
+            session,
+            [new ActivityChange { CharacterId = "chars/companion", NewActivity = "fetches a drink" }],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.Equal(0, companion.IdleSceneBeats);
+    }
+
+    [Fact]
+    public async Task Momentum_LocationChange_ResetsWithoutCountingAsIdleBeat()
+    {
+        var companion = new Character { Id = "chars/companion", IsPartyCompanion = true, CurrentLocationId = "locations/tavern", IdleSceneLocationId = "locations/inn", IdleSceneBeats = 7 };
+        var (dispatcher, session) = CreateMomentumDispatcher(
+            new Dictionary<string, Character> { ["chars/companion"] = companion }, EventHandler);
+
+        await dispatcher.DispatchAsync(
+            session,
+            [new EventOccurred { Summary = "Arrival chatter", Category = EventCategory.Conversation, Involved = ["chars/pc1", "chars/companion"] }],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.Equal(1, companion.IdleSceneBeats);
+        Assert.Equal("locations/tavern", companion.IdleSceneLocationId);
+    }
+
+    [Fact]
+    public async Task Momentum_NonCompanionNonKeepAliveNpc_IsNeverTracked()
+    {
+        var flavorNpc = new Character { Id = "chars/flavor", IsPartyCompanion = false, KeepAlive = false, CurrentLocationId = "locations/inn", IdleSceneLocationId = "locations/inn", IdleSceneBeats = 0 };
+        var (dispatcher, session) = CreateMomentumDispatcher(
+            new Dictionary<string, Character> { ["chars/flavor"] = flavorNpc }, EventHandler);
+
+        await dispatcher.DispatchAsync(
+            session,
+            [new EventOccurred { Summary = "Chit-chat", Category = EventCategory.Conversation, Involved = ["chars/pc1", "chars/flavor"] }],
+            "test_campaign",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.Equal(0, flavorNpc.IdleSceneBeats);
+    }
 }

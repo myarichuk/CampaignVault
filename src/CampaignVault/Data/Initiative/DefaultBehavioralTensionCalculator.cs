@@ -22,17 +22,31 @@ public sealed class DefaultBehavioralTensionCalculator : IBehavioralTensionCalcu
             ctx.PresentEntities,
             ctx.Location,
             config).DispositionStress;
+        var momentumStress = ComputeMomentumStress(npc, config);
 
         var weights = NormalizeWeights(config);
         var tension = Math.Clamp(
             needStress * weights.Need
             + memoryStress * weights.Memory
             + relationalStress * weights.Relational
-            + dispositionStress * weights.Disposition,
+            + dispositionStress * weights.Disposition
+            + momentumStress * weights.Momentum,
             0,
             100);
 
-        return (tension, new TensionBreakdown(needStress, memoryStress, relationalStress, dispositionStress));
+        return (tension, new TensionBreakdown(needStress, memoryStress, relationalStress, dispositionStress, momentumStress));
+    }
+
+    /// <summary>
+    /// Scales Character.IdleSceneBeats (adjusted for personality via MomentumTraitScoring, same as
+    /// SceneMomentumInitiativeProvider) to 0-100, reaching 100 at MomentumIdleBeatsHighThreshold so it
+    /// lines up with that provider's own High-urgency cutover.
+    /// </summary>
+    private static float ComputeMomentumStress(Character npc, CampaignConfig config)
+    {
+        var highThreshold = Math.Max(1, config.MomentumIdleBeatsHighThreshold);
+        var effectiveIdleBeats = MomentumTraitScoring.EffectiveIdleBeats(npc.IdleSceneBeats, npc.Psychology?.Traits);
+        return Math.Clamp(effectiveIdleBeats * 100f / highThreshold, 0f, 100f);
     }
 
     private static float ComputeNeedStress(NeedsProfile needs, CampaignConfig config)
@@ -105,23 +119,24 @@ public sealed class DefaultBehavioralTensionCalculator : IBehavioralTensionCalcu
         return stress;
     }
 
-    private static (float Need, float Memory, float Relational, float Disposition) NormalizeWeights(CampaignConfig config)
+    private static (float Need, float Memory, float Relational, float Disposition, float Momentum) NormalizeWeights(CampaignConfig config)
     {
         var need = config.TensionWeightNeed;
         var memory = config.TensionWeightMemory;
         var relational = config.TensionWeightRelational;
         var disposition = config.TensionWeightDisposition;
-        var sum = need + memory + relational + disposition;
+        var momentum = config.TensionWeightMomentum;
+        var sum = need + memory + relational + disposition + momentum;
         if (sum <= 0.0001f)
         {
-            return (0.30f, 0.25f, 0.25f, 0.20f);
+            return (0.30f, 0.25f, 0.25f, 0.20f, 0f);
         }
 
         if (Math.Abs(sum - 1f) < 0.0001f)
         {
-            return (need, memory, relational, disposition);
+            return (need, memory, relational, disposition, momentum);
         }
 
-        return (need / sum, memory / sum, relational / sum, disposition / sum);
+        return (need / sum, memory / sum, relational / sum, disposition / sum, momentum / sum);
     }
 }

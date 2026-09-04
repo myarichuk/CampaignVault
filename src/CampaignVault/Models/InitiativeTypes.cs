@@ -5,7 +5,8 @@ public enum InitiativeDriver
     Relational,
     Memory,
     Need,
-    Disposition
+    Disposition,
+    Momentum
 }
 
 public record InitiativeCandidate(
@@ -23,9 +24,10 @@ public record TensionBreakdown(
     float NeedStress,
     float MemoryStress,
     float RelationalStress,
-    float DispositionStress)
+    float DispositionStress,
+    float MomentumStress = 0f)
 {
-    public TensionBreakdown() : this(0!, 0!, 0!, 0!) { }
+    public TensionBreakdown() : this(0!, 0!, 0!, 0!, 0!) { }
 }
 
 public record InitiativeSurfacedState(

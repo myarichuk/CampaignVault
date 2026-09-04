@@ -51,6 +51,7 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             Involved = ev.Involved ?? [],
             DayLogged = currentTime.TotalDaysElapsed,
             EmotionalBeat = ev.EmotionalBeat,
+            InitiatorId = ev.InitiatorId,
             RelatedEntityId = ev.RelatedEntityId,
             LocationId = locationId,
             RelatedLocationIds = ev.RelatedLocationIds,
