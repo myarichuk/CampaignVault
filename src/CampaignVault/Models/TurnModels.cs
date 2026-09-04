@@ -118,7 +118,9 @@ public class TurnResult
     [Description("Narrative summary of each change processed.")]
     public List<string> Summary { get; set; } = [];
 
-    [Description("IDs of all entities touched or created (mixed types: chars/, locations/, items/, etc.).")]
+    [Description("IDs of all entities touched or created (mixed types: chars/, locations/, items/, etc.). " +
+        "Characters/locations already itemized in Npcs/PartyDelta/Party/Scenes/FullScene/FullNpcContext are omitted here to avoid repeating them with no extra detail; check those sections for such IDs. " +
+        "IDs dropped by the refresh cap (see RefreshTruncatedIds) and entity types with no detail section (items/, quests/, factions/, ...) always remain here.")]
     public List<string> InvolvedEntities { get; set; } = [];
 
     [Description("Entity IDs where a create-style change hit an existing document and was merged instead of creating new.")]

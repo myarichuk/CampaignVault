@@ -283,6 +283,47 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             $"Expected delta payload ({deltaJson.Length} chars) to be smaller than full payload ({fullJson.Length} chars).");
     }
 
+
+    [Fact]
+    public async Task RefreshInvolvedEntities_ExcludesPcs_FromNpcsList()
+    {
+        var slug = NewSlug("pcnotnpc");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-hub";
+        var pcId = $"chars/{slug}-pc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        // A change that touches only the PC lands the PC id in InvolvedEntities, which
+        // RefreshInvolvedEntitiesAsync auto-refreshes by default (AutoRefreshInvolved: true).
+        // The PC must never surface in Npcs[] — its state travels via Party/PartyDelta only.
+        var afterHpChange = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new HpChange { CharacterId = pcId, Delta = -3 }],
+            Narrative = "The PC takes a hit.",
+        }, slug);
+        Assert.True(afterHpChange.Success, afterHpChange.Summary);
+        Assert.DoesNotContain(afterHpChange.Data!.Npcs ?? [], n => n.CharacterId == pcId);
+
+        // Explicitly requesting the PC via ExtraCharacterIds must not force it into Npcs[] either.
+        var explicitRequest = await tools.TakeTurn(new TakeTurnRequest
+        {
+            ExtraCharacterIds = [pcId],
+        }, slug);
+        Assert.True(explicitRequest.Success, explicitRequest.Summary);
+        Assert.DoesNotContain(explicitRequest.Data!.Npcs ?? [], n => n.CharacterId == pcId);
+    }
+
     /// <summary>
     /// Regression guard: NpcInitiativeService.Enrich has a persisted side effect (it marks surfaced
     /// initiative candidates as consumed on the campaign doc), so an enrichment that's computed but
@@ -684,6 +725,93 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         // Companion A's need stress dominates the priority score (needs+momentum, cheap in-memory
         // estimate — see InitiativeSelectionScorer), so the single slot must go to it.
         Assert.Equal([companionAId], withInitiative);
+    }
+
+
+    [Fact]
+    public async Task MemoryHint_IsSuppressed_OnceAlreadySurfacedWithSameTopic()
+    {
+        var slug = NewSlug("memhint");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-square";
+        var pcId = $"chars/{slug}-pc";
+        var companionId = $"chars/{slug}-comp";
+        var villagerId = $"chars/{slug}-villager";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Square" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            // Companion dominates the initiative priority score (needs stress) so the villager is never
+            // the selected winner — it stays in the pool as a non-selected candidate for MemoryHint.
+            // Value is deliberately far above the default need baseline (~25) and the initiative
+            // cooldown penalty (30, applied to whoever wins the prior call) so it still wins after
+            // the Full call below claims the first initiative slot.
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10,
+                Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 500f } }
+            });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = villagerId, Name = "Villager", CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10,
+                Psychology = new PsychologyProfile
+                {
+                    Memories = new Dictionary<string, MemoryNode>
+                    {
+                        ["Secret"] = new MemoryNode
+                        {
+                            Topic = "Secret",
+                            Details = "Saw the mayor meet a stranger at midnight.",
+                            Salience = 0.9,
+                            Importance = MemoryImportance.Important,
+                            DayAcquired = 1
+                        }
+                    }
+                }
+            });
+            await session.SaveChangesAsync();
+        }
+
+        // Call 1 (Full, first-ever call): MemoryHint is only computed in Delta mode, so nothing to
+        // assert here beyond getting the cursor initialized.
+        var full = await tools.TakeTurn(new TakeTurnRequest
+        {
+            PartyLocationId = locId,
+            ExtraCharacterIds = [villagerId]
+        }, slug);
+        Assert.True(full.Success, full.Summary);
+        Assert.Equal(TurnMode.Full, full.Data!.Mode);
+
+        // Call 2 (Delta): the villager's high-salience memory hasn't been surfaced yet, so it should
+        // appear now.
+        var firstDelta = await tools.TakeTurn(new TakeTurnRequest
+        {
+            PartyLocationId = locId,
+            ExtraCharacterIds = [villagerId]
+        }, slug);
+        Assert.True(firstDelta.Success, firstDelta.Summary);
+        Assert.Equal(TurnMode.Delta, firstDelta.Data!.Mode);
+        var villagerFirst = Assert.Single(firstDelta.Data.Npcs ?? [], n => n.CharacterId == villagerId);
+        Assert.NotNull(villagerFirst.MemoryHint);
+        Assert.Contains("Secret", villagerFirst.MemoryHint);
+
+        // Call 3 (Delta, nothing changed): same topic already surfaced last call — must be suppressed
+        // to avoid repeating the same nudge (and its accompanying querySuggestions entry) every turn.
+        var secondDelta = await tools.TakeTurn(new TakeTurnRequest
+        {
+            PartyLocationId = locId,
+            ExtraCharacterIds = [villagerId]
+        }, slug);
+        Assert.True(secondDelta.Success, secondDelta.Summary);
+        Assert.Equal(TurnMode.Delta, secondDelta.Data!.Mode);
+        var villagerSecond = Assert.Single(secondDelta.Data.Npcs ?? [], n => n.CharacterId == villagerId);
+        Assert.Null(villagerSecond.MemoryHint);
     }
 
     /// <summary>

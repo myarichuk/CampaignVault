@@ -48,4 +48,12 @@ public class TurnCursor
     /// detect narrative drift (a delta the client missed or misread) independent of the periodic reseed cadence.</summary>
     [JsonPropertyName("lastPartyFingerprint")]
     public string? LastPartyFingerprint { get; set; }
+
+    /// <summary>Topic of the high-salience-memory nudge (NpcSummaryView/EntityChangeDelta.MemoryHint)
+    /// last surfaced to the client per entity ID. take_turn skips re-sending a MemoryHint whose topic
+    /// matches what's already here — the client already has the nudge — and updates the entry whenever
+    /// a new/different topic is surfaced. Entities are only added here once their top memory first
+    /// clears the salience bar, so this stays small relative to campaign NPC count.</summary>
+    [JsonPropertyName("surfacedMemoryHintTopicsByEntityId")]
+    public Dictionary<string, string> SurfacedMemoryHintTopicsByEntityId { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

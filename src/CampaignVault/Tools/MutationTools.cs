@@ -940,11 +940,24 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                     .OrderByDescending(m => m.Salience)
                     .FirstOrDefault();
 
-                if (topMemory != null)
+                if (topMemory == null)
                 {
-                    ctx.MemoryHintsByNpcId[npc.Id] =
-                        $"{npc.Name} still has a high-salience memory '{topMemory.Topic}' — consider get_entity/recall_history if the conversation drifts toward it.";
+                    continue;
                 }
+
+                // Only re-surface this NPC's MemoryHint when the topic differs from what the client
+                // was already told (tracked on TurnCursor, no extra query) — a stable high-salience
+                // memory shouldn't re-cost tokens every delta call it sits unresolved.
+                var alreadySurfaced = ctx.Cursor.SurfacedMemoryHintTopicsByEntityId.TryGetValue(npc.Id, out var lastTopic)
+                    && string.Equals(lastTopic, topMemory.Topic, StringComparison.OrdinalIgnoreCase);
+                if (alreadySurfaced)
+                {
+                    continue;
+                }
+
+                ctx.MemoryHintsByNpcId[npc.Id] =
+                    $"{npc.Name} still has a high-salience memory '{topMemory.Topic}' — consider get_entity/recall_history if the conversation drifts toward it.";
+                ctx.Cursor.SurfacedMemoryHintTopicsByEntityId[npc.Id] = topMemory.Topic;
             }
         }
     }
@@ -1339,6 +1352,23 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             }
         }
 
+        if (npcCandidates.Count > 0)
+        {
+            // PCs travel via Party/PartyDelta, not Npcs[] — filter them out here (not just at
+            // dedupe time) so they don't consume the NPC cap or trigger a spurious truncation.
+            // Mirrors the !n.IsPc filters used for scene-embedded NPC presence elsewhere.
+            var nonPcCandidates = new List<string>();
+            foreach (var candidateId in npcCandidates)
+            {
+                var character = await ctx.Session.LoadAsync<Character>(candidateId);
+                if (character?.IsPc != true)
+                {
+                    nonPcCandidates.Add(candidateId);
+                }
+            }
+            npcCandidates = nonPcCandidates;
+        }
+
         var truncatedIds = npcCandidates.Skip(NpcCap).Concat(sceneCandidates.Skip(SceneCap)).ToList();
         if (truncatedIds.Count > 0)
         {
@@ -1629,6 +1659,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         DedupeScenesCoveredByFullScene(result);
         DedupeNpcsCoveredByScenes(result);
         DedupeRumorsCoveredByWorldState(result);
+        DedupeInvolvedEntitiesCoveredByRefresh(result);
         PopulateQuerySuggestions(result);
 
         if (!string.IsNullOrEmpty(ctx.ReseedAdvisory))
@@ -1816,6 +1847,76 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 .Where(r => !worldRumorIds.Contains(r.Id))
                 .ToList();
         }
+    }
+
+
+    /// <summary>
+    /// InvolvedEntities lists every touched ID regardless of type (chars/, locations/, items/, etc.),
+    /// but characters/locations already itemized in detail elsewhere (Npcs/PartyDelta/Party/Scenes/
+    /// FullScene/FullNpcContext) don't need a second, detail-free mention here too. IDs dropped by the
+    /// refresh cap are NOT in any of those detail sections, so they're left untouched here — they're
+    /// still the only place the client learns those entities were touched (RefreshTruncatedIds says
+    /// they were capped, not that they're safe to ignore). Non-character/location IDs (items/, quests/,
+    /// factions/, ...) have no equivalent detail section at all, so they always stay too.
+    /// </summary>
+    private static void DedupeInvolvedEntitiesCoveredByRefresh(TurnResult result)
+    {
+        if (result.InvolvedEntities is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var covered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var id in (result.Npcs ?? []).Select(n => n.CharacterId))
+        {
+            covered.Add(id);
+        }
+
+        foreach (var id in (result.PartyDelta ?? []).Select(d => d.EntityId))
+        {
+            covered.Add(id);
+        }
+
+        foreach (var id in (result.Party ?? []).Select(p => p.Id))
+        {
+            covered.Add(id);
+        }
+
+        foreach (var scene in result.Scenes ?? [])
+        {
+            if (scene.Location?.Id is { } locationId)
+            {
+                covered.Add(locationId);
+            }
+
+            foreach (var npc in scene.PresentNPCs)
+            {
+                covered.Add(npc.Id);
+            }
+        }
+
+        if (result.FullScene?.Location?.Id is { } fullSceneLocationId)
+        {
+            covered.Add(fullSceneLocationId);
+        }
+
+        foreach (var npc in result.FullScene?.PresentNPCs ?? [])
+        {
+            covered.Add(npc.Id);
+        }
+
+        if (result.FullNpcContext?.Character?.Id is { } fullNpcId)
+        {
+            covered.Add(fullNpcId);
+        }
+
+        if (covered.Count == 0)
+        {
+            return;
+        }
+
+        result.InvolvedEntities = result.InvolvedEntities.Where(id => !covered.Contains(id)).ToList();
     }
 
     private void Warn(TurnContext ctx, string message, Exception? ex = null)

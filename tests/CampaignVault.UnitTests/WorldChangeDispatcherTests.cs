@@ -480,7 +480,7 @@ public class WorldChangeDispatcherTests
             _ => Task.CompletedTask);
 
         Assert.True(result.Success);
-        Assert.Contains(result.Summary, s => s.StartsWith("Event logged: Party found the hidden stair. (id: events/"));
+        Assert.Contains(result.Summary, s => s.StartsWith("Event logged (id: events/"));
     }
 
     [Fact]

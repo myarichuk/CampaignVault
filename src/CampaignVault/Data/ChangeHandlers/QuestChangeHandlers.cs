@@ -98,7 +98,9 @@ public class QuestProgressHandler : IWorldChangeHandler
             }, ct);
         }
 
-        context.RecordMessage($"Quest progress on '{quest.Title}': Objective {indexToUpdate} is now {qp.NewState}. {qp.NarrativeNote}");
+        // Don't echo qp.NarrativeNote back — the caller just supplied that exact text in this
+        // same request; repeating it costs tokens for zero new information.
+        context.RecordMessage($"Quest progress on '{quest.Title}': Objective {indexToUpdate} is now {qp.NewState}.");
 
         return ChangeHandlerResult.Ok;
     }

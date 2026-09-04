@@ -54,8 +54,9 @@ public sealed class ItemUseHandler : IWorldChangeHandler
         item.CurrentCharges = newCurrent;
         item.LastUpdated = DateTime.UtcNow;
 
-        var narrative = use.Reason ?? (use.Delta < 0 ? "Used a charge." : "Restored charges.");
-        context.RecordMessage($"{item.Name} charges: {oldCurrent} → {newCurrent}. {narrative}");
+        // Don't echo use.Reason back — the caller just supplied that exact text in this same
+        // request; repeating it costs tokens for zero new information.
+        context.RecordMessage($"{item.Name} charges: {oldCurrent} → {newCurrent}.");
 
         if (newCurrent == 0 && oldCurrent > 0)
         {

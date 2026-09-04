@@ -62,7 +62,9 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         e.CampaignName = context.CampaignName;
 
         await context.LogEventAsync(e);
-        context.RecordMessage($"Event logged: {ev.Summary} (id: {e.Id})");
+        // Don't echo ev.Summary back — the caller just supplied that exact text in this same
+        // request; repeating it costs tokens for zero new information.
+        context.RecordMessage($"Event logged (id: {e.Id}).");
 
         // Skip novelty scoring for engine/bookkeeping-generated categories (transient eviction departures,
         // timeskip/simulation logging, crowd interrupts) — these are auto-narrated, not LLM narrative

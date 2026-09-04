@@ -941,12 +941,15 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(result.Success);
         Assert.True(result.Data!.Committed);
         Assert.Equal(1, result.Data.ChangesProcessed);
-        Assert.Contains(charId, result.Data.InvolvedEntities);
 
         // Assert: auto-refresh contains updated NPC
         Assert.NotNull(result.Data.Npcs);
         Assert.Single(result.Data.Npcs);
         Assert.Equal(charId, result.Data.Npcs[0].CharacterId);
+
+        // charId is fully itemized via Npcs[0] above, so InvolvedEntities (which also carries
+        // non-character/location IDs with no detail section) omits it as redundant.
+        Assert.DoesNotContain(charId, result.Data.InvolvedEntities);
     }
 
     [Fact]
