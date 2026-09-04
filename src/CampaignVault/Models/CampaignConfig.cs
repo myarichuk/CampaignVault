@@ -227,9 +227,12 @@ public class CampaignConfig
     /// <summary>
     /// BehavioralTension (0-100 scale) threshold above which an NPC's top initiative candidate (if
     /// Urgency is at least High) produces an advisory TurnIntentSignal suggesting the NPC should
-    /// act/speak next. Defaults to 60. Never a hard gate — the player can always act regardless.
+    /// act/speak next. Defaults to 40 — still gated by the High-urgency candidate requirement, so
+    /// this alone doesn't make NPCs trigger-happy, just lets ordinary (non-crisis) tension prompt
+    /// them to act instead of only firing near max stress. Never a hard gate — the player can
+    /// always act regardless.
     /// </summary>
-    public double BehavioralTensionSpeakingThreshold { get; set; } = 60;
+    public double BehavioralTensionSpeakingThreshold { get; set; } = 40;
 
     /// <summary>
     /// Days after a persistent relationship initiative was surfaced before sim may re-arm it

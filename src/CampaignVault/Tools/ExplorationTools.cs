@@ -114,6 +114,13 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 }
             }
 
+            // PCs ride along in scene.PresentNPCs up to this point because pressure contributors
+            // (LocationIntegrityPressureContributor's "did the party forget to commit travel" check)
+            // and the recognition-hint/faction-reputation lookups above need them there. But they're
+            // not really NPCs, and their full state already travels via Party/PartyDelta elsewhere on
+            // the wire — strip them from the roster right before it goes out.
+            scene.PresentNPCs = scene.PresentNPCs.Where(n => !n.IsPc).ToList();
+
             return new ToolResult<SceneView>(true, scene, summary,
                 WorldPressure: finalPressures.Length > 0 ? finalPressures : null);
         }, saveChanges: true);

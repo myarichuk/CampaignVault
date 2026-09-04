@@ -2913,7 +2913,9 @@ public class CampaignRepository
         var summary = new SceneSummaryView
         {
             Location = scene.Location,
-            PresentNPCs = scene.PresentNPCs ?? [],
+            // PCs ride along internally (recognition hints / faction-reputation lookups need them),
+            // but they're not NPCs and their state already travels via Party/PartyDelta.
+            PresentNPCs = scene.PresentNPCs.Where(n => !n.IsPc).ToList(),
             LocalRumors = scene.LocalRumors ?? [],
             NeedDescriptorLegend = scene.NeedDescriptorLegend,
             ActiveCombat = scene.ActiveCombat != null

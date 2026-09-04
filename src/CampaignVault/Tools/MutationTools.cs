@@ -1606,6 +1606,9 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             var scene = await _repository.GetSceneAsync(new CampaignSession(ctx.Session, ctx.Campaign), locationId, markVisited: false);
             if (scene != null)
             {
+                // PCs ride along internally (recognition hints / faction-reputation lookups need
+                // them), but they're not NPCs and their state already travels via Party/PartyDelta.
+                scene.PresentNPCs = scene.PresentNPCs.Where(n => !n.IsPc).ToList();
                 ctx.Result.FullScene = scene;
             }
             else
