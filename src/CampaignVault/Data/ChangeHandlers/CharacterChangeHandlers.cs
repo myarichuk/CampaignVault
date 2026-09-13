@@ -366,9 +366,11 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             : null;
         _poolInitializer.InitializePools(character, activeSystem, campaignConfig);
 
-        var reasonSuffix = string.IsNullOrWhiteSpace(levelUp.Reason) ? "" : $" ({levelUp.Reason})";
+        // Don't echo levelUp.Reason back — the caller just supplied that exact text in this same
+        // request. The resulting MaxHp is ruleset-formula-derived (hit die rolls, CON mod, etc.), not
+        // something the caller could compute itself.
         context.RecordMessage(
-            $"Level up: {character.Name} gained {levelUp.LevelsGained} level(s){reasonSuffix}. MaxHp {previousMax} → {character.MaxHp}.");
+            $"Level up: {character.Name} gained {levelUp.LevelsGained} level(s). MaxHp {previousMax} → {character.MaxHp}.");
 
         ApplyLevelUpChoices(character, levelUp, context);
 
@@ -394,9 +396,6 @@ public class LevelUpChangeHandler : IWorldChangeHandler
                     Value = value,
                 });
             }
-
-            context.RecordMessage(
-                $"Level-up choices recorded for {character.Name}: {string.Join(", ", choices.Select(kv => $"{kv.Key}={kv.Value}"))}.");
         }
 
         if (levelUp.AbilityScoreIncreases is { Count: > 0 } increases)
@@ -407,9 +406,6 @@ public class LevelUpChangeHandler : IWorldChangeHandler
                 {
                     ApplyAbilityScoreIncrease(dnd5e, ability, amount);
                 }
-
-                context.RecordMessage(
-                    $"Ability score increase for {character.Name}: {string.Join(", ", increases.Select(kv => $"{kv.Key} +{kv.Value}"))}.");
             }
             else
             {
@@ -653,7 +649,6 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             character.DepartedFromLocationId = null;
         }
 
-        context.RecordMessage($"Updated character '{cu.CharacterId}'.");
         return ChangeHandlerResult.Ok;
     }
 }
@@ -753,7 +748,6 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
                 + "but no sourceEventIds. Pass a client-chosen eventId on the paired event change in this same batch and reference it here.");
         }
 
-        context.RecordMessage($"Updated memory for character '{ku.CharacterId}' regarding '{ku.Topic}'.");
         return ChangeHandlerResult.Ok;
     }
 

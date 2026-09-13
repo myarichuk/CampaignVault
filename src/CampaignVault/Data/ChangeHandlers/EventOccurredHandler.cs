@@ -63,8 +63,13 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
 
         await context.LogEventAsync(e);
         // Don't echo ev.Summary back — the caller just supplied that exact text in this same
-        // request; repeating it costs tokens for zero new information.
-        context.RecordMessage($"Event logged (id: {e.Id}).");
+        // request. Only report the resolved ID when the caller didn't choose it itself (auto-generated
+        // GUID) — it may need that ID later for sourceEventIds; a collision fallback is already
+        // reported separately by ResolveEventIdAsync.
+        if (string.IsNullOrWhiteSpace(ev.EventId))
+        {
+            context.RecordMessage($"Event logged (id: {e.Id}).");
+        }
 
         // Skip novelty scoring for engine/bookkeeping-generated categories (transient eviction departures,
         // timeskip/simulation logging, crowd interrupts) — these are auto-narrated, not LLM narrative

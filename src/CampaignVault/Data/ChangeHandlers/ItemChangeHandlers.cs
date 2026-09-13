@@ -119,8 +119,6 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
             }
         }
 
-        context.RecordMessage($"Updated state/tags for item '{iu.ItemId}'.");
-
         if (item.IsEquipped && (iu.PropertiesToUpsert != null || iu.PropertiesToRemove != null)
             && !string.IsNullOrEmpty(item.HolderId))
         {
@@ -133,7 +131,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
             if (wearer != null)
             {
                 await ArmorParameterResolver.ApplyAsync(wearer, context, ct);
-                context.RecordMessage($"{wearer.Name}'s ArmorClass and WarmthRating recomputed after '{item.Name}' changed.");
+                context.RecordMessage(DerivedStatsMessage.Build(wearer));
             }
         }
 
@@ -209,7 +207,12 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
             }
         }
 
-        context.RecordMessage($"{(isNew ? "Created" : "Updated")} detail '{detail.Name}' on item '{item.Id}'.");
+        if (!isNew && string.IsNullOrWhiteSpace(req.Id))
+        {
+            // Caller didn't reference an existing detail by ID, but semantic matching folded this into
+            // one anyway — a merge it didn't ask for, worth flagging (mirrors EntityCollisions).
+            context.RecordMessage($"'{req.Name}' matched an existing detail on '{item.Id}' and was merged into it instead of creating a new one.");
+        }
 
         // Hazard/Environmental details plausibly change at wildly different rates (a puncture in days,
         // a scorch mark in months) — there's no reliable signal to auto-pick the right one, so nudge

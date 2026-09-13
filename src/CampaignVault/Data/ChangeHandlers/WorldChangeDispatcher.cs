@@ -132,7 +132,12 @@ public sealed class WorldChangeDispatcher(
         foreach (var change in changes)
         {
             WorldChangeHandlerHelpers.NormalizeIdFields(change);
-            ExtractInvolvedIds(change, characterIds, locationIds, factionIds, questIds, itemIds, allInvolved);
+            // Background need/attribute simulation ticks (hunger, tiredness, morale drift, climate
+            // readings) touch every scheduled NPC every turn — still need the character loaded so the
+            // handler can apply the delta, but they shouldn't make every campaign NPC show up as
+            // "involved" in a turn they had no narrative part in.
+            var isBackgroundTick = change.IsEngineAuthored && change is NeedChange or AttributeChange;
+            ExtractInvolvedIds(change, characterIds, locationIds, factionIds, questIds, itemIds, isBackgroundTick ? null : allInvolved);
             if (change is RulesetAction) needsCombat = true;
             if (change is RulesetAction or LevelUpChange) needsRulesetConfig = true;
         }

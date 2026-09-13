@@ -143,7 +143,10 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
         }, slug);
 
         Assert.True(result.Success, result.Summary);
-        Assert.Contains(result.Data!.Summary, s => s.Contains("political intrigue"));
+
+        var context = await tools.GetCurrentCampaign(slug);
+        Assert.True(context.Success, context.Summary);
+        Assert.Contains("political intrigue", context.Data!.Campaign.NarrativeFocus);
 
         var session = TestCampaignToolsFactory.CreateTool<SessionTools>(_fixture);
         var kickoff = await session.StartSession(slug);

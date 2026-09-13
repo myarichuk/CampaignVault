@@ -40,7 +40,13 @@ public sealed class MoodChangeHandler : IWorldChangeHandler
         }
 
         character.Psychology.CurrentMood = mood.NewMood;
-        context.RecordMessage($"Mood set to '{mood.NewMood}' for {mood.CharacterId}");
+
+        // Only report an engine-computed threshold crossing (needs simulation) — new info the caller
+        // couldn't have known. An explicit, LLM-authored mood change is just an echo of what it set.
+        if (mood.IsEngineAuthored)
+        {
+            context.RecordMessage($"{mood.CharacterId}'s mood shifted to '{mood.NewMood}' (needs-driven).");
+        }
 
         return ChangeHandlerResult.Ok;
     }

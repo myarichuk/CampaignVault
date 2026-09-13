@@ -37,7 +37,6 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
             {
                 target.SystemStats.EngagementRelations.RemoveAll(r => r.TargetId == src.CharacterId);
             }
-            context.RecordMessage($"EngagementRelation removed between {src.CharacterId} and {src.TargetId}.");
 
             // Only Physical/Medical relations (restraint, grappling, tending wounds) gate action legality
             // enough to warrant a history entry — Social/Attention/Proximity churn constantly (e.g. batched
@@ -82,8 +81,6 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
                     RestrictionLevel = src.RestrictionLevel
                 });
             }
-
-            context.RecordMessage($"EngagementRelation established: {src.CharacterId} is {verb} ({category}) with {src.TargetId}.");
 
             if (!isNoOp && IsHistoryWorthy(category))
             {

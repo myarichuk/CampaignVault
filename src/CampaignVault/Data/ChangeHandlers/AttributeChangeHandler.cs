@@ -67,8 +67,8 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
                 break;
         }
 
-        context.RecordMessage($"Attribute '{attr.Attribute}' set for {attr.CharacterId}");
-
+        // No success message: the caller already knows the attribute/value it just set, and unlike
+        // HpChange this doesn't reveal a clamped/derived total worth echoing back.
         return ChangeHandlerResult.Ok;
     }
 }

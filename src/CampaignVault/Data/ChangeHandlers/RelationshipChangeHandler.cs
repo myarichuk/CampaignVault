@@ -57,7 +57,7 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
         var currentVal = source.Social.Relationships.GetValueOrDefault(rel.TargetId, 0);
         source.Social.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
 
-        context.RecordMessage($"Relationship from {rel.CharacterId} to {rel.TargetId} shifted by {rel.Delta} ({rel.Reason})");
+        context.RecordMessage($"Relationship from {rel.CharacterId} to {rel.TargetId} is now {source.Social.Relationships[rel.TargetId]} (clamped -100 to 100).");
 
         return ChangeHandlerResult.Ok;
     }

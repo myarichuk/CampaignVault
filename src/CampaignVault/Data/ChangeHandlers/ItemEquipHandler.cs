@@ -110,10 +110,9 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
 
         item.IsEquipped = true;
         item.LastUpdated = DateTime.UtcNow;
-        context.RecordMessage($"Equipped '{item.Name}' on {equip.CharacterId}.");
 
         await ArmorParameterResolver.ApplyAsync(character, context, ct);
-        context.RecordMessage($"{character.Name}'s ArmorClass and WarmthRating recomputed.");
+        context.RecordMessage(DerivedStatsMessage.Build(character));
 
         return ChangeHandlerResult.Ok;
     }
@@ -276,11 +275,31 @@ public sealed class ItemUnequipHandler : IWorldChangeHandler
 
         item.IsEquipped = false;
         item.LastUpdated = DateTime.UtcNow;
-        context.RecordMessage($"Unequipped '{item.Name}' from {unequip.CharacterId}.");
 
         await ArmorParameterResolver.ApplyAsync(character, context, ct);
-        context.RecordMessage($"{character.Name}'s ArmorClass and WarmthRating recomputed.");
+        context.RecordMessage(DerivedStatsMessage.Build(character));
 
         return ChangeHandlerResult.Ok;
+    }
+}
+
+/// <summary>
+/// Shared by ItemEquipHandler/ItemUnequipHandler: reports the actual post-recompute AC/WarmthRating
+/// instead of a content-free "recomputed" notice — the caller can't derive these from the item it
+/// equipped/unequipped alone (AC depends on the whole loadout plus ruleset formula).
+/// </summary>
+internal static class DerivedStatsMessage
+{
+    public static string Build(Character character)
+    {
+        var stats = character.SystemStats;
+        var ac = stats switch
+        {
+            Dnd5eExtension d => d.ArmorClass,
+            Pf2eExtension p => p.ArmorClass,
+            _ => (int?)null
+        };
+        var acPart = ac is { } acVal ? $"AC {acVal}" : "AC n/a for this ruleset";
+        return $"{character.Name}: {acPart}, WarmthRating {stats?.WarmthRating ?? 0:0.#}.";
     }
 }

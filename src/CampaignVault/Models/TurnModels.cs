@@ -115,13 +115,10 @@ public class TurnResult
     [Description("Number of WorldChanges processed by the mutation (0 for query-only calls).")]
     public int ChangesProcessed { get; set; }
 
-    [Description("Narrative summary of each change processed.")]
+    [Description("Narrative summary of each change processed — includes randomized/computed combat outcomes (hit/miss, " +
+        "damage rolled) and validation notices you couldn't have known just from the Changes you sent; explicit " +
+        "confirmations of what you already specified (e.g. 'HP adjusted by -5') are included too but add nothing new.")]
     public List<string> Summary { get; set; } = [];
-
-    [Description("IDs of all entities touched or created (mixed types: chars/, locations/, items/, etc.). " +
-        "Characters/locations already itemized in Npcs/PartyDelta/Party/Scenes/FullScene/FullNpcContext are omitted here to avoid repeating them with no extra detail; check those sections for such IDs. " +
-        "IDs dropped by the refresh cap (see RefreshTruncatedIds) and entity types with no detail section (items/, quests/, factions/, ...) always remain here.")]
-    public List<string> InvolvedEntities { get; set; } = [];
 
     [Description("Entity IDs where a create-style change hit an existing document and was merged instead of creating new.")]
     public List<string> EntityCollisions { get; set; } = [];

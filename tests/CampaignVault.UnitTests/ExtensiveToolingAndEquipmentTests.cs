@@ -345,9 +345,14 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
             new[] { new ItemEquip { CharacterId = charId, ItemId = sword2Id, ReplaceConflicts = true } },
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equip2WithReplace.Success, equip2WithReplace.Summary);
-        var replaceMessages = string.Join("\n", equip2WithReplace.Data!.Summary);
-        Assert.Contains("Unequipped", replaceMessages);
-        Assert.Contains("Rusty Sword", replaceMessages);
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var replacedSword = await session.LoadAsync<Item>(sword1Id);
+            var newSword = await session.LoadAsync<Item>(sword2Id);
+            Assert.False(replacedSword.IsEquipped);
+            Assert.True(newSword.IsEquipped);
+        }
     }
 
     [Fact]

@@ -315,7 +315,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
 
         Assert.True(result.Success);
         Assert.False(item.IsEquipped);
-        Assert.Contains(summary, m => m == $"Item {item.Id} moved to {toChar.Id} (auto-unequipped from {fromChar.Id})");
+        Assert.Contains(summary, m => m == $"Item {item.Id} was equipped and is auto-unequipped from {fromChar.Id} by this transfer.");
     }
 
     [Fact]
@@ -346,7 +346,9 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(change, context);
 
         Assert.True(result.Success);
-        Assert.Contains(summary, m => m == $"Item {item.Id} moved to {toChar.Id}");
+        // No auto-unequip side effect occurred, so nothing worth reporting — the destination itself is
+        // an echo of what the caller just specified.
+        Assert.Empty(summary);
     }
 
     // ---- Item 6: Armor/Held Properties key nudge ----

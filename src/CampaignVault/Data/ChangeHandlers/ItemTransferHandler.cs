@@ -117,8 +117,12 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             }
         }
 
-        var unequipNote = autoUnequipped ? $" (auto-unequipped from {previousHolderId})" : "";
-        context.RecordMessage($"Item {transfer.ItemId} moved to {transfer.ToHolderId}{unequipNote}");
+        // Only report the side effect the caller didn't ask for — the transfer destination itself is
+        // an echo of what it just specified.
+        if (autoUnequipped)
+        {
+            context.RecordMessage($"Item {transfer.ItemId} was equipped and is auto-unequipped from {previousHolderId} by this transfer.");
+        }
 
         return ChangeHandlerResult.Ok;
     }

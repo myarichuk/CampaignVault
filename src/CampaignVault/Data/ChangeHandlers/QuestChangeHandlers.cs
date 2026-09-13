@@ -98,9 +98,15 @@ public class QuestProgressHandler : IWorldChangeHandler
             }, ct);
         }
 
-        // Don't echo qp.NarrativeNote back — the caller just supplied that exact text in this
-        // same request; repeating it costs tokens for zero new information.
-        context.RecordMessage($"Quest progress on '{quest.Title}': Objective {indexToUpdate} is now {qp.NewState}.");
+        // Objective state itself is an echo (the caller just specified it), but which objective that
+        // resolved to (when matched by ObjectiveName rather than an explicit index) and any resulting
+        // rollup of the quest's OverallState are both computed, not something the caller already knew.
+        if (!qp.ObjectiveIndex.HasValue || quest.OverallState != oldOverallState)
+        {
+            var resolvedObjective = qp.ObjectiveIndex.HasValue ? null : $" (matched: '{quest.Objectives[indexToUpdate].Description}')";
+            var overallNote = quest.OverallState != oldOverallState ? $" Quest overall state is now {quest.OverallState}." : "";
+            context.RecordMessage($"Quest '{quest.Title}': objective {indexToUpdate}{resolvedObjective}.{overallNote}");
+        }
 
         return ChangeHandlerResult.Ok;
     }

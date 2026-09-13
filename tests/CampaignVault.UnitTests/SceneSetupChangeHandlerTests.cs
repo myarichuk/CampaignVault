@@ -98,8 +98,8 @@ public class SceneSetupChangeHandlerTests
         Assert.Single(actor.SystemStats.SpatialPositions);
         Assert.Single(target.SystemStats.EngagementRelations); // bidirectional mirroring still applies
 
-        var establishedMessages = summary.Count(m => m.Contains("EngagementRelation established", System.StringComparison.Ordinal));
-        Assert.Equal(1, establishedMessages);
+        var establishedNudges = context.PhysicalStateNudges.Count(m => m.Contains("grappling", System.StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(1, establishedNudges);
     }
 
     [Fact]

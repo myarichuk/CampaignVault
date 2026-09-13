@@ -46,7 +46,6 @@ public sealed class SceneSetupChangeHandler : IWorldChangeHandler
             }, ct);
         }
 
-        context.RecordMessage($"SceneSetup applied for {src.CharacterId} relative to {src.TargetId}.");
         return ChangeHandlerResult.Ok;
     }
 }

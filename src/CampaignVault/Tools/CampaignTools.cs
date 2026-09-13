@@ -79,7 +79,6 @@ public class CampaignTools(
                 Success = turn.Success,
                 ChangesProcessed = turnResult.ChangesProcessed,
                 Summary = turnResult.Summary,
-                InvolvedEntities = turnResult.InvolvedEntities,
                 EntityCollisions = turnResult.EntityCollisions,
                 NarrativeReminder = turnResult.NarrativeReminder,
                 RateLimitTokensRemaining = turnResult.RateLimitTokensRemaining,

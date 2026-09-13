@@ -23,7 +23,6 @@ public sealed class SpatialPositionChangeHandler : IWorldChangeHandler
         if (string.IsNullOrEmpty(src.DistanceBand))
         {
             character.SystemStats.SpatialPositions.RemoveAll(p => p.TargetId == src.TargetId);
-            context.RecordMessage($"SpatialPosition removed for {src.CharacterId} relative to {src.TargetId}.");
         }
         else
         {
@@ -35,7 +34,6 @@ public sealed class SpatialPositionChangeHandler : IWorldChangeHandler
                 Bearing = src.Bearing,
                 Zone = src.Zone
             });
-            context.RecordMessage($"SpatialPosition set: {src.CharacterId} is {src.DistanceBand} from {src.TargetId}.");
         }
 
         return ChangeHandlerResult.Ok;

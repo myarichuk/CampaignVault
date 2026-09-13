@@ -32,8 +32,6 @@ public sealed class RumorEvolvesHandler : IWorldChangeHandler
         var rtime = await context.GetCurrentTimeAsync();
         context.Session.Advanced.Patch<Rumor, int>(rumor.RumorId, x => x.LastStateChangeDay, rtime.TotalDaysElapsed);
 
-        context.RecordMessage($"Rumor {rumor.RumorId} evolved to {rumor.NewState}");
-
         return ChangeHandlerResult.Ok;
     }
 }
@@ -77,7 +75,6 @@ public sealed class RumorCreateHandler : IWorldChangeHandler
         }
 
         await context.Session.StoreAsync(rumor, ct);
-        context.RecordMessage($"Created rumor '{rc.Subject}'.");
         return ChangeHandlerResult.Ok;
     }
 }

@@ -126,6 +126,13 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         /// already being reseeded — appended to NarrativeReminder in Finalize (not in CommitChangesAsync,
         /// which unconditionally overwrites NarrativeReminder and is never reached by pure-query calls).</summary>
         public string? ReseedAdvisory { get; set; }
+
+        /// <summary>Every entity ID touched by this turn's changes (chars/locations/items/quests/factions),
+        /// used internally to drive RefreshInvolvedEntitiesAsync's auto-bundling into Npcs/Scenes and to
+        /// tag the auto-logged SceneCommit event's Involved list. Not part of the response payload — the
+        /// caller already knows every ID it just wrote in its own Changes[] (IDs are client-chosen, not
+        /// server-generated), so echoing them back added no information.</summary>
+        public List<string> InvolvedEntityIds { get; set; } = [];
     }
 
     [ToolCategory("Mutation & time")]
@@ -619,7 +626,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         result.Committed = true;
         result.ChangesProcessed = commitResult.ChangesProcessed;
         result.Summary = commitResult.Summary;
-        result.InvolvedEntities = commitResult.InvolvedEntities;
+        ctx.InvolvedEntityIds = commitResult.InvolvedEntities;
         result.EntityCollisions = commitResult.EntityCollisions;
         result.NarrativeReminder = commitResult.NarrativeReminder;
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
@@ -1369,7 +1376,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
         if (request?.AutoRefreshInvolved != false)
         {
-            foreach (var id in result.InvolvedEntities)
+            foreach (var id in ctx.InvolvedEntityIds)
             {
                 AddCandidate(id, explicitlyRequested: false);
             }
@@ -1513,8 +1520,12 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 var deltas = new List<EntityChangeDelta>();
                 foreach (var member in party)
                 {
+                    // Exclude background need/attribute simulation ticks (hunger, tiredness, morale drift,
+                    // climate readings) — they fire every turn for every scheduled NPC and are individually
+                    // meaningless; MoodChange already surfaces the threshold crossings that matter narratively.
                     var memberChanges = ctx.AppliedChanges
                         .Where(c => _repository.ExtractInvolvedEntityIds(c).Contains(member.Id, StringComparer.OrdinalIgnoreCase))
+                        .Where(c => !(c.IsEngineAuthored && c is NeedChange or AttributeChange))
                         .ToList();
                     var hasInitiative = ctx.InitiativeByNpcId.TryGetValue(member.Id, out var initiative);
 
@@ -1685,7 +1696,6 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         DedupeScenesCoveredByFullScene(result);
         DedupeNpcsCoveredByScenes(result);
         DedupeRumorsCoveredByWorldState(result);
-        DedupeInvolvedEntitiesCoveredByRefresh(result);
         PopulateQuerySuggestions(result);
 
         if (!string.IsNullOrEmpty(ctx.ReseedAdvisory))
@@ -1875,75 +1885,6 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         }
     }
 
-
-    /// <summary>
-    /// InvolvedEntities lists every touched ID regardless of type (chars/, locations/, items/, etc.),
-    /// but characters/locations already itemized in detail elsewhere (Npcs/PartyDelta/Party/Scenes/
-    /// FullScene/FullNpcContext) don't need a second, detail-free mention here too. IDs dropped by the
-    /// refresh cap are NOT in any of those detail sections, so they're left untouched here — they're
-    /// still the only place the client learns those entities were touched (RefreshTruncatedIds says
-    /// they were capped, not that they're safe to ignore). Non-character/location IDs (items/, quests/,
-    /// factions/, ...) have no equivalent detail section at all, so they always stay too.
-    /// </summary>
-    private static void DedupeInvolvedEntitiesCoveredByRefresh(TurnResult result)
-    {
-        if (result.InvolvedEntities is not { Count: > 0 })
-        {
-            return;
-        }
-
-        var covered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var id in (result.Npcs ?? []).Select(n => n.CharacterId))
-        {
-            covered.Add(id);
-        }
-
-        foreach (var id in (result.PartyDelta ?? []).Select(d => d.EntityId))
-        {
-            covered.Add(id);
-        }
-
-        foreach (var id in (result.Party ?? []).Select(p => p.Id))
-        {
-            covered.Add(id);
-        }
-
-        foreach (var scene in result.Scenes ?? [])
-        {
-            if (scene.Location?.Id is { } locationId)
-            {
-                covered.Add(locationId);
-            }
-
-            foreach (var npc in scene.PresentNPCs)
-            {
-                covered.Add(npc.Id);
-            }
-        }
-
-        if (result.FullScene?.Location?.Id is { } fullSceneLocationId)
-        {
-            covered.Add(fullSceneLocationId);
-        }
-
-        foreach (var npc in result.FullScene?.PresentNPCs ?? [])
-        {
-            covered.Add(npc.Id);
-        }
-
-        if (result.FullNpcContext?.Character?.Id is { } fullNpcId)
-        {
-            covered.Add(fullNpcId);
-        }
-
-        if (covered.Count == 0)
-        {
-            return;
-        }
-
-        result.InvolvedEntities = result.InvolvedEntities.Where(id => !covered.Contains(id)).ToList();
-    }
 
     private void Warn(TurnContext ctx, string message, Exception? ex = null)
     {

@@ -521,7 +521,8 @@ public class WorldChangeDispatcherTests
         Assert.True(result.Success);
         Assert.Single(loggedEvents);
         Assert.Equal("events/valen-lirael-caravans", loggedEvents[0].Id);
-        Assert.Contains(result.Summary, s => s.Contains("(id: events/valen-lirael-caravans)"));
+        // No "Event logged (id: ...)" echo when the caller chose the ID itself — it already knows it.
+        Assert.DoesNotContain(result.Summary, s => s.Contains("Event logged (id:"));
     }
 
     [Fact]

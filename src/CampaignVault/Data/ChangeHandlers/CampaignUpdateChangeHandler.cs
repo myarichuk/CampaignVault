@@ -41,8 +41,6 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
         }
 
         campaign.NarrativeFocus = cu.NarrativeFocus;
-        context.RecordMessage(
-            $"Narrative focus set to: {(campaign.NarrativeFocus.Count > 0 ? string.Join(", ", campaign.NarrativeFocus) : "(cleared)")}.");
 
         return ChangeHandlerResult.Ok;
     }

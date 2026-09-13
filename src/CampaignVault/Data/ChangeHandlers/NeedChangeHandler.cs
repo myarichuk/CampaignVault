@@ -50,7 +50,8 @@ public sealed class NeedChangeHandler : IWorldChangeHandler
         };
         character.Needs.ActiveNeeds = updatedNeeds;
 
-        context.RecordMessage($"Need '{nc.Need}' adjusted for {nc.CharacterId} by {nc.Delta}");
+        // No success message: the caller specified the need/delta itself (nothing computed to echo
+        // back), and background accumulation ticks were already silent before this.
 
         return ChangeHandlerResult.Ok;
     }

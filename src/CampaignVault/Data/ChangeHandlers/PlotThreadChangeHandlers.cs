@@ -64,7 +64,13 @@ public class PlotThreadProgressHandler : IWorldChangeHandler
             thread.LastUpdatedDay = time.TotalDaysElapsed;
         }
 
-        context.RecordMessage($"Updated plot thread '{thread.Title}': state={thread.State}, tension={thread.TensionLevel}.");
+        // State is an echo of what the caller just set; TensionLevel is a clamped delta result worth
+        // confirming.
+        if (ptp.TensionDelta.HasValue)
+        {
+            context.RecordMessage($"Plot thread '{thread.Title}': TensionLevel is now {thread.TensionLevel} (clamped 0-100).");
+        }
+
         return ChangeHandlerResult.Ok;
     }
 
@@ -107,7 +113,7 @@ public class PlotThreadClueDiscoveredHandler : IWorldChangeHandler
         thread.LastUpdatedDay = time.TotalDaysElapsed;
 
         var discoveredCount = thread.Clues.Count(c => c.IsDiscovered);
-        context.RecordMessage($"Clue '{ptcd.ClueId}' discovered in plot thread '{thread.Title}' ({discoveredCount}/{thread.Clues.Count} clues found). {ptcd.NarrativeNote}");
+        context.RecordMessage($"Clue '{ptcd.ClueId}' discovered in plot thread '{thread.Title}' ({discoveredCount}/{thread.Clues.Count} clues found).");
 
         // Auto-emit event via mutation dispatch so the party history reflects the discovery
         if (!string.IsNullOrWhiteSpace(ptcd.NarrativeNote))

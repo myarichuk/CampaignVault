@@ -1145,7 +1145,12 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var result = await tools.Commit(outOfOrderJson, "Testing property order");
 
         Assert.True(result.Success, result.Summary);
-        Assert.Contains("HP adjusted", result.Data!.Summary[0]);
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var character = await session.LoadAsync<Character>("npcs/order-test");
+            Assert.Equal(15, character.CurrentHp);
+        }
 
         using (var session = _store.OpenAsyncSession())
         {
@@ -1372,7 +1377,6 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         Assert.True(addResult.Success);
-        Assert.Contains(addResult.Summary, s => s.Contains("Status 'Poisoned' (category: Legacy) added"));
 
         var npc1 = await session.LoadAsync<Character>(id);
         Assert.Equal(2, npc1.SystemStats.StatusEffects.Count);

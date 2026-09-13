@@ -68,8 +68,6 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             }
         }
 
-        context.RecordMessage($"Activity updated for {act.CharacterId}: {act.NewActivity ?? "(unchanged)"} @ {act.NewLocationId ?? "(unchanged)"}");
-
         return ChangeHandlerResult.Ok;
     }
 }

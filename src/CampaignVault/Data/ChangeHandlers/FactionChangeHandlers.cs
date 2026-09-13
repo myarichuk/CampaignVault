@@ -91,7 +91,10 @@ public class FactionStateChangeHandler : IWorldChangeHandler
 
         faction.LastUpdated = DateTime.UtcNow;
 
-        context.RecordMessage($"Faction state changed for {faction.Name}. {fsc.Narrative}");
+        if (fsc.InfluenceDelta.HasValue)
+        {
+            context.RecordMessage($"{faction.Name}'s InfluenceLevel is now {faction.InfluenceLevel} (clamped 0-100).");
+        }
 
         return ChangeHandlerResult.Ok;
     }

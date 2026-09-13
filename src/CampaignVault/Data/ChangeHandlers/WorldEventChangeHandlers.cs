@@ -35,7 +35,13 @@ public class WorldEventStatusChangeHandler : IWorldChangeHandler
             evt.LastUpdatedDay = (int)time.TotalDaysElapsed;
         }
 
-        context.RecordMessage($"Updated world event '{evt.Title}': status={evt.Status}.");
+        // Only report when the engine itself triggered this (new info); an LLM-authored status change
+        // is just an echo of what it specified.
+        if (wesc.IsEngineAuthored)
+        {
+            context.RecordMessage($"World event '{evt.Title}' auto-triggered: status={evt.Status}.");
+        }
+
         return ChangeHandlerResult.Ok;
     }
 

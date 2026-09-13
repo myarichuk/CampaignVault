@@ -80,13 +80,12 @@ public class ResourceChangeHandler : IWorldChangeHandler
             : pool with { Current = newCurrent };
         character.SystemStats.ResourcePools[rc.PoolName] = updatedPool;
 
-        var narrative = rc.Reason ?? "Resource pool updated.";
-        if (actualDelta != rc.Delta)
-        {
-            narrative += $" (Clamped: requested {rc.Delta:+0;-0}, actual {actualDelta:+0;-0})";
-        }
+        // Don't echo rc.Reason back — the caller just supplied that exact text in this same request.
+        var clampNote = actualDelta != rc.Delta
+            ? $" (Clamped: requested {rc.Delta:+0;-0}, actual {actualDelta:+0;-0})"
+            : "";
 
-        return new ChangeHandlerResult(true, $"{character.Name}'s {rc.PoolName}: {oldCurrent} → {newCurrent}. {narrative}");
+        return new ChangeHandlerResult(true, $"{character.Name}'s {rc.PoolName}: {oldCurrent} → {newCurrent}.{clampNote}");
     }
 
     private ChangeHandlerResult? TryValidateSpellSpend(ResourceChange rc, Character character, ChangeContext context)
