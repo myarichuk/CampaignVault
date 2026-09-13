@@ -62,6 +62,7 @@ public sealed class ChangeContext
     public WorldChangeDispatcher Dispatcher { get; }
 
     private readonly List<string> _summary;
+    private readonly List<string> _physicalStateNudges;
     private readonly List<string> _entityCollisions = [];
     private bool _hasFailure;
     private readonly Dictionary<string, Character> _characters;
@@ -85,7 +86,8 @@ public sealed class ChangeContext
         WorldChangeDispatcher dispatcher,
         CombatEncounter? activeCombat = null,
         string? campaignName = null,
-        CampaignConfig? config = null)
+        CampaignConfig? config = null,
+        List<string>? physicalStateNudges = null)
     {
         Session = session ?? throw new ArgumentNullException(nameof(session));
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -98,6 +100,7 @@ public sealed class ChangeContext
         GetSystemOptionsAsync = getSystemOptionsAsync ?? throw new ArgumentNullException(nameof(getSystemOptionsAsync));
         LogEventAsync = logEventAsync ?? throw new ArgumentNullException(nameof(logEventAsync));
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
+        _physicalStateNudges = physicalStateNudges ?? [];
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
         CampaignName = campaignName;
@@ -121,7 +124,8 @@ public sealed class ChangeContext
         WorldChangeDispatcher dispatcher,
         CombatEncounter? activeCombat = null,
         string? campaignName = null,
-        CampaignConfig? config = null)
+        CampaignConfig? config = null,
+        List<string>? physicalStateNudges = null)
     {
         Session = sessionForTests!;
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -134,6 +138,7 @@ public sealed class ChangeContext
         GetSystemOptionsAsync = () => Task.FromResult(new Dictionary<string, string>());
         LogEventAsync = _ => Task.CompletedTask;
         _summary = summary ?? throw new ArgumentNullException(nameof(summary));
+        _physicalStateNudges = physicalStateNudges ?? [];
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
         CampaignName = campaignName;
@@ -157,6 +162,23 @@ public sealed class ChangeContext
             _summary.Add(message);
         }
     }
+
+    /// <summary>
+    /// Records a narration-facing reminder that a character's physical/visual state changed this
+    /// turn (restraints, wounds, appearance/tags) — surfaced separately from <see cref="RecordMessage"/>
+    /// so it stays salient (its own labeled field, not mixed into the generic commit log) even in a
+    /// long session where earlier context is crowded with unrelated reference material. Phrase these
+    /// as plain narrative facts ("Elara's wrists are no longer bound."), not technical log lines.
+    /// </summary>
+    public void RecordPhysicalStateNudge(string message)
+    {
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            _physicalStateNudges.Add(message);
+        }
+    }
+
+    internal IReadOnlyList<string> PhysicalStateNudges => _physicalStateNudges;
 
     /// <summary>
     /// Marks that at least one change in the batch failed or produced a warning.

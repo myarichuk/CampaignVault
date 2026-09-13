@@ -909,7 +909,11 @@ public class TravelChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = null!;
     
-    [Description("ID of the destination location (e.g. 'locations/highpass').")]
+    [Description("ID of the destination location (e.g. 'locations/highpass'). Must already exist — this does not create one. " +
+        "For an off-route stop during travel (a campsite, a clearing, a hiding spot) that isn't on the map yet, first " +
+        "upsert_location a specific child Location (parentLocationId = the road/region) instead of setting the destination " +
+        "to the broad Region/Wilderness itself — landing directly on the broad node pulls its whole quest/NPC/rumor scope " +
+        "into this stop.")]
     [JsonPropertyName("destinationLocationId")]
     public string DestinationLocationId { get; set; } = null!;
     

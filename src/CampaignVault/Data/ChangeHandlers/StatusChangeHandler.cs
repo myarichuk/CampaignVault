@@ -111,6 +111,7 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
 
         character.SystemStats.StatusEffects.Add(effect);
         context.RecordMessage($"Status '{effect.Name}' (category: {effect.Category}) added to {add.CharacterId}");
+        context.RecordPhysicalStateNudge($"{character.Name} is now affected by '{effect.Name}'.");
 
         await LogStatusEventAsync(context, character, $"{character.Name} gained status '{effect.Name}' ({effect.Category}).");
 
@@ -207,6 +208,7 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         if (removedCount > 0)
         {
             context.RecordMessage($"Status '{remove.Status}' removed from {remove.CharacterId} ({removedCount} effect(s))");
+            context.RecordPhysicalStateNudge($"{character.Name} is no longer affected by '{remove.Status}'.");
             await LogStatusEventAsync(context, character, $"{character.Name} lost status '{remove.Status}'.");
         }
         else

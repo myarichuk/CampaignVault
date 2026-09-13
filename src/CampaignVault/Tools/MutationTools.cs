@@ -301,6 +301,28 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         }
         turnCursor.ConsecutiveClientForcedReseeds = clientForced ? turnCursor.ConsecutiveClientForcedReseeds + 1 : 0;
 
+        var thrashWindow = Math.Max(1, config.ForcedReseedThrashWindow);
+        var thrashThreshold = Math.Max(1, config.ForcedReseedThrashThreshold);
+
+        turnCursor.RecentClientForcedFlags.Add(clientForced);
+        if (turnCursor.RecentClientForcedFlags.Count > thrashWindow)
+        {
+            turnCursor.RecentClientForcedFlags.RemoveAt(0);
+        }
+
+        if (turnCursor.RecentClientForcedFlags.Count >= thrashThreshold)
+        {
+            var forcedCount = turnCursor.RecentClientForcedFlags.Count(f => f);
+            if (forcedCount >= thrashThreshold)
+            {
+                var thrashAdvisory = $"Note: forceFullReseed was set on {forcedCount} of your last " +
+                    $"{turnCursor.RecentClientForcedFlags.Count} take_turn calls. Full reseeds cost far more tokens " +
+                    "per turn than delta mode — if you're unsure whether state changed, trust the delta response or " +
+                    "call get_entity/get_scene for the one thing you need instead of forcing a full resync every time.";
+                ctx.ReseedAdvisory = ctx.ReseedAdvisory is null ? thrashAdvisory : ctx.ReseedAdvisory + " " + thrashAdvisory;
+            }
+        }
+
         if (isNewCursor)
         {
             await ctx.Session.StoreAsync(turnCursor, turnCursor.Id);
@@ -600,6 +622,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         result.InvolvedEntities = commitResult.InvolvedEntities;
         result.EntityCollisions = commitResult.EntityCollisions;
         result.NarrativeReminder = commitResult.NarrativeReminder;
+        result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
         ctx.AppliedChanges = changes.Concat(commitResult.AmbientDeltas).ToList();
         ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
 
@@ -1633,7 +1656,10 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
         try
         {
-            var scene = await _repository.GetSceneAsync(new CampaignSession(ctx.Session, ctx.Campaign), locationId, markVisited: false);
+            // Full detail here means full — bypass the Description/PointOfInterestDetails caps that
+            // apply everywhere else, since this call is already bounded to one location per take_turn.
+            var scene = await _repository.GetSceneAsync(new CampaignSession(ctx.Session, ctx.Campaign), locationId,
+                markVisited: false, fullDescription: true, fullPointOfInterestDetails: true);
             if (scene != null)
             {
                 // PCs ride along internally (recognition hints / faction-reputation lookups need

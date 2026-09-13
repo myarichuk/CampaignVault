@@ -538,6 +538,14 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
         if (appearanceChanged)
         {
+            // Echo the CURRENT merged appearance/tags (not just this change's diff) — AppearanceOverride
+            // is overwrite semantics, so if this update replaced CurrentAppearance without restating an
+            // earlier detail (e.g. a wound, restraint, combat residue), this is the model's one chance to
+            // notice the drop before it narrates from a now-stale mental picture.
+            var tagsText = character.VisualTags.Count > 0 ? $" Tags: [{string.Join(", ", character.VisualTags)}]." : string.Empty;
+            context.RecordPhysicalStateNudge(
+                $"{character.Name}'s current appearance: {character.CurrentAppearance ?? "(no override set)"}.{tagsText}");
+
             var eventId = "events/" + Guid.NewGuid();
             await context.LogEventAsync(new Event
             {

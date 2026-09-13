@@ -23,4 +23,11 @@ public sealed class SceneAssemblyContext
     public required IReadOnlyList<Faction> RelevantFactions { get; init; }
     public bool MarkVisited { get; init; }
     public IReadOnlyList<ContainerContentsSummary> ContainerContents { get; init; } = [];
+
+    /// <summary>Skip capping Location.Description (see LocationDetailView.From).</summary>
+    public bool FullDescription { get; init; }
+    /// <summary>Skip capping every PointOfInterestDetails entry — used by take_turn's fullDetailLocationId.</summary>
+    public bool FullPointOfInterestDetails { get; init; }
+    /// <summary>Skip capping just this one PointOfInterestDetails entry.</summary>
+    public string? DetailPoiName { get; init; }
 }

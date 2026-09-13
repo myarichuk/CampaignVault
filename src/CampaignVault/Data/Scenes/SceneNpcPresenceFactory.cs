@@ -49,6 +49,8 @@ public sealed class SceneNpcPresenceFactory
             var equippedItems = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
             var carriedItems = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
 
+            var (notes, notesTruncated) = TextTruncation.TruncateAtBoundary(npc.Notes, context.Config.NpcPresenceNotesCharCap);
+
             presenceSummaries.Add(new NpcPresenceSummary(
                 Id: npc.Id,
                 Name: npc.Name,
@@ -57,7 +59,8 @@ public sealed class SceneNpcPresenceFactory
                 KnownNeeds: knownNeeds,
                 NeedDescriptors: needDescriptors,
                 BehavioralSummary: _behaviorSynthesizer.GenerateSummary(npc, context.Time, context.RecentSceneEvents),
-                Notes: npc.Notes,
+                Notes: notes,
+                NotesTruncated: notesTruncated,
                 KeepAlive: npc.KeepAlive,
                 IsPc: npc.IsPc,
                 IsPartyCompanion: npc.IsPartyCompanion,

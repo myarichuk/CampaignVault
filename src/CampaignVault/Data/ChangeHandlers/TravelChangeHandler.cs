@@ -123,6 +123,21 @@ public class TravelChangeHandler : IWorldChangeHandler
             destination.LastVisitedDay = (int)time.TotalDaysElapsed;
             destination.LastUpdated = DateTime.UtcNow;
 
+            // A Region is the broadest tier (see LocationType) and typically carries a wide scope of
+            // attached quests/NPCs/rumors. Landing a character's exact CurrentLocationId directly on one
+            // — instead of a child Location created for the specific spot (a campsite, a clearing, a
+            // hiding place) — pulls that whole scope into every subsequent get_scene/get_world_state/
+            // take_turn call for a beat that was really about one small patch of it. Advisory only: never
+            // blocks the travel, since sometimes the region-level node genuinely is the destination.
+            if (destination.Type == LocationType.Region)
+            {
+                context.RecordMessage(
+                    $"NOTE: {destination.Name} ({destination.Id}) is a broad Region. If this stop is a specific spot " +
+                    "within it rather than the whole region, consider creating a child Location first (upsert_location " +
+                    $"with parentLocationId='{destination.Id}') and traveling there instead — otherwise this scene inherits " +
+                    "the entire region's quests/NPCs/rumors.");
+            }
+
             await ClearStaleEngagementsAsync(character, tc.DestinationLocationId, context, ct);
 
             var msg = $"Travel: {character.Name} traveled to {destination.Name}. {tc.Narrative}";

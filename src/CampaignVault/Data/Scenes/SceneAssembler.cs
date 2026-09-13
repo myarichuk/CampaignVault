@@ -88,7 +88,12 @@ public sealed class SceneAssembler
 
         return new SceneView
         {
-            Location = LocationDetailView.From(context.Location),
+            Location = LocationDetailView.From(
+                context.Location,
+                context.Config,
+                context.FullDescription,
+                context.FullPointOfInterestDetails,
+                context.DetailPoiName),
             PresentNPCs = presenceSummaries,
             LocalRumors = context.Rumors.Select(r => new RumorSummary(r.Id, r.Subject, r.CurrentText, r.State)).ToList(),
             NeedDescriptorLegend = new Dictionary<string, string>(context.GlobalNeedDescriptors),

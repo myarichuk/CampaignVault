@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using CampaignVault.Data;
 
 namespace CampaignVault.Models;
 
@@ -26,27 +27,78 @@ public record LocationDetailView(
     List<string> DistinctiveFeatures,
     string? ControllingFactionId,
     int DangerModifier,
-    ClimateZone? ClimateZone)
+    ClimateZone? ClimateZone,
+    /// <summary>True if Description was cut down to CampaignConfig.LocationDescriptionCharCap.
+    /// Call get_scene with fullDescription=true for the complete text.</summary>
+    bool DescriptionTruncated = false,
+    /// <summary>Names of PointOfInterestDetails entries cut down to CampaignConfig.PointOfInterestDetailCharCap.
+    /// Call get_scene with detailPoi=&lt;name&gt; for one entry's complete text.</summary>
+    List<string>? TruncatedPointsOfInterest = null)
 {
-    public static LocationDetailView From(Location l) => new(
-        l.Id,
-        l.Name,
-        l.Description,
-        l.Type,
-        l.ParentLocationId,
-        l.Exits,
-        l.PointsOfInterest,
-        l.PointOfInterestDetails,
-        l.AmbientCrowd,
-        l.LastVisitedDay,
-        l.RecentlyDeparted,
-        l.Metadata,
-        l.CurrentState,
-        l.VisualTags,
-        l.DistinctiveFeatures,
-        l.ControllingFactionId,
-        l.DangerModifier,
-        l.ClimateZone);
+    /// <param name="config">Supplies the char caps; falls back to CampaignConfig's own defaults if null
+    /// (e.g. the unanchored-scene stub, whose fixed short text never needs capping anyway).</param>
+    /// <param name="fullDescription">Skip capping Description.</param>
+    /// <param name="fullPointOfInterestDetails">Skip capping every PointOfInterestDetails entry (used by
+    /// take_turn's fullDetailLocationId, which already bounds the blast radius to one location per call).</param>
+    /// <param name="detailPoiName">Skip capping just this one PointOfInterestDetails entry (case-insensitive).</param>
+    public static LocationDetailView From(
+        Location l,
+        CampaignConfig? config = null,
+        bool fullDescription = false,
+        bool fullPointOfInterestDetails = false,
+        string? detailPoiName = null)
+    {
+        var descriptionCap = config?.LocationDescriptionCharCap ?? 600;
+        var poiCap = config?.PointOfInterestDetailCharCap ?? 300;
+
+        var (description, descriptionTruncated) = fullDescription
+            ? (l.Description, false)
+            : TextTruncation.TruncateAtBoundary(l.Description, descriptionCap);
+
+        var poiDetails = l.PointOfInterestDetails;
+        List<string>? truncatedPois = null;
+        if (!fullPointOfInterestDetails && poiDetails.Count > 0)
+        {
+            var trimmed = new Dictionary<string, string>(poiDetails, StringComparer.OrdinalIgnoreCase);
+            foreach (var key in poiDetails.Keys)
+            {
+                if (detailPoiName != null && string.Equals(key, detailPoiName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var (text, truncated) = TextTruncation.TruncateAtBoundary(poiDetails[key], poiCap);
+                if (truncated)
+                {
+                    trimmed[key] = text!;
+                    (truncatedPois ??= []).Add(key);
+                }
+            }
+            poiDetails = trimmed;
+        }
+
+        return new(
+            l.Id,
+            l.Name,
+            description!,
+            l.Type,
+            l.ParentLocationId,
+            l.Exits,
+            l.PointsOfInterest,
+            poiDetails,
+            l.AmbientCrowd,
+            l.LastVisitedDay,
+            l.RecentlyDeparted,
+            l.Metadata,
+            l.CurrentState,
+            l.VisualTags,
+            l.DistinctiveFeatures,
+            l.ControllingFactionId,
+            l.DangerModifier,
+            l.ClimateZone,
+            descriptionTruncated,
+            truncatedPois);
+    }
 }
 
 public class SceneView
@@ -212,6 +264,9 @@ public record NpcPresenceSummary(
     Dictionary<string, string> NeedDescriptors,
     string? BehavioralSummary = null,
     string? Notes = null,
+    /// <summary>True if Notes was cut down to CampaignConfig.NpcPresenceNotesCharCap. The full text is
+    /// always available via get_entity.</summary>
+    bool NotesTruncated = false,
     bool KeepAlive = false,
     bool IsPc = false,
     bool IsPartyCompanion = false,
@@ -280,6 +335,10 @@ public class CommitResult
     public List<WorldChange> AmbientDeltas { get; set; } = [];
     /// <summary>Persisted narrative text from the same simulation tick that produced <see cref="AmbientDeltas"/>.</summary>
     public List<string> AmbientNarrativeSummaries { get; set; } = [];
+    /// <summary>Plain-narrative one-liners for physical/visual state changes this turn (restraints,
+    /// wounds, appearance/tags) — see <see cref="TurnResult.PhysicalStateNudges"/> for why these are
+    /// kept separate from <see cref="Summary"/>.</summary>
+    public List<string> PhysicalStateNudges { get; set; } = [];
 }
 
 /// <summary>Rich eviction record returned from advance_world for transient NPC departures.</summary>

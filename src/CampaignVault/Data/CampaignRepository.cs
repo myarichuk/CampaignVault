@@ -208,7 +208,8 @@ public class CampaignRepository
     /// This is the primary read operation used by the LLM when entering a new scene.
     /// </summary>
     public async Task<SceneView> GetSceneAsync(CampaignSession campaignSession, string locationId,
-        bool markVisited = false)
+        bool markVisited = false, bool fullDescription = false, bool fullPointOfInterestDetails = false,
+        string? detailPoiName = null)
     {
         var effective = campaignSession.EffectiveCampaign;
         var session = campaignSession.Session;
@@ -220,7 +221,9 @@ public class CampaignRepository
         {
             return _sceneAssembler.CreateUnanchoredScene(locationId);
         }
-        var sceneContext = await LoadSceneAssemblyContextAsync(session, location, locationId, effective, markVisited);
+        var sceneContext = await LoadSceneAssemblyContextAsync(
+            session, location, locationId, effective, markVisited,
+            fullDescription, fullPointOfInterestDetails, detailPoiName);
         return _sceneAssembler.Assemble(sceneContext);
     }
 
@@ -229,7 +232,10 @@ public class CampaignRepository
         Location location,
         string locationId,
         string effectiveCampaign,
-        bool markVisited)
+        bool markVisited,
+        bool fullDescription = false,
+        bool fullPointOfInterestDetails = false,
+        string? detailPoiName = null)
     {
         var campaignSession = new CampaignSession(session, effectiveCampaign);
         var regionId = location.ParentLocationId ?? locationId;
@@ -297,7 +303,10 @@ public class CampaignRepository
             ActiveQuests = activeQuests,
             RelevantFactions = relevantFactions,
             MarkVisited = markVisited,
-            ContainerContents = containerContents
+            ContainerContents = containerContents,
+            FullDescription = fullDescription,
+            FullPointOfInterestDetails = fullPointOfInterestDetails,
+            DetailPoiName = detailPoiName
         };
     }
 

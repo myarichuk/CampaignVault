@@ -321,6 +321,48 @@ public class CampaignConfig
     public bool DeltaModeEnabled { get; set; } = true;
 
     /// <summary>
+    /// Rolling window (most recent take_turn calls, this campaign) over which client-forced full
+    /// reseeds are counted for the thrash-detection advisory (see <see cref="ForcedReseedThrashThreshold"/>).
+    /// ForceFullReseed is meant to be rare — DeltaModeReseedIntervalTurns already guarantees a periodic
+    /// full resync, and drift detection forces one automatically when needed — so this window only needs
+    /// to be wide enough to catch a model thrashing on trust-the-delta decisions across a realistic stretch
+    /// of play, not the whole reseed interval. Defaults to 20 (about half of the default 40-turn reseed
+    /// interval).
+    /// </summary>
+    public int ForcedReseedThrashWindow { get; set; } = 20;
+
+    /// <summary>
+    /// Number of client-forced full reseeds within <see cref="ForcedReseedThrashWindow"/> calls that
+    /// trips the self-correcting advisory (TurnResult.NarrativeReminder via ctx.ReseedAdvisory). Since a
+    /// manual ForceFullReseed should rarely be necessary at all, a low bar (default 2) is appropriate —
+    /// this doesn't suppress the client's request, only nudges it to prefer delta/get_entity next time.
+    /// </summary>
+    public int ForcedReseedThrashThreshold { get; set; } = 2;
+
+    /// <summary>
+    /// Max characters of Location.Description sent by default in get_scene/take_turn's scene summaries
+    /// (LocationDetailView). Unlike take_turn's Npcs/Scenes, which are trimmed by delta mode, this field
+    /// has no size gate today — a heavily-authored location (e.g. pasted reference material) goes out
+    /// verbatim otherwise. Truncated on a sentence/word boundary; the full text is still in RavenDB and
+    /// reachable via get_scene's fullDescription=true. Defaults to 600 (~150 tokens).
+    /// </summary>
+    public int LocationDescriptionCharCap { get; set; } = 600;
+
+    /// <summary>
+    /// Max characters per Location.PointOfInterestDetails value sent by default (same rationale as
+    /// LocationDescriptionCharCap, applied per-PoI since a location can have several). Reachable in full
+    /// via get_scene's detailPoi=&lt;name&gt; for one PoI at a time. Defaults to 300 (~75 tokens).
+    /// </summary>
+    public int PointOfInterestDetailCharCap { get; set; } = 300;
+
+    /// <summary>
+    /// Max characters of Character.Notes carried into NpcPresenceSummary (SceneView/SceneSummaryView's
+    /// PresentNPCs) by default. Notes are always available in full via get_entity — this only caps the
+    /// lightweight copy that rides along with every scene fetch. Defaults to 400 (~100 tokens).
+    /// </summary>
+    public int NpcPresenceNotesCharCap { get; set; } = 400;
+
+    /// <summary>
     /// Minimum |delta| (absolute value, single-turn max across all NeedChange entries for that need)
     /// for a need to be considered a significant mover on mode=delta take_turn calls — needs below this
     /// are filtered out of KnownNeeds rather than re-sent unchanged. Not derived from a fixed need scale:

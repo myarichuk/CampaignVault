@@ -30,8 +30,8 @@ public class CampaignTools(
         exploration.GetWorldState(ResolveCampaign(campaignName), partyLocationId);
 
     public Task<ToolResult<SceneView>> GetScene(string locationId, bool partyPresent = false,
-        string? campaignName = TestDefaultCampaignSlug) =>
-        exploration.GetScene(locationId, ResolveCampaign(campaignName), partyPresent);
+        string? campaignName = TestDefaultCampaignSlug, bool fullDescription = false, string? detailPoi = null) =>
+        exploration.GetScene(locationId, ResolveCampaign(campaignName), partyPresent, fullDescription, detailPoi);
 
     public Task<ToolResult<NpcContextView>> GetNpcContext(string characterId,
         string? campaignName = TestDefaultCampaignSlug) =>

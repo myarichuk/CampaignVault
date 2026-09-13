@@ -56,4 +56,15 @@ public class TurnCursor
     /// clears the salience bar, so this stays small relative to campaign NPC count.</summary>
     [JsonPropertyName("surfacedMemoryHintTopicsByEntityId")]
     public Dictionary<string, string> SurfacedMemoryHintTopicsByEntityId { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Rolling window (oldest first, capped at <see cref="CampaignConfig.ForcedReseedThrashWindow"/> entries)
+    /// of whether each of the last few take_turn calls had ForceFullReseed=true. Unlike
+    /// ConsecutiveClientForcedReseeds (which only catches back-to-back forces), this catches a client
+    /// forcing full reseeds too often even when it alternates with delta calls in between — e.g.
+    /// full,delta,full,delta,full,full, a pattern seen from some models thrashing on when to trust delta
+    /// mode. Used only to surface a self-correcting advisory; never suppresses an explicit client request.
+    /// </summary>
+    [JsonPropertyName("recentClientForcedFlags")]
+    public List<bool> RecentClientForcedFlags { get; set; } = [];
 }

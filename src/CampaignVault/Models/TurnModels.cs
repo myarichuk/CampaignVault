@@ -129,6 +129,13 @@ public class TurnResult
     [Description("Optional reminder about the commit outcome (e.g. 'missing narrative event', 'missing PoI detail').")]
     public string? NarrativeReminder { get; set; }
 
+    [Description("Plain-narrative reminders of physical/visual state that changed this turn — restraints removed/applied, " +
+        "wounds, blood/gore, appearance or tag changes. Carry these into your next narration even if the underlying " +
+        "detail scrolls out of the visible conversation; the server is the source of truth for whether e.g. a character " +
+        "is still restrained or still marked with combat residue, not your running narrative memory. Null when nothing " +
+        "physical/visual changed this turn.")]
+    public List<string>? PhysicalStateNudges { get; set; }
+
     [Description("Remaining rate-limit tokens for this campaign after this commit.")]
     public int? RateLimitTokensRemaining { get; set; }
 

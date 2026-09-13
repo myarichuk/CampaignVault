@@ -44,6 +44,8 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
             // per-pair commits for a multi-person conversation) and would flood the event log otherwise.
             if (removedRelation != null && IsHistoryWorthy(removedRelation.Category))
             {
+                context.RecordPhysicalStateNudge(
+                    $"{actor.Name} is no longer {removedRelation.Verb.ToLowerInvariant()} with {target.Name}.");
                 await LogEngagementEventAsync(context, actor, target,
                     $"{actor.Name}'s engagement with {target.Name} ended.");
             }
@@ -85,6 +87,7 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
 
             if (!isNoOp && IsHistoryWorthy(category))
             {
+                context.RecordPhysicalStateNudge($"{actor.Name} is now {verb.ToLowerInvariant()} with {target.Name}.");
                 await LogEngagementEventAsync(context, actor, target,
                     $"{actor.Name} is now {verb} ({category}) with {target.Name}.");
             }

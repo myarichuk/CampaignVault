@@ -371,4 +371,96 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
 
         AssertWithinBudget("Travel", TravelTurnTokenCeiling, [v1, v2, v3]);
     }
+
+    /// <summary>
+    /// Investigative measurement (not a regression gate — no ceiling assertion, since there's no
+    /// established budget for get_entity/get_scene the way TurnResult has one): what get_scene/get_entity
+    /// actually cost when an entity carries a large amount of authored free text — e.g. reference/lore
+    /// content pasted into a Location's Description/PointOfInterestDetails or a Character's Notes, which
+    /// (unlike take_turn's Npcs/Scenes summaries) isn't covered by any delta-mode trimming or size gate
+    /// today. Prints a per-property breakdown so the biggest contributor is visible without guessing.
+    /// </summary>
+    [Fact]
+    public async Task LargeAuthoredContent_GetSceneAndGetEntity_SizeReport()
+    {
+        var slug = NewSlug("tok-large");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-archive";
+        var npcId = $"chars/{slug}-loremaster";
+
+        // ~500 chars/paragraph * 40 paragraphs ~= 20KB per field. Three fields (Location.Description,
+        // two PointOfInterestDetails entries) approximates a chunk of "RAG-ified" reference material
+        // landing on one entity, without claiming to reproduce any specific real campaign's content.
+        string BigText(string label) => string.Join(" ", Enumerable.Range(0, 40)
+            .Select(i => $"[{label} paragraph {i}] " + new string('x', 460)));
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest
+            {
+                Id = locId,
+                Name = "The Sunken Archive",
+                Description = BigText("description"),
+                PointsOfInterest = ["Reading room", "Sealed vault"],
+                PointOfInterestDetails = new Dictionary<string, string>
+                {
+                    ["Reading room"] = BigText("reading-room"),
+                    ["Sealed vault"] = BigText("sealed-vault")
+                }
+            });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = npcId,
+                Name = "Elowen",
+                CurrentLocationId = locId,
+                Notes = BigText("notes")
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var scene = await tools.GetScene(locId, partyPresent: true, campaignName: slug);
+        Assert.True(scene.Success, scene.Summary);
+        var (sceneTokens, sceneChars, sceneJson) = TokenEstimator.EstimateWireCost(scene.Data!, WireOptions);
+        _output.WriteLine($"[LargeAuthoredContent] get_scene: ~{sceneTokens} tokens, {sceneChars} chars");
+        foreach (var (property, tokens) in TokenEstimator.Breakdown(sceneJson).Take(10))
+        {
+            _output.WriteLine($"    {property,-28} ~{tokens}");
+        }
+
+        // Regression gate: Description/PointOfInterestDetails/Notes are capped at the wire-projection
+        // boundary (LocationDetailView.From, SceneNpcPresenceFactory) — this asserts the cap actually
+        // applies and is flagged, not just that the response happens to be small today. Ceiling is loose
+        // (measured ~900 tokens for this scenario) since normal scene content (NPCs, rumors, quests) adds
+        // up separately from these three fields.
+        Assert.True(sceneTokens < 2000,
+            $"[LargeAuthoredContent] get_scene cost ~{sceneTokens} tokens for capped content — Description/PointOfInterestDetails/Notes truncation may have regressed.");
+        Assert.True(scene.Data!.Location.DescriptionTruncated, "Location.Description should have been truncated.");
+        Assert.NotNull(scene.Data!.Location.TruncatedPointsOfInterest);
+        Assert.Equal(2, scene.Data!.Location.TruncatedPointsOfInterest!.Count);
+
+        var entity = await tools.GetNpcContext(npcId, campaignName: slug);
+        Assert.True(entity.Success, entity.Summary);
+        var (entityTokens, entityChars, entityJson) = TokenEstimator.EstimateWireCost(entity.Data!, WireOptions);
+        _output.WriteLine($"[LargeAuthoredContent] get_entity: ~{entityTokens} tokens, {entityChars} chars");
+        foreach (var (property, tokens) in TokenEstimator.Breakdown(entityJson).Take(10))
+        {
+            _output.WriteLine($"    {property,-28} ~{tokens}");
+        }
+
+        // The on-demand escape hatches should still return the full text when explicitly requested.
+        var fullDescScene = await tools.GetScene(locId, partyPresent: true, campaignName: slug, fullDescription: true);
+        Assert.True(fullDescScene.Success, fullDescScene.Summary);
+        Assert.False(fullDescScene.Data!.Location.DescriptionTruncated);
+        Assert.True(fullDescScene.Data!.Location.Description.Length > 1000);
+
+        var fullPoiScene = await tools.GetScene(locId, partyPresent: true, campaignName: slug, detailPoi: "Reading room");
+        Assert.True(fullPoiScene.Success, fullPoiScene.Summary);
+        Assert.True(fullPoiScene.Data!.Location.PointOfInterestDetails["Reading room"].Length > 1000);
+        // The other PoI wasn't targeted, so it should still be capped.
+        Assert.Contains("Sealed vault", fullPoiScene.Data!.Location.TruncatedPointsOfInterest ?? []);
+    }
 }

@@ -222,16 +222,18 @@ public sealed class WorldChangeDispatcher(
             quests = new Dictionary<string, Quest>();
         }
 
+        var physicalStateNudges = new List<string>();
+
         ChangeContext context;
         if (session is null)
         {
             // Support pure unit tests of handler selection / duplicate detection / result aggregation
             // that use fake TestHandlers which never access Session / time / logging hooks.
-            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, effectiveCampaign, config);
+            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, effectiveCampaign, config, physicalStateNudges);
         }
         else
         {
-            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign, config);
+            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign, config, physicalStateNudges);
         }
 
         foreach (var id in allInvolved)
@@ -304,7 +306,8 @@ public sealed class WorldChangeDispatcher(
             ChangesProcessed = changes.Length,
             Summary = summary,
             InvolvedEntities = context.InvolvedEntities.ToList(),
-            EntityCollisions = context.EntityCollisions.ToList()
+            EntityCollisions = context.EntityCollisions.ToList(),
+            PhysicalStateNudges = physicalStateNudges
         };
     }
 
