@@ -50,28 +50,6 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(act.PoiName) && !string.IsNullOrEmpty(act.NewLocationId))
-        {
-            var destination = context.Locations.TryGetValue(act.NewLocationId, out var loc)
-                ? loc
-                : await context.Session.LoadAsync<Location>(act.NewLocationId, ct);
-            if (destination != null)
-            {
-                LocationPoiMaterializer.Apply(destination, act.PoiName, act.PoiDetails);
-                if (!destination.PoisUsedByActivity.Any(p => string.Equals(p, act.PoiName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    destination.PoisUsedByActivity.Add(act.PoiName);
-                }
-                context.RegisterNewLocation(destination);
-            }
-            else
-            {
-                context.RecordMessage(
-                    $"WARNING: activity for {act.CharacterId} set poiName '{act.PoiName}' but destination location " +
-                    $"'{act.NewLocationId}' was not found — PoI was not recorded.");
-            }
-        }
-
         return ChangeHandlerResult.Ok;
     }
 }

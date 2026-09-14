@@ -65,7 +65,7 @@ On location entry: `get_entity(locations/..., partyPresent:true)` → check `Ass
 
 **AUTO-LINK:** Sub-locations inherit parent via `connectedFromLocationId` + `connectionDescription` on creation.
 
-**WAYPOINT DETAIL:** Tactical details at an unnamed spot (cover, water, tracks)? Set `poiName`/`poiDetails` on the `activity` move — don't let them evaporate as narration alone.
+**WAYPOINT DETAIL:** Tactical details at an unnamed spot (cover, water, tracks)? `activity` never carries PoI fields — commit a `location_update` (`materializePointOfInterest`/`poiDetails`) alongside it in the same batch, don't let them evaporate as narration alone. If a character is really occupying that spot (not just described), also set `poiOccupantCharacterId`.
 
 **MOVEMENT VS. TIME-SKIP:** `activity` repositions with NO encounter check — fine for local/already-safe moves only. Any real journey (distance, alone, at night, unescorted, hostile/unknown territory) is `travel` (rolls `encounterRiskModifier`), not `activity`. For an overnight/partial-day span with real danger, commit `rest` (rolls interruptions, recovers pools/tiredness immediately) — don't use `advance_world` for that, it has no encounter check at all. `advance_world` is only for genuinely uneventful skips; use its `hours` param (e.g. `hours: 8`) instead of computing `days`/`timeOfDay` by hand for a same-night span.
 

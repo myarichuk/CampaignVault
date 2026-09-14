@@ -566,6 +566,10 @@ public class MoodChange : WorldChange
 /// Force-update what an NPC is currently doing and/or where they are physically located.
 /// This immediately affects what get_scene returns for that NPC's CurrentActivity and CurrentLocationId.
 /// Use liberally at the end of roleplay or combat so the world model stays in sync with the story.
+/// Carries no Point of Interest fields — this only moves the character, never the Location document
+/// itself. Materializing a PoI (a durable physical/sensory fact about the room) always goes through
+/// a dedicated location_update in the same commit; see LocationUpdate.MaterializePointOfInterest and
+/// PoiOccupantCharacterId.
 /// </summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
@@ -592,14 +596,6 @@ public class ActivityChange : WorldChange
     [Description("Optional narrative justification for the change. Stored for later behavioral synthesis and debugging.")]
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
-
-    [Description("Optional: name of a Point of Interest to materialize on newLocationId in this same step (same effect as location_update's materializePointOfInterest). Pair with poiDetails. Requires newLocationId/updateLocation to also be set. Reserve for a durable physical/sensory fact about the PoI itself, not for narrating this conversation or activity — see poiDetails.")]
-    [JsonPropertyName("poiName")]
-    public string? PoiName { get; set; }
-
-    [Description("The persistent detail/state for poiName — sensory and tactical specifics that matter later (cover, water, tracks, hazards, what's hidden there, structural changes). Only applied if poiName is also set. Do NOT use this to summarize dialogue, an NPC's momentary mood, or what a conversation is about — that's not a physical fact about the room, it reads as stale the instant the conversation moves on, and it forces every take_turn call touching this location to resend the full location (description/exits/POIs/ambient) instead of the cheap id-only refresh an unchanged room gets. Log conversation content via event/knowledge_update, and character state via newActivity, instead.")]
-    [JsonPropertyName("poiDetails")]
-    public string? PoiDetails { get; set; }
 }
 
 /// <summary>
@@ -732,6 +728,10 @@ public class LocationUpdate : WorldChange
     [Description("Map of PoI name → current details. Can add, update, or replace details for multiple PoIs. Keys not already in PointsOfInterest will be added. Same caution as poiDetails: durable physical facts only, not conversation narration.")]
     [JsonPropertyName("pointOfInterestDetails")]
     public Dictionary<string, string>? PointOfInterestDetails { get; set; }
+
+    [Description("ID of a character actually placed/present AT materializePointOfInterest right now (e.g. 'chars/bram-ironarm') — not just a PoI that's visible or described. Set this only when someone is really occupying the spot (sleeping in the back room, working behind the bar). Requires materializePointOfInterest to also be set in this same call. This is the real-occupancy signal that drives promotion-to-sublocation nudges — it does not move the character (use activity's newLocationId for that).")]
+    [JsonPropertyName("poiOccupantCharacterId")]
+    public string? PoiOccupantCharacterId { get; set; }
 
     [Description("Set or clear the ambient crowd. Use empty string to clear. Always set when narratively justified. Taverns, for example, should always have some sort of a crowd - if active, of course")]
     [JsonPropertyName("ambientCrowd")]

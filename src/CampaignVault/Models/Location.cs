@@ -36,12 +36,12 @@ public class Location : ICampaignScopedEntity, IArchivable
     public Dictionary<string, string> PointOfInterestDetails { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// PoI names (case-insensitive) that an ActivityChange has ever targeted (updateLocation +
-    /// poiName) — i.e. a character was actually placed/doing something there, not just described.
-    /// That's a behavioral signal that the PoI is functioning as a real place, distinct from
-    /// PointOfInterestDetails (which only says a PoI has *some* recorded description). Drives
-    /// PointOfInterestPressureContributor's "promote to a proper child Location" nudge. Internal
-    /// bookkeeping only — not projected onto LocationDetailView.
+    /// PoI names (case-insensitive) that a location_update has ever marked as occupied via
+    /// materializePointOfInterest + poiOccupantCharacterId — i.e. a character was actually placed
+    /// there, not just described. That's a behavioral signal that the PoI is functioning as a real
+    /// place, distinct from PointOfInterestDetails (which only says a PoI has *some* recorded
+    /// description). Drives PointOfInterestPressureContributor's "promote to a proper child
+    /// Location" nudge. Internal bookkeeping only — not projected onto LocationDetailView.
     /// </summary>
     public List<string> PoisUsedByActivity { get; set; } = [];
 

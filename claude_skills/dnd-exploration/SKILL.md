@@ -54,7 +54,7 @@ If the party arrives in a settlement and you're about to narrate a scene (a conv
 
 `connectedFromLocationId` + `connectionDescription` auto-links the new location to its parent on creation — set both, don't create an orphan.
 
-**Sub-scene detail that doesn't deserve a full Location** (a hiding spot, a stash, a lookout ledge inside an existing Building/Wilderness location) → use `poiName`/`materializePointOfInterest` instead (see Wayfinding below), not a new Location entity. Create a full child Location when the party can return to it later, it has its own exits, or it will host its own future scenes; use a PoI for a tactical detail that only matters for the current beat.
+**Sub-scene detail that doesn't deserve a full Location** (a hiding spot, a stash, a lookout ledge inside an existing Building/Wilderness location) → use `location_update`'s `materializePointOfInterest` instead (see Wayfinding below), not a new Location entity. Create a full child Location when the party can return to it later, it has its own exits, or it will host its own future scenes; use a PoI for a tactical detail that only matters for the current beat.
 
 ## World-Building Seeding Checklist (Mandatory Rigor)
 
@@ -154,20 +154,31 @@ After arriving at a location:
 
 Two different moves depending on how far/long/exposed the departure is — don't default to the lighter one just because it's a single field:
 
-**Staying inside the current location** (fleeing to a corner, hiding behind the bar, ducking into an alcove) — set `poiName`/`poiDetails` on the activity or location update. This is flavor persisted on the *existing* location, not a new place:
+**Staying inside the current location** (fleeing to a corner, hiding behind the bar, ducking into an alcove) — `activity` alone (`newActivity`/`newLocationId`) is enough to reposition the character. It carries no PoI fields. If the spot has a lasting physical detail worth persisting, add a *separate* `location_update` in the same commit batch — this is flavor persisted on the *existing* location, not a new place:
 
 ```json
 {
-  "$type": "location_update",
-  "locationId": "locations/forest",
-  "poiName": "Hidden Stream Grotto",
-  "poiDetails": "Narrow cave entrance behind waterfall, good cover from above, fresh water, no fire risk"
+  "changes": [
+    {
+      "$type": "activity",
+      "characterId": "chars/lyra",
+      "newActivity": "slipping behind the waterfall",
+      "newLocationId": "locations/forest",
+      "updateLocation": true
+    },
+    {
+      "$type": "location_update",
+      "locationId": "locations/forest",
+      "materializePointOfInterest": "Hidden Stream Grotto",
+      "poiDetails": "Narrow cave entrance behind waterfall, good cover from above, fresh water, no fire risk"
+    }
+  ]
 }
 ```
 
-**`poiDetails` is for durable physical facts about the PoI, never for a character's current action or state.** "Thrashed sheets and a crumpled pillow on the cot" is a physical trace worth persisting. "Lyra sleeping on the cot" or "Mira giving what help she can" is a snapshot of what someone is doing *right now* — use `newActivity` for that, plus `event`/`knowledge_update` to log the conversation/beat. Narrating a character's state through `poiDetails` goes stale the instant the beat ends, and forces every future scene refresh of the parent location to resend in full.
+**`poiDetails` is for durable physical facts about the PoI, never for a character's current action or state.** "Thrashed sheets and a crumpled pillow on the cot" is a physical trace worth persisting. "Lyra sleeping on the cot" or "Mira giving what help she can" is a snapshot of what someone is doing *right now* — use `newActivity` for that, plus `event`/`knowledge_update` to log the conversation/beat. Narrating a character's state through `poiDetails` goes stale the instant the beat ends, and forces every future scene refresh of the parent location to resend in full. Don't re-issue `location_update` every time the character's verb changes at the same spot — only when the room itself changes or is first established.
 
-**One use is a place, not flavor — promote on the second `activity` that targets the same PoI, don't wait longer.** If an `activity` change places a character AT a named PoI (`updateLocation` + `poiName`) more than once — or it's clearly somewhere the party will return to or linger (a rented room, a hideout, a sickbed) — that already satisfies "the party can return to it later" / "will host its own future scenes" above. Stop persisting it as `poiDetails` text and promote it to a real child `Location` (same pattern as the Hidden Forest Hollow example below) *before* narrating anyone as separated from the rest of the group. The engine tracks presence per exact `locationId` only — everyone still anchored to the parent shows up as co-located with whoever you just placed at the PoI, even when they're narratively in a different room. If you skip this, the engine will flag it as an ENGINE WARNING once other NPCs are present at the parent location — treat that as a hard cue to promote, not a suggestion to defer again.
+**One use is a place, not flavor — promote as soon as a PoI is marked occupied a second time, don't wait longer.** When a `location_update` sets `materializePointOfInterest` + `poiOccupantCharacterId` (a character is really placed there, not just described) — or it's clearly somewhere the party will return to or linger (a rented room, a hideout, a sickbed) — that already satisfies "the party can return to it later" / "will host its own future scenes" above. Stop persisting it as `poiDetails` text and promote it to a real child `Location` (same pattern as the Hidden Forest Hollow example below) *before* narrating anyone as separated from the rest of the group. The engine tracks presence per exact `locationId` only — everyone still anchored to the parent shows up as co-located with whoever you just placed at the PoI, even when they're narratively in a different room. If you skip this, the engine will flag it as an ENGINE WARNING once other NPCs are present at the parent location — treat that as a hard cue to promote, not a suggestion to defer again.
 
 **Leaving to a real, distinct spot** (an hour into the woods, off the road to make camp, down into an unmapped ravine) — `location_update` create-and-link a real child `Location` in the same `take_turn` batch, then `travel`/`activity` into it. Don't staple this onto the parent Region/Wilderness as a PoI — a giant location used as a catch-all destination misrepresents who else is "present" there (anyone else nominally at that same broad location shows up in the scene) and never gets its own exits/danger tuned for the spot:
 
@@ -215,8 +226,8 @@ Travel and rest advance time via their own hour fields (not `minutesElapsed` —
 - [ ] Is there a check (Perception, Investigation, Survival)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll?
 - [ ] Did time pass? → `minutesElapsed` on the request (rest/travel use their own hour fields instead)
-- [ ] Are they in a tactical waypoint (first use, transient)? → `poiName`/`poiDetails` to persist a physical fact, never a character's current action/state
-- [ ] Has an `activity` targeted the same PoI a second time, or is it clearly somewhere the party returns to/lingers? → promote it to a real child `Location` before narrating anyone as separated from the group
+- [ ] Are they in a tactical waypoint (first use, transient)? → a `location_update` with `materializePointOfInterest`/`poiDetails` in the same commit, to persist a physical fact, never a character's current action/state
+- [ ] Has a `location_update` marked the same PoI occupied (`poiOccupantCharacterId`) a second time, or is it clearly somewhere the party returns to/lingers? → promote it to a real child `Location` before narrating anyone as separated from the group
 - [ ] Is the scene anchored at Settlement/Region level? → Descend to District/Building/Room first
 
 **When seeding a new area (world_build):**

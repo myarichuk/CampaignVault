@@ -158,10 +158,10 @@ If you catch yourself thinking "I'll seed that later" — stop, seed it now, in 
 
 ## Points of Interest vs Real Locations (Frequently Missed)
 
-`poiName`/`poiDetails` (on `activity` or `location_update`) is flavor persisted on the *existing* location — for a tactical detail or one-off hiding spot the party won't return to, not a real place. Two rules, both frequently missed:
+`materializePointOfInterest`/`poiDetails` (on `location_update` only — `activity` carries no PoI fields) is flavor persisted on the *existing* location — for a tactical detail or one-off hiding spot the party won't return to, not a real place. Two rules, both frequently missed:
 
-1. **`poiDetails` is a durable physical fact about the PoI, never a character's current action or state.** "Thrashed sheets, a crumpled pillow" is a physical trace worth persisting. "Lyra sleeping on the cot" or "Mira keeping watch at the door" is a snapshot of what's happening *right now* — use `newActivity` for that, plus `event`/`knowledge_update` for the beat. Writing a character's current state into `poiDetails` goes stale the instant the beat ends and forces a full resend of the location every time the scene refreshes.
-2. **Promote to a real child `Location` on the *second* `activity` that places a character at the same PoI** (or immediately if it's obviously somewhere the party returns to or lingers — a rented room, a hideout, a sickbed). The engine tracks who's "present" per exact `locationId` only, with no room-level granularity — everyone else still anchored to the parent location shows up as co-located with whoever you just placed at the PoI, even when they're narratively in a different room. Don't wait for that to become visibly wrong; promote before narrating anyone as separated from the group:
+1. **`poiDetails` is a durable physical fact about the PoI, never a character's current action or state.** "Thrashed sheets, a crumpled pillow" is a physical trace worth persisting. "Lyra sleeping on the cot" or "Mira keeping watch at the door" is a snapshot of what's happening *right now* — use `newActivity` for that, plus `event`/`knowledge_update` for the beat. Writing a character's current state into `poiDetails` goes stale the instant the beat ends and forces a full resend of the location every time the scene refreshes. Don't re-materialize the same PoI every time a character's verb changes there — only when the room itself changes or is first established.
+2. **Promote to a real child `Location` on the *second* `location_update` that marks the same PoI occupied** (`materializePointOfInterest` + `poiOccupantCharacterId`) — or immediately if it's obviously somewhere the party returns to or lingers — a rented room, a hideout, a sickbed. The engine tracks who's "present" per exact `locationId` only, with no room-level granularity — everyone else still anchored to the parent location shows up as co-located with whoever you just placed at the PoI, even when they're narratively in a different room. Don't wait for that to become visibly wrong; promote before narrating anyone as separated from the group:
 
 ```json
 {
@@ -229,7 +229,7 @@ Document key decisions and discoveries at the end of each session outside the en
 - [ ] Did I include item ownership changes in the same batch when something was taken?
 - [ ] Did narration change a character's gear/condition/appearance in a way that should still be true next scene — and did I commit it (`item_equip`/`item_unequip`, `status`/`status_remove`, `character_update`) and flag `impliesPersistentPhysicalChange: true` on the event, rather than only narrating it?
 - [ ] Did I seed a brand-new location (`world_build`) before narrating a scene there, rather than leaving a placeholder?
-- [ ] Did I use `poiName`/`poiDetails` for a durable physical fact only (never a character's current action/state), and promote to a real child `Location` on the second `activity` targeting the same PoI?
+- [ ] Did I use `location_update`'s `materializePointOfInterest`/`poiDetails` for a durable physical fact only (never a character's current action/state), and promote to a real child `Location` on the second `location_update` marking the same PoI occupied (`poiOccupantCharacterId`)?
 - [ ] Is narration scaled to the moment — full 3–4 beats for arrivals/reveals, 1–2 for routine follow-ups (never zero — even rest/travel gets sensory grounding) — using concrete sensory detail (not adjectives alone)?
 - [ ] Did I differentiate NPC voice via Psychology/Social, not arbitrary styles?
 - [ ] One visual/psychological detail per mention, not a dump?
@@ -282,7 +282,8 @@ Psychology (fear, pride, greed, loyalty) sets tone — never real-world social s
 - Narrating "you take the item" without the corresponding `$type: "item"` change.
 - Assuming a `take_turn` worked without checking WorldPressure when it matters.
 - Two-sentence scene beats, including for "routine" beats like rest/travel — bare mechanical restatement with no sensory content.
-- Narrating a character's current action/state through `poiDetails` instead of `newActivity` + `event`.
+- Narrating a character's current action/state through `location_update`'s `poiDetails` instead of `newActivity` + `event`.
+- Stamping `location_update`'s `materializePointOfInterest`/`poiDetails` on every beat in a room as a "commit lucky charm" instead of only when lasting room state first appears or changes.
 - Leaving a PoI a character keeps returning to as flavor text instead of promoting it to a real child `Location`.
 - Softening NPC actions or consequences with modern language (consent scripts, apologies for being authentic to the world).
 

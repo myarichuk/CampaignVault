@@ -733,7 +733,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 case ActivityChange ac:
                     if (ac.UpdateLocation && !string.IsNullOrEmpty(ac.NewLocationId))
                     {
-                        locationsVisited.Add(new LocationVisitedDetail(ac.CharacterId, ac.NewLocationId, ac.PoiName));
+                        locationsVisited.Add(new LocationVisitedDetail(ac.CharacterId, ac.NewLocationId, null));
                     }
                     break;
 
@@ -817,7 +817,6 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
                 .ToHashSet();
             var uncoveredMoves = changes.OfType<ActivityChange>()
                 .Where(a => a.UpdateLocation && !string.IsNullOrEmpty(a.NewLocationId)
-                            && string.IsNullOrWhiteSpace(a.PoiName)
                             && significantEventLocations.Contains(a.NewLocationId!)
                             && !poiCoveredLocations.Contains(a.NewLocationId!))
                 .Select(a => a.NewLocationId!)
@@ -827,7 +826,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             {
                 AppendReminder(result,
                     $"This commit moved a character to {string.Join(", ", uncoveredMoves)} alongside an Important/Core event " +
-                    "but recorded no location detail. If the spot matters, add poiName/poiDetails.");
+                    "but recorded no location detail. If the spot matters, add a location_update with materializePointOfInterest/poiDetails in the same commit.");
             }
         }
 
@@ -1234,15 +1233,12 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         return change switch
         {
             LocationUpdate lu => eq.Equals(lu.LocationId, locationId),
-            // ActivityChangeHandler only ever writes to the Location document when PoiName is set
-            // (LocationPoiMaterializer.Apply) — NewLocationId/UpdateLocation alone just move the
-            // *character* (CurrentLocationId). Gating on PoiName too avoids a full-location resend every
-            // time a character's activity update merely reaffirms or shifts within an already-known
-            // location (e.g. "moved to the back room" of a location the party has been in all session) —
-            // previously this fired on UpdateLocation alone, resending description/exits/POIs/ambient
-            // text for zero actual location-document change. Genuine cross-location arrivals go through
-            // TravelChange below, which still always resends.
-            ActivityChange ac => !string.IsNullOrWhiteSpace(ac.PoiName) && eq.Equals(ac.NewLocationId, locationId),
+            // ActivityChangeHandler never writes to the Location document — it only moves the
+            // *character* (CurrentLocationId). Materializing PoI state always goes through a
+            // dedicated LocationUpdate (handled above), so an activity move alone never triggers a
+            // full-location resend, even one that shifts within an already-known location. Genuine
+            // cross-location arrivals go through TravelChange below, which still always resends.
+            ActivityChange => false,
             TravelChange tc => eq.Equals(tc.DestinationLocationId, locationId),
             _ => false
         };

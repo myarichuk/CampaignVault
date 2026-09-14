@@ -54,13 +54,14 @@ public sealed class PointOfInterestPressureContributor : IPressureContributor
             }
         }
 
-        // A PoI that an ActivityChange has ever targeted (character placed/doing something there,
-        // not just described) is functioning as a real place, regardless of how it was named —
-        // unlike PointOfInterestHeuristics' sub-location suggestion below, which only fires for
-        // PoI names that happen to look like an entrance/passage. One use is enough: if a character
-        // was placed there, it's a place. Not gated on hasRecentActivity/DaysAdvanced — this reflects
-        // persisted Location state (PoisUsedByActivity), so it resurfaces on any scene load for this
-        // location regardless of whether the triggering ActivityChange happened this exact turn.
+        // A PoI that a location_update has ever marked occupied (materializePointOfInterest +
+        // poiOccupantCharacterId — a character placed/doing something there, not just described) is
+        // functioning as a real place, regardless of how it was named — unlike
+        // PointOfInterestHeuristics' sub-location suggestion below, which only fires for PoI names
+        // that happen to look like an entrance/passage. One use is enough: if a character was placed
+        // there, it's a place. Not gated on hasRecentActivity/DaysAdvanced — this reflects persisted
+        // Location state (PoisUsedByActivity), so it resurfaces on any scene load for this location
+        // regardless of whether the triggering location_update happened this exact turn.
         var rawLocation = await ctx.Session.LoadAsync<Location>(loc.Id, ct);
         if (rawLocation?.PoisUsedByActivity is { Count: > 0 } usedPois)
         {
@@ -84,7 +85,7 @@ public sealed class PointOfInterestPressureContributor : IPressureContributor
             var text = hasOtherPresentNpcs
                 ? $"ENGINE WARNING: This location has no room-level granularity — PresentNPCs below is being shown as co-located with whoever's activity was placed at PoI(s) [{usedList}], even if they're narratively in a different room (e.g. one character asleep in a back room while others are elsewhere in the same building). " +
                   "Promote the PoI into a proper child Location via world_build before narrating anyone as separated from or rejoined with the group — otherwise \"who's in the room\" and what the engine reports will diverge. Example:\n" + promoteExample
-                : $"SUGGESTION: PoI(s) [{usedList}] have had characters' activity placed there (updateLocation+poiName), not just described — that's real occupancy, not flavor text. " +
+                : $"SUGGESTION: PoI(s) [{usedList}] have had a character placed there (location_update's materializePointOfInterest+poiOccupantCharacterId), not just described — that's real occupancy, not flavor text. " +
                   "Consider promoting via world_build into a proper child Location instead of continuing to narrate through poiDetails (which forces a full location resend and goes stale immediately). Example:\n" + promoteExample;
 
             pressures.Add(new WorldPressureItem(

@@ -4,8 +4,8 @@ namespace CampaignVault.Data.ChangeHandlers;
 
 /// <summary>
 /// Shared logic for materializing/updating a named Point of Interest on a Location.
-/// Used by both LocationUpdateHandler (explicit location_update) and ActivityChangeHandler
-/// (inline poiName/poiDetails on an activity move), so the two entry points stay in sync.
+/// Only entry point is LocationUpdateHandler (explicit location_update) — ActivityChange carries
+/// no PoI fields, so a character move never materializes location state on its own.
 /// </summary>
 internal static class LocationPoiMaterializer
 {

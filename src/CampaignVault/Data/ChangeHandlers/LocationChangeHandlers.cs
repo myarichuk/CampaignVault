@@ -127,8 +127,14 @@ public class LocationUpdateHandler : IWorldChangeHandler
         if (!string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
         {
             LocationPoiMaterializer.Apply(loc, lu.MaterializePointOfInterest, lu.PoiDetails);
+
+            if (!string.IsNullOrWhiteSpace(lu.PoiOccupantCharacterId)
+                && !loc.PoisUsedByActivity.Any(p => string.Equals(p, lu.MaterializePointOfInterest, StringComparison.OrdinalIgnoreCase)))
+            {
+                loc.PoisUsedByActivity.Add(lu.MaterializePointOfInterest);
+            }
         }
-        
+
         var stateBefore = loc.CurrentState;
         var tagsBefore = new HashSet<string>(loc.VisualTags);
         var featuresBefore = new HashSet<string>(loc.DistinctiveFeatures);
