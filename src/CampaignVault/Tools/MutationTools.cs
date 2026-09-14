@@ -948,7 +948,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             {
                 var enrichment = await _repository.EnrichNpcInitiativeAsync(
                     ctx.Session, npc, ctx.Campaign, "take_turn", includeTensionBreakdown: false);
-                ctx.InitiativeByNpcId[npc.Id] = ctx.Mode == TurnMode.Delta ? CompressForDelta(enrichment) : enrichment;
+                ctx.InitiativeByNpcId[npc.Id] = ctx.Mode == TurnMode.Delta ? CompressForDelta(ctx, npc.Id, enrichment) : enrichment;
             }
             catch (Exception ex)
             {
@@ -998,17 +998,44 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
     /// <summary>Trims a full-mode NpcInitiativeEnrichment down to the delta-mode wire shape: memories
     /// compressed to topic + one-line detail (see CompressedMemory) instead of full MemoryNode objects —
-    /// likely the largest field in a delta response otherwise, per review recommendation 3.</summary>
-    private static NpcInitiativeEnrichment CompressForDelta(NpcInitiativeEnrichment enrichment) => enrichment with
+    /// likely the largest field in a delta response otherwise, per review recommendation 3. Also gated by
+    /// <see cref="CompressAndDedupeMemories"/> so a topic already sent to the client isn't repeated.</summary>
+    private static NpcInitiativeEnrichment CompressForDelta(TurnContext ctx, string npcId, NpcInitiativeEnrichment enrichment) => enrichment with
     {
         RelevantMemories = [],
-        CompressedMemories = enrichment.RelevantMemories
-            .Select(m => new CompressedMemory(m.Topic, Truncate(m.Details, 140)))
-            .ToList()
+        CompressedMemories = CompressAndDedupeMemories(ctx, npcId, enrichment.RelevantMemories)
     };
 
     private static string Truncate(string text, int maxLength) =>
         text.Length <= maxLength ? text : text[..maxLength].TrimEnd() + "…";
+
+    /// <summary>Compresses an NPC's currently-relevant memories to topic+one-liner, dropping any topic
+    /// already sent to the client as of the last delta turn that surfaced it for this NPC — mirrors
+    /// MemoryHintsByNpcId/SurfacedMemoryHintTopicsByEntityId's "don't re-cost tokens for a stable
+    /// reading" gate (:978-990), which CompressedMemories never had despite being the largest single
+    /// field in a typical delta scene NPC. The cursor entry is replaced (not unioned) with the current
+    /// topic set every call, so a memory that drops out of relevance and later returns is treated as new
+    /// again rather than permanently suppressed.</summary>
+    private static List<CompressedMemory> CompressAndDedupeMemories(TurnContext ctx, string npcId, IReadOnlyList<MemoryNode> memories)
+    {
+        if (memories.Count == 0)
+        {
+            ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId.Remove(npcId);
+            return [];
+        }
+
+        var alreadySurfaced = ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId.TryGetValue(npcId, out var priorTopics)
+            ? new HashSet<string>(priorTopics, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var result = memories
+            .Where(m => !alreadySurfaced.Contains(m.Topic))
+            .Select(m => new CompressedMemory(m.Topic, Truncate(m.Details, 140)))
+            .ToList();
+
+        ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId[npcId] = memories.Select(m => m.Topic).ToList();
+        return result;
+    }
 
     /// <summary>
     /// Enrich (above) has a persisted side effect — it marks surfaced initiative candidates as consumed
@@ -1198,9 +1225,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
     /// <summary>
     /// True if this change could have altered the given location's own descriptive state (the fields
-    /// <see cref="ApplyLocationDeltaTrim"/> strips on mode=delta), or represents someone newly arriving
-    /// there this turn — in which case the client needs the full room description even though the
-    /// Location document itself wasn't edited. Mirrors the per-character Affects* convention above.
+    /// <see cref="ApplyLocationDeltaTrim"/> strips on mode=delta). Mirrors the per-character Affects*
+    /// convention above.
     /// </summary>
     private static bool AffectsLocationDetail(WorldChange change, string locationId)
     {
@@ -1208,7 +1234,15 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         return change switch
         {
             LocationUpdate lu => eq.Equals(lu.LocationId, locationId),
-            ActivityChange ac => ac.UpdateLocation && eq.Equals(ac.NewLocationId, locationId),
+            // ActivityChangeHandler only ever writes to the Location document when PoiName is set
+            // (LocationPoiMaterializer.Apply) — NewLocationId/UpdateLocation alone just move the
+            // *character* (CurrentLocationId). Gating on PoiName too avoids a full-location resend every
+            // time a character's activity update merely reaffirms or shifts within an already-known
+            // location (e.g. "moved to the back room" of a location the party has been in all session) —
+            // previously this fired on UpdateLocation alone, resending description/exits/POIs/ambient
+            // text for zero actual location-document change. Genuine cross-location arrivals go through
+            // TravelChange below, which still always resends.
+            ActivityChange ac => !string.IsNullOrWhiteSpace(ac.PoiName) && eq.Equals(ac.NewLocationId, locationId),
             TravelChange tc => eq.Equals(tc.DestinationLocationId, locationId),
             _ => false
         };
@@ -1322,7 +1356,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             CarriedItems = trim.StripGear ? null : npc.CarriedItems,
             RelevantMemories = npc.RelevantMemories is { Count: > 0 } ? [] : npc.RelevantMemories,
             CompressedMemories = npc.RelevantMemories is { Count: > 0 }
-                ? npc.RelevantMemories.Select(m => new CompressedMemory(m.Topic, Truncate(m.Details, 140))).ToList()
+                ? CompressAndDedupeMemories(ctx, npc.Id, npc.RelevantMemories)
                 : null
         };
     }

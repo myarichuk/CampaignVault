@@ -89,6 +89,11 @@ Not every beat earns the full treatment. Match richness to what's actually new:
 
 **Routine follow-ups (same scene, nothing new established) — 1–2 beats:** a reaction, a gesture, a line of dialogue. Don't re-describe a room already established or restate an NPC's whole state every exchange.
 
+**"Routine" is not license for a bare one-liner — this includes rest/travel/waiting.** A `rest`/`travel`/`activity` beat still needs at least a sensory grounding, even at 1–2 beats. Never resolve a beat to a flat restatement of the mechanical action with nothing sensory or emotional attached.
+
+- **Anti-pattern:** "Lyra lies down on the cot and takes a short rest." (one line, mechanical, zero sensory/emotional content)
+- **Minimum bar — 1–2 beats, still concrete:** "Lyra sinks onto the thin cot, straw shifting under old canvas. Through the wall, Mira's voice drifts low and steady, keeping watch. Sleep comes fast." That's still just 1-2 beats — it's not asking for the full 3-4 treatment, just for it not to be empty.
+
 Then the party acts, you resolve via the engine, the cycle repeats.
 
 ### Compression rules
@@ -151,6 +156,27 @@ Condensed checklist (full version lives in `dnd-exploration` for Claude Code ses
 
 If you catch yourself thinking "I'll seed that later" — stop, seed it now, in this `world_build` batch.
 
+## Points of Interest vs Real Locations (Frequently Missed)
+
+`poiName`/`poiDetails` (on `activity` or `location_update`) is flavor persisted on the *existing* location — for a tactical detail or one-off hiding spot the party won't return to, not a real place. Two rules, both frequently missed:
+
+1. **`poiDetails` is a durable physical fact about the PoI, never a character's current action or state.** "Thrashed sheets, a crumpled pillow" is a physical trace worth persisting. "Lyra sleeping on the cot" or "Mira keeping watch at the door" is a snapshot of what's happening *right now* — use `newActivity` for that, plus `event`/`knowledge_update` for the beat. Writing a character's current state into `poiDetails` goes stale the instant the beat ends and forces a full resend of the location every time the scene refreshes.
+2. **Promote to a real child `Location` on the *second* `activity` that places a character at the same PoI** (or immediately if it's obviously somewhere the party returns to or lingers — a rented room, a hideout, a sickbed). The engine tracks who's "present" per exact `locationId` only, with no room-level granularity — everyone else still anchored to the parent location shows up as co-located with whoever you just placed at the PoI, even when they're narratively in a different room. Don't wait for that to become visibly wrong; promote before narrating anyone as separated from the group:
+
+```json
+{
+  "$type": "location_update",
+  "locationId": "locations/thirsty-mermaid-back-room",
+  "name": "Back Room with a Cot",
+  "description": "A cramped storeroom off the tavern's common room, a cot pushed against the far wall.",
+  "type": "Room",
+  "parentLocationId": "locations/thirsty-mermaid",
+  "addExit": { "targetLocationId": "locations/thirsty-mermaid", "description": "Back into the common room" }
+}
+```
+
+Then `activity`/`travel` the character into the new `locationId` instead of continuing to write `poiDetails` prose on the parent. If the engine returns an ENGINE WARNING naming this PoI (present NPCs being shown as co-located with a PoI-placed character), treat it as a hard cue to promote now, not a deferrable suggestion.
+
 ## Item Ownership (Frequently Missed)
 
 When a character takes, picks up, or is given an existing item:
@@ -203,7 +229,8 @@ Document key decisions and discoveries at the end of each session outside the en
 - [ ] Did I include item ownership changes in the same batch when something was taken?
 - [ ] Did narration change a character's gear/condition/appearance in a way that should still be true next scene — and did I commit it (`item_equip`/`item_unequip`, `status`/`status_remove`, `character_update`) and flag `impliesPersistentPhysicalChange: true` on the event, rather than only narrating it?
 - [ ] Did I seed a brand-new location (`world_build`) before narrating a scene there, rather than leaving a placeholder?
-- [ ] Is narration scaled to the moment — full 3–4 beats for arrivals/reveals, 1–2 for routine follow-ups — using concrete sensory detail (not adjectives alone)?
+- [ ] Did I use `poiName`/`poiDetails` for a durable physical fact only (never a character's current action/state), and promote to a real child `Location` on the second `activity` targeting the same PoI?
+- [ ] Is narration scaled to the moment — full 3–4 beats for arrivals/reveals, 1–2 for routine follow-ups (never zero — even rest/travel gets sensory grounding) — using concrete sensory detail (not adjectives alone)?
 - [ ] Did I differentiate NPC voice via Psychology/Social, not arbitrary styles?
 - [ ] One visual/psychological detail per mention, not a dump?
 - [ ] If multi-NPC, did I show social geometry and competing stakes?
@@ -254,7 +281,9 @@ Psychology (fear, pride, greed, loyalty) sets tone — never real-world social s
 - Reciting the full NPC/location sheet.
 - Narrating "you take the item" without the corresponding `$type: "item"` change.
 - Assuming a `take_turn` worked without checking WorldPressure when it matters.
-- Two-sentence scene beats.
+- Two-sentence scene beats, including for "routine" beats like rest/travel — bare mechanical restatement with no sensory content.
+- Narrating a character's current action/state through `poiDetails` instead of `newActivity` + `event`.
+- Leaving a PoI a character keeps returning to as flavor text instead of promoting it to a real child `Location`.
 - Softening NPC actions or consequences with modern language (consent scripts, apologies for being authentic to the world).
 
 ---

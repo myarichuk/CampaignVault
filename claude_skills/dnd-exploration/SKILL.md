@@ -165,6 +165,10 @@ Two different moves depending on how far/long/exposed the departure is — don't
 }
 ```
 
+**`poiDetails` is for durable physical facts about the PoI, never for a character's current action or state.** "Thrashed sheets and a crumpled pillow on the cot" is a physical trace worth persisting. "Lyra sleeping on the cot" or "Mira giving what help she can" is a snapshot of what someone is doing *right now* — use `newActivity` for that, plus `event`/`knowledge_update` to log the conversation/beat. Narrating a character's state through `poiDetails` goes stale the instant the beat ends, and forces every future scene refresh of the parent location to resend in full.
+
+**One use is a place, not flavor — promote on the second `activity` that targets the same PoI, don't wait longer.** If an `activity` change places a character AT a named PoI (`updateLocation` + `poiName`) more than once — or it's clearly somewhere the party will return to or linger (a rented room, a hideout, a sickbed) — that already satisfies "the party can return to it later" / "will host its own future scenes" above. Stop persisting it as `poiDetails` text and promote it to a real child `Location` (same pattern as the Hidden Forest Hollow example below) *before* narrating anyone as separated from the rest of the group. The engine tracks presence per exact `locationId` only — everyone still anchored to the parent shows up as co-located with whoever you just placed at the PoI, even when they're narratively in a different room. If you skip this, the engine will flag it as an ENGINE WARNING once other NPCs are present at the parent location — treat that as a hard cue to promote, not a suggestion to defer again.
+
 **Leaving to a real, distinct spot** (an hour into the woods, off the road to make camp, down into an unmapped ravine) — `location_update` create-and-link a real child `Location` in the same `take_turn` batch, then `travel`/`activity` into it. Don't staple this onto the parent Region/Wilderness as a PoI — a giant location used as a catch-all destination misrepresents who else is "present" there (anyone else nominally at that same broad location shows up in the scene) and never gets its own exits/danger tuned for the spot:
 
 ```json
@@ -211,7 +215,8 @@ Travel and rest advance time via their own hour fields (not `minutesElapsed` —
 - [ ] Is there a check (Perception, Investigation, Survival)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll?
 - [ ] Did time pass? → `minutesElapsed` on the request (rest/travel use their own hour fields instead)
-- [ ] Are they in a tactical waypoint? → `poiName`/`poiDetails` to persist it
+- [ ] Are they in a tactical waypoint (first use, transient)? → `poiName`/`poiDetails` to persist a physical fact, never a character's current action/state
+- [ ] Has an `activity` targeted the same PoI a second time, or is it clearly somewhere the party returns to/lingers? → promote it to a real child `Location` before narrating anyone as separated from the group
 - [ ] Is the scene anchored at Settlement/Region level? → Descend to District/Building/Room first
 
 **When seeding a new area (world_build):**

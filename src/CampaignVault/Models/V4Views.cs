@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using CampaignVault.Data;
+using CampaignVault.Data.Pressure;
 
 namespace CampaignVault.Models;
 
@@ -16,6 +17,9 @@ public record LocationDetailView(
     LocationType Type,
     string? ParentLocationId,
     List<LocationExit> Exits,
+    /// <summary>Trimmed to PoI names with no entry in <see cref="PointOfInterestDetails"/> — a
+    /// materialized name is already implied by its details key, so listing it again here would just
+    /// repeat the same string. Use PointOfInterestDetails.Keys for the full known-PoI set.</summary>
     List<string> PointsOfInterest,
     Dictionary<string, string> PointOfInterestDetails,
     string? AmbientCrowd,
@@ -84,7 +88,7 @@ public record LocationDetailView(
             l.Type,
             l.ParentLocationId,
             l.Exits,
-            l.PointsOfInterest,
+            PointOfInterestHeuristics.GetUnmaterializedPois(l.PointsOfInterest, l.PointOfInterestDetails),
             poiDetails,
             l.AmbientCrowd,
             l.LastVisitedDay,

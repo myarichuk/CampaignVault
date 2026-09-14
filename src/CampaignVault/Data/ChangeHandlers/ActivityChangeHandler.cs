@@ -58,6 +58,10 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             if (destination != null)
             {
                 LocationPoiMaterializer.Apply(destination, act.PoiName, act.PoiDetails);
+                if (!destination.PoisUsedByActivity.Any(p => string.Equals(p, act.PoiName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    destination.PoisUsedByActivity.Add(act.PoiName);
+                }
                 context.RegisterNewLocation(destination);
             }
             else

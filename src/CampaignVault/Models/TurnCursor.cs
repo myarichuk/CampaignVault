@@ -57,6 +57,15 @@ public class TurnCursor
     [JsonPropertyName("surfacedMemoryHintTopicsByEntityId")]
     public Dictionary<string, string> SurfacedMemoryHintTopicsByEntityId { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Topics of CompressedMemory entries (NpcPresenceSummary/NpcInitiativeEnrichment) already
+    /// sent to the client per entity ID, as of the last delta turn that surfaced them — same "don't
+    /// re-cost tokens for a stable reading" gate as <see cref="SurfacedMemoryHintTopicsByEntityId"/>, but
+    /// per-entity a full topic set rather than a single topic since an NPC can carry several relevant
+    /// memories at once. Replaced (not unioned) with each call's current topic set, so a memory that
+    /// drops out of relevance and later returns is treated as new again.</summary>
+    [JsonPropertyName("surfacedCompressedMemoryTopicsByEntityId")]
+    public Dictionary<string, List<string>> SurfacedCompressedMemoryTopicsByEntityId { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Rolling window (oldest first, capped at <see cref="CampaignConfig.ForcedReseedThrashWindow"/> entries)
     /// of whether each of the last few take_turn calls had ForceFullReseed=true. Unlike

@@ -34,7 +34,17 @@ public class Location : ICampaignScopedEntity, IArchivable
     /// </summary>
     [JsonPropertyName("pointOfInterestDetails")]
     public Dictionary<string, string> PointOfInterestDetails { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-    
+
+    /// <summary>
+    /// PoI names (case-insensitive) that an ActivityChange has ever targeted (updateLocation +
+    /// poiName) — i.e. a character was actually placed/doing something there, not just described.
+    /// That's a behavioral signal that the PoI is functioning as a real place, distinct from
+    /// PointOfInterestDetails (which only says a PoI has *some* recorded description). Drives
+    /// PointOfInterestPressureContributor's "promote to a proper child Location" nudge. Internal
+    /// bookkeeping only — not projected onto LocationDetailView.
+    /// </summary>
+    public List<string> PoisUsedByActivity { get; set; } = [];
+
     public string? AmbientCrowd { get; set; }
     
     public int? LastVisitedDay { get; set; }

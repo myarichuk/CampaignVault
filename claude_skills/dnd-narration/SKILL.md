@@ -85,6 +85,18 @@ What's *unresolved*? What creates forward momentum? Reference ENGINE WARNING or 
 
 Then the party acts, you resolve via `ruleset_action`, and the cycle repeats.
 
+## No Terse Beats — Even Quiet/Transitional Ones
+
+The 3–4 beat structure above is for scenes with stakes. That is not license to collapse a quiet or mechanical beat (rest, travel, waiting, sleeping) down to a bare restatement of the WorldChange. A `rest`/`travel`/`activity` still happens somewhere, with something to sense and something to notice — narrate it, even briefly.
+
+**Anti-pattern:**
+- "Lyra lies down on the cot and takes a short rest." (one line — mechanical, no sensory or emotional content, just restates the `$type: "rest"` change in prose)
+
+**Minimum bar for a minor beat — at least 2 concrete sensory details plus one line of texture or consequence, even without the full 4-beat structure:**
+- "Lyra sinks onto the thin cot, straw shifting under old canvas. Through the wall, muffled talk and a chair scrape drift from the common room — Mira's voice, low and steady, keeping watch. Sleep comes fast, the kind that follows a day spent running."
+
+A one-line narration is never acceptable just because the underlying action is routine. If you catch yourself about to write "X does Y" with nothing else, stop and add what it looks/sounds/feels like, and what it implies.
+
 ## Sensory Detail: Concrete, Not Purple
 
 **Anti-pattern (purple prose):**
@@ -211,7 +223,7 @@ Same detail, woven differently. No contradiction. No recitation.
 - [ ] Did I query (`get_entity`) for the scene/NPC context first?
 - [ ] Did I resolve uncertainty via `ruleset_action` / WorldChange before narrating the outcome?
 - [ ] Did I check for ENGINE WARNINGs / NARRATIVE PROMPTs and address them?
-- [ ] Is my narration 3–4 rich beats, not 2–3 sentences?
+- [ ] Is my narration 3–4 rich beats, not 2–3 sentences? For a quiet/transitional beat (rest, travel, waiting), did I still give at least 2 sensory details + one line of texture, not a bare one-line restatement of the mechanical action?
 - [ ] Did I use concrete sensory detail, not adjectives alone?
 - [ ] Did I differentiate NPC voice via Psychology/Social, not arbitrary styles?
 - [ ] Did I weave in one visual detail (if NPC/location), not recite the whole sheet?

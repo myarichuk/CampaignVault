@@ -23,12 +23,12 @@ public sealed class PointOfInterestPressureContributor : IPressureContributor
     public PressureScope Scope => PressureScope.Both;
     public int Order => 27;
 
-    public Task<IEnumerable<WorldPressureItem>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
+    public async Task<IEnumerable<WorldPressureItem>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
     {
         var pressures = new List<WorldPressureItem>();
 
         if (ctx.Scene is not { IsLocationAnchored: true })
-            return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
+            return pressures;
 
         var loc = ctx.Scene.Location;
         var unmaterialized = PointOfInterestHeuristics.GetUnmaterializedPois(loc.PointsOfInterest, loc.PointOfInterestDetails);
@@ -54,8 +54,48 @@ public sealed class PointOfInterestPressureContributor : IPressureContributor
             }
         }
 
+        // A PoI that an ActivityChange has ever targeted (character placed/doing something there,
+        // not just described) is functioning as a real place, regardless of how it was named —
+        // unlike PointOfInterestHeuristics' sub-location suggestion below, which only fires for
+        // PoI names that happen to look like an entrance/passage. One use is enough: if a character
+        // was placed there, it's a place. Not gated on hasRecentActivity/DaysAdvanced — this reflects
+        // persisted Location state (PoisUsedByActivity), so it resurfaces on any scene load for this
+        // location regardless of whether the triggering ActivityChange happened this exact turn.
+        var rawLocation = await ctx.Session.LoadAsync<Location>(loc.Id, ct);
+        if (rawLocation?.PoisUsedByActivity is { Count: > 0 } usedPois)
+        {
+            var examplePoi = usedPois[0];
+            var childId = $"locations/{Guid.NewGuid().ToString("N")[..8]}";
+            var promoteExample =
+                "{ \"locations\": [ { \"id\": \"" + childId + "\", \"name\": \"" + examplePoi.Replace("\"", "\\\"") + "\", " +
+                "\"description\": \"...\", \"type\": \"Room\", \"parentLocationId\": \"" + loc.Id + "\", " +
+                "\"connectedFromLocationId\": \"" + loc.Id + "\", \"connectionDescription\": \"" + examplePoi.Replace("\"", "\\\"") + "\" } ] }";
+
+            var usedList = string.Join(", ", usedPois.Take(5).Select(p => $"\"{p}\""));
+
+            // PresentNPCs is scoped to the whole parent location (CampaignRepository.cs's
+            // GetSceneTargetIds is intentionally not sub-location-aware — see its own doc comment),
+            // so any NPC present here is being shown as co-located with whoever's activity targeted
+            // usedPois, even if they're narratively in a different room. That's not a hypothetical —
+            // it's already wrong on the wire the instant both are true. Escalate past Suggestion so
+            // it can't be quietly ignored for turns on end the way a Suggestion routinely is.
+            var hasOtherPresentNpcs = ctx.Scene.PresentNPCs?.Any() ?? false;
+            var severity = hasOtherPresentNpcs ? PressureSeverity.EngineWarning : PressureSeverity.Suggestion;
+            var text = hasOtherPresentNpcs
+                ? $"ENGINE WARNING: This location has no room-level granularity — PresentNPCs below is being shown as co-located with whoever's activity was placed at PoI(s) [{usedList}], even if they're narratively in a different room (e.g. one character asleep in a back room while others are elsewhere in the same building). " +
+                  "Promote the PoI into a proper child Location via world_build before narrating anyone as separated from or rejoined with the group — otherwise \"who's in the room\" and what the engine reports will diverge. Example:\n" + promoteExample
+                : $"SUGGESTION: PoI(s) [{usedList}] have had characters' activity placed there (updateLocation+poiName), not just described — that's real occupancy, not flavor text. " +
+                  "Consider promoting via world_build into a proper child Location instead of continuing to narrate through poiDetails (which forces a full location resend and goes stale immediately). Example:\n" + promoteExample;
+
+            pressures.Add(new WorldPressureItem(
+                severity,
+                loc.Id,
+                text,
+                "Poi:UsedAsSubLocation"));
+        }
+
         if (unmaterialized.Count == 0)
-            return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
+            return pressures;
 
         // Mild suggestion whenever there are unmaterialized PoIs and the scene has seen activity.
         // The LLM chooses whether the current beat actually warrants materializing any of them.
@@ -86,6 +126,6 @@ public sealed class PointOfInterestPressureContributor : IPressureContributor
                 HasPoisGroupingKey));
         }
 
-        return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
+        return pressures;
     }
 }

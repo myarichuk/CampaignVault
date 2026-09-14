@@ -593,11 +593,11 @@ public class ActivityChange : WorldChange
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
 
-    [Description("Optional: name of a Point of Interest to materialize on newLocationId in this same step (same effect as location_update's materializePointOfInterest). Pair with poiDetails. Requires newLocationId/updateLocation to also be set.")]
+    [Description("Optional: name of a Point of Interest to materialize on newLocationId in this same step (same effect as location_update's materializePointOfInterest). Pair with poiDetails. Requires newLocationId/updateLocation to also be set. Reserve for a durable physical/sensory fact about the PoI itself, not for narrating this conversation or activity — see poiDetails.")]
     [JsonPropertyName("poiName")]
     public string? PoiName { get; set; }
 
-    [Description("The persistent detail/state for poiName — sensory and tactical specifics that matter later (cover, water, tracks, hazards, what's hidden there). Only applied if poiName is also set.")]
+    [Description("The persistent detail/state for poiName — sensory and tactical specifics that matter later (cover, water, tracks, hazards, what's hidden there, structural changes). Only applied if poiName is also set. Do NOT use this to summarize dialogue, an NPC's momentary mood, or what a conversation is about — that's not a physical fact about the room, it reads as stale the instant the conversation moves on, and it forces every take_turn call touching this location to resend the full location (description/exits/POIs/ambient) instead of the cheap id-only refresh an unchanged room gets. Log conversation content via event/knowledge_update, and character state via newActivity, instead.")]
     [JsonPropertyName("poiDetails")]
     public string? PoiDetails { get; set; }
 }
@@ -721,15 +721,15 @@ public class LocationUpdate : WorldChange
     [JsonPropertyName("removePointOfInterest")]
     public string? RemovePointOfInterest { get; set; }
 
-    [Description("Name of a Point of Interest (existing or new) to give/update persistent details. Use with poiDetails. Re-applying to an existing PoI updates its state (e.g. after ripping a poster or setting it on fire).")]
+    [Description("Name of a Point of Interest (existing or new) to give/update persistent details. Use with poiDetails. Re-applying to an existing PoI updates its state (e.g. after ripping a poster or setting it on fire). Reserve for a durable physical/sensory fact about the PoI itself, not for narrating an ongoing conversation or a character's momentary activity there.")]
     [JsonPropertyName("materializePointOfInterest")]
     public string? MaterializePointOfInterest { get; set; }
 
-    [Description("The persistent details, description, or current state for the PoI. When used with materializePointOfInterest or in the map, this records what the PoI is like now.")]
+    [Description("The persistent details, description, or current state for the PoI. When used with materializePointOfInterest or in the map, this records what the PoI is like now. Do NOT use this to summarize dialogue, an NPC's momentary mood, or what a conversation is about — that's not a physical fact about the room, it reads as stale the instant the conversation moves on, and it forces every take_turn call touching this location to resend the full location instead of the cheap id-only refresh an unchanged room gets. Log conversation content via event/knowledge_update instead.")]
     [JsonPropertyName("poiDetails")]
     public string? PoiDetails { get; set; }
 
-    [Description("Map of PoI name → current details. Can add, update, or replace details for multiple PoIs. Keys not already in PointsOfInterest will be added.")]
+    [Description("Map of PoI name → current details. Can add, update, or replace details for multiple PoIs. Keys not already in PointsOfInterest will be added. Same caution as poiDetails: durable physical facts only, not conversation narration.")]
     [JsonPropertyName("pointOfInterestDetails")]
     public Dictionary<string, string>? PointOfInterestDetails { get; set; }
 
