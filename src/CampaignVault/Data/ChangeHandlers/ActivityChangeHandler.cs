@@ -42,6 +42,20 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
         {
             // Supports explicit clears (NewLocationId=null + UpdateLocation=true) from TransientEvictionRule etc.
             // For LLM-authored partial updates that only change activity, omit newLocationId (or set UpdateLocation false).
+            if (!string.IsNullOrEmpty(act.NewLocationId) && !context.Locations.TryGetValue(act.NewLocationId, out _))
+            {
+                var suggested = await context.SuggestLocationMatchAsync(act.NewLocationId);
+                var msg = $"Location {act.NewLocationId} not found during ActivityChange.";
+                if (suggested != null)
+                {
+                    msg += $" Did you mean: {suggested}?";
+                }
+
+                context.RecordMessage("WARNING: " + msg);
+                context.RecordFailure();
+                return ChangeHandlerResult.Failure(msg);
+            }
+
             character.CurrentLocationId = act.NewLocationId;
             if (!string.IsNullOrEmpty(act.NewLocationId))
             {

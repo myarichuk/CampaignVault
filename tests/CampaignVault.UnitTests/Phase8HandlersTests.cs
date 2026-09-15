@@ -458,4 +458,65 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Equal("Patrolling", character.CurrentActivity);
         Assert.True(ctx.Characters.ContainsKey(character.Id));
     }
+
+    [Fact]
+    public async Task ActivityChange_FailsWhenNewLocationIdDoesNotExist()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = new Character { Id = "chars/wanderer", Name = "Wanderer" };
+        await session.StoreAsync(character);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+        var handler = new ActivityChangeHandler();
+
+        var result = await handler.ApplyAsync(new ActivityChange
+        {
+            CharacterId = character.Id,
+            NewLocationId = "locations/does-not-exist",
+            UpdateLocation = true
+        }, ctx);
+
+        Assert.False(result.Success);
+        Assert.Null(character.CurrentLocationId);
+    }
+
+    [Fact]
+    public async Task ActivityChange_UpdatesLocation_WhenNewLocationIdExists()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = new Character { Id = "chars/wanderer2", Name = "Wanderer2" };
+        var location = new Location { Id = "locations/rented-room", Name = "Rented Room" };
+        await session.StoreAsync(character);
+        await session.StoreAsync(location);
+        await session.SaveChangesAsync();
+
+        var ctx = new ChangeContext(
+            session,
+            new Dictionary<string, Character>(),
+            new Dictionary<string, Item>(),
+            new Dictionary<string, Location> { [location.Id] = location },
+            new Dictionary<string, Faction>(),
+            new Dictionary<string, Quest>(),
+            NullLogger.Instance,
+            () => Task.FromResult(new CampaignTime { TotalDaysElapsed = 10 }),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask,
+            [],
+            new WorldChangeDispatcher(new List<IWorldChangeHandler>(), new CampaignVault.Data.CampaignDocumentKeys()),
+            null,
+            "test-campaign"
+        );
+        var handler = new ActivityChangeHandler();
+
+        var result = await handler.ApplyAsync(new ActivityChange
+        {
+            CharacterId = character.Id,
+            NewLocationId = location.Id,
+            UpdateLocation = true
+        }, ctx);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(location.Id, character.CurrentLocationId);
+    }
 }

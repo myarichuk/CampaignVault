@@ -154,7 +154,7 @@ After arriving at a location:
 
 Two different moves depending on how far/long/exposed the departure is — don't default to the lighter one just because it's a single field:
 
-**Staying inside the current location** (fleeing to a corner, hiding behind the bar, ducking into an alcove) — `activity` alone (`newActivity`/`newLocationId`) is enough to reposition the character. It carries no PoI fields. If the spot has a lasting physical detail worth persisting, add a *separate* `location_update` in the same commit batch — this is flavor persisted on the *existing* location, not a new place:
+**Staying inside the current location** (fleeing to a corner, hiding behind the bar, ducking into an alcove, flipping a table for cover, sitting on the bar with legs dangling, sleeping on a cot) — `newActivity` alone is enough to reposition the character; it's free-text narration, carries no PoI fields, and doesn't need `newLocationId`/`updateLocation` at all when the character's location document isn't actually changing. Reserve `newLocationId`/`updateLocation` for a genuine transition to a *different*, already-existing `Location` (it must resolve to a real location — the engine rejects an invented or nonexistent id rather than silently accepting it). If the spot has a lasting physical detail worth persisting, add a *separate* `location_update` in the same commit batch — this is flavor persisted on the *existing* location, not a new place:
 
 ```json
 {
@@ -162,9 +162,7 @@ Two different moves depending on how far/long/exposed the departure is — don't
     {
       "$type": "activity",
       "characterId": "chars/lyra",
-      "newActivity": "slipping behind the waterfall",
-      "newLocationId": "locations/forest",
-      "updateLocation": true
+      "newActivity": "slipping behind the waterfall"
     },
     {
       "$type": "location_update",

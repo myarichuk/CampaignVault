@@ -1239,6 +1239,122 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
     }
 
     /// <summary>
+    /// Regression guard for the scene-refetch gate: on a delta turn, an auto-added scene candidate
+    /// (no ExtraLocationIds) whose only tie to the location is EventOccurred.LocationId bookkeeping
+    /// must NOT trigger the full BuildSceneSummaryAsync assembly — nothing about who/what is present
+    /// changed, so the client already has the scene from the last full reseed.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_SkipsAutoSceneRefetch_WhenLocationOnlyReferencedByEventBookkeeping()
+    {
+        var slug = NewSlug("scenegate-event");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-tavern";
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Tavern" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        for (var i = 0; i < 3; i++)
+        {
+            var quiet = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+            Assert.Equal(TurnMode.Delta, quiet.Data!.Mode);
+        }
+
+        var chatOnly = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new EventOccurred
+                {
+                    Summary = "The companion chats idly at the bar.",
+                    Category = EventCategory.Discovery,
+                    Involved = [companionId],
+                    LocationId = locId
+                }
+            ],
+            Narrative = "Idle conversation continues."
+        }, slug);
+
+        Assert.True(chatOnly.Success, chatOnly.Summary);
+        Assert.Equal(TurnMode.Delta, chatOnly.Data!.Mode);
+        Assert.DoesNotContain(chatOnly.Data.Scenes ?? [], s => s.Location.Id == locId);
+    }
+
+    /// <summary>
+    /// Counterpart to the gate-skip test above: a genuine arrival (ActivityChange.NewLocationId to a
+    /// different, already-existing location) must still trigger the auto scene refetch on a delta turn,
+    /// even with no ExtraLocationIds — the gate only excludes incidental references, not real moves.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_RefetchesAutoScene_OnGenuineArrivalViaActivityChange()
+    {
+        var slug = NewSlug("scenegate-arrival");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locAId = $"locations/{slug}-a";
+        var locBId = $"locations/{slug}-b";
+        var pcId = $"chars/{slug}-pc";
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locAId, Name = "A" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locBId, Name = "B" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        for (var i = 0; i < 3; i++)
+        {
+            var quiet = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+            Assert.Equal(TurnMode.Delta, quiet.Data!.Mode);
+        }
+
+        var arrived = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new ActivityChange
+                {
+                    CharacterId = companionId,
+                    NewLocationId = locBId,
+                    UpdateLocation = true,
+                    NewActivity = "Scouting ahead"
+                }
+            ],
+            Narrative = "The companion slips into B to scout."
+        }, slug);
+
+        Assert.True(arrived.Success, arrived.Summary);
+        Assert.Equal(TurnMode.Delta, arrived.Data!.Mode);
+        Assert.Contains(arrived.Data.Scenes ?? [], s => s.Location.Id == locBId);
+    }
+
+    /// <summary>
     /// WorldStateView.ActiveRumors and Scenes[].LocalRumors are both resolved from the same region-scoped
     /// query when the party's location and the refreshed scene's location share a region — a rumor there
     /// should only be sent once (in ActiveRumors), not duplicated into the scene's LocalRumors too.

@@ -1244,6 +1244,28 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         };
     }
 
+    /// <summary>
+    /// True if this change could have altered who/what is present at the given location this turn — a
+    /// genuine arrival/departure or a crowd-interrupt that can promote ambient NPCs into a combatant.
+    /// Deliberately narrower than "this change references the location id" (see the reflection-based
+    /// default <see cref="IWorldChangeHandler.ExtractInvolvedEntities"/> and EventOccurredHandler's
+    /// LocationId/RelatedLocationIds, which tag a location as "involved" for bookkeeping reasons that
+    /// have nothing to do with presence). Used by <see cref="RefreshInvolvedEntitiesAsync"/> to decide
+    /// whether an auto-added scene candidate is worth the full BuildSceneSummaryAsync assembly on a
+    /// delta turn, not just whether it should be preloaded.
+    /// </summary>
+    private static bool AffectsScenePresence(WorldChange change, string locationId)
+    {
+        var eq = StringComparer.OrdinalIgnoreCase;
+        return change switch
+        {
+            TravelChange tc => eq.Equals(tc.DestinationLocationId, locationId),
+            ActivityChange ac => (ac.NewLocationId != null || ac.UpdateLocation) && eq.Equals(ac.NewLocationId, locationId),
+            SceneInterruptCheck sic => eq.Equals(sic.LocationId, locationId),
+            _ => false
+        };
+    }
+
     private bool ShouldStripUnchangedLocationDetail(TurnContext ctx, string locationId) =>
         ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsLocationDetail(c, locationId));
 
@@ -1372,6 +1394,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var npcCandidates = new List<string>();
         var sceneCandidates = new List<string>();
+        var explicitSceneCandidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         void AddCandidate(string id, bool explicitlyRequested)
         {
@@ -1387,6 +1410,10 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
             else if (id.StartsWith(CanonicalId.Locations, StringComparison.OrdinalIgnoreCase))
             {
                 sceneCandidates.Add(id);
+                if (explicitlyRequested)
+                {
+                    explicitSceneCandidates.Add(id);
+                }
             }
             else if (explicitlyRequested)
             {
@@ -1436,6 +1463,23 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         }
 
         var scenesToFetch = sceneCandidates.Take(SceneCap).ToList();
+        if (ctx.Mode == TurnMode.Delta)
+        {
+            // An auto-added candidate (not explicitly requested via ExtraLocationIds) only earns the
+            // expensive full scene assembly (BuildSceneSummaryAsync: character-search + rumor + items +
+            // combat + quests + faction + container-resolution queries) when something this turn actually
+            // could have changed who/what is at that location. Plenty of change types reference a location
+            // id incidentally without affecting presence — EventOccurred.LocationId/RelatedLocationIds
+            // (routine event bookkeeping), RestChange.LocationId, FactionStateChange, QuestProgress, etc.
+            // — and those alone shouldn't force a refetch every beat a character talks/rests/checks
+            // something in a location nobody entered/left. The client already has the scene from the last
+            // full reseed or a prior delta that changed it, same rationale as ApplyLocationDeltaTrim below.
+            scenesToFetch = scenesToFetch
+                .Where(id => explicitSceneCandidates.Contains(id)
+                    || ctx.AppliedChanges.Any(c => AffectsLocationDetail(c, id) || AffectsScenePresence(c, id)))
+                .ToList();
+        }
+
         if (scenesToFetch.Count > 0)
         {
             result.Scenes = [];
