@@ -96,15 +96,17 @@ Use `advance_world` to skip uneventful time (e.g., "three weeks pass peacefully"
 
 ```json
 {
+  "narrative": "Three uneventful weeks pass at the keep.",
   "campaignName": "<current-campaign>",
-  "hours": 504,
-  "skipEvaluateSchedules": false
+  "hours": 504
 }
 ```
 
-This rolls simulation rules (needs, rumors, status expiry, NPC schedules) and returns `SimulatorEvents` + any pressures.
+(There's no `skipEvaluateSchedules` param — `narrative` is required on every call.)
 
-**Don't use `advance_world` for dangerous travel or overnight spans with stakes**—use `rest` (for immediate recovery + interruption rolls) or `travel` (for encounters).
+This rolls simulation rules (needs, rumors, status expiry, NPC schedules) and returns `SimulatorEvents` + any pressures. By itself it has **zero encounter/interruption mechanic** — pass `partyLocationId` to get the same encounter/ambient-crowd rolls `rest`/`travel` get for that elapsed span.
+
+**For dangerous travel or an overnight span with real stakes**, prefer `rest` (immediate recovery + interruption rolls) or `travel` (encounters) — or `advance_world` with `partyLocationId` set if a multi-day skip still needs to carry risk.
 
 ## Plot Thread Progression & Scaffolding
 

@@ -69,7 +69,13 @@ internal static class CommitSchemaModel
 
                 var jsonNameAttr = pi.GetCustomAttribute<JsonPropertyNameAttribute>();
                 var jsonName = jsonNameAttr?.Name ?? pi.Name;
-                var isRequired = pi.PropertyType.IsValueType || !IsNullableProperty(pi);
+                // IsNullableProperty already handles both Nullable<T> (Nullable.GetUnderlyingType) and
+                // nullable reference types, so it alone determines optionality. The previous
+                // `pi.PropertyType.IsValueType ||` short-circuited that check to true for every value-type
+                // property — including nullable ones like `int?`/`bool?`/`EngagementCategory?`, which are
+                // the overwhelming majority of WorldChange fields (almost everything here is optional) —
+                // marking nearly every optional field "required" in the generated take_turn schema.
+                var isRequired = !IsNullableProperty(pi);
 
                 var fieldDesc = pi.GetCustomAttribute<DescriptionAttribute>()?.Description;
 

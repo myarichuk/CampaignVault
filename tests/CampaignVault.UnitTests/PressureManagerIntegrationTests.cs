@@ -280,6 +280,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                     MaxHp = 10,
                     CampaignName = campaignName,
                     KeepAlive = true,
+                    // Needs-pressure is now scoped to the party (see CharacterDistressPressureContributor) —
+                    // mark these as recruited companions so their hunger still surfaces through GetWorldState.
+                    IsPartyCompanion = true,
                     SystemStats = new Dnd5eExtension
                     {
                         ArmorClass = 12,
@@ -327,6 +330,77 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Need hunger", batchedString);
         Assert.Contains("Batch Char 2", batchedString);
         Assert.Contains("Batch Char 3", batchedString);
+
+        // Batched needs-pressure display is now compressed to "{Name} ({detail})" instead of repeating
+        // each item's full boilerplate sentence — verify the compact form actually landed.
+        Assert.Contains("Batch Char 1 (95%)", batchedString);
+        Assert.DoesNotContain("needs should be acted upon", batchedString);
+    }
+
+    /// <summary>
+    /// Regression guard: CharacterDistressPressureContributor's ambient-needs check used to scan every
+    /// KeepAlive character in the campaign, so a background NPC nowhere near the party (not a PC, not a
+    /// recruited companion) would still nag about hunger/thirst in take_turn/get_world_state responses.
+    /// Needs-pressure is now scoped to PartyCharacterIds (PCs + companions); a bystander's hunger should
+    /// no longer surface, while a companion's still does.
+    /// </summary>
+    [Fact]
+    public async Task GetWorldState_DoesNotSurfaceNeedsPressure_ForNonPartyBackgroundNpc()
+    {
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        var campaignName = "pressure-scope-test-" + Guid.NewGuid().ToString("N")[..8];
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var companion = new Character
+            {
+                Id = "characters/scope-test-companion",
+                Name = "Recruited Companion",
+                CurrentHp = 10,
+                MaxHp = 10,
+                CampaignName = campaignName,
+                KeepAlive = true,
+                IsPartyCompanion = true,
+                SystemStats = new Dnd5eExtension
+                {
+                    ArmorClass = 12,
+                    Dexterity = 12,
+                    SkillModifiers = new Dictionary<string, int> { { "Survival", 2 } }
+                }
+            };
+            companion.Needs.ActiveNeeds["thirst"] = 95f;
+            await session.StoreAsync(companion);
+
+            var bystander = new Character
+            {
+                Id = "characters/scope-test-bystander",
+                Name = "Background Bystander",
+                CurrentHp = 10,
+                MaxHp = 10,
+                CampaignName = campaignName,
+                KeepAlive = true,
+                SystemStats = new Dnd5eExtension
+                {
+                    ArmorClass = 12,
+                    Dexterity = 12,
+                    SkillModifiers = new Dictionary<string, int> { { "Survival", 2 } }
+                }
+            };
+            bystander.Needs.ActiveNeeds["thirst"] = 95f;
+            await session.StoreAsync(bystander);
+
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5));
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.GetWorldState("locations/any", campaignName);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data?.WorldPressure);
+
+        var allPressures = string.Join("\n", result.Data!.WorldPressure!);
+        Assert.Contains("Recruited Companion", allPressures);
+        Assert.DoesNotContain("Background Bystander", allPressures);
     }
 
     [Fact]
@@ -559,5 +633,72 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             // Null LastSignature => treated as "no prior signature to compare" => normal cooldown applies.
             Assert.Empty(items);
         }
+    }
+
+    /// <summary>
+    /// Regression guard: the "you haven't set an ambient crowd here" nag used to only fire via get_scene's
+    /// Scene-scoped pressure pass. take_turn/get_world_state only ever ran World scope, which this
+    /// contributor's Scene-only gate never satisfied — so ambient crowd was never mentioned across an
+    /// entire take_turn-driven session. It's now reachable from World scope too when a location is known.
+    /// </summary>
+    [Fact]
+    public async Task GetWorldState_SurfacesSparseAmbientCrowd_ForKnownLocation()
+    {
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        var campaignName = "ambient-crowd-world-scope-" + Guid.NewGuid().ToString("N")[..8];
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
+
+        var locationId = "locations/sparse-crowd-test";
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Location
+            {
+                Id = locationId,
+                Name = "Quiet Tavern",
+                CampaignName = campaignName,
+                AmbientCrowd = null,
+                PointsOfInterest = []
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.GetWorldState(locationId, campaignName);
+        Assert.True(result.Success);
+        var pressureText = string.Join("\n", result.Data?.WorldPressure ?? []);
+        // Suggestion-severity items get abbreviated (e.g. "CROWD:refresh") by PressureAbbreviator — the
+        // point of this test is that the nag fires at all via World scope, not its exact wording.
+        Assert.Contains("CROWD", pressureText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Regression guard: RecentlyDepartedPressureContributor used to be Scene-only too — a schedule-driven
+    /// NPC departure (see ScheduleEvaluationRuleTests) would leave a RecentlyDeparted breadcrumb that only
+    /// ever surfaced via get_scene. Now reachable from take_turn/get_world_state as well.
+    /// </summary>
+    [Fact]
+    public async Task GetWorldState_SurfacesRecentlyDeparted_ForKnownLocation()
+    {
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        var campaignName = "recently-departed-world-scope-" + Guid.NewGuid().ToString("N")[..8];
+        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
+
+        var locationId = "locations/departed-test";
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Location
+            {
+                Id = locationId,
+                Name = "Gate Yards",
+                CampaignName = campaignName,
+                RecentlyDeparted = [new DepartedNpcRecord("chars/kael", "Kael", 2, "Followed their daily routine")]
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.GetWorldState(locationId, campaignName);
+        Assert.True(result.Success);
+        var pressureText = string.Join("\n", result.Data?.WorldPressure ?? []);
+        Assert.Contains("Kael", pressureText);
+        Assert.Contains("Recently departed", pressureText, StringComparison.OrdinalIgnoreCase);
     }
 }

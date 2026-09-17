@@ -102,6 +102,7 @@ When seeding a new area (session 0, arrival in a new settlement, entering a new 
 - **`activity`** — local moves (same location, already-safe), no encounter check, no time-based needs progression
 - **`travel`** — real journey (distance, alone, hostile/unknown territory), rolls encounter risk, applies need costs, can be interrupted
 - **`rest`** — overnight or partial-day span with real danger, rolls interruptions, recovers pools/tiredness **immediately**
+- **`advance_world`** — multi-day/uneventful skip. Pass its `partyLocationId` param to get the same encounter/ambient-crowd checks `rest`/`travel` roll, scaled to the elapsed span; omit it only for a skip that's genuinely meant to carry zero risk.
 
 ```json
 {
@@ -219,7 +220,7 @@ Travel and rest advance time via their own hour fields (not `minutesElapsed` —
 **During play:**
 - [ ] Is this a local move (same location, safe)? → `activity`
 - [ ] Is this a real journey (distance, danger)? → `travel` with encounterRiskModifier
-- [ ] Is this an overnight span with stakes? → `rest` (not `advance_world`)
+- [ ] Is this an overnight span with stakes? → `rest`, or `advance_world` with `partyLocationId` set so it still rolls for interruptions
 - [ ] Did I fetch the scene (`get_entity` locations/ id, partyPresent: true) after arrival?
 - [ ] Is there a check (Perception, Investigation, Survival)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll?

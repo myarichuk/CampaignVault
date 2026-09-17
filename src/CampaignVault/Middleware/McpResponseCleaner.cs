@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CampaignVault.Models;
@@ -42,9 +43,14 @@ internal static class McpResponseCleaner
 
     // WriteIndented defaults to false, but stated explicitly so a future edit can't silently
     // reintroduce pretty-printed whitespace into every tool response's Content block.
+    // Encoder: the unset default (JavaScriptEncoder.Default) escapes plain ASCII quotes as
+    // """ instead of the JSON-standard "\" — safe for embedding JSON inside HTML/JS, which
+    // this response never is (it's a tool-call payload read by an LLM, never rendered as markup).
+    // Relaxed escaping cuts ~6 wire bytes to ~2 per quote and keeps raw logs/payloads readable.
     private static readonly JsonSerializerOptions ContentSerializerOptions = new()
     {
         WriteIndented = false,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     public static void Register(IMcpRequestFilterBuilder filters)
@@ -85,7 +91,23 @@ internal static class McpResponseCleaner
             // Content first: it is the copy most MCP hosts actually forward to the model, and
             // serializing the cleaned node straight to text skips a whole JsonElement round-trip
             // over what can be a very large payload.
-            result.Content = [new TextContentBlock { Text = cleaned.ToJsonString(ContentSerializerOptions) }];
+            var text = cleaned.ToJsonString(ContentSerializerOptions);
+
+            // Injected after the real serialization (so it estimates the payload the client actually
+            // receives, truncation/delta-trims included) rather than computed per-DTO — every tool
+            // response shares this one wire-format seam regardless of which of the dozens of response
+            // types produced it. Char-count/4 is the standard rough heuristic for English/JSON text
+            // against GPT-family tokenizers; "rough" is the point — an LLM client budgeting context
+            // doesn't need exact BPE counts, just an order-of-magnitude cost signal without a real
+            // tokenizer dependency. Only meaningful for an object payload (every tool response here is
+            // one); left off array/scalar payloads.
+            if (cleaned is JsonObject topLevel)
+            {
+                topLevel["tokensEst"] = (int)Math.Ceiling(text.Length / 4.0);
+                text = topLevel.ToJsonString(ContentSerializerOptions);
+            }
+
+            result.Content = [new TextContentBlock { Text = text }];
             result.StructuredContent = IncludeStructuredContent
                 ? JsonSerializer.SerializeToElement(cleaned)
                 : null;

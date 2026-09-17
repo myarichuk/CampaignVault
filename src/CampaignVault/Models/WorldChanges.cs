@@ -53,6 +53,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(MemoryDecay), "memory_decay")]
 [JsonDerivedType(typeof(CampaignUpdateChange), "campaign_update")]
 [JsonDerivedType(typeof(WorldEventStatusChange), "world_event_status")]
+[JsonDerivedType(typeof(AmbientEncounterCheck), "ambient_encounter_check")]
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 public abstract class WorldChange
 {
@@ -1536,6 +1537,24 @@ public class MemoryDecay : WorldChange
     [Description("Map from memory entry key to (newSalience, newUrgency, evict). Null field = no change for that aspect.")]
     [JsonPropertyName("entryChanges")]
     public Dictionary<string, (float? NewSalience, float? NewUrgency, bool Evict)> EntryChanges { get; set; } = [];
+}
+
+/// <summary>
+/// Simulation-internal: rolls EncounterResolver for elapsed idle/ambient time at a location, exactly like
+/// RestChange/TravelChange already do for their own commit types. Emitted by CampaignRepository whenever a
+/// party location is known and simulated time has passed (advance_world, or take_turn's ambient time
+/// accumulation crossing a day boundary) — closes the gap where only explicit rest/travel/scene_interrupt_check
+/// commits could ever produce a random encounter, so "safe downtime" tools stop being silently risk-free
+/// only because of which tool the DM happened to use.
+/// </summary>
+[Description("Simulation-internal: rolls for a random encounter over elapsed ambient time at a location. Not for LLM use — RestChange/TravelChange already roll for their own spans.")]
+public class AmbientEncounterCheck : WorldChange
+{
+    [JsonPropertyName("locationId")]
+    public string LocationId { get; set; } = null!;
+
+    [JsonPropertyName("hours")]
+    public double Hours { get; set; }
 }
 
 /// <summary>

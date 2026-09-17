@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using Raven.Client.Documents.Session;
@@ -19,6 +20,16 @@ public interface IPressureManager
 
 public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>? logger = null) : IPressureManager
 {
+    /// <summary>
+    /// Matches a bare trailing "(detail)" at the very end of a pressure item's Text (e.g. "(66%)",
+    /// "(20/20 HP)"), optionally followed by a closing period. Used by ToDisplayStrings to compress
+    /// batched items down to "{EntityName} (detail)" instead of repeating the item's full boilerplate
+    /// sentence once per group member. Deliberately anchored at end-of-string so it only matches the
+    /// simple "Name verb-phrase (detail)." shape — text with a trailing clause after the parenthetical
+    /// (e.g. "...is dying or dead (0/10 HP). Resolve this: ...") is left untouched.
+    /// </summary>
+    private static readonly Regex TrailingQuantifier = new(@"\([^()]*\)\.?\s*$", RegexOptions.Compiled);
+
     public async Task<List<WorldPressureItem>> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay,
         IEnumerable<WorldPressureItem>? rawPressures, bool disableCooldowns = false)
     {
@@ -192,8 +203,18 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
             {
                 var keyParts = first.GroupingKey.Split(':');
                 var category = keyParts.Length > 1 ? string.Join(" ", keyParts.Skip(1)) : first.GroupingKey;
-                // For batched items, use full text (preserves test assertions on names/values)
-                var batched = string.Join(" | ", itemsInGroup.Select(x => x.Text));
+                // Full text repeats each item's boilerplate phrase (e.g. 16x "{Name} needs should be
+                // acted upon: thirst (66%).") even though the category is already stated once above —
+                // the single biggest source of chattiness in a batched group. When the contributor gave
+                // us EntityName and the text ends in a bare "(detail)", collapse to "{Name} (detail)".
+                // Anything else (no EntityName, or a trailing clause after the parenthetical) keeps its
+                // full text — never drop information we can't safely reconstruct.
+                var batched = string.Join(", ", itemsInGroup.Select(x =>
+                {
+                    if (x.EntityName == null) return x.Text;
+                    var match = TrailingQuantifier.Match(x.Text);
+                    return match.Success ? $"{x.EntityName} {match.Value.TrimEnd('.', ' ')}" : x.Text;
+                }));
                 body = $"({itemsInGroup.Count} similar issues - {category}): {batched}";
             }
 

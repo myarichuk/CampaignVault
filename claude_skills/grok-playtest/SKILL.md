@@ -9,13 +9,15 @@ metadata:
 
 You are running a narrative playtest session via Grok Web. The engine is authoritative; Grok Web is the interface. Grok Web doesn't auto-load skills the way Claude Code does, so this file is self-contained — it merges call-efficiency discipline with the narration craft you'd otherwise get from separate skills. Combat mechanics (attack/spell resolution, the `combat` tool) live in `recommended-system-prompt.md`'s COMBAT/SPELLS sections — inject that alongside this file.
 
+**Two separate budgets — do not let one bleed into the other.** Everything about "efficiency" below governs *tool-call shape and count* (how many calls, which opt-in flags, how much JSON). It never governs how much prose you write for the player. The `narrative` field you pass to `take_turn` is a short, factual summary for the engine's event log — it is not, and was never meant to be, the in-character text you show the player. Keep `narrative` terse; keep your actual response to the player as long as the Narration sections below require, every time. If a beat is reading as clipped, that's this rule being missed, not a call-count problem.
+
 ## Core Efficiency Principle
 
 **`take_turn` is the primary tool.** Design goal: ~70% of all engine calls should be `take_turn`.
 
 - Mutations + fresh summaries + WorldPressure in one round-trip.
-- Auto-refresh of involved entities is on by default (`autoRefreshInvolved: true`, capped at 6 NPCs / 3 scenes).
-- Use `includeWorldState: true` whenever you need pressure/warnings.
+- Auto-refresh of involved entities is on by default (`autoRefreshInvolved: true`, capped at 6 NPCs / 3 scenes) — but **PCs are never part of that auto-refresh** (they ride `Party`/`PartyDelta` only, gated behind `includeParty`). If you're about to state a PC's need value (hunger/thirst/tiredness/etc.) anywhere — narration or your own tracking — and haven't refreshed it via `includeParty: true` or `get_entity` recently, you don't actually have that number; refresh before asserting it. Treat an un-refreshed PC need value exactly like any other uncertain outcome: don't narrate it before you know it.
+- Use `includeWorldState: true` when you need pressure/warnings, just arrived somewhere new, or a day boundary just crossed — not as a reflexive default on every routine beat. It triggers a full world-state rebuild (rumors, quests, factions, recent events, pressure evaluation) every time it's set, in Full *or* Delta mode, whether or not anything world-level actually changed. Setting it on every single call is the same class of waste this file warns against for `includeParty`/`fullDetailLocationId` — don't contradict your own discipline.
 - Use `fullDetailCharacterId` / `fullDetailLocationId` only when you truly need the deep dossier (psychology graph, full memory list, itemDetails, etc.).
 
 `get_entity` is the **deep-dive** tool. Reserve it for:
@@ -235,8 +237,9 @@ Document key decisions and discoveries at the end of each session outside the en
 - [ ] One visual/psychological detail per mention, not a dump?
 - [ ] If multi-NPC, did I show social geometry and competing stakes?
 - [ ] Roll results woven inline after the engine returns them?
-- [ ] If `ruleset_action` had `targetIds`, did I skip adding a separate `engagement_relation` for the same pair (it's auto-applied)?
-- [ ] Did a `ruleset_action`/`status`/combat change get paired with an `event` in the same batch (they don't auto-log one)?
+- [ ] Did a check with **no mechanical side effect** (a pure Perception/Insight/social read — no HP/item/quest change attached) get its resolved outcome captured somewhere durable — a `knowledge_update`/`event` in this batch or the very next one — rather than living only in this turn's response text? A roll that only changes HP/items/quest state already persists via that state change; a purely informational result does not persist anywhere unless you write it down.
+- [ ] If `ruleset_action` had `targetIds`, is this actually a grapple/escape-grapple action? Only those auto-apply `engagement_relation` — an ordinary attack or skill check does not, so commit one explicitly if the check should shift the relationship. Always set an explicit `category` on any `engagement_relation` you commit (Physical/Medical/Social/Attention/Proximity) — an unrecognized verb with no category silently defaults to `Physical`, which also changes whether it gates travel and emits pressure, not just whether it logs.
+- [ ] Did a plain HP-only `ruleset_action`/combat outcome get paired with an `event` in the same batch? (It doesn't auto-log.) Skip the paired `event` for a `status` change or a Physical/Medical `engagement_relation` — those already self-log one; adding your own just creates a near-duplicate history entry.
 
 *Between sessions:*
 - [ ] Key decisions noted externally?
@@ -248,7 +251,7 @@ Document key decisions and discoveries at the end of each session outside the en
 
 *Uncertainty:* `ruleset_action` (skill checks, attacks, saves, spells) via `take_turn`. Combat sequencing (start/next turn/end) is the separate `combat` tool — see `recommended-system-prompt.md`'s COMBAT section.
 
-*Movement & Time:* `activity` (local, no encounter risk), `travel` (journey with risk), `rest` (recovery + interruption chance).
+*Movement & Time:* `activity` (local, no encounter risk), `travel` (journey with risk), `rest` (recovery + interruption chance), `advance_world` (multi-day/uneventful skip — pass its `partyLocationId` param to get the same encounter/ambient-crowd checks `rest`/`travel` roll for that span; omit it only when the skip is genuinely meant to be risk-free).
 
 *Items:* `item` / `item_transfer` / `item_equip` / `item_unequip` / `item_use`.
 
@@ -257,6 +260,8 @@ Document key decisions and discoveries at the end of each session outside the en
 *Plot:* `quest_progress`, `plot_thread_progress`, `plot_thread_clue`.
 
 *Always prefer bundling related changes into one `take_turn`.*
+
+*Custom tracking (fatigue-adjacent flavor bars, homebrew resource pools, etc.):* `NeedsProfile.ActiveNeeds` is an open key set — `stress`/`fatigue` already ride it as non-core keys. If you're inventing a bar to track something across beats (not just this scene's flavor), register it as a real `need` with an arbitrary key via a `need` change instead of tracking it only in your own prose — prose-only bookkeeping doesn't survive a session boundary or context compaction; a committed need does.
 
 ---
 

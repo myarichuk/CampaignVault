@@ -35,7 +35,37 @@ public class EngagementRelationCatalogTests
     {
         Assert.Equal(EngagementCategory.Physical, EngagementRelationCatalog.InferCategory("Grappling"));
         Assert.Equal(EngagementCategory.Social, EngagementRelationCatalog.InferCategory("Embracing"));
-        Assert.Equal(EngagementCategory.Physical, EngagementRelationCatalog.InferCategory("shoving"));
+    }
+
+    [Theory]
+    [InlineData("restrains", EngagementCategory.Physical)]
+    [InlineData("restrained", EngagementCategory.Physical)]
+    [InlineData("dragged", EngagementCategory.Physical)]
+    [InlineData("drags", EngagementCategory.Physical)]
+    [InlineData("drag", EngagementCategory.Physical)]
+    [InlineData("grapples", EngagementCategory.Physical)]
+    [InlineData("grappled", EngagementCategory.Physical)]
+    [InlineData("grapple", EngagementCategory.Physical)]
+    [InlineData("embraces", EngagementCategory.Social)]
+    [InlineData("embraced", EngagementCategory.Social)]
+    [InlineData("embrace", EngagementCategory.Social)]
+    [InlineData("treats", EngagementCategory.Medical)]
+    [InlineData("treated", EngagementCategory.Medical)]
+    [InlineData("watches", EngagementCategory.Attention)]
+    [InlineData("watched", EngagementCategory.Attention)]
+    public void InferCategory_MatchesRegularInflectionsOfLegacyVerbs(string verb, EngagementCategory expected)
+    {
+        Assert.Equal(expected, EngagementRelationCatalog.InferCategory(verb));
+    }
+
+    [Fact]
+    public void InferCategory_UnmappedVerb_DefaultsToSocialNotPhysical()
+    {
+        // "shoving" isn't in the legacy verb table. The safe default for an unrecognized verb is
+        // Social/Soft (visible via EmitsPressure, but never blocks travel or auto-logs as a
+        // Physical/Medical history entry) — not Physical/Hard, which would silently gate party
+        // movement on a category nobody actually asserted.
+        Assert.Equal(EngagementCategory.Social, EngagementRelationCatalog.InferCategory("shoving"));
     }
 
     [Fact]

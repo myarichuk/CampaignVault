@@ -2716,6 +2716,60 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         }
     }
 
+    /// <summary>
+    /// Regression guard: the schedule-membership index ("Locations" = DefaultLocationId + every
+    /// Routine.LocationId) used to be trusted on its own for presentNPCs, so an NPC whose routine ever
+    /// mentions a location kept showing up there forever — even after simulation moved them to a
+    /// completely different CurrentLocationId. Once an NPC has a real CurrentLocationId, that must be
+    /// authoritative; schedule membership is now only trusted for NPCs never yet positioned.
+    /// </summary>
+    [Fact]
+    public async Task GetScene_ExcludesNpc_WhenScheduleMatchesButCurrentLocationIsElsewhere()
+    {
+        var repo = _fixture.CreateRepository();
+        var scheduledLocId = "locations/schedule-stop-" + Guid.NewGuid();
+        var actualLocId = "locations/actual-elsewhere-" + Guid.NewGuid();
+        var wanderingCharId = "chars/wandering-" + Guid.NewGuid();
+        var neverPositionedCharId = "chars/never-positioned-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = scheduledLocId, Name = "Schedule Stop" });
+            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = actualLocId, Name = "Actual Elsewhere" });
+
+            // Schedule mentions scheduledLocId, but simulation has already moved them to actualLocId —
+            // this must NOT show up as present at scheduledLocId.
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest
+            {
+                Id = wanderingCharId,
+                Name = "Wandering Npc",
+                CurrentLocationId = actualLocId,
+                Schedule = new Schedule { DefaultLocationId = scheduledLocId, Routines = [] }
+            });
+
+            // Schedule mentions scheduledLocId and has never been positioned by simulation (no
+            // CurrentLocationId at all) — schedule membership is the only clue we have, so this one
+            // SHOULD still show up as present.
+            await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest
+            {
+                Id = neverPositionedCharId,
+                Name = "Never Positioned Npc",
+                Schedule = new Schedule { DefaultLocationId = scheduledLocId, Routines = [] }
+            });
+
+            await session.SaveChangesAsync();
+        }
+
+        await WaitForAllIndexesAsync();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var scene = await repo.GetSceneAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), scheduledLocId);
+            Assert.DoesNotContain(scene.PresentNPCs, n => n.Id == wanderingCharId);
+            Assert.Contains(scene.PresentNPCs, n => n.Id == neverPositionedCharId);
+        }
+    }
+
     [Fact]
     public async Task GetScene_Applies_CampaignScoping_To_Npcs_Items_And_Events()
     {

@@ -611,7 +611,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         var request = ctx.Request!;
         var changes = request.Changes!;
 
-        var commitResult = await _repository.StageChangesAsync(new CampaignSession(ctx.Session, ctx.Campaign), changes);
+        var commitResult = await _repository.StageChangesAsync(new CampaignSession(ctx.Session, ctx.Campaign), changes, request.PartyLocationId);
         if (!commitResult.Success)
         {
             var errorMsg = "NO CHANGES WERE SAVED — the entire batch was rolled back because at least one " +
@@ -628,6 +628,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         result.Summary = commitResult.Summary;
         ctx.InvolvedEntityIds = commitResult.InvolvedEntities;
         result.EntityCollisions = commitResult.EntityCollisions;
+        result.CommittedIds = commitResult.CommittedIds;
         result.NarrativeReminder = commitResult.NarrativeReminder;
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
         ctx.AppliedChanges = changes.Concat(commitResult.AmbientDeltas).ToList();
@@ -1981,9 +1982,9 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         "rumor decay, faction/plot evolution, transient GC) — for a multi-day skip (training montage, downtime between " +
         "arcs, a journey already narrated as uneventful) use days+timeOfDay; for an overnight rest or partial-day span " +
         "use hours instead (e.g. hours:8) and the engine derives the resulting day/timeOfDay for you — no manual day " +
-        "math needed. NOTE: this tool has NO encounter/interruption mechanic of its own. If the span carries ANY real " +
-        "risk (resting somewhere unsafe, a dangerous overnight, an unescorted journey), commit a 'rest' or 'travel' " +
-        "change instead — those roll for interruptions; this tool silently assumes nothing happens. Requires campaignName.")]
+        "math needed. Pass partyLocationId to get the same encounter/ambient-crowd checks travel/rest get for that " +
+        "span (recommended whenever the span carries any real risk — resting somewhere unsafe, a dangerous overnight, " +
+        "an unescorted journey); omit it for a guaranteed-safe skip with no interruption chance. Requires campaignName.")]
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
         [Description("Summary of the rest, travel, or downtime activity.")]
         string narrative,
@@ -1994,7 +1995,9 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
         [Description("Resulting hour of day (0-23, e.g. 6 for dawn, 12 for noon, 20 for evening). Required when using 'days'. Omit when using 'hours' — derived automatically.")]
         int? resultingHour = null,
         [Description("Alternative to days/resultingHour: hours to fast-forward from the CURRENT time (e.g. 8 for sleeping through the night, 4 for a half-day trek). The engine computes the resulting hour for you. Mutually exclusive with days/resultingHour.")]
-        int? hours = null)
+        int? hours = null,
+        [Description("Location ID where the party is spending this span. When provided, the engine rolls the same encounter check rest/travel commits get for the elapsed time, and surfaces ambient-crowd/recently-departed pressure for that location. Omit for a guaranteed-safe skip.")]
+        string? partyLocationId = null)
     {
         if (hours.HasValue)
         {
@@ -2046,7 +2049,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param, and
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var result = await _repository.AdvanceWorldAsync(session, days, resultingHour, effective, hours);
+            var result = await _repository.AdvanceWorldAsync(session, days, resultingHour, effective, hours, partyLocationId);
 
             // advance_world can run simulation ticks outside the take_turn pipeline — force the next
             // take_turn call to Full so ambient drift from this skip isn't missed by delta mode.

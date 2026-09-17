@@ -24,6 +24,18 @@ public sealed class AmbientCrowdPressureContributor : IPressureContributor
         {
             pressures.AddRange(EvaluateScene(ctx.Scene));
         }
+        else if (!string.IsNullOrEmpty(ctx.RequestedLocationId) && ctx.PartyPresent)
+        {
+            // Reachable from take_turn/get_world_state (World scope), not just get_scene: those callers
+            // never assemble a full SceneView (PresentNPCs/RecentEvents), but the sparse-crowd check below
+            // only needs the Location doc itself, so it doesn't need one either. The dense-crowd/
+            // unanchored-beat checks above genuinely need scene data and stay Scene-only.
+            var loc = await ctx.Session.LoadAsync<Location>(ctx.RequestedLocationId, ct);
+            if (loc != null)
+            {
+                pressures.AddRange(EvaluateSparseCrowd(loc.Id, loc.PointsOfInterest.Count, loc.AmbientCrowd));
+            }
+        }
 
         if (ctx.DaysAdvanced is > 0)
         {
@@ -33,19 +45,32 @@ public sealed class AmbientCrowdPressureContributor : IPressureContributor
         return pressures;
     }
 
-    private static IEnumerable<WorldPressureItem> EvaluateScene(SceneView scene)
+    /// <summary>
+    /// The only ambient-crowd check that needs nothing but the Location doc itself (no PresentNPCs/
+    /// RecentEvents) — shared between the full Scene-scoped evaluation and the location-only World-scope
+    /// path used by take_turn/get_world_state.
+    /// </summary>
+    private static IEnumerable<WorldPressureItem> EvaluateSparseCrowd(string locationId, int poiCount, string? ambientCrowd)
     {
-        var loc = scene.Location;
-        if (loc.PointsOfInterest.Count == 0 && string.IsNullOrWhiteSpace(loc.AmbientCrowd))
+        if (poiCount == 0 && string.IsNullOrWhiteSpace(ambientCrowd))
         {
-            AmbientCrowdHeuristics.TryBuildAmbientPopulateExample(loc.Id, loc.AmbientCrowd, out var example);
+            AmbientCrowdHeuristics.TryBuildAmbientPopulateExample(locationId, ambientCrowd, out var example);
 
             yield return new WorldPressureItem(
                 PressureSeverity.Suggestion,
-                loc.Id,
-                $"SUGGESTION: Location may narratively require ambient crowd but {nameof(loc.AmbientCrowd)} property is null or empty. "
+                locationId,
+                $"SUGGESTION: Location may narratively require ambient crowd but {nameof(Location.AmbientCrowd)} property is null or empty. "
                 + "Example:\n" + example,
                 SparseCrowdGroupingKey);
+        }
+    }
+
+    private static IEnumerable<WorldPressureItem> EvaluateScene(SceneView scene)
+    {
+        var loc = scene.Location;
+        foreach (var item in EvaluateSparseCrowd(loc.Id, loc.PointsOfInterest.Count, loc.AmbientCrowd))
+        {
+            yield return item;
         }
 
         var presentCount = scene.PresentNPCs?.Count() ?? 0;

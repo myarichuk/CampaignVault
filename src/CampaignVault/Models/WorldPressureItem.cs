@@ -25,6 +25,14 @@ public record WorldPressureItem(
     /// <summary>Terse abbreviation for this pressure (e.g. "HUNGER", "QUEST:deadline:3d"). Only set for Suggestion-level items with a recognized pattern; null means Text is used as-is.</summary>
     public string? Abbreviation { get; init; }
 
+    /// <summary>
+    /// Optional display name for EntityId, when the contributor already has it on hand (e.g. Character.Name).
+    /// Lets batched-display formatting (see PressureManager.ToDisplayStrings) show "{EntityName} (detail)"
+    /// instead of repeating each item's full boilerplate Text — without having to parse the name back out
+    /// of free text. Null means batching falls back to full Text for this item.
+    /// </summary>
+    public string? EntityName { get; init; }
+
     public const string RumorsGroupingKey = "Simulation:Rumors";
     public const string SimulationEventGroupingKey = "Simulation:Event";
 }

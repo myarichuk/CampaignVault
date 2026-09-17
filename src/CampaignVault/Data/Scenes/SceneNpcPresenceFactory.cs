@@ -60,7 +60,7 @@ public sealed class SceneNpcPresenceFactory
                 NeedDescriptors: needDescriptors,
                 BehavioralSummary: _behaviorSynthesizer.GenerateSummary(npc, context.Time, context.RecentSceneEvents),
                 Notes: notes,
-                NotesTruncated: notesTruncated,
+                NotesTruncated: string.IsNullOrEmpty(notes) ? null : notesTruncated,
                 KeepAlive: npc.KeepAlive,
                 IsPc: npc.IsPc,
                 IsPartyCompanion: npc.IsPartyCompanion,

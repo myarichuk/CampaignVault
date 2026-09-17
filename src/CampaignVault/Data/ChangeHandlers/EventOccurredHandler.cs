@@ -71,6 +71,12 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             context.RecordMessage($"Event logged (id: {e.Id}).");
         }
 
+        // Always echoed structurally (not just the auto-generated-ID case above) — a client-chosen
+        // EventId can still come back different from what was requested (ResolveEventIdAsync's
+        // collision fallback), so CommittedIds is the one place a caller can trust to hold what was
+        // actually persisted, without re-deriving it from Summary text.
+        context.RecordCommittedId(e.Id);
+
         // Skip novelty scoring for engine/bookkeeping-generated categories (transient eviction departures,
         // timeskip/simulation logging, crowd interrupts) — these are auto-narrated, not LLM narrative
         // choices, so "is this novel" adds no DM value. Also avoids an extra query per event on hot

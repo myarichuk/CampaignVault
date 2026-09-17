@@ -312,6 +312,7 @@ public sealed class WorldChangeDispatcher(
             Summary = summary,
             InvolvedEntities = context.InvolvedEntities.ToList(),
             EntityCollisions = context.EntityCollisions.ToList(),
+            CommittedIds = context.CommittedIds.ToList(),
             PhysicalStateNudges = physicalStateNudges
         };
     }

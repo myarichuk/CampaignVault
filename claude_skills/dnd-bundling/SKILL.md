@@ -14,9 +14,9 @@ metadata:
 A **bundle** is a set of `WorldChange` types that logically belong together — they describe one atomic action from the player's perspective.
 
 ✅ **Cohesive bundles**:
-- `ruleset_action` + `engagement_relation` (skill check shifts trust/suspicion)
+- `ruleset_action` + `engagement_relation` (skill check shifts trust/suspicion) — commit `engagement_relation` explicitly here; only grapple/escape-grapple `ruleset_action`s auto-apply one, an ordinary skill check does not
 - `ruleset_action` + `character_update` + `event` (combat damage wounds someone)
-- `engagement_relation` + `event` (establish a new relationship, log it)
+- `engagement_relation` + `event` (establish a new relationship, log it) — see the Conflict Avoidance note below on when the event is actually redundant vs. required
 - `ruleset_action` + `event` + `activity` (an attack triggers an immediate cascading consequence — alarm bells, guards mobilizing — still one beat, one call)
 - Any ENGINE WARNING/pressure fix + the beat you were already about to commit — never a dedicated call just for the fix
 
@@ -91,10 +91,11 @@ However many the beat genuinely needs — one, two, or five — they all go in O
 ```json
 [
   { "$type": "ruleset_action", ... },  // skill check failed
-  { "$type": "engagement_relation", "engagement": { "verb": "accused", "distanceBand": null } }
-  // No event unless DM wants to log the failed attempt
+  { "$type": "engagement_relation", "engagement": { "verb": "accused", "category": "Social", "distanceBand": null } }
+  // Social-category relations don't auto-log — add an event yourself if the failed attempt is worth recording
 ]
 ```
+Always set `category` explicitly on `engagement_relation` — an unrecognized verb with no `category` silently defaults to `Physical` (see Conflict Avoidance below for why that matters beyond just logging).
 
 ### Combat Action (Attack + Damage)
 
@@ -131,30 +132,44 @@ Use `take_turn` with ruleset_action (no separate attack tool exists):
 ```json
 [
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/mysterious_stranger",
-    "engagement": { "verb": "met", "distanceBand": "close" } },
+    "engagement": { "verb": "met", "category": "Social", "distanceBand": "close" } },
   { "$type": "event", "category": "Narrative", "involved": ["chars/valen", "chars/mysterious_stranger"],
     "summary": "Valen encountered a mysterious stranger in the tavern." }
-  // Relationship auto-logs; event captures narrative significance
+  // "met" is Social — Social/Attention/Proximity relations never auto-log, so this event
+  // is the ONLY record of the beat. Don't drop it.
 ]
 ```
 
 ## Conflict Avoidance
 
-### Duplicate Events
+### Auto-Logging Only Happens for Physical/Medical Relations
 
-❌ Don't do this:
-```json
-[
-  { "$type": "engagement_relation", "engagement": { "verb": "met" } },  // auto-logs event
-  { "$type": "event", "summary": "Valen met someone" }                 // redundant event
-]
-```
+The engine only auto-logs an event for `engagement_relation` when its `category` is `Physical` or `Medical` (grappling, restraint, dragging, tending wounds) — `Social`/`Attention`/`Proximity` never auto-log, no matter the verb. Explicitly set `category` every time; **an unrecognized verb with no `category` set silently defaults to `Physical`**, not just for logging purposes — `Physical` also changes whether the relation gates travel and emits pressure (restraint-tier defaults). Getting the category wrong isn't just a redundant-event mistake, it can misrepresent what's actually restraining/gating the character.
 
-✅ Do this instead:
+❌ Don't rely on the default for a Social beat:
 ```json
 [
   { "$type": "engagement_relation", "engagement": { "verb": "met" } }
-  // Auto-logged event is sufficient; add explicit event only if narrative warrants unique framing
+  // No category set — "met" isn't in the engine's recognized verb list, so this silently
+  // becomes category: Physical (restraint-tier defaults), NOT because it logs an event,
+  // but because it's now miscategorized as a physical engagement.
+]
+```
+
+✅ Set category explicitly, and pair an event when the category won't self-log:
+```json
+[
+  { "$type": "engagement_relation", "engagement": { "verb": "met", "category": "Social" } },
+  { "$type": "event", "summary": "Valen met someone" }
+  // Social never self-logs — this event is required, not redundant.
+]
+```
+
+❌ Don't ALSO pair an event for a genuinely Physical/Medical relation — that one really is redundant:
+```json
+[
+  { "$type": "engagement_relation", "engagement": { "verb": "Grappling", "category": "Physical" } },
+  { "$type": "event", "summary": "Valen grappled the guard" }  // redundant — Physical self-logs
 ]
 ```
 
@@ -198,8 +213,8 @@ Use `take_turn` with ruleset_action (no separate attack tool exists):
 ## Refresh Opt-Ins (avoid extra round-trips)
 
 `take_turn` echoes touched-entity summaries automatically. When the next beat needs more, opt in on the SAME call instead of a follow-up query:
-- `includeParty: true` — full party roster refresh
-- `includeWorldState: true` (+ `partyLocationId`) — rumors/quests/factions/time/pressures
+- `includeParty: true` — full party roster refresh. **PCs are excluded from the automatic Npcs[] refresh** (they ride `Party`/`PartyDelta` only) — this is the only `take_turn` channel for a PC's actual need values (hunger/thirst/tiredness/etc.); don't state one you haven't fetched.
+- `includeWorldState: true` (+ `partyLocationId`) — rumors/quests/factions/time/pressures. This runs a full world-state rebuild every time it's set — reserve it for when pressure/verification actually matters, not every beat by default.
 - `fullDetailCharacterId` / `fullDetailLocationId` — one full NPC/scene view bundled in
 - `extraCharacterIds` / `extraLocationIds` — refresh entities the batch didn't touch
 

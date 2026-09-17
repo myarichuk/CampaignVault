@@ -34,6 +34,13 @@ public sealed class DefaultBehavioralTensionCalculator : IBehavioralTensionCalcu
             0,
             100);
 
+        // Rounded here (the wire boundary for BehavioralTension) rather than left at full float
+        // precision — the raw weighted sum produces long tails like 18.739999999999998 that read as
+        // false precision to an LLM and cost extra digits on every NPC in every response. Two
+        // decimals is well below BehavioralTensionSpeakingThreshold's granularity, so no threshold
+        // comparison changes behavior.
+        tension = (float)Math.Round(tension, 2);
+
         return (tension, new TensionBreakdown(needStress, memoryStress, relationalStress, dispositionStress, momentumStress));
     }
 

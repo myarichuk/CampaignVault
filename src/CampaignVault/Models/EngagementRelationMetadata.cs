@@ -61,6 +61,7 @@ public static class EngagementRelationCatalog
     {
         ["Grappling"] = EngagementCategory.Physical,
         ["GrappledBy"] = EngagementCategory.Physical,
+        ["Restraining"] = EngagementCategory.Physical,
         ["Restrained"] = EngagementCategory.Physical,
         ["RestrainedBy"] = EngagementCategory.Physical,
         ["Dragging"] = EngagementCategory.Physical,
@@ -90,8 +91,60 @@ public static class EngagementRelationCatalog
         ["WatchedBy"] = "Watching",
     };
 
+    // Suffix-normalized view of LegacyVerbCategories, built once. Lets a regular inflection that isn't
+    // literally one of the keys above (e.g. "restrains"/"restrained" vs. the stored "Restraining") still
+    // resolve to that verb's category instead of falling through to the unmapped-verb default below.
+    // Keys are a matching token, not a real English lemma (see NormalizeVerbKey) — both sides only need
+    // to agree with each other, and they're built with the exact same function.
+    private static readonly Dictionary<string, EngagementCategory> NormalizedVerbCategories =
+        LegacyVerbCategories
+            .GroupBy(kvp => NormalizeVerbKey(kvp.Key), StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Value, StringComparer.Ordinal);
+
+    // Unmapped verbs (anything outside the small legacy list above — which the LLM hits constantly,
+    // since Verb is freeform and Category is optional, e.g. the field's own doc example "stitching" isn't
+    // in the table) used to default to Physical/Hard: the single most disruptive category, silently
+    // blocking party travel (BlocksTravel) and auto-logging an Important physical/medical event
+    // (IsHistoryWorthy) for what could just as easily have been a Social/Attention beat. An unrecognized
+    // verb defaults to Social/Soft instead — still visible (EmitsPressure) but never wrongly gates travel
+    // or misfiles a non-physical beat as a Physical/Medical history entry. Callers that need a harder
+    // restriction should pass Category explicitly.
     public static EngagementCategory InferCategory(string verb) =>
-        LegacyVerbCategories.GetValueOrDefault(verb, EngagementCategory.Physical);
+        LegacyVerbCategories.TryGetValue(verb, out var exact)
+            ? exact
+            : NormalizedVerbCategories.GetValueOrDefault(NormalizeVerbKey(verb), EngagementCategory.Social);
+
+    /// <summary>
+    /// Reduces a verb to a comparison key that regular English inflections of the same verb collapse
+    /// onto, without a real lemmatizer: strip a trailing -ing/-ed/-es/-s, then undo the two spelling
+    /// changes English regularly makes when adding those suffixes (a doubled final consonant, e.g.
+    /// "dragging" -> "dragg"; a dropped silent 'e', e.g. "grappling" -> "grappl"). Deliberately narrow —
+    /// irregular y/i verbs ("carry"/"carried") aren't handled. That's fine: this is a matching key
+    /// between two sides built by the same function, not a claim about correct English, and it isn't
+    /// worth chasing every spelling irregularity for a table this small. Add an explicit
+    /// LegacyVerbCategories entry instead if an irregular form shows up in practice.
+    /// </summary>
+    private static string NormalizeVerbKey(string verb)
+    {
+        var word = verb.Trim().ToLowerInvariant();
+
+        if (word.Length > 4 && word.EndsWith("ing", StringComparison.Ordinal))
+            word = word[..^3];
+        else if (word.Length > 3 && word.EndsWith("ed", StringComparison.Ordinal))
+            word = word[..^2];
+        else if (word.Length > 3 && word.EndsWith("es", StringComparison.Ordinal))
+            word = word[..^2];
+        else if (word.Length > 2 && word[^1] == 's' && !word.EndsWith("ss", StringComparison.Ordinal))
+            word = word[..^1];
+
+        if (word.Length > 2 && word[^1] == word[^2] && "aeiou".IndexOf(word[^1]) < 0)
+            word = word[..^1];
+
+        if (word.Length > 2 && word[^1] == 'e')
+            word = word[..^1];
+
+        return word;
+    }
 
     public static EngagementRelationMetadata GetMetadata(EngagementRelation relation)
     {

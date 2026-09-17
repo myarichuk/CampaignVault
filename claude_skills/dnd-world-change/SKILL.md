@@ -84,6 +84,10 @@ Atomic all-or-nothing; if any change fails, the entire batch rolls back — **no
 - `event.locationId` — never put location ID inside `involved`
 - `knowledge_update.sourceEventIds` — required when `source` is `Witnessed` or `Experienced` (the character was directly there). Pass a client-chosen `eventId` on the paired `event`/`ruleset_action` change in the *same* batch and reference it here — the engine won't hand back a mid-batch ID for reuse, so you must pre-choose one. `Heard`/`Told` (secondhand/rumor) don't need this.
 
+## Don't Let a Roll's Outcome Evaporate
+
+You can't write a `knowledge_update` worded around a roll's outcome in the *same* batch as the `ruleset_action` that produces it — you don't know pass/fail until the engine responds. That's correct and unavoidable. But if the check has **no independent mechanical side effect** (a pure Perception/Insight/social read — no HP change, no item transfer, no quest progress attached), nothing else persists the result: the engine's computed roll narrative only reaches you in that turn's response text, and the auto-logged `Event` for the beat is built from your *pre-roll* narrative, not the outcome. If you don't write it down, it's gone by next session (or after a compaction) — not narrated wrong, just unrecoverable. Fold the resolved outcome into a `knowledge_update`/`event` in your very next batch (the one you're sending anyway, not a dedicated extra call) whenever the result is something the character would remember. A roll that *does* change HP/items/quest state doesn't need this — that state change already persists on its own.
+
 ## Time Tracking
 
 Set `minutesElapsed` on the top-level `take_turn` request (sibling to `changes`/`narrative`), not inside individual changes:
@@ -106,6 +110,10 @@ Example: Don't use take_turn changes to rewrite a character's entire Psychology.
 ## Bundled Refresh (why you never re-query)
 
 `take_turn`'s response includes fresh summaries for touched NPCs (cap 6) and scenes (cap 3), plus opt-ins: `includeParty`, `includeWorldState`, `fullDetailCharacterId`, `fullDetailLocationId`, `extraCharacterIds`/`extraLocationIds`. If an expected section comes back null, check the response's `warnings` array.
+
+Two of those opt-ins are easy to misuse in opposite directions:
+- **`includeParty`** — PCs are deliberately excluded from the auto-refreshed NPC bundle (they travel via `Party`/`PartyDelta` instead), so this is the *only* `take_turn` channel for a PC's actual need values. Skipping it entirely to save a call means you never actually know a PC's hunger/thirst/tiredness — don't narrate or track a number you haven't fetched.
+- **`includeWorldState`** — this triggers a full world-state rebuild (rumors, quests, factions, recent events, pressure evaluation) every time it's set, regardless of mode. Reserve it for when pressure/verification/new-location context actually matters, not as a default on every call — setting it reflexively is exactly the kind of unneeded-cost habit this file's bundling discipline is trying to prevent elsewhere.
 
 ## Checklist
 

@@ -123,6 +123,11 @@ public class TurnResult
     [Description("Entity IDs where a create-style change hit an existing document and was merged instead of creating new.")]
     public List<string> EntityCollisions { get; set; } = [];
 
+    [Description("IDs this commit durably created/resolved this turn (currently: event IDs, including a collision fallback " +
+        "when a client-chosen eventId already existed) — reference these later (e.g. sourceEventIds) instead of re-deriving " +
+        "them from Summary text. Empty when nothing in the batch created an ID.")]
+    public List<string> CommittedIds { get; set; } = [];
+
     [Description("Optional reminder about the commit outcome (e.g. 'missing narrative event', 'missing PoI detail').")]
     public string? NarrativeReminder { get; set; }
 

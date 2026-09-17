@@ -64,6 +64,7 @@ public sealed class ChangeContext
     private readonly List<string> _summary;
     private readonly List<string> _physicalStateNudges;
     private readonly List<string> _entityCollisions = [];
+    private readonly List<string> _committedIds = [];
     private bool _hasFailure;
     private readonly Dictionary<string, Character> _characters;
     private readonly Dictionary<string, Item> _items;
@@ -208,6 +209,21 @@ public sealed class ChangeContext
     }
 
     internal IReadOnlyList<string> EntityCollisions => _entityCollisions;
+
+    /// <summary>
+    /// Records an entity ID this change durably created or resolved (e.g. an auto-generated event ID)
+    /// so the caller can reference it later (sourceEventIds, a follow-up commit) without parsing it back
+    /// out of a human-readable Summary line. Surfaced via CommitResult.CommittedIds.
+    /// </summary>
+    public void RecordCommittedId(string id)
+    {
+        if (!string.IsNullOrWhiteSpace(id))
+        {
+            _committedIds.Add(id);
+        }
+    }
+
+    internal IReadOnlyList<string> CommittedIds => _committedIds;
 
     public async Task<string?> SuggestLocationMatchAsync(string? nameQuery)
     {

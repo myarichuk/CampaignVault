@@ -11,27 +11,52 @@ public sealed class RecentlyDepartedPressureContributor : IPressureContributor
 {
     public const string RecentlyDepartedGroupingKey = "Location:RecentlyDeparted";
 
-    public PressureScope Scope => PressureScope.Scene;
+    public PressureScope Scope => PressureScope.Both;
     public int Order => 25;
 
-    public Task<IEnumerable<WorldPressureItem>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
+    public async Task<IEnumerable<WorldPressureItem>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
     {
         var pressures = new List<WorldPressureItem>();
-        if (ctx.Scene == null || !ctx.Scene.IsLocationAnchored)
+
+        string locId;
+        string locName;
+        List<DepartedNpcRecord> recentlyDeparted;
+
+        if (ctx.Scene is { IsLocationAnchored: true })
         {
-            return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
+            locId = ctx.Scene.Location.Id;
+            locName = ctx.Scene.Location.Name;
+            recentlyDeparted = ctx.Scene.Location.RecentlyDeparted;
+        }
+        else if (!string.IsNullOrEmpty(ctx.RequestedLocationId) && ctx.PartyPresent)
+        {
+            // Reachable from take_turn/get_world_state (World scope), not just get_scene — mirrors
+            // AmbientCrowdPressureContributor's sparse-crowd path: no full SceneView needed, just the
+            // Location doc, which already carries RecentlyDeparted.
+            var loaded = await ctx.Session.LoadAsync<Location>(ctx.RequestedLocationId, ct);
+            if (loaded == null)
+            {
+                return pressures;
+            }
+
+            locId = loaded.Id;
+            locName = loaded.Name;
+            recentlyDeparted = loaded.RecentlyDeparted;
+        }
+        else
+        {
+            return pressures;
         }
 
-        var loc = ctx.Scene.Location;
-        if (loc.RecentlyDeparted.Count == 0)
+        if (recentlyDeparted.Count == 0)
         {
-            return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
+            return pressures;
         }
 
-        var names = string.Join(", ", loc.RecentlyDeparted.Select(d => d.Name));
+        var names = string.Join(", ", recentlyDeparted.Select(d => d.Name));
 
         // Build suggested world_build calls to re-anchor departed NPCs.
-        var suggests = string.Join("\n", loc.RecentlyDeparted.Select(departed =>
+        var suggests = string.Join("\n", recentlyDeparted.Select(departed =>
         {
             var body = new JsonObject
             {
@@ -42,8 +67,8 @@ public sealed class RecentlyDepartedPressureContributor : IPressureContributor
                         ["id"] = departed.CharacterId,
                         ["name"] = departed.Name,
                         ["keepAlive"] = true,
-                        ["currentLocationId"] = loc.Id,
-                        ["currentActivity"] = $"Returning to {loc.Name}"
+                        ["currentLocationId"] = locId,
+                        ["currentActivity"] = $"Returning to {locName}"
                     }
                 }
             };
@@ -52,10 +77,10 @@ public sealed class RecentlyDepartedPressureContributor : IPressureContributor
 
         pressures.Add(new WorldPressureItem(
             PressureSeverity.NarrativePrompt,
-            loc.Id,
-            $"Recently departed NPCs at '{loc.Name}': {names}. If the party encounters them again and you wish to reintroduce them, call world_build to re-anchor them at this location:\n{suggests}",
+            locId,
+            $"Recently departed NPCs at '{locName}': {names}. If the party encounters them again and you wish to reintroduce them, call world_build to re-anchor them at this location:\n{suggests}",
             RecentlyDepartedGroupingKey));
 
-        return Task.FromResult<IEnumerable<WorldPressureItem>>(pressures);
+        return pressures;
     }
 }

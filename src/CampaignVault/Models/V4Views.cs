@@ -269,8 +269,10 @@ public record NpcPresenceSummary(
     string? BehavioralSummary = null,
     string? Notes = null,
     /// <summary>True if Notes was cut down to CampaignConfig.NpcPresenceNotesCharCap. The full text is
-    /// always available via get_entity.</summary>
-    bool NotesTruncated = false,
+    /// always available via get_entity. Null (rather than false) when Notes itself is null/empty — there
+    /// is nothing to have truncated, so asserting "not truncated" would be a claim about a field that
+    /// isn't there.</summary>
+    bool? NotesTruncated = null,
     bool KeepAlive = false,
     bool IsPc = false,
     bool IsPartyCompanion = false,
@@ -328,6 +330,10 @@ public class CommitResult
     /// <summary>IDs of entities whose create-style change (e.g. character_create) resolved to an
     /// already-existing document and was merged into it instead of creating a new one.</summary>
     public List<string> EntityCollisions { get; set; } = [];
+    /// <summary>IDs this commit durably created or resolved (currently: auto-generated event IDs) that a
+    /// later commit might need to reference (e.g. sourceEventIds) — a structured echo so the caller
+    /// doesn't have to parse them back out of Summary's human-readable text.</summary>
+    public List<string> CommittedIds { get; set; } = [];
     /// <summary>Set when the batch contained combat/status changes but no EventOccurred. Reminder to log the narrative.</summary>
     public string? NarrativeReminder { get; set; }
     /// <summary>Remaining commit token budget (approximate). Replenishes 10 tokens/10s up to 50.</summary>

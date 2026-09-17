@@ -43,6 +43,16 @@ public class ScheduleEvaluationRule : ISimulationRule
                 continue;
             }
 
+            // Recruited companions travel with the party, not on an independent daily routine — their
+            // location is party-directed (explicit activity/travel commits), never an ambient schedule
+            // tick. This does NOT block a companion being moved elsewhere: the DM can still author an
+            // explicit ActivityChange (e.g. splitting into separate rooms for the night) at any time —
+            // it only stops the silent, automatic relocation this rule would otherwise apply to them.
+            if (npc.IsPartyCompanion)
+            {
+                continue;
+            }
+
             var baseLocation = npc.Schedule.DefaultLocationId;
             var baseActivity = "Idle / at default location";
 
@@ -112,6 +122,22 @@ public class ScheduleEvaluationRule : ISimulationRule
                 });
 
                 narratives.Add($"{npc.Name} is now {effectiveActivity} (at {effectiveLocation}).");
+
+                // Leave a DM-visible breadcrumb when a narratively significant NPC's routine moves them
+                // off-screen — otherwise a scene re-check just shows them gone with no explanation (the
+                // "Kael vanished from the tavern" bug). Reuses the same RecentlyDeparted mechanism
+                // TransientEvictionRule already uses for evicted transients. Gated on KeepAlive so this
+                // doesn't fire for every anonymous background-schedule NPC in a populated city — only
+                // ones the DM already flagged as worth keeping around.
+                if (locationChanged && npc.KeepAlive && !string.IsNullOrEmpty(npc.CurrentLocationId))
+                {
+                    deltas.Add(new LocationUpdate
+                    {
+                        LocationId = npc.CurrentLocationId,
+                        RecordDeparture = new DepartedNpcRecord(
+                            npc.Id, npc.Name, (int)context.Time.TotalDaysElapsed, "Followed their daily routine")
+                    });
+                }
             }
 
             // 4. Tiny agency/initiative hook (per user feedback)
