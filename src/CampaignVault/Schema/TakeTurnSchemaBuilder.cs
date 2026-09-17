@@ -213,21 +213,25 @@ internal static class TakeTurnSchemaBuilder
                 // Conditionally-required fields can fail validation and roll back the whole batch even
                 // though they're optional in the schema, so this hint always survives — regardless of
                 // tier and without the truncation limit applied to ordinary descriptions.
-                properties[field.JsonName] = new JsonObject
+                var prop = new JsonObject
                 {
                     ["type"] = GetJsonType(field.ClrType),
                     ["description"] = field.RequiredHint
                 };
+                AddEnumValues(prop, field.EnumValues);
+                properties[field.JsonName] = prop;
             }
             else
             {
-                properties[field.JsonName] = variant.IsHotTier
+                var prop = variant.IsHotTier
                     ? new JsonObject
                     {
                         ["type"] = GetJsonType(field.ClrType),
                         ["description"] = TruncateDescription(field.Description, 50)
                     }
                     : new JsonObject { ["type"] = GetJsonType(field.ClrType) };
+                AddEnumValues(prop, field.EnumValues);
+                properties[field.JsonName] = prop;
             }
         }
 
@@ -245,12 +249,38 @@ internal static class TakeTurnSchemaBuilder
 
     private static string GetJsonType(Type clrType)
     {
-        if (clrType == typeof(string)) return "string";
-        if (clrType == typeof(int) || clrType == typeof(long)) return "integer";
-        if (clrType == typeof(bool)) return "boolean";
-        if (clrType == typeof(decimal) || clrType == typeof(double) || clrType == typeof(float)) return "number";
-        if (clrType.IsArray || typeof(System.Collections.IEnumerable).IsAssignableFrom(clrType)) return "array";
+        // Almost every WorldChange field is a nullable value type (int?, bool?, SomeEnum?) — every one of
+        // those is a distinct Nullable<T> CLR type, so without unwrapping it here none of the checks below
+        // ever matched and every nullable scalar/enum field fell through to "object".
+        var type = Nullable.GetUnderlyingType(clrType) ?? clrType;
+
+        if (type == typeof(string)) return "string";
+        if (type == typeof(int) || type == typeof(long)) return "integer";
+        if (type == typeof(bool)) return "boolean";
+        if (type == typeof(decimal) || type == typeof(double) || type == typeof(float)) return "number";
+        if (type.IsEnum) return "string";
+
+        // Check if it's a Dictionary before checking for IEnumerable (Dictionary implements IEnumerable)
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>)) return "object";
+
+        if (type.IsArray || typeof(System.Collections.IEnumerable).IsAssignableFrom(type)) return "array";
         return "object";
+    }
+
+    private static void AddEnumValues(JsonObject prop, IReadOnlyList<string>? enumValues)
+    {
+        if (enumValues == null || enumValues.Count == 0)
+        {
+            return;
+        }
+
+        var array = new JsonArray();
+        foreach (var value in enumValues)
+        {
+            array.Add(value);
+        }
+
+        prop["enum"] = array;
     }
 
     private static string? TruncateDescription(string? desc, int maxLength)

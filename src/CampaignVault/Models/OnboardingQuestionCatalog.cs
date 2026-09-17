@@ -85,7 +85,7 @@ public static class OnboardingQuestionCatalog
                         "party-existing", new OnboardingBranchingRule
                         {
                             TriggerValue = "party-existing",
-                            SkipQuestions = new List<string> { HomebrewWorldDetails },
+                            SkipQuestions = new List<string> { HomebrewWorldDetails, SoloCompanions },
                             JumpToQuestion = PartyComposition
                         }
                     },
@@ -93,6 +93,7 @@ public static class OnboardingQuestionCatalog
                         "party-homebrew", new OnboardingBranchingRule
                         {
                             TriggerValue = "party-homebrew",
+                            SkipQuestions = new List<string> { PartyComposition, SoloCompanions },
                             JumpToQuestion = HomebrewWorldDetails
                         }
                     }

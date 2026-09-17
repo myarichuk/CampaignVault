@@ -153,6 +153,7 @@ Example: submit_onboarding_answer('dragon-heist', 'Dnd5e')")]
                 // Onboarding complete
                 state.IsComplete = true;
                 state.NextQuestion = null;
+                state.CurrentQuestionIndex++;
             }
             else
             {

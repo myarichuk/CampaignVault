@@ -101,6 +101,16 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
 
+            // Create starter PCs if none exist
+            if (party.Count == 0)
+            {
+                party = await CreateStarterPartyAsync(session, effective, _keys);
+                if (party.Count == 0)
+                {
+                    _logger?.LogWarning("No party members created for campaign '{Campaign}'", effective);
+                }
+            }
+
             // Ensure all party members have upgraded SystemStats before building party views.
             if (party.Count > 0)
             {
@@ -168,5 +178,45 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
             },
             $"Session {openSession.Number} ended and recap stored for campaign '{effective}'.");
         }, saveChanges: true);
+    }
+
+    private async Task<List<Character>> CreateStarterPartyAsync(
+        Raven.Client.Documents.Session.IAsyncDocumentSession session,
+        string campaignName,
+        CampaignDocumentKeys keys)
+    {
+        var starterClasses = new[]
+        {
+            ("Fighter", 12),
+            ("Rogue", 10),
+            ("Cleric", 14),
+            ("Wizard", 12)
+        };
+
+        var createdParty = new List<Character>();
+
+        foreach (var (className, level) in starterClasses)
+        {
+            var character = new Character
+            {
+                Id = $"chars/starter-{className.ToLowerInvariant()}",
+                CampaignName = campaignName,
+                Name = $"{className} (Starter)",
+                IsPc = true,
+                IsPartyCompanion = false,
+                ClassLevel = $"{className} {level}",
+                MaxHp = 30 + (level - 1) * 5,
+                CurrentHp = 30 + (level - 1) * 5,
+                KeepAlive = true,
+                LastUpdated = DateTime.UtcNow,
+                Notes = "Auto-generated starter character"
+            };
+
+            await session.StoreAsync(character);
+            createdParty.Add(character);
+            _logger?.LogInformation("Created starter PC: {CharacterId}", character.Id);
+        }
+
+        return createdParty;
     }
 }
