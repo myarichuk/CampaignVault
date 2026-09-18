@@ -679,6 +679,8 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         var ku = (KnowledgeUpdate)change;
         if (string.IsNullOrWhiteSpace(ku.CharacterId)) return ChangeHandlerResult.Failure("characterId is required.");
         if (string.IsNullOrWhiteSpace(ku.Topic)) return ChangeHandlerResult.Failure("topic is required.");
+        if (ku.CreateMemory && string.IsNullOrWhiteSpace(ku.Details))
+            return ChangeHandlerResult.Failure("details is required when createMemory is true.");
 
         if (!ku.CreateMemory)
         {

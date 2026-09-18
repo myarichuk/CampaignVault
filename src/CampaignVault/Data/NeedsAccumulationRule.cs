@@ -62,6 +62,15 @@ public class NeedsAccumulationRule : ISimulationRule
             // distinct from mechanical D&D exhaustion (Attributes["exhaustion_level"], 1-6 scale).
             foreach (var (need, delta) in perDayDeltas)
             {
+                // A character with a RestChange/TravelChange in this same commit already got tiredness
+                // dispatched directly by that handler at its own activity-specific rate (travel marches
+                // faster than ambient decay; rest recovers instead of accruing) — skip it here so this
+                // ambient sweep doesn't add a second, conflicting tiredness delta for the same hours.
+                if (need == "tiredness" && context.TirednessExemptCharacterIds?.Contains(npc.Id) == true)
+                {
+                    continue;
+                }
+
                 AddCappedNeed(need, delta);
             }
 

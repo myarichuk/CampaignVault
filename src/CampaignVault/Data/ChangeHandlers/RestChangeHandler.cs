@@ -63,6 +63,14 @@ public class RestChangeHandler : IWorldChangeHandler
         // Advance time
         if (hoursRested > 0)
         {
+            // Hunger/thirst/social_drive still accrue while resting (sleeping doesn't pause metabolism),
+            // but they're NOT dispatched here — the day-tick that now reliably fires right after this
+            // commit (via CampaignTime.UnsimulatedHours) already accrues those at the ordinary ambient
+            // rate for every character, this one included, regardless of whether the rest completes or
+            // gets interrupted partway through. Tiredness is the one need still handled specially: it's
+            // recovered below (not accrued) on a completed rest, and CampaignRepository.StageChangesAsync
+            // marks this character exempt from the ambient tick's tiredness accrual for this commit so
+            // resting never simultaneously adds tiredness while the recovery delta removes it.
             time.AdvanceHours(hoursRested);
         }
 

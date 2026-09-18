@@ -30,6 +30,19 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
     /// </summary>
     private static readonly Regex TrailingQuantifier = new(@"\([^()]*\)\.?\s*$", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Appends the contributor-supplied EntityId to a display line so a nudge naming an already-anchored
+    /// character/location carries a machine-readable ID alongside the prose name — without this, the
+    /// LLM has to resolve "Kergil" back to "chars/kergil" from memory/context, which is exactly the kind
+    /// of drift that leads to acting on (or inventing) the wrong entity. Skipped when EntityId is empty,
+    /// or already present verbatim in the text (e.g. a contributor's own SuggestedCommitJson example
+    /// already spells it out) — never double up the same ID.
+    /// </summary>
+    private static string AppendEntityId(string body, string? entityId) =>
+        !string.IsNullOrEmpty(entityId) && !body.Contains(entityId, StringComparison.OrdinalIgnoreCase)
+            ? $"{body} [id: {entityId}]"
+            : body;
+
     public async Task<List<WorldPressureItem>> FilterAndCapAsync(IAsyncDocumentSession session, string campaignName, int currentDay,
         IEnumerable<WorldPressureItem>? rawPressures, bool disableCooldowns = false)
     {
@@ -165,6 +178,8 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
     /// <summary>
     /// Formats pressure items into the display strings used in ToolResult.WorldPressure (legacy text channel).
     /// Uses Abbreviation field if present (terse, ~20 chars), falls back to Text. Includes SuggestedCommitJson inline.
+    /// Also appends each item's EntityId (see AppendEntityId) — WorldPressureItem carries it internally but this
+    /// string[] is the only copy of the item that actually reaches the LLM, so without this the ID is silently lost.
     /// Attempts light batching by GroupingKey. Reduces per-turn chattiness ~100-150 tokens per scene.
     /// </summary>
     public static string[] ToDisplayStrings(IEnumerable<WorldPressureItem>? items)
@@ -197,7 +212,7 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
             {
                 var item = itemsInGroup[0];
                 // Use abbreviation if present (terse, ~20 chars), else fall back to full text
-                body = item.Abbreviation ?? item.Text;
+                body = AppendEntityId(item.Abbreviation ?? item.Text, item.EntityId);
             }
             else
             {
@@ -211,9 +226,11 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
                 // full text — never drop information we can't safely reconstruct.
                 var batched = string.Join(", ", itemsInGroup.Select(x =>
                 {
-                    if (x.EntityName == null) return x.Text;
+                    if (x.EntityName == null) return AppendEntityId(x.Text, x.EntityId);
                     var match = TrailingQuantifier.Match(x.Text);
-                    return match.Success ? $"{x.EntityName} {match.Value.TrimEnd('.', ' ')}" : x.Text;
+                    return AppendEntityId(
+                        match.Success ? $"{x.EntityName} {match.Value.TrimEnd('.', ' ')}" : x.Text,
+                        x.EntityId);
                 }));
                 body = $"({itemsInGroup.Count} similar issues - {category}): {batched}";
             }

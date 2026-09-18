@@ -22,5 +22,11 @@ public sealed record SimulationContext(
     IReadOnlyList<Quest>? ActiveQuests = null,
     CampaignConfig? Config = null,
     IReadOnlyList<PlotThread>? ActivePlotThreads = null,
-    IReadOnlyList<WorldEvent>? ActiveWorldEvents = null
+    IReadOnlyList<WorldEvent>? ActiveWorldEvents = null,
+    /// <summary>
+    /// Characters whose tiredness this tick should NOT touch — they had a RestChange/TravelChange
+    /// in the same commit that already dispatched tiredness at its own activity-specific rate (see
+    /// <see cref="NeedsAccumulationRule"/>), so the ambient sweep would otherwise double-count it.
+    /// </summary>
+    IReadOnlySet<string>? TirednessExemptCharacterIds = null
 );

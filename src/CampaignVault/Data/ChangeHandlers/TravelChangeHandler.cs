@@ -89,6 +89,13 @@ public class TravelChangeHandler : IWorldChangeHandler
         {
             time.AdvanceHours(hoursTraveled);
 
+            // Travel marches at a higher tiredness rate than ordinary ambient decay. Dispatched
+            // directly here (rather than left to the day-tick's ambient sweep) so travel keeps its
+            // own distinct pace; CampaignRepository.StageChangesAsync marks this character exempt
+            // from the ambient tick's tiredness accrual for this commit so it isn't double-applied.
+            // Hunger/thirst/social_drive are NOT handled here — the day-tick that now reliably fires
+            // right after this commit (via CampaignTime.UnsimulatedHours) already accrues those at the
+            // ordinary ambient rate for every character, this one included.
             var tirednessDelta = (float)((hoursTraveled / 4.0) * 10.0);
             if (tirednessDelta > 0)
             {

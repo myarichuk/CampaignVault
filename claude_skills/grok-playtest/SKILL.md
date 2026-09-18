@@ -158,6 +158,16 @@ Condensed checklist (full version lives in `dnd-exploration` for Claude Code ses
 
 If you catch yourself thinking "I'll seed that later" — stop, seed it now, in this `world_build` batch.
 
+## Named NPCs: Seed Before You Narrate (Frequently Missed — Causes Drift)
+
+**Never narrate a named actor into existence.** The bartender who leans in with a rumor, the guard who stops you at the gate — the moment someone gets a name, a voice, or an action distinct from the crowd, they need a real `chars/…` document, not just a sentence.
+
+Every `take_turn` response carries the exact set of characters that already exist right now: `knownCharacterIds` at the top level, `seededNpcIds` per scene (same IDs as `PresentNPCs[].Id`). Before you give anyone a line:
+1. Check they're in that list.
+2. Not there? `world_build` them (`chars[]` entry, `keepAlive: true` if they're worth keeping) **before or in the same batch as** the narration that gives them a voice — never narrate first and seed "later." Later doesn't happen, and the next `get_entity` on that location won't find them; any later `take_turn` referencing them will fail against a nonexistent ID.
+
+Unnamed background stays unnamed — a crowd, "a few dockhands," is fine as `ambientCrowd` flavor text with no ID needed. The trigger is giving someone a name or a line, not mentioning that people are present.
+
 ## Points of Interest vs Real Locations (Frequently Missed)
 
 `materializePointOfInterest`/`poiDetails` (on `location_update` only — `activity` carries no PoI fields) is flavor persisted on the *existing* location — for a tactical detail or one-off hiding spot the party won't return to, not a real place. Two rules, both frequently missed:
@@ -231,6 +241,7 @@ Document key decisions and discoveries at the end of each session outside the en
 - [ ] Did I include item ownership changes in the same batch when something was taken?
 - [ ] Did narration change a character's gear/condition/appearance in a way that should still be true next scene — and did I commit it (`item_equip`/`item_unequip`, `status`/`status_remove`, `character_update`) and flag `impliesPersistentPhysicalChange: true` on the event, rather than only narrating it?
 - [ ] Did I seed a brand-new location (`world_build`) before narrating a scene there, rather than leaving a placeholder?
+- [ ] Is every named character who just spoke/acted in `knownCharacterIds`/`seededNpcIds`? If not, did I `world_build` them before/alongside this narration, not after?
 - [ ] Did I use `location_update`'s `materializePointOfInterest`/`poiDetails` for a durable physical fact only (never a character's current action/state), and promote to a real child `Location` on the second `location_update` marking the same PoI occupied (`poiOccupantCharacterId`)?
 - [ ] Is narration scaled to the moment — full 3–4 beats for arrivals/reveals, 1–2 for routine follow-ups (never zero — even rest/travel gets sensory grounding) — using concrete sensory detail (not adjectives alone)?
 - [ ] Did I differentiate NPC voice via Psychology/Social, not arbitrary styles?
@@ -285,6 +296,7 @@ Psychology (fear, pride, greed, loyalty) sets tone — never real-world social s
 - Calling full `get_entity` (or fullDetail) on every beat "just to be safe."
 - Reciting the full NPC/location sheet.
 - Narrating "you take the item" without the corresponding `$type: "item"` change.
+- Giving a background figure a name and a line of dialogue without a matching `world_build chars[]` entry — they read as real to the player but don't exist server-side.
 - Assuming a `take_turn` worked without checking WorldPressure when it matters.
 - Two-sentence scene beats, including for "routine" beats like rest/travel — bare mechanical restatement with no sensory content.
 - Narrating a character's current action/state through `location_update`'s `poiDetails` instead of `newActivity` + `event`.

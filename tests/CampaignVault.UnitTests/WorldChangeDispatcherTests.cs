@@ -860,15 +860,59 @@ public class WorldChangeDispatcherTests
 
         var result = await dispatcher.DispatchAsync(
             mockSession,
-            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 1440 }], // a full day
+            // Sub-hour: this is the only path that still applies the instant nudge directly — at
+            // 60 minutes or more, needs accrual is deferred entirely to the simulation tick that
+            // CampaignRepository.StageChangesAsync now reliably runs right after (see
+            // Dispatcher_MinutesElapsed_SixtyOrMore_DoesNotDoubleApplyNeeds_DefersToSimulationTick).
+            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 30 }],
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask);
 
         Assert.True(result.Success);
-        // Default NeedAccumulationRate (10, since no CampaignConfig loaded for a non-ruleset change) * 1 day.
-        Assert.Equal(10f, pc.Needs!.ActiveNeeds["hunger"], precision: 2);
+        // Default NeedAccumulationRate (10, since no CampaignConfig loaded for a non-ruleset change) * (30/1440) day.
+        Assert.Equal(10f * 30 / 1440, pc.Needs!.ActiveNeeds["hunger"], precision: 2);
+    }
+
+    [Fact]
+    public async Task Dispatcher_MinutesElapsed_SixtyOrMore_DoesNotDoubleApplyNeeds_DefersToSimulationTick()
+    {
+        // At 60+ minutes, CampaignTime.AdvanceHours moves the clock, which (in production) causes
+        // CampaignRepository.StageChangesAsync to run the full simulation tick immediately after —
+        // NeedsAccumulationRule already sweeps every scheduled character for that same span, so the
+        // dispatcher-level instant nudge must NOT also touch needs here, or they'd be double-counted.
+        var pc = new Character
+        {
+            Id = "chars/pc1",
+            Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 0f } }
+        };
+
+        var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(hpHandler, new NeedChangeHandler());
+
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character> { ["chars/pc1"] = pc });
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var time = new CampaignTime();
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 1440 }], // a full day
+            "test_campaign",
+            () => Task.FromResult(time),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Equal(0f, pc.Needs!.ActiveNeeds["hunger"]);
+        Assert.Equal(1, time.TotalDaysElapsed);
+        Assert.Equal(24, time.UnsimulatedHours, precision: 2);
     }
 
     [Fact]
@@ -1013,7 +1057,10 @@ public class WorldChangeDispatcherTests
 
         var result = await dispatcher.DispatchAsync(
             mockSession,
-            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 1440 }], // a full day
+            // Sub-hour, so the instant nudge (the thing under test here) actually runs — see
+            // Dispatcher_MinutesElapsed_SixtyOrMore_DoesNotDoubleApplyNeeds_DefersToSimulationTick
+            // for why 60+ minutes takes a different path that doesn't touch needs directly.
+            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 30 }],
             "test_campaign",
             () => Task.FromResult(new CampaignTime()),
             () => Task.FromResult(new Dictionary<string, string>()),

@@ -40,6 +40,30 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
         [Description("Optional current party location ID — anchors world-state scoping. Omit if unknown.")] string? partyLocationId = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
+            // A campaign only exists once it's gone through create_campaign/finalize_campaign_onboarding.
+            // Without this check, a typo'd or never-onboarded slug silently opened a session and
+            // auto-created a starter party for a campaign with no meta document at all (invisible to
+            // list_campaigns) — dangerous on a server shared across multiple clients/campaigns.
+            var existingCampaign = await session.LoadAsync<Campaign>(_keys.Meta(effective));
+            if (existingCampaign == null)
+            {
+                var allCampaigns = await session.Query<Campaign>()
+                    .Where(c => c.Id != null && c.Id.StartsWith("campaigns/") && c.Id.EndsWith("/meta"))
+                    .ToListAsync();
+                var suggestions = CampaignSlugMatcher.FindSuggestions(effective, allCampaigns,
+                    c => new CampaignSuggestion(
+                        CampaignSlug.TryCanonicalize(c.Name, out var slug) ? slug : c.Name,
+                        c.DisplayName ?? c.Name,
+                        c.System,
+                        0,
+                        null));
+                var hint = suggestions.Count > 0
+                    ? " Did you mean: " + string.Join(", ", suggestions.Select(s => $"{s.Slug} ({s.DisplayName})"))
+                    : " Call list_campaigns to see existing campaigns, or create_campaign/start_campaign_onboarding to create a new one.";
+                return new ToolResult<SessionStartView>(false, Error: ToolErrors.SlugNotFound,
+                    Summary: $"Campaign '{effective}' does not exist.{hint}");
+            }
+
             var sessionLog = await _repo.GetSessionLogAsync(new CampaignSession(session, effective));
             var openSession = sessionLog?.Sessions.FirstOrDefault(s => s.IsOpen);
 
@@ -85,13 +109,9 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
                 .OrderByDescending(s => s.Number)
                 .FirstOrDefault()?.RecapText ?? "No prior sessions.";
 
-            // Campaign context (meta + posture); a missing meta doc is unusual but not fatal to kickoff.
-            var campaign = await session.LoadAsync<Campaign>(_keys.Meta(effective));
-            if (campaign != null)
-            {
-                var posture = await CampaignPostureBuilder.BuildAsync(session, _repo, _keys, effective, isNewCampaign: false);
-                view.Campaign = new CampaignContextView(campaign, posture);
-            }
+            // Campaign context (meta + posture) — existence already confirmed above.
+            var posture = await CampaignPostureBuilder.BuildAsync(session, _repo, _keys, effective, isNewCampaign: false);
+            view.Campaign = new CampaignContextView(existingCampaign, posture);
 
             view.WorldState = await _repo.BuildWorldStateAsync(session, effective, partyLocationId, _pressureOrchestrator);
             view.WorldState.SeedCoverage = await _repo.BuildSeedCoverageAsync(session, effective, partyLocationId);
@@ -199,7 +219,14 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
         {
             var character = new Character
             {
-                Id = $"chars/starter-{className.ToLowerInvariant()}",
+                // Campaign-scoped: Character documents aren't namespaced under campaigns/{name}/ the
+                // way singletons are (see CampaignDocumentKeys), they're scoped by the CampaignName
+                // field instead — but a fixed "chars/starter-fighter" with no campaign in the ID at
+                // all collided across every campaign that ever auto-created a starter party (they all
+                // share one RavenDB database), throwing a ConcurrencyException on the second campaign's
+                // StoreAsync ("Put was called with expecting new document"). Scoping the ID by campaign
+                // keeps it deterministic and readable while making it actually unique.
+                Id = $"chars/{campaignName}/starter-{className.ToLowerInvariant()}",
                 CampaignName = campaignName,
                 Name = $"{className} (Starter)",
                 IsPc = true,

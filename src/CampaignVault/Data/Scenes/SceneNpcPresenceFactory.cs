@@ -22,11 +22,15 @@ public sealed class SceneNpcPresenceFactory
 
         foreach (var npc in context.PresentNpcs)
         {
-            var knownNeeds = npc.Needs.ActiveNeeds.ToDictionary(kv => kv.Key, kv => kv.Value);
+            // Some persisted NPC documents deserialize with Needs/Psychology null (predates those
+            // fields, or written by a path that skipped them) despite the C# `= new()` defaults —
+            // mirrors the same defensive null-coalescing in CampaignRepository.BuildNpcSummaryAsync.
+            var knownNeeds = (npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>())
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
             // Only this NPC's custom overrides travel here — campaign-wide descriptor text (e.g.
             // stress/fatigue) is shared by every present NPC and goes once into the scene-level
             // NeedDescriptorLegend instead (SceneAssembler.Assemble), not repeated per NPC.
-            var needDescriptors = npc.Needs.NeedDescriptors;
+            var needDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
 
             var initiativeContext = new NpcInitiativeContext
             {
@@ -55,7 +59,7 @@ public sealed class SceneNpcPresenceFactory
                 Id: npc.Id,
                 Name: npc.Name,
                 CurrentActivity: npc.CurrentActivity ?? "Idle at default location",
-                CurrentMood: npc.Psychology.CurrentMood,
+                CurrentMood: npc.Psychology?.CurrentMood,
                 KnownNeeds: knownNeeds,
                 NeedDescriptors: needDescriptors,
                 BehavioralSummary: _behaviorSynthesizer.GenerateSummary(npc, context.Time, context.RecentSceneEvents),
@@ -68,7 +72,7 @@ public sealed class SceneNpcPresenceFactory
                 VisualTags: npc.VisualTags,
                 DistinctiveFeatures: npc.DistinctiveFeatures,
                 TagProvenance: npc.TagProvenance,
-                Memories: npc.Psychology.Memories,
+                Memories: npc.Psychology?.Memories ?? new Dictionary<string, MemoryNode>(),
                 SystemStats: npc.SystemStats,
                 BehavioralTension: enrichment.BehavioralTension,
                 ActiveInitiatives: enrichment.ActiveInitiatives.ToList(),

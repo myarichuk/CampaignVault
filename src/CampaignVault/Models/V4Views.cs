@@ -195,6 +195,14 @@ public class SceneView
 
     /// <summary>Plot threads associated with this location (referenced via thread-level or clue-level involvedEntityIds).</summary>
     public List<PlotThreadMinimal> AssociatedPlotThreads { get; set; } = [];
+
+    /// <summary>
+    /// Flat convenience list of every NPC ID actually seeded in the backend and present in this scene
+    /// right now — the same IDs as PresentNPCs[].Id, just pulled out so the DM-LLM has one cheap thing
+    /// to check before giving any named character a line or action: if the name isn't backed by an ID
+    /// in this list, they don't exist yet — seed them via world_build before narrating them as real.
+    /// </summary>
+    public List<string> SeededNpcIds => PresentNPCs.Select(n => n.Id).ToList();
 }
 
 /// <summary>
@@ -210,6 +218,9 @@ public class SceneSummaryView
     /// <summary>See SceneView.NeedDescriptorLegend — same "sent once per scene, not per NPC" treatment.</summary>
     public Dictionary<string, string> NeedDescriptorLegend { get; set; } = [];
     public bool ActiveCombat { get; set; }
+
+    /// <summary>See SceneView.SeededNpcIds — same discipline check, same source (PresentNPCs[].Id).</summary>
+    public List<string> SeededNpcIds => PresentNPCs.Select(n => n.Id).ToList();
 }
 
 /// <summary>

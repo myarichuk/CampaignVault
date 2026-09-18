@@ -9,6 +9,10 @@ metadata:
 
 You are running NPCs: their psychology drives their decisions, not your narratives.
 
+## Seed Before You Name
+
+Same rule as `dnd-narration`'s "Named NPC Discipline" — before giving anyone a name, a voice, or an action, check they're in the response's `KnownCharacterIds`/`SeededNpcIds`. Not there yet? `world_build` them first, then interact with them. Never let a named NPC speak into existence without a backing `chars/...` entry.
+
 ## Read Context First
 
 Before narrating any NPC action, call `get_entity` with the NPC's `chars/...` id (or bundle it with a mutation via `take_turn`'s `fullDetailCharacterId`) to read:
@@ -132,6 +136,7 @@ When a transient NPC (born mid-session with `keepAlive: false`) becomes a favori
 
 ## Checklist
 
+- [ ] Is this NPC in `KnownCharacterIds`/`SeededNpcIds`? If not, did I `world_build` them before giving them a line?
 - [ ] Did I fetch the NPC's full detail (`get_entity` chars/ id) first?
 - [ ] Have I read Psychology/Social/Needs?
 - [ ] Is the NPC voice distinct (diction, pace, rhythm)?

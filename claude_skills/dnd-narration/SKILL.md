@@ -197,6 +197,24 @@ Show the *social geometry*, not just the exchange.
 
 **Let psychology surface through action, dialogue, and hesitation.** Readers/players feel it faster than you can explain it.
 
+## Named NPC Discipline: Seed Before You Name
+
+**Never narrate a named actor into existence.** If a character speaks, acts, or is described with enough specificity that the party could interact with them again, they need a backing `chars/...` document — not just a sentence in your narration.
+
+Every `take_turn`/`get_entity` response carries the exact set of characters that already exist in the backend: `KnownCharacterIds` at the top level of a `take_turn` result, and `SeededNpcIds` on each scene (`SceneView`/`SceneSummaryView`, same IDs as `PresentNPCs[].Id`). Before you give someone a name:
+
+1. **Check the list.** Is the person you're about to name already in `KnownCharacterIds`/`SeededNpcIds`?
+2. **If yes** — narrate freely, you have their real ID.
+3. **If no** — `world_build` them (or `character_update` to promote a transient one) *before or in the same batch as* the narration that gives them a line. Don't narrate first and seed "later" — later doesn't happen, and the party is now talking to someone who doesn't exist server-side.
+
+**Unnamed background stays unnamed.** A crowd, a line of shoppers, "a few guards" — keep that as `ambientCrowd` flavor text, no ID needed. The trigger isn't "did I mention a person," it's "did I give them a name, a voice, or an action distinct from the crowd." The moment you do either, they need to be in the list above or seeded on the spot.
+
+**Anti-pattern:**
+- "The bartender, Old Tom, leans in and lowers his voice: 'You didn't hear this from me...'" — narrated with zero prior `world_build`/`chars[]` entry, and no follow-up commit to create him. Old Tom now exists only in prose; the next `get_entity` on this location won't find him, and any later `take_turn` referencing `chars/old-tom` will fail against a nonexistent ID.
+
+**Right:**
+- Check `SeededNpcIds` for the tavern scene — empty for a bartender. Commit `world_build` with a `chars[]` entry (`chars/old-tom-bartender`, `keepAlive: true` if he's worth keeping) in the same `take_turn` batch as the narration, *then* narrate: "The bartender — Old Tom, by the look of the apron — leans in and lowers his voice..."
+
 ## Appearance Continuity
 
 When you mention an NPC or location:
@@ -231,3 +249,4 @@ Same detail, woven differently. No contradiction. No recitation.
 - [ ] Did I avoid narrating success/failure before the roll?
 - [ ] If multi-NPC scene, did I show social geometry and competing stakes?
 - [ ] Did I treat an omitted appearance/gear/rumor field on a delta turn as "unchanged," not as something to narrate away?
+- [ ] Is every named character who speaks/acts in `KnownCharacterIds`/`SeededNpcIds`? If not, did I `world_build` them before/alongside this narration, not after?

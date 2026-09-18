@@ -22,11 +22,11 @@ internal sealed class RestAndTravelGuidanceContributor : IGuidanceContributor
         {
             new GuidanceHint(
                 Key: "patterns.wilderness-transients",
-                Text: "Use travel and rest to advance time and trigger state decay (memories fade, rumors age, transient NPCs evict). These provide natural pacing between major scenes.",
+                Text: "Use travel and rest to advance time — hunger/thirst/social_drive accrue automatically for the hours spent, and the full state-decay tick (memories fade, rumors age, transient NPCs evict, climate exposure, faction/plot evolution) fires immediately afterward, regardless of whether the hours crossed midnight. Natural pacing between major scenes. Custom needs you've invented (e.g. 'homesickness', 'bloodlust') never move on their own — the engine doesn't know their meaning — so commit an explicit need change for them yourself when a long journey or rest narratively warrants it.",
                 Trigger: GuidanceTrigger.RestAndTravel,
                 Priority: 6)
             {
-                Example = """{"$type": "travel", "route": "road to capital", "minutesElapsed": 480}"""
+                Example = """{"$type": "travel", "characterId": "chars/grog", "destinationLocationId": "locs/capital-gate"}"""
             }
         };
     }

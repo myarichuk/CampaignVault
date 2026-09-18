@@ -185,6 +185,19 @@ public class TurnResult
     [Description("Monotonically increasing counter, bumped once per committed take_turn mutation for this campaign (never on pure-query calls). " +
         "Not currently used for gap detection server-side — informational, for logging/debugging state sync issues.")]
     public long WorldSequence { get; set; }
+
+    [Description("Flat list of every character ID actually seeded in the backend and surfaced anywhere in this response " +
+        "(Npcs, Party/PartyDelta, and any embedded Scenes[].PresentNPCs) — the exact set of people who exist right now. " +
+        "Before narrating any named character speaking or acting, check they're in this list (or fetch them via get_entity " +
+        "if unsure); if they aren't, call world_build to create/promote them BEFORE narrating them as real — never let a " +
+        "named actor appear in the story without a matching commit.")]
+    public List<string> KnownCharacterIds =>
+        (Npcs?.Select(n => n.CharacterId) ?? [])
+        .Concat(PartyDelta?.Select(p => p.EntityId) ?? [])
+        .Concat(Party?.Select(p => p.Id) ?? [])
+        .Concat(Scenes?.SelectMany(s => s.PresentNPCs.Select(n => n.Id)) ?? [])
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
 }
 
 /// <summary>

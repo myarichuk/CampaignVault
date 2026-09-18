@@ -318,32 +318,25 @@ public sealed class WorldChangeDispatcher(
     }
 
     /// <summary>
-    /// Sums WorldChange.MinutesElapsed across the batch and, if any beat carried a duration, nudges
-    /// needs (hunger/thirst/tiredness/social_drive) for the characters involved in *this* batch —
-    /// not a campaign-wide sweep, since only on-screen characters are narratively relevant at this
-    /// granularity. Sub-hour totals leave TimeOfDay untouched (a few lines of dialogue shouldn't flip
-    /// the clock); an hour or more nudges CampaignTime.AdvanceHours too, which lets StageChangesAsync's
-    /// existing day-boundary check pick it up and run the full simulation tick if enough beats stack up
-    /// across a day.
+    /// Sums WorldChange.MinutesElapsed across the batch and, if any beat carried a duration, accounts
+    /// for needs (hunger/thirst/tiredness/social_drive) drift for it — exactly once, via one of two
+    /// mutually exclusive paths depending on how much time passed:
+    ///
+    /// - Under an hour: applies an instant nudge directly to the characters involved in *this* batch
+    ///   only (not a campaign-wide sweep — see <see cref="CollectOnScreenCharacterIds"/>). The clock's
+    ///   Hour never moves for a span this small (a few lines of dialogue shouldn't flip TimeOfDay), so
+    ///   the day-tick simulation has no other way to ever see these minutes — this is their only
+    ///   accounting.
+    /// - An hour or more: advances CampaignTime via AdvanceHours instead, which accumulates into
+    ///   CampaignTime.UnsimulatedHours and causes StageChangesAsync to run the full simulation tick
+    ///   immediately after this batch — that tick's NeedsAccumulationRule already sweeps every
+    ///   scheduled character (on-screen or not) for exactly this span, so applying the instant nudge
+    ///   here TOO would double-count it for the on-screen characters.
     ///
     /// RestChange/TravelChange are excluded from the sum even if MinutesElapsed is set on them (LLM
     /// mistake or otherwise) — both already call CampaignTime.AdvanceHours themselves via their own
     /// handlers, so including them here would double-advance the clock and double-accumulate needs
     /// for the same stretch of time.
-    ///
-    /// Only characters actually on stage this batch (named via one of this turn's changes' CharacterId/
-    /// TargetId/TargetIds/Involved fields — see <see cref="CollectOnScreenCharacterIds"/>) get nudged,
-    /// not everyone in context.Characters: that dictionary is a preload cache and also holds anyone
-    /// merely *referenced* elsewhere in the payload (e.g. a knowledge_update's RelatedEntityIds pointing
-    /// at a dead/absent character mentioned in the conversation) — a background character who wasn't
-    /// part of this beat shouldn't accrue hunger for a scene they weren't in, and doing so used to leak
-    /// their ID into InvolvedEntities and the next auto-refresh's Npcs[] as if they were narratively
-    /// relevant this turn.
-    ///
-    /// Applies deltas directly (bypassing NeedChangeHandler/DispatchMutationAsync's per-need
-    /// context.RecordMessage) and emits one collapsed summary line for the whole nudge instead of one
-    /// line per need per character — same numeric effect, without flooding the LLM-facing summary with
-    /// near-zero-magnitude ambient noise on every commit that carries MinutesElapsed.
     /// </summary>
     private async Task ApplyMicroTimeNudgeAsync(
         ChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
@@ -356,56 +349,65 @@ public sealed class WorldChangeDispatcher(
             return;
         }
 
+        if (minutesElapsed >= 60)
+        {
+            // Defer entirely to the day-tick that's about to run for this exact span (see summary
+            // above) — do not also apply the instant on-screen nudge below.
+            var time = await getCurrentTimeAsync();
+            time.AdvanceHours(minutesElapsed / 60);
+            return;
+        }
+
         var onScreenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var change in changes)
         {
             CollectOnScreenCharacterIds(change, onScreenIds);
         }
 
-        if (onScreenIds.Count > 0)
+        if (onScreenIds.Count == 0)
         {
-            var days = minutesElapsed / 1440.0;
-            var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, days);
-            var nudgedCharacterIds = new List<string>();
+            return;
+        }
 
-            foreach (var character in context.Characters.Values)
+        var days = minutesElapsed / 1440.0;
+        var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, days);
+        var nudgedCharacterIds = new List<string>();
+
+        // Applies deltas directly (bypassing NeedChangeHandler/DispatchMutationAsync's per-need
+        // context.RecordMessage) and emits one collapsed summary line for the whole nudge instead of
+        // one line per need per character — same numeric effect, without flooding the LLM-facing
+        // summary with near-zero-magnitude ambient noise on every commit that carries MinutesElapsed.
+        foreach (var character in context.Characters.Values)
+        {
+            if (character.Needs is null || !onScreenIds.Contains(character.Id))
             {
-                if (character.Needs is null || !onScreenIds.Contains(character.Id))
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                var updatedNeeds = new Dictionary<string, float>(character.Needs.ActiveNeeds);
-                var changedAny = false;
-                foreach (var (need, delta) in perDayDeltas)
+            var updatedNeeds = new Dictionary<string, float>(character.Needs.ActiveNeeds);
+            var changedAny = false;
+            foreach (var (need, delta) in perDayDeltas)
+            {
+                var current = updatedNeeds.GetValueOrDefault(need, 0f);
+                var effective = Math.Min(delta, 100f - current);
+                if (effective > 0.0001f)
                 {
-                    var current = updatedNeeds.GetValueOrDefault(need, 0f);
-                    var effective = Math.Min(delta, 100f - current);
-                    if (effective > 0.0001f)
-                    {
-                        updatedNeeds[need] = current + effective;
-                        changedAny = true;
-                    }
-                }
-
-                if (changedAny)
-                {
-                    character.Needs.ActiveNeeds = updatedNeeds;
-                    nudgedCharacterIds.Add(character.Id);
+                    updatedNeeds[need] = current + effective;
+                    changedAny = true;
                 }
             }
 
-            if (nudgedCharacterIds.Count > 0)
+            if (changedAny)
             {
-                context.RecordMessage(
-                    $"Ambient needs drift ({minutesElapsed:0.##} min passing) applied to: {string.Join(", ", nudgedCharacterIds)}.");
+                character.Needs.ActiveNeeds = updatedNeeds;
+                nudgedCharacterIds.Add(character.Id);
             }
         }
 
-        if (minutesElapsed >= 60)
+        if (nudgedCharacterIds.Count > 0)
         {
-            var time = await getCurrentTimeAsync();
-            time.AdvanceHours(minutesElapsed / 60);
+            context.RecordMessage(
+                $"Ambient needs drift ({minutesElapsed:0.##} min passing) applied to: {string.Join(", ", nudgedCharacterIds)}.");
         }
     }
 

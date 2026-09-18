@@ -71,16 +71,20 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
             return true;
         }
 
+        // Details is typed non-nullable (`= null!`) but legacy/malformed knowledge_update commits
+        // can still persist it as null — guard the read side, not just the write side.
+        var details = memory.Details ?? string.Empty;
+
         if (!string.IsNullOrWhiteSpace(locationId)
             && (memory.Topic.Contains(locationId, StringComparison.OrdinalIgnoreCase)
-                || memory.Details.Contains(locationId, StringComparison.OrdinalIgnoreCase)))
+                || details.Contains(locationId, StringComparison.OrdinalIgnoreCase)))
         {
             return true;
         }
 
         if (!string.IsNullOrWhiteSpace(locationName)
             && (memory.Topic.Contains(locationName, StringComparison.OrdinalIgnoreCase)
-                || memory.Details.Contains(locationName, StringComparison.OrdinalIgnoreCase)))
+                || details.Contains(locationName, StringComparison.OrdinalIgnoreCase)))
         {
             return true;
         }

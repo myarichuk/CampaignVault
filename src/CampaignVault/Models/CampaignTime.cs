@@ -23,13 +23,24 @@ public class CampaignTime
 
     public int TotalDaysElapsed { get; set; } = 0;
 
+    /// <summary>
+    /// Real hours elapsed since the last simulation tick (<see cref="CampaignRepository.RunSimulationTickAsync"/>),
+    /// accumulated by <see cref="AdvanceHours"/>/<see cref="AdvanceDays"/> at full fractional precision —
+    /// unlike <see cref="TotalDaysElapsed"/>, which only advances (by whole days) on a calendar rollover.
+    /// A run of same-day Rest/Travel legs advances this every time even though it may never cross
+    /// midnight; the caller resets it to 0 once it has actually run the tick over that span, so no
+    /// fractional-day span of need/decay/climate simulation is ever silently skipped or double-counted.
+    /// </summary>
+    public double UnsimulatedHours { get; set; } = 0;
+
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// Advances the clock by the given number of hours, rolling Day/Month/Year over on the fixed
     /// 360-day (12×30) fantasy calendar so a multi-day hour skip (e.g. a long rest spanning a
     /// month boundary) doesn't leave Day sitting above 30.
-    /// Fractional hours are rounded to the nearest whole hour.
+    /// Fractional hours are rounded to the nearest whole hour for calendar/Hour-of-day purposes, but
+    /// the full fractional value is preserved in <see cref="UnsimulatedHours"/> for simulation timing.
     /// </summary>
     public void AdvanceHours(double hours)
     {
@@ -37,6 +48,8 @@ public class CampaignTime
         {
             return;
         }
+
+        UnsimulatedHours += hours;
 
         var roundedHours = (int)Math.Round(hours);
         var newHour = Hour + roundedHours;
@@ -59,6 +72,8 @@ public class CampaignTime
         {
             return;
         }
+
+        UnsimulatedHours += days * 24.0;
 
         TotalDaysElapsed += days;
         RollCalendar(days);

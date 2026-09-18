@@ -100,12 +100,13 @@ public class CampaignRepository
         _logger.LogDebug("StageChangesAsync called with {ChangeCount} changes for campaign {Campaign}", changes.Length,
             effective);
 
-        // Snapshot the clock before dispatch so we can detect handlers (RestChangeHandler,
-        // TravelChangeHandler) that move CampaignTime.TotalDaysElapsed directly via AdvanceHours.
-        // GetTimeAsync returns the same session-tracked instance handlers mutate, so this reads
-        // whatever value the dispatch left behind — no extra query needed.
+        // GetTimeAsync returns the same session-tracked instance handlers mutate, so once dispatch
+        // returns, time.UnsimulatedHours already carries whatever real hours RestChangeHandler/
+        // TravelChangeHandler/the >=60-minute micro-nudge advanced the clock by — no extra query
+        // needed, and (unlike a before/after diff on the calendar-rollover-only TotalDaysElapsed)
+        // it accumulates at full fractional precision regardless of whether a midnight boundary was
+        // crossed. See CampaignTime.UnsimulatedHours.
         var time = await GetTimeAsync(campaignSession);
-        var daysBefore = time.TotalDaysElapsed;
 
         var result = await _changeDispatcher.DispatchAsync(
             session,
@@ -119,27 +120,42 @@ public class CampaignRepository
             },
             ev => LogEventAsync(session, ev, effective));
 
-        var elapsedDays = 0;
+        var elapsedDays = 0.0;
         if (result.Success)
         {
-            elapsedDays = time.TotalDaysElapsed - daysBefore;
+            elapsedDays = time.UnsimulatedHours / 24.0;
             if (elapsedDays > 0)
             {
-                // A commit (rest, travel, ...) advanced the calendar past a day boundary — run the
-                // same simulation tick AdvanceWorld runs, so needs/decay/staleness can't be outrun by
-                // rest-driven time skips. Sim deltas never move the clock themselves, so the recursive
-                // StageChangesAsync call below for those deltas will see elapsedDays == 0 and stop here.
+                // Real time passed this commit (rest, travel, or >=60 minutes of ordinary action) —
+                // run the same simulation tick AdvanceWorld runs, so needs/decay/staleness/climate/etc.
+                // can't be outrun by same-day time skips that never cross a calendar boundary. Consume
+                // the accumulator immediately so nothing is double-counted on the next commit. Sim
+                // deltas never move the clock themselves, so the recursive StageChangesAsync call below
+                // for those deltas will see UnsimulatedHours == 0 and stop here.
                 _logger.LogInformation(
-                    "Commit advanced the calendar by {ElapsedDays} day(s) for campaign {Campaign}; running simulation tick",
+                    "Commit advanced the clock by {ElapsedDays:0.###} day(s) for campaign {Campaign}; running simulation tick",
                     elapsedDays, effective);
+                time.UnsimulatedHours = 0;
 
                 // RestChange/TravelChange already roll their own encounter check (via their handlers,
                 // dispatched above) for the exact span they advanced — don't double-roll for the same
                 // hours by also passing partyLocationId into this tick's ambient encounter check.
                 var handledOwnEncounterCheck = changes.Any(c => c is RestChange or TravelChange);
+
+                // Those same handlers also already applied tiredness themselves at an activity-specific
+                // rate (travel's higher march rate; rest's recovery instead of accrual) — exclude their
+                // characters from this tick's ambient tiredness accrual so it isn't double-applied on
+                // top of what the handler already dispatched for the very same hours.
+                var tirednessExemptIds = changes
+                    .Select(c => c switch { RestChange rc => rc.CharacterId, TravelChange tc => tc.CharacterId, _ => null })
+                    .Where(id => !string.IsNullOrEmpty(id))
+                    .Select(id => id!)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
                 var ambientResult = await RunSimulationTickAsync(
                     session, effective, time, elapsedDays,
-                    handledOwnEncounterCheck ? null : partyLocationId);
+                    handledOwnEncounterCheck ? null : partyLocationId,
+                    tirednessExemptIds.Count > 0 ? tirednessExemptIds : null);
                 if (ambientResult.Deltas.Count > 0)
                 {
                     // Deliberately NOT merged into result.InvolvedEntities: this tick applies ambient
@@ -581,6 +597,11 @@ public class CampaignRepository
 
         var daysDelta = time.TotalDaysElapsed - daysBefore;
 
+        // AdvanceWorldAsync always runs the tick unconditionally for the exact span it just advanced
+        // (daysPassedForSim), so any UnsimulatedHours the AdvanceHours/AdvanceDays call above just added
+        // — plus any tiny leftover a prior commit couldn't consume — is fully accounted for by this tick.
+        time.UnsimulatedHours = 0;
+
         await session.StoreAsync(time);
 
         var simResult = await RunSimulationTickAsync(session, effective, time, daysPassedForSim, partyLocationId);
@@ -628,12 +649,13 @@ public class CampaignRepository
     ///
     /// Shared by <see cref="AdvanceWorldAsync"/> (the explicit day-skip tool) and
     /// <see cref="StageChangesAsync"/> (which calls this whenever a handler — e.g. RestChangeHandler,
-    /// TravelChangeHandler — advances CampaignTime.TotalDaysElapsed directly), so a day passing has the
-    /// same simulation consequences regardless of which tool moved the clock.
+    /// TravelChangeHandler, or a >=60-minute ordinary action — advances CampaignTime.UnsimulatedHours),
+    /// so real time passing has the same simulation consequences regardless of which tool moved the
+    /// clock or whether a calendar-day boundary was actually crossed.
     /// </summary>
     private async Task<SimulationResult> RunSimulationTickAsync(
         IAsyncDocumentSession session, string effective, CampaignTime time, double daysPassed,
-        string? partyLocationId = null)
+        string? partyLocationId = null, IReadOnlySet<string>? tirednessExemptCharacterIds = null)
     {
         // Scoping hardened: entity queries now filter by CampaignName (see code_review.md and plan).
         // For shareables (NPCs/locs) loose filter allows cross-camp if desired; events/rumors strict.
@@ -650,7 +672,7 @@ public class CampaignRepository
         // Build context and run the pluggable simulation engine (rules emit deltas)
         var config = await GetCampaignConfigAsync(new CampaignSession(session, effective));
         var simContext = new SimulationContext(time, activeRumors, npcs, session, daysPassed, effective, activeFactions,
-            activeQuests, config, activePlotThreads, activeWorldEvents);
+            activeQuests, config, activePlotThreads, activeWorldEvents, tirednessExemptCharacterIds);
 
         _logger.LogInformation("Starting world simulation for {Days} days at time {CurrentTime}", daysPassed, time);
 

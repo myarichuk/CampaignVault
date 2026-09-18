@@ -149,7 +149,18 @@ internal static class ConventionRegistration
 
     private static void RegisterApplicationCore(ContainerBuilder builder)
     {
-        builder.RegisterGeneric(typeof(Microsoft.Extensions.Logging.Abstractions.NullLogger<>))
+        // Bridges to the real ASP.NET Core logging pipeline (ILoggerFactory, populated into this
+        // container from IServiceCollection) instead of NullLogger — every ILogger<T> resolved
+        // through Autofac must reach the configured Console provider, or LogError calls throughout
+        // the app (e.g. CampaignToolBase's unhandled-exception handler) are silently discarded.
+        // Falls back to NullLoggerFactory when the host container has no ILoggerFactory of its own
+        // (e.g. test containers built without the ASP.NET Core host), so Logger<> still resolves.
+        builder.Register(_ => Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)
+            .As<Microsoft.Extensions.Logging.ILoggerFactory>()
+            .IfNotRegistered(typeof(Microsoft.Extensions.Logging.ILoggerFactory))
+            .SingleInstance();
+
+        builder.RegisterGeneric(typeof(Microsoft.Extensions.Logging.Logger<>))
             .As(typeof(Microsoft.Extensions.Logging.ILogger<>))
             .SingleInstance();
 
