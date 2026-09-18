@@ -77,6 +77,17 @@ Before narrating an NPC response, check their `Psychology`/`Social` profile:
 
 Never default to cooperativeness; mirror plausible self-protection.
 
+### Social Rolls Change the Method, Not the Job
+
+A social check changes *how* an NPC does the job they already have — it doesn't hand the PC control over decisions the NPC has no reason to make.
+
+- **Fail:** they do the job the ugly way (grab, draw a weapon, call for backup).
+- **Success/nat 20:** they believe a beat, hesitate, laugh, take a worse tactical angle, spend one extra sentence talking. They do **not** drop a contract, release a mark, or abandon a hunt because the line landed well.
+- A king told to abdicate on a nat 20 treats it as nerve or a joke — he doesn't abdicate, and the roll doesn't obligate you to resolve the underlying problem for the party.
+- A social roll can make hired eyes buy a cover story; it can't make a grab-or-silence crew decide the job is finished. If the job is "take her," they still take her — the good roll buys a minute of talk, or the target isn't cut loose in front of witnesses.
+
+Don't invent motive to justify a roll result after the fact — decide who the NPC is and what they want *before* resolving the check (see `dnd-exploration`'s Encounter Resolution for the same rule applied to blank `crowd_interrupt`/encounter transients).
+
 ### Prompt Discipline: Authenticity, Not Comfort
 
 Same rule as `dnd-narration`'s Prompt Discipline section. Domain-specific: failed persuasion doesn't soften into an apology; a believed lie is believed because of the roll, not because it makes moral sense; intimidation buys compliance now and resentment later. Narrate the outcome from the roll — psychology shapes how it's delivered.

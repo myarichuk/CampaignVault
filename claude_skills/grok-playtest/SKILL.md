@@ -83,20 +83,48 @@ Full detail includes:
 
 ---
 
-## Narration: Scale Beats to the Moment
+## Narration floor (hard)
 
-Not every beat earns the full treatment. Match richness to what's actually new:
+Tool-call efficiency never shortens IC prose. After every `take_turn`, count paragraphs before you send.
 
-**Arrivals, reveals, first mention of an NPC/location this session — 3–4 beats:** sensory arrival (sight/sound/smell), spatial setup (who's where), psychological texture (shown, not told), and what's unresolved. "The Salty Anchor roars with spiced ale and woodsmoke. Kergil's in the corner booth, back to the wall. His jaw is clenched, dark rings under his eyes — when he sees you, something in his shoulders tightens. Fear? Guilt? He looks away and drinks before you can read it."
+**Minimum:** 5 short paragraphs for any IC beat. Tension (halted wagon, named threat, weapons in hand): 6–8. A nod-plus-wait is not "routine 1–2 beats." That rule is how this playtest kept going thin.
 
-**Routine follow-ups (same scene, nothing new established) — 1–2 beats:** a reaction, a gesture, a line of dialogue. Don't re-describe a room already established or restate an NPC's whole state every exchange.
+Every IC post must contain, developed not listed:
 
-**"Routine" is not license for a bare one-liner — this includes rest/travel/waiting.** A `rest`/`travel`/`activity` beat still needs at least a sensory grounding, even at 1–2 beats. Never resolve a beat to a flat restatement of the mechanical action with nothing sensory or emotional attached.
+1. Place — more than one sense (ruts, mule-sweat, noon, canvas).
+2. Body — kit weight, hands, bladder/breath, how she sits or stands.
+3. Geometry — who is where (box, slat, verge, horses).
+4. Spoken lines in quotes. No reported-speech skip.
+5. Time in the body — the seconds of the walk, the hours of the skip as felt, not a caption.
 
-- **Anti-pattern:** "Lyra lies down on the cot and takes a short rest." (one line, mechanical, zero sensory/emotional content)
-- **Minimum bar — 1–2 beats, still concrete:** "Lyra sinks onto the thin cot, straw shifting under old canvas. Through the wall, Mira's voice drifts low and steady, keeping watch. Sleep comes fast." That's still just 1-2 beats — it's not asking for the full 3-4 treatment, just for it not to be empty.
+**Banned:** telegram captions ("You climb back on. Wheels still. What do you do?"). Thesis lines. Re-describing the whole room from scratch. Naming Elara / Kael Voss / houses the PC has not learned.
 
-Then the party acts, you resolve via the engine, the cycle repeats.
+If you write fewer than five paragraphs, rewrite before send. Then the ASCII state bar.
+
+## Social rolls are not mind control
+
+A check changes **how they do the job they already have**, not whether they still have one.
+
+- **Fail:** they do the job the ugly way (grab, draw, call the riders in).
+- **Success / 20:** they believe a beat, hesitate, laugh, take a worse angle, spend one extra sentence. They do **not** drop a contract, release a mark, or walk off a hunt because the line was smooth.
+- King told to abdicate on a 20: he treats it as nerve or a joke. He does not abdicate. He also does not have to execute — the problem is not solved.
+- This road: “I told nobody” can make hired *eyes* buy the sentence. It cannot make a grab-or-silence crew decide the work is finished. If the job is take her, they still take her; the 20 is a minute of talk or they don’t cut her in front of the mule.
+
+Do not invent a Zhent / murder-crew motive onto a blank `crowd_interrupt_*`, then let a social roll retire that motive. Either the sheet has the job, or they are random road muscle.
+
+Realism gate before a plot hook on a random halt: would this person stop a wagon to *ask* and leave? If the only reason is “I want Kaelen on stage,” don’t. Toll, mistaken cargo, grab, or a traveler. Leave paid-hunt identity unread until an entity actually has it.
+
+## Clear resolved encounter/crowd-interrupt NPCs from the scene
+
+`travel`/`rest`/`advance_world` random encounters and `scene_interrupt_check` promotions both spawn a `keepAlive: false` transient (`transient_encounter_*` / `crowd_interrupt_*`) placed AT the current location. Nothing clears them automatically when the beat resolves — the engine's own GC only fires on a later time-based sweep, days after, not when you narrate "and the string rolls on." Left alone they keep showing up in `PresentNPCs` on every scene fetch at that spot, stacking with the next encounter's spawn.
+
+The moment you narrate the encounter as over — dealt with, walked off, party moves on — commit, in the **same** `take_turn` as that narration:
+
+```json
+{ "$type": "activity", "characterId": "chars/transient_encounter_cfbd70", "newLocationId": null, "updateLocation": true, "reason": "Encounter resolved" }
+```
+
+This doesn't delete the character (still in the DB if you need them again — reuse or `keepAlive: true`/`schedule_change` to promote instead) — it just stops them cluttering the scene. `scene_interrupt_check` has a one-per-location-per-day cooldown, so don't call it repeatedly hunting for a hit — and don't leave the last promotion's NPC parked in the scene, silently eating your "one per day" budget on stale state.
 
 ### Compression rules
 1. **One canonical detail per mention** — a visual tag, a voice quirk, a gesture, from `CurrentAppearance`/`VisualTags`/Psychology. Never the whole sheet, never twice.
@@ -251,6 +279,7 @@ Document key decisions and discoveries at the end of each session outside the en
 - [ ] Did a check with **no mechanical side effect** (a pure Perception/Insight/social read — no HP/item/quest change attached) get its resolved outcome captured somewhere durable — a `knowledge_update`/`event` in this batch or the very next one — rather than living only in this turn's response text? A roll that only changes HP/items/quest state already persists via that state change; a purely informational result does not persist anywhere unless you write it down.
 - [ ] If `ruleset_action` had `targetIds`, is this actually a grapple/escape-grapple action? Only those auto-apply `engagement_relation` — an ordinary attack or skill check does not, so commit one explicitly if the check should shift the relationship. Always set an explicit `category` on any `engagement_relation` you commit (Physical/Medical/Social/Attention/Proximity) — an unrecognized verb with no category silently defaults to `Physical`, which also changes whether it gates travel and emits pressure, not just whether it logs.
 - [ ] Did a plain HP-only `ruleset_action`/combat outcome get paired with an `event` in the same batch? (It doesn't auto-log.) Skip the paired `event` for a `status` change or a Physical/Medical `engagement_relation` — those already self-log one; adding your own just creates a near-duplicate history entry.
+- [ ] Did a random-encounter or `scene_interrupt_check` NPC just get narrated as resolved? → `activity` change clearing their `CurrentLocationId`, same batch as the resolution narration — don't leave them parked in `PresentNPCs`.
 
 *Between sessions:*
 - [ ] Key decisions noted externally?
@@ -262,7 +291,7 @@ Document key decisions and discoveries at the end of each session outside the en
 
 *Uncertainty:* `ruleset_action` (skill checks, attacks, saves, spells) via `take_turn`. Combat sequencing (start/next turn/end) is the separate `combat` tool — see `recommended-system-prompt.md`'s COMBAT section.
 
-*Movement & Time:* `activity` (local, no encounter risk), `travel` (journey with risk), `rest` (recovery + interruption chance), `advance_world` (multi-day/uneventful skip — pass its `partyLocationId` param to get the same encounter/ambient-crowd checks `rest`/`travel` roll for that span; omit it only when the skip is genuinely meant to be risk-free).
+*Movement & Time:* `activity` (local, no encounter risk), `travel` (journey with risk), `rest` (recovery + interruption chance), `advance_world` (multi-day/uneventful skip — pass its `partyLocationId` param to get the same encounter/ambient-crowd checks `rest`/`travel` roll for that span; omit it only when the skip is genuinely meant to be risk-free), `scene_interrupt_check` (single-roll crowd interrupt for a tense beat in a crowded location — one per location per day).
 
 *Items:* `item` / `item_transfer` / `item_equip` / `item_unequip` / `item_use`.
 
@@ -303,6 +332,7 @@ Psychology (fear, pride, greed, loyalty) sets tone — never real-world social s
 - Stamping `location_update`'s `materializePointOfInterest`/`poiDetails` on every beat in a room as a "commit lucky charm" instead of only when lasting room state first appears or changes.
 - Leaving a PoI a character keeps returning to as flavor text instead of promoting it to a real child `Location`.
 - Softening NPC actions or consequences with modern language (consent scripts, apologies for being authentic to the world).
+- Leaving a resolved encounter/crowd-interrupt transient's `CurrentLocationId` set — they'll keep appearing in every future scene fetch at that spot until explicitly cleared.
 
 ---
 

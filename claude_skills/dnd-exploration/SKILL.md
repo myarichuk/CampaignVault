@@ -135,6 +135,34 @@ Narrate the sensory outcome from the roll result—don't invent what they find.
 
 Travel can trigger random encounters. Engine resolves and returns encounter NPC/creature. You narrate the scene and run the interaction (combat, negotiation, flight).
 
+**`scene_interrupt_check`** is the sibling mechanism for crowded locations: a single-roll check (not a full travel/rest span) for whether someone steps out of the `ambientCrowd` and interrupts a tense beat. Call it after a beat that raises stakes in a crowded place — not on every line of dialogue. It has a one-interrupt-per-location-per-day cooldown, so don't call it repeatedly hoping for a hit.
+
+```json
+{
+  "$type": "scene_interrupt_check",
+  "locationId": "locations/high-road-leilon-stretch",
+  "characterId": "chars/lyra",
+  "riskModifier": 10,
+  "notes": "Bloodied, wanted face, crowd already hostile"
+}
+```
+
+**Every encounter/interrupt NPC has a blank sheet until you write one — don't retroactively invent motive to justify a roll result.** The engine hands you a bare `Unknown Encounter Entity`/`Figure from the Crowd` with an `ENGINE DIRECTIVE` note, not a backstory. Decide who they are (toll collector, drunk, mistaken-identity grab, actual threat) *before* resolving the check, from location flavor + the PC's visible state — not by seeing a social-roll result first and retconning a faction/plot connection into "explain" it. A successful Persuasion/Deception roll changes *how* that person does the job they already have (see `dnd-social`'s NPC Trust & Self-Interest); it doesn't let you upgrade "random road muscle" into "secretly here for the PC's backstory" after the fact.
+
+**Clear the NPC from the scene once the encounter resolves.** These are `keepAlive: false` transients placed AT the scene location — they stay in `PresentNPCs` on every future `get_entity`/`take_turn` scene fetch at that location until their `CurrentLocationId` is explicitly cleared. The engine's own eviction sweep is day-granularity and NOT triggered by narrative resolution, so don't rely on it. As soon as you narrate the encounter as over (they leave, are dealt with, party moves on), commit, in the same batch as that narration:
+
+```json
+{
+  "$type": "activity",
+  "characterId": "chars/transient_encounter_cfbd70",
+  "newLocationId": null,
+  "updateLocation": true,
+  "reason": "Encounter resolved; NPC moves on"
+}
+```
+
+This doesn't delete them (they stay in the DB — reusable if genuinely still nearby), it just stops them cluttering scene presence. If you want them to matter again (recurring threat, promoted to a real NPC), use `character_update` with `keepAlive: true` or `schedule_change` instead of clearing location — don't do both.
+
 ## Location Transitions & Plot Threads
 
 After arriving at a location:
@@ -228,6 +256,7 @@ Travel and rest advance time via their own hour fields (not `minutesElapsed` —
 - [ ] Are they in a tactical waypoint (first use, transient)? → a `location_update` with `materializePointOfInterest`/`poiDetails` in the same commit, to persist a physical fact, never a character's current action/state
 - [ ] Has a `location_update` marked the same PoI occupied (`poiOccupantCharacterId`) a second time, or is it clearly somewhere the party returns to/lingers? → promote it to a real child `Location` before narrating anyone as separated from the group
 - [ ] Is the scene anchored at Settlement/Region level? → Descend to District/Building/Room first
+- [ ] Did an encounter/`scene_interrupt_check` NPC just resolve (left, dealt with, party moved on)? → `activity` change clearing their `CurrentLocationId` in the same batch as the resolution narration
 
 **When seeding a new area (world_build):**
 - [ ] Steps 1–5: Settlement, districts, buildings, PoIs, exits all complete?

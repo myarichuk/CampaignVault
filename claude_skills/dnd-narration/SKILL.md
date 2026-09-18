@@ -87,15 +87,27 @@ Then the party acts, you resolve via `ruleset_action`, and the cycle repeats.
 
 ## No Terse Beats — Even Quiet/Transitional Ones
 
-The 3–4 beat structure above is for scenes with stakes. That is not license to collapse a quiet or mechanical beat (rest, travel, waiting, sleeping) down to a bare restatement of the WorldChange. A `rest`/`travel`/`activity` still happens somewhere, with something to sense and something to notice — narrate it, even briefly.
+The 3–4 beat structure above is for scenes with stakes. That is not license to collapse a quiet or mechanical beat (rest, travel, waiting, sleeping, a nod-and-wait after tension) down to a bare restatement of the WorldChange. A `rest`/`travel`/`activity` still happens somewhere, with something to sense and something to notice — narrate it, even briefly.
 
 **Anti-pattern:**
 - "Lyra lies down on the cot and takes a short rest." (one line — mechanical, no sensory or emotional content, just restates the `$type: "rest"` change in prose)
+- "Lyra nods to the hitch boss and waits while the string rolls north again." (single sentence covering the resolution of a tense halt — "routine" is not license for this either; a beat that follows an encounter/interrupt still needs the floor below)
 
-**Minimum bar for a minor beat — at least 2 concrete sensory details plus one line of texture or consequence, even without the full 4-beat structure:**
+**Hard floor, not a suggestion:** tool-call/mutation efficiency never shortens in-character prose. Before sending, count paragraphs. Minimum **5 short paragraphs** for any in-character beat; **6–8** for a beat with real tension (a halted party, a named threat, weapons drawn, an interrupt/encounter NPC present). If you wrote fewer, that's a sign the beat got flattened to a caption — rewrite before sending, not after.
+
+Every beat at or above the floor should develop, not just list, these where relevant:
+1. **Place** — more than one sense (dust, weather, time of day, what's underfoot).
+2. **Body** — the PC's physical state: kit weight, breath, hands, how they're sitting/standing.
+3. **Geometry** — who is where, relative to whom.
+4. **Spoken lines in quotes** — never summarized as reported speech ("she asked about the road" is a skip, not a line).
+5. **Time as felt**, not captioned — the seconds of a glance, the hours of a lull, shown through the body/scene, not stated as a duration.
+
+**Banned:** telegram captions ("You climb back on. Wheels moving again. What do you do?"); re-describing an already-established room from scratch; naming or restating a location/NPC detail with nothing new in it just to pad length.
+
+**Minimum bar (still concrete, not padded):**
 - "Lyra sinks onto the thin cot, straw shifting under old canvas. Through the wall, muffled talk and a chair scrape drift from the common room — Mira's voice, low and steady, keeping watch. Sleep comes fast, the kind that follows a day spent running."
 
-A one-line narration is never acceptable just because the underlying action is routine. If you catch yourself about to write "X does Y" with nothing else, stop and add what it looks/sounds/feels like, and what it implies.
+A one-line narration is never acceptable just because the underlying action is routine. If you catch yourself about to write "X does Y" with nothing else, stop, hit the floor above, and add what it looks/sounds/feels like, and what it implies.
 
 ## Sensory Detail: Concrete, Not Purple
 
@@ -241,7 +253,7 @@ Same detail, woven differently. No contradiction. No recitation.
 - [ ] Did I query (`get_entity`) for the scene/NPC context first?
 - [ ] Did I resolve uncertainty via `ruleset_action` / WorldChange before narrating the outcome?
 - [ ] Did I check for ENGINE WARNINGs / NARRATIVE PROMPTs and address them?
-- [ ] Is my narration 3–4 rich beats, not 2–3 sentences? For a quiet/transitional beat (rest, travel, waiting), did I still give at least 2 sensory details + one line of texture, not a bare one-line restatement of the mechanical action?
+- [ ] Is my narration 3–4 rich beats, not 2–3 sentences? Did I hit the hard floor (5 short paragraphs minimum, 6–8 under tension) rather than collapsing to a caption — including for quiet/transitional beats (rest, travel, waiting, a nod-and-wait after tension)?
 - [ ] Did I use concrete sensory detail, not adjectives alone?
 - [ ] Did I differentiate NPC voice via Psychology/Social, not arbitrary styles?
 - [ ] Did I weave in one visual detail (if NPC/location), not recite the whole sheet?
