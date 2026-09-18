@@ -162,7 +162,7 @@ public class ItemUpsertRequest
 
     public ItemCategory CoreCategory { get; set; }
 
-    [Description("Omit to preserve existing tags; provide to replace wholesale. Open-carry/concealed convention: tag the container, not contents. See get_help topic=visual-sandbox.")]
+    [Description("Omit to preserve existing tags; provide to replace wholesale. Open-carry/concealed convention: tag the container, not contents. See get_commit_schema type=item_update.")]
     public List<string>? Tags { get; set; }
 
     [Description("Omit to preserve the item's existing properties. Provide to replace them wholesale.")]
@@ -210,7 +210,7 @@ public class ItemUpsertRequest
     [Description("Short narrative description of how this item reads on the wearer. Purely descriptive; never affects mechanics. Omit to preserve the existing value on update.")]
     public string? AppearanceNote { get; set; }
 
-    [Description("Optional durable details to seed on a NEW item only (ignored if the item already exists — use item_update's upsertItemDetail for existing items). id/participants are ignored here (no in-fiction moment yet); follow up with item_update if you need a participant memory push. See get_help topic=visual-sandbox.")]
+    [Description("Optional durable details to seed on a NEW item only (ignored if the item already exists — use item_update's upsertItemDetail for existing items). id/participants are ignored here (no in-fiction moment yet); follow up with item_update if you need a participant memory push. See get_commit_schema type=item_update.")]
     public List<ItemDetailUpsertRequest>? ItemDetails { get; set; }
 
     public string? CampaignName { get; set; }

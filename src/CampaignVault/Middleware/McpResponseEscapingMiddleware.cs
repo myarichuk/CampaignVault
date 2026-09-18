@@ -24,7 +24,7 @@ namespace CampaignVault.Middleware;
 /// back as a single `event: message\ndata: {...}\n\n` block, never bare JSON) — each `data:` line's JSON
 /// payload is parsed and re-serialized in place, leaving the `event:`/blank-line framing untouched.
 /// </summary>
-public class McpResponseEscapingMiddleware(RequestDelegate next)
+public class McpResponseEscapingMiddleware(RequestDelegate next, int[] mcpPorts)
 {
     private const string DataPrefix = "data: ";
 
@@ -35,6 +35,16 @@ public class McpResponseEscapingMiddleware(RequestDelegate next)
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // This middleware exists solely to re-encode the MCP JSON-RPC envelope; it must never buffer
+        // gRPC traffic (served from the same Kestrel pipeline on a different port). Buffering would
+        // defeat incremental flushing for the gRPC streaming sync service. Check the port BEFORE
+        // swapping Response.Body, not after — swapping it is what causes the buffering.
+        if (Array.IndexOf(mcpPorts, context.Connection.LocalPort) < 0)
+        {
+            await next(context);
+            return;
+        }
+
         var originalBody = context.Response.Body;
         await using var buffer = new MemoryStream();
         context.Response.Body = buffer;

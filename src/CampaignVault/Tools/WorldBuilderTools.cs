@@ -24,19 +24,11 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"WORLD BUILDER TOOL: Batch-create/update entities of any kind in one atomic call. This is the primary tool for initial world seeding (""session 0"") — seed locations, factions, characters, items, quests, and more in a single round-trip instead of one call per entity.
+    [Description(@"WORLD BUILDER TOOL: Batch-create/update entities of any kind in one atomic call. Primary tool for initial world seeding (""session 0"") — locations, factions, characters, items, quests, and more in a single round-trip. Each field is an optional, fully-typed array; include only the kinds you're seeding. Dispatched in a fixed dependency order (locations, factions, creatures/spells/feats, characters, items, quests, plotThreads, lore, rumors, needDescriptors) within one atomic save — a hard validation failure rolls back the ENTIRE batch and reports which entry failed. Capped at 100 total entries; split larger seeds into multiple calls.
 
-Each field is an optional, fully-typed array — e.g. `characters` takes the same fields as a character record (name, psychology, needs, systemStats, ...), `locations` takes the same fields as a location record (exits, pointsOfInterest, climateZone, ...). Include only the kinds you're seeding.
+HARD CONSTRAINTS: (1) combat-capable NPCs MUST have systemStats matching the campaign's active ruleset, or they cannot fight/check/track attributes. (2) `characters[]` has no weapon/armor/gear fields — equipment is always a SEPARATE `items[]` entry in the SAME batch with `holderId` set, or the NPC is unarmed/unarmored.
 
-Dispatched in a fixed dependency order — locations, factions, creatures/spells/feats, characters, items, quests, plotThreads, lore, rumors, then needDescriptors — all within ONE session/save. A hard validation failure on any entry rolls back the ENTIRE batch and reports which entry (kind + index) failed; resend the full batch after fixing it, same as commit. Forward references to an entity later in the batch (or not yet created) are allowed and only produce a non-blocking warning.
-
-Character entries get the full bootstrap treatment (HP/defense derivation). Capped at 100 total entries across all arrays — split larger seeds into multiple calls.
-
-SYSTEMSTATS REQUIREMENT (Ruleset-dependent): Combat-capable NPCs MUST have systemStats matching the campaign's active ruleset (dnd5e, pf2e, narrative, etc.). For Dnd5e: include hitDie, level, abilities (Strength, Dexterity, etc.), and optional Attributes (passivePerception auto-derived, but add custom ones like morale, corruption, reputation). For Pf2e: similar structure. For Narrative: minimal statblock OK. See get_help topic=world-building for full examples per ruleset. Characters without systemStats cannot participate in combat, skill checks, or attribute tracking.
-
-CHARACTERS DO NOT CARRY EQUIPMENT INLINE. A `characters[]` entry has no weapon/armor/gear fields — equipment is always a SEPARATE `items[]` entry in the SAME batch, with `holderId` set to the character's id (and `equipZones`/`equipLayer`/`isEquipped` if it should start worn). Seeding an armed guard, a soldier, a crime boss, or any combat-capable NPC without a matching `items[]` entry leaves them unarmed and unarmored — add the weapon/armor entries in the same call. A non-blocking warning is emitted for any newly-seeded character with no items[] entry (in this batch or already on file) so this is easy to miss but not silent.
-
-See get_help topic=world-building for a full copy-paste example and recommended seeding order.")]
+See get_help topic=world-building for the full copy-paste example, per-ruleset systemStats fields, and recommended seeding order.")]
     public Task<ToolResult<WorldBuildResult>> WorldBuild(
         [Description("Batch of entities to create/update, grouped by kind. Each array is optional — include only the kinds you're seeding in this call.")]
         WorldBuildBatch batch,

@@ -118,7 +118,6 @@ public class RestChangeHandler : IWorldChangeHandler
             await context.Dispatcher.DispatchMutationAsync(context, new ActivityChange
             {
                 CharacterId = rc.CharacterId,
-                NewLocationId = rc.LocationId,
                 UpdateLocation = false,
                 NewActivity = rc.NarrativeNote ?? "Rested peacefully.",
                 Reason = "Rest complete"

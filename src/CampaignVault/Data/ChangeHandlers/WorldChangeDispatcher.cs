@@ -295,6 +295,16 @@ public sealed class WorldChangeDispatcher(
             }
         }
 
+        // A parent handler can dispatch child mutations via DispatchMutationAsync (e.g. RestChangeHandler
+        // dispatching an ActivityChange) and still report its own result.Success = true even when a child
+        // failed — DispatchMutationAsync records the failure onto the shared context but returns void, so
+        // nothing upstream of this point re-checks it. Catch it here instead of at each of the many
+        // parent-handler call sites.
+        if (context.HasFailure)
+        {
+            overallSuccess = false;
+        }
+
         if (overallSuccess)
         {
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);

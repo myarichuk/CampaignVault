@@ -4,10 +4,39 @@ namespace CampaignVault.Tools;
 /// Canonical DM manual, split into focused sections.
 /// Large topical sections (patterns, combat, spells, world-pressure, visual-sandbox, quickstart)
 /// are now delivered as push-based guidance hints on tool responses. This manual carries only
-/// session-0 procedural guidance (onboarding, world-building), FAQ, and the commit type enum reference.
+/// session-0 procedural guidance (onboarding, world-building), FAQ, the commit type enum reference,
+/// and the take_turn full/delta mode reference.
 /// </summary>
 internal static class DmHelpManual
 {
+    internal const string TakeTurnModesSection = @"# take_turn Full/Delta Mode Reference
+
+`take_turn`'s response carries a `mode` field ('Full' or 'Delta') that the server picks automatically to save tokens on most calls.
+
+## Full vs Delta
+
+- **mode=Full**: `includeParty`/`includeWorldState` return complete `Party`/`WorldState` snapshots (the whole picture).
+- **mode=Delta** (the common case): they return `PartyDelta`/`WorldStateDelta` instead — only what changed this turn, echoing the applied commit objects rather than full entity state. NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and `KnownNeeds` is filtered to needs that moved >= 2 points (pass `leanMode: true` to cap that at the top 2 movers, for long multi-NPC scenes).
+
+## When a full reseed happens
+
+Periodically (server-configured, default every 40 turns), and escalates early — even mid-delta-run — on:
+- a major PC location change
+- a relationship shift crossing a ±40 band
+- a significant plot-thread beat (once at least 3 delta turns have elapsed since the last reseed)
+- a party-fingerprint mismatch (see Drift Protection below)
+
+It can also be forced any time with `forceFullReseed: true` — do this if your own context was just compacted/summarized, or at the start of a fresh session, so you aren't reasoning from a stale partial view.
+
+Full detail for anything a delta didn't cover is always available via `get_entity` for a single character/location, or by setting `includeParty`/`includeWorldState` on the same `take_turn` call. Check `querySuggestions` in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via `memoryHint`).
+
+Independent of mode, the single highest-priority NPC this call carries RP-advisory initiative/memory (`initiative` field, memories compressed to topic+one-liner on delta turns) — chosen by a small scheduler (need/momentum priority, with a short cooldown so the same NPC can't win every turn) rather than randomly — so you get a 'who might act/speak next' signal without an extra call.
+
+## Drift Protection
+
+Every response carries `partyFingerprint` (a readable ""charId:hp/maxHp@locationId"" list for the party). Pass it back as `clientPartyFingerprint` on your NEXT `take_turn` call, unchanged. If it doesn't match what the server computed, that means you missed or misread a prior delta — the server forces a full resync and flags it in the response, so you don't keep narrating from a stale mental model (e.g. treating a PC as still in a location they already left). You can also eyeball the fingerprint yourself each turn as a sanity check against your own understanding of the party's state.
+";
+
     internal const string CommitEnumSection = @"# Change Type Enum Reference
 
 When calling `take_turn`, each change in the array must specify a `$type` discriminator. Here is the complete cheat sheet of valid types and their canonical usage:
@@ -101,6 +130,14 @@ Seeding a fresh campaign — the starting region, key NPCs, opening quest — is
 
 0. If the user hasn't told you the ruleset/tone/setting yet, consider the guided `start_campaign_onboarding` flow first instead of guessing — see `get_help topic=onboarding` for when it's worth it vs going straight to step 1 below.
 1. `create_campaign` — pass `initialSystem` (locks the ruleset immediately; bootstrap HP/AC derivation for `world_build`'s `characters[]` depends on it) and `narrativeFocus` (steers `importance` defaults on later `event` changes; update later via a `campaign_update` change in take_turn). Skip this step if `finalize_campaign_onboarding` already created the campaign.
+
+## systemStats (required for combat-capable NPCs)
+
+Combat-capable NPCs MUST have `systemStats` matching the campaign's active ruleset (`$system`: dnd5e, pf2e, narrative, ...) — without it they cannot participate in combat, skill checks, or attribute tracking.
+
+- **dnd5e**: include `hitDie`, `level`, abilities (Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma), and optional `Attributes` (`passivePerception` is auto-derived; add custom ones like morale, corruption, reputation).
+- **pf2e**: similar structure to dnd5e (see the copy-paste example below for the field shape).
+- **narrative**: a minimal statblock is fine — no derived-stat requirements.
 
 ## Recommended seeding order (matches world_build's own dispatch order)
 

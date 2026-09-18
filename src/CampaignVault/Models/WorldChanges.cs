@@ -221,7 +221,7 @@ public class StatusChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = null!;
 
-    [Description("[Preferred] Structured StatusEffect: name, category, optional conditionName/affectedPart/statModifiers, and expiresAtDay/expiresAtRound (omit both for permanent). See get_help topic=combat for the full field reference.")]
+    [Description("[Preferred] Structured StatusEffect: name, category, optional conditionName/affectedPart/statModifiers, and expiresAtDay/expiresAtRound (omit both for permanent). See get_commit_schema type=status for the full field reference.")]
     [JsonPropertyName("effect")]
     public StatusEffect? Effect { get; set; }
 
@@ -248,12 +248,12 @@ public class StatusRemove : WorldChange
 
 /// <summary>
 /// Record a noteworthy occurrence in the world. Use Category='Unresolved' for open plot threads the party should care about.
-/// These appear in get_scene, recall_history, and get_world_state.
+/// These appear in get_entity, recall_history, and take_turn's world state.
 /// </summary>
 [CommitCategory("Narrative")]
 [CommitHotTier]
 [NarrativeOnly]
-[Description("Record a noteworthy occurrence in the world; appears in get_scene, recall_history, get_world_state.")]
+[Description("Record a noteworthy occurrence in the world; appears in get_entity, recall_history, take_turn's world state.")]
 public class EventOccurred : WorldChange
 {
     [Description("Short human-readable summary of what happened. This becomes the main text of the event log entry.")]
@@ -265,7 +265,7 @@ public class EventOccurred : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EventCategory Category { get; set; } = EventCategory.Unresolved;
 
-    [Description("Character IDs of everyone who participated. REQUIRED when category is 'Conversation'. Field name is 'involved', not 'participants'. See get_help topic=patterns.")]
+    [Description("Character IDs of everyone who participated. REQUIRED when category is 'Conversation'. Field name is 'involved', not 'participants'. See get_commit_schema type=event.")]
     [JsonPropertyName("involved")]
     public List<string>? Involved { get; set; }
 
@@ -289,7 +289,7 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
 
-    [Description("Optional. Set true when this beat's narrative describes a lasting change to a character's gear or condition — worn/removed/destroyed item, applied/ended status, a scar or outfit that should stick — that should still be true next scene. When true, this batch must also include the matching commit (item_equip/item_unequip/item_update/status/status_remove/character_update/archive_entity) or a reminder fires; otherwise the change silently reverts (get_entity/get_scene reflect only what was committed, not what was narrated). Omit or leave false for beats with no lasting physical change.")]
+    [Description("Optional. Set true when this beat's narrative describes a lasting change to a character's gear or condition — worn/removed/destroyed item, applied/ended status, a scar or outfit that should stick — that should still be true next scene. When true, this batch must also include the matching commit (item_equip/item_unequip/item_update/status/status_remove/character_update/archive_entity) or a reminder fires; otherwise the change silently reverts (get_entity reflects only what was committed, not what was narrated). Omit or leave false for beats with no lasting physical change.")]
     [JsonPropertyName("impliesPersistentPhysicalChange")]
     public bool? ImpliesPersistentPhysicalChange { get; set; }
 
@@ -301,7 +301,7 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("importance")]
     public MemoryImportance? Importance { get; set; }
 
-    [Description("Deliberate (explicit player act, locks in importance) or Passive (ambient, decays naturally). Omit for Passive. See get_help topic=patterns.")]
+    [Description("Deliberate (explicit player act, locks in importance) or Passive (ambient, decays naturally). Omit for Passive. See get_commit_schema type=event.")]
     [JsonPropertyName("recordingMode")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RecordingMode? RecordingMode { get; set; }
@@ -551,7 +551,7 @@ public class AttributeChange : WorldChange
 [CommitCategory("Narrative")]
 [CommitHotTier]
 [NarrativeOnly]
-[Description("Directly override an NPC's current emotional mood string shown in get_scene.")]
+[Description("Directly override an NPC's current emotional mood string shown in get_entity.")]
 public class MoodChange : WorldChange
 {
     [Description("ID of the character whose mood to set.")]
@@ -575,7 +575,7 @@ public class MoodChange : WorldChange
 [CommitCategory("Narrative")]
 [CommitHotTier]
 [NarrativeOnly]
-[Description("Update what an NPC is currently doing and/or where they're located; syncs get_scene.")]
+[Description("Update what an NPC is currently doing and/or where they're located; syncs get_entity.")]
 public class ActivityChange : WorldChange
 {
     [Description("ID of the character whose activity/location is changing (e.g. 'chars/bram-ironarm').")]
@@ -680,7 +680,7 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("reactionTrigger")]
     public string? ReactionTrigger { get; set; }
 
-    [Description("Resolver-specific parameters (dc, bonus, damageDice, save, resolution, etc.) — see get_help topic=combat for the full key reference per ruleset. Engine auto-applies hp deltas; don't duplicate with a separate hp commit.")]
+    [Description("Resolver-specific parameters (dc, bonus, damageDice, save, resolution, etc.) — see get_commit_schema type=ruleset_action for the full key reference per ruleset. Engine auto-applies hp deltas; don't duplicate with a separate hp commit.")]
     [JsonPropertyName("parameters")]
     [JsonConverter(typeof(FlexibleStringDictionaryConverter))]
     public Dictionary<string, string> Parameters { get; set; } = [];
@@ -833,7 +833,7 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("currentHp")]
     public int? CurrentHp { get; set; }
 
-    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See get_help topic=combat for the field list.")]
+    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See get_commit_schema for the field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
 
@@ -1038,7 +1038,7 @@ public class ItemUpdate : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ItemCategory? CoreCategory { get; set; }
 
-    [Description("Temporary tags to add (e.g. 'muddy', 'wet'). Convention for open-carry/concealed display: tag the container, not the contents. See get_help topic=visual-sandbox.")]
+    [Description("Temporary tags to add (e.g. 'muddy', 'wet'). Convention for open-carry/concealed display: tag the container, not the contents. See get_commit_schema type=item_update.")]
     [JsonPropertyName("tagsToAdd")]
     public List<string>? TagsToAdd { get; set; }
 
@@ -1070,7 +1070,7 @@ public class ItemUpdate : WorldChange
     [JsonPropertyName("ambientExpiresAtDay")]
     public float? AmbientExpiresAtDay { get; set; }
 
-    [Description("Create or update a durable, examine-able detail on this item (scratches, stains, secret compartments) — not temporary tags or narrative flavor. See get_help topic=visual-sandbox for the full field reference.")]
+    [Description("Create or update a durable, examine-able detail on this item (scratches, stains, secret compartments) — not temporary tags or narrative flavor. See get_commit_schema type=item_update for the full field reference.")]
     [JsonPropertyName("upsertItemDetail")]
     public ItemDetailUpsertRequest? UpsertItemDetail { get; set; }
 
@@ -1104,7 +1104,7 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
-    [Description("DM-only guidance for narrating/adjudicating this detail (suggested DC, discovery conditions, ongoing effects). Never shown to players. See get_help topic=visual-sandbox for examples.")]
+    [Description("DM-only guidance for narrating/adjudicating this detail (suggested DC, discovery conditions, ongoing effects). Never shown to players. See get_commit_schema type=item_update for examples.")]
     [JsonPropertyName("intent")]
     public string? Intent { get; set; }
 
@@ -1112,7 +1112,7 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("origin")]
     public ItemDetailOrigin? Origin { get; set; }
 
-    [Description("Optional id of whatever this detail is currently physically anchored to (location/item/character) — purely descriptive, not engine-enforced. Pass \"\" to clear once freed. See get_help topic=visual-sandbox.")]
+    [Description("Optional id of whatever this detail is currently physically anchored to (location/item/character) — purely descriptive, not engine-enforced. Pass \"\" to clear once freed. See get_commit_schema type=item_update.")]
     [JsonPropertyName("tetheredToId")]
     public string? TetheredToId { get; set; }
 
@@ -1164,7 +1164,7 @@ public class CharacterUpdate : WorldChange
     [JsonPropertyName("isPartyCompanion")]
     public bool? IsPartyCompanion { get; set; }
 
-    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See get_help topic=combat for the field list.")]
+    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See get_commit_schema type=character_update for the field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
 

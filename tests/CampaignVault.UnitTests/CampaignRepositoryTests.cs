@@ -2591,7 +2591,11 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             new TravelChangeHandler(triggerRule),
             new NeedChangeHandler(),
             new ActivityChangeHandler(),
-            new EventOccurredHandler()
+            new EventOccurredHandler(),
+            // EncounterResolver's interrupt path also dispatches a CharacterCreate for the transient
+            // encounter NPC — without a handler for it, DispatchMutationAsync records a child failure
+            // that now correctly propagates into CommitResult.Success (see WorldChangeDispatcher fix).
+            _fixture.Container.Resolve<CharacterCreateHandler>()
         };
         var intEngine = new DefaultSimulationEngine(new ISimulationRule[0]);
         var intRepo = _fixture.CreateRepository(engineOverride: intEngine,

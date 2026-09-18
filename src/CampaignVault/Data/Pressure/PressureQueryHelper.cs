@@ -185,8 +185,37 @@ internal static class PressureQueryHelper
 
         var events = await query.Take(20).ToListAsync(ct);
 
-        return events.Any(e =>
-            e.Involved != null
-            && e.Involved.Contains(locationId, StringComparer.OrdinalIgnoreCase));
+        return events.Any(e => e.TouchesLocation(locationId));
+    }
+
+    /// <summary>
+    /// Cheap "who else is at this location" lookup for handlers that only have session access (no
+    /// CampaignRepository — injecting it here would create a DI cycle back through
+    /// WorldChangeDispatcher). Mirrors CampaignRepository's index-then-simulation merge so gate checks
+    /// like SceneInterruptChangeHandler's presence count see real occupants, not just the batch-preloaded
+    /// characters from the triggering change's own reflected properties.
+    /// </summary>
+    public static async Task<List<Character>> QueryPresentNpcsAsync(
+        IAsyncDocumentSession session, string locationId, CancellationToken ct = default)
+    {
+        var targetIds = new[] { locationId };
+
+        var fromIndex = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
+            .ContainsAny("Locations", targetIds)
+            .Take(20)
+            .ToListAsync(ct);
+        var fromIndexPresent = fromIndex
+            .Where(n => string.IsNullOrEmpty(n.CurrentLocationId) || n.CurrentLocationId == locationId);
+
+        var fromSimulation = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
+            .WhereEquals(x => x.CurrentLocationId, locationId)
+            .Take(20)
+            .ToListAsync(ct);
+
+        return fromIndexPresent.Concat(fromSimulation)
+            .DistinctBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

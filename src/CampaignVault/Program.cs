@@ -146,6 +146,21 @@ var dbPath = builder.Configuration["CAMPAIGN_DB_PATH"] ?? Path.Combine(AppContex
 // Auth is enabled only when the variable is present and non-empty (same behavior as before).
 var bearerToken = Environment.GetEnvironmentVariable("BEARER_TOKEN");
 
+// SECURITY: bindAny (any non-Development environment, or MCP_BIND_ANY=1) means the MCP endpoint
+// listens on 0.0.0.0. Refuse to start rather than silently serving that open with no auth — the only
+// exempt path is /health (see AuthMiddleware). Set BEARER_TOKEN, or run with
+// ASPNETCORE_ENVIRONMENT=Development (and MCP_BIND_ANY unset) for an intentionally open local dev server.
+if (bindAny && string.IsNullOrEmpty(bearerToken))
+{
+    Console.Error.WriteLine(
+        "FATAL: refusing to start. This deploy would bind the MCP endpoint on all interfaces " +
+        "(0.0.0.0) with no authentication — ASPNETCORE_ENVIRONMENT is not 'Development' or " +
+        "MCP_BIND_ANY=1 was set, and BEARER_TOKEN is unset. Set BEARER_TOKEN to enable auth, or " +
+        "run with ASPNETCORE_ENVIRONMENT=Development (and MCP_BIND_ANY unset) for a loopback-only " +
+        "local dev server.");
+    Environment.Exit(1);
+}
+
 // RavenDB Embedded Setup
 var documentStore = RavenStartup.Initialize(dbPath);
 
@@ -235,15 +250,6 @@ McpToolTelemetryFilter.LoggerFactory = loggerFactory;
 
 app.UseCors();
 
-app.UseMiddleware<McpNormalizationMiddleware>();
-app.UseMiddleware<McpResponseEscapingMiddleware>();
-
-// Optional Bearer/X-API-Key Auth Middleware
-if (!string.IsNullOrEmpty(bearerToken))
-{
-    app.UseMiddleware<AuthMiddleware>(bearerToken);
-}
-
 // Bind MCP + HTTP utility endpoints to both HTTP and HTTPS MCP ports.
 // Do not use RequireHost() — Grok Web and other MCP clients often send Host headers
 // without a port suffix (e.g. "localhost"), which still 404s with *:port patterns.
@@ -251,6 +257,15 @@ var mcpPorts = new[] { mcpPort };
 if (httpsEnabled)
 {
     mcpPorts = new[] { mcpPort, mcpHttpsPort };
+}
+
+app.UseMiddleware<McpNormalizationMiddleware>();
+app.UseMiddleware<McpResponseEscapingMiddleware>(mcpPorts);
+
+// Optional Bearer/X-API-Key Auth Middleware
+if (!string.IsNullOrEmpty(bearerToken))
+{
+    app.UseMiddleware<AuthMiddleware>(bearerToken);
 }
 
 app.MapMcp("/").RequireLocalPort(mcpPorts);

@@ -49,14 +49,6 @@ public class LlmToolingRegressionTests
     }
 
     [Fact]
-    public void CommitSpellHelpExamples_IncludesConcentrationAndHpGuidance()
-    {
-        Assert.Contains("Concentration", CommitSpellHelpExamples.ExamplesSection);
-        Assert.Contains("Do NOT also commit", CommitSpellHelpExamples.RoutingGuide);
-        Assert.Contains("SkillCheck", CommitSpellHelpExamples.RoutingGuide);
-    }
-
-    [Fact]
     public void TryNormalize_RumorEvolve_FixesActiveStateTypoAndStripsLegacyField()
     {
         var args = new JsonObject

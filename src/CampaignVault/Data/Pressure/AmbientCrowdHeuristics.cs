@@ -82,7 +82,7 @@ public static partial class AmbientCrowdHeuristics
             return true;
         }
 
-        if (!ev.Involved.Contains(locationId, StringComparer.OrdinalIgnoreCase)
+        if (!ev.TouchesLocation(locationId)
             && !ev.Involved.Any(id => id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase)))
         {
             return false;

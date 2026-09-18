@@ -38,7 +38,11 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
         [Description("Locations only: set true if the party is physically entering or spending time at the location (prevents transient-NPC cleanup).")]
-        bool partyPresent = false)
+        bool partyPresent = false,
+        [Description("Locations only: return the Description untruncated instead of the default capped copy. Use after a prior get_entity call on this location reports descriptionTruncated=true.")]
+        bool fullDescription = false,
+        [Description("Locations only: return one named PointOfInterestDetails entry (case-insensitive) untruncated. Use after a prior get_entity call reports it in truncatedPointsOfInterest.")]
+        string? detailPoi = null)
     {
         if (string.IsNullOrWhiteSpace(entityId))
         {
@@ -62,7 +66,7 @@ Use search_world first when you only know a name, not the ID. To bundle a full-d
 
         if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
         {
-            return Box(await _exploration.GetScene(id, campaignName, partyPresent));
+            return Box(await _exploration.GetScene(id, campaignName, partyPresent, fullDescription, detailPoi));
         }
 
         if (id.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))

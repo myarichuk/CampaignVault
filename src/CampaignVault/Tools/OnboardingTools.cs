@@ -181,9 +181,10 @@ Example: submit_onboarding_answer('dragon-heist', 'Dnd5e')")]
 
     [ToolCategory("Campaign onboarding")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"ONBOARDING TOOL: Finalize onboarding and auto-generate the campaign world.
-Creates the campaign with the collected settings, then calls world_build to seed all starter entities (locations, NPCs, factions, quests, etc.).
-Returns the world state ready for session 1.
+    [Description(@"ONBOARDING TOOL: Finalize onboarding — locks in campaign settings, does NOT seed the world.
+Creates/locks the campaign meta from the collected answers (system, tone, setting, factions, etc.).
+Does not call world_build and does not return world state. The response's NextSteps tells you to call
+world_build yourself next to seed starter entities (locations, NPCs, factions, quests), then start_session.
 
 Example: finalize_campaign_onboarding('dragon-heist')")]
     public Task<ToolResult<OnboardingFinalizeResponse>> FinalizeCampaignOnboarding(

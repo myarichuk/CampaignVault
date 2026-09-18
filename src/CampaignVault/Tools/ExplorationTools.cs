@@ -109,12 +109,12 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var summary = $"Scene details for {locationId} (campaign: {effective}) retrieved.";
             if (scene.Location?.DescriptionTruncated == true)
             {
-                summary += " NOTE: Description was truncated — call get_scene with fullDescription=true for the complete text.";
+                summary += " NOTE: Description was truncated — call get_entity with fullDescription=true for the complete text.";
             }
             if (scene.Location?.TruncatedPointsOfInterest is { Count: > 0 } truncatedPois)
             {
                 summary += $" NOTE: these PointOfInterestDetails entries were truncated: [{string.Join(", ", truncatedPois)}] — " +
-                    "call get_scene with detailPoi='<name>' for one entry's complete text.";
+                    "call get_entity with detailPoi='<name>' for one entry's complete text.";
             }
             if (partyPresent && scene.Location != null && scene.PresentNPCs != null)
             {

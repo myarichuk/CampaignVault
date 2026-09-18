@@ -464,6 +464,10 @@ public class CampaignRepository
 
         if (!string.IsNullOrEmpty(locationId))
         {
+            // RelatedEntityId deliberately omitted: it is not a field in the Event_Search index (see
+            // Event_Search.cs), and nothing in the SceneInterrupt/encounter path populates it — adding
+            // it here throws at query time ("field not indexed"). LocationId/RelatedLocationIds/Involved
+            // already cover every field EncounterResolver actually sets.
             q = q.Where(x => x.LocationId == locationId
                 || (x.RelatedLocationIds != null && x.RelatedLocationIds.Contains(locationId))
                 || x.Involved.Contains(locationId));
@@ -908,6 +912,8 @@ public class CampaignRepository
 
             if (!string.IsNullOrEmpty(locationId))
             {
+                // RelatedEntityId deliberately omitted: not in the Event_Search index and unpopulated
+                // by the SceneInterrupt/encounter path — see the sibling ApplyEventFilters above.
                 q = q.Where(x => x.LocationId == locationId
                 || (x.RelatedLocationIds != null && x.RelatedLocationIds.Contains(locationId))
                 || x.Involved.Contains(locationId));

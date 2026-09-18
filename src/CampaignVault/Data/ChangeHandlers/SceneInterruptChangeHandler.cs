@@ -59,9 +59,30 @@ public class SceneInterruptChangeHandler : IWorldChangeHandler
                 $"Character {character.Name} is not at {location.Name} (current: {character.CurrentLocationId ?? "unknown"}).");
         }
 
-        var presentNpcCount = context.Characters.Values.Count(c =>
-            string.Equals(c.CurrentLocationId, sic.LocationId, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(c.Id, sic.CharacterId, StringComparison.OrdinalIgnoreCase));
+        // context.Characters is only batch-preloaded from this change's own CharacterId/LocationId
+        // properties (the default reflection-based ExtractInvolvedEntities), so for a standalone
+        // scene_interrupt_check it contains just the acting PC — union it with a direct location query
+        // so NPCs present but not otherwise named in this batch still count.
+        var presentIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in context.Characters.Values)
+        {
+            if (string.Equals(c.CurrentLocationId, sic.LocationId, StringComparison.OrdinalIgnoreCase))
+            {
+                presentIds.Add(c.Id);
+            }
+        }
+
+        if (context.Session != null)
+        {
+            var presentNpcs = await PressureQueryHelper.QueryPresentNpcsAsync(context.Session, sic.LocationId, ct);
+            foreach (var npc in presentNpcs)
+            {
+                presentIds.Add(npc.Id);
+            }
+        }
+
+        presentIds.Remove(sic.CharacterId);
+        var presentNpcCount = presentIds.Count;
 
         var hasCrowdContext = !string.IsNullOrWhiteSpace(location.AmbientCrowd)
                               || presentNpcCount >= 3;

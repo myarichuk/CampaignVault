@@ -1,87 +1,19 @@
-using CampaignVault.Data.Pressure;
-
 namespace CampaignVault.Data.Guidance.Contributors;
 
-internal sealed class FirstWorldBuildGuidanceContributor : IGuidanceContributor
-{
-    public PressureScope Scope => PressureScope.World;
-    public int Order => 2;
-
-    public async Task<IEnumerable<GuidanceHint>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
-    {
-        await Task.CompletedTask;
-        return []; // Placeholder: checks SeedCoverage.Locations == 0
-    }
-}
-
-internal sealed class SpellcastingGuidanceContributor : IGuidanceContributor
-{
-    public PressureScope Scope => PressureScope.Scene;
-    public int Order => 3;
-
-    public async Task<IEnumerable<GuidanceHint>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
-    {
-        await Task.CompletedTask;
-        return []; // Placeholder: checks party has spell slots and Spell-category action
-    }
-}
-
-internal sealed class ItemDamageGuidanceContributor : IGuidanceContributor
-{
-    public PressureScope Scope => PressureScope.Scene;
-    public int Order => 4;
-
-    public async Task<IEnumerable<GuidanceHint>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
-    {
-        await Task.CompletedTask;
-        return []; // Placeholder: checks item state degradation
-    }
-}
-
-internal sealed class PlotThreadStalenessGuidanceContributor : IGuidanceContributor
-{
-    public PressureScope Scope => PressureScope.World;
-    public int Order => 7;
-
-    public async Task<IEnumerable<GuidanceHint>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
-    {
-        await Task.CompletedTask;
-        return []; // Placeholder: reuses PlotThreadStalenessContributor detection
-    }
-}
-
-internal sealed class SystemStatsGuidanceContributor : IGuidanceContributor
-{
-    public PressureScope Scope => PressureScope.Scene;
-    public int Order => 8;
-
-    public async Task<IEnumerable<GuidanceHint>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
-    {
-        await Task.CompletedTask;
-        return []; // Placeholder: reuses IncompleteSystemStatsPressureContributor detection
-    }
-}
-
-internal sealed class NarrativeFocusGuidanceContributor : IGuidanceContributor
-{
-    public PressureScope Scope => PressureScope.World;
-    public int Order => 9;
-
-    public async Task<IEnumerable<GuidanceHint>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
-    {
-        await Task.CompletedTask;
-        return []; // Placeholder: checks Campaign.NarrativeFocus empty after N commits
-    }
-}
-
-internal sealed class TimeRecordingGuidanceContributor : IGuidanceContributor
-{
-    public PressureScope Scope => PressureScope.World;
-    public int Order => 10;
-
-    public async Task<IEnumerable<GuidanceHint>> EvaluateAsync(PressureContext ctx, CancellationToken ct = default)
-    {
-        await Task.CompletedTask;
-        return []; // Placeholder: checks minutesElapsed never used but commits > threshold
-    }
-}
+/// <summary>
+/// These guidance topics are NOT YET IMPLEMENTED. Previously this file held stub classes implementing
+/// IGuidanceContributor that were picked up by ConventionRegistration's assembly scan and invoked by
+/// GuidanceOrchestrator on every call while silently returning an empty hint list — actively wired into
+/// the hot path while delivering nothing, which made the orchestrator appear to cover these topics when
+/// it didn't. Removed from the IGuidanceContributor scan entirely until one is actually implemented;
+/// tracked here as a punch list rather than left registered-but-empty.
+///
+/// - FirstWorldBuildGuidanceContributor (World scope): checks SeedCoverage.Locations == 0.
+/// - SpellcastingGuidanceContributor (Scene scope): checks party has spell slots and a Spell-category action.
+/// - ItemDamageGuidanceContributor (Scene scope): checks item state degradation.
+/// - PlotThreadStalenessGuidanceContributor (World scope): reuses PlotThreadStalenessContributor detection.
+/// - SystemStatsGuidanceContributor (Scene scope): reuses IncompleteSystemStatsPressureContributor detection.
+/// - NarrativeFocusGuidanceContributor (World scope): checks Campaign.NarrativeFocus empty after N commits.
+/// - TimeRecordingGuidanceContributor (World scope): checks minutesElapsed never used but commits > threshold.
+/// </summary>
+internal static class PlaceholderGuidanceContributorsNotYetImplemented;

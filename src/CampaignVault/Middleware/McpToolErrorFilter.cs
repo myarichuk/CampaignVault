@@ -152,12 +152,17 @@ internal static partial class McpToolErrorFilter
     {
         var payload = new ToolResult<object>(false, Error: ToolErrors.InvalidArgument, Summary: summary,
             RetryExample: retryExample);
-        var text = $"Error: {summary}. Full details in structuredContent.";
+        var payloadElement = JsonSerializer.SerializeToElement(payload, McpJsonUtilities.DefaultOptions);
+
+        // Full payload goes in Content, matching McpResponseCleaner's success-path rule: most MCP hosts
+        // (opencode among them) only forward Content, never StructuredContent, so a short "see
+        // structuredContent" stub would point most callers at data they never receive.
+        // StructuredContent is populated too only under the same IncludeStructuredContent opt-in.
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = text }],
-            StructuredContent = JsonSerializer.SerializeToElement(payload, McpJsonUtilities.DefaultOptions),
+            Content = [new TextContentBlock { Text = payloadElement.GetRawText() }],
+            StructuredContent = McpResponseCleaner.IncludeStructuredContent ? payloadElement : null,
         };
     }
 }

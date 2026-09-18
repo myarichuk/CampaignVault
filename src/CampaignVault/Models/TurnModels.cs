@@ -105,7 +105,7 @@ public class TakeTurnRequest
 public class TurnResult
 {
     [Description("Full or Delta. Full: Party/WorldState carry complete snapshots (same shape as before delta mode existed). " +
-        "Delta: PartyDelta/WorldStateDelta carry only what changed this turn instead — call get_entity/get_scene for full detail " +
+        "Delta: PartyDelta/WorldStateDelta carry only what changed this turn instead — call get_entity for full detail " +
         "on anything not covered by the delta, or pass forceFullReseed=true on the next call for a complete resync.")]
     public TurnMode Mode { get; set; } = TurnMode.Full;
 
@@ -162,7 +162,7 @@ public class TurnResult
     public WorldStateView? WorldState { get; set; }
 
     [Description("Delta-mode world state (if includeWorldState=true AND mode=delta); otherwise null. Only rumor/quest/faction changes " +
-        "from this turn, plus current time/pressure (always populated). Call get_world_state for the full picture.")]
+        "from this turn, plus current time/pressure (always populated). Pass forceFullReseed=true on the next take_turn call for the full picture.")]
     public WorldStateDeltaView? WorldStateDelta { get; set; }
 
     [Description("Full NPC context view for the requested NPC (if fullDetailCharacterId was provided); includes all relationships, history, and behavior synthesis. Otherwise null.")]
