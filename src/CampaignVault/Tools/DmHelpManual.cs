@@ -40,6 +40,9 @@ For more details, call `get_commit_schema` (optional category filter: Combat, Na
 **Forgetting to `activity` change after a scene**
 → The next scene view shows stale locations/activities. Update it.
 
+**Not clearing a resolved encounter/crowd-interrupt NPC from the scene**
+→ `travel`/`rest`/`advance_world` encounters and `scene_interrupt_check` promotions spawn a transient NPC located AT the scene. Once you narrate the encounter as resolved (they leave, are dealt with, or the party moves on), commit an `activity` change for that NPC (`newLocationId: null, updateLocation: true`) in the SAME batch as the resolution narration. `keepAlive: false` transients only auto-GC on a later simulation sweep keyed off days-since-visit — they will keep showing up in `PresentNPCs` on every scene fetch at that location until you explicitly clear their location, potentially for many turns.
+
 **Ignoring an aging ""Unresolved"" event for 10 days**
 → Pressure in the next world-state refresh with resolution hint. Fix it.
 

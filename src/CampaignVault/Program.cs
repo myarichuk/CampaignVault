@@ -236,6 +236,7 @@ McpToolTelemetryFilter.LoggerFactory = loggerFactory;
 app.UseCors();
 
 app.UseMiddleware<McpNormalizationMiddleware>();
+app.UseMiddleware<McpResponseEscapingMiddleware>();
 
 // Optional Bearer/X-API-Key Auth Middleware
 if (!string.IsNullOrEmpty(bearerToken))
