@@ -241,7 +241,7 @@ public class EntityChangeDelta
     [Description("Character name, for display without a follow-up lookup.")]
     public string? Name { get; set; }
 
-    [Description("WorldChanges applied to this entity this turn (echoes the committed change objects — each is already a delta, e.g. NeedChange carries {Need, Delta}).")]
+    [Description("Server-derived (ambient simulation) WorldChanges applied to this entity this turn — needs/memory decay etc. from crossing a day boundary. Does NOT include changes this same call's own Changes[] submitted for this entity, since the caller already has those. Each entry is already a delta, e.g. NeedChange carries {Need, Delta}.")]
     public List<WorldChange> Changes { get; set; } = [];
 
     [Description("RP-advisory initiative/memory enrichment, present only for the up-to-2 NPCs selected this call (see take_turn's tool description). Null otherwise, and always null for player characters.")]

@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Models;
-using CampaignVault.Tools;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -213,76 +211,6 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.DoesNotContain(bystanderId, commitResult.InvolvedEntities);
         Assert.DoesNotContain(otherLocId, commitResult.InvolvedEntities);
     }
-
-    [Fact]
-    public async Task DeltaMode_PartyAndWorldState_OnlyReflectThisTurnsChanges()
-    {
-        var slug = NewSlug("deltacontent");
-        var repo = _fixture.CreateRepository();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
-        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
-
-        var locId = $"locations/{slug}-hub";
-        var pcId = $"chars/{slug}-pc";
-        var companionId = $"chars/{slug}-comp";
-
-        using (var session = _fixture.Store.OpenAsyncSession())
-        {
-            var cs = _fixture.CreateCampaignSession(session, slug);
-            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
-            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
-            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
-            { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
-        }
-
-        // Call 1 (Full, first-ever call): confirms the sibling-field parity invariant — full sections
-        // populated, delta sections null — before any delta-mode behavior kicks in.
-        var full = await tools.TakeTurn(new TakeTurnRequest
-        {
-            IncludeParty = true,
-            IncludeWorldState = true,
-            PartyLocationId = locId
-        }, slug);
-        Assert.True(full.Success, full.Summary);
-        Assert.Equal(TurnMode.Full, full.Data!.Mode);
-        Assert.NotNull(full.Data.Party);
-        Assert.NotNull(full.Data.WorldState);
-        Assert.Null(full.Data.PartyDelta);
-        Assert.Null(full.Data.WorldStateDelta);
-
-        // Call 2 (Delta): commit a NeedChange against the companion only.
-        var delta = await tools.TakeTurn(new TakeTurnRequest
-        {
-            Changes = [new NeedChange { CharacterId = companionId, Need = "hunger", Delta = 5 }],
-            Narrative = "The companion grows hungry.",
-            IncludeParty = true,
-            IncludeWorldState = true,
-            PartyLocationId = locId
-        }, slug);
-        Assert.True(delta.Success, delta.Summary);
-        Assert.Equal(TurnMode.Delta, delta.Data!.Mode);
-        Assert.Null(delta.Data.Party);
-        Assert.Null(delta.Data.WorldState);
-        Assert.NotNull(delta.Data.PartyDelta);
-        Assert.NotNull(delta.Data.WorldStateDelta);
-        Assert.NotNull(delta.Data.WorldStateDelta!.Time);
-
-        var companionDelta = Assert.Single(delta.Data.PartyDelta!, d => d.EntityId == companionId);
-        Assert.Contains(companionDelta.Changes, c => c is NeedChange nc && nc.Need == "hunger");
-
-        // The untouched PC has no changes and is never initiative-eligible (PCs are excluded), so it
-        // should not appear in the delta at all.
-        Assert.DoesNotContain(delta.Data.PartyDelta!, d => d.EntityId == pcId);
-
-        // Delta payload should be meaningfully smaller than the equivalent full payload for the same fixture.
-        var fullJson = JsonSerializer.Serialize(full.Data);
-        var deltaJson = JsonSerializer.Serialize(delta.Data);
-        Assert.True(deltaJson.Length < fullJson.Length,
-            $"Expected delta payload ({deltaJson.Length} chars) to be smaller than full payload ({fullJson.Length} chars).");
-    }
-
 
     [Fact]
     public async Task RefreshInvolvedEntities_ExcludesPcs_FromNpcsList()

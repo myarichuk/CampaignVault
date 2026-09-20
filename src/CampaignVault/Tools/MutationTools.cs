@@ -82,8 +82,19 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
 
         /// <summary>WorldChanges applied this turn — the caller's own Changes[] plus any ambient simulation
         /// deltas (needs/memory decay) that ran synchronously because a commit crossed a day boundary.
-        /// Empty for pure-query calls. This is the source of truth for delta-mode section builders.</summary>
+        /// Empty for pure-query calls. This is the source of truth for delta-mode section builders' gating
+        /// decisions (did *something* change this turn) — see <see cref="AmbientChanges"/> for the narrower
+        /// set that's actually worth echoing back to the caller.</summary>
         public IReadOnlyList<WorldChange> AppliedChanges { get; set; } = [];
+
+        /// <summary>Subset of <see cref="AppliedChanges"/> the caller did NOT itself submit this call — i.e.
+        /// CommitResult.AmbientDeltas alone. PartyDelta echoes only this subset in its Changes field: the
+        /// caller already has the change objects it just wrote in its own Changes[] (same rationale as
+        /// <see cref="InvolvedEntityIds"/> not echoing caller-chosen IDs back), and echoing them isn't even a
+        /// reliable receipt — a relative NeedChange delta echoed verbatim doesn't reflect server-side
+        /// clamping, so it can't confirm what actually landed either. Only genuinely new, server-derived
+        /// deltas are worth the bytes.</summary>
+        public IReadOnlyList<WorldChange> AmbientChanges { get; set; } = [];
 
         /// <summary>Persisted ambient simulation narrative text from this turn (see CommitResult.AmbientNarrativeSummaries).</summary>
         public IReadOnlyList<string> AmbientNarrativeSummaries { get; set; } = [];
@@ -638,6 +649,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         result.NarrativeReminder = commitResult.NarrativeReminder;
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
         ctx.AppliedChanges = changes.Concat(commitResult.AmbientDeltas).ToList();
+        ctx.AmbientChanges = commitResult.AmbientDeltas;
         ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
         ApplyInitiativeNudges(ctx);
 
@@ -1809,10 +1821,13 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 var deltas = new List<EntityChangeDelta>();
                 foreach (var member in party)
                 {
-                    // Exclude background need/attribute simulation ticks (hunger, tiredness, morale drift,
-                    // climate readings) — they fire every turn for every scheduled NPC and are individually
-                    // meaningless; MoodChange already surfaces the threshold crossings that matter narratively.
-                    var memberChanges = ctx.AppliedChanges
+                    // Only echo ambient/server-derived changes (ctx.AmbientChanges) — the caller already has
+                    // every change object it just submitted in this same call's Changes[], so re-sending it
+                    // is pure redundant bytes. Also exclude background need/attribute simulation ticks
+                    // (hunger, tiredness, morale drift, climate readings) — they fire every turn for every
+                    // scheduled NPC and are individually meaningless; MoodChange already surfaces the
+                    // threshold crossings that matter narratively.
+                    var memberChanges = ctx.AmbientChanges
                         .Where(c => _repository.ExtractInvolvedEntityIds(c).Contains(member.Id, StringComparer.OrdinalIgnoreCase))
                         .Where(c => !(c.IsEngineAuthored && c is NeedChange or AttributeChange))
                         .ToList();
