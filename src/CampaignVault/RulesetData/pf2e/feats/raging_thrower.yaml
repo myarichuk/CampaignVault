@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: raging_thrower
+system: pf2e
+mechanicalSummary: Thrown weapons become especially deadly in your fury.
+extraPools: []
+classes: [barbarian]
+level: 1

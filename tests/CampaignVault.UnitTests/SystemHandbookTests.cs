@@ -39,7 +39,7 @@ public class SystemHandbookTests : IClassFixture<RavenDBFixture>
 
         Assert.Contains(handbook.Races, r => r == "elf");
         Assert.Contains(handbook.Backgrounds, b => b == "acolyte");
-        Assert.Contains(handbook.Feats, f => f == "lucky");
+        Assert.Contains(handbook.Feats, f => f == "grappler");
         Assert.Contains(handbook.Conditions, c => c.Name == "frightened");
         Assert.Contains(SystemHandbookBuilder.SpellDiscoveryNote, handbook.Notes);
         Assert.Contains("SRD 5.1", handbook.Notes);

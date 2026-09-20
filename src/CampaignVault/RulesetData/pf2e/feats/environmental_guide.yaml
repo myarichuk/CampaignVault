@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: environmental_guide
+system: pf2e
+prerequisite: Master in Survival
+mechanicalSummary: You can rapidly adapt to climates and help others do the same.
+extraPools: []
+level: 7

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: very_very_sneaky
+system: pf2e
+prerequisite: Very Sneaky
+mechanicalSummary: You can move up to your Speed when you use the Sneak action, and you no longer need to have cover or greater cover or be concealed to Hide or Sneak.
+extraPools: []
+level: 13

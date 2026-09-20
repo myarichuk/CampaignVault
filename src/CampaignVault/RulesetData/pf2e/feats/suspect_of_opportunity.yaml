@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: suspect_of_opportunity
+system: pf2e
+prerequisite: Person of Interest
+mechanicalSummary: Sometimes something intrudes upon your case unexpectedly, such as an ambush sent to bring your investigation to a close.
+extraPools: []
+classes: [investigator]
+level: 10

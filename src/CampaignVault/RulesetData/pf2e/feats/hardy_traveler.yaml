@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: hardy_traveler
+system: pf2e
+mechanicalSummary: There’s no journey too far or burden too heavy when you have friends at your side or hope within your heart.
+extraPools: []
+level: 9

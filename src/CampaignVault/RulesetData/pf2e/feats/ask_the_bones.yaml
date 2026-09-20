@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ask_the_bones
+system: pf2e
+mechanicalSummary: You keep the bone of an ancestor or a friend to call upon for advice.
+extraPools: []
+level: 1

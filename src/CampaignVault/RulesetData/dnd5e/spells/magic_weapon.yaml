@@ -5,3 +5,7 @@ level: 2
 classes: [paladin, wizard]
 concentration: true
 castingTime: 1 bonus action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

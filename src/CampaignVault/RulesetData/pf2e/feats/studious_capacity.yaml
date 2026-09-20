@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: studious_capacity
+system: pf2e
+prerequisite: enigma muse; Legendary in Occultism
+mechanicalSummary: Your continued study of occult magic has increased your magical capacity, allowing you to cast spells even when it seems impossible.
+extraPools: []
+classes: [bard]
+level: 16

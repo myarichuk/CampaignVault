@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bloodline_breadth
+system: pf2e
+prerequisite: Basic Sorcerer Spellcasting
+mechanicalSummary: Your repertoire expands, and you can cast more spells of your bloodline’s tradition each day.
+extraPools: []
+level: 8

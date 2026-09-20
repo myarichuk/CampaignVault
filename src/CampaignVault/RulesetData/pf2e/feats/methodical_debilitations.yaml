@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: methodical_debilitations
+system: pf2e
+prerequisite: mastermind racket; Debilitating Strike
+mechanicalSummary: You strategically craft your debilitations to lessen or negate an enemy’s tactical advantages.
+extraPools: []
+classes: [rogue]
+level: 10

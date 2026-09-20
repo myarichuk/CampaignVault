@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: whirling_blade_stance
+system: pf2e
+prerequisite: Monastic Weaponry
+mechanicalSummary: You enter a mindful stance that creates a deep connection between you and your monk weapons, allowing you to manipulate them with your qi, even at a distance.
+extraPools: []
+classes: [monk]
+level: 14

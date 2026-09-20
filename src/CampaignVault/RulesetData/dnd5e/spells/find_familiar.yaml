@@ -5,3 +5,9 @@ level: 1
 classes: [wizard]
 concentration: false
 castingTime: 1 hour
+verbal: true
+somatic: true
+material: true
+materialText: 10gp worth of charcoal, incense, and herbs that must be consumed by fire in a brass brazier.
+materialCost: 10.0
+materialConsumed: true

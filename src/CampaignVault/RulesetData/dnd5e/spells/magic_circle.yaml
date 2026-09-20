@@ -5,3 +5,9 @@ level: 3
 classes: [cleric, paladin, warlock, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: Holy water or powdered silver and iron worth at least 100 gp, which the spell consumes.
+materialCost: 100.0
+materialConsumed: true

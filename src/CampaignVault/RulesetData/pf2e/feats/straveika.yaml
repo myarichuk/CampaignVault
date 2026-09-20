@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: straveika
+system: pf2e
+mechanicalSummary: You descend from one of the truly ancient vampires, a nosferatu cursed to eternal life but not eternal youth.
+extraPools: []
+level: 1

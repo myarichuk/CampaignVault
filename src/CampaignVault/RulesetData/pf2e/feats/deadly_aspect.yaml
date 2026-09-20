@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: deadly_aspect
+system: pf2e
+prerequisite: Draconic Aspect
+mechanicalSummary: You have honed the unarmed attack your draconic heritage has granted you to a lethal degree.
+extraPools: []
+level: 5

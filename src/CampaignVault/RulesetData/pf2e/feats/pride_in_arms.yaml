@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: pride_in_arms
+system: pf2e
+mechanicalSummary: With a shout of triumph, you grant inspiration to an ally fight on.
+extraPools: []
+level: 9

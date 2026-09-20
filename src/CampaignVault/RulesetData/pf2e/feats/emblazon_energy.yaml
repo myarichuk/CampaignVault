@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: emblazon_energy
+system: pf2e
+prerequisite: Emblazon Armament
+mechanicalSummary: With elemental forces, you make your emblazoned symbols more potent.
+extraPools: []
+classes: [cleric]
+level: 8

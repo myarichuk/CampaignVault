@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: nimble_reprisal
+system: pf2e
+prerequisite: justice cause
+mechanicalSummary: You can use Retributive Strike at greater distance.
+extraPools: []
+classes: [champion]
+level: 1

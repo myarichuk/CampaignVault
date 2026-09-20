@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: absorb_toxin
+system: pf2e
+prerequisite: You are not immune to diseases or poisons
+mechanicalSummary: Your skin readily absorbs poison and can consciously draw toxins into your body to spare others.
+extraPools: []
+level: 9

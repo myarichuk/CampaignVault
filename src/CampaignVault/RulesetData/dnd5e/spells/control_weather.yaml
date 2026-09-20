@@ -5,3 +5,8 @@ level: 8
 classes: [cleric, druid, wizard]
 concentration: true
 castingTime: 10 minutes
+verbal: true
+somatic: true
+material: true
+materialText: Burning incense and bits of earth and wood mixed in water.
+materialConsumed: false

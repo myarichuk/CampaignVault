@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: weapon_improviser_dedication
+system: pf2e
+prerequisite: trained in martial weapons
+mechanicalSummary: "You don't take the normal \u20132 penalty to attack rolls with improvised weapons."
+extraPools: []
+level: 2

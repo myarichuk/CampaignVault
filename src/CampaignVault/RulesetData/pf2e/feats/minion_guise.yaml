@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: minion_guise
+system: pf2e
+prerequisite: Vigilante Dedication; Expert in Deception; animal companion or familiar
+mechanicalSummary: When you are in your social identity, you can also grant a social identity to an animal companion, familiar, pet, or other minion you gained from a class feature or feat.
+extraPools: []
+level: 4

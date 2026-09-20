@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mountain_strategy
+system: pf2e
+mechanicalSummary: "Dwarves have a long history fighting common foes, and you've mastered the ancient tactics to better face these enemies."
+extraPools: []
+level: 1

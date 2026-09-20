@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: widen_spell
+system: pf2e
+mechanicalSummary: You manipulate the energy of your spell, causing it to spread out and affect a wider area.
+extraPools: []
+classes: [druid, oracle, sorcerer, witch, wizard]
+level: 1

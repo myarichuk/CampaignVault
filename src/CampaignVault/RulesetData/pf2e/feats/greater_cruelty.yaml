@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: greater_cruelty
+system: pf2e
+prerequisite: Cruelty
+mechanicalSummary: "The extent of your corruption devastates your foes' minds and reflexes."
+extraPools: []
+classes: [champion]
+level: 8

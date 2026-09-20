@@ -5,3 +5,8 @@ level: 1
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 reaction
+verbal: true
+somatic: false
+material: true
+materialText: A small feather or a piece of down.
+materialConsumed: false

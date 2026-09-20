@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rapid_affixture
+system: pf2e
+prerequisite: Master in Crafting
+mechanicalSummary: You take only 1 minute to Affix a Talisman.
+extraPools: []
+level: 7

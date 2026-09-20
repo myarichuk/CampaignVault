@@ -5,3 +5,8 @@ level: 2
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: An eyelash encased in gum arabic.
+materialConsumed: false

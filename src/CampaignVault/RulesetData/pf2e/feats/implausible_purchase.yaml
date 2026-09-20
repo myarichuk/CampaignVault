@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: implausible_purchase
+system: pf2e
+prerequisite: Predictive Purchase
+mechanicalSummary: "It seems impossible, but you've analyzed every angle and are able to just keep pulling out exactly the item you need, even in far-flung locations."
+extraPools: []
+classes: [investigator]
+level: 16

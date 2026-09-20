@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mysterious_breadth
+system: pf2e
+prerequisite: Basic Oracle Spellcasting
+mechanicalSummary: Increase the spell slots you gain from oracle archetype feats
+extraPools: []
+level: 8

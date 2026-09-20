@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: discordant_voice
+system: pf2e
+prerequisite: Courageous Anthem
+mechanicalSummary: Your courageous anthem lets loose a discordant shriek that imbues your allies’ attacks with powerful sonic reverberations.
+extraPools: []
+classes: [bard]
+level: 18

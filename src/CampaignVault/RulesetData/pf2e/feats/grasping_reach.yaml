@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: grasping_reach
+system: pf2e
+mechanicalSummary: You can extend a tangle of vines or tendrils to support your arms and extend your reach.
+extraPools: []
+level: 1

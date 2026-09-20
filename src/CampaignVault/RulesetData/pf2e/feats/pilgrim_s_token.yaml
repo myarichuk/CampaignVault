@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: pilgrim_s_token
+system: pf2e
+prerequisite: Trained in Religion; follower of a specific religion
+mechanicalSummary: You carry a small token of protection from a site holy to your faith.
+extraPools: []
+level: 1

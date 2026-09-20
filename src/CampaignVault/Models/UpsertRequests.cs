@@ -382,6 +382,21 @@ public class CustomSpellUpsertRequest
 
     public string? CastingTime { get; set; }
 
+    [Description("Requires speech to cast. Set explicitly so the engine can gate this spell against Gagged/Silenced/homebrew conditions that block speech.")]
+    public bool? Verbal { get; set; }
+
+    [Description("Requires a free hand/gesture to cast. Set explicitly so the engine can gate this spell against bound hands/homebrew conditions that block gestures.")]
+    public bool? Somatic { get; set; }
+
+    [Description("Requires a physical material component or focus to cast.")]
+    public bool? Material { get; set; }
+
+    public string? MaterialText { get; set; }
+
+    public decimal? MaterialCost { get; set; }
+
+    public bool? MaterialConsumed { get; set; }
+
     [Description("Set true to hide this spell from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
     public bool? IsArchived { get; set; }
 
@@ -404,6 +419,14 @@ public class CustomFeatUpsertRequest
     public string? Prerequisite { get; set; }
 
     public string? MechanicalSummary { get; set; }
+
+    [Description("Passive spell-component requirements this feat waives, e.g. \"SomaticHandsFull\". Omit to preserve the spell's existing list. Provide to replace it wholesale.")]
+    public List<string>? CastingWaivers { get; set; }
+
+    [Description("Classes that can take this feat. Omit to preserve the existing list. Provide to replace it wholesale. Leave empty for ancestry/general/skill feats.")]
+    public List<string>? Classes { get; set; }
+
+    public int? Level { get; set; }
 
     [Description("Set true to hide this feat from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
     public bool? IsArchived { get; set; }

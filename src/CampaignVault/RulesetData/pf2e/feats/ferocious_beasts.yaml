@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ferocious_beasts
+system: pf2e
+prerequisite: Bonded Animal, animal companion, or Pet; Orc Ferocity
+mechanicalSummary: Since ancient times, the mightiest orc beast tamers would draw out the true fighting spirit of their companion beasts by feeding the creatures a draft incorporating the orc’s own blood.
+extraPools: []
+level: 13

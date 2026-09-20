@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: impaling_thrust
+system: pf2e
+mechanicalSummary: You impale your enemy and hold it in place with your weapon, and leave it bleeding when it gets free.
+extraPools: []
+classes: [barbarian]
+level: 14

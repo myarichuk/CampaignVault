@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: split_shot
+system: pf2e
+mechanicalSummary: You fragment a ranged spell.
+extraPools: []
+classes: [sorcerer]
+level: 4

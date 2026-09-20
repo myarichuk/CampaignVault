@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: blaze_of_revelation
+system: pf2e
+mechanicalSummary: Your mind and body can, for a short time and with great peril, surpass the final limits of your curse.
+extraPools: []
+classes: [oracle]
+level: 18

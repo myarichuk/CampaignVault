@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: divine_declaration
+system: pf2e
+mechanicalSummary: You can call forth a holy or unholy word from the realms beyond to punish your foes.
+extraPools: []
+level: 17

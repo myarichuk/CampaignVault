@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: familiar_s_language
+system: pf2e
+prerequisite: a familiar
+mechanicalSummary: You’ve learned to speak with your familiar and other creatures like it.
+extraPools: []
+classes: [witch]
+level: 2

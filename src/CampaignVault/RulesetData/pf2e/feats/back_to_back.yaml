@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: back_to_back
+system: pf2e
+prerequisite: Marshal Dedication
+mechanicalSummary: You excel at watching your allies’ backs and helping them watch yours.
+extraPools: []
+level: 8

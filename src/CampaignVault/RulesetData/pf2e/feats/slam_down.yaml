@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: slam_down
+system: pf2e
+prerequisite: Trained in Athletics
+mechanicalSummary: You make an attack to knock a foe off balance, then follow up immediately with a sweep to topple them.
+extraPools: []
+classes: [fighter]
+level: 4

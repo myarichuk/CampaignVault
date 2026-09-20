@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: flying_blade
+system: pf2e
+prerequisite: precise strike
+mechanicalSummary: You apply your flashy techniques to thrown weapons as easily as melee attacks.
+extraPools: []
+classes: [swashbuckler]
+level: 1

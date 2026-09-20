@@ -107,6 +107,21 @@ public static class ConditionExpiryEvaluator
             .ToList();
     }
 
+    /// <summary>
+    /// Parses the trailing integer off a stacking condition's <see cref="StatusEffect.Name"/>
+    /// (e.g. "Exhaustion 3" → 3). Shared by <see cref="ChangeHandlers.RestChangeHandler"/> (decrements
+    /// on long rest) and <see cref="SurvivalDeprivationRule"/> (increments on sustained deprivation)
+    /// so both read/write the same "BaseName N" convention.
+    /// </summary>
+    public static bool TryParseStackLevel(string name, out int level)
+    {
+        level = 0;
+        var lastSpace = name.LastIndexOf(' ');
+        return lastSpace >= 0 && int.TryParse(name[(lastSpace + 1)..], out level);
+    }
+
+    public static string FormatStackLevel(string baseName, int level) => $"{baseName} {level}";
+
     public static IReadOnlyList<StatusEffect> CollectDawnExpirations(
         Character character,
         ConditionDefinitionProvider? provider,

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: skittering_sneak
+system: pf2e
+mechanicalSummary: You squish, slink, and skitter from cover to cover with great speed and stealth.
+extraPools: []
+level: 13

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: remorseless_lash
+system: pf2e
+mechanicalSummary: "You're skilled at beating an enemy when their morale is already breaking."
+extraPools: []
+level: 1

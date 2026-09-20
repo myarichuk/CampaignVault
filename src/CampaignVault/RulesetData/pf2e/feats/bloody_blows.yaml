@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bloody_blows
+system: pf2e
+mechanicalSummary: Your lethal unarmed attacks leave bloody gouges or cause severe internal bleeding.
+extraPools: []
+level: 5

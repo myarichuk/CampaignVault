@@ -5,3 +5,9 @@ level: 6
 classes: [cleric, warlock, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: One clay pot filled with grave dirt, one clay pot filled with brackish water, and one 150 gp black onyx stone for each corpse.
+materialCost: 150.0
+materialConsumed: false

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: primal_rampage
+system: pf2e
+mechanicalSummary: You gain  unfettered movement  and  mountain resilience  as 4th-rank primal innate spells that you can cast once per day.
+extraPools: []
+level: 13

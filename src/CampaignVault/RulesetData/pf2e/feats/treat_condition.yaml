@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: treat_condition
+system: pf2e
+prerequisite: Medic Dedication
+mechanicalSummary: You treat an adjacent creature in an attempt to reduce the clumsy, enfeebled, or sickened condition.
+extraPools: []
+level: 4

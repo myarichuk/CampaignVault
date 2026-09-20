@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: invoke_disaster
+system: pf2e
+prerequisite: Wind Caller
+mechanicalSummary: You can invoke nature’s fury upon your foes.
+extraPools: []
+classes: [druid]
+level: 18

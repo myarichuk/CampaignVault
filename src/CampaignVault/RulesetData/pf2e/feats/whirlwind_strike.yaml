@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: whirlwind_strike
+system: pf2e
+mechanicalSummary: You lash out in a blur of motion, attacking all nearby adversaries.
+extraPools: []
+classes: [barbarian, fighter]
+level: 14

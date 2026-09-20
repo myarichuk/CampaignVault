@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incredible_companion_ranger
+system: pf2e
+prerequisite: Mature Animal Companion (
+mechanicalSummary: Your animal companion continues to grow and develop.
+extraPools: []
+classes: [ranger]
+level: 10

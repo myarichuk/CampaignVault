@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: knowledge_of_shapes
+system: pf2e
+prerequisite: Reach Spell or Widen Spell
+mechanicalSummary: "Inspiration lets you surpass your preconceptions of your spells' limits."
+extraPools: []
+classes: [oracle]
+level: 4

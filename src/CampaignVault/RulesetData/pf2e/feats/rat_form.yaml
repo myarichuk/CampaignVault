@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rat_form
+system: pf2e
+mechanicalSummary: You can transform into an innocuous-looking rat.
+extraPools: []
+level: 9

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: perfect_form_control
+system: pf2e
+prerequisite: Form Control; Strength +4
+mechanicalSummary: Thanks to magic and muscle memory, you can stay in your alternate shapes indefinitely.
+extraPools: []
+classes: [druid]
+level: 18

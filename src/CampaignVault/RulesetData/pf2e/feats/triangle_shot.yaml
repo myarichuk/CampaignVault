@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: triangle_shot
+system: pf2e
+prerequisite: Monastic Archer Stance; Stunning Blows
+mechanicalSummary: You string three arrows to your bow and fire them all at once.
+extraPools: []
+classes: [monk]
+level: 18

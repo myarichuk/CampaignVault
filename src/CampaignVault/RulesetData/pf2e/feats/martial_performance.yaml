@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: martial_performance
+system: pf2e
+prerequisite: warrior muse
+mechanicalSummary: Your muse has taught you how to handle a wider variety of weapons than most bards, empowering you to effortlessly blend your performance into combat tools.
+extraPools: []
+classes: [bard]
+level: 1

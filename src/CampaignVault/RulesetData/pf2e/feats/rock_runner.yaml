@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rock_runner
+system: pf2e
+mechanicalSummary: Your innate connection to stone makes you adept at moving across uneven surfaces.
+extraPools: []
+level: 1

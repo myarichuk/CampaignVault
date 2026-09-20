@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: connect_the_dots
+system: pf2e
+mechanicalSummary: Ephemeral connections between people, places, and concepts are invisible to most, but seeing them is your stock and trade.
+extraPools: []
+classes: [investigator]
+level: 6

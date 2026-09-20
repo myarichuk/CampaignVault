@@ -125,6 +125,34 @@ public class CampaignConfig
     public float MoraleDriftPerDay { get; set; } = -0.8f;
 
     /// <summary>
+    /// Campaign-level opt-out for <see cref="Data.SurvivalDeprivationRule"/>. When false, sustained
+    /// hunger/thirst/temperature deprivation is still tracked and narrated as pressure, but never
+    /// auto-applies the ruleset's exhaustion-equivalent condition. Defaults to true.
+    /// </summary>
+    public bool SurvivalConsequencesEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Consecutive in-game days a character may sit at severe hunger (<see cref="SurvivalThresholds.SevereHunger"/>)
+    /// before <see cref="Data.SurvivalDeprivationRule"/> escalates the ruleset's exhaustion-equivalent
+    /// condition by one level. Defaults to 3.
+    /// </summary>
+    public float DeprivationToleranceDaysFood { get; set; } = 3f;
+
+    /// <summary>
+    /// Consecutive in-game days a character may sit at severe thirst (<see cref="SurvivalThresholds.SevereThirst"/>)
+    /// before <see cref="Data.SurvivalDeprivationRule"/> escalates. Water deprivation is harsher than
+    /// food, so this defaults tighter: 1.
+    /// </summary>
+    public float DeprivationToleranceDaysWater { get; set; } = 1f;
+
+    /// <summary>
+    /// Consecutive in-game days a character may sit at an extreme felt temperature
+    /// (<see cref="SurvivalThresholds.SevereCold"/>/<see cref="SurvivalThresholds.SevereHeat"/>)
+    /// before <see cref="Data.SurvivalDeprivationRule"/> escalates. Defaults to 1.
+    /// </summary>
+    public float DeprivationToleranceDaysTemperature { get; set; } = 1f;
+
+    /// <summary>
     /// Grace period (in days) before transient NPCs are evicted from unvisited locations.
     /// Defaults to 1.
     /// </summary>
@@ -198,6 +226,21 @@ public class CampaignConfig
     /// are tracked and penalized. See MutationTools.SelectAndEnrichInitiativeAsync.
     /// </summary>
     public int InitiativeCooldownSize { get; set; } = 5;
+
+    /// <summary>
+    /// How many take_turn calls a pending NpcInitiativeNudge survives unconsumed before it decays (see
+    /// TurnCursor.PendingInitiativeNudgesByEntityId, MutationTools.ApplyInitiativeNudges). Defaults to 2 —
+    /// long enough for a scene to naturally come back around to the nudged NPC, short enough that a
+    /// reaction to something specific doesn't linger and surface stale scenes later.
+    /// </summary>
+    public int InitiativeNudgeUnconsumedTurns { get; set; } = 2;
+
+    /// <summary>
+    /// How many times in a row the same NPC can be re-nudged before their previous nudge was actually
+    /// consumed by a selection before the DM gets an advisory reminder to let the reaction play out (see
+    /// MutationTools.ApplyInitiativeNudges). Defaults to 2.
+    /// </summary>
+    public int InitiativeNudgeRepeatThreshold { get; set; } = 2;
 
     /// <summary>
     /// Flat priority penalty applied when selecting this turn's single initiative-enrichment slot to any
@@ -363,14 +406,26 @@ public class CampaignConfig
     public int NpcPresenceNotesCharCap { get; set; } = 400;
 
     /// <summary>
-    /// Minimum |delta| (absolute value, single-turn max across all NeedChange entries for that need)
-    /// for a need to be considered a significant mover on mode=delta take_turn calls — needs below this
-    /// are filtered out of KnownNeeds rather than re-sent unchanged. Not derived from a fixed need scale:
-    /// core needs (hunger/thirst/tiredness/stress/fatigue) are documented 0-100, but needs are otherwise
-    /// unrestricted (the LLM can invent any name on any implicit scale), so this is a tunable heuristic,
-    /// not a calibrated constant. Defaults to 2.
+    /// Minimum |delta|, within a single turn's own NeedChange entries, for a need to be considered a
+    /// significant mover on mode=delta take_turn calls — a deliberate/explicit swing (an eating binge, a
+    /// wound) this large surfaces immediately even if it's the only thing that moved. Not derived from a
+    /// fixed need scale: core needs (hunger/thirst/tiredness/stress/fatigue) are documented 0-100, but
+    /// needs are otherwise unrestricted (the LLM can invent any name on any implicit scale), so this is
+    /// a tunable heuristic, not a calibrated constant. Defaults to 2. See also
+    /// NeedsCumulativeDriftThreshold, the separate (higher) bar for slow multi-turn drift.
     /// </summary>
     public float NeedsChangeSignificanceThreshold { get; set; } = 2f;
+
+    /// <summary>
+    /// Minimum cumulative drift — current live value vs. the value last actually surfaced to the client
+    /// (TurnCursor.SurfacedNeedValuesByEntityId) — for a need to be considered a significant mover on
+    /// mode=delta take_turn calls, even though no single turn's own NeedChange cleared
+    /// NeedsChangeSignificanceThreshold (see MutationTools.ChangedNeedsKeys). Deliberately set higher
+    /// than the per-turn threshold: ordinary background ticking (e.g. hunger +1.5/turn from ambient
+    /// simulation) drifting from, say, 2 to 7 over several turns is not a meaningful state change worth
+    /// surfacing on its own — only a materially bigger cumulative swing is. Defaults to 10.
+    /// </summary>
+    public float NeedsCumulativeDriftThreshold { get; set; } = 10f;
 }
 
 /// <summary>

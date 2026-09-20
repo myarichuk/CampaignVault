@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cautious_curiosity
+system: pf2e
+prerequisite: at least one arcane or occult innate spell gained from a gnome heritage or gnome ancestry feat
+mechanicalSummary: "You've learned a few magical techniques for getting yourself both into and out of trouble unnoticed."
+extraPools: []
+level: 9

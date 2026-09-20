@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: uplifting_overture
+system: pf2e
+prerequisite: maestro muse
+mechanicalSummary: You learn the uplifting overture composition cantrip, which aids your allies’ skills with the inspiring nature of your performance.
+extraPools: []
+classes: [bard]
+level: 2

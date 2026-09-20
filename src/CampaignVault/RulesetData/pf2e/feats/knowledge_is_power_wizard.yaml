@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: knowledge_is_power_wizard
+system: pf2e
+mechanicalSummary: Your academic knowledge about a creature allows you to subtly alter your magic to defeat them.
+extraPools: []
+classes: [wizard]
+level: 8

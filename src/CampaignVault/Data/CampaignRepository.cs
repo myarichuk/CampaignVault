@@ -1961,6 +1961,12 @@ public class CampaignRepository
             existing.Classes = spell.Classes ?? existing.Classes;
             existing.Concentration = spell.Concentration;
             existing.CastingTime = spell.CastingTime;
+            existing.Verbal = spell.Verbal;
+            existing.Somatic = spell.Somatic;
+            existing.Material = spell.Material;
+            existing.MaterialText = spell.MaterialText;
+            existing.MaterialCost = spell.MaterialCost;
+            existing.MaterialConsumed = spell.MaterialConsumed;
             existing.LastUpdated = DateTime.UtcNow;
             existing.CampaignName = effectiveCampaignName;
             if (spell.IsArchived.HasValue)
@@ -1981,6 +1987,12 @@ public class CampaignRepository
                 Classes = spell.Classes ?? [],
                 Concentration = spell.Concentration,
                 CastingTime = spell.CastingTime,
+                Verbal = spell.Verbal,
+                Somatic = spell.Somatic,
+                Material = spell.Material,
+                MaterialText = spell.MaterialText,
+                MaterialCost = spell.MaterialCost,
+                MaterialConsumed = spell.MaterialConsumed,
                 CampaignName = effectiveCampaignName,
                 LastUpdated = DateTime.UtcNow,
                 IsArchived = spell.IsArchived ?? false,
@@ -2030,6 +2042,9 @@ public class CampaignRepository
             existing.Description = feat.Description;
             existing.Prerequisite = feat.Prerequisite;
             existing.MechanicalSummary = feat.MechanicalSummary;
+            existing.CastingWaivers = feat.CastingWaivers ?? existing.CastingWaivers;
+            existing.Classes = feat.Classes ?? existing.Classes;
+            existing.Level = feat.Level;
             existing.LastUpdated = DateTime.UtcNow;
             existing.CampaignName = effectiveCampaignName;
             if (feat.IsArchived.HasValue)
@@ -2048,6 +2063,9 @@ public class CampaignRepository
                 Description = feat.Description,
                 Prerequisite = feat.Prerequisite,
                 MechanicalSummary = feat.MechanicalSummary,
+                CastingWaivers = feat.CastingWaivers ?? [],
+                Classes = feat.Classes ?? [],
+                Level = feat.Level,
                 IsArchived = feat.IsArchived ?? false,
                 CampaignName = effectiveCampaignName,
                 LastUpdated = DateTime.UtcNow,

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: enjoy_the_show
+system: pf2e
+mechanicalSummary: You address an ally or any onlookers to your combat, flaunting to your foes how little attention they require.
+extraPools: []
+classes: [swashbuckler]
+level: 2

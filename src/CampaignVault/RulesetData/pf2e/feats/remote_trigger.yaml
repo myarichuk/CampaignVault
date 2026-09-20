@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: remote_trigger
+system: pf2e
+prerequisite: Snarecrafter Dedication
+mechanicalSummary: "You've learned how to trigger snares from afar, creating ranged hazards to assail your opponents and allowing you to disarm enemies' snares harmlessly."
+extraPools: []
+level: 6

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: irresistible_magic
+system: pf2e
+mechanicalSummary: You’ve studied ways of overcoming the innate defenses against magic that dragons, otherworldly beings, and certain other powerful creatures have.
+extraPools: []
+classes: [wizard]
+level: 6

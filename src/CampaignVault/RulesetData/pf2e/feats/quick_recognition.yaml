@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: quick_recognition
+system: pf2e
+prerequisite: Master in Arcana, Master in Nature, Master in Occultism, or Master in Religion; Recognize Spell
+mechanicalSummary: Identify spells as a free action
+extraPools: []
+level: 7

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: shadow_s_web
+system: pf2e
+prerequisite: Clinging Shadows Initiate
+mechanicalSummary: You can launch a wave of shadowy qi outward from your body, damaging your opponents and potentially binding them in place.
+extraPools: []
+classes: [monk]
+level: 14

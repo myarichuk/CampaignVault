@@ -5,3 +5,8 @@ level: 4
 classes: [bard, cleric, druid, ranger]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A leather strap, bound around the arm or a similar appendage.
+materialConsumed: false

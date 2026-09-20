@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: advanced_domain
+system: pf2e
+prerequisite: Domain Initiate
+mechanicalSummary: Your prayers have unlocked deeper secrets of your deity’s domain.
+extraPools: []
+classes: [cleric]
+level: 8

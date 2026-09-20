@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: instrument_of_zeal
+system: pf2e
+prerequisite: Blessed Counterstrike or Retributive Strike; champion’s reaction that grants an ally resistance to an enemy’s damage (including the grandeur, justice, liberation, and redemption causes)
+mechanicalSummary: Divine energy fills your weapon.
+extraPools: []
+classes: [champion]
+level: 16

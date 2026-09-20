@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: supreme_invigorating_elixir
+system: pf2e
+prerequisite: Invigorating Elixir
+mechanicalSummary: For the purposes of counteracting effects with invigorating elixirs, treat your level as though it were 2 higher.
+extraPools: []
+classes: [alchemist]
+level: 12

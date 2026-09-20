@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bardic_lore
+system: pf2e
+prerequisite: enigma muse
+mechanicalSummary: Your studies make you informed on every subject.
+extraPools: []
+classes: [bard]
+level: 1

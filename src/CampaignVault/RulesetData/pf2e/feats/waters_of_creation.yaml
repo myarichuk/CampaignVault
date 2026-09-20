@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: waters_of_creation
+system: pf2e
+prerequisite: life mystery or tempest mystery
+mechanicalSummary: "Water is the source of life, and you draw upon this primordial force to heal your allies' wounds."
+extraPools: []
+classes: [oracle]
+level: 10

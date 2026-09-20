@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: croak_talker
+system: pf2e
+mechanicalSummary: You can communicate with the simplest of frogs and other similar creatures using longwinded croaks.
+extraPools: []
+level: 1

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: disarming_block
+system: pf2e
+prerequisite: Bastion Dedication; Trained in Athletics
+mechanicalSummary: With deft and practiced movement, you block at an angle to potentially dislodge the weapon.
+extraPools: []
+level: 4

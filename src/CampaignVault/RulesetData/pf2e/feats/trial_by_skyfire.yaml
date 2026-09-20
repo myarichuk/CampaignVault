@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: trial_by_skyfire
+system: pf2e
+prerequisite: cosmos mystery or flame mystery
+mechanicalSummary: Your lips murmur as you portend a great disaster, one you hope you survive.
+extraPools: []
+classes: [oracle]
+level: 10

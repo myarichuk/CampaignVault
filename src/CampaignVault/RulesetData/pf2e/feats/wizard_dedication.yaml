@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: wizard_dedication
+system: pf2e
+prerequisite: Intelligence +2
+mechanicalSummary: You cast spells like a wizard, gaining a spellbook with four common arcane cantrips of your choice.
+extraPools: []
+level: 2

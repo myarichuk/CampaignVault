@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: divine_reflexes
+system: pf2e
+mechanicalSummary: "You gain an additional reaction that you can use only for your champion's reaction."
+extraPools: []
+classes: [champion]
+level: 14

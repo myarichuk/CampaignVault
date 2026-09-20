@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: nudge_the_scales
+system: pf2e
+mechanicalSummary: "You lay a finger on the scales of life and death to heal a creature, regardless of whether it's living or undead."
+extraPools: []
+classes: [oracle]
+level: 1

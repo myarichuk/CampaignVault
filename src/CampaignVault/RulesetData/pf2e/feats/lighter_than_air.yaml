@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: lighter_than_air
+system: pf2e
+prerequisite: Water Walker
+mechanicalSummary: Your mysterious steps become even lighter, transcending the mortal world altogether.
+extraPools: []
+classes: [oracle]
+level: 14

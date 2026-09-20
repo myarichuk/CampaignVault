@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dodge_away
+system: pf2e
+prerequisite: Acrobat Dedication
+mechanicalSummary: You use your acrobatic prowess to evade an attack, using momentum to keep yourself moving if you choose.
+extraPools: []
+level: 6

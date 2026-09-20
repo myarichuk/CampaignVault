@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: concealing_legerdemain
+system: pf2e
+prerequisite: Trained in Thievery
+mechanicalSummary: "Rather than hide an object somewhere the inspectors won't search, you're skilled at keeping the object on the move so it's never where they look."
+extraPools: []
+level: 1

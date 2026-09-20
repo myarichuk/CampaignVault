@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: esoteric_polymath
+system: pf2e
+prerequisite: polymath muse
+mechanicalSummary: You keep a book of occult spells, similar to a wizard’s spellbook, and can use its spells to supplement your spell repertoire.
+extraPools: []
+classes: [bard]
+level: 2

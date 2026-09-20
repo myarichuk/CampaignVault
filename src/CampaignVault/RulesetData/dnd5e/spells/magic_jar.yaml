@@ -5,3 +5,9 @@ level: 6
 classes: [wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A gem, crystal, reliquary, or some other ornamental container worth at least 500 gp.
+materialCost: 500.0
+materialConsumed: false

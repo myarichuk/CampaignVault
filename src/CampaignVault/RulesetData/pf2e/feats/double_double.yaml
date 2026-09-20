@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: double_double
+system: pf2e
+prerequisite: Cauldron
+mechanicalSummary: For each temporary oil or potion you brew during your daily preparations, you brew two copies of it.
+extraPools: []
+classes: [witch]
+level: 10

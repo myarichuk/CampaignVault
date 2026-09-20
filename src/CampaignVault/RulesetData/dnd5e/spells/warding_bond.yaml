@@ -5,3 +5,9 @@ level: 2
 classes: [cleric]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A pair of platinum rings worth at least 50gp each, which you and the target must wear for the duration.
+materialCost: 50.0
+materialConsumed: false

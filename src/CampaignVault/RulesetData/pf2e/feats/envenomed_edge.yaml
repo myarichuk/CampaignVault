@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: envenomed_edge
+system: pf2e
+mechanicalSummary: "With a combination of your poison glands and herbal concoctions, you can consistently deliver venomous attacks when you hit an enemy's weak points."
+extraPools: []
+level: 13

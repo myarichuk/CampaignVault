@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: spirit_s_wrath
+system: pf2e
+prerequisite: spirit instinct
+mechanicalSummary: You call forth an ephemeral spirit, typically the apparition of an ancestor or a nature spirit, which takes the form of a wisp.
+extraPools: []
+classes: [barbarian]
+level: 12

@@ -5,3 +5,9 @@ level: 1
 classes: [bard, warlock, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: false
+somatic: true
+material: true
+materialText: A lead-based ink worth at least 10gp, which this spell consumes.
+materialCost: 10.0
+materialConsumed: true

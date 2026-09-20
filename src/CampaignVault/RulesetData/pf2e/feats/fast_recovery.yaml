@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: fast_recovery
+system: pf2e
+prerequisite: Constitution +2
+mechanicalSummary: Regain more HP from rest, recover faster from disease
+extraPools: []
+level: 1

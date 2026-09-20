@@ -9,7 +9,9 @@ using CampaignVault.Data.Pressure;
 
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Services;
 using CampaignVault.Tools;
+using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents;
 using Xunit;
 
@@ -338,10 +340,19 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator()),
         RulesetDataTestHelper.CreateLevelUpHandler(),
         new KnowledgeUpdateHandler(),
-        new RulesetActionHandler(selector, keys),
+        CreateRulesetActionHandler(selector, keys),
         new RumorCreateHandler(),
         RulesetDataTestHelper.CreateRestChangeHandler()
     ];
+
+    private static RulesetActionHandler CreateRulesetActionHandler(IRulesetModuleSelector selector, CampaignDocumentKeys keys)
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cv_harness_ruleset_action_" + Guid.NewGuid());
+        return new RulesetActionHandler(
+            selector, keys,
+            new SpellDefinitionProvider(dir, typeof(SpellDefinitionProvider).Assembly),
+            new FeatDefinitionProvider(dir, typeof(FeatDefinitionProvider).Assembly));
+    }
 
     /// <summary>Deterministic rolls so harness combat assertions are stable across rulesets.</summary>
     private sealed class HarnessPredictableRollService : IRollService

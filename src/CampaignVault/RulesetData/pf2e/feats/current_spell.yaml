@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: current_spell
+system: pf2e
+mechanicalSummary: As you use your magic to manipulate air or water, you spin off some of its currents to form a barrier around you.
+extraPools: []
+classes: [druid]
+level: 6

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: empiricist_s_eye
+system: pf2e
+prerequisite: empiricism methodology
+mechanicalSummary: Sharp and piercing, your eyes see all and convey more.
+extraPools: []
+classes: [investigator]
+level: 12

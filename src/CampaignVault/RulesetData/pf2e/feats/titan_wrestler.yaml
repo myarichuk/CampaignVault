@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: titan_wrestler
+system: pf2e
+prerequisite: Trained in Athletics
+mechanicalSummary: Disarm, Grapple, Shove, or Trip larger creatures
+extraPools: []
+level: 1

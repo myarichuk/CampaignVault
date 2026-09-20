@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: make_em_sweat
+system: pf2e
+prerequisite: interrogation methodology
+mechanicalSummary: Your line of questioning lets a suspect know you can see right through them, shaking them to the core.
+extraPools: []
+classes: [investigator]
+level: 12

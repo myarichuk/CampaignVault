@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: majestic_presence
+system: pf2e
+mechanicalSummary: By taking an impressive stance, the full force of your personality cows lesser beings.
+extraPools: []
+level: 13

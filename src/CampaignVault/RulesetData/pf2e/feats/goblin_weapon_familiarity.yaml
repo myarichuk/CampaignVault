@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: goblin_weapon_familiarity
+system: pf2e
+mechanicalSummary: Others might look upon them with disdain, but you know that the weapons of your people are as effective as they are sharp.
+extraPools: []
+level: 1

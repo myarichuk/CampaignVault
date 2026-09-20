@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: martial_artist_dedication
+system: pf2e
+mechanicalSummary: You have trained to use your fists as deadly weapons and can deliver devastatingly powerful blows with them.
+extraPools: []
+level: 2

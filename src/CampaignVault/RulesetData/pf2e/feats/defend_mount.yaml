@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: defend_mount
+system: pf2e
+prerequisite: Cavalier Dedication
+mechanicalSummary: You interpose yourself between an attacker and your mount, defending your mount from harm.
+extraPools: []
+level: 6

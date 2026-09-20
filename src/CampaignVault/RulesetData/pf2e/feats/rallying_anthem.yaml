@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rallying_anthem
+system: pf2e
+mechanicalSummary: You learn the rallying anthem composition cantrip, which protects you and allies.
+extraPools: []
+classes: [bard]
+level: 4

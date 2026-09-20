@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: fancy_moves
+system: pf2e
+prerequisite: Gladiator Dedication; Expert in Performance
+mechanicalSummary: You show off your fighting style to discourage your foes.
+extraPools: []
+level: 4

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: doctor_s_visitation
+system: pf2e
+prerequisite: Medic Dedication
+mechanicalSummary: You move to provide immediate care to those who need it.
+extraPools: []
+level: 4

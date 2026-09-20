@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: song_of_strength
+system: pf2e
+prerequisite: warrior muse
+mechanicalSummary: Your performances inspire strength in your allies to aid them at physical tasks.
+extraPools: []
+classes: [bard]
+level: 2

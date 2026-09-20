@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: improvised_repair
+system: pf2e
+mechanicalSummary: You can hastily patch damaged equipment together, but the temporary fix lacks the full care required for lasting repairs.
+extraPools: []
+level: 3

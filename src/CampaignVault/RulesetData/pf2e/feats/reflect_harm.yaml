@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reflect_harm
+system: pf2e
+mechanicalSummary: You can wrap your magic around you like a cloak that causes those who dare to target you with spells to suffer a similar fate.
+extraPools: []
+classes: [sorcerer]
+level: 14

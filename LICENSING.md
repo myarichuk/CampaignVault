@@ -20,17 +20,18 @@ CampaignVault bundles game reference content from two systems:
 
 ### D&D 5e Content
 - **License**: Creative Commons Attribution 4.0 (CC-BY-4.0)
-- **Source**: D&D 5e System Reference Document (SRD) 5.1
+- **Source**: D&D 5e System Reference Document (SRD) 5.1, spells pulled from dnd5eapi.co (an MIT-licensed API wrapper strictly over SRD 5.1 data)
 - **Scope**: Core rules including classes, spells, conditions, backgrounds, and mechanics
+- **Feats**: SRD 5.1's own inclusion criteria exclude nearly all feats (Wizards' stated criteria: SRD-eligible content must have a 3e SRD equivalent and be vital to how a class/item/monster works). **Grappler is the only feat in the official SRD 5.1** — CampaignVault ships only that one for dnd5e; it does not include PHB feats like Alert, Great Weapon Master, Lucky, Tough, or War Caster, since those are not CC-BY-4.0 licensed.
 - **Reference**: https://dndbeyond.com/srd, and the bundled SRD-OGL_V5.1.pdf in this repository
 - **Attribution**: Wizards of the Coast LLC, https://dnd.wizards.com
 - **Restrictions**: Content is limited to the official SRD — no proprietary sourcebook material, Forgotten Realms setting-specific content, or licensed properties
 
 ### Pathfinder 2e Content
 - **License**: Open RPG Creative (ORC) License
-- **Source**: Pathfinder 2e Remastered core rules and reference content by Paizo Inc.
+- **Source**: Pathfinder 2e Remastered core rules and reference content by Paizo Inc., pulled directly from the official Archives of Nethys database (elasticsearch.aonprd.com), filtered to the `Player Core`/`Player Core 2` sourcebooks and common rarity
 - **Scope**: Core rules including ancestries, classes, spells, feats, conditions, and mechanics
-- **Reference**: https://paizo.com/orclicense
+- **Reference**: https://paizo.com/orclicense, https://2e.aonprd.com
 - **Attribution**: Paizo Inc., https://paizo.com
 - **Restrictions**: Content is limited to Remastered core rules and ORC-licensed material — no Golarion setting-specific content, proprietary Paizo sourcebooks, or licensed properties
 

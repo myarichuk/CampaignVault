@@ -5,3 +5,9 @@ level: 6
 classes: [wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A sapphire worth 1,000 gp.
+materialCost: 1000.0
+materialConsumed: false

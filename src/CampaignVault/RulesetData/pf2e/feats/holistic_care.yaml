@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: holistic_care
+system: pf2e
+prerequisite: Treat Condition; Trained in Diplomacy
+mechanicalSummary: You provide emotional and spiritual care.
+extraPools: []
+level: 6

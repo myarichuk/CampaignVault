@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: crushing_grab
+system: pf2e
+mechanicalSummary: Like a powerful constrictor, you crush targets in your unyielding grasp.
+extraPools: []
+classes: [monk]
+level: 2

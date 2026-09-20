@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mysterious_repertoire
+system: pf2e
+mechanicalSummary: Your mystery holds unknowable depths of magic not always associated with the divine.
+extraPools: []
+classes: [oracle]
+level: 14

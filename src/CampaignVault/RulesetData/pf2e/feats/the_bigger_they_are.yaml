@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: the_bigger_they_are
+system: pf2e
+mechanicalSummary: With reckless speed, you dash, jump and swing around a creature to find a more vulnerable spot.
+extraPools: []
+classes: [swashbuckler]
+level: 12

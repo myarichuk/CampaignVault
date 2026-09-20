@@ -5,3 +5,8 @@ level: 2
 classes: [sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: false
+material: true
+materialText: Bat fur and a drop of pitch or piece of coal.
+materialConsumed: false

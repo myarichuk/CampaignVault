@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: armor_assist
+system: pf2e
+prerequisite: Trained in Warfare Lore or Trained in Athletics
+mechanicalSummary: You are practiced in helping yourself and others don heavy gear.
+extraPools: []
+level: 1

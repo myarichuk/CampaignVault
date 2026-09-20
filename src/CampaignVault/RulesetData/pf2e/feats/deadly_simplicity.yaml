@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: deadly_simplicity
+system: pf2e
+prerequisite: "deity with a simple or unarmed attack favored weapon, trained with your deity's favored weapon"
+mechanicalSummary: When you are wielding your deity’s favored weapon, increase the damage die size of that weapon by one step.
+extraPools: []
+classes: [cleric]
+level: 1

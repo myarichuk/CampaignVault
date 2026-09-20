@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cantorian_rejuvenation
+system: pf2e
+mechanicalSummary: The life-giving energy that flows in your blood revitalizes you.
+extraPools: []
+level: 9

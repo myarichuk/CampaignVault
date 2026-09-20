@@ -5,3 +5,8 @@ level: 4
 classes: [druid, sorcerer, wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A pinch of dust and a few drops of water.
+materialConsumed: false

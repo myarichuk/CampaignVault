@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: wary_skulker
+system: pf2e
+mechanicalSummary: You can perform the Scout exploration activity at the same time as the Avoid Notice exploration activity.
+extraPools: []
+level: 9

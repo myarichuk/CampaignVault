@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: defensive_roll
+system: pf2e
+mechanicalSummary: Dropping into a roll to disperse the force of the blow, you can partially evade a lethal attack and stay conscious.
+extraPools: []
+classes: [rogue]
+level: 14

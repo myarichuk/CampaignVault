@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: natural_ambition
+system: pf2e
+prerequisite: you meet
+mechanicalSummary: You were raised to be ambitious and always reach for the stars, leading you to progress quickly in your chosen field.
+extraPools: []
+level: 1

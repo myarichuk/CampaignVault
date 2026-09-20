@@ -5,3 +5,7 @@ level: 7
 classes: [cleric]
 concentration: false
 castingTime: 1 bonus action
+verbal: true
+somatic: false
+material: false
+materialConsumed: false

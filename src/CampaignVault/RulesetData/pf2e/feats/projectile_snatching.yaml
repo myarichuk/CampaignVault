@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: projectile_snatching
+system: pf2e
+prerequisite: Deflect Projectile
+mechanicalSummary: You pluck missiles from the air and hurl them back at their source.
+extraPools: []
+classes: [monk]
+level: 8

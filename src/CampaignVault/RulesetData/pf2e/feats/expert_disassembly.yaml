@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: expert_disassembly
+system: pf2e
+prerequisite: Scrounger Dedication; Master in Crafting
+mechanicalSummary: You can apply the same techniques you use to reverse engineer objects to disable dangerous traps and break apart locks.
+extraPools: []
+level: 7

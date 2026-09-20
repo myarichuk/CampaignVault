@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: divine_infusion
+system: pf2e
+mechanicalSummary: You pour energy into the subject of your healing to empower its attacks.
+extraPools: []
+classes: [cleric]
+level: 4

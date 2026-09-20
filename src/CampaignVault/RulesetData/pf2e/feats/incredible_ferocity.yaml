@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incredible_ferocity
+system: pf2e
+prerequisite: Orc Ferocity
+mechanicalSummary: Given time to collect yourself after a near-death scrape, you can rebuild your ferocity and withstand additional finishing blows.
+extraPools: []
+level: 13

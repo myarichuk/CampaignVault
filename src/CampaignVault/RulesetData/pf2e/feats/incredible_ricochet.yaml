@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incredible_ricochet
+system: pf2e
+prerequisite: Incredible Aim
+mechanicalSummary: After your first shot singles out your opponent’s position, you direct another that ricochets around obstacles and strikes unerringly.
+extraPools: []
+classes: [fighter]
+level: 12

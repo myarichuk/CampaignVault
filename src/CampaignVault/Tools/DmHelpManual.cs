@@ -30,7 +30,15 @@ It can also be forced any time with `forceFullReseed: true` — do this if your 
 
 Full detail for anything a delta didn't cover is always available via `get_entity` for a single character/location, or by setting `includeParty`/`includeWorldState` on the same `take_turn` call. Check `querySuggestions` in the response for concrete calls worth making (populated when entities were dropped by the refresh cap, or an NPC has an aging high-salience memory flagged via `memoryHint`).
 
-Independent of mode, the single highest-priority NPC this call carries RP-advisory initiative/memory (`initiative` field, memories compressed to topic+one-liner on delta turns) — chosen by a small scheduler (need/momentum priority, with a short cooldown so the same NPC can't win every turn) rather than randomly — so you get a 'who might act/speak next' signal without an extra call.
+Independent of mode, the single highest-priority NPC this call carries RP-advisory initiative/memory (`initiative` field, memories compressed to topic+one-liner on delta turns) — chosen by a small scheduler (need/momentum priority, with a short cooldown so the same NPC can't win every turn) rather than randomly — so you get a 'who might act/speak next' signal without an extra call. You can override that scheduler directly for a specific narrative moment with an `npc_initiative_nudge` change ($type in the same `changes[]` array) — it bypasses the cooldown and wins the slot outright, carrying your own `reason` back via `TurnIntent`. Re-nudging the same NPC before their previous nudge was ever consumed trips an advisory in `narrativeReminder` asking you to let the reaction play out first.
+
+## FAQ: why did a need I didn't just change show up in KnownNeeds?
+
+`KnownNeeds` on a delta turn isn't only gated by this turn's own change — a need that ticks slowly (e.g. hunger +1.5/turn) and never clears the significance threshold in any single turn will still surface once its *cumulative* drift since it was last actually sent to you crosses that threshold. This closes a correctness gap: without it, slow drift could silently diverge from what the server has been tracking. A full reseed always resets that baseline to exactly what it just sent.
+
+## FAQ: why does a scene's PresentNPCs entry have almost every field null?
+
+On a delta-mode scene refetch, an NPC who was already present the last time you saw that scene and has nothing new to report this turn (no appearance/behavior/gear/needs change, no fresh memory) shrinks to just `id`/`name`/roster flags (`isPc`/`isPartyCompanion`/`keepAlive`) with everything else null. This is not a malformed or truncated response — it means ""still here, nothing changed"". The entry is never omitted entirely (only shrunk), so you can always trust the full set of IDs across `Npcs`/`Party`/`Scenes[].PresentNPCs` as the complete list of who's actually present — see the response's `KnownCharacterIds`.
 
 ## Drift Protection
 
@@ -70,7 +78,7 @@ For more details, call `get_commit_schema` (optional category filter: Combat, Na
 → The next scene view shows stale locations/activities. Update it.
 
 **Not clearing a resolved encounter/crowd-interrupt NPC from the scene**
-→ `travel`/`rest`/`advance_world` encounters and `scene_interrupt_check` promotions spawn a transient NPC located AT the scene. Once you narrate the encounter as resolved (they leave, are dealt with, or the party moves on), commit an `activity` change for that NPC (`newLocationId: null, updateLocation: true`) in the SAME batch as the resolution narration. `keepAlive: false` transients only auto-GC on a later simulation sweep keyed off days-since-visit — they will keep showing up in `PresentNPCs` on every scene fetch at that location until you explicitly clear their location, potentially for many turns.
+→ `travel`/`rest`/`advance_world` encounters and `scene_interrupt_check` promotions spawn a transient NPC located AT the scene. Once you narrate the encounter as resolved (they leave, are dealt with, or the party moves on), commit an `activity` change for that NPC (`newLocationId: null, updateLocation: true`) in the SAME batch as the resolution narration. `keepAlive: false` transients only auto-GC on a later simulation sweep keyed off days since their *location* was last visited (default grace period: 1 day, `TransientEvictionGraceDays`) — not days since the NPC itself was seen. `PresentNPCs` is rebuilt fresh from live data on every scene fetch with no staleness tracking of its own, so until you explicitly clear the location or the grace period elapses, a resolved NPC will keep showing up as present, potentially for many turns.
 
 **Ignoring an aging ""Unresolved"" event for 10 days**
 → Pressure in the next world-state refresh with resolution hint. Fix it.

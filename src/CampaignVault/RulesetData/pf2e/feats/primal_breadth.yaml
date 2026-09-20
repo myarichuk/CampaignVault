@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: primal_breadth
+system: pf2e
+prerequisite: Basic Druid Spellcasting
+mechanicalSummary: Increase the spell slots you gain from druid archetype feats by 1 for each spell rank other than your two highest druid spell slots.
+extraPools: []
+level: 8

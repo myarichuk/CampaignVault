@@ -5,3 +5,8 @@ level: 8
 classes: [cleric, druid, sorcerer]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A pinch of dirt, a piece of rock, and a lump of clay.
+materialConsumed: false

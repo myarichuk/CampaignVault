@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: disarming_flair
+system: pf2e
+mechanicalSummary: You knock weapons from the hands of your foes with style.
+extraPools: []
+classes: [swashbuckler]
+level: 1

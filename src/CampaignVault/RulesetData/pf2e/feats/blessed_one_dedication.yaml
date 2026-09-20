@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: blessed_one_dedication
+system: pf2e
+mechanicalSummary: You are touched by a deity and gifted with the ability to alleviate the suffering of others.
+extraPools: []
+level: 2

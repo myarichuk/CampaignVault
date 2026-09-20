@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: quick_mount
+system: pf2e
+prerequisite: Cavalier Dedication; Expert in Nature
+mechanicalSummary: You and your mount can spring into action at a moment’s notice.
+extraPools: []
+level: 4

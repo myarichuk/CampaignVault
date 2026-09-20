@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: inoculation
+system: pf2e
+prerequisite: Trained in Medicine
+mechanicalSummary: You have practice combating plague, and your patients are less likely to succumb to the same disease again for a time.
+extraPools: []
+level: 1

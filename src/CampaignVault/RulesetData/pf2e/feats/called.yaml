@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: called
+system: pf2e
+mechanicalSummary: You’ve heard the Call, and by resisting it, you’ve developed a bulwark against effects that target your mind.
+extraPools: []
+level: 5

@@ -5,3 +5,9 @@ level: 7
 classes: [wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A powder composed of diamond, emerald, ruby, and sapphire dust worth at least 5,000 gp, which the spell consumes.
+materialCost: 5000.0
+materialConsumed: true

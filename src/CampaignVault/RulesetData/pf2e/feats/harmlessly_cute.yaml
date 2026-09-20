@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: harmlessly_cute
+system: pf2e
+mechanicalSummary: Your size and demeanor make it easy for you to convince others that you mean no harm.
+extraPools: []
+level: 1

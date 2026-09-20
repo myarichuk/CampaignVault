@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scroll_adept
+system: pf2e
+mechanicalSummary: During your daily preparations, you can create two temporary scrolls containing arcane spells from your spellbook.
+extraPools: []
+classes: [wizard]
+level: 10

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: evangelize
+system: pf2e
+prerequisite: Master in Diplomacy; follower of a specific religion or philosophy
+mechanicalSummary: "You point out a detail that incontrovertibly supports your faith, causing a listener's mind to whirl."
+extraPools: []
+level: 7

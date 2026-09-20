@@ -5,3 +5,8 @@ level: 1
 classes: [ranger, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A tiny bell and a piece of fine silver wire.
+materialConsumed: false

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: call_and_response
+system: pf2e
+mechanicalSummary: Your composition takes the form of a call-and-response chant that lets your allies continue the effect without you.
+extraPools: []
+classes: [bard]
+level: 8

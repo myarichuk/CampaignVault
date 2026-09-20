@@ -5,3 +5,7 @@ level: 4
 classes: [druid, wizard]
 concentration: true
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

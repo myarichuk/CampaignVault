@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: desperate_prayer
+system: pf2e
+mechanicalSummary: You call out to your deity in a plea for their aid.
+extraPools: []
+classes: [champion]
+level: 1

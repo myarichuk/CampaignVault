@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: glad_hand
+system: pf2e
+prerequisite: Expert in Diplomacy
+mechanicalSummary: Make an Impression on a target you’ve just met
+extraPools: []
+level: 2

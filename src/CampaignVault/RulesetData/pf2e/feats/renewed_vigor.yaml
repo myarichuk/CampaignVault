@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: renewed_vigor
+system: pf2e
+mechanicalSummary: Through the haze of battle, you quickly recover your raging vigor.
+extraPools: []
+classes: [barbarian]
+level: 8

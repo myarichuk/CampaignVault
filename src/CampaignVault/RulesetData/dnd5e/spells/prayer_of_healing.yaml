@@ -5,3 +5,7 @@ level: 2
 classes: [cleric]
 concentration: false
 castingTime: 10 minutes
+verbal: true
+somatic: false
+material: false
+materialConsumed: false

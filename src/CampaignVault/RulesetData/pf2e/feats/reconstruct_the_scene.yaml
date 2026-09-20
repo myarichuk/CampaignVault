@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reconstruct_the_scene
+system: pf2e
+mechanicalSummary: You spend 1 minute surveying a small location (such as a single room) to get an impression of events that occurred there in the last day.
+extraPools: []
+classes: [investigator, rogue]
+level: 16

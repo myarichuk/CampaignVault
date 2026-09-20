@@ -5,3 +5,8 @@ level: 0
 classes: [bard, cleric, druid, sorcerer, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: Two lodestones.
+materialConsumed: false

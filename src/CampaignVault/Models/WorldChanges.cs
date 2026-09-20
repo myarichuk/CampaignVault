@@ -55,6 +55,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(WorldEventStatusChange), "world_event_status")]
 [JsonDerivedType(typeof(AmbientEncounterCheck), "ambient_encounter_check")]
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
+[JsonDerivedType(typeof(NpcInitiativeNudge), "npc_initiative_nudge")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -371,6 +372,29 @@ public class RelationshipChange : WorldChange
     [Description("Narrative reason for the shift. This is stored with the relationship and helps the behavioral synthesizer explain why the NPC feels this way.")]
     [JsonPropertyName("reason")]
     public string Reason { get; set; } = null!;
+}
+
+/// <summary>DM/LLM-declared signal that a specific NPC's psychology should make them react/intervene on
+/// an upcoming turn because of something that just happened in the scene (e.g. a squeamish NPC watching
+/// game being field-dressed). Distinct from the engine's own need/momentum-based initiative scheduler
+/// (MutationTools.SelectAndEnrichInitiativeAsync) — this is explicit narrative judgment the engine can't
+/// infer on its own. Bypasses the initiative cooldown once when consumed; decays after
+/// CampaignConfig.InitiativeNudgeUnconsumedTurns take_turn calls if never consumed.</summary>
+[CommitCategory("Narrative")]
+[Description("Nudge a specific NPC's likelihood of taking initiative on an upcoming take_turn call, based on something they just witnessed/experienced that your narrative judgment says would visibly affect them. Not needed for most NPCs — use only when this specific moment should plausibly make them act or speak up soon. Bypasses the normal initiative cooldown once, since this represents a specific reactive beat rather than routine rotation. Decays if never consumed within a couple of turns.")]
+public class NpcInitiativeNudge : WorldChange
+{
+    [Description("ID of the NPC who should be primed to take initiative soon (e.g. 'chars/elara-voss').")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("0 to 1 — how strongly this pushes the NPC toward intervening/acting soon. When more than one present NPC is nudged at once, the highest intensity wins the slot.")]
+    [JsonPropertyName("intensity")]
+    public float Intensity { get; set; } = 1f;
+
+    [Description("Narrative reason this NPC is primed to react — surfaced back to you via the initiative signal's framing/turnIntent so you remember why (e.g. 'watched the rabbit being field-dressed and is visibly disturbed').")]
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
 }
 
 /// <summary>

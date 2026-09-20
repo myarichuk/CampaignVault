@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: analyze_weakness
+system: pf2e
+prerequisite: sneak attack 2d6
+mechanicalSummary: Your knowledge of a creature’s physiology helps you attack with pinpoint accuracy.
+extraPools: []
+classes: [rogue]
+level: 6

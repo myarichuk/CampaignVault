@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: lucky_break
+system: pf2e
+prerequisite: "Cat's Luck"
+mechanicalSummary: You are luckier even than most catfolk.
+extraPools: []
+level: 5

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: stubborn_persistence
+system: pf2e
+mechanicalSummary: Humans are renowned for their ability to persist through the most grueling of trials that would leave others ready to drop.
+extraPools: []
+level: 13

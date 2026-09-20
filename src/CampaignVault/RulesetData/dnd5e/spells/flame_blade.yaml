@@ -5,3 +5,8 @@ level: 2
 classes: [druid]
 concentration: true
 castingTime: 1 bonus action
+verbal: true
+somatic: true
+material: true
+materialText: Leaf of sumac.
+materialConsumed: false

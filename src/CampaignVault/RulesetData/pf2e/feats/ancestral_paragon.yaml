@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ancestral_paragon
+system: pf2e
+mechanicalSummary: Gain a 1st-level ancestry feat
+extraPools: []
+level: 3

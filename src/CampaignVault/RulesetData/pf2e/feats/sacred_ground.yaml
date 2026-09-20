@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sacred_ground
+system: pf2e
+prerequisite: harmful font or healing font
+mechanicalSummary: You pray continuously for 1 minute to call a subtle shadow of your deity’s realm over a 30-foot burst centered on you.
+extraPools: []
+classes: [cleric]
+level: 4

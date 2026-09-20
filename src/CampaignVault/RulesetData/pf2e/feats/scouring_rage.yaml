@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scouring_rage
+system: pf2e
+prerequisite: an instinct that allows you to change your additional damage from Rage to a different damage type
+mechanicalSummary: You emit a powerful surge of instinctual energy when you unleash your anger.
+extraPools: []
+classes: [barbarian]
+level: 6

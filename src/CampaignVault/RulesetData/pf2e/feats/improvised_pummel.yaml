@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: improvised_pummel
+system: pf2e
+prerequisite: Weapon Improviser Dedication
+mechanicalSummary: "When you make a Strike with an improvised weapon you're wielding, you gain a +1 item bonus to the attack roll, and you can have the Strike deal two weapon damage dice instead of the improvised weapon's normal number."
+extraPools: []
+level: 4

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: multilingual_cipher
+system: pf2e
+prerequisite: Linguist Dedication; Expert in Society
+mechanicalSummary: You use multiple languages to create and break codes.
+extraPools: []
+level: 4

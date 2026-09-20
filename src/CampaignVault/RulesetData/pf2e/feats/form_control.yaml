@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: form_control
+system: pf2e
+prerequisite: Untamed Form
+mechanicalSummary: With additional care and effort, you can take on an alternate shape for a longer period of time.
+extraPools: []
+classes: [druid]
+level: 4

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: implausible_infiltration
+system: pf2e
+prerequisite: Legendary in Acrobatics; Quick Squeeze
+mechanicalSummary: You find tiny imperfections and somehow fit yourself through them, possibly moving directly through the wall or floor.
+extraPools: []
+classes: [rogue]
+level: 18

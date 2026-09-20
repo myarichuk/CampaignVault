@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: clinging_shadows_initiate
+system: pf2e
+prerequisite: Qi Spells
+mechanicalSummary: You learn a mystical stance that transforms your qi into sticky smoke that shrouds your limbs.
+extraPools: []
+classes: [monk]
+level: 8

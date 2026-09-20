@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: perfection_s_path
+system: pf2e
+prerequisite: Monk Dedication; expert in at least one saving throw
+mechanicalSummary: Choose one saving throw (Fortitude, Reflex, or Will) in which you’re an expert.
+extraPools: []
+level: 12

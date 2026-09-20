@@ -5,3 +5,9 @@ level: 8
 classes: [cleric]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: "A tiny reliquary worth at least 1,000gp containing a sacred relic, such as a scrap of cloth from a saint's robe or a piece of parchment from a religious text."
+materialCost: 1000.0
+materialConsumed: false

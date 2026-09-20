@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: celestial_mercy
+system: pf2e
+prerequisite: Angelkin, Lawbringer, Musetouched, or another lineage feat associated with celestials
+mechanicalSummary: Your celestial powers allow you to remove lesser afflictions with ease.
+extraPools: []
+level: 13

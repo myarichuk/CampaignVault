@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: shooting_stars_stance
+system: pf2e
+prerequisite: Monastic Weaponry
+mechanicalSummary: You enter a stance that lets you throw shuriken with lightning speed.
+extraPools: []
+classes: [monk]
+level: 2

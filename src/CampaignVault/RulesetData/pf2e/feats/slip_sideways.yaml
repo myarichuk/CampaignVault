@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: slip_sideways
+system: pf2e
+prerequisite: Grimspawn, Pitborn, or Hellspawn, or another lineage feat associated with fiends or the Maelstrom
+mechanicalSummary: Like many fiends, you have the supernatural ability to teleport yourself to safety.
+extraPools: []
+level: 13

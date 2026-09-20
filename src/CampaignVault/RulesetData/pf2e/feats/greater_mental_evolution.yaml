@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: greater_mental_evolution
+system: pf2e
+prerequisite: Arcane Evolution or Occult Evolution
+mechanicalSummary: "Your bloodline's deep connection to mental essence greatly enhances your spell repertoire."
+extraPools: []
+classes: [sorcerer]
+level: 16

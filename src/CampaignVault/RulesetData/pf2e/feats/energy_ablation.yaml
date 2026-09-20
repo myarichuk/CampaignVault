@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: energy_ablation
+system: pf2e
+mechanicalSummary: As you direct destructive energy at a foe, you can divert some of its power into a protective barrier that shields you from harm.
+extraPools: []
+classes: [wizard]
+level: 2

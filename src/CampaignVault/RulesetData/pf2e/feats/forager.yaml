@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: forager
+system: pf2e
+prerequisite: Trained in Survival
+mechanicalSummary: Forage for supplies to provide for multiple creatures
+extraPools: []
+level: 1

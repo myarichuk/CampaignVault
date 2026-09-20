@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: avatar_s_protection
+system: pf2e
+mechanicalSummary: In moments of danger, you can call upon your god’s form in an instant.
+extraPools: []
+classes: [cleric]
+level: 20

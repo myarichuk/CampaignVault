@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: counterspell
+system: pf2e
+mechanicalSummary: When a foe Casts a Spell and you can see its manifestations, you can use your magic to disrupt it.
+extraPools: []
+classes: [witch, wizard]
+level: 1

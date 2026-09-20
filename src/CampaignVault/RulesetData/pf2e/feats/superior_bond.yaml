@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: superior_bond
+system: pf2e
+prerequisite: arcane bond
+mechanicalSummary: When you draw upon your bonded item, you can leave a bit of energy within it for later use.
+extraPools: []
+classes: [wizard]
+level: 14

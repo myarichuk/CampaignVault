@@ -5,3 +5,9 @@ level: 7
 classes: [bard, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A miniature platinum sword with a grip and pommel of copper and zinc, worth 250 gp.
+materialCost: 250.0
+materialConsumed: false

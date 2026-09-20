@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: epiphany_at_the_crossroads
+system: pf2e
+mechanicalSummary: The crossroads between life and death is a place that can reveal many secrets.
+extraPools: []
+classes: [oracle]
+level: 12

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: arcane_sense
+system: pf2e
+prerequisite: Trained in Arcana
+mechanicalSummary: Cast detect magic at will as an arcane innate spell
+extraPools: []
+level: 1

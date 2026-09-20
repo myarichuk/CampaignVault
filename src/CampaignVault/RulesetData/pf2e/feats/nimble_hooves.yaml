@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: nimble_hooves
+system: pf2e
+mechanicalSummary: You possess hooves, ankle wings, or some other feature that hastens your movement.
+extraPools: []
+level: 1

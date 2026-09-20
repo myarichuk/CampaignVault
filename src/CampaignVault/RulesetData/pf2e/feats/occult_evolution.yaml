@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: occult_evolution
+system: pf2e
+prerequisite: bloodline that grants occult spells
+mechanicalSummary: You draw power from the obscure secrets of the universe.
+extraPools: []
+classes: [sorcerer]
+level: 4

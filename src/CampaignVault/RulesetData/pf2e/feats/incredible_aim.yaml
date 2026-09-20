@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incredible_aim
+system: pf2e
+mechanicalSummary: By spending a moment to focus, you can ensure your attack strikes true.
+extraPools: []
+classes: [fighter]
+level: 8

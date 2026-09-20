@@ -5,3 +5,8 @@ level: 3
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A white feather or the heart of a hen.
+materialConsumed: false

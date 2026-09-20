@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: deadly_aim
+system: pf2e
+prerequisite: weapon
+mechanicalSummary: You aim for your prey’s weak spots, making your shot more challenging but dealing more damage if you hit.
+extraPools: []
+classes: [ranger]
+level: 8

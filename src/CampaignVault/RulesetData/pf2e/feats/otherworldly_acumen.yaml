@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: otherworldly_acumen
+system: pf2e
+prerequisite: at least one innate spell gained from an elf ancestry feat
+mechanicalSummary: The arcane magic you possess grows in power and complexity.
+extraPools: []
+level: 9

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: invigorating_elixir
+system: pf2e
+mechanicalSummary: You can mix an aromatic salve into an elixir with the healing trait to soothe physical maladies.
+extraPools: []
+classes: [alchemist]
+level: 4

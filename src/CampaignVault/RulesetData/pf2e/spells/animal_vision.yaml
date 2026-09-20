@@ -1,0 +1,13 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: animal_vision
+system: pf2e
+level: 3
+classes: [druid]
+concentration: true
+castingTime: 1 minute
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

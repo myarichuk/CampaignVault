@@ -5,3 +5,7 @@ level: 3
 classes: [cleric, druid, paladin, ranger, sorcerer]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

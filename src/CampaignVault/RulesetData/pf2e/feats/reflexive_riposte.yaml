@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reflexive_riposte
+system: pf2e
+prerequisite: Opportune Riposte
+mechanicalSummary: You can riposte almost without a thought.
+extraPools: []
+classes: [swashbuckler]
+level: 10

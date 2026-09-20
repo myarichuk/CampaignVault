@@ -5,3 +5,9 @@ level: 9
 classes: [warlock, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A vellum depiction or a carved statuette in the likeness of the target, and a special component that varies according to the version of the spell you choose, worth at least 500gp per Hit Die of the target.
+materialCost: 500.0
+materialConsumed: false

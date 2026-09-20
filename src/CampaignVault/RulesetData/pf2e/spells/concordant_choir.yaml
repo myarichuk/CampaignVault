@@ -1,0 +1,13 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: concordant_choir
+system: pf2e
+level: 1
+classes: [bard, cleric]
+concentration: true
+castingTime: Single Action to Three Actions
+verbal: true
+somatic: false
+material: false
+materialConsumed: false

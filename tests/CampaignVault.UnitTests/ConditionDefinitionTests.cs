@@ -64,6 +64,17 @@ public class ConditionDefinitionTests
         Assert.Equal("parent summary", merged.MechanicalSummary);
     }
 
+    [Fact]
+    public void Merge_IsSurvivalExhaustion_TrueOnEitherSideWins()
+    {
+        var parent = new ConditionDefinition { Name = "base_cond", IsSurvivalExhaustion = true };
+        var child = new ConditionDefinition { Name = "sub_cond", Inherits = ["base_cond"], IsSurvivalExhaustion = false };
+
+        var merged = ConditionDefinition.Merge(child, parent);
+
+        Assert.True(merged.IsSurvivalExhaustion);
+    }
+
     // ── Embedded YAML loading ─────────────────────────────────────────────────
 
     [Fact]
@@ -106,6 +117,7 @@ public class ConditionDefinitionTests
         Assert.NotNull(def);
         Assert.Equal(ConditionDurationType.UntilLongRest, def.DurationType);
         Assert.True(def.IsStacking);
+        Assert.True(def.IsSurvivalExhaustion);
     }
 
     [Fact]
@@ -117,6 +129,7 @@ public class ConditionDefinitionTests
         Assert.NotNull(def);
         Assert.Equal(ConditionDurationType.UntilLongRest, def.DurationType);
         Assert.False(def.IsStacking);
+        Assert.True(def.IsSurvivalExhaustion);
     }
 
     [Fact]

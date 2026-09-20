@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: improved_familiar
+system: pf2e
+prerequisite: Familiar Master Dedication
+mechanicalSummary: You find it easy to attract a powerful and unusual familiar to your side.
+extraPools: []
+level: 6

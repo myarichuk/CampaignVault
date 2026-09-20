@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: divine_health
+system: pf2e
+mechanicalSummary: Your faith makes you resistant to disease, protecting you as you offer succor to the ill.
+extraPools: []
+classes: [champion]
+level: 2

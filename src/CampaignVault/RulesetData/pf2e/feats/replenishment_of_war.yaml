@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: replenishment_of_war
+system: pf2e
+prerequisite: expert in your deity’s favored weapon
+mechanicalSummary: Striking out against your enemies draws praise and protection from your deity.
+extraPools: []
+classes: [cleric]
+level: 10

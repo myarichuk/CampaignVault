@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: duskwalker_weapon_familiarity
+system: pf2e
+mechanicalSummary: You have familiarity with the bo staff, longbow, composite longbow, scythe, and staff
+extraPools: []
+level: 1

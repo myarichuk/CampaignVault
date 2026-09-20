@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: side_by_side_druid
+system: pf2e
+prerequisite: Animal Companion
+mechanicalSummary: You and your animal companion fight in tandem, distracting your foes and keeping them off balance.
+extraPools: []
+classes: [druid]
+level: 10

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: occult_resistance
+system: pf2e
+prerequisite: Expert in Occultism
+mechanicalSummary: Your study of occult practices has shown you how to best defend against them.
+extraPools: []
+level: 9

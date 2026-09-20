@@ -127,6 +127,11 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         /// which unconditionally overwrites NarrativeReminder and is never reached by pure-query calls).</summary>
         public string? ReseedAdvisory { get; set; }
 
+        /// <summary>Set by ApplyInitiativeNudges when the same NPC has been re-nudged (NpcInitiativeNudge)
+        /// too many times in a row before a previous nudge was actually consumed by a selection —
+        /// appended to NarrativeReminder in Finalize, same treatment as ReseedAdvisory.</summary>
+        public string? NudgeAdvisory { get; set; }
+
         /// <summary>Every entity ID touched by this turn's changes (chars/locations/items/quests/factions),
         /// used internally to drive RefreshInvolvedEntitiesAsync's auto-bundling into Npcs/Scenes and to
         /// tag the auto-logged SceneCommit event's Involved list. Not part of the response payload — the
@@ -218,6 +223,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             var ctx = new TurnContext(request, effective, session);
 
             await DecideTurnModeAsync(ctx);
+            AgePendingInitiativeNudges(ctx);
 
             if (hasChanges)
             {
@@ -633,6 +639,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
         ctx.AppliedChanges = changes.Concat(commitResult.AmbientDeltas).ToList();
         ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
+        ApplyInitiativeNudges(ctx);
 
         var commitTime = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
         var sceneEvent = new Event
@@ -671,6 +678,76 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
 
         await ctx.Session.SaveChangesAsync();
         return null;
+    }
+
+    /// <summary>Ages pending NpcInitiativeNudges from prior calls, then registers this turn's own
+    /// NpcInitiativeNudge WorldChanges as new pending entries — consumed later by
+    /// SelectAndEnrichInitiativeAsync. Flags ctx.NudgeAdvisory when the same NPC is re-nudged before
+    /// their previous nudge was ever consumed, config.InitiativeNudgeRepeatThreshold times in a row.</summary>
+    private static void AgePendingInitiativeNudges(TurnContext ctx)
+    {
+        // Ages every call (commit or pure-query) — a nudge decays by elapsed take_turn calls, not just
+        // ones that happen to carry a commit, or a run of pure-query calls would let it linger forever.
+        var expired = new List<string>();
+        foreach (var (npcId, pending) in ctx.Cursor.PendingInitiativeNudgesByEntityId)
+        {
+            pending.TurnsRemaining--;
+            if (pending.TurnsRemaining <= 0)
+            {
+                expired.Add(npcId);
+            }
+        }
+        foreach (var npcId in expired)
+        {
+            ctx.Cursor.PendingInitiativeNudgesByEntityId.Remove(npcId);
+        }
+    }
+
+    /// <summary>Registers this turn's own NpcInitiativeNudge WorldChanges as new pending entries —
+    /// consumed later by SelectAndEnrichInitiativeAsync. Flags ctx.NudgeAdvisory when the same NPC is
+    /// re-nudged before their previous nudge was ever consumed, config.InitiativeNudgeRepeatThreshold
+    /// times in a row. Only reachable from CommitChangesAsync (needs ctx.AppliedChanges), so nudges can
+    /// only arrive via an actual commit — AgePendingInitiativeNudges above still ages them on pure-query
+    /// calls in between.</summary>
+    private static void ApplyInitiativeNudges(TurnContext ctx)
+    {
+        var unconsumedTurns = Math.Max(1, ctx.Config?.InitiativeNudgeUnconsumedTurns ?? 2);
+        var repeatThreshold = Math.Max(1, ctx.Config?.InitiativeNudgeRepeatThreshold ?? 2);
+
+        string? advisory = null;
+        foreach (var nudge in ctx.AppliedChanges.OfType<NpcInitiativeNudge>())
+        {
+            int count;
+            if (ctx.Cursor.PendingInitiativeNudgesByEntityId.ContainsKey(nudge.CharacterId))
+            {
+                count = ctx.Cursor.ConsecutiveUnconsumedNudgesByEntityId.GetValueOrDefault(nudge.CharacterId, 1) + 1;
+            }
+            else
+            {
+                count = 1;
+            }
+            ctx.Cursor.ConsecutiveUnconsumedNudgesByEntityId[nudge.CharacterId] = count;
+            if (count >= repeatThreshold)
+            {
+                var thisAdvisory = $"Note: '{nudge.CharacterId}' has been nudged toward initiative " +
+                    $"{count} times in a row without acting in between — make sure to actually follow " +
+                    "through on the reaction (a mood shift, a line of dialogue, a consequence) before " +
+                    "layering on another, for narrative realism.";
+                advisory = advisory is null ? thisAdvisory : advisory + " " + thisAdvisory;
+            }
+
+            ctx.Cursor.PendingInitiativeNudgesByEntityId[nudge.CharacterId] = new PendingInitiativeNudge
+            {
+                Intensity = Math.Clamp(nudge.Intensity, 0f, 1f),
+                Reason = nudge.Reason,
+                TurnsRemaining = unconsumedTurns
+            };
+        }
+
+        if (advisory != null)
+        {
+            ctx.NudgeAdvisory = ctx.NudgeAdvisory is null ? advisory : ctx.NudgeAdvisory + " " + advisory;
+        }
     }
 
     /// <summary>Extracts structured details from all mutations for event enrichment.</summary>
@@ -925,9 +1002,27 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         var campaignDoc = await ctx.Session.LoadAsync<Campaign>(_keys.Meta(ctx.Campaign));
         var recentWinners = campaignDoc?.RecentInitiativeSlotNpcIds ?? [];
 
-        var winner = candidates
-            .OrderByDescending(c => InitiativeSelectionScorer.EstimatePriority(c, config, recentWinners))
-            .First();
+        // A pending NpcInitiativeNudge on a present candidate wins the slot outright — bypassing the
+        // scorer and cooldown penalty — since it represents a specific reactive beat the DM already
+        // judged worth surfacing, not routine rotation. Highest intensity wins if more than one present
+        // candidate is nudged at once.
+        Character? winner = candidates
+            .Where(c => ctx.Cursor.PendingInitiativeNudgesByEntityId.ContainsKey(c.Id))
+            .OrderByDescending(c => ctx.Cursor.PendingInitiativeNudgesByEntityId[c.Id].Intensity)
+            .FirstOrDefault();
+        string? nudgeReason = null;
+        if (winner != null)
+        {
+            nudgeReason = ctx.Cursor.PendingInitiativeNudgesByEntityId[winner.Id].Reason;
+            ctx.Cursor.PendingInitiativeNudgesByEntityId.Remove(winner.Id);
+            ctx.Cursor.ConsecutiveUnconsumedNudgesByEntityId[winner.Id] = 0;
+        }
+        else
+        {
+            winner = candidates
+                .OrderByDescending(c => InitiativeSelectionScorer.EstimatePriority(c, config, recentWinners))
+                .First();
+        }
         var selected = new List<Character> { winner };
 
         if (campaignDoc != null)
@@ -948,6 +1043,23 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             {
                 var enrichment = await _repository.EnrichNpcInitiativeAsync(
                     ctx.Session, npc, ctx.Campaign, "take_turn", includeTensionBreakdown: false);
+
+                if (npc.Id.Equals(winner.Id, StringComparison.OrdinalIgnoreCase) && nudgeReason != null)
+                {
+                    var nudgeCandidate = new InitiativeCandidate(
+                        Key: $"nudge:{npc.Id}",
+                        NpcId: npc.Id,
+                        Driver: InitiativeDriver.Disposition,
+                        Urgency: MemoryUrgency.High,
+                        FramingPrompt: nudgeReason,
+                        Weight: 1.0);
+                    enrichment = enrichment with
+                    {
+                        ActiveInitiatives = new[] { nudgeCandidate }.Concat(enrichment.ActiveInitiatives ?? []).ToList(),
+                        TurnIntent = new TurnIntentSignal("npc", nudgeReason, MemoryUrgency.High)
+                    };
+                }
+
                 ctx.InitiativeByNpcId[npc.Id] = ctx.Mode == TurnMode.Delta ? CompressForDelta(ctx, npc.Id, enrichment) : enrichment;
             }
             catch (Exception ex)
@@ -1087,7 +1199,9 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
 
             try
             {
-                var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, npcId, ctx.Campaign, BuildTrim(ctx, npcId));
+                var liveCharacter = await ctx.Session.LoadAsync<Character>(npcId);
+                var liveNeeds = liveCharacter?.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
+                var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, npcId, ctx.Campaign, BuildTrim(ctx, npcId, liveNeeds));
                 if (summary != null)
                 {
                     summary.Initiative = ctx.InitiativeByNpcId[npcId];
@@ -1192,7 +1306,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     /// what's actually driving behavior right now instead of re-sending the full needs dict every call.
     /// Null (no filtering) on Full mode.
     /// </summary>
-    private static IReadOnlyCollection<string>? ChangedNeedsKeys(TurnContext ctx, string characterId)
+    private static IReadOnlyCollection<string>? ChangedNeedsKeys(TurnContext ctx, string characterId, IReadOnlyDictionary<string, float> liveNeeds)
     {
         if (ctx.Mode != TurnMode.Delta)
         {
@@ -1200,8 +1314,16 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         }
 
         var threshold = ctx.Config?.NeedsChangeSignificanceThreshold ?? 2f;
+        // Deliberately higher than the per-turn threshold — ordinary background ticking drifting a
+        // few points over several turns isn't a meaningful state change on its own, only a materially
+        // bigger cumulative swing is. See CampaignConfig.NeedsCumulativeDriftThreshold.
+        var driftThreshold = ctx.Config?.NeedsCumulativeDriftThreshold ?? 10f;
         var eq = StringComparer.OrdinalIgnoreCase;
-        IEnumerable<string> movers = ctx.AppliedChanges
+
+        // This turn's own NeedChange batch — catches a single large swing (including one that
+        // introduces a need key never seen before, whose missing baseline below would otherwise
+        // read as zero drift).
+        var perTurnMovers = ctx.AppliedChanges
             .OfType<NeedChange>()
             .Where(nc => eq.Equals(nc.CharacterId, characterId) && Math.Abs(nc.Delta) >= threshold)
             .GroupBy(nc => nc.Need, eq)
@@ -1209,19 +1331,57 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             .OrderByDescending(x => x.MaxAbsDelta)
             .Select(x => x.Need);
 
+        // Cumulative drift since this need's value was last actually surfaced — catches slow ticking
+        // (e.g. hunger +1.5/turn) that never clears the per-turn threshold in any single NeedChange but
+        // does add up to something worth mentioning over several turns.
+        // A need with no recorded baseline (never surfaced before) contributes no drift here; it's
+        // covered by perTurnMovers above instead, so a brand-new key doesn't spuriously "drift" the
+        // first time it's ever seen.
+        var baseline = ctx.Cursor.SurfacedNeedValuesByEntityId.TryGetValue(characterId, out var byNeed)
+            ? byNeed
+            : new Dictionary<string, float>(eq);
+        var driftMovers = liveNeeds
+            .Where(kv => baseline.TryGetValue(kv.Key, out var b) && Math.Abs(kv.Value - b) >= driftThreshold)
+            .Select(kv => kv.Key);
+
+        var movers = perTurnMovers.Concat(driftMovers).Distinct(eq).ToList();
+
         if (ctx.Request?.LeanMode == true)
         {
-            movers = movers.Take(2);
+            movers = movers.Take(2).ToList();
         }
 
-        return movers.ToList();
+        if (!ctx.Cursor.SurfacedNeedValuesByEntityId.TryGetValue(characterId, out var toUpdate))
+        {
+            toUpdate = new Dictionary<string, float>(eq);
+            ctx.Cursor.SurfacedNeedValuesByEntityId[characterId] = toUpdate;
+        }
+        foreach (var need in movers)
+        {
+            if (liveNeeds.TryGetValue(need, out var v))
+            {
+                toUpdate[need] = v;
+            }
+        }
+        // Seed a baseline for every need not yet tracked (first time this NPC's needs are inspected
+        // in Delta mode), so drift for those needs is measured correctly from here on rather than
+        // staying permanently un-baselined.
+        foreach (var kv in liveNeeds)
+        {
+            if (!toUpdate.ContainsKey(kv.Key))
+            {
+                toUpdate[kv.Key] = kv.Value;
+            }
+        }
+
+        return movers;
     }
 
-    private CampaignRepository.NpcSummaryTrim BuildTrim(TurnContext ctx, string characterId) => new(
+    private CampaignRepository.NpcSummaryTrim BuildTrim(TurnContext ctx, string characterId, IReadOnlyDictionary<string, float> liveNeeds) => new(
         StripAppearance: ShouldStripUnchangedAppearance(ctx, characterId),
         SkipBehavioralSummary: ShouldSkipBehavioralSummary(ctx, characterId),
         StripGear: ShouldStripUnchangedGear(ctx, characterId),
-        NeedsKeysToInclude: ChangedNeedsKeys(ctx, characterId));
+        NeedsKeysToInclude: ChangedNeedsKeys(ctx, characterId, liveNeeds));
 
     /// <summary>
     /// True if this change could have altered the given location's own descriptive state (the fields
@@ -1336,14 +1496,15 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     /// which has no delta-mode concept — keeping it mode-agnostic avoids a "forgot to pass Full" class of bug.
     /// A no-op in Full mode (get_entity's only mode; take_turn's periodic/forced Full).
     /// </summary>
-    private NpcPresenceSummary ApplyDeltaTrim(TurnContext ctx, NpcPresenceSummary npc)
+    private NpcPresenceSummary ApplyDeltaTrim(TurnContext ctx, NpcPresenceSummary npc, out bool fullyUnchanged)
     {
         if (ctx.Mode != TurnMode.Delta)
         {
+            fullyUnchanged = false;
             return npc;
         }
 
-        var trim = BuildTrim(ctx, npc.Id);
+        var trim = BuildTrim(ctx, npc.Id, npc.KnownNeeds);
         var knownNeeds = trim.NeedsKeysToInclude != null
             ? npc.KnownNeeds.Where(kv => trim.NeedsKeysToInclude.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value)
             : npc.KnownNeeds;
@@ -1354,6 +1515,19 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         var needDescriptors = trim.NeedsKeysToInclude != null
             ? npc.NeedDescriptors.Where(kv => trim.NeedsKeysToInclude.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value)
             : npc.NeedDescriptors;
+
+        var compressedMemories = npc.RelevantMemories is { Count: > 0 }
+            ? CompressAndDedupeMemories(ctx, npc.Id, npc.RelevantMemories)
+            : null;
+
+        // "Nothing new to say about this NPC this turn": every per-field trim gate stripped its field
+        // and there's no fresh memory content riding along either. Consumed by
+        // RefreshInvolvedEntitiesAsync to decide whether a scene-present NPC can shrink further, to an
+        // id/name/roster-flags stub (see TurnCursor.SurfacedPresentNpcIdsByLocationId). Deliberately
+        // excludes BehavioralTension/ActiveInitiatives/TurnIntent — those reflect current state, not
+        // AppliedChanges, and are out of scope for this gate (see DELTA_PRESENCE_TRIM_PLAN.md non-goals).
+        fullyUnchanged = trim.StripAppearance && trim.SkipBehavioralSummary && trim.StripGear &&
+            knownNeeds.Count == 0 && (compressedMemories == null || compressedMemories.Count == 0);
 
         // CurrentActivity/CurrentMood share AffectsMoodOrActivity's gate with BehavioralSummary (the
         // latter is derived from the former plus recent events) — an NPC nobody touched this turn
@@ -1374,11 +1548,35 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             EquippedItems = trim.StripGear ? null : npc.EquippedItems,
             CarriedItems = trim.StripGear ? null : npc.CarriedItems,
             RelevantMemories = npc.RelevantMemories is { Count: > 0 } ? [] : npc.RelevantMemories,
-            CompressedMemories = npc.RelevantMemories is { Count: > 0 }
-                ? CompressAndDedupeMemories(ctx, npc.Id, npc.RelevantMemories)
-                : null
+            CompressedMemories = compressedMemories
         };
     }
+
+    /// <summary>Shrinks an already delta-trimmed, fully-unchanged scene-present NPC entry down to
+    /// id/name/roster-flags — the fields TurnResult.KnownCharacterIds' do-not-hallucinate check actually
+    /// needs. The entry is never omitted entirely (that would drop a present character out of the
+    /// known-entities list); only its content shrinks. See TurnCursor.SurfacedPresentNpcIdsByLocationId.</summary>
+    private static NpcPresenceSummary StubPresence(NpcPresenceSummary npc) => npc with
+    {
+        CurrentActivity = null,
+        CurrentMood = null,
+        KnownNeeds = new Dictionary<string, float>(),
+        NeedDescriptors = new Dictionary<string, string>(),
+        BehavioralSummary = null,
+        Notes = null,
+        NotesTruncated = null,
+        CurrentAppearance = null,
+        VisualTags = null,
+        DistinctiveFeatures = null,
+        SystemStats = null,
+        BehavioralTension = 0,
+        ActiveInitiatives = null,
+        RelevantMemories = null,
+        EquippedItems = null,
+        CarriedItems = null,
+        TurnIntent = null,
+        CompressedMemories = null
+    };
 
     /// <summary>
     /// Fetches lightweight summaries for refreshed entities. Explicitly requested extras are queued
@@ -1491,9 +1689,23 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                     var summary = await _repository.BuildSceneSummaryAsync(ctx.Session, locationId, ctx.Campaign);
                     if (summary != null)
                     {
+                        var priorPresentIds = ctx.Cursor.SurfacedPresentNpcIdsByLocationId
+                            .TryGetValue(locationId, out var priorIds)
+                            ? new HashSet<string>(priorIds, StringComparer.OrdinalIgnoreCase)
+                            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                         summary.PresentNPCs = summary.PresentNPCs
-                            .Select(npc => ApplyDeltaTrim(ctx, npc))
+                            .Select(npc =>
+                            {
+                                var trimmed = ApplyDeltaTrim(ctx, npc, out var fullyUnchanged);
+                                return fullyUnchanged && priorPresentIds.Contains(trimmed.Id)
+                                    ? StubPresence(trimmed)
+                                    : trimmed;
+                            })
                             .ToList();
+
+                        ctx.Cursor.SurfacedPresentNpcIdsByLocationId[locationId] =
+                            summary.PresentNPCs.Select(n => n.Id).ToList();
                         if (ShouldStripUnchangedLocationDetail(ctx, locationId))
                         {
                             summary.Location = ApplyLocationDeltaTrim(summary.Location);
@@ -1528,7 +1740,9 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             {
                 try
                 {
-                    var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, charId, ctx.Campaign, BuildTrim(ctx, charId));
+                    var liveCharacter = await ctx.Session.LoadAsync<Character>(charId);
+                    var liveNeeds = liveCharacter?.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
+                    var summary = await _repository.BuildNpcSummaryAsync(ctx.Session, charId, ctx.Campaign, BuildTrim(ctx, charId, liveNeeds));
                     if (summary != null)
                     {
                         summary.Initiative = ctx.InitiativeByNpcId.GetValueOrDefault(charId);
@@ -1773,9 +1987,19 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         DedupeRumorsCoveredByWorldState(result);
         PopulateQuerySuggestions(result);
 
+        if (ctx.Mode == TurnMode.Full)
+        {
+            SeedNeedBaselinesOnFullReseed(ctx);
+        }
+
         if (!string.IsNullOrEmpty(ctx.ReseedAdvisory))
         {
             AppendReminder(result, ctx.ReseedAdvisory);
+        }
+
+        if (!string.IsNullOrEmpty(ctx.NudgeAdvisory))
+        {
+            AppendReminder(result, ctx.NudgeAdvisory);
         }
 
         var stats = rateLimiter.GetStatistics();
@@ -1793,6 +2017,33 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         }
 
         return new ToolResult<TurnResult>(true, result, successMsg);
+    }
+
+    /// <summary>On a Full response, every present NPC's KnownNeeds is exactly what the client just
+    /// received — reset the cumulative-drift baseline (see ChangedNeedsKeys/TurnCursor.
+    /// SurfacedNeedValuesByEntityId) to match, so a subsequent Delta call measures drift from what was
+    /// actually sent, not from stale values left over from before the reseed.</summary>
+    private static void SeedNeedBaselinesOnFullReseed(TurnContext ctx)
+    {
+        var eq = StringComparer.OrdinalIgnoreCase;
+
+        void Seed(string entityId, Dictionary<string, float> knownNeeds)
+        {
+            ctx.Cursor.SurfacedNeedValuesByEntityId[entityId] = new Dictionary<string, float>(knownNeeds, eq);
+        }
+
+        foreach (var npc in ctx.Result.Npcs ?? [])
+        {
+            Seed(npc.CharacterId, npc.KnownNeeds);
+        }
+
+        foreach (var scene in ctx.Result.Scenes ?? [])
+        {
+            foreach (var presentNpc in scene.PresentNPCs)
+            {
+                Seed(presentNpc.Id, presentNpc.KnownNeeds);
+            }
+        }
     }
 
     /// <summary>

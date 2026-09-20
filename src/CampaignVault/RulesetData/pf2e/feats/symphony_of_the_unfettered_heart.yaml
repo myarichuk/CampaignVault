@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: symphony_of_the_unfettered_heart
+system: pf2e
+mechanicalSummary: You learn the symphony of the unfettered heart composition spell (page 371), which enables you to protect an ally against incapacitating conditions.
+extraPools: []
+classes: [bard]
+level: 10

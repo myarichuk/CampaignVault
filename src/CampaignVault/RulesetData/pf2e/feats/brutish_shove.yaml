@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: brutish_shove
+system: pf2e
+mechanicalSummary: Using the momentum of your last attack to throw your weight into another, you make your opponent stumble back.
+extraPools: []
+classes: [fighter]
+level: 2

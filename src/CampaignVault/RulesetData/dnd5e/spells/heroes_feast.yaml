@@ -5,3 +5,9 @@ level: 6
 classes: [cleric, druid]
 concentration: false
 castingTime: 10 minutes
+verbal: true
+somatic: true
+material: true
+materialText: A gem-encrusted bowl worth at least 1,000gp, which the spell consumes.
+materialCost: 1000.0
+materialConsumed: true

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: lingering_breath
+system: pf2e
+prerequisite: Breath of the Dragon
+mechanicalSummary: Your draconic breath destroys the surrounding environment and leaves your enemies in pain.
+extraPools: []
+level: 17

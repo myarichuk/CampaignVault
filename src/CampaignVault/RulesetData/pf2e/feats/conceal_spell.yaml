@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: conceal_spell
+system: pf2e
+mechanicalSummary: Through sheer mental effort, you can simplify the incantations and gestures needed to spellcast, leaving them barely noticeable.
+extraPools: []
+classes: [animist, necromancer, witch, wizard]
+level: 2

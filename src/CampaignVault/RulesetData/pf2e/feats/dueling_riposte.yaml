@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dueling_riposte
+system: pf2e
+prerequisite: Dueling Parry (Fighter)
+mechanicalSummary: You elegantly counterattack against your flailing enemy.
+extraPools: []
+classes: [fighter]
+level: 8

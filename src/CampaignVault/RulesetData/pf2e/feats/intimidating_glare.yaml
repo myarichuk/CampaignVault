@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: intimidating_glare
+system: pf2e
+prerequisite: Trained in Intimidation
+mechanicalSummary: Demoralize a creature without speaking
+extraPools: []
+level: 1

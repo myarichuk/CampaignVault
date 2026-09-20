@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: known_weaknesses
+system: pf2e
+mechanicalSummary: Whenever you Devise a Stratagem, you can also attempt a check to Recall Knowledge as part of that action before rolling the d20.
+extraPools: []
+classes: [investigator]
+level: 1

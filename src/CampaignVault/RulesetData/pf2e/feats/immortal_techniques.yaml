@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: immortal_techniques
+system: pf2e
+prerequisite: Master of Many Styles
+mechanicalSummary: You flow from technique to technique, renewing yourself as you embrace each style you have mastered.
+extraPools: []
+classes: [monk]
+level: 20

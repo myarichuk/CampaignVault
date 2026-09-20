@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: grandmother_s_wisdom
+system: pf2e
+mechanicalSummary: You carry the bones of your ancestors with you, and you can ask them for counsel.
+extraPools: []
+level: 9

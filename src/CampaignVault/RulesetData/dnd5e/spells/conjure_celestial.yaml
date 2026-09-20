@@ -5,3 +5,7 @@ level: 7
 classes: [cleric]
 concentration: true
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

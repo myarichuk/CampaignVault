@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dragon_s_rage_breath
+system: pf2e
+prerequisite: dragon instinct
+mechanicalSummary: You breathe deeply and exhale powerful energy in a 30-foot cone, dealing 1d6 damage per level to each creature in the area with a basic Reflex save against your class DC.
+extraPools: []
+classes: [barbarian]
+level: 6

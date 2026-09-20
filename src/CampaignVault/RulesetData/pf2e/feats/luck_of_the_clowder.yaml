@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: luck_of_the_clowder
+system: pf2e
+prerequisite: "Cat's Luck"
+mechanicalSummary: "When you use Cat's Luck to reroll, any creatures you choose within 10 feet who also just failed against the same effect (such as a single spell) can also reroll their saving throws and use the better result."
+extraPools: []
+level: 9

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: wind_caller
+system: pf2e
+prerequisite: storm order
+mechanicalSummary: You bid the winds to aid you, carrying you through the air and allowing you passage through the strongest headwinds.
+extraPools: []
+classes: [druid]
+level: 8

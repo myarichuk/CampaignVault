@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: iron_repercussions
+system: pf2e
+prerequisite: obedience cause
+mechanicalSummary: Disobeying your Iron Command has lasting consequences.
+extraPools: []
+classes: [champion]
+level: 1

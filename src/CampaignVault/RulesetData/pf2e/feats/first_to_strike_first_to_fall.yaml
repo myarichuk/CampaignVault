@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: first_to_strike_first_to_fall
+system: pf2e
+mechanicalSummary: Whenever you successfully Strike a creature that has not acted in the first round of combat, that creature is off-guard until the end of your next turn.
+extraPools: []
+level: 17

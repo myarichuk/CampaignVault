@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: summon_nephilim_kin
+system: pf2e
+prerequisite: any nephilim lineage feat
+mechanicalSummary: You have a connection to the Outer Planes, allowing you to summon a divine ally.
+extraPools: []
+level: 13

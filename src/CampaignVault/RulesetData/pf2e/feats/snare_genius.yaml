@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: snare_genius
+system: pf2e
+prerequisite: Snare Crafting; Expert in Crafting
+mechanicalSummary: If the snare normally takes 1 minute to Craft, you can Craft it with 3 Interact actions instead.
+extraPools: []
+level: 5

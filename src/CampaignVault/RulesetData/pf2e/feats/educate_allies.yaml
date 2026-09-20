@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: educate_allies
+system: pf2e
+prerequisite: Well-Versed
+mechanicalSummary: You tweak the properties of your composition spell to convey a bit of your defensive knowledge.
+extraPools: []
+classes: [bard]
+level: 6

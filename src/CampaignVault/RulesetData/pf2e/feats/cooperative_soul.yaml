@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cooperative_soul
+system: pf2e
+mechanicalSummary: You have developed a soul-deep bond with your comrades and maintain an even greater degree of cooperation with them.
+extraPools: []
+level: 9

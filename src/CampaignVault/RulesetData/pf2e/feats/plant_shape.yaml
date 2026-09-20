@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: plant_shape
+system: pf2e
+prerequisite: leaf order or Untamed Form
+mechanicalSummary: You can take the shape of a plant creature.
+extraPools: []
+classes: [druid]
+level: 10

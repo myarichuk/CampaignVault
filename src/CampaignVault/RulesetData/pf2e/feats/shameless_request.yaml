@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: shameless_request
+system: pf2e
+prerequisite: Master in Diplomacy
+mechanicalSummary: Make Requests of others with lesser consequences
+extraPools: []
+level: 7

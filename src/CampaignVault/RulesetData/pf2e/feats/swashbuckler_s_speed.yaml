@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: swashbuckler_s_speed
+system: pf2e
+prerequisite: Swashbuckler Dedication
+mechanicalSummary: You move with a swashbuckler’s speed and grace.
+extraPools: []
+level: 8

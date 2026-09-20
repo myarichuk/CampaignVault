@@ -30,6 +30,7 @@ You are persisting changes to the world: events, character state, items, relatio
 | Narrative | `event`, `rumor` | Record dialogue, actions, discoveries |
 | Character State | `character_update`, `mood`, `knowledge_update` | Appearance, mood, memory |
 | Relationships | `relationship`, `engagement_relation`, `spatial_position` | Social bonds, proximity, restraint |
+| NPC Behavior | `npc_initiative_nudge` | Prime a specific NPC to act/speak next based on something they just witnessed (see `dnd-npc-interaction`'s NPC Initiative section) — the engine's own scheduler can't judge a specific narrative beat the way you can. |
 | Inventory | `item`, `item_update`, `item_equip`, `item_unequip` | Carry/drop/equip items |
 
 **Picking up / dropping / giving an item (`$type: "item"`):** moves an *existing* item to a new holder — character, location, or container item. Never narrate a pickup without it, or the item stays owned by its old holder and `get_entity` on the location will still list it as `visibleItems`.

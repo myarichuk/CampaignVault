@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: divine_wings
+system: pf2e
+mechanicalSummary: With effort, you can call forth magical wings from your back, similar in appearance to those of your extraplanar forebear, whether they be elegantly feathered wings or ominous bat wings.
+extraPools: []
+level: 9

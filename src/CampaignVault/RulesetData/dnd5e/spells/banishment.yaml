@@ -5,3 +5,8 @@ level: 4
 classes: [cleric, paladin, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: An item distasteful to the target.
+materialConsumed: false

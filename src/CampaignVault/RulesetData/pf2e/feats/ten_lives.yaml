@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ten_lives
+system: pf2e
+prerequisite: Evade Doom
+mechanicalSummary: When your character would die, you can attempt a DC 17 flat check.
+extraPools: []
+level: 17

@@ -5,3 +5,9 @@ level: 6
 classes: [bard, cleric, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: An ointment for the eyes that costs 25gp; is made from mushroom powder, saffron, and fat; and is consumed by the spell.
+materialCost: 25.0
+materialConsumed: true

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: hold_mark
+system: pf2e
+mechanicalSummary: You bear scars or tattoos enhanced by the mark of your community’s prowess.
+extraPools: []
+level: 1

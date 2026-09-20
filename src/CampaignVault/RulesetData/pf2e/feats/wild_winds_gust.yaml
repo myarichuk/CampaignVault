@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: wild_winds_gust
+system: pf2e
+prerequisite: Wild Winds Initiate
+mechanicalSummary: You build air pressure with repeated motions, before releasing an enormous crescent of rushing wind strikes.
+extraPools: []
+classes: [monk]
+level: 14

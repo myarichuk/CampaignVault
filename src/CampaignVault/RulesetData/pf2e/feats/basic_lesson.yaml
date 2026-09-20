@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: basic_lesson
+system: pf2e
+mechanicalSummary: Your patron grants you a special lesson, revealing a hidden facet of its nature.
+extraPools: []
+classes: [witch]
+level: 2

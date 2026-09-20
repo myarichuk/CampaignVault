@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: well_versed
+system: pf2e
+mechanicalSummary: You’re resilient to performative influences that aren’t your own.
+extraPools: []
+classes: [bard]
+level: 1

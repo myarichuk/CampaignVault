@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scion_of_many_planes
+system: pf2e
+mechanicalSummary: The long and complicated history of your bloodline manifests in your ability to draw power from more planar sources than most other nephilim.
+extraPools: []
+level: 5

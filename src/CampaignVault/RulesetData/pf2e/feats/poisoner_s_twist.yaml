@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: poisoner_s_twist
+system: pf2e
+prerequisite: Poisoner Dedication; Trained in Medicine
+mechanicalSummary: Poisons attack specific parts of the body—one venom might target the lungs, another the circulatory system, while another deteriorates the nerves.
+extraPools: []
+level: 4

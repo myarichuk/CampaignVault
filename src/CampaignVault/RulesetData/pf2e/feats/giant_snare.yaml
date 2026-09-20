@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: giant_snare
+system: pf2e
+prerequisite: Snarecrafter Dedication
+mechanicalSummary: You can create bigger snares for quick deployment, making it more likely for a creature to walk into your snares.
+extraPools: []
+level: 10

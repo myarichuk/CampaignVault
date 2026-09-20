@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bloodline_focus
+system: pf2e
+prerequisite: bloodline spell
+mechanicalSummary: By listening to the beating of your heart, your focus recovers faster.
+extraPools: []
+classes: [sorcerer]
+level: 12

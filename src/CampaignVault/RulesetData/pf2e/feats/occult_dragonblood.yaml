@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: occult_dragonblood
+system: pf2e
+mechanicalSummary: Your blood contains a tiny fragment of unusual or inexplicable power from a mysterious dragon, such as a conspirator dragon or omen dragon.
+extraPools: []
+level: 1

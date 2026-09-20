@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: lie_detector
+system: pf2e
+prerequisite: empiricism or interrogation methodology
+mechanicalSummary: "You're adept at noticing the tells of a liar\u2014sweat, flushing, a quavering voice, a quickening pulse."
+extraPools: []
+classes: [investigator]
+level: 4

@@ -5,3 +5,9 @@ level: 9
 classes: [cleric, sorcerer, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A diamond worth at least 5,000gp.
+materialCost: 5000.0
+materialConsumed: false

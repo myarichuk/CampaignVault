@@ -5,3 +5,8 @@ level: 9
 classes: [bard, druid, warlock, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A hummingbird feather.
+materialConsumed: false

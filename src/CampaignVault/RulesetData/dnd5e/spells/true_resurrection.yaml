@@ -5,3 +5,9 @@ level: 9
 classes: [cleric, druid]
 concentration: false
 castingTime: 1 hour
+verbal: true
+somatic: true
+material: true
+materialText: A sprinkle of holy water and diamonds worth at least 25,000gp, which the spell consumes.
+materialCost: 25000.0
+materialConsumed: true

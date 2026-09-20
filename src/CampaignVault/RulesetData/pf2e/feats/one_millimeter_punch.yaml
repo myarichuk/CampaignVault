@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: one_millimeter_punch
+system: pf2e
+prerequisite: One-inch Punch
+mechanicalSummary: Your punches have incredible force and control.
+extraPools: []
+classes: [monk]
+level: 16

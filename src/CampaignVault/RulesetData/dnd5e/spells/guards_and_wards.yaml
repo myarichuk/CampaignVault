@@ -5,3 +5,9 @@ level: 6
 classes: [bard, wizard]
 concentration: false
 castingTime: 10 minutes
+verbal: true
+somatic: true
+material: true
+materialText: Burning incense, a small measure of brimstone and oil, a knotted string, a small amount of umber hulk blood, and a small silver rod worth at least 10 gp.
+materialCost: 10.0
+materialConsumed: false

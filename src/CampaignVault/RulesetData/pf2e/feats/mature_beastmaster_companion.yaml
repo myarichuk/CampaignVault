@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mature_beastmaster_companion
+system: pf2e
+prerequisite: Beastmaster Dedication
+mechanicalSummary: All of your animal companions grow up, becoming mature animal companions and gaining additional capabilities.  Your animal companion has greater independence.
+extraPools: []
+level: 4

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ancestor_s_rage
+system: pf2e
+mechanicalSummary: You transform into an enormous, otherworldly hyena.
+extraPools: []
+level: 13

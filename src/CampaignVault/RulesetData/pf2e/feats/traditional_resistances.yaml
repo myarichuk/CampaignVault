@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: traditional_resistances
+system: pf2e
+prerequisite: Arcane Dragonblood, Divine Dragonblood, Occult Dragonblood, or Primal Dragonblood
+mechanicalSummary: Due to your blood, you have some resistance to certain types of magic.
+extraPools: []
+level: 5

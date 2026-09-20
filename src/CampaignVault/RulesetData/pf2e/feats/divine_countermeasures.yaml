@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: divine_countermeasures
+system: pf2e
+mechanicalSummary: You’ve studied your extraplanar heritage with the intent of better defending yourself, whether against creatures aligned with or opposed to your extraplanar lineage, and you’ve found that your techniques are equally powerful against celestials, fiends, and other divine entities.
+extraPools: []
+level: 9

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reactive_shield
+system: pf2e
+mechanicalSummary: You can snap your shield into place just as you would take a blow, avoiding the hit at the last second.
+extraPools: []
+classes: [fighter]
+level: 1

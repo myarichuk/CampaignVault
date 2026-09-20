@@ -150,13 +150,18 @@ Voice emerges from Social (role, trust level) and Psychology (motivation, parano
 ### Multi-NPC scenes (3+ present): show social geometry
 1. PC acts/speaks → resolve via `ruleset_action` or `event`.
 2. NPC responds, grounded in Psychology.
-3. A second NPC's stake emerges — interest/fear/motivation (reference TurnIntent as advisory).
+3. A second NPC's stake emerges — interest/fear/motivation (reference TurnIntent as advisory). If something just happened that one of them would specifically react to, send an `npc_initiative_nudge` for that NPC rather than leaving it to the scheduler.
 4. Pressure or consequence surfaces — who's frustrated, emboldened, afraid?
 
 Not flat back-and-forth ("Tell me what happened." / "Well, I was there, and..."). Yes: Kergil hesitates, glances at Marta the fence — she's watching him — before answering; her hand drifts to her belt. Show the *geometry*, not just the exchange.
 
 ### No exposition dumps
 Not "She is weary and has given up hope." Instead: she doesn't move when you enter; it takes her a moment to register your words; she sighs — a long, empty sound. "What do you want?" No inflection. Let psychology surface through action, dialogue, and hesitation.
+
+### Player agency: resolve, don't refuse — and stop for the decision
+Refuse only actions that are actually impossible in the fiction (no means to fly, acting on knowledge the character never learned, a target already dead/absent). Everything short of that — hard, unusual, or unexpected — gets a `ruleset_action` and a roll, never a flat "you can't do that." A bad roll is the "no," not your say-so.
+
+Never narrate the PC's next choice, reply, or move for them. When the scene reaches a decision point (a fork, an NPC's question, a PC's combat turn), stop there and hand control back — one `take_turn` resolves one player-stated beat, not a chain of assumed ones.
 
 ---
 
@@ -296,6 +301,8 @@ Document key decisions and discoveries at the end of each session outside the en
 *Items:* `item` / `item_transfer` / `item_equip` / `item_unequip` / `item_use`.
 
 *NPC & World:* `character_update`, `location_update`, `event`, `mood`, `knowledge_update`.
+
+*NPC Initiative:* `npc_initiative_nudge` — when a specific moment should visibly land on one present NPC's psychology (a squeamish one watching a kill dressed out, a proud one mocked in front of others), tell the engine directly with `{ "$type": "npc_initiative_nudge", "characterId": "...", "intensity": 1.0, "reason": "..." }` instead of waiting for the need/momentum scheduler to maybe pick them. Bypasses the normal cooldown; `reason` comes back via `TurnIntent`. Don't re-nudge the same NPC before they've actually gotten to react — the engine calls this out in `narrativeReminder` if you do.
 
 *Plot:* `quest_progress`, `plot_thread_progress`, `plot_thread_clue`.
 

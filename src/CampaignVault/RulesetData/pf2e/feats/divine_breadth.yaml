@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: divine_breadth
+system: pf2e
+prerequisite: Basic Cleric Spellcasting
+mechanicalSummary: As your understanding increases, your god grants you more divine spells each day.
+extraPools: []
+level: 8

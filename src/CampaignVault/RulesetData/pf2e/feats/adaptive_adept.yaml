@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: adaptive_adept
+system: pf2e
+prerequisite: Adapted Cantrip; can cast 3rd-level spells
+mechanicalSummary: You’ve continued adapting your magic to blend your class’s tradition with your adapted tradition.
+extraPools: []
+level: 5

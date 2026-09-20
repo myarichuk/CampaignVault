@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: topple_foe
+system: pf2e
+prerequisite: Marshal Dedication; Trained in Athletics
+mechanicalSummary: You take advantage of the opening created by your ally to tip your foe off their feet.
+extraPools: []
+level: 10

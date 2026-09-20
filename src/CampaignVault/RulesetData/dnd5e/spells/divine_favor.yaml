@@ -5,3 +5,7 @@ level: 1
 classes: [paladin]
 concentration: true
 castingTime: 1 bonus action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

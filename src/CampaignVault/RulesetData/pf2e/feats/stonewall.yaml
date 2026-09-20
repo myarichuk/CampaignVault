@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: stonewall
+system: pf2e
+mechanicalSummary: The strength of stone overcomes you so strongly that it replaces your stout body.
+extraPools: []
+level: 17

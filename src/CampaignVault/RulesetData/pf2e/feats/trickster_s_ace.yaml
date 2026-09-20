@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: trickster_s_ace
+system: pf2e
+mechanicalSummary: Whether from jury-rigged magic items, deduction from the study of magical interactions, or other means, you have a contingency in your back pocket for desperate situations.
+extraPools: []
+classes: [investigator]
+level: 18

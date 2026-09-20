@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: true_debilitating_bomb
+system: pf2e
+prerequisite: Greater Debilitating Bomb
+mechanicalSummary: You have discovered increasingly devastating ways for your bombs to impede your foes.
+extraPools: []
+classes: [alchemist]
+level: 14

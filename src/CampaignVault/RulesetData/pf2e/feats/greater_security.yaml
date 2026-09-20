@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: greater_security
+system: pf2e
+prerequisite: Security
+mechanicalSummary: Shield in hand, you offer your ally its full protection you do yourself.
+extraPools: []
+classes: [champion]
+level: 8

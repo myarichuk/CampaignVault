@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: deceptive_worship
+system: pf2e
+prerequisite: Trained in Occultism
+mechanicalSummary: Members of your cult frequently pass themselves off as worshippers of other religions.
+extraPools: []
+level: 1

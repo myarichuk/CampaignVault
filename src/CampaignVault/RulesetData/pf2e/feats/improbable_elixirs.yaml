@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: improbable_elixirs
+system: pf2e
+mechanicalSummary: Your mastery of alchemical secrets enables you to replicate effects most believe can be achieved only via magic.
+extraPools: []
+classes: [alchemist]
+level: 18

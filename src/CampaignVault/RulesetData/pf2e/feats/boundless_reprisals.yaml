@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: boundless_reprisals
+system: pf2e
+mechanicalSummary: With a sixth sense for the flow of combat, you can quickly react to any situation as required.
+extraPools: []
+classes: [fighter]
+level: 20

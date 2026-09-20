@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: meditative_focus
+system: pf2e
+prerequisite: Qi Spells
+mechanicalSummary: Your meditation is so effective that you can achieve a deep focus with the world around you.
+extraPools: []
+classes: [monk]
+level: 12

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: assassinate
+system: pf2e
+prerequisite: Assassin Dedication
+mechanicalSummary: You strike with one swift movement, trying to instantly slay your mark.
+extraPools: []
+level: 12

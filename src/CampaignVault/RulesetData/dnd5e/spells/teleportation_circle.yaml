@@ -5,3 +5,9 @@ level: 5
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: false
+material: true
+materialText: Rare chalks and inks infused with precious gems with 50 gp, which the spell consumes.
+materialCost: 50.0
+materialConsumed: true

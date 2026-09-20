@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dubious_knowledge
+system: pf2e
+prerequisite: trained in a skill with the Recall Knowledge action
+mechanicalSummary: Learn true and erroneous knowledge on failed check
+extraPools: []
+level: 1

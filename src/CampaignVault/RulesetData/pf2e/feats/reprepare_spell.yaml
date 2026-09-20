@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reprepare_spell
+system: pf2e
+mechanicalSummary: You’ve discovered how to reuse some of your spell slots over and over.
+extraPools: []
+classes: [wizard]
+level: 18

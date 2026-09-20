@@ -5,3 +5,8 @@ level: 3
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action
+verbal: false
+somatic: true
+material: true
+materialText: A glowing stick of incense or a crystal vial filled with phosphorescent material.
+materialConsumed: false

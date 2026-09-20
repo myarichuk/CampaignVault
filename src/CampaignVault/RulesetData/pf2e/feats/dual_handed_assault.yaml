@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dual_handed_assault
+system: pf2e
+mechanicalSummary: You snap your free hand over to grip your weapon just long enough to add momentum and deliver a more powerful blow to your opponent.
+extraPools: []
+classes: [fighter]
+level: 4

@@ -30,6 +30,24 @@ public class CustomSpell : ICampaignScopedEntity, IArchivable
 
     public string? CastingTime { get; set; }
 
+    /// <summary>Requires speech.</summary>
+    public bool? Verbal { get; set; }
+
+    /// <summary>Requires a free hand / gesture.</summary>
+    public bool? Somatic { get; set; }
+
+    /// <summary>Requires a physical material component or focus.</summary>
+    public bool? Material { get; set; }
+
+    /// <summary>Free-text description of the material component.</summary>
+    public string? MaterialText { get; set; }
+
+    /// <summary>Gold-piece value of a costly material component, if any.</summary>
+    public decimal? MaterialCost { get; set; }
+
+    /// <summary>Whether the material component is consumed on cast.</summary>
+    public bool? MaterialConsumed { get; set; }
+
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     /// <summary>

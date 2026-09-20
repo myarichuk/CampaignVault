@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: unfettered_halfling
+system: pf2e
+mechanicalSummary: "You were either pressed into indentured servitude or shackled in a prison, but you've since escaped and have trained to ensure you'll never be caught again."
+extraPools: []
+level: 1

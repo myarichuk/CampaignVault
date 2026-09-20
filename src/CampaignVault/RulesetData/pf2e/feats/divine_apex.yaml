@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: divine_apex
+system: pf2e
+mechanicalSummary: You can pour divine power into an item, letting the wearer exceed their limits.
+extraPools: []
+classes: [cleric]
+level: 18

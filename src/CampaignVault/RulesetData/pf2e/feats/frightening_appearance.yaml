@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: frightening_appearance
+system: pf2e
+prerequisite: Startling Appearance; Expert in Intimidation
+mechanicalSummary: Your dramatic appearances can frighten bystanders.
+extraPools: []
+level: 12

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: formidable_breath
+system: pf2e
+prerequisite: Breath of the Dragon
+mechanicalSummary: Thanks to rigorous breathing exercises and a diet similar to that of your lineage, your magical breath is more powerful.
+extraPools: []
+level: 9

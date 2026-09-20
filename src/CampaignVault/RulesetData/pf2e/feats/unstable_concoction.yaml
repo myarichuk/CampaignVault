@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: unstable_concoction
+system: pf2e
+mechanicalSummary: You can mix a wondrous yet volatile liquid into an alchemical consumable if it has an initial effect that uses dice.
+extraPools: []
+classes: [alchemist]
+level: 10

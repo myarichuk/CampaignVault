@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: eldritch_archer_dedication
+system: pf2e
+prerequisite: expert in at least one weapon from the or bow or crossbow weapon group
+mechanicalSummary: You channel powerful magic with your archery, allowing you to deliver potent spells through the tip of an arrow rather than the more mundane flick of the wrist or whatever other gestures are usually used.
+extraPools: []
+level: 6

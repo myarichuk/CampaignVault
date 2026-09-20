@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cruelty
+system: pf2e
+prerequisite: touch of the void
+mechanicalSummary: "The harm you deal with your corrupting touch saps the strength from your enemy's body."
+extraPools: []
+classes: [champion]
+level: 4

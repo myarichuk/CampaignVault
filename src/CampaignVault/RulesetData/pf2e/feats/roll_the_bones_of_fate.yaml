@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: roll_the_bones_of_fate
+system: pf2e
+prerequisite: bones mystery or lore mystery
+mechanicalSummary: You roll a handful of bones to learn (or perhaps influence) the future course of events.
+extraPools: []
+classes: [oracle]
+level: 10

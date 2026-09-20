@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: double_poison
+system: pf2e
+mechanicalSummary: You can apply two different infused injury poisons to the same weapon, though not to a piece of ammunition.
+extraPools: []
+classes: [alchemist]
+level: 14

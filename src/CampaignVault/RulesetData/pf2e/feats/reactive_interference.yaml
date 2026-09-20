@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reactive_interference
+system: pf2e
+mechanicalSummary: Grabbing a sleeve, swiping with your weapon, or creating another obstruction, you reflexively foil an enemy’s response.
+extraPools: []
+classes: [commander, rogue]
+level: 12

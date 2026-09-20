@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: toppling_dance
+system: pf2e
+prerequisite: Dance Underfoot
+mechanicalSummary: "While sharing a creature's space using Dance Underfoot, your melee weapons and unarmed attacks gain the trip trait, but only against the creature whose space you share."
+extraPools: []
+level: 13

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: tangled_forest_stance
+system: pf2e
+mechanicalSummary: "You extend your arms like gnarled branches to interfere with your foes' movements."
+extraPools: []
+classes: [monk]
+level: 8

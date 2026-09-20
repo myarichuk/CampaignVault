@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dance_underfoot
+system: pf2e
+prerequisite: Step Lively
+mechanicalSummary: You dart under the legs of your enemies in combat.
+extraPools: []
+level: 9

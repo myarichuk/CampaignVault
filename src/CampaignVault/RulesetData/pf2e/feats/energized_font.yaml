@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: energized_font
+system: pf2e
+prerequisite: focus pool, at least one innate spell from a gnome heritage or ancestry feat that shares a tradition with at least one of your focus spells
+mechanicalSummary: You can focus your mind more quickly thanks to the magic that flows within you.
+extraPools: []
+level: 5

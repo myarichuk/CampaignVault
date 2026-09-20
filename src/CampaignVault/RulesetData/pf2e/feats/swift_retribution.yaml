@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: swift_retribution
+system: pf2e
+prerequisite: "champion's reaction"
+mechanicalSummary: The transgressions of your enemies fuel you to retaliate with divine speed.
+extraPools: []
+classes: [champion]
+level: 18

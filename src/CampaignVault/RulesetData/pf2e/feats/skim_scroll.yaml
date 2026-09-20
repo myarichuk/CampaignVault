@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: skim_scroll
+system: pf2e
+prerequisite: Scroll Trickster Dedication
+mechanicalSummary: You can activate the magic of a scroll with a cursory read as you draw it from your belt.
+extraPools: []
+level: 8

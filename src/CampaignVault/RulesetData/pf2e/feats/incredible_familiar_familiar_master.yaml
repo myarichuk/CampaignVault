@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incredible_familiar_familiar_master
+system: pf2e
+prerequisite: Enhanced Familiar
+mechanicalSummary: Your familiar is infused with even more magic than other familiars.
+extraPools: []
+level: 10

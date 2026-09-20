@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: enigma_s_knowledge
+system: pf2e
+prerequisite: Assured Knowledge
+mechanicalSummary: Your muse whispers knowledge to you at all the right times.
+extraPools: []
+classes: [bard]
+level: 12

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: student_of_the_dueling_arts
+system: pf2e
+prerequisite: Duelist Dedication
+mechanicalSummary: Dueling is your art, and your weapon is your instrument.
+extraPools: []
+level: 12

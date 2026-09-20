@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: parthenogenic_hatchling
+system: pf2e
+mechanicalSummary: You were hatched from an unfertilized egg during hard times for your people, and are a biological copy of your mother.
+extraPools: []
+level: 1

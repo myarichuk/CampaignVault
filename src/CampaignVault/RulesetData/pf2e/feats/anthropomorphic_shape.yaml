@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: anthropomorphic_shape
+system: pf2e
+prerequisite: Untamed Form
+mechanicalSummary: Humanoids’ supposed place apart from animals is folly—taking on their forms just requires some extra practice.
+extraPools: []
+classes: [druid]
+level: 4

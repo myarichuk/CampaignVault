@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scars_of_steel
+system: pf2e
+prerequisite: fury instinct
+mechanicalSummary: When you are struck with the mightiest of blows, you can flex your muscles to turn aside some of the damage.
+extraPools: []
+classes: [barbarian]
+level: 4

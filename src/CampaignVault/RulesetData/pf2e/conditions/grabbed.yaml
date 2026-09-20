@@ -1,8 +1,8 @@
-# Source: Pathfinder 2e Core Rulebook, ORC License
+# Source: Pathfinder 2e Remastered (Player Core), ORC License
 name: grabbed
 system: pf2e
 durationType: Manual
-mechanicalSummary: Immobilized by a grab; can attempt to Escape; ends when grabber releases or is incapacitated
+mechanicalSummary: Immobilized by a grab; can attempt to Escape; ends when grabber releases or is incapacitated. Restricts Manipulate actions (most somatic-component casting) to only those usable with the grabbed hand/limb still bound; a spell requiring a free hand it doesn't have fails.
 moodHint: trapped, struggling
 immunities: []
 suppresses: []

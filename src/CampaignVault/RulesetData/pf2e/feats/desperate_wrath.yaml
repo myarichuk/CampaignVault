@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: desperate_wrath
+system: pf2e
+mechanicalSummary: Your blood boils when you take a beating, and you throw caution to the wind to finish the fight.
+extraPools: []
+classes: [barbarian]
+level: 16

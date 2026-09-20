@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bone_magic
+system: pf2e
+mechanicalSummary: "Your connection to your iruxi ancestors manifests as a simple primal spell that you cast using a fragment of an ancestor's bones."
+extraPools: []
+level: 1

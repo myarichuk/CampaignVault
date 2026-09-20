@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: meddling_futures
+system: pf2e
+mechanicalSummary: You open yourself to the guidance of whatever spirits or powers deign to help you.
+extraPools: []
+classes: [oracle]
+level: 2

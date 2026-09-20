@@ -5,3 +5,9 @@ level: 6
 classes: [bard, cleric, druid]
 concentration: true
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A set of divinatory tools--such as bones, ivory sticks, cards, teeth, or carved runes--worth 100gp and an object from the location you wish to find.
+materialCost: 100.0
+materialConsumed: false

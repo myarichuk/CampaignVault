@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: orc_weapon_familiarity
+system: pf2e
+mechanicalSummary: In combat, you favor the brutal weapons that are traditional for your orc ancestors.
+extraPools: []
+level: 1

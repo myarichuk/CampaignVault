@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: blessed_sacrifice
+system: pf2e
+prerequisite: Blessed One Dedication
+mechanicalSummary: You gain the protector’s sacrifice domain spell
+extraPools: []
+level: 4

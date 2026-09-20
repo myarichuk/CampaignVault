@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: lead_investigator
+system: pf2e
+prerequisite: Clue Them All In
+mechanicalSummary: You spend 1 minute briefing up to four allies about one of your open investigations.
+extraPools: []
+classes: [investigator]
+level: 18

@@ -5,3 +5,7 @@ level: 4
 classes: [cleric, paladin]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

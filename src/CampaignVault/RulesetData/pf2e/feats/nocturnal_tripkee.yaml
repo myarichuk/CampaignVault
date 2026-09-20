@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: nocturnal_tripkee
+system: pf2e
+mechanicalSummary: You tend to do most of your hunting and work at night and have adapted to the requirements of nocturnal life.
+extraPools: []
+level: 1

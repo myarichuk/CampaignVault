@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: effortless_concentration
+system: pf2e
+mechanicalSummary: You can maintain a spell with hardly a thought.
+extraPools: []
+classes: [bard, druid, necromancer, sorcerer, summoner, witch, wizard]
+level: 16

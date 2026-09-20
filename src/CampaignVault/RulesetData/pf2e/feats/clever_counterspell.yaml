@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: clever_counterspell
+system: pf2e
+prerequisite: Counterspell; Quick Recognition
+mechanicalSummary: You creatively apply your prepared spells to Counterspell a much wider variety of your opponents’ magic.
+extraPools: []
+classes: [wizard]
+level: 12

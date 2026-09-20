@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: animal_accomplice
+system: pf2e
+mechanicalSummary: You build a rapport with an animal, which becomes magically bonded to you.
+extraPools: []
+level: 1

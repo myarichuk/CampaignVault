@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: draconic_arrogance
+system: pf2e
+prerequisite: dragon instinct
+mechanicalSummary: Few can sway you from your goals while the fury of combat fills you.
+extraPools: []
+classes: [barbarian]
+level: 1

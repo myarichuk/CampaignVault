@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: improvise_tool
+system: pf2e
+prerequisite: Trained in Crafting
+mechanicalSummary: "You can jury-rig solutions when you don't have the proper tools on hand."
+extraPools: []
+level: 1

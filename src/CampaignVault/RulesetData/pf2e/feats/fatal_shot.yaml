@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: fatal_shot
+system: pf2e
+prerequisite: Eldritch Archer Dedication
+mechanicalSummary: You modify an arrow or bolt to bring death to your target in a single potent hit.
+extraPools: []
+level: 18

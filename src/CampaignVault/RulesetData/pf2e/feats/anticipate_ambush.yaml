@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: anticipate_ambush
+system: pf2e
+prerequisite: Expert in Stealth
+mechanicalSummary: You keep watch for any hidden creatures or dangerous sites, moving at half your travel Speed.
+extraPools: []
+classes: [rogue]
+level: 6

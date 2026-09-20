@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: vicious_debilitations
+system: pf2e
+prerequisite: ruffian racket; Debilitating Strike
+mechanicalSummary: The debilitations you dish out seriously impair your foes.
+extraPools: []
+classes: [rogue]
+level: 10

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: focused_fascination
+system: pf2e
+prerequisite: Fascinating Performance
+mechanicalSummary: When you use Fascinating Performance in a combat encounter, you need only a success, rather than a critical success, to fascinate your target.
+extraPools: []
+classes: [swashbuckler]
+level: 1

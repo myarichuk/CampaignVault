@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: distracting_shadows
+system: pf2e
+mechanicalSummary: You have learned to remain hidden by using larger folk as a distraction to avoid drawing attention to yourself.
+extraPools: []
+level: 1

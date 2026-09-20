@@ -5,3 +5,7 @@ level: 1
 classes: [warlock]
 concentration: false
 castingTime: 1 reaction
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

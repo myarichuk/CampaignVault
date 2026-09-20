@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: miracle_worker
+system: pf2e
+mechanicalSummary: Your alchemical mastery can resuscitate the recently slain.
+extraPools: []
+classes: [alchemist]
+level: 18

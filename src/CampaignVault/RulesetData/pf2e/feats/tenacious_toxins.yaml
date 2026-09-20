@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: tenacious_toxins
+system: pf2e
+mechanicalSummary: Your victims tend to expire long before your poisons, since the latter have been specifically formulated to last longer.
+extraPools: []
+classes: [alchemist]
+level: 4

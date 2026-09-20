@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: deimatic_display
+system: pf2e
+prerequisite: Trained in Intimidation
+mechanicalSummary: Imitating animal threat displays, you make yourself appear larger and more imposing.
+extraPools: []
+classes: [druid]
+level: 8

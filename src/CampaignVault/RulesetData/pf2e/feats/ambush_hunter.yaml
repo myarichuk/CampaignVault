@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ambush_hunter
+system: pf2e
+mechanicalSummary: You are always searching for the perfect opportunity to ambush your enemies.
+extraPools: []
+level: 9

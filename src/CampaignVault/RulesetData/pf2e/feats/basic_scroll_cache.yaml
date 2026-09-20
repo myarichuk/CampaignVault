@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: basic_scroll_cache
+system: pf2e
+prerequisite: Scroll Trickster Dedication
+mechanicalSummary: You have a vast and overflowing collection of scroll  scraps, riddled with errors and misspellings and leaking energy like a sieve.
+extraPools: []
+level: 6

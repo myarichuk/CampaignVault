@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reflexive_courage
+system: pf2e
+prerequisite: warrior muse
+mechanicalSummary: You bellow a ferocious call to arms, inspiring yourself to lash out at a foe.
+extraPools: []
+classes: [bard]
+level: 8

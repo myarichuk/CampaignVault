@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: twin_distraction
+system: pf2e
+prerequisite: Twin Feint
+mechanicalSummary: Your movements with two weapons are so swift and disorienting that they befuddle your opponent.
+extraPools: []
+classes: [rogue]
+level: 4

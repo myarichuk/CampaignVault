@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: undaunted
+system: pf2e
+mechanicalSummary: Your spirit has endured many challenges over its long existence.
+extraPools: []
+level: 1

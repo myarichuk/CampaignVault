@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: solid_lead
+system: pf2e
+mechanicalSummary: Sometimes your case splinters into smaller mysteries, but you never lose sight of the big picture.
+extraPools: []
+classes: [investigator]
+level: 2

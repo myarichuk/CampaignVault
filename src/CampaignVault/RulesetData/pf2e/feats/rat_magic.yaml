@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rat_magic
+system: pf2e
+mechanicalSummary: There always seems to be a little rat around to carry messages for you.
+extraPools: []
+level: 5

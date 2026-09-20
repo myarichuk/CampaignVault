@@ -5,3 +5,9 @@ level: 7
 classes: [bard, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A miniature portal carved from ivory, a small piece of polished marble, and a tiny silver spoon, each item worth at least 5 gp.
+materialCost: 5.0
+materialConsumed: false

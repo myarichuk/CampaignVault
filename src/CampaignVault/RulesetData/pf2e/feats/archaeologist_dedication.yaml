@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: archaeologist_dedication
+system: pf2e
+prerequisite: Trained in Society; Trained in Thievery
+mechanicalSummary: You are a student of peoples and their histories, and are in constant pursuit of knowledge and artifacts from the past.
+extraPools: []
+level: 2

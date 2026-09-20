@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: shared_prey
+system: pf2e
+prerequisite: "Double Prey; Warden's Boon"
+mechanicalSummary: Hunting as a duo, you and your ally both single out your prey.
+extraPools: []
+classes: [ranger]
+level: 14

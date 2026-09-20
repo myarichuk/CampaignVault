@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dragon_stance
+system: pf2e
+mechanicalSummary: "You enter the stance of a dragon and make powerful leg strikes like a lashing dragon's tail."
+extraPools: []
+classes: [monk]
+level: 1

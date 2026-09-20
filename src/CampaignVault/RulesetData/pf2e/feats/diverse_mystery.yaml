@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: diverse_mystery
+system: pf2e
+mechanicalSummary: You have broadened your understanding of the divine and can tap into the wonders of a different mystery.
+extraPools: []
+classes: [oracle]
+level: 16

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: benefactor_s_majesty
+system: pf2e
+mechanicalSummary: "You tap into the grandeur of your warren's benefactor."
+extraPools: []
+level: 17

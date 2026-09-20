@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: guiding_luck
+system: pf2e
+prerequisite: Halfling Luck
+mechanicalSummary: Your luck guides you to look the right way and aim your blows unerringly.
+extraPools: []
+level: 9

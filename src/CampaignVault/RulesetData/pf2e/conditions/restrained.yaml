@@ -1,8 +1,8 @@
-# Source: Pathfinder 2e Core Rulebook, ORC License
+# Source: Pathfinder 2e Remastered (Player Core), ORC License
 name: restrained
 system: pf2e
 durationType: Manual
-mechanicalSummary: Cannot move; penalty to attacks and AC; can attempt to Escape or break free
+mechanicalSummary: Cannot move; penalty to attacks and AC; can attempt to Escape or break free. Hands are bound, so Manipulate actions (most somatic-component casting) are impossible unless something explicitly frees a hand.
 moodHint: bound, claustrophobic
 immunities: []
 suppresses: []

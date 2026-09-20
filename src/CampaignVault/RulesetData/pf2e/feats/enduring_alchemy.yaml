@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: enduring_alchemy
+system: pf2e
+mechanicalSummary: "You've learned how to make your personal energy last just a little bit longer when quickly brewing ad hoc concoctions."
+extraPools: []
+classes: [alchemist]
+level: 4

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: master_of_many_styles
+system: pf2e
+prerequisite: "[Fighter] Opening Stance (Fighter); [Monk] Reflexive Stance"
+mechanicalSummary: You move fluidly between stances, using your mastery of combat to always adopt the best tactics.
+extraPools: []
+classes: [fighter, monk]
+level: 16

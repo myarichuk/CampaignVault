@@ -5,3 +5,8 @@ level: 6
 classes: [druid, sorcerer, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: An iron blade and a small bag containing a mixture of soils--clay, loam, and sand.
+materialConsumed: false

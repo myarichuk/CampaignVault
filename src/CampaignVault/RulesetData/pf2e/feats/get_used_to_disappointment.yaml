@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: get_used_to_disappointment
+system: pf2e
+prerequisite: Expert in Intimidation
+mechanicalSummary: "You capitalize on an opponent's failure with smug attitude and swagger, reminding them of the gap in skill between you and your opponent."
+extraPools: []
+classes: [swashbuckler]
+level: 12

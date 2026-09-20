@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: martyr
+system: pf2e
+mechanicalSummary: You go to extreme lengths to support your allies, even when it means bringing harm to yourself.
+extraPools: []
+classes: [cleric]
+level: 8

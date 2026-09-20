@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: improved_dueling_riposte
+system: pf2e
+prerequisite: Dueling Riposte
+mechanicalSummary: Your weapon whirls and darts, striking foes whenever the slightest opening or moment of weakness presents itself.
+extraPools: []
+classes: [fighter]
+level: 12

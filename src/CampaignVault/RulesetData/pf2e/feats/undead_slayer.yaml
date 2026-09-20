@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: undead_slayer
+system: pf2e
+mechanicalSummary: Your knowledge of your own not-quite-living anatomy, combined with your experience in combat, helps you take down undead foes with ease.
+extraPools: []
+level: 5

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: pick_up_the_pace
+system: pf2e
+prerequisite: Constitution +2
+mechanicalSummary: You lead by example and can help others push themselves beyond their normal limits.
+extraPools: []
+level: 3

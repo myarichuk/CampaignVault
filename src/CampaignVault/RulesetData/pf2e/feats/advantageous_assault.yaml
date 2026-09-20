@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: advantageous_assault
+system: pf2e
+mechanicalSummary: After compromising your enemy’s movement, you deliver a more deadly blow.
+extraPools: []
+classes: [fighter]
+level: 6

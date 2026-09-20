@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: magic_hands
+system: pf2e
+prerequisite: Healing Hands
+mechanicalSummary: The blessing of your deity heightens your healing ability, integrating magical healing with the mundane.
+extraPools: []
+classes: [cleric]
+level: 6

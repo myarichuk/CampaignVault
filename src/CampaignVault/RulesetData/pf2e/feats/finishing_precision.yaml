@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: finishing_precision
+system: pf2e
+prerequisite: Swashbuckler Dedication
+mechanicalSummary: You’ve learned how to land daring blows when you have panache.
+extraPools: []
+level: 4

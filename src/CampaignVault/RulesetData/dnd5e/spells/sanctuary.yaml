@@ -5,3 +5,8 @@ level: 1
 classes: [cleric]
 concentration: false
 castingTime: 1 bonus action
+verbal: true
+somatic: true
+material: true
+materialText: A small silver mirror.
+materialConsumed: false

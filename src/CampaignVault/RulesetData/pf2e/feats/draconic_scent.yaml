@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: draconic_scent
+system: pf2e
+mechanicalSummary: Your sense of smell has heightened to be as keen as that of a dragon.
+extraPools: []
+level: 5

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incorporeal_shot
+system: pf2e
+prerequisite: Eldritch Archer Dedication
+mechanicalSummary: You can concentrate an immense amount of magic to create a piece of ammunition that phases through everything but your target.
+extraPools: []
+level: 16

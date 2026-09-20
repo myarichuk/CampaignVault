@@ -114,6 +114,19 @@ Social checks against NPCs apply relationship modifiers automatically (see `dnd-
 
 If `TurnIntent` is set on the NPC's full-detail view (get_entity / take_turn full detail), this NPC is eager to act/speak next. Use as an advisory hint (not a hard rule). They might interrupt, volunteer info, act urgently.
 
+The engine's own initiative scheduler picks this from need/momentum pressure it can measure — it can't judge a specific narrative beat the way you can. When something just happened that this NPC's psychology says they'd react to (a squeamish NPC watching game get field-dressed, a proud one being mocked in front of others, a loyal one watching their patron threatened), tell the engine directly instead of waiting for the scheduler to maybe notice:
+
+```json
+{
+  "$type": "npc_initiative_nudge",
+  "characterId": "chars/touchy-scout",
+  "intensity": 1.0,
+  "reason": "watched the rabbit being field-dressed and is visibly disturbed"
+}
+```
+
+This bypasses the normal rotation and cooldown outright — the nudged NPC wins the initiative slot on the next eligible turn (often the very same `take_turn` response, if they're already a candidate this call), and `reason` comes back to you via `TurnIntent`/the initiative signal so you don't have to re-invent why they're primed to act. Use it sparingly, for moments that specifically land on one NPC's psychology — not as a replacement for the normal scheduler on every beat. If you nudge the same NPC again before they've actually gotten to react, the engine will say so in `narrativeReminder`; when you see that, resolve the pending reaction (a mood shift, a line, a consequence) before nudging them again.
+
 ## NPC Promotion & "Little Stories"
 
 When a transient NPC (born mid-session with `keepAlive: false`) becomes a favorite and you decide to keep them:
@@ -145,4 +158,5 @@ When a transient NPC (born mid-session with `keepAlive: false`) becomes a favori
 - [ ] Did their relationship with PC shift? → `relationship` change in take_turn
 - [ ] Are they driven by unmet needs? → Show it, don't state it
 - [ ] Did I check their schedule? → Are they where they should be?
+- [ ] Did something just happen that this NPC's psychology says they'd react to? → `npc_initiative_nudge`, don't wait for the scheduler
 - [ ] If promoted to permanent (keepAlive: true), did I seed a plot thread ("little story") for them?

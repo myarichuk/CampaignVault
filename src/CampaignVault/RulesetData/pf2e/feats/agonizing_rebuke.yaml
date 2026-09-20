@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: agonizing_rebuke
+system: pf2e
+mechanicalSummary: When you terrorize your enemies, you also cause them painful mental distress.
+extraPools: []
+level: 5

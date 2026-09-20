@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: swift_elusion
+system: pf2e
+prerequisite: Legendary in Acrobatics
+mechanicalSummary: Attempt an Acrobatics check against the foe’s Reflex DC.
+extraPools: []
+classes: [rogue]
+level: 16

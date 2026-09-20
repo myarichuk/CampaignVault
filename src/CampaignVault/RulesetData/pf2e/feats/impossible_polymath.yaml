@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: impossible_polymath
+system: pf2e
+prerequisite: Trained in Arcana, Trained in Nature, or Trained in Religion; Esoteric Polymath
+mechanicalSummary: Your esoteric formulas are so unusual that they allow you to dabble in magic from diverse traditions that other bards don’t understand.
+extraPools: []
+classes: [bard]
+level: 18

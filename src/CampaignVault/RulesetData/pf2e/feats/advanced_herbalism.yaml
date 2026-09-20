@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: advanced_herbalism
+system: pf2e
+prerequisite: Herbalist Dedication; Expert in Nature
+mechanicalSummary: Your herbalist talents continue to grow with use and you have become potent at making even more remedies from less.
+extraPools: []
+level: 6

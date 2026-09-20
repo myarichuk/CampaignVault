@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: vivacious_conduit
+system: pf2e
+mechanicalSummary: Your connection to the First World has grown, and its vital energy flows into you rapidly.
+extraPools: []
+level: 9

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: instinctive_strike
+system: pf2e
+prerequisite: Acute Scent or Scent
+mechanicalSummary: "You trust your instincts and your sense of smell, using all your senses to pinpoint your opponent's location."
+extraPools: []
+classes: [barbarian]
+level: 8

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: endemic_herbs
+system: pf2e
+prerequisite: Herbalist Dedication; Trained in Survival
+mechanicalSummary: The herbal items you create use medicinal plants endemic to your location.
+extraPools: []
+level: 6

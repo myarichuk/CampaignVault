@@ -1,0 +1,13 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scintillating_safeguard
+system: pf2e
+level: 6
+classes: [bard, cleric, druid]
+concentration: false
+castingTime: 1 reaction
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

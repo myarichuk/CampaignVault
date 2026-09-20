@@ -5,3 +5,9 @@ level: 7
 classes: [bard, cleric]
 concentration: false
 castingTime: 1 hour
+verbal: true
+somatic: true
+material: true
+materialText: A diamond worth at least 1,000gp, which the spell consumes.
+materialCost: 1000.0
+materialConsumed: true

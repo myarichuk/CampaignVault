@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: monk_dedication
+system: pf2e
+prerequisite: Dexterity +2; Strength +2
+mechanicalSummary: You become trained in unarmed attacks and gain the powerful fist class feature.
+extraPools: []
+level: 2

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: defensive_coordination
+system: pf2e
+prerequisite: warrior muse; Rallying Anthem
+mechanicalSummary: Like the storied heroes who persist in the face of overwhelming odds, you and your allies will hold the line.
+extraPools: []
+classes: [bard]
+level: 6

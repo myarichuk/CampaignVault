@@ -5,3 +5,8 @@ level: 3
 classes: [druid, ranger]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A tiny fan and a feather of exotic origin.
+materialConsumed: false

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: leshy_superstition
+system: pf2e
+mechanicalSummary: You notice spirits that inhabit objects, learning which bring good fortune and which are unlucky.
+extraPools: []
+level: 1

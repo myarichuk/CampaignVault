@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: critical_debilitation
+system: pf2e
+prerequisite: Debilitating Strike
+mechanicalSummary: Your debilitations are especially effective on your most powerful attacks.
+extraPools: []
+classes: [rogue]
+level: 12

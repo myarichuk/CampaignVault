@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: distracting_performance
+system: pf2e
+prerequisite: Expert in Performance
+mechanicalSummary: Your performances are especially distracting, allowing your allies to Sneak away with ease.
+extraPools: []
+level: 2

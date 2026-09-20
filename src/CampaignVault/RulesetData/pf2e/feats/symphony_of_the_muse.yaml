@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: symphony_of_the_muse
+system: pf2e
+prerequisite: Harmonize
+mechanicalSummary: You have learned how to weave countless performances together into a solo symphony with multitudinous effects.
+extraPools: []
+classes: [bard]
+level: 20

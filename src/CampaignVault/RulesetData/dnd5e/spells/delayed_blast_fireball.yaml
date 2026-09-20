@@ -5,3 +5,8 @@ level: 7
 classes: [sorcerer, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A tiny ball of bat guano and sulfur.
+materialConsumed: false

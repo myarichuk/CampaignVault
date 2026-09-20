@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: extraplanar_supplication
+system: pf2e
+mechanicalSummary: You call upon divine power to place a benediction upon your allies or a malediction upon your foes.
+extraPools: []
+level: 5

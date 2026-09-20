@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: beastmaster_bond
+system: pf2e
+prerequisite: Beastmaster Dedication
+mechanicalSummary: You can communicate telepathically with your animal companions within 100 feet.
+extraPools: []
+level: 10

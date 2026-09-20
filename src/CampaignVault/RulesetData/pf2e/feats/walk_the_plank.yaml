@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: walk_the_plank
+system: pf2e
+prerequisite: Pirate Dedication
+mechanicalSummary: You frighten  a foe into moving where you want them, traditionally demanding they walk the plank.
+extraPools: []
+level: 8

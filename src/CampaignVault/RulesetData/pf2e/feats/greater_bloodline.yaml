@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: greater_bloodline
+system: pf2e
+prerequisite: bloodline spell
+mechanicalSummary: You uncover the greater secrets of your bloodline.
+extraPools: []
+classes: [sorcerer]
+level: 10

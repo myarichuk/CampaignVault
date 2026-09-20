@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: resounding_finale
+system: pf2e
+prerequisite: maestro muse
+mechanicalSummary: You bring your performance to a sudden, dramatic finish, drowning out other sounds.
+extraPools: []
+classes: [bard]
+level: 16

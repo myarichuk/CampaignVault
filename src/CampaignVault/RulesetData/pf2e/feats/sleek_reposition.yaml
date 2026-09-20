@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sleek_reposition
+system: pf2e
+mechanicalSummary: While your opponent is still recovering from your prior attack, you snag its armor, clothing, or flesh to move it as you please.
+extraPools: []
+classes: [fighter]
+level: 2

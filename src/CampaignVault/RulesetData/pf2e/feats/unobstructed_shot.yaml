@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: unobstructed_shot
+system: pf2e
+prerequisite: Archer Dedication; Expert in Athletics
+mechanicalSummary: With a quick use of brute force, you remove an obstacle and take a calculated shot as part of the same motion.
+extraPools: []
+level: 10

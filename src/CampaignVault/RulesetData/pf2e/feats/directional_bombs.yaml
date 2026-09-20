@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: directional_bombs
+system: pf2e
+mechanicalSummary: You can lob bombs with great force and a precise trajectory to angle the splash in a cone that sprays in a single direction, potentially allowing you to avoid allies and splash deeper into enemy lines.
+extraPools: []
+classes: [alchemist]
+level: 6

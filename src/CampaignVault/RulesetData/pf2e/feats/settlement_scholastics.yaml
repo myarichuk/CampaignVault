@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: settlement_scholastics
+system: pf2e
+prerequisite: Archaeologist Dedication
+mechanicalSummary: Your studies open up new horizons.
+extraPools: []
+level: 4

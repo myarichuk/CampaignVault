@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: giant_s_lunge
+system: pf2e
+prerequisite: Giant instinct
+mechanicalSummary: You extend your body and prepare to attack foes outside your normal reach.
+extraPools: []
+classes: [barbarian]
+level: 14

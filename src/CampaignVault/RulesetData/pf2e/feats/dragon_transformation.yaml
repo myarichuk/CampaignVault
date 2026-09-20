@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dragon_transformation
+system: pf2e
+prerequisite: "Dragon's Rage Wings"
+mechanicalSummary: You transform into a ferocious Large dragon, gaining the effects of 6th-rank  dragon form  except that you use your own AC and attack modifier, you apply your extra damage from Rage, and the Dragon Breath action uses your class DC.
+extraPools: []
+classes: [barbarian]
+level: 16

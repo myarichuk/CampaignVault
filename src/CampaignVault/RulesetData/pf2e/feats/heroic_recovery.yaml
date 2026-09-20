@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: heroic_recovery
+system: pf2e
+prerequisite: healing font
+mechanicalSummary: The restorative power of your healing invigorates the recipient.
+extraPools: []
+classes: [cleric]
+level: 10

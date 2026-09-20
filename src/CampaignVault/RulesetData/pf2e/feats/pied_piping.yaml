@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: pied_piping
+system: pf2e
+mechanicalSummary: You learn the  pied piping  composition spell, which enables you to control the actions of weak-minded individuals.
+extraPools: []
+classes: [bard]
+level: 20

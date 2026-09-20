@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sneak_attacker
+system: pf2e
+prerequisite: Rogue Dedication
+mechanicalSummary: You gain the sneak attack class feature, except it deals 1d4 damage, increasing to 1d6 at 6th level.
+extraPools: []
+level: 4

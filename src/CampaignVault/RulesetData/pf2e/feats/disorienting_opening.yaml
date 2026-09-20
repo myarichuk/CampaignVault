@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: disorienting_opening
+system: pf2e
+prerequisite: Reactive Strike
+mechanicalSummary: You use your foes’ openings to expose even greater weaknesses.
+extraPools: []
+classes: [fighter]
+level: 8

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: return_fire
+system: pf2e
+prerequisite: Deflect Projectile; Monastic Archer Stance
+mechanicalSummary: Snatching an arrow out of the air, you instantly put it to your bow and return fire.
+extraPools: []
+classes: [monk]
+level: 6

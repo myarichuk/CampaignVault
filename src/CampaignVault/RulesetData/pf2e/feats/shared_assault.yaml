@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: shared_assault
+system: pf2e
+prerequisite: Courageous Assault
+mechanicalSummary: In the triumph of battle, you can share the glory with another ally.
+extraPools: []
+classes: [bard]
+level: 12

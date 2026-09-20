@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: vicious_snares
+system: pf2e
+prerequisite: Snare Crafting; Expert in Crafting
+mechanicalSummary: You deal an additional 1d6 precision damage with damage snares you craft.
+extraPools: []
+level: 13

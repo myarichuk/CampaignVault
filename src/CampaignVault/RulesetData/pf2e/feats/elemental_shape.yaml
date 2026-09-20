@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: elemental_shape
+system: pf2e
+prerequisite: Untamed Form
+mechanicalSummary: You understand the fundamental elements of nature such that you can imbue them into your body and manifest as a living embodiment of those elements.
+extraPools: []
+classes: [druid]
+level: 10

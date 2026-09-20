@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: improved_poison_weapon
+system: pf2e
+prerequisite: Poison Weapon
+mechanicalSummary: You deliver poisons in ways that maximize their harmful effects.
+extraPools: []
+classes: [rogue]
+level: 8

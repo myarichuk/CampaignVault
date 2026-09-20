@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: contortionist
+system: pf2e
+prerequisite: Acrobat Dedication
+mechanicalSummary: You can squeeze out of tight situations by twisting and bending your body into unnatural positions, gaining an advantage against foes that try to pin you down.
+extraPools: []
+level: 4

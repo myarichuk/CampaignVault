@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: hunter_s_defense
+system: pf2e
+prerequisite: Trained in Nature
+mechanicalSummary: Your canny understanding of natural and primal creatures helps you predict and dodge their attacks.
+extraPools: []
+level: 1

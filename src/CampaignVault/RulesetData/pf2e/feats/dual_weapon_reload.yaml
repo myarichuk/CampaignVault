@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dual_weapon_reload
+system: pf2e
+prerequisite: Dual-Weapon Warrior Dedication
+mechanicalSummary: You carry your ammunition in a way that allows you to reload while holding two weapons.
+extraPools: []
+level: 4

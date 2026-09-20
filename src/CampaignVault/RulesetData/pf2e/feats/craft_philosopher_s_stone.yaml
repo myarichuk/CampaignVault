@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: craft_philosopher_s_stone
+system: pf2e
+mechanicalSummary: "Your research has paid off, culminating in the legendary philosopher's stone."
+extraPools: []
+classes: [alchemist]
+level: 20

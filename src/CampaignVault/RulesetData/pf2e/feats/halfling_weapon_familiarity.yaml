@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: halfling_weapon_familiarity
+system: pf2e
+mechanicalSummary: "You favor traditional halfling weapons, so you've learned how to use them more effectively."
+extraPools: []
+level: 1

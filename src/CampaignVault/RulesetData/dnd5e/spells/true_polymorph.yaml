@@ -5,3 +5,8 @@ level: 9
 classes: [bard, warlock, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A drop of mercury, a dollop of gum arabic, and a wisp of smoke.
+materialConsumed: false

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: harmonize_self
+system: pf2e
+prerequisite: Qi Spells
+mechanicalSummary: You can restore your health by tapping into your qi.
+extraPools: []
+classes: [monk]
+level: 4

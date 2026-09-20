@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sleeper_hold
+system: pf2e
+mechanicalSummary: "You pinch crucial points of your target's nervous system, impeding its ability to function."
+extraPools: []
+classes: [monk]
+level: 10

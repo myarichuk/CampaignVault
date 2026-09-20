@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: infinite_possibilities
+system: pf2e
+mechanicalSummary: You can prepare a spell slot that exists in your mind as many different possibilities at once.
+extraPools: []
+classes: [wizard]
+level: 18

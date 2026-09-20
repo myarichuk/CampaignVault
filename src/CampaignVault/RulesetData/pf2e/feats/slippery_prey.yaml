@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: slippery_prey
+system: pf2e
+prerequisite: Trained in Athletics or Trained in Acrobatics
+mechanicalSummary: "You're able to escape bonds more easily than others."
+extraPools: []
+level: 2

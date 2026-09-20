@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: siphon_power
+system: pf2e
+mechanicalSummary: You draw upon the reservoir of your patron’s magic that resides within your familiar.
+extraPools: []
+classes: [witch]
+level: 16

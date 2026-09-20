@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: barbarian_resiliency
+system: pf2e
+prerequisite: Barbarian Dedication; class granting no more Hit Points per level than 10 + your Constitution modifier
+mechanicalSummary: You gain 3 additional Hit Points for each barbarian archetype class feat you have.
+extraPools: []
+level: 4

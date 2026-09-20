@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mutant_physique
+system: pf2e
+mechanicalSummary: Basic mutagens that affect your physical form can bring out the beast within you, turn you nigh invincible, or make your body more elastic.
+extraPools: []
+classes: [alchemist]
+level: 8

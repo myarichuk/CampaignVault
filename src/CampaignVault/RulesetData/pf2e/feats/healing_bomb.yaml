@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: healing_bomb
+system: pf2e
+mechanicalSummary: You can add a foamy catalyst to an elixir of life to turn it into a topical projectile.
+extraPools: []
+classes: [alchemist]
+level: 4

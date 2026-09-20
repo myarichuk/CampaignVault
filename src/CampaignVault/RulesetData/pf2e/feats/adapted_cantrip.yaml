@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: adapted_cantrip
+system: pf2e
+prerequisite: spellcasting class feature
+mechanicalSummary: Through study of multiple magical traditions, you’ve altered a spell to suit your spellcasting style.
+extraPools: []
+level: 1

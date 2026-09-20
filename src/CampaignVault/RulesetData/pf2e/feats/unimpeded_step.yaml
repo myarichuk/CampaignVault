@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: unimpeded_step
+system: pf2e
+prerequisite: liberation cause
+mechanicalSummary: "With a burst of divine liberation, your ally's movement from your Liberating Step is unaffected by difficult terrain, greater difficult terrain, narrow surfaces, and uneven ground."
+extraPools: []
+classes: [champion]
+level: 1

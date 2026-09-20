@@ -5,3 +5,8 @@ level: 1
 classes: [druid, ranger, sorcerer, wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: "A grasshopper's hind leg."
+materialConsumed: false

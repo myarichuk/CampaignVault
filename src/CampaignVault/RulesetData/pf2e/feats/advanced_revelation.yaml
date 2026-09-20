@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: advanced_revelation
+system: pf2e
+prerequisite: initial revelation spell
+mechanicalSummary: Divine power reveals greater mysteries to you.
+extraPools: []
+classes: [oracle]
+level: 6

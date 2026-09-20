@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: briar_battler
+system: pf2e
+mechanicalSummary: "When you're in difficult terrain from an environmental feature, you can Take Cover, even if the feature wouldn't ordinarily be large enough for you to Take Cover."
+extraPools: []
+level: 9

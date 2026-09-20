@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sidestep
+system: pf2e
+mechanicalSummary: You deftly step out of the way of an attack, letting the blow continue.
+extraPools: []
+classes: [rogue]
+level: 8

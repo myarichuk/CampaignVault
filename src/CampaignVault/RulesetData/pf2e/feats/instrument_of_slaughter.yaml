@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: instrument_of_slaughter
+system: pf2e
+prerequisite: champion’s reaction that grants extra damage with your Strikes (including the desecration, iniquity, and obedience causes)
+mechanicalSummary: Your blessed armament thirsts for the blood of your foes.
+extraPools: []
+classes: [champion]
+level: 16

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: unbalancing_sweep
+system: pf2e
+mechanicalSummary: You make a great sweep with your weapon or fists about yourself, knocking creatures off their feet and away from you.
+extraPools: []
+classes: [barbarian]
+level: 12

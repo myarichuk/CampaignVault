@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: magic_rider
+system: pf2e
+mechanicalSummary: Your people used powerful magic to travel between distant worlds in the distant past, and the remnants of that magic make such transportation easier for you.
+extraPools: []
+level: 17

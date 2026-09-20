@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: anoint_ally
+system: pf2e
+mechanicalSummary: You forge a mystical connection with an ally using a drop of your blood, allowing them to benefit from your magic.
+extraPools: []
+classes: [sorcerer]
+level: 2

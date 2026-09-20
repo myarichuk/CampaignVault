@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: march_the_mines
+system: pf2e
+mechanicalSummary: You march through the earth and lead an ally along.
+extraPools: []
+level: 13

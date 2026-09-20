@@ -5,3 +5,9 @@ level: 7
 classes: [bard, warlock, wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: Ruby dust worth 1,500 gp.
+materialCost: 1500.0
+materialConsumed: false

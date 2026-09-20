@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: impressive_mount
+system: pf2e
+prerequisite: Cavalier Dedication
+mechanicalSummary: You’ve trained your mount to become a powerful force on the battlefield.
+extraPools: []
+level: 4

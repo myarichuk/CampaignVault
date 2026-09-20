@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: detective_s_readiness
+system: pf2e
+mechanicalSummary: "When you're on a case, you stay watchful and resolute to avoid tricks your suspect might pull."
+extraPools: []
+classes: [investigator]
+level: 4

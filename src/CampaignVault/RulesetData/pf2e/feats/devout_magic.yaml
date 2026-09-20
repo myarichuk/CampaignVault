@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: devout_magic
+system: pf2e
+prerequisite: Champion Dedication
+mechanicalSummary: You gain a devotion spell of your choice listed in the devotion spells class feature
+extraPools: []
+level: 4

@@ -5,3 +5,8 @@ level: 2
 classes: [bard, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A honeycomb and jade dust of at least 10 inches, the spell consumes.
+materialConsumed: true

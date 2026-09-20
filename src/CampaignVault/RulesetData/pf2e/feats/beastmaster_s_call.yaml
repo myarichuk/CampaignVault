@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: beastmaster_s_call
+system: pf2e
+prerequisite: Beastmaster Dedication; Call Companion
+mechanicalSummary: You quickly call in a primal projection of a non-active companion to provide the companion’s support benefit.
+extraPools: []
+level: 12

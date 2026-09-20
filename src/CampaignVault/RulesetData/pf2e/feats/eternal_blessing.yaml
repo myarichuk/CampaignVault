@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: eternal_blessing
+system: pf2e
+prerequisite: holy
+mechanicalSummary: Your deeds have brought your deity’s grace to you for all of eternity.
+extraPools: []
+classes: [cleric]
+level: 16

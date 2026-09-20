@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: aura_of_righteousness
+system: pf2e
+prerequisite: "champion's aura, holy"
+mechanicalSummary: "Your righteous aura dampens evil's might and prevents the unholy from escaping you."
+extraPools: []
+classes: [champion]
+level: 14

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: intimidating_prowess
+system: pf2e
+prerequisite: Strength +3; Expert in Intimidation
+mechanicalSummary: Gain a bonus to physically Demoralize a target
+extraPools: []
+level: 2

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: initiate_warden
+system: pf2e
+mechanicalSummary: You’ve trained with one of the ranger sects known as wardens, who practice a specialized type of primal magic.
+extraPools: []
+classes: [ranger]
+level: 1

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: distracting_shot
+system: pf2e
+mechanicalSummary: The sheer power of your attacks, or the overwhelming number of them, leaves an enemy flustered.
+extraPools: []
+classes: [ranger]
+level: 12

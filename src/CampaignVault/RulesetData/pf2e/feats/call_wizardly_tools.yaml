@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: call_wizardly_tools
+system: pf2e
+prerequisite: arcane bond
+mechanicalSummary: You’re mystically connected to your wizardly tools, ensuring you can always find them when you’ve misplaced them.
+extraPools: []
+classes: [wizard]
+level: 4

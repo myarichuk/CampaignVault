@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: selfless_parry
+system: pf2e
+prerequisite: Dueling Parry (Fighter); Duelist Dedication
+mechanicalSummary: You protect those near to you with a flash of steel and a stroke of good luck.
+extraPools: []
+level: 8

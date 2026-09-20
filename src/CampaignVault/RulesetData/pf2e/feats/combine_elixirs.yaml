@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: combine_elixirs
+system: pf2e
+mechanicalSummary: You can add the full ingredients of a second elixir to an elixir you make to create a hybrid concoction.
+extraPools: []
+classes: [alchemist]
+level: 6

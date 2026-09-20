@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: planar_survival
+system: pf2e
+prerequisite: Master in Survival
+mechanicalSummary: Use Survival to Subsist on different planes
+extraPools: []
+level: 7

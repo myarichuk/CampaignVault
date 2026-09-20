@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: seasoned
+system: pf2e
+prerequisite: Trained in Alcohol Lore, Trained in Cooking Lore, or Trained in Crafting
+mechanicalSummary: +1 to Craft food and drink, including elixirs and potions
+extraPools: []
+level: 1

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: skillful_tail
+system: pf2e
+mechanicalSummary: You’ve always had a tail, but with practice, you’ve learned to use it for more than signaling your mood.
+extraPools: []
+level: 5

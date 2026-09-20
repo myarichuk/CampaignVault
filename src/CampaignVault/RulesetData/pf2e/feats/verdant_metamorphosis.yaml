@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: verdant_metamorphosis
+system: pf2e
+prerequisite: leaf order
+mechanicalSummary: You have turned into a plant version of yourself, gaining the plant trait and losing traits inappropriate for your new form (typically humanoid).
+extraPools: []
+classes: [druid]
+level: 14

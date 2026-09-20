@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: spell_relay
+system: pf2e
+mechanicalSummary: "You open the power in your blood to your ally's spellcasting, using your magic to boost their range."
+extraPools: []
+classes: [sorcerer]
+level: 6

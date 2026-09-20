@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: legendary_thief
+system: pf2e
+prerequisite: Legendary in Thievery; Pickpocket
+mechanicalSummary: Steal what would normally be impossible to steal
+extraPools: []
+level: 15

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: assured_identification
+system: pf2e
+prerequisite: Expert in Arcana, Expert in Nature, Expert in Occultism, or Expert in Religion
+mechanicalSummary: You rarely misidentify an item.
+extraPools: []
+level: 2

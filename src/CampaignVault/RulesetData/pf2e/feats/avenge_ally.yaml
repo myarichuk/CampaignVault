@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: avenge_ally
+system: pf2e
+mechanicalSummary: "Though you know that you will eventually outlive your companions, seeing them at death's door brings clarity to your attacks."
+extraPools: []
+level: 13

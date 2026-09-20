@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incredible_improvisation
+system: pf2e
+mechanicalSummary: A stroke of brilliance gives you a major advantage with a skill despite your inexperience.
+extraPools: []
+level: 9

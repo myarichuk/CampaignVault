@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: glean_contents
+system: pf2e
+prerequisite: Trained in Society
+mechanicalSummary: You are adept at quickly scanning loose papers and carefully discerning the contents of sealed letters without damaging the seal.
+extraPools: []
+level: 1

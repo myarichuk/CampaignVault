@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: armor_specialist
+system: pf2e
+prerequisite: Sentinel Dedication
+mechanicalSummary: "You have trained hard to optimize your armor's unique protective qualities to maximize the materials used in its creation."
+extraPools: []
+level: 6

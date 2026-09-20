@@ -5,3 +5,8 @@ level: 1
 classes: [wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A drop of mercury.
+materialConsumed: false

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: canny_acumen
+system: pf2e
+mechanicalSummary: Become an expert in a saving throw or Perception
+extraPools: []
+level: 1

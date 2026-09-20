@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: skill_mastery
+system: pf2e
+prerequisite: Investigator Dedication; trained in at least one skill and expert in at least one skill
+mechanicalSummary: Increase your proficiency rank in one of your skills from expert to master and in another of your skills from trained to expert.
+extraPools: []
+level: 8

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: surprise_strike
+system: pf2e
+prerequisite: Weapon Improviser Dedication
+mechanicalSummary: "Whenever you make a Strike with an improvised weapon against a creature that hasn't observed you making a Strike using an improvised weapon or that is otherwise ignorant of your skill with improvised weapons, the creature is off-guard against you for that Strike."
+extraPools: []
+level: 6

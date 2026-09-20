@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: viking_weapon_familiarity
+system: pf2e
+prerequisite: Viking Dedication
+mechanicalSummary: From childhood, you have been exposed to traditional viking combat techniques, and you soon learned to handle axe, sword, and shield in battle.
+extraPools: []
+level: 4

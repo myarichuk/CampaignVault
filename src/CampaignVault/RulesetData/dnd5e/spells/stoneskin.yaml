@@ -5,3 +5,9 @@ level: 4
 classes: [druid, ranger, sorcerer, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: Diamond dust worth 100 gp, which the spell consumes.
+materialCost: 100.0
+materialConsumed: true

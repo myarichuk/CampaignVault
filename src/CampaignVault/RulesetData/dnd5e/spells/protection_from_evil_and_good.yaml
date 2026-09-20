@@ -5,3 +5,8 @@ level: 1
 classes: [cleric, paladin, warlock, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: Holy water or powdered silver and iron, which the spell consumes.
+materialConsumed: true

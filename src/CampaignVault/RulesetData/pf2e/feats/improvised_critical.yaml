@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: improvised_critical
+system: pf2e
+prerequisite: Weapon Improviser Dedication
+mechanicalSummary: You can apply critical specialization effects to improvised weapons you wield.
+extraPools: []
+level: 8

@@ -5,3 +5,7 @@ level: 8
 classes: [warlock, wizard]
 concentration: false
 castingTime: 1 action
+verbal: false
+somatic: true
+material: false
+materialConsumed: false

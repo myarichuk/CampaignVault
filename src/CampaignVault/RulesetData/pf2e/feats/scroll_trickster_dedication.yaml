@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scroll_trickster_dedication
+system: pf2e
+prerequisite: Trained in Nature, Trained in Arcana, Trained in Occultism, or Trained in Religion
+mechanicalSummary: "You've studied scrolls in depth."
+extraPools: []
+level: 2

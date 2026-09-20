@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: master_witch_spellcasting
+system: pf2e
+prerequisite: "Expert Witch Spellcasting; legendary in the skill associated with your patron's tradition"
+mechanicalSummary: You gain the master spellcasting benefits.
+extraPools: []
+level: 18

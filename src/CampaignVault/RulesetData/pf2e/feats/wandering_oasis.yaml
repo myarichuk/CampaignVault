@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: wandering_oasis
+system: pf2e
+prerequisite: Master in Survival
+mechanicalSummary: You’re surrounded by soothing energy.
+extraPools: []
+classes: [druid]
+level: 12

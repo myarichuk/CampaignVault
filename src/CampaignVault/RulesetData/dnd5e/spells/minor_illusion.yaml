@@ -5,3 +5,8 @@ level: 0
 classes: [bard, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action
+verbal: false
+somatic: true
+material: true
+materialText: A bit of fleece.
+materialConsumed: false

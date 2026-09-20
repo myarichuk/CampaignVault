@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: distracting_flattery
+system: pf2e
+prerequisite: Dandy Dedication; Expert in Deception
+mechanicalSummary: You know how to maintain a good impression and manage your image, even while keeping uncouth company.
+extraPools: []
+level: 4

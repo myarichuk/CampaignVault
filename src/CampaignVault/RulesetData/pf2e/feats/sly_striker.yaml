@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sly_striker
+system: pf2e
+prerequisite: sneak attack
+mechanicalSummary: Your attacks deal more damage, even against creatures that aren’t off-guard.
+extraPools: []
+classes: [rogue]
+level: 8

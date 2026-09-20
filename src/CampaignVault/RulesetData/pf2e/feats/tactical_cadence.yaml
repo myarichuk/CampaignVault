@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: tactical_cadence
+system: pf2e
+prerequisite: Cadence Call; Marshal Dedication
+mechanicalSummary: Your remarkable breath control and concise instructions allow you to coordinate your allies more effectively, even in desperate situations.
+extraPools: []
+level: 14

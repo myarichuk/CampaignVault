@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: crafter_s_appraisal
+system: pf2e
+prerequisite: Trained in Crafting
+mechanicalSummary: "Your knowledge of items' construction allows you to discern their magical effects as well."
+extraPools: []
+level: 1

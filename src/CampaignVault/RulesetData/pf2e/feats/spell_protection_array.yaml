@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: spell_protection_array
+system: pf2e
+mechanicalSummary: You inscribe a circle of arcane runes that dampen enemies’ magic.
+extraPools: []
+classes: [wizard]
+level: 4

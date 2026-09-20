@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cobra_envenom
+system: pf2e
+prerequisite: Cobra Stance; expert in unarmed strikes
+mechanicalSummary: You slightly dislocate your joints to lash out with devious intent and the power to envenom your foe.
+extraPools: []
+classes: [monk]
+level: 10

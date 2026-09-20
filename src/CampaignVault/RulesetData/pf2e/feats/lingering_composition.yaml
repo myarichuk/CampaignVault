@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: lingering_composition
+system: pf2e
+prerequisite: maestro muse
+mechanicalSummary: By adding a flourish, you make your compositions last longer.
+extraPools: []
+classes: [bard]
+level: 1

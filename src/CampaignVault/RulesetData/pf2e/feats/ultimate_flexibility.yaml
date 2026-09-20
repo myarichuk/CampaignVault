@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ultimate_flexibility
+system: pf2e
+prerequisite: improved flexibility
+mechanicalSummary: Your experience keeps you on your toes, helping you adopt complex strategies on the fly and face the most dangerous challenges.
+extraPools: []
+classes: [fighter]
+level: 20

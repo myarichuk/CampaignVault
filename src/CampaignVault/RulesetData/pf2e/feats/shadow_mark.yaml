@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: shadow_mark
+system: pf2e
+prerequisite: Expert in Stealth
+mechanicalSummary: You have learned special tricks that help you follow individuals without them noticing you.
+extraPools: []
+level: 2

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sticky_poison
+system: pf2e
+mechanicalSummary: A combination of additional viscosity and careful application keeps your weapons poisoned even when suffering significant wear and tear.
+extraPools: []
+classes: [alchemist]
+level: 6

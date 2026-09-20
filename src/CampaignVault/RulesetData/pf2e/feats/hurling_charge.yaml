@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: hurling_charge
+system: pf2e
+prerequisite: Viking Dedication
+mechanicalSummary: You make a ranged Strike with your thrown weapon, Stride, and then Interact to draw another weapon.
+extraPools: []
+level: 4

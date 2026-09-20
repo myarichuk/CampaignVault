@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: energy_ward
+system: pf2e
+mechanicalSummary: You convert energy from the last spell you cast into a protective ward.
+extraPools: []
+classes: [sorcerer]
+level: 6

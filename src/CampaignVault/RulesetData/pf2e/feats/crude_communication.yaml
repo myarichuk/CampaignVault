@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: crude_communication
+system: pf2e
+prerequisite: Linguist Dedication
+mechanicalSummary: Even if you don’t speak a creature’s language, you can rely on inflection, root words, and body language to infer rudimentary meaning.
+extraPools: []
+level: 8

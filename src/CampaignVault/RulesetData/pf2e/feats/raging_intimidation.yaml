@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: raging_intimidation
+system: pf2e
+prerequisite: for the skill feats Intimidating Glare and Scare to Death, you gain these feats
+mechanicalSummary: Your fury fills your foes with fear.
+extraPools: []
+classes: [barbarian]
+level: 1

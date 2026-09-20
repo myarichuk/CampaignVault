@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: advanced_school_spell
+system: pf2e
+mechanicalSummary: You gain access to the advanced teachings of your arcane institution, learning a powerful new school spell.
+extraPools: []
+classes: [wizard]
+level: 8

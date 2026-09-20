@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate spell YAML from SRD sources (dnd5eapi + PF2e Player Core)."""
+"""Generate spell YAML from SRD sources (dnd5eapi + Archives of Nethys)."""
 
 from __future__ import annotations
 
@@ -18,15 +18,14 @@ DND5E_HEADER = (
     "# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0\n"
 )
 PF2E_HEADER = (
-    "# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.\n"
+    "# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,\n"
+    "# released under the Open RPG Creative (ORC) License. Pulled directly from the\n"
+    "# official Archives of Nethys database (elasticsearch.aonprd.com).\n"
 )
 
-# Pinned commit of fyjham-ts/Pathfinder-2E-Spell-DB (Nethys scrape). Bump when intentionally refreshing PF2e corpus.
-PF2E_SPELL_DB_COMMIT = "0ac8f4ac4d233a60f17e83badb43ad66a14da15d"
-PF2E_SPELL_DB_URL = (
-    f"https://raw.githubusercontent.com/fyjham-ts/Pathfinder-2E-Spell-DB/"
-    f"{PF2E_SPELL_DB_COMMIT}/NethysScrape/spells.json"
-)
+# Archives of Nethys public search endpoint (official Paizo-run Remastered database).
+AON_SEARCH_URL = "https://elasticsearch.aonprd.com/aon/_search"
+AON_REMASTER_SOURCES = ["Player Core", "Player Core 2"]
 
 TRADITION_TO_CLASSES = {
     "arcane": ["wizard", "witch"],
@@ -37,13 +36,15 @@ TRADITION_TO_CLASSES = {
 
 CLASS_TRAITS = {"bard", "witch", "cleric", "druid", "wizard"}
 
+GP_COST_RE = re.compile(r"([\d,]+)\s*gp", re.IGNORECASE)
+
 
 def kebab_to_snake(name: str) -> str:
     return name.replace("-", "_")
 
 
 def yaml_quote(value: str) -> str:
-    if re.search(r'[:#\[\]{}&*!|>\'"%@`]', value) or value.strip() != value:
+    if re.search(r'[:#\[\]{}&*!|>\'"%@`\n\r]', value) or value.strip() != value:
         return json.dumps(value)
     return value
 
@@ -59,13 +60,28 @@ def write_spell(path: Path, header: str, body: dict) -> None:
     lines.append(f"concentration: {'true' if body.get('concentration') else 'false'}")
     if body.get("castingTime"):
         lines.append(f"castingTime: {yaml_quote(body['castingTime'])}")
+    if body.get("verbal") is not None:
+        lines.append(f"verbal: {'true' if body['verbal'] else 'false'}")
+    if body.get("somatic") is not None:
+        lines.append(f"somatic: {'true' if body['somatic'] else 'false'}")
+    if body.get("material") is not None:
+        lines.append(f"material: {'true' if body['material'] else 'false'}")
+    if body.get("materialText"):
+        lines.append(f"materialText: {yaml_quote(body['materialText'])}")
+    if body.get("materialCost") is not None:
+        lines.append(f"materialCost: {body['materialCost']}")
+    if body.get("materialConsumed") is not None:
+        lines.append(f"materialConsumed: {'true' if body['materialConsumed'] else 'false'}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def fetch_json(url: str, retries: int = 3) -> dict:
+def fetch_json(url: str, retries: int = 3, data: bytes | None = None) -> dict:
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "CampaignVault/1.0"})
+            headers = {"User-Agent": "CampaignVault/1.0"}
+            if data is not None:
+                headers["Content-Type"] = "application/json"
+            req = urllib.request.Request(url, headers=headers, data=data)
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except Exception:
@@ -73,6 +89,16 @@ def fetch_json(url: str, retries: int = 3) -> dict:
                 raise
             time.sleep(0.5 * (attempt + 1))
     raise RuntimeError(f"Failed to fetch {url}")
+
+
+def parse_gp_cost(text: str) -> float | None:
+    match = GP_COST_RE.search(text)
+    if not match:
+        return None
+    try:
+        return float(match.group(1).replace(",", ""))
+    except ValueError:
+        return None
 
 
 def generate_dnd5e() -> int:
@@ -84,6 +110,8 @@ def generate_dnd5e() -> int:
         detail = fetch_json(f"https://www.dnd5eapi.co{entry['url']}")
         slug = kebab_to_snake(detail["index"])
         classes = sorted({c["index"] for c in detail.get("classes", [])})
+        components = set(detail.get("components") or [])
+        material_text = detail.get("material")
         return slug, {
             "name": slug,
             "system": "dnd5e",
@@ -91,6 +119,12 @@ def generate_dnd5e() -> int:
             "classes": classes,
             "concentration": bool(detail.get("concentration")),
             "castingTime": detail.get("casting_time") or "1 action",
+            "verbal": "V" in components,
+            "somatic": "S" in components,
+            "material": "M" in components,
+            "materialText": material_text,
+            "materialCost": parse_gp_cost(material_text) if material_text else None,
+            "materialConsumed": bool(material_text and "consum" in material_text.lower()),
         }
 
     generated: dict[str, dict] = {}
@@ -114,11 +148,11 @@ def generate_dnd5e() -> int:
 
 def pf2e_classes(spell: dict) -> list[str]:
     classes: set[str] = set()
-    for tradition in spell.get("traditions") or []:
+    for tradition in spell.get("tradition") or []:
         key = tradition.lower()
         if key in TRADITION_TO_CLASSES:
             classes.update(TRADITION_TO_CLASSES[key])
-    for trait in spell.get("traits") or []:
+    for trait in spell.get("trait") or []:
         t = trait.lower()
         if t in CLASS_TRAITS:
             classes.add(t)
@@ -126,46 +160,57 @@ def pf2e_classes(spell: dict) -> list[str]:
 
 
 def pf2e_casting_time(spell: dict) -> str:
-    action = str(spell.get("action", "2")).strip()
-    if action.lower() == "reaction":
-        return "1 reaction"
-    if action == "1":
-        return "1 action"
-    if action == "2":
-        return "2 actions"
-    if action == "3":
-        return "3 actions"
-    return f"{action} actions"
+    actions = (spell.get("actions") or "").strip().lower()
+    mapping = {
+        "single action": "1 action",
+        "one action": "1 action",
+        "two actions": "2 actions",
+        "three actions": "3 actions",
+        "reaction": "1 reaction",
+        "free action": "free action",
+    }
+    return mapping.get(actions, spell.get("actions") or "2 actions")
 
 
 def pf2e_level(spell: dict) -> int:
-    if (spell.get("type") or "").lower() == "cantrip":
+    traits = {t.lower() for t in spell.get("trait") or []}
+    if "cantrip" in traits:
         return 0
-    return int(spell.get("level", 1))
+    return int(spell.get("level") or 1)
 
 
 def pf2e_concentration(spell: dict) -> bool:
-    traits = {t.lower() for t in spell.get("traits") or []}
+    traits = {t.lower() for t in spell.get("trait") or []}
     return "concentrate" in traits
 
 
-def is_player_core(spell: dict) -> bool:
-    source = (spell.get("source") or "").strip()
-    return source.startswith("Player Core")
+def pf2e_somatic(spell: dict) -> bool:
+    traits = {t.lower() for t in spell.get("trait") or []}
+    return "manipulate" in traits
 
 
-def is_common(spell: dict) -> bool:
-    traits = {t.lower() for t in spell.get("traits") or []}
-    return "uncommon" not in traits and "rare" not in traits
+def fetch_aon_spells() -> list[dict]:
+    query = {
+        "size": 1000,
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"category": "spell"}},
+                    {"terms": {"primary_source.keyword": AON_REMASTER_SOURCES}},
+                    {"term": {"rarity": "common"}},
+                ]
+            }
+        },
+        "_source": ["name", "level", "trait", "tradition", "actions", "cost"],
+    }
+    result = fetch_json(AON_SEARCH_URL, data=json.dumps(query).encode("utf-8"))
+    return [hit["_source"] for hit in result["hits"]["hits"]]
 
 
 def generate_pf2e() -> int:
-    print(f"  pf2e source: {PF2E_SPELL_DB_URL}")
-    raw = fetch_json(PF2E_SPELL_DB_URL)
-    selected = [
-        s for s in raw
-        if is_player_core(s) and is_common(s) and pf2e_classes(s)
-    ]
+    print(f"  pf2e source: {AON_SEARCH_URL} (Archives of Nethys, Player Core / Player Core 2)")
+    raw = fetch_aon_spells()
+    selected = [s for s in raw if pf2e_classes(s)]
 
     PF2E_DIR.mkdir(parents=True, exist_ok=True)
     generated: dict[str, dict] = {}
@@ -182,6 +227,8 @@ def generate_pf2e() -> int:
             slug = f"{base}_{n}"
             n += 1
 
+        cost_text = spell.get("cost")
+
         generated[slug] = {
             "display": spell["name"],
             "name": slug,
@@ -190,6 +237,12 @@ def generate_pf2e() -> int:
             "classes": pf2e_classes(spell),
             "concentration": pf2e_concentration(spell),
             "castingTime": pf2e_casting_time(spell),
+            "verbal": True,
+            "somatic": pf2e_somatic(spell),
+            "material": bool(cost_text),
+            "materialText": cost_text,
+            "materialCost": parse_gp_cost(cost_text) if cost_text else None,
+            "materialConsumed": bool(cost_text),
         }
 
     for path in PF2E_DIR.glob("*.yaml"):
@@ -198,14 +251,14 @@ def generate_pf2e() -> int:
     for slug in sorted(generated):
         write_spell(PF2E_DIR / f"{slug}.yaml", PF2E_HEADER, generated[slug])
 
-    print(f"Generated {len(generated)} pf2e spells (Player Core, common)")
+    print(f"Generated {len(generated)} pf2e spells (Player Core / Player Core 2, common)")
     return len(generated)
 
 
 def main() -> None:
     print("Generating D&D 5e SRD spells...")
     dnd_count = generate_dnd5e()
-    print("Generating PF2e ORC spells...")
+    print("Generating PF2e ORC (Remastered) spells...")
     pf2_count = generate_pf2e()
     print(f"Done: {dnd_count} dnd5e + {pf2_count} pf2e")
 

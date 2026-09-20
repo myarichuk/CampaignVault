@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: fabricated_connections
+system: pf2e
+prerequisite: Dandy Dedication; Master in Deception
+mechanicalSummary: You can lie about having taken an action so convincingly that you acquire all the tangible benefits of having successfully completed it.
+extraPools: []
+level: 7

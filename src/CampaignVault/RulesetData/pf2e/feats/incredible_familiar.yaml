@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incredible_familiar
+system: pf2e
+prerequisite: Enhanced Familiar
+mechanicalSummary: Your familiar is imbued with even more magic than other familiars.
+extraPools: []
+classes: [thaumaturge, witch]
+level: 8

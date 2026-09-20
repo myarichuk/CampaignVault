@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: terrifying_croak
+system: pf2e
+prerequisite: Trained in Intimidation
+mechanicalSummary: You release a haunting croak that reminds those around you of their fears.
+extraPools: []
+level: 1

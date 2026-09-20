@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: the_harder_they_fall_rogue
+system: pf2e
+mechanicalSummary: You make your foes fall painfully when you trip them.
+extraPools: []
+classes: [rogue]
+level: 4

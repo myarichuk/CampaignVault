@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: aura_of_life
+system: pf2e
+prerequisite: "champion's aura"
+mechanicalSummary: Your aura protects against the power of the Void.
+extraPools: []
+classes: [champion]
+level: 14

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: to_battle
+system: pf2e
+prerequisite: Marshal Dedication
+mechanicalSummary: With a resounding cry, you rally your ally to take the offensive.
+extraPools: []
+level: 8

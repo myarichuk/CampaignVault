@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: resounding_blow
+system: pf2e
+mechanicalSummary: You strike your enemy in the head with such force that its ears ring.
+extraPools: []
+classes: [barbarian]
+level: 10

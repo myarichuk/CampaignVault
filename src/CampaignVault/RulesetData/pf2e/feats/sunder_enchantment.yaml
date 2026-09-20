@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sunder_enchantment
+system: pf2e
+prerequisite: Sunder Spell
+mechanicalSummary: You can focus your superstition to break the magic of an item, in addition to destroying freestanding spells and those active on creatures.
+extraPools: []
+classes: [barbarian]
+level: 14

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: expand_aura
+system: pf2e
+prerequisite: champion’s aura
+mechanicalSummary: You focus your divine power to extend your influence and protection.
+extraPools: []
+classes: [champion]
+level: 6

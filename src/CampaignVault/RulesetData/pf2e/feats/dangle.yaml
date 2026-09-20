@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dangle
+system: pf2e
+mechanicalSummary: "You can hang by your tail from any suitable anchor point, such as a tree branch, balcony, or rocky outcropping (subject to the GM's discretion), typically while climbing."
+extraPools: []
+level: 9

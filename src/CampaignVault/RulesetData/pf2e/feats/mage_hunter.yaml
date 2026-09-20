@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mage_hunter
+system: pf2e
+prerequisite: superstition instinct
+mechanicalSummary: You use your hatred of magic to lash out at a known spellcaster.
+extraPools: []
+classes: [barbarian]
+level: 6

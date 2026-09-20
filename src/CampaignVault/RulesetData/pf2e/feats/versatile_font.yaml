@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: versatile_font
+system: pf2e
+prerequisite: harmful font or healing font; deity that allows clerics to have both fonts
+mechanicalSummary: As you explore your deity’s aspects, you move beyond restrictions on healing or harming.
+extraPools: []
+classes: [cleric]
+level: 2

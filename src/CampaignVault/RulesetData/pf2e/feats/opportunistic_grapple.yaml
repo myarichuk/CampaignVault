@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: opportunistic_grapple
+system: pf2e
+prerequisite: Bounty Hunter Dedication
+mechanicalSummary: You use an opening to capture your prey.
+extraPools: []
+level: 8

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dragon_s_flight
+system: pf2e
+mechanicalSummary: "You have grown a small pair of draconic wings or have honed your use of the wings you've had since birth."
+extraPools: []
+level: 5

@@ -5,3 +5,8 @@ level: 1
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A pinch of powder or sand that is colored red, yellow, and blue.
+materialConsumed: false

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: automatic_knowledge
+system: pf2e
+prerequisite: expert in a skill with the Recall Knowledge action; Assurance in that skill
+mechanicalSummary: Recall Knowledge as a free action once per round
+extraPools: []
+level: 2

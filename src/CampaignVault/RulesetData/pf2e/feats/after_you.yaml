@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: after_you
+system: pf2e
+mechanicalSummary: You allow your foes to make the first move in a show of incredible confidence.
+extraPools: []
+classes: [swashbuckler]
+level: 2

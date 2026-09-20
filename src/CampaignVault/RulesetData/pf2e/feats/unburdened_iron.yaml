@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: unburdened_iron
+system: pf2e
+mechanicalSummary: "You've learned techniques first devised by your ancestors during their ancient wars, allowing you to comfortably wear massive suits of armor."
+extraPools: []
+level: 1

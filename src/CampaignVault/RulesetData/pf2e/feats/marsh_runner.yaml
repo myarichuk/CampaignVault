@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: marsh_runner
+system: pf2e
+prerequisite: You have a swim Speed
+mechanicalSummary: When you use the Step action, you can ignore difficult terrain caused by flooding, swamps, or quicksand.
+extraPools: []
+level: 1

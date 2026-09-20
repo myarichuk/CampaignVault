@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: quick_shot
+system: pf2e
+prerequisite: Archer Dedication
+mechanicalSummary: You draw your bow and attack with the same action.
+extraPools: []
+level: 4

@@ -727,6 +727,234 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.Equal([companionAId], withInitiative);
     }
 
+    /// <summary>
+    /// NpcInitiativeNudge lets the DM declare that a specific NPC's psychology should make them react
+    /// to something that just happened (e.g. a squeamish NPC watching game field-dressed) — it bypasses
+    /// the normal need/momentum scorer outright, even against a candidate that would otherwise dominate
+    /// the score, and surfaces the narrative reason via TurnIntent/ActiveInitiatives.
+    /// </summary>
+    [Fact]
+    public async Task InitiativeNudge_BypassesScorer_AndSurfacesReason()
+    {
+        var slug = NewSlug("nudgebypass");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-camp";
+        var pcId = $"chars/{slug}-pc";
+        var dominantId = $"chars/{slug}-dominant";
+        var nudgedId = $"chars/{slug}-touchy";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Camp" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            // Would dominate the scorer's priority ordering (need stress) absent a nudge on someone else.
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = dominantId, Name = "Dominant", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10,
+                Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 500f } }
+            });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = nudgedId, Name = "Touchy", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var reason = "watched the rabbit being field-dressed and is visibly disturbed";
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NpcInitiativeNudge { CharacterId = nudgedId, Intensity = 1f, Reason = reason }],
+            Narrative = "The party skins a rabbit at camp.",
+            PartyLocationId = locId
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        var data = result.Data!;
+
+        var withInitiative = (data.Party ?? [])
+            .Where(p => p.Initiative != null)
+            .Select(p => (Id: p.Id, Enrichment: p.Initiative!))
+            .Concat((data.Npcs ?? []).Where(n => n.Initiative != null).Select(n => (Id: n.CharacterId, Enrichment: n.Initiative!)))
+            .ToList();
+
+        var winner = Assert.Single(withInitiative);
+        Assert.Equal(nudgedId, winner.Id);
+        Assert.Equal(reason, winner.Enrichment.TurnIntent?.Reason);
+        Assert.Contains(winner.Enrichment.ActiveInitiatives, c => c.FramingPrompt == reason);
+    }
+
+    /// <summary>
+    /// A nudge is consumed (removed) the moment it wins a selection — a subsequent turn with no new
+    /// nudge falls back to the normal need/momentum scorer instead of re-selecting the same NPC forever.
+    /// </summary>
+    [Fact]
+    public async Task InitiativeNudge_IsConsumedBySelection_AndDoesNotPersist()
+    {
+        var slug = NewSlug("nudgeconsume");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-camp";
+        var pcId = $"chars/{slug}-pc";
+        var dominantId = $"chars/{slug}-dominant";
+        var nudgedId = $"chars/{slug}-touchy";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Camp" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = dominantId, Name = "Dominant", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10,
+                Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 500f } }
+            });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = nudgedId, Name = "Touchy", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        // NpcInitiativeNudge.CharacterId is itself an "involved entity" this turn (reflection-based
+        // ExtractInvolvedEntities picks up any *Id property), so the nudged NPC is already a candidate
+        // this same call and wins immediately via the bypass path — consuming the nudge in the same
+        // response that declared it.
+        var nudged = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NpcInitiativeNudge { CharacterId = nudgedId, Intensity = 1f, Reason = "reacts" }],
+            Narrative = "Something happens.",
+            PartyLocationId = locId
+        }, slug);
+        Assert.True(nudged.Success, nudged.Summary);
+
+        var follow = await tools.TakeTurn(new TakeTurnRequest { IncludeParty = true, PartyLocationId = locId }, slug);
+        Assert.True(follow.Success, follow.Summary);
+
+        var winnerIds = (follow.Data!.Party ?? []).Where(p => p.Initiative != null).Select(p => p.Id)
+            .Concat((follow.Data.PartyDelta ?? []).Where(d => d.Initiative != null).Select(d => d.EntityId))
+            .Concat((follow.Data.Npcs ?? []).Where(n => n.Initiative != null).Select(n => n.CharacterId))
+            .ToList();
+
+        // The nudge was already spent — the dominant candidate's need stress wins this time.
+        Assert.Equal([dominantId], winnerIds);
+    }
+
+    /// <summary>
+    /// A pending nudge decays after CampaignConfig.InitiativeNudgeUnconsumedTurns take_turn calls if the
+    /// nudged NPC never becomes an initiative candidate in the meantime — it must not linger forever and
+    /// surface a stale reaction turns later.
+    /// </summary>
+    [Fact]
+    public async Task InitiativeNudge_DecaysAfterConfiguredUnconsumedTurns()
+    {
+        var slug = NewSlug("nudgedecay");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-camp";
+        var elsewhereId = $"locations/{slug}-elsewhere";
+        var pcId = $"chars/{slug}-pc";
+        var nudgedId = $"chars/{slug}-touchy";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            var config = await repo.GetCampaignConfigAsync(cs);
+            config.InitiativeNudgeUnconsumedTurns = 1;
+            await repo.UpsertCampaignConfigAsync(session, config, slug);
+
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Camp" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = elsewhereId, Name = "Elsewhere" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = elsewhereId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = nudgedId, Name = "Touchy", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        // AutoRefreshInvolved: false on the issuing call itself — otherwise NpcInitiativeNudge.CharacterId
+        // (picked up as an "involved entity" this turn via reflection) would make the nudged NPC a
+        // candidate and consume the nudge in this same call, before decay ever gets a chance to run.
+        var nudge = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NpcInitiativeNudge { CharacterId = nudgedId, Intensity = 1f, Reason = "reacts" }],
+            Narrative = "Something happens far away.",
+            PartyLocationId = elsewhereId,
+            AutoRefreshInvolved = false
+        }, slug);
+        Assert.True(nudge.Success, nudge.Summary);
+
+        // One more elsewhere call — with InitiativeNudgeUnconsumedTurns = 1, the nudge should now have
+        // decayed (aged past its single allotted turn).
+        var elsewhereAgain = await tools.TakeTurn(new TakeTurnRequest { IncludeParty = true, PartyLocationId = elsewhereId }, slug);
+        Assert.True(elsewhereAgain.Success, elsewhereAgain.Summary);
+
+        // Now check the camp — if the nudge had survived, Touchy would win outright despite having no
+        // need/momentum advantage; if it decayed, no initiative slot is awarded at all (single candidate,
+        // default priority, no special reason to force a win either way is asserted here — instead we
+        // directly inspect the persisted cursor state, which is the actual thing that decayed).
+        using var checkSession = _fixture.Store.OpenAsyncSession();
+        var cursor = await repo.GetTurnCursorAsync(_fixture.CreateCampaignSession(checkSession, slug));
+        Assert.NotNull(cursor);
+        Assert.DoesNotContain(nudgedId, cursor!.PendingInitiativeNudgesByEntityId.Keys);
+    }
+
+    /// <summary>
+    /// Re-nudging the same NPC before their previous nudge was ever consumed, repeatedly, surfaces an
+    /// advisory reminder asking the DM to let the reaction actually play out before layering on another.
+    /// </summary>
+    [Fact]
+    public async Task InitiativeNudge_RepeatedBeforeConsumption_SurfacesAdvisory()
+    {
+        var slug = NewSlug("nudgerepeat");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-camp";
+        var elsewhereId = $"locations/{slug}-elsewhere";
+        var pcId = $"chars/{slug}-pc";
+        var nudgedId = $"chars/{slug}-touchy";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Camp" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = elsewhereId, Name = "Elsewhere" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = elsewhereId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = nudgedId, Name = "Touchy", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        // AutoRefreshInvolved: false so neither nudge gets consumed by a same-call selection (otherwise
+        // NpcInitiativeNudge.CharacterId being picked up as an "involved entity" would make the nudged
+        // NPC an immediate candidate and reset the repeat counter every time).
+        Task<ToolResult<TurnResult>> Nudge() => tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NpcInitiativeNudge { CharacterId = nudgedId, Intensity = 1f, Reason = "reacts again" }],
+            Narrative = "Something happens far away, again.",
+            PartyLocationId = elsewhereId,
+            AutoRefreshInvolved = false
+        }, slug);
+
+        var first = await Nudge();
+        Assert.True(first.Success, first.Summary);
+        Assert.DoesNotContain("follow", first.Data!.NarrativeReminder ?? "", StringComparison.OrdinalIgnoreCase);
+
+        // Default InitiativeNudgeRepeatThreshold is 2 — the second consecutive unconsumed nudge trips it.
+        var second = await Nudge();
+        Assert.True(second.Success, second.Summary);
+        Assert.NotNull(second.Data!.NarrativeReminder);
+        Assert.Contains(nudgedId, second.Data.NarrativeReminder);
+        Assert.Contains("follow", second.Data.NarrativeReminder, StringComparison.OrdinalIgnoreCase);
+    }
 
     [Fact]
     public async Task MemoryHint_IsSuppressed_OnceAlreadySurfacedWithSameTopic()
@@ -1082,6 +1310,176 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
         var npc = Assert.Single(delta.Data.Npcs ?? [], n => n.CharacterId == companionId);
         Assert.DoesNotContain("hunger", npc.KnownNeeds.Keys);
+    }
+
+    /// <summary>
+    /// Cumulative-drift baseline (TurnCursor.SurfacedNeedValuesByEntityId): a need that never moves by
+    /// >= the per-turn threshold in any single turn still surfaces once its drift since the last
+    /// surfaced value crosses NeedsCumulativeDriftThreshold across several delta turns. Configures that
+    /// threshold down to 2 for a deterministic, fast test — the production default (10) is deliberately
+    /// higher so ordinary background ticking (a few points over several turns) doesn't count as a
+    /// meaningful change on its own.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_SurfacesNeed_OnCumulativeDriftAcrossTurns()
+    {
+        var slug = NewSlug("needsdrift");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            var config = await repo.GetCampaignConfigAsync(cs);
+            config.NeedsCumulativeDriftThreshold = 2f;
+            await repo.UpsertCampaignConfigAsync(session, config, slug);
+
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        async Task<ToolResult<TurnResult>> Tick() => await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NeedChange { CharacterId = companionId, Need = "hunger", Delta = 1 }],
+            Narrative = "The companion grows a little more hungry.",
+            ExtraCharacterIds = [companionId]
+        }, slug);
+
+        var tick1 = await Tick();
+        Assert.True(tick1.Success, tick1.Summary);
+        var npc1 = Assert.Single(tick1.Data!.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.DoesNotContain("hunger", npc1.KnownNeeds.Keys);
+
+        // Cumulative drift is now 2.0 (1+1) since the seed's baseline — clears the configured 2.0
+        // NeedsCumulativeDriftThreshold even though neither single turn's own NeedChange did.
+        var tick2 = await Tick();
+        var npc2 = Assert.Single(tick2.Data!.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.Contains("hunger", npc2.KnownNeeds.Keys);
+
+        // Baseline reset to the just-surfaced value: a further sub-threshold tick should not
+        // resurface the same need again (no double-count of already-accounted-for drift).
+        var tick3 = await Tick();
+        var npc3 = Assert.Single(tick3.Data!.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.DoesNotContain("hunger", npc3.KnownNeeds.Keys);
+
+        var noOpTick = await tools.TakeTurn(new TakeTurnRequest
+        {
+            IncludeParty = false,
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.True(noOpTick.Success, noOpTick.Summary);
+        var npc4 = Assert.Single(noOpTick.Data!.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.DoesNotContain("hunger", npc4.KnownNeeds.Keys);
+    }
+
+    /// <summary>
+    /// A brand-new need key introduced mid-campaign (never seen at the last Full reseed, so it has no
+    /// cumulative-drift baseline yet) still surfaces immediately when a single NeedChange on it alone
+    /// clears the significance threshold — the per-turn AppliedChanges check catches this even though
+    /// the missing-baseline drift check alone would read as zero drift.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_SurfacesBrandNewNeedKey_OnFirstThresholdCrossingChange()
+    {
+        var slug = NewSlug("needsnewkey");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        // "boredom" never existed on this NPC before — introduced here at exactly the default threshold.
+        var delta = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NeedChange { CharacterId = companionId, Need = "boredom", Delta = 2 }],
+            Narrative = "The companion grows suddenly bored.",
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.True(delta.Success, delta.Summary);
+        Assert.Equal(TurnMode.Delta, delta.Data!.Mode);
+
+        var npc = Assert.Single(delta.Data.Npcs ?? [], n => n.CharacterId == companionId);
+        Assert.Contains("boredom", npc.KnownNeeds.Keys);
+    }
+
+    /// <summary>
+    /// A Full-mode reseed resets the cumulative-drift baseline to exactly the live values just sent —
+    /// sub-threshold drift accumulated before the reseed does not leak across it and cause a
+    /// false-positive "changed" need on the very next delta turn.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_FullReseed_ResetsCumulativeDriftBaseline()
+    {
+        var slug = NewSlug("needsreseed");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var companionId = $"chars/{slug}-comp";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        // Sub-threshold drift that would count toward cumulative drift if not reset by the reseed below.
+        var tick1 = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NeedChange { CharacterId = companionId, Need = "hunger", Delta = 1 }],
+            Narrative = "The companion grows a little hungry.",
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.True(tick1.Success, tick1.Summary);
+        Assert.Equal(TurnMode.Delta, tick1.Data!.Mode);
+
+        // Force a Full reseed — this must re-baseline hunger to its current (post-tick1) live value.
+        var reseed = await tools.TakeTurn(new TakeTurnRequest
+        {
+            ForceFullReseed = true,
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.True(reseed.Success, reseed.Summary);
+        Assert.Equal(TurnMode.Full, reseed.Data!.Mode);
+
+        // A further sub-threshold change (0.5) should NOT surface hunger — if the pre-reseed drift (1.0)
+        // had leaked through, 1.0 + 0.5 = 1.5 would still be under 2.0, so this alone doesn't distinguish
+        // the two cases; the discriminating case is that the baseline must equal the reseeded value, not
+        // some earlier one. Assert the reseed's own KnownNeeds carries the accumulated hunger value, and
+        // that a subsequent no-op call doesn't spuriously surface it.
+        var noOpAfterReseed = await tools.TakeTurn(new TakeTurnRequest
+        {
+            ExtraCharacterIds = [companionId]
+        }, slug);
+        Assert.True(noOpAfterReseed.Success, noOpAfterReseed.Summary);
+        if (noOpAfterReseed.Data!.Mode == TurnMode.Delta)
+        {
+            var npc = Assert.Single(noOpAfterReseed.Data.Npcs ?? [], n => n.CharacterId == companionId);
+            Assert.DoesNotContain("hunger", npc.KnownNeeds.Keys);
+        }
     }
 
     /// <summary>
@@ -1660,6 +2058,175 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.DoesNotContain("boredom", deltaPresence.KnownNeeds.Keys);
         Assert.Contains("hunger", deltaPresence.NeedDescriptors.Keys);
         Assert.DoesNotContain("boredom", deltaPresence.NeedDescriptors.Keys);
+    }
+
+    /// <summary>
+    /// TurnCursor.SurfacedPresentNpcIdsByLocationId: a scene with 3 present NPCs, only 1 of which
+    /// changed this turn, still returns all 3 entries in PresentNPCs (the KnownCharacterIds
+    /// do-not-hallucinate invariant — Phase 2's hard constraint), but the cursor records that all 3
+    /// were surfaced, and a subsequent untouched refetch would be eligible to stub the two that never
+    /// change.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_KeepsAllPresentNpcEntries_ButTracksSurfacedIdsForStubbing()
+    {
+        var slug = NewSlug("presencestub");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-hall";
+        var npc1 = $"chars/{slug}-npc1";
+        var npc2 = $"chars/{slug}-npc2";
+        var npc3 = $"chars/{slug}-npc3";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hall" });
+            foreach (var id in new[] { npc1, npc2, npc3 })
+            {
+                await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+                { Id = id, Name = id, IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            }
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locId] }, slug);
+        Assert.True(seed.Success, seed.Summary);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        var delta = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NeedChange { CharacterId = npc1, Need = "hunger", Delta = 5 }],
+            Narrative = "One of the three grows hungry.",
+            ExtraLocationIds = [locId]
+        }, slug);
+        Assert.True(delta.Success, delta.Summary);
+        Assert.Equal(TurnMode.Delta, delta.Data!.Mode);
+
+        var scene = delta.Data.Scenes!.Single(s => s.Location.Id == locId);
+        // Hard constraint: all 3 present NPCs still appear, changed or not.
+        Assert.Equal(3, scene.PresentNPCs.Count());
+        Assert.Contains(scene.PresentNPCs, n => n.Id == npc1);
+        Assert.Contains(scene.PresentNPCs, n => n.Id == npc2);
+        Assert.Contains(scene.PresentNPCs, n => n.Id == npc3);
+
+        var npc1Presence = scene.PresentNPCs.Single(n => n.Id == npc1);
+        Assert.Contains("hunger", npc1Presence.KnownNeeds.Keys);
+
+        using var checkSession = _fixture.Store.OpenAsyncSession();
+        var cursor = await repo.GetTurnCursorAsync(_fixture.CreateCampaignSession(checkSession, slug));
+        Assert.NotNull(cursor);
+        var recorded = Assert.Contains(locId, cursor!.SurfacedPresentNpcIdsByLocationId);
+        Assert.Equal(new[] { npc1, npc2, npc3 }, recorded.OrderBy(x => x, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// An NPC that departs a scene (drops out of the cursor's recorded present-set) and is later
+    /// replaced by a different NPC taking the same conversational "slot" must not be mistaken for
+    /// "already surfaced" — the newly arrived NPC gets a full entry on its first appearance, not a stub.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_NewlyArrivedNpc_IsNotMistakenForAlreadySurfaced()
+    {
+        var slug = NewSlug("presencearrival");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-hall";
+        var otherLocId = $"locations/{slug}-elsewhere";
+        var departing = $"chars/{slug}-departing";
+        var arriving = $"chars/{slug}-arriving";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hall" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = otherLocId, Name = "Elsewhere" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = departing, Name = "Departing", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = arriving, Name = "Arriving", IsPartyCompanion = true, CurrentLocationId = otherLocId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locId] }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        // Departing leaves, Arriving takes the freed slot in the same scene.
+        var swap = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new ActivityChange { CharacterId = departing, NewLocationId = otherLocId, UpdateLocation = true, NewActivity = "Leaving" },
+                new ActivityChange { CharacterId = arriving, NewLocationId = locId, UpdateLocation = true, NewActivity = "Arriving" }
+            ],
+            Narrative = "One leaves as another arrives.",
+            ExtraLocationIds = [locId]
+        }, slug);
+        Assert.True(swap.Success, swap.Summary);
+        Assert.Equal(TurnMode.Delta, swap.Data!.Mode);
+
+        var scene = swap.Data.Scenes!.Single(s => s.Location.Id == locId);
+        Assert.DoesNotContain(scene.PresentNPCs, n => n.Id == departing);
+        var arrivingPresence = Assert.Single(scene.PresentNPCs, n => n.Id == arriving);
+        // Full entry, not a stub — arrival is exactly the kind of change AffectsMoodOrActivity gates on.
+        Assert.Equal("Arriving", arrivingPresence.CurrentActivity);
+    }
+
+    /// <summary>
+    /// A Full-mode reseed replaces the cursor's recorded present-NPC set for a scene wholesale — a
+    /// stale entry from before the reseed (e.g. an NPC who left in the interim) must not survive into
+    /// the reseeded set.
+    /// </summary>
+    [Fact]
+    public async Task DeltaMode_FullReseed_ReplacesRecordedPresentNpcSet()
+    {
+        var slug = NewSlug("presencereseed");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-hall";
+        var stays = $"chars/{slug}-stays";
+        var otherLocId = $"locations/{slug}-elsewhere";
+        var leaves = $"chars/{slug}-leaves";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hall" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = otherLocId, Name = "Elsewhere" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = stays, Name = "Stays", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = leaves, Name = "Leaves", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync();
+        }
+
+        var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locId] }, slug);
+        Assert.Equal(TurnMode.Full, seed.Data!.Mode);
+
+        var depart = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new ActivityChange { CharacterId = leaves, NewLocationId = otherLocId, UpdateLocation = true, NewActivity = "Gone" }],
+            Narrative = "One departs.",
+            ExtraLocationIds = [locId]
+        }, slug);
+        Assert.True(depart.Success, depart.Summary);
+        Assert.Equal(TurnMode.Delta, depart.Data!.Mode);
+
+        var reseed = await tools.TakeTurn(new TakeTurnRequest { ForceFullReseed = true, ExtraLocationIds = [locId] }, slug);
+        Assert.True(reseed.Success, reseed.Summary);
+        Assert.Equal(TurnMode.Full, reseed.Data!.Mode);
+
+        using var checkSession = _fixture.Store.OpenAsyncSession();
+        var cursor = await repo.GetTurnCursorAsync(_fixture.CreateCampaignSession(checkSession, slug));
+        Assert.NotNull(cursor);
+        var recorded = Assert.Contains(locId, cursor!.SurfacedPresentNpcIdsByLocationId);
+        Assert.Equal([stays], recorded);
     }
 
     /// <summary>

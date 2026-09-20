@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: to_the_ends_of_the_earth
+system: pf2e
+prerequisite: Legendary in Survival
+mechanicalSummary: Your ability to track your prey has surpassed explanation, allowing you to trace your prey’s movements and predict its location with ease.
+extraPools: []
+classes: [ranger]
+level: 20

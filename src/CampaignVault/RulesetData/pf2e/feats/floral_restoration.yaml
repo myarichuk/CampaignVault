@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: floral_restoration
+system: pf2e
+prerequisite: leaf order
+mechanicalSummary: You request that nearby plants share their vitality with you to replenish your body and magic.
+extraPools: []
+classes: [druid]
+level: 8

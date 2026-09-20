@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: read_disaster
+system: pf2e
+mechanicalSummary: You spend 10 minutes and open yourself to the divine mysteries of the world, peering into the most sinister portents of the future.
+extraPools: []
+classes: [oracle]
+level: 8

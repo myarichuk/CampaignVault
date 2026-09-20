@@ -5,3 +5,9 @@ level: 3
 classes: [bard, cleric, sorcerer, wizard]
 concentration: true
 castingTime: 10 minutes
+verbal: true
+somatic: true
+material: true
+materialText: A focus worth at least 100gp, either a jeweled horn for hearing or a glass eye for seeing.
+materialCost: 100.0
+materialConsumed: false

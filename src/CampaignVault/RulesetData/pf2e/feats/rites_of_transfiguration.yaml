@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rites_of_transfiguration
+system: pf2e
+mechanicalSummary: You can adapt your patron’s power to transform other creatures into forms more befitting their behavior or your whims.
+extraPools: []
+classes: [witch]
+level: 14

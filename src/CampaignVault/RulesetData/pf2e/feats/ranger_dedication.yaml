@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ranger_dedication
+system: pf2e
+prerequisite: Dexterity +2
+mechanicalSummary: You become trained in Survival; if you were already trained in Survival, you instead become trained in another skill of your choice.
+extraPools: []
+level: 2

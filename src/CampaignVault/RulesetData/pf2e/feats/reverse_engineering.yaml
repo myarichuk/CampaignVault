@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reverse_engineering
+system: pf2e
+prerequisite: Scrounger Dedication; Expert in Crafting
+mechanicalSummary: Your nigh-constant tinkering and fiddling with objects means you are able to reverse engineer items into formulas more effectively than most.
+extraPools: []
+level: 4

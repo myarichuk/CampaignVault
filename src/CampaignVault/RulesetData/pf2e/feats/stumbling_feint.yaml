@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: stumbling_feint
+system: pf2e
+prerequisite: Stumbling Stance; Expert in Deception
+mechanicalSummary: You lash out confusingly, with what seems to be a weak move, but instead allows you to unleash a dangerous flurry of blows upon your unsuspecting foe.
+extraPools: []
+classes: [monk]
+level: 6

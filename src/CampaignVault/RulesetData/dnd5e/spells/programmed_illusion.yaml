@@ -5,3 +5,9 @@ level: 6
 classes: [bard, wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A bit of fleece and jade dust worth at least 25 gp.
+materialCost: 25.0
+materialConsumed: false

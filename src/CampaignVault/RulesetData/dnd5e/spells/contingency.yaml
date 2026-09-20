@@ -5,3 +5,9 @@ level: 6
 classes: [wizard]
 concentration: false
 castingTime: 10 minutes
+verbal: true
+somatic: true
+material: true
+materialText: A statuette of yourself carved from ivory and decorated with gems worth at least 1,500 gp.
+materialCost: 1500.0
+materialConsumed: false

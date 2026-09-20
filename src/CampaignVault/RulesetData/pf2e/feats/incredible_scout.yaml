@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: incredible_scout
+system: pf2e
+prerequisite: Master in Perception
+mechanicalSummary: When you scout, you are particularly alert for danger, granting your allies precious moments to prepare to fight.
+extraPools: []
+level: 11

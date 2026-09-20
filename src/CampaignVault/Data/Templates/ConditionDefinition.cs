@@ -29,6 +29,15 @@ public record ConditionDefinition : RulesetTemplate
     /// </summary>
     public bool IsStacking { get; init; }
 
+    /// <summary>
+    /// True for the condition a ruleset wants applied when <c>SurvivalDeprivationRule</c> escalates
+    /// sustained hunger, thirst, or temperature-exposure deprivation past its configured tolerance
+    /// (e.g. dnd5e "exhaustion", pf2e "fatigued"). At most one condition per system should set this.
+    /// Rulesets with no marked condition (e.g. swade, which ships no condition YAMLs yet) are simply
+    /// skipped by that rule — see its class doc for why that's a deliberate scope boundary, not a gap.
+    /// </summary>
+    public bool IsSurvivalExhaustion { get; init; }
+
     public static ConditionDefinition Merge(ConditionDefinition child, ConditionDefinition parent) =>
         child with
         {
@@ -40,6 +49,7 @@ public record ConditionDefinition : RulesetTemplate
             Immunities = child.Immunities.Count > 0 ? child.Immunities : parent.Immunities,
             Suppresses = child.Suppresses.Count > 0 ? child.Suppresses : parent.Suppresses,
             IsStacking = child.IsStacking || parent.IsStacking,
+            IsSurvivalExhaustion = child.IsSurvivalExhaustion || parent.IsSurvivalExhaustion,
         };
 }
 

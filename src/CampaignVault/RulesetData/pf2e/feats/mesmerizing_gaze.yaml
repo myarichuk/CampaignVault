@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mesmerizing_gaze
+system: pf2e
+prerequisite: Celebrity Dedication
+mechanicalSummary: When you meet someone’s gaze, they’re unable to look away from you.
+extraPools: []
+level: 6

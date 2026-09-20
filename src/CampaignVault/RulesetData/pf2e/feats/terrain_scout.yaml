@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: terrain_scout
+system: pf2e
+prerequisite: Scout Dedication
+mechanicalSummary: You have mastered movement in many different environments.
+extraPools: []
+level: 4

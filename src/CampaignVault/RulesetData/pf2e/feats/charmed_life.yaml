@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: charmed_life
+system: pf2e
+prerequisite: Charisma +2
+mechanicalSummary: When danger calls, you have a strange knack for coming out on top.
+extraPools: []
+classes: [swashbuckler]
+level: 2

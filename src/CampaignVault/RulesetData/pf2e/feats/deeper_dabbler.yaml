@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: deeper_dabbler
+system: pf2e
+prerequisite: Talisman Dabbler Dedication
+mechanicalSummary: With some streamlining to your process and a deeper collection of talisman materials, you make a greater number of talismans every day.
+extraPools: []
+level: 8

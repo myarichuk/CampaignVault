@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: shattering_strike_weapon_improviser
+system: pf2e
+prerequisite: Improvised Pummel
+mechanicalSummary: The improvised weapon shatters, destroying it completely but dealing an additional 3d6 piercing damage to the creature you hit with the Improvised Pummel.
+extraPools: []
+level: 10

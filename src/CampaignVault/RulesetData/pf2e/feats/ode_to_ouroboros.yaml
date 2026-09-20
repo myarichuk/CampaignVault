@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ode_to_ouroboros
+system: pf2e
+mechanicalSummary: You learn the ode to ouroboros composition spell (page 371), which enables you to temporarily spare your allies from death.
+extraPools: []
+classes: [bard]
+level: 10

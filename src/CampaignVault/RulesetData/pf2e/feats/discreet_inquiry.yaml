@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: discreet_inquiry
+system: pf2e
+prerequisite: Expert in Deception or Expert in Diplomacy
+mechanicalSummary: You are subtle in your efforts to learn the things you need to know.
+extraPools: []
+level: 2

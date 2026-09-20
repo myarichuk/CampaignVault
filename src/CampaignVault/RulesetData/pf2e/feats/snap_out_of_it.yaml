@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: snap_out_of_it
+system: pf2e
+prerequisite: Marshal Dedication
+mechanicalSummary: You give a quick shout, hoping to shake the fog clouding your ally’s thoughts.
+extraPools: []
+level: 4

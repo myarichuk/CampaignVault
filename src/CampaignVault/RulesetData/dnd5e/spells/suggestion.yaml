@@ -5,3 +5,8 @@ level: 2
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: false
+material: true
+materialText: "A snake's tongue and either a bit of honeycomb or a drop of sweet oil."
+materialConsumed: false

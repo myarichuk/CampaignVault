@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: angel_of_death
+system: pf2e
+prerequisite: Assassin Dedication
+mechanicalSummary: All your Strikes against a creature you have Marked for Death have the death trait, causing the mark to be instantly killed when reduced to 0 Hit Points.
+extraPools: []
+level: 10

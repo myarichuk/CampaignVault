@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: tiger_stance
+system: pf2e
+mechanicalSummary: You enter the stance of a tiger and can make tiger claw attacks.
+extraPools: []
+classes: [monk]
+level: 1

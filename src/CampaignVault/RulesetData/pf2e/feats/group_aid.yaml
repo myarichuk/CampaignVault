@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: group_aid
+system: pf2e
+mechanicalSummary: Your upbringing emphasized teamwork, and helping your allies comes naturally to you.
+extraPools: []
+level: 9

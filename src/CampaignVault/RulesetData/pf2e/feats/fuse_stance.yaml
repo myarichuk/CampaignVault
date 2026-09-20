@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: fuse_stance
+system: pf2e
+prerequisite: at least two stances
+mechanicalSummary: You have combined two stances into a single stance all your own.
+extraPools: []
+classes: [monk]
+level: 16

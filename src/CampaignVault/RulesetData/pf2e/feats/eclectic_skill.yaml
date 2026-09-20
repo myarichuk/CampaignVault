@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: eclectic_skill
+system: pf2e
+prerequisite: polymath muse; Master in Occultism
+mechanicalSummary: Your broad experiences translate to a range of skills.
+extraPools: []
+classes: [bard]
+level: 8

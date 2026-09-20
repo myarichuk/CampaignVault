@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bloodletting_fangs
+system: pf2e
+prerequisite: fangs unarmed attack
+mechanicalSummary: "You emulate your vampiric parent's techniques for drawing blood from a victim."
+extraPools: []
+level: 9

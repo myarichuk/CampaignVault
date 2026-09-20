@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sense_the_unseen
+system: pf2e
+mechanicalSummary: When you look for foes, you can catch even the slightest cues, such as their minute movements or the shifting of air currents on your skin.
+extraPools: []
+classes: [investigator, ranger, rogue]
+level: 14

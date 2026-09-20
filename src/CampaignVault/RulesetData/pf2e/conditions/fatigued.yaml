@@ -2,6 +2,7 @@
 name: fatigued
 system: pf2e
 durationType: UntilLongRest
+isSurvivalExhaustion: true
 mechanicalSummary: Cannot use exploration or downtime activities that require exertion; penalty to checks from fatigue
 moodHint: weary, drained
 immunities: []

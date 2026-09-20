@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: greater_magical_scholastics
+system: pf2e
+prerequisite: Magical Scholastics
+mechanicalSummary: You broaden the scope of your magical understanding, allowing you to find the right path, detect hidden objects, and conceal those objects from unscrupulous rivals.
+extraPools: []
+level: 10

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: trick_magic_item
+system: pf2e
+prerequisite: Trained in Arcana, Trained in Nature, Trained in Occultism, or Trained in Religion
+mechanicalSummary: Activate a magic item you normally can’t activate
+extraPools: []
+level: 1

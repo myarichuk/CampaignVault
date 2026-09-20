@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: patron_s_presence
+system: pf2e
+mechanicalSummary: Your patron can direct its attention through your familiar, and its mere presence becomes an ominous weight on the minds of other beings to distract them and blot out their magic.
+extraPools: []
+classes: [witch]
+level: 14

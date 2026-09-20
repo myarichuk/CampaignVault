@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: leading_dance
+system: pf2e
+prerequisite: Trained in Performance
+mechanicalSummary: You sweep your foe into your dance.
+extraPools: []
+classes: [swashbuckler]
+level: 4

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: close_quarters
+system: pf2e
+mechanicalSummary: "If you're Small or smaller, you can end your movement in the same square as a Small or smaller ally."
+extraPools: []
+level: 9

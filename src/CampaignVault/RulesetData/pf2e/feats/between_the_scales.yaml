@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: between_the_scales
+system: pf2e
+mechanicalSummary: "You've learned to take advantage of slips in your foes' defenses."
+extraPools: []
+level: 9

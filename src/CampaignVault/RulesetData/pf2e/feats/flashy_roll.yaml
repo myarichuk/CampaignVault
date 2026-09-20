@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: flashy_roll
+system: pf2e
+prerequisite: Flashy Dodge
+mechanicalSummary: You can use Flashy Dodge before attempting a Reflex save, in addition to its original trigger.
+extraPools: []
+classes: [swashbuckler]
+level: 8

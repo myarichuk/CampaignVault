@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: analyze_idiolect
+system: pf2e
+prerequisite: Linguist Dedication; Expert in Deception; Expert in Society
+mechanicalSummary: You break down a specific individual’s idiolect, memorizing their speech mannerisms and habits.
+extraPools: []
+level: 6

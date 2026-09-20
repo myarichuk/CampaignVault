@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: phonetic_training
+system: pf2e
+prerequisite: Linguist Dedication; Expert in Society
+mechanicalSummary: You can pronounce and repeat words with near-perfect accuracy even if you don’t understand their meaning, and you can write them down in a phonetic script that allows you or another creature with Phonetic Training to read it later.
+extraPools: []
+level: 4

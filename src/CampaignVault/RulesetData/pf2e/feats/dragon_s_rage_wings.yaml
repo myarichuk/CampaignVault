@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: dragon_s_rage_wings
+system: pf2e
+prerequisite: dragon instinct
+mechanicalSummary: You sprout dragon wings from your back of the same color as your chosen dragon.
+extraPools: []
+classes: [barbarian]
+level: 12

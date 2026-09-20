@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: plentiful_snares
+system: pf2e
+prerequisite: Snarecrafter Dedication
+mechanicalSummary: You can prepare incredible numbers of snares each day out of simple ingredients.
+extraPools: []
+level: 12

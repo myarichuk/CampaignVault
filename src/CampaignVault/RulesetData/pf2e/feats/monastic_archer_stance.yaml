@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: monastic_archer_stance
+system: pf2e
+mechanicalSummary: You enter a specialized stance for a unique martial art centered around the use of a bow.
+extraPools: []
+classes: [monk]
+level: 1

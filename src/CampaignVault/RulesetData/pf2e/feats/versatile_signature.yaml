@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: versatile_signature
+system: pf2e
+prerequisite: polymath muse
+mechanicalSummary: "You\u2019re always tweaking your\r\navailable repertoire."
+extraPools: []
+classes: [bard]
+level: 4

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: blessed_counterstrike
+system: pf2e
+prerequisite: champion’s reaction that grants an ally resistance to an enemy’s damage (including the grandeur, justice, liberation, and redemption causes)
+mechanicalSummary: "You call upon divine power and make a weapon or unarmed Strike against the enemy who triggered your champion's reaction."
+extraPools: []
+classes: [champion]
+level: 12

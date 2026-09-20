@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rejuvenating_touch
+system: pf2e
+prerequisite: lay on hands
+mechanicalSummary: Your healing energies linger after you cast, providing continual benefits.
+extraPools: []
+classes: [champion]
+level: 18

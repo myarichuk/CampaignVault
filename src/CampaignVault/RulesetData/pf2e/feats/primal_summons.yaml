@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: primal_summons
+system: pf2e
+prerequisite: Call of the Wild
+mechanicalSummary: Whenever you summon an ally, you can empower it with the elemental power of air, earth, fire, or water.
+extraPools: []
+classes: [druid]
+level: 12

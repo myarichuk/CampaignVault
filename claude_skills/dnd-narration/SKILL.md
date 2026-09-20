@@ -227,6 +227,117 @@ Every `take_turn`/`get_entity` response carries the exact set of characters that
 **Right:**
 - Check `SeededNpcIds` for the tavern scene — empty for a bartender. Commit `world_build` with a `chars[]` entry (`chars/old-tom-bartender`, `keepAlive: true` if he's worth keeping) in the same `take_turn` batch as the narration, *then* narrate: "The bartender — Old Tom, by the look of the apron — leans in and lowers his voice..."
 
+## Bad Narration Guardrails: What NPCs Cannot Know
+
+### NPC Knowledge Boundaries
+
+**An NPC can only narrate knowledge that exists in one of these places:**
+1. **Their Memory field** (what they've witnessed, been told, or observed)
+2. **Plot threads they're explicitly linked to** (their story, their faction's affairs)
+3. **Public reputation** (what the whole town knows; bandits vs. nobles)
+4. **Their role's expertise** (a blacksmith knows metallurgy; a merchant knows trade routes)
+
+**An NPC cannot invent, guess, or hand you:**
+- Information not in their Memory field
+- Plot hooks they haven't been introduced to
+- BBEG identities, hidden alliances, or secrets outside their faction
+- Convenient exposition because the story needs you to know it
+
+### The Gatekeeper Problem: Information Brokers & Conspiracy
+
+**Anti-pattern (bad narration):**
+- Party meets shady info broker in session 2
+- "Oh, you want to know who the BBEG is? Sure, 500 gold. The Black Covenant is run by Duke Morbain."
+- *(Problem: Why would a broker with access to THAT intel hand it over on a first meeting? Who are the PCs? Unknowns. Why would the broker expose a powerful enemy? No reason.)*
+
+**Right approach:**
+- Broker has *layers* of information, gated by trust/payment/proof:
+  - **First offer:** "The Black Covenant exists. No names. 100 gold."
+  - **Second offer** (after PCs prove they're serious): "They operate through front merchants. Names unknown to me—I don't ask."
+  - **Third offer** (after trust/leverage is established): "Rumor says nobility is involved. That's as far as I go. Higher intel costs more than coin."
+  - **Fourth offer** (only if PCs become VIPs or the broker is compelled): "Duke Morbain, but I never said that, and if you repeat it, I'm dead."
+
+The broker's gate is *realistic*—they protect themselves, they vet clients, they charge escalation fees.
+
+### NPC Personality & Plot Protection
+
+**Self-preservation gates info:**
+- "I like my throat unwashed" (criminal NPCs don't name BBEG easily)
+- "You could be anyone" (distrust, not kindness)
+- "That's above my pay grade" (they don't actually know; admit it)
+
+**Faction loyalty gates info:**
+- "I don't betray my people" (even if you threaten them, they may choose death)
+- "The leadership decides what I tell you" (they're not the authority)
+
+**Competence gates info:**
+- "I never got far enough to know the real players" (henchmen don't know the plan)
+- "Nobody tells the hired muscle" (low-rank NPCs have real limits)
+
+**Trust gates info:**
+- An NPC's `Trust` value (in their Social field) determines *depth*, not just *tone*
+- Low trust: they tell you nothing, or lie
+- Medium trust: surface facts only, no secrets
+- High trust: they risk something to help
+
+### Unrealistic Information Flow = Bad Narration
+
+**Avoid:**
+- NPCs spilling BBEG secrets to strangers
+- Henchmen knowing their boss's master plan
+- Low-ranking guards explaining the castle's true purpose
+- Anyone answering a question they've never been told the answer to
+- A single NPC becoming your faction's entire lore dump
+
+**Check before narrating:**
+- Does this NPC actually *have* this information? (Check Memory.)
+- Why would they tell the PCs? (What's the incentive? The risk? The trust level?)
+- Is this the right point in the plot for this revelation? (Early sessions ≠ major secrets.)
+- Could a lower-rank NPC know this? (Check their role; they might have access limits.)
+
+### Plot Progression Protection
+
+**Session 1–2:** Mysteries stay mysterious. NPCs hint, dodge, or admit ignorance.
+**Session 3–4:** Patterns emerge. Named factions start appearing. Trust with specific NPCs increases.
+**Session 5+:** Major secrets *begin* to surface, earned through trust/leverage/discovery.
+
+If the PCs haven't built trust or solved the mystery through their own effort, the big reveal waits. **Don't hand it to them because it's convenient.**
+
+## Player Agency: Resolve, Don't Refuse or Railroad
+
+**Never flatly refuse a stated PC action because it seems hard, risky, or unlikely to succeed.** "You can't do that" is almost never the right response to a fictionally-possible action — that's what a check is for. Resolve it:
+
+1. Is it fictionally possible at all (not a physics/logic violation, not something the character has no means to attempt)? If yes, it's attemptable.
+2. Call for the right `ruleset_action` (skill check, save, attack, whatever the fiction implies) and let the roll determine the outcome — don't pre-judge success or failure by refusing the attempt.
+3. A bad roll is the "no" — narrate the failure and its consequence, not a refusal before the dice.
+
+**Anti-pattern:**
+- PC: "I try to climb the crumbling tower wall."
+- DM: "You can't climb that, it's too dangerous." *(No check offered — the DM decided the outcome by fiat.)*
+
+**Right:**
+- PC: "I try to climb the crumbling tower wall."
+- DM commits a `ruleset_action` (Athletics check, DC set by the wall's condition) and narrates the roll's outcome — success, a costly success, or a fall.
+
+The only actions worth a genuine refusal are ones outside the fiction entirely (a character with no rope trying to "just fly," an action contradicted by established facts) — and even then, say *why* and name what's actually available, don't just shut the door.
+
+**A spell refused for missing components is not railroading — it's the rules working.** If a player declares a cast and the engine rejects the `ruleset_action` with `[SpellcastingBlocked]` (gagged and the spell needs Verbal, hands bound and it needs Somatic, no material component on hand), that's a legitimate mechanical outcome, not a DM fiat refusal. Narrate why the incantation fails and stop there — don't retry with different parameters to force it through.
+
+## Player Agency: Stop for the Decision, Don't Make It For Them
+
+**A `take_turn` batch narrates the consequences of an action the player already stated — it never invents the player's next action, choice, or line of dialogue.** When the scene reaches a point where the PC would naturally choose (a fork in the road, an NPC's question, "what do you do?"), end the narration there and stop. Don't:
+- Narrate the PC's reply, decision, or next move on their behalf ("You decide to trust him and hand over the letter...")
+- Auto-advance multiple beats or combat rounds for a PC without a stated action for each one — one `take_turn` batch resolves one player-stated beat (see `dnd-bundling`'s "one narrative beat" rule), not a chain of them
+- Resolve an NPC's *reaction* to a hypothetical PC choice before the player has actually made it
+
+**Anti-pattern:**
+- "You knock on the door. The old woman answers, and you ask her about the missing merchant. She tells you he was last seen at the docks, so you head there and start asking around..." *(Three unstated PC decisions — asking, believing her, heading to the docks — narrated without ever handing control back.)*
+
+**Right:**
+- "You knock. The door creaks open on a chain-latch. An old woman peers out, wary. 'Who's asking?'" — then stop; the player decides what to say or do next.
+
+This applies just as much in combat: `combat(action: "next")` advancing to a PC's turn is a hard stop for their stated action, not a cue to narrate what they do.
+
 ## Appearance Continuity
 
 When you mention an NPC or location:
@@ -262,3 +373,5 @@ Same detail, woven differently. No contradiction. No recitation.
 - [ ] If multi-NPC scene, did I show social geometry and competing stakes?
 - [ ] Did I treat an omitted appearance/gear/rumor field on a delta turn as "unchanged," not as something to narrate away?
 - [ ] Is every named character who speaks/acts in `KnownCharacterIds`/`SeededNpcIds`? If not, did I `world_build` them before/alongside this narration, not after?
+- [ ] Did I resolve the PC's stated action via a check instead of refusing it outright?
+- [ ] Did I stop at the next player decision point instead of narrating their choice/reply for them?

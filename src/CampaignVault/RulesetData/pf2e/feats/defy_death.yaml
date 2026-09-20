@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: defy_death
+system: pf2e
+prerequisite: Orc Ferocity
+mechanicalSummary: You’re exceptionally difficult to kill.
+extraPools: []
+level: 5

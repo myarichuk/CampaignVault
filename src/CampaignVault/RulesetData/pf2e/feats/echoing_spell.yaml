@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: echoing_spell
+system: pf2e
+mechanicalSummary: "You time the components of your spell with exacting precision, setting up a resonance that duplicates the spell's effects."
+extraPools: []
+classes: [sorcerer]
+level: 18

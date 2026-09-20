@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: eyes_of_night
+system: pf2e
+mechanicalSummary: You can see in the darkness as easily as a true vampire.
+extraPools: []
+level: 1

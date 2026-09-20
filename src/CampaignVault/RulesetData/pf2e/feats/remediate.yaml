@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: remediate
+system: pf2e
+mechanicalSummary: If your next action is to use your divine font to cast a 3-action heal or harm spell, you can harness the residual energy to counterbalance opposing forces.
+extraPools: []
+classes: [cleric]
+level: 16

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: impaling_bone
+system: pf2e
+mechanicalSummary: Once per day, you can cast  impaling spike  as a 7th-rank innate occult spell, except the spike is made of bone instead of cold iron.
+extraPools: []
+level: 17

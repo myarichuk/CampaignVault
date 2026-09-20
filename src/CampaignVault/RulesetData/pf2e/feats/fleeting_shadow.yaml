@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: fleeting_shadow
+system: pf2e
+prerequisite: Scout Dedication
+mechanicalSummary: "You're able to quickly disappear and then move about without drawing the attention of your enemies."
+extraPools: []
+level: 6

@@ -5,3 +5,8 @@ level: 2
 classes: [cleric, paladin]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A tiny strip of white cloth.
+materialConsumed: false

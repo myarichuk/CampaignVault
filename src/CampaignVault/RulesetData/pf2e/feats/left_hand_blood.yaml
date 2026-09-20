@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: left_hand_blood
+system: pf2e
+mechanicalSummary: "It's said that the flesh of the right side of a hyena can heal diseases, but that the flesh of the left side is deadly and poisonous."
+extraPools: []
+level: 5

@@ -5,3 +5,8 @@ level: 6
 classes: [wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A small crystal sphere.
+materialConsumed: false

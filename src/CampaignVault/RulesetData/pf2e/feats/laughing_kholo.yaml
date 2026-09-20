@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: laughing_kholo
+system: pf2e
+prerequisite: Master in Intimidation
+mechanicalSummary: Your sinister giggle is a sound of warning and threat.
+extraPools: []
+level: 9

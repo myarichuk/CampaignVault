@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: can_t_fall_here
+system: pf2e
+mechanicalSummary: You physically help an ally remain standing and encourage them to push through their pain against dire odds.
+extraPools: []
+level: 13

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: aura_of_courage
+system: pf2e
+prerequisite: champion’s aura, holy
+mechanicalSummary: You stand strong in the face of danger and inspire your allies to do the same.
+extraPools: []
+classes: [champion]
+level: 4

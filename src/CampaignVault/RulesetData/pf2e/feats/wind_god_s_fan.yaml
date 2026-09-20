@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: wind_god_s_fan
+system: pf2e
+prerequisite: Tengu Feather Fan
+mechanicalSummary: Your fan can stir up even more powerful winds.
+extraPools: []
+level: 9

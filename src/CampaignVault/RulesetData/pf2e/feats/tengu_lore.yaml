@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: tengu_lore
+system: pf2e
+mechanicalSummary: You learned skills for surviving in the place where your people were dispersed.
+extraPools: []
+level: 1

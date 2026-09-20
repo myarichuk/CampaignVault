@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: basic_bloodline_spell
+system: pf2e
+prerequisite: Sorcerer Dedication
+mechanicalSummary: You gain your bloodline’s initial bloodline spell.
+extraPools: []
+level: 4

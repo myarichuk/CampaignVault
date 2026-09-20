@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bizarre_magic
+system: pf2e
+prerequisite: Master in Occultism
+mechanicalSummary: Your magic becomes more difficult to identify
+extraPools: []
+level: 7

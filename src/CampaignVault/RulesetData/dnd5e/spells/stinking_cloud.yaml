@@ -5,3 +5,8 @@ level: 3
 classes: [bard, sorcerer, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A rotten egg or several skunk cabbage leaves.
+materialConsumed: false

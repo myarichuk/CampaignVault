@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: extend_elixir
+system: pf2e
+mechanicalSummary: Integrating your own personal energy into the elixirs you create causes them to affect you for longer.
+extraPools: []
+classes: [alchemist]
+level: 12

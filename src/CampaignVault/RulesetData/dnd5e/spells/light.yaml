@@ -5,3 +5,8 @@ level: 0
 classes: [bard, cleric, sorcerer, wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: false
+material: true
+materialText: A firefly or phosphorescent moss.
+materialConsumed: false

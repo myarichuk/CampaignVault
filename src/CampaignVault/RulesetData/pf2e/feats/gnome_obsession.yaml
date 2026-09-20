@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: gnome_obsession
+system: pf2e
+mechanicalSummary: You might have a flighty nature, but when a topic captures your attention, you dive into it headfirst.
+extraPools: []
+level: 1

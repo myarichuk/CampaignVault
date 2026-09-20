@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: combat_reading
+system: pf2e
+mechanicalSummary: You use a performer’s cold reading techniques, aura reading, and other tricks to discover your foe’s strengths and weaknesses.
+extraPools: []
+classes: [bard]
+level: 4

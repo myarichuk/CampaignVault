@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: split_hex
+system: pf2e
+mechanicalSummary: You siphon some of the power from an offensive hex you cast to direct it at a second target as well.
+extraPools: []
+classes: [witch]
+level: 18

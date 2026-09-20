@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: companion_s_cry
+system: pf2e
+prerequisite: an animal companion
+mechanicalSummary: You can urge your companion to do its utmost.
+extraPools: []
+classes: [ranger]
+level: 4

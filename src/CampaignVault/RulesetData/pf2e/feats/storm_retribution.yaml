@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: storm_retribution
+system: pf2e
+prerequisite: storm order; tempest surge order spell
+mechanicalSummary: You lash out, directing a burst of storming fury toward a creature that has harmed you.
+extraPools: []
+classes: [druid]
+level: 6

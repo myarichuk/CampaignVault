@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: vengeful_strike
+system: pf2e
+prerequisite: Come and Get Me
+mechanicalSummary: When struck by an enemy, you respond in turn.
+extraPools: []
+classes: [barbarian]
+level: 14

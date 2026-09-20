@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: prevailing_position
+system: pf2e
+mechanicalSummary: Your flexibility with stances lets you sacrifice their benefits to better protect yourself.
+extraPools: []
+classes: [monk]
+level: 10

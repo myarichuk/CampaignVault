@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: familiar_mascot
+system: pf2e
+prerequisite: Familiar Master Dedication
+mechanicalSummary: When selecting master abilities, you can choose an ally to benefit from any specific master ability.
+extraPools: []
+level: 4

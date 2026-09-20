@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: consult_the_spirits
+system: pf2e
+prerequisite: Master in Occultism, Master in Nature, or Master in Religion
+mechanicalSummary: You have learned rites or meditations that enable you to perceive minor, invisible spirits within a place.
+extraPools: []
+level: 7

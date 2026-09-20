@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: greater_mercy
+system: pf2e
+prerequisite: Mercy
+mechanicalSummary: Your faith enhances your ability to remove conditions.
+extraPools: []
+classes: [champion]
+level: 8

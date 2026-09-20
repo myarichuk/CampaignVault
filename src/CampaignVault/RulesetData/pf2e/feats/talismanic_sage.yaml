@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: talismanic_sage
+system: pf2e
+prerequisite: Talisman Dabbler Dedication
+mechanicalSummary: "Normally, affixing more than one talisman to an item causes the talismans to be suppressed, but when you Affix a Talisman, you can specially treat one item you're working on, allowing it to have two active talismans at once."
+extraPools: []
+level: 14

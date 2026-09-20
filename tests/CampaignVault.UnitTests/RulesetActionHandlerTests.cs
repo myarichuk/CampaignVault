@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
+using System.Reflection;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -28,6 +31,8 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
         _fixture = fixture;
     }
 
+    private static readonly Assembly Assembly = typeof(SpellDefinitionProvider).Assembly;
+
     private IRulesetModuleSelector CreateSelector(IRollService rollService)
     {
         IRulesetModule[] modules =
@@ -37,6 +42,15 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             new NarrativeRulesetResolver(rollService),
         ];
         return new RulesetModuleSelector(modules);
+    }
+
+    private RulesetActionHandler CreateHandler(IRulesetModuleSelector selector)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "cv_ruleset_action_test_" + Guid.NewGuid());
+        return new RulesetActionHandler(
+            selector, _keys,
+            new SpellDefinitionProvider(dir, Assembly),
+            new FeatDefinitionProvider(dir, Assembly));
     }
 
     private async Task StoreConfigAsync(Raven.Client.Documents.Session.IAsyncDocumentSession session, string activeSystem)
@@ -95,7 +109,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
         var context = CreateContext(session, characters, items);
 
         var selector = CreateSelector(Substitute.For<IRollService>());
-        var handler = new RulesetActionHandler(selector, _keys);
+        var handler = CreateHandler(selector);
 
         var action = new RulesetAction
         {
@@ -143,7 +157,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
         rollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RollOutcome { Result = 15, Summary = "Rolled 15" }));
         var selector = CreateSelector(rollService);
-        var handler = new RulesetActionHandler(selector, _keys);
+        var handler = CreateHandler(selector);
 
         var action = new RulesetAction
         {
@@ -180,7 +194,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
         var context = CreateContext(session, characters);
 
         var selector = CreateSelector(Substitute.For<IRollService>());
-        var handler = new RulesetActionHandler(selector, _keys);
+        var handler = CreateHandler(selector);
 
         var action = new RulesetAction
         {
@@ -220,7 +234,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
 
         var context = CreateContext(session, characters, activeCombat: activeCombat);
         var selector = CreateSelector(Substitute.For<IRollService>());
-        var handler = new RulesetActionHandler(selector, _keys);
+        var handler = CreateHandler(selector);
 
         var action = new RulesetAction
         {

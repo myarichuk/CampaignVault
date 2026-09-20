@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: path_of_iron
+system: pf2e
+prerequisite: Martial Artist Dedication
+mechanicalSummary: With a burst of effort and speed, you weave a nimble path through your many enemies, striking each in turn as you move past them.
+extraPools: []
+level: 14

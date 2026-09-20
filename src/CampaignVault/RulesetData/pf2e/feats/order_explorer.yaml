@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: order_explorer
+system: pf2e
+mechanicalSummary: You have learned the secrets of another druidic order, passing whatever rites of initiation that order requires and gaining access to its secrets.
+extraPools: []
+classes: [druid]
+level: 2

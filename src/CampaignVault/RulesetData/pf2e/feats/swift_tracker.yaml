@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: swift_tracker
+system: pf2e
+prerequisite: Expert in Survival; Experienced Tracker
+mechanicalSummary: Your keen eyes catch signs of passage even when you’re moving.
+extraPools: []
+classes: [ranger]
+level: 6

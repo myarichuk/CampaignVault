@@ -113,11 +113,11 @@ public sealed class CharacterDistressPressureContributor : IPressureContributor
                     pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name}'s willpower is drained ({c.SystemStats.Willpower:F0}%). They are highly susceptible to manipulation, fear, or giving up.", WillpowerGroupingKey) { EntityName = c.Name });
                 }
 
-                if (c.SystemStats.Temperature <= -20f)
+                if (c.SystemStats.Temperature <= SurvivalThresholds.SevereCold)
                 {
                     pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is freezing to death ({c.SystemStats.Temperature:F0}). They should exhibit severe physical symptoms.", TemperatureLowGroupingKey) { EntityName = c.Name });
                 }
-                else if (c.SystemStats.Temperature >= 50f)
+                else if (c.SystemStats.Temperature >= SurvivalThresholds.SevereHeat)
                 {
                     pressure.Add(new(PressureSeverity.Simulation, c.Id, $"{c.Name} is suffering from extreme heat ({c.SystemStats.Temperature:F0}). They should exhibit exhaustion or heatstroke.", TemperatureHighGroupingKey) { EntityName = c.Name });
                 }

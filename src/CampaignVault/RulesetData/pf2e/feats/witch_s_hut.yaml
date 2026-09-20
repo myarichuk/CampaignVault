@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: witch_s_hut
+system: pf2e
+mechanicalSummary: Your home is an animated structure that obeys your commands.
+extraPools: []
+classes: [witch]
+level: 20

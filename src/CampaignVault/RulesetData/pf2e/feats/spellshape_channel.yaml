@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: spellshape_channel
+system: pf2e
+mechanicalSummary: Deep understanding of divine revelations into the nature of vital essence allows you to freely manipulate the energy of life and death.
+extraPools: []
+classes: [cleric]
+level: 20

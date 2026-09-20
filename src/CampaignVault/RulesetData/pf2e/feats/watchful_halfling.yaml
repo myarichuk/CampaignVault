@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: watchful_halfling
+system: pf2e
+mechanicalSummary: You pay close attention to the people around you, allowing you to more easily notice when they act out of character.
+extraPools: []
+level: 1

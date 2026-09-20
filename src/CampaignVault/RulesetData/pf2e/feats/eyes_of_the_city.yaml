@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: eyes_of_the_city
+system: pf2e
+prerequisite: Trained in Diplomacy or Trained in Society
+mechanicalSummary: You can track down targets with the help of locals.
+extraPools: []
+level: 2

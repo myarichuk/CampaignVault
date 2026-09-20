@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: warden_s_boon
+system: pf2e
+mechanicalSummary: You point out vulnerabilities present in your hunted prey, granting the benefits listed in Hunt Prey and your hunter’s edge to an ally until the end of their next turn.
+extraPools: []
+classes: [ranger]
+level: 8

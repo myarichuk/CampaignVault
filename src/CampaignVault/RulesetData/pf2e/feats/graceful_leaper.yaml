@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: graceful_leaper
+system: pf2e
+prerequisite: Acrobat Dedication; Master in Acrobatics
+mechanicalSummary: Mass and muscle are meaningless when you propel yourself through the air; only grace and balance matter.
+extraPools: []
+level: 7

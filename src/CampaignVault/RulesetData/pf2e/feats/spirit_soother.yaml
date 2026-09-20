@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: spirit_soother
+system: pf2e
+mechanicalSummary: You are attuned to the minute sounds and sensations of restless spirits.
+extraPools: []
+level: 5

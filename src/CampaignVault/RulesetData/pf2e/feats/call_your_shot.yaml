@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: call_your_shot
+system: pf2e
+prerequisite: Play to the Crowd
+mechanicalSummary: "When you successfully Play to the Crowd, add the following to the list of benefits you can choose from:   A creature you can see within 30 feet becomes frightened 2.  \n"
+extraPools: []
+level: 8

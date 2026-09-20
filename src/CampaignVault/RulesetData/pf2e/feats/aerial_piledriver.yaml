@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: aerial_piledriver
+system: pf2e
+prerequisite: Wrestler Dedication
+mechanicalSummary: Heaving both yourself and your opponent into the air, you bring them crashing to the ground.
+extraPools: []
+level: 10

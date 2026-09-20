@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: reactive_transformation
+system: pf2e
+prerequisite: Untamed Form; Dragon Shape, Elemental Shape, Plant Shape, or Soaring Shape
+mechanicalSummary: You transform reflexively when in danger.
+extraPools: []
+classes: [druid]
+level: 14

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: winglets
+system: pf2e
+mechanicalSummary: "Through the lingering influence of your warren's patron, you've sprouted a small set of wings."
+extraPools: []
+level: 5

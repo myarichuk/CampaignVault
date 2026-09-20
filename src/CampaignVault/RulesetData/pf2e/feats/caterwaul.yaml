@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: caterwaul
+system: pf2e
+mechanicalSummary: You give a daring yowl, calling your companion back from the brink of unconsciousness.
+extraPools: []
+level: 13

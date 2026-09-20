@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: familiar
+system: pf2e
+mechanicalSummary: You make a pact with a creature that serves you and assists your spellcasting.
+extraPools: []
+classes: [magus, sorcerer, thaumaturge, wizard]
+level: 1

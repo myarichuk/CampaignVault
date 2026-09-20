@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: spell_mastery
+system: pf2e
+mechanicalSummary: You have mastered a handful of spells to such a degree that you can cast them even if you haven’t prepared them in advance.
+extraPools: []
+classes: [wizard]
+level: 20

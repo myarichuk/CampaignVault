@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: twin_takedown
+system: pf2e
+mechanicalSummary: You swiftly attack your hunted prey with each of your weapons, potentially combining their damage into a single devastating attack.
+extraPools: []
+classes: [ranger]
+level: 1

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: patron_s_truth
+system: pf2e
+prerequisite: "patron's gift"
+mechanicalSummary: You have mastered the greatest secrets of your patron’s magic and learned a fundamental truth about your patron, even if their identity still remains a mystery.
+extraPools: []
+classes: [witch]
+level: 20

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rebounding_toss
+system: pf2e
+mechanicalSummary: You bounce your weapon off one foe to strike another.
+extraPools: []
+classes: [fighter]
+level: 2

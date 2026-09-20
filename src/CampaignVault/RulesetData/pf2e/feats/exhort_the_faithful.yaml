@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: exhort_the_faithful
+system: pf2e
+prerequisite: Expert in Religion; follower of a specific religion
+mechanicalSummary: Your knowledge of the tenets of your faith gives you insight into the best ways to get others of your faith to help you or to follow your directions.
+extraPools: []
+level: 2

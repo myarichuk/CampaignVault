@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: surging_focus
+system: pf2e
+mechanicalSummary: When an ally you can see falls in battle, your surge of righteous indignation allows you to draw upon untapped reserves of divine power.
+extraPools: []
+classes: [cleric]
+level: 8

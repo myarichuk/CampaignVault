@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: social_purview
+system: pf2e
+prerequisite: Vigilante Dedication
+mechanicalSummary: You have built a reputation for yourself in your social identity.
+extraPools: []
+level: 4

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: caravan_leader
+system: pf2e
+prerequisite: Pick Up the Pace
+mechanicalSummary: You know how to get the most effort out of your allies on the road.
+extraPools: []
+level: 11

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cooperative_nature
+system: pf2e
+mechanicalSummary: The short human life span lends perspective and has taught you from a young age to set aside differences and work with others to achieve greatness.
+extraPools: []
+level: 1

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: very_sneaky
+system: pf2e
+mechanicalSummary: Taller folk rarely pay attention to the shadows at their feet, and you take full advantage of this.
+extraPools: []
+level: 1

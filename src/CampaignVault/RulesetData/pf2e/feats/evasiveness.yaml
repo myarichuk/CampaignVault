@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: evasiveness
+system: pf2e
+prerequisite: Swashbuckler Dedication; expert in Reflex Saves
+mechanicalSummary: Your proficiency rank for Reflex saves increases to master.
+extraPools: []
+level: 12

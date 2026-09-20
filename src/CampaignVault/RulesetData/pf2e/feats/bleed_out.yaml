@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bleed_out
+system: pf2e
+mechanicalSummary: You channel the residual energy from the last spell you cast into a ranged bloodletting.
+extraPools: []
+classes: [sorcerer]
+level: 2

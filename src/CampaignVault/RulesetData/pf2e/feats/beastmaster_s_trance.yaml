@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: beastmaster_s_trance
+system: pf2e
+prerequisite: Beastmaster Dedication
+mechanicalSummary: You can enter a trance that allows you to briefly inhabit the body of one of your animal companions and share its senses.
+extraPools: []
+level: 6

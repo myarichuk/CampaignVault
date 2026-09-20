@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: shadow_self
+system: pf2e
+prerequisite: Legendary in Stealth
+mechanicalSummary: "You slip from your adversaries' notice and appear to be somewhere else."
+extraPools: []
+level: 17

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: lunge
+system: pf2e
+mechanicalSummary: You attack an enemy at the edge of your reach.
+extraPools: []
+classes: [fighter]
+level: 2

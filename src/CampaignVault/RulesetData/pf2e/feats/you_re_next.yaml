@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: you_re_next
+system: pf2e
+prerequisite: Trained in Intimidation
+mechanicalSummary: After downing a foe, you menace another.
+extraPools: []
+classes: [rogue, swashbuckler]
+level: 1

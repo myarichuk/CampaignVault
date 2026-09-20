@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: revealing_stab
+system: pf2e
+mechanicalSummary: You drive your piercing weapon into an imperceptible foe, revealing its location to your allies.
+extraPools: []
+classes: [fighter]
+level: 6

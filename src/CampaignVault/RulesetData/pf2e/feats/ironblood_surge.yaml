@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ironblood_surge
+system: pf2e
+prerequisite: Ironblood Stance
+mechanicalSummary: You steel yourself, preparing to resist oncoming attacks and using your muscles to absorb the impact.
+extraPools: []
+classes: [monk]
+level: 14

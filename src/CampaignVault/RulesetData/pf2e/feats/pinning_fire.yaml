@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: pinning_fire
+system: pf2e
+mechanicalSummary: "You target your opponent's clothing, equipment, or loose flesh with a series of piercing projectiles to pin them to the ground or a nearby surface."
+extraPools: []
+classes: [monk]
+level: 8

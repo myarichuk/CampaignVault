@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: diverse_weapon_expert
+system: pf2e
+prerequisite: Fighter Dedication; expert in any kind of weapon or unarmed attack
+mechanicalSummary: Your proficiency ranks for simple weapons and martial weapons increase to expert, and your proficiency rank for advanced weapons increases to trained.
+extraPools: []
+level: 12

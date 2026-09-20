@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mirror_shield
+system: pf2e
+mechanicalSummary: You reflect the spell back against its caster.
+extraPools: []
+classes: [fighter]
+level: 10

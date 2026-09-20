@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: rope_runner
+system: pf2e
+prerequisite: Pirate Dedication; Trained in Acrobatics; Trained in Athletics
+mechanicalSummary: You run and climb across ropes and rigging almost as easily as on the ground.
+extraPools: []
+level: 4

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: breath_of_the_dragon
+system: pf2e
+mechanicalSummary: Tapping into the physiology of your draconic ancestor, you can exhale a torrent of energy in a 15-foot cone or a 30-foot line, dealing 1d4 damage.
+extraPools: []
+level: 1

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: heal_mount
+system: pf2e
+prerequisite: Faithful Steed; lay on hands
+mechanicalSummary: Your devotion to your mount manifests as a surge of vital energy.
+extraPools: []
+classes: [champion]
+level: 8

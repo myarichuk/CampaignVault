@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: voluminous_vials
+system: pf2e
+prerequisite: Alchemist Dedication; Expert in Crafting
+mechanicalSummary: Your number of versatile vials per day increases to 5.
+extraPools: []
+level: 6

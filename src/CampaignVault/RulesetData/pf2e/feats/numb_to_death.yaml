@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: numb_to_death
+system: pf2e
+prerequisite: "of Numb to Death that states \u201cyou have died at least once.'' Prerequisites Diehard; you have died at least once"
+mechanicalSummary: "Your past has left you numb to death's call."
+extraPools: []
+level: 7

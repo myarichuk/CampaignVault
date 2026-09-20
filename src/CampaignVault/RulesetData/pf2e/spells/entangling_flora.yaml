@@ -1,7 +1,13 @@
-# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
 name: entangling_flora
 system: pf2e
 level: 2
 classes: [druid, witch, wizard]
 concentration: true
 castingTime: 2 actions
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sly_disarm
+system: pf2e
+mechanicalSummary: You can Disarm a creature through sleight of hand rather than brute force.
+extraPools: []
+classes: [rogue]
+level: 6

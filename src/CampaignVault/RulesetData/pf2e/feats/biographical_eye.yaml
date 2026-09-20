@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: biographical_eye
+system: pf2e
+prerequisite: Master in Society
+mechanicalSummary: "In even a brief conversation or social interaction, you pick up on subtle social and visual cues to learn a great deal about a person's origin and history."
+extraPools: []
+level: 7

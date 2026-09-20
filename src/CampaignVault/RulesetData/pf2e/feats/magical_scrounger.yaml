@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: magical_scrounger
+system: pf2e
+prerequisite: Magical Crafting; Scrounger Dedication
+mechanicalSummary: You can craft a temporary wondrous item using the magic scrounged from all around.
+extraPools: []
+level: 6

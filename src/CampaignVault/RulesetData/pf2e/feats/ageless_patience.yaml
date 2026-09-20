@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ageless_patience
+system: pf2e
+mechanicalSummary: You work at a pace born from longevity that enhances your thoroughness.
+extraPools: []
+level: 5

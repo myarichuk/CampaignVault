@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: propelling_sorcery
+system: pf2e
+mechanicalSummary: The force of your magic can be used to propel yourself or another.
+extraPools: []
+classes: [sorcerer]
+level: 2

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: forensic_acumen
+system: pf2e
+prerequisite: Trained in Medicine
+mechanicalSummary: You understand principles of forensic medicine, making you better at examining a body to determine the cause of death or injury.
+extraPools: []
+level: 1

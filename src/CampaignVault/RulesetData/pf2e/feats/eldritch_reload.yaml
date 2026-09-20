@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: eldritch_reload
+system: pf2e
+prerequisite: Eldritch Archer Dedication
+mechanicalSummary: You integrate your talent for magic into your use of reloading weapons.
+extraPools: []
+level: 10

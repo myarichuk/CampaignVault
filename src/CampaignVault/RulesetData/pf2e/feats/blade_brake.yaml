@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: blade_brake
+system: pf2e
+mechanicalSummary: You plow your weapon into a floor, wall, or another sturdy surface, anchoring yourself in place.
+extraPools: []
+classes: [fighter]
+level: 2

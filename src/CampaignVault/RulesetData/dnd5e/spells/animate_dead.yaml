@@ -5,3 +5,8 @@ level: 3
 classes: [cleric, wizard]
 concentration: false
 castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A drop of blood, a piece of flesh, and a pinch of bone dust.
+materialConsumed: false

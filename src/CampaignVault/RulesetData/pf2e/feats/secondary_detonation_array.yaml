@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: secondary_detonation_array
+system: pf2e
+mechanicalSummary: You divert some of your spell’s energy into an unstable runic array.
+extraPools: []
+classes: [wizard]
+level: 14

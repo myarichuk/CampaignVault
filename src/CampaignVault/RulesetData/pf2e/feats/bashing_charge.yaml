@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bashing_charge
+system: pf2e
+prerequisite: Trained in Athletics
+mechanicalSummary: You smash, bust, and charge through solid obstacles without hesitation.
+extraPools: []
+classes: [barbarian]
+level: 2

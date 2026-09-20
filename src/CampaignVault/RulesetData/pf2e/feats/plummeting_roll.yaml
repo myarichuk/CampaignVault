@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: plummeting_roll
+system: pf2e
+prerequisite: Trained in Acrobatics
+mechanicalSummary: Through nimble movements, a graceful landing, and a bit of luck, you can manage to fall from spectacular heights without a scratch.
+extraPools: []
+classes: [swashbuckler]
+level: 1

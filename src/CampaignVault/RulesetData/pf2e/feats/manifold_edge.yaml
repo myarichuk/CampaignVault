@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: manifold_edge
+system: pf2e
+prerequisite: "hunter's edge, masterful hunter"
+mechanicalSummary: You’ve learned to leverage every possible edge.
+extraPools: []
+classes: [ranger]
+level: 18

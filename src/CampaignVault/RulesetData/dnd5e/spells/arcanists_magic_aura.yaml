@@ -5,3 +5,8 @@ level: 2
 classes: [wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A small square of silk.
+materialConsumed: false

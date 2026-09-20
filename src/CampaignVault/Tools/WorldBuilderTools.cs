@@ -483,7 +483,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew spell. Overrides SRD spells by name when queried via get_rules_reference (kind:'spells'). Omitted fields are preserved: on an existing spell, omitting classes keeps the stored value; providing one replaces it wholesale.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew spell. Overrides SRD spells by name when queried via get_rules_reference (kind:'spells'). Omitted fields are preserved: on an existing spell, omitting classes keeps the stored value; providing one replaces it wholesale. Set verbal/somatic/material explicitly — the engine gates this spell against Gagged/Silenced/bound-hands/missing-focus conditions using these flags, and an unset flag is treated as no requirement.")]
     internal Task<ToolResult<CustomSpell>> UpsertSpell(
         [Description("The spell to create or update. Strongly typed.")]
         CustomSpellUpsertRequest spell,
@@ -500,7 +500,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via get_rules_reference (kind:'handbook').")]
+        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via get_rules_reference (kind:'handbook'). If this feat passively waives a spell-component requirement (like War Caster), set castingWaivers.")]
     internal Task<ToolResult<CustomFeat>> UpsertFeat(
         [Description("The feat to create or update. Strongly typed.")]
         CustomFeatUpsertRequest feat,

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: garland_spell
+system: pf2e
+prerequisite: leaf order
+mechanicalSummary: If your next action is to Cast a Spell with the fungus or plant trait, a garland of plants grows in a 10-foot burst in the spell’s range.
+extraPools: []
+classes: [druid]
+level: 12

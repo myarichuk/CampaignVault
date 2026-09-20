@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: ultimate_skirmisher
+system: pf2e
+prerequisite: unimpeded journey
+mechanicalSummary: You are so skilled at navigating the wild, your movement is completely unaffected by terrain.
+extraPools: []
+classes: [ranger]
+level: 20

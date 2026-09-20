@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: form_lock
+system: pf2e
+mechanicalSummary: Your ability to control your own qi empowers you to pressure other creatures into resuming their true forms.
+extraPools: []
+classes: [monk]
+level: 14

@@ -166,7 +166,7 @@ public class RestChangeHandler : IWorldChangeHandler
         // instead of fully clearing — see ConditionDefinition.IsStacking.
         foreach (var effect in ConditionExpiryEvaluator.CollectLongRestDecrements(character, _conditionProvider))
         {
-            if (!TryParseStackLevel(effect.Name, out var level))
+            if (!ConditionExpiryEvaluator.TryParseStackLevel(effect.Name, out var level))
             {
                 context.RecordMessage(
                     $"[WARNING] Stacking condition '{effect.Name}' has no parseable numeric level; left unchanged.");
@@ -186,7 +186,7 @@ public class RestChangeHandler : IWorldChangeHandler
             else
             {
                 var baseName = effect.Name[..effect.Name.LastIndexOf(' ')];
-                var newName = $"{baseName} {level - 1}";
+                var newName = ConditionExpiryEvaluator.FormatStackLevel(baseName, level - 1);
 
                 await context.Dispatcher.DispatchMutationAsync(context, new StatusRemove
                 {
@@ -204,13 +204,6 @@ public class RestChangeHandler : IWorldChangeHandler
                     $"Stacking condition decremented to '{newName}' on {characterId} after long rest.");
             }
         }
-    }
-
-    private static bool TryParseStackLevel(string name, out int level)
-    {
-        level = 0;
-        var lastSpace = name.LastIndexOf(' ');
-        return lastSpace >= 0 && int.TryParse(name[(lastSpace + 1)..], out level);
     }
 
     private static StatusEffect CloneStatusEffect(StatusEffect source, string newName) =>

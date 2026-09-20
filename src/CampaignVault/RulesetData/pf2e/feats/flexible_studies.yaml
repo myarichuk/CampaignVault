@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: flexible_studies
+system: pf2e
+prerequisite: for a permanent character option like a skill increase or a feat
+mechanicalSummary: "You've collected a cross-section of information on various disciplines you can refer to when preparing for various tasks."
+extraPools: []
+classes: [investigator]
+level: 1

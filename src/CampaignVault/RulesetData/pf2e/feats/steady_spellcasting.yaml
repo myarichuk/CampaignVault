@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: steady_spellcasting
+system: pf2e
+mechanicalSummary: You don’t lose spells easily. If a reaction would disrupt your spellcasting action, attempt a DC 15 flat check. If you succeed, your action isn’t disrupted.
+extraPools: []
+classes: [bard, cleric, druid, necromancer, oracle, psychic, sorcerer, witch, wizard]
+level: 6

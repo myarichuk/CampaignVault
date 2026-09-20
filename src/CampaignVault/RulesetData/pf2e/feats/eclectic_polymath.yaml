@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: eclectic_polymath
+system: pf2e
+prerequisite: Esoteric Polymath
+mechanicalSummary: Your flexible mind can quickly shift from one spell to another.
+extraPools: []
+classes: [bard]
+level: 12

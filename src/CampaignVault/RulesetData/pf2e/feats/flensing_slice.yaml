@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: flensing_slice
+system: pf2e
+prerequisite: Dual-Weapon Warrior Dedication
+mechanicalSummary: When you hit with both attacks with Double Slice, you flense the target, making it bleed and creating a weak spot.
+extraPools: []
+level: 8

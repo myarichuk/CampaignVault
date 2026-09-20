@@ -5,3 +5,9 @@ level: 7
 classes: [bard, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A small replica of you made from materials worth at least 5 gp.
+materialCost: 5.0
+materialConsumed: false

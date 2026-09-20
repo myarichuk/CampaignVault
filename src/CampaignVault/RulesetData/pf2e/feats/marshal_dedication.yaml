@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: marshal_dedication
+system: pf2e
+prerequisite: Trained in Diplomacy or Trained in Intimidation; trained in martial weapons
+mechanicalSummary: You’ve combined your social skills and combat training to become a talented combat leader.
+extraPools: []
+level: 2

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: the_dead_walk
+system: pf2e
+prerequisite: ancestors mystery or battle mystery
+mechanicalSummary: You beseech warrior spirits to come forth and aid you.
+extraPools: []
+classes: [oracle]
+level: 10

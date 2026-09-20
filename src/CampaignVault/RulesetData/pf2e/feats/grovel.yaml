@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: grovel
+system: pf2e
+prerequisite: Trained in Deception
+mechanicalSummary: "You convince your foe you're less of a threat."
+extraPools: []
+level: 5

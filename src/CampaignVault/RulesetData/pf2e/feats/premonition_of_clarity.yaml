@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: premonition_of_clarity
+system: pf2e
+mechanicalSummary: Your deity sends you a vision of faith to steel you against mental attacks.
+extraPools: []
+classes: [cleric]
+level: 14

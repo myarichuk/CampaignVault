@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: combat_grab
+system: pf2e
+mechanicalSummary: Using your prior attack to shift your opponent’s guard, you take another swing and grab them.
+extraPools: []
+classes: [fighter]
+level: 2

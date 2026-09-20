@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: witch_s_bottle
+system: pf2e
+prerequisite: Cauldron
+mechanicalSummary: You spend 10 minutes and 1 Focus Point brewing a special potion containing the power of one of your hexes that targets a creature.
+extraPools: []
+classes: [witch]
+level: 8

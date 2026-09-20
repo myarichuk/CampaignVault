@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: springing_leaper
+system: pf2e
+prerequisite: Expert in Athletics
+mechanicalSummary: Your powerful legs allow you to make sudden and dramatic leaps.
+extraPools: []
+level: 5

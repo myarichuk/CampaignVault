@@ -5,3 +5,7 @@ level: 7
 classes: [cleric, druid, sorcerer]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false

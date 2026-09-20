@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scout_dedication
+system: pf2e
+prerequisite: Trained in Stealth; Trained in Survival
+mechanicalSummary: You are a highly skilled scout, capable of guiding your allies, detecting imminent threats, and avoiding the attention of dangerous enemies.
+extraPools: []
+level: 2

@@ -1,0 +1,8 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scion_transformation
+system: pf2e
+mechanicalSummary: You go into hibernation for twenty-four hours and perform a ritual dedicated to your ancestors, undergoing a one-time metamorphosis.
+extraPools: []
+level: 17

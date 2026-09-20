@@ -5,3 +5,8 @@ level: 3
 classes: [druid, ranger, sorcerer, wizard]
 concentration: false
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A short piece of reed or straw.
+materialConsumed: false

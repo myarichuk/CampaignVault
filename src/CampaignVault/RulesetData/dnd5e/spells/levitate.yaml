@@ -5,3 +5,8 @@ level: 2
 classes: [sorcerer, wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: Either a small leather loop or a piece of golden wire bent into a cup shape with a long shank on one end.
+materialConsumed: false

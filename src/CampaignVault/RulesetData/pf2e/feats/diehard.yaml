@@ -1,5 +1,8 @@
-# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
 name: diehard
 system: pf2e
-mechanicalSummary: Treat dying value as 1 lower; DC 5 flat check to stabilize
+mechanicalSummary: Die at dying 5, rather than dying 4
 extraPools: []
+level: 1

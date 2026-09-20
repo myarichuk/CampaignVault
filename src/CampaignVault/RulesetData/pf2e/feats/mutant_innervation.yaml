@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: mutant_innervation
+system: pf2e
+mechanicalSummary: Basic mutagens that affect your mind and thoughts can make you communicate telepathically, protect you from being detected, or let you communicate with anyone.
+extraPools: []
+classes: [alchemist]
+level: 14

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: eternal_bane
+system: pf2e
+prerequisite: unholy
+mechanicalSummary: Your life has made you a nexus for your deity’s vile power.
+extraPools: []
+classes: [cleric]
+level: 16

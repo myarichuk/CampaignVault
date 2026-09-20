@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: second_sting
+system: pf2e
+mechanicalSummary: You read your prey’s movements and transform them into openings, so failures with one weapon set up glancing blows with the other.
+extraPools: []
+classes: [ranger]
+level: 12

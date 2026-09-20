@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: call_the_swarm
+system: pf2e
+prerequisite: Ratspeak
+mechanicalSummary: You give a shrill whistle and point, and a massive swarm of rats pours forth from the surrounding terrain to fill a 30-foot burst within 120 feet.
+extraPools: []
+level: 17

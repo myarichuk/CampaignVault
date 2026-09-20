@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: furious_grab
+system: pf2e
+mechanicalSummary: "You grab your foe while it's distracted by your attack."
+extraPools: []
+classes: [barbarian]
+level: 12

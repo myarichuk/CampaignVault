@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: twinned_defense_fighter
+system: pf2e
+prerequisite: Twin Parry
+mechanicalSummary: You’re always ready to use your off-hand weapon to interfere with attacks against you.
+extraPools: []
+classes: [fighter]
+level: 16

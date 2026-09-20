@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: godbreaker
+system: pf2e
+prerequisite: Crushing Grab; Whirling Throw
+mechanicalSummary: You have mastered an ultimate grappling technique capable of breaking even the mightiest of foes.
+extraPools: []
+classes: [monk]
+level: 20

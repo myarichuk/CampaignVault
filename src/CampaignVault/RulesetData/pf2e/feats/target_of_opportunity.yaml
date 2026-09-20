@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: target_of_opportunity
+system: pf2e
+prerequisite: Marshal Dedication
+mechanicalSummary: You capitalize on your ally’s attack and use the opportunity to secure a blow of your own, adding to the oncoming barrage.
+extraPools: []
+level: 14

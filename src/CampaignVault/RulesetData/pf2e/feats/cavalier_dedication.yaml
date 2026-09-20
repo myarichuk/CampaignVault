@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cavalier_dedication
+system: pf2e
+prerequisite: Trained in Nature or Trained in Society
+mechanicalSummary: You gain a young animal companion that serves as your mount.
+extraPools: []
+level: 2

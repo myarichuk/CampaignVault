@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: switcheroo
+system: pf2e
+mechanicalSummary: You attempt to deftly swap places with an adjacent enemy to avoid the attack.
+extraPools: []
+classes: [swashbuckler]
+level: 10

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: song_of_marching
+system: pf2e
+mechanicalSummary: You learn the song of marching composition cantrip, which enables you and your allies to cross vast distances without strain.
+extraPools: []
+classes: [bard]
+level: 6

@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: soothing_vials
+system: pf2e
+prerequisite: chirurgeon research field
+mechanicalSummary: "The healing chemicals in your versatile vials also help calm a patient's mind."
+extraPools: []
+classes: [alchemist]
+level: 1

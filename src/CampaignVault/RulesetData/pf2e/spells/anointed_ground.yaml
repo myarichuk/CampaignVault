@@ -1,0 +1,15 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: anointed_ground
+system: pf2e
+level: 3
+classes: [cleric]
+concentration: true
+castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: 3 gp worth of oil
+materialCost: 3.0
+materialConsumed: true

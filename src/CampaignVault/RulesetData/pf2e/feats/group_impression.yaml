@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: group_impression
+system: pf2e
+prerequisite: Trained in Diplomacy
+mechanicalSummary: Make an Impression on multiple targets more easily
+extraPools: []
+level: 1

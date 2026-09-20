@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: courageous_onslaught
+system: pf2e
+prerequisite: Courageous Advance; Courageous Assault
+mechanicalSummary: You use your performance to orchestrate an onslaught against your enemies.
+extraPools: []
+classes: [bard]
+level: 16

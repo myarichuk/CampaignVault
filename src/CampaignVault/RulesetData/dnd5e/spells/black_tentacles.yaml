@@ -5,3 +5,8 @@ level: 4
 classes: [wizard]
 concentration: true
 castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A piece of tentacle from a giant octopus or a giant squid
+materialConsumed: false

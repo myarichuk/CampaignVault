@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: blessed_spell
+system: pf2e
+prerequisite: Blessed One Dedication; Mercy; ability to cast spells from spell slots
+mechanicalSummary: When you focus your magic on an ally, you can remove harmful conditions.
+extraPools: []
+level: 8

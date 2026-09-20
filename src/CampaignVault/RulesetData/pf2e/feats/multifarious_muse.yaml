@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: multifarious_muse
+system: pf2e
+mechanicalSummary: Your muse doesn’t fall into a single label.
+extraPools: []
+classes: [bard]
+level: 2

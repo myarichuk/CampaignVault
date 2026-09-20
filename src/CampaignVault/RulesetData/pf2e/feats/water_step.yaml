@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: water_step
+system: pf2e
+mechanicalSummary: "You can Stride across liquid and surfaces that don't support your weight."
+extraPools: []
+classes: [monk]
+level: 6

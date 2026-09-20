@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: watch_your_back
+system: pf2e
+prerequisite: Trained in Intimidation
+mechanicalSummary: You menace the target, stoking their fears and drawing their attention.
+extraPools: []
+classes: [rogue]
+level: 6
