@@ -1,5 +1,9 @@
 # Campaign Vault Architecture
 
+**Audience:** Developers who are implementing features, fixing bugs, or understanding the system internals.
+
+**See [README.md](./README.md) for the project overview and [INSTALLATION.md](./INSTALLATION.md) for setup & deployment.**
+
 ## Overview
 
 Campaign Vault is an ASP.NET Core MCP server backed by embedded RavenDB. It exposes tools for reading world state, committing atomic narrative mutations, advancing simulation time, and resolving TTRPG mechanics deterministically. The core is organized around four cooperating systems:
