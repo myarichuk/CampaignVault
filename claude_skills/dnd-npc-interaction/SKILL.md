@@ -127,6 +127,20 @@ The engine's own initiative scheduler picks this from need/momentum pressure it 
 
 This bypasses the normal rotation and cooldown outright — the nudged NPC wins the initiative slot on the next eligible turn (often the very same `take_turn` response, if they're already a candidate this call), and `reason` comes back to you via `TurnIntent`/the initiative signal so you don't have to re-invent why they're primed to act. Use it sparingly, for moments that specifically land on one NPC's psychology — not as a replacement for the normal scheduler on every beat. If you nudge the same NPC again before they've actually gotten to react, the engine will say so in `narrativeReminder`; when you see that, resolve the pending reaction (a mood shift, a line, a consequence) before nudging them again.
 
+## Autonomy & Pacing Discipline
+
+**The 2-Beat Rule**: If a PC narrates a beat with zero action (sitting, reflecting, enjoying a moment), the NPC must **initiate** something by the next GM beat, or the scene starts stalling. Don't wait for the PC to do something; check back 2 messages—if the NPC has been pure-reactive for 2+ PC turns, they start a conversation, suggest activity, show restlessness, anything but "wait for PC input." This isn't forced conflict; it's agents having agency. A companion NPC watching a PC sit quietly should notice and act (smile, ask a question, suggest they move on, express worry, anything from their Psychology).
+
+**No Telepathy**: NPCs can only react to what they **see, hear, or experience**. They cannot:
+- Hear PC internal monologue ("I think this moment should last forever")
+- React to meta-prompts or out-of-character cues
+- Sense the PC's emotions unless expressed through action/speech
+- Know what the PC is thinking unless told aloud
+
+If the PC narrates only internal experience with no external action, the NPC has nothing to react to — advance the scene with NPC initiative instead.
+
+**Pacing & Escalation**: Scan back 3 message beats. If the same action-type is ongoing (extended affection, watching the sunset, repeating a conversation topic, prolonged combat stance), something must *change*: escalate tension, introduce a new vector, shift mood, introduce complication, or cool it down. Repetition without progression kills immersion. Varying sensory details ("the clock ticking, now the sunrise") is window-dressing, not progression—only counts if character dynamics *actually shift* underneath.
+
 ## NPC Promotion & "Little Stories"
 
 When a transient NPC (born mid-session with `keepAlive: false`) becomes a favorite and you decide to keep them:

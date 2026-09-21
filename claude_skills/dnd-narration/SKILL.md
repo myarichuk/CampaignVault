@@ -123,6 +123,20 @@ Rules for detail:
 3. **Anchor in the fiction.** "Her scars are pale—years old" (shows time). "He reeks of horse" (shows origin/schedule). Details do work.
 4. **Avoid adjectives alone.** Instead of "beautiful," show: "light catches her cheekbone; she's had the kind of face that stops conversation."
 
+## Progression vs. Sensory Variation
+
+**Anti-pattern:** "Show don't tell" becomes sensory detail repetition without character movement. Three successive beats of a sunset scene narrate only window-dressing (the clock ticking, then the stars, then the NPC's silhouette) while the *dynamic between characters stays frozen*. This is not rich narration; it's stalling.
+
+**The rule:** Sensory detail must anchor something that *changes*: mood shifts, motivations surface, tension escalates or cools, a decision hardens, vulnerability cracks open, conflict emerges. If three beats have passed and the same two characters are in the same position with the same emotional tenor, the scene hasn't moved—rewind and introduce NPC initiative (suggestion, hesitation, a new topic, a physical gesture toward escalation or withdrawal) instead of more sensory variation.
+
+**How to verify:** Scan back 3 message beats. Ask: "What's different now compared to three beats ago?" If the answer is only "the sensory window changed but the characters are in the same place emotionally/physically," that's a red flag. Add a vector change (mood, topic, position, tension level, NPC initiation) before the next beat, or the narration feels circular.
+
+**Concrete example:**
+- Beat 1: "Sunset over the water. The NPC smiles slightly, content."
+- Beat 2: "Stars emerge. The NPC watches them, still content, takes your hand."
+- Beat 3 (wrong): "The clock ticks. Night deepens. The NPC squeezes your hand, still smiling." ← Only sensory variation. Rewind.
+- Beat 3 (right): "But something shifts in the NPC's expression. The warmth fades. They're thinking of something—someone—and it's pulling them away from this moment. Their grip loosens." ← Character progression. Escalation or complication emerges.
+
 ## Dialogue as Characterization
 
 NPC voice emerges from `Social` (role, trust level) and `Psychology` (motivation, paranoia, ideology):
