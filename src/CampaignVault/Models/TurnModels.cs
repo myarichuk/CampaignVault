@@ -70,6 +70,11 @@ public class TakeTurnRequest
     public string? FullDetailCharacterId { get; set; }
 
     [Description(
+        "NPC ID to fetch ONLY Psychology.Memories for — cheaper than fullDetailCharacterId when you just need to check/refresh what an NPC remembers (e.g. before NPC-driven dialogue in delta mode) and don't need behavioral summary, items, or recent-interactions. Skip this if you're already calling fullDetailCharacterId for the same NPC this turn — that already includes memories. Use sparingly; only one per call.")]
+    [JsonPropertyName("memoriesOnlyCharacterId")]
+    public string? MemoriesOnlyCharacterId { get; set; }
+
+    [Description(
         "Location ID to fetch in full detail (SceneView with all details) instead of summary. Use sparingly; only one full detail per call.")]
     [JsonPropertyName("fullDetailLocationId")]
     public string? FullDetailLocationId { get; set; }
@@ -167,6 +172,9 @@ public class TurnResult
 
     [Description("Full NPC context view for the requested NPC (if fullDetailCharacterId was provided); includes all relationships, history, and behavior synthesis. Otherwise null.")]
     public NpcContextView? FullNpcContext { get; set; }
+
+    [Description("NPC's full memory set only (if memoriesOnlyCharacterId was provided) — Psychology.Memories, no behavioral summary/items/recent-interactions. Cheaper than FullNpcContext when memory is all you need. Otherwise null.")]
+    public NpcMemoriesView? MemoriesOnly { get; set; }
 
     [Description("Full scene view for the requested location (if fullDetailLocationId was provided); includes all NPCs, items, and environmental details. Otherwise null.")]
     public SceneView? FullScene { get; set; }

@@ -157,7 +157,7 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         @"UNIFIED TURN TOOL: Call this at the end of any narrative beat (combat, conversation, discovery) for atomic mutations + bundled fresh state in one round-trip.
 
 🚨 *** CRITICAL CONSTRAINT: MUST HAVE EITHER CHANGES OR A REFRESH PARAM *** 🚨
-You MUST pass EITHER (1) Changes with a Narrative summary, OR (2) at least one refresh parameter (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, or fullDetailLocationId). Passing neither (empty call with no refresh param) will be rejected. This prevents wasted no-op calls.
+You MUST pass EITHER (1) Changes with a Narrative summary, OR (2) at least one refresh parameter (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, memoriesOnlyCharacterId, or fullDetailLocationId). Passing neither (empty call with no refresh param) will be rejected. This prevents wasted no-op calls.
 
 🚨 *** CRITICAL — REQUIRED FIELD: '$type' *** 🚨
 Every single change object in the changes[] array MUST include a '$type' field (the polymorphic discriminator — see WorldChange's own description for the full list of valid values). This is NOT OPTIONAL — it is REQUIRED for every change. If ANY object lacks '$type', the entire batch will fail to deserialize and be rejected.
@@ -172,7 +172,7 @@ DRIFT PROTECTION: response carries 'partyFingerprint'; echo it back unchanged as
 
 Pure queries (no Changes): omit Changes, provide at least one refresh param instead. Check 'warnings' in the response for anything that couldn't be assembled.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
-        [Description("Bundled turn request: MUST contain EITHER (1) Changes with Narrative, OR (2) at least one refresh parameter. Passing neither will be rejected. Mutations: Changes+Narrative. Refresh params: AutoRefreshInvolved (default true), ExtraCharacterIds, ExtraLocationIds, IncludeWorldState, IncludeParty, FullDetailCharacterId, FullDetailLocationId.")]
+        [Description("Bundled turn request: MUST contain EITHER (1) Changes with Narrative, OR (2) at least one refresh parameter. Passing neither will be rejected. Mutations: Changes+Narrative. Refresh params: AutoRefreshInvolved (default true), ExtraCharacterIds, ExtraLocationIds, IncludeWorldState, IncludeParty, FullDetailCharacterId, MemoriesOnlyCharacterId, FullDetailLocationId.")]
         TakeTurnRequest request,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
@@ -192,6 +192,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                                    (request.ExtraLocationIds?.Length > 0) ||
                                    !string.IsNullOrEmpty(request.FullDetailCharacterId) ||
                                    !string.IsNullOrEmpty(request.FullDetailLocationId) ||
+                                   !string.IsNullOrEmpty(request.MemoriesOnlyCharacterId) ||
                                    request.ForceFullReseed;
 
             if (!hasRefreshParams)
@@ -199,7 +200,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 return Task.FromResult(new ToolResult<TurnResult>(
                     false,
                     Error: ToolErrors.InvalidArgument,
-                    Summary: "This take_turn call has no Changes and no refresh parameters (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, fullDetailLocationId, forceFullReseed). Did you mean to commit world changes? Pass at least one refresh param if this is a pure-query call."));
+                    Summary: "This take_turn call has no Changes and no refresh parameters (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, fullDetailLocationId, memoriesOnlyCharacterId, forceFullReseed). Did you mean to commit world changes? Pass at least one refresh param if this is a pure-query call."));
             }
         }
 
@@ -259,6 +260,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             await EnsureInitiativeSurfacedAsync(ctx);
             await IncludeWorldStateAsync(ctx);
             await IncludeFullNpcDetailAsync(ctx);
+            await IncludeMemoriesOnlyAsync(ctx);
             await IncludeFullSceneDetailAsync(ctx);
             await RefreshPartyFingerprintAsync(ctx);
 
@@ -1958,6 +1960,43 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         catch (Exception ex)
         {
             Warn(ctx, $"Full NPC detail failed for '{characterId}': {ex.Message}", ex);
+        }
+    }
+
+    private async Task IncludeMemoriesOnlyAsync(TurnContext ctx)
+    {
+        var characterId = ctx.Request?.MemoriesOnlyCharacterId;
+        if (string.IsNullOrEmpty(characterId))
+        {
+            return;
+        }
+
+        // Skip if fullDetailCharacterId already fetched this same NPC this turn — FullNpcContext
+        // already carries Psychology.Memories, so a second fetch would be pure duplication.
+        if (string.Equals(ctx.Request?.FullDetailCharacterId, characterId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        try
+        {
+            var npc = await _repository.GetCharacterAsync(new CampaignSession(ctx.Session, ctx.Campaign), characterId);
+            if (npc == null)
+            {
+                Warn(ctx, $"Memories-only fetch: '{characterId}' not found.");
+                return;
+            }
+
+            ctx.Result.MemoriesOnly = new NpcMemoriesView
+            {
+                CharacterId = npc.Id,
+                Name = npc.Name,
+                Memories = npc.Psychology?.Memories.Values.ToList() ?? []
+            };
+        }
+        catch (Exception ex)
+        {
+            Warn(ctx, $"Memories-only fetch failed for '{characterId}': {ex.Message}", ex);
         }
     }
 

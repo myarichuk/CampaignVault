@@ -111,6 +111,18 @@ public class NpcContextView
 }
 
 /// <summary>
+/// Minimal memory-only projection for take_turn's memoriesOnlyCharacterId — skips everything
+/// NpcContextView otherwise assembles (items, recent interactions, behavioral synthesis) since
+/// callers reaching for this only want to check/refresh Psychology.Memories cheaply.
+/// </summary>
+public class NpcMemoriesView
+{
+    public string CharacterId { get; set; } = null!;
+    public string? Name { get; set; }
+    public List<MemoryNode> Memories { get; set; } = [];
+}
+
+/// <summary>
 /// Lightweight view returned by GetNpcNeeds for discoverability.
 /// </summary>
 public class NpcNeedsView

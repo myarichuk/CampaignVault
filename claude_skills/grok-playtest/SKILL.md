@@ -69,7 +69,7 @@ Do **not** call `get_entity` before every beat just to "be safe." Prefer the lig
 **Default path (most beats):** work from the summaries returned by the previous `take_turn` (or `start_session`) — name, appearance/tags, current activity, needs, equipped/carried, short behavioralSummary, associated plot threads.
 
 **When you actually need depth:**
-- Full psychology / memory graph / recentInteractions → `take_turn` with `fullDetailCharacterId` **or** `get_entity(chars/…)`.
+- Full psychology / memory graph / recentInteractions → `take_turn` with `fullDetailCharacterId` **or** `get_entity(chars/…)`. Memory only (no behavioral summary/items/interactions)? `memoriesOnlyCharacterId` is cheaper.
 - Full scene with every POI detail, ambient crowd, local rumors → `get_entity(locations/…, partyPresent:true)` or `fullDetailLocationId`.
 - Brand-new area the party has never visited → justified `get_entity` (then switch back to summaries).
 
@@ -81,7 +81,7 @@ Full detail includes:
 
 **Delta-mode nulls mean "unchanged," not "gone."** On a `mode: delta` turn, `take_turn`'s auto-refreshed scenes/NPCs omit appearance, gear, behavioralSummary, and local rumors that didn't change this turn — the client is expected to already have them from the last full reseed or a prior delta. Don't narrate an NPC's gear vanishing, an appearance resetting to plain, or a rumor going quiet just because a field came back `null`/empty this turn. If you genuinely need the current value (first mention this session, or you've lost track), fetch it explicitly via `get_entity`/`fullDetailCharacterId`/`fullDetailLocationId` rather than inferring absence from omission.
 
-**Delta-mode memory & psychology trimming:** Psychology, Memory, and recent interactions often trim on unchanged deltas to save bandwidth. **When you're about to narrate an NPC's motivation, dialogue, or memory-dependent action—especially after a gap or session resume—and you're unsure whether the context is current, query explicitly.** Include `fullDetailCharacterId: "chars/..."` on the next `take_turn`, or call `get_entity`, before committing NPC-driven beats. Don't assume multi-turn-old memory is still accurate—it may have aged, been updated by time passage, or shifted by the engine's own event log since you last saw it.
+**Delta-mode memory & psychology trimming:** Psychology, Memory, and recent interactions often trim on unchanged deltas to save bandwidth. **When you're about to narrate an NPC's motivation, dialogue, or memory-dependent action—especially after a gap or session resume—and you're unsure whether the context is current, query explicitly.** If memory is all you need, include `memoriesOnlyCharacterId: "chars/..."` on the next `take_turn`—cheaper than `fullDetailCharacterId`, skips behavioral summary/items/recentInteractions. Otherwise use `fullDetailCharacterId` or `get_entity` for the fuller picture, before committing NPC-driven beats. Don't assume multi-turn-old memory is still accurate—it may have aged, been updated by time passage, or shifted by the engine's own event log since you last saw it.
 
 ---
 

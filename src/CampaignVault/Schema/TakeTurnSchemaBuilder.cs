@@ -82,6 +82,11 @@ internal static class TakeTurnSchemaBuilder
                 ["type"] = "string",
                 ["description"] = "NPC ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
             },
+            ["memoriesOnlyCharacterId"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "NPC ID to fetch ONLY Psychology.Memories for — cheaper than fullDetailCharacterId when you just need to check/refresh memory. Skip if already using fullDetailCharacterId for the same NPC this turn."
+            },
             ["fullDetailLocationId"] = new JsonObject
             {
                 ["type"] = "string",

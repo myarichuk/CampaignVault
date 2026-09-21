@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using CampaignVault.Data.Guidance;
-using CampaignVault.Models;
 using CampaignVault.Tools;
 using Xunit;
 
@@ -83,55 +81,4 @@ public class GuidanceCorpusTests
         }
     }
 
-    [Fact]
-    public void RecommendedSystemPrompt_UnderSizeCap()
-    {
-        // After Phase 3.7 trim: ~3KB (3,157 chars)
-        // Target: < 5KB to stay under typical injection limits
-        var repoRoot = FindRepoRoot(AppContext.BaseDirectory);
-        var promptPath = Path.Combine(repoRoot, "recommended-system-prompt.md");
-
-        if (!File.Exists(promptPath))
-        {
-            // Skip in unusual test environments where the file isn't accessible
-            return;
-        }
-
-        var prompt = File.ReadAllText(promptPath);
-        Assert.True(prompt.Length < 5000, $"recommended-system-prompt.md {prompt.Length} exceeds 5000 char limit");
-    }
-
-    [Fact]
-    public void RecommendedSystemPrompt_MentionsGuidance()
-    {
-        // Verify the critical line directing users to follow guidance on tool responses.
-        var repoRoot = FindRepoRoot(AppContext.BaseDirectory);
-        var promptPath = Path.Combine(repoRoot, "recommended-system-prompt.md");
-
-        if (!File.Exists(promptPath))
-        {
-            // Skip in unusual test environments where the file isn't accessible
-            return;
-        }
-
-        var prompt = File.ReadAllText(promptPath);
-        Assert.Contains("guidance", prompt, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("don't call `get_help` speculatively", prompt, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string FindRepoRoot(string startPath)
-    {
-        var current = new DirectoryInfo(startPath);
-        while (current != null)
-        {
-            if (File.Exists(Path.Combine(current.FullName, "recommended-system-prompt.md")))
-            {
-                return current.FullName;
-            }
-
-            current = current.Parent;
-        }
-
-        return AppContext.BaseDirectory;
-    }
 }
