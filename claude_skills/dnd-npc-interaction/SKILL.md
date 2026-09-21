@@ -44,6 +44,8 @@ Memory:
 
 **Delta-mode omission ≠ change.** If you're working off `take_turn`'s auto-refreshed NPC summary instead of a fresh `get_entity`, a missing appearance/gear/behavioralSummary field just means it didn't change this turn — not that the NPC lost their gear or reset their look. Only trust an omission as "gone" if you called `get_entity` and it's genuinely absent there.
 
+**Delta-mode memory:** In delta/resumption mode, you may not have fresh Psychology/Memory/recent interactions in context — those fields often trim on unchanged deltas to save bandwidth. **When narrating NPC dialogue or motivation, if you're uncertain whether the memory context is current (especially after a gap or resume), query explicitly:** call `get_entity` with `fullDetailCharacterId`, or include `fullDetailCharacterId: "chars/..."` in `take_turn` before committing NPC-driven actions. Don't assume multi-beat-old memory is still accurate — it may have been updated by time, the engine's own rumor/event log, or an NPC's background activity you didn't witness.
+
 ## NPC Voice
 
 Differentiate each NPC by diction, rhythm, verbosity from their Social/Psychology profile:

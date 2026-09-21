@@ -81,6 +81,8 @@ Full detail includes:
 
 **Delta-mode nulls mean "unchanged," not "gone."** On a `mode: delta` turn, `take_turn`'s auto-refreshed scenes/NPCs omit appearance, gear, behavioralSummary, and local rumors that didn't change this turn — the client is expected to already have them from the last full reseed or a prior delta. Don't narrate an NPC's gear vanishing, an appearance resetting to plain, or a rumor going quiet just because a field came back `null`/empty this turn. If you genuinely need the current value (first mention this session, or you've lost track), fetch it explicitly via `get_entity`/`fullDetailCharacterId`/`fullDetailLocationId` rather than inferring absence from omission.
 
+**Delta-mode memory & psychology trimming:** Psychology, Memory, and recent interactions often trim on unchanged deltas to save bandwidth. **When you're about to narrate an NPC's motivation, dialogue, or memory-dependent action—especially after a gap or session resume—and you're unsure whether the context is current, query explicitly.** Include `fullDetailCharacterId: "chars/..."` on the next `take_turn`, or call `get_entity`, before committing NPC-driven beats. Don't assume multi-turn-old memory is still accurate—it may have aged, been updated by time passage, or shifted by the engine's own event log since you last saw it.
+
 ---
 
 ## Narration floor (hard)
