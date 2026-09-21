@@ -47,17 +47,7 @@ After the response, **check `WorldPressure` in the response**. If the warning st
 
 Track quest milestones:
 
-```json
-{
-  "$type": "quest_progress",
-  "questId": "quest/find-the-missing-caravan",
-  "newState": "Active",
-  "discoveredClues": ["caravan-tracks-north", "torn-cargo-manifest"],
-  "summary": "Party acquired the manifest from the trader; heading north to follow the tracks"
-}
-```
-
-States: Open → Active → Complete → Failed (or Abandoned).
+Payloads: `dnd-world-change`. `quest_progress.newState` is `Open` → `InProgress` → `Complete` / `Failed` / `Skipped`.
 
 ## Rumor Evolution
 
@@ -79,14 +69,7 @@ Create new rumors via `world_build` (batch). Evolve existing rumors via a `rumor
 
 Track faction stance changes:
 
-```json
-{
-  "$type": "faction_state",
-  "targetFactionId": "factions/thieves-guild",
-  "newStance": "Hostile",
-  "reason": "Party murdered guild courier"
-}
-```
+Use `faction_state` with `factionId` (the faction being updated) and `targetFactionId` only when setting a stance *toward* another faction. Payloads: `dnd-world-change`.
 
 Factions have `EconomicDemand` (items they want). If the party carries demanded items, `FactionEconomyPressureContributor` surfaces opportunities in `WorldPressure`.
 

@@ -60,7 +60,7 @@ Do **not** call `get_entity` before every beat just to "be safe." Prefer the lig
 
 *Why it matters:* The engine is the single source of truth. If you narrate first, you create phantom outcomes the engine never recorded — the party returns next session and finds their "victory" didn't persist. Extra full dumps also waste context and slow the loop.
 
-**Worked example** — party approaches a trapped door: (1) commit `ruleset_action` (Perception/Investigation) via `take_turn` with `includeWorldState: true`; (2) narrate from the result, roll/DC woven inline — success: "your eye catches a glint of wire at the hinge (Perception 18 vs DC 15) — you disarm it quietly"; failure: "the door swings open. Three paces in, your boot catches something. The floor lurches—"; (3) any discovered items/position changes are already in the response — persist ownership (`$type: "item"`/`item_transfer`) in the same or next batch. Only call `get_entity` first if you genuinely don't know whether the trap even exists.
+**Worked example** — party approaches a trapped door: (1) commit `ruleset_action` (Perception/Investigation) via `take_turn` with `includeWorldState: true`; (2) narrate from the result, roll/DC woven inline — success: "your eye catches a glint of wire at the hinge (Perception 18 vs DC 15) — you disarm it quietly"; failure: "the door swings open. Three paces in, your boot catches something. The floor lurches—"; (3) any discovered items/position changes are already in the response — persist ownership (`$type: "item"` with `toHolderId`) in the same or next batch. Only call `get_entity` first if you genuinely don't know whether the trap even exists.
 
 ---
 
@@ -266,7 +266,7 @@ New items that do not yet exist → seed via `world_build` first, then transfer.
 
 If narration changes something about a character's body or gear that should still be true several beats later, it needs a commit — not just prose. Without one, the next `take_turn`'s NPC/scene summary reflects the last *committed* state, silently reverting your narration (necklace vanishes, cut ropes are back on, a bandaged wound is gone) even though nothing contradicted it on-screen.
 
-- **Wearing/carrying something** (gifted item put on, weapon drawn and sheathed, cloak given away) → `item_equip` / `item_unequip` / `item_transfer` in the same batch as the narration beat, not just the moment it was first picked up.
+- **Wearing/carrying something** (gifted item put on, weapon drawn and sheathed, cloak given away) → `item_equip` / `item_unequip` / `$type: item` with `toHolderId` in the same batch as the narration beat, not just the moment it was first picked up.
 - **A condition that should persist** (bound/restrained, poisoned, prone, bleeding, blinded) → `status` (with `effect` for anything with a name) when applied, `status_remove` the instant narration undoes it (cutting bonds, healing, standing up). Removing bonds without a `status_remove` is why "freed" captives read as still bound later.
 - **A lasting appearance change** (scar, new outfit, dirt/blood that won't be washed off this scene) → `character_update`'s appearance/`visualTags` fields.
 
@@ -328,7 +328,7 @@ Document key decisions and discoveries at the end of each session outside the en
 
 *Movement & Time:* `activity` (local, no encounter risk), `travel` (journey with risk), `rest` (recovery + interruption chance), `advance_world` (multi-day/uneventful skip — pass its `partyLocationId` param to get the same encounter/ambient-crowd checks `rest`/`travel` roll for that span; omit it only when the skip is genuinely meant to be risk-free), `scene_interrupt_check` (single-roll crowd interrupt for a tense beat in a crowded location — one per location per day).
 
-*Items:* `item` / `item_transfer` / `item_equip` / `item_unequip` / `item_use`.
+*Items:* `item` (with `toHolderId`) / `item_equip` / `item_unequip` / `item_use`.
 
 *NPC & World:* `character_update`, `location_update`, `event`, `mood`, `knowledge_update`.
 

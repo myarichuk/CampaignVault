@@ -81,7 +81,7 @@ However many the beat genuinely needs — one, two, or five — they all go in O
   { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck",
     "actionName": "Persuasion", "parameters": { "skill": "Persuasion", "dc": "14" } },
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep",
-    "engagement": { "verb": "persuaded", "distanceBand": "close" } },
+    "verb": "persuaded", "category": "Social" },
   { "$type": "event", "category": "Social", "involved": ["chars/valen", "chars/barkeep"],
     "summary": "Valen persuaded the barkeep to reveal the gang's hideout." }
 ]
@@ -91,11 +91,12 @@ However many the beat genuinely needs — one, two, or five — they all go in O
 ```json
 [
   { "$type": "ruleset_action", ... },  // skill check failed
-  { "$type": "engagement_relation", "engagement": { "verb": "accused", "category": "Social", "distanceBand": null } }
+  { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep",
+    "verb": "accused", "category": "Social" }
   // Social-category relations don't auto-log — add an event yourself if the failed attempt is worth recording
 ]
 ```
-Always set `category` explicitly on `engagement_relation` — an unrecognized verb with no `category` silently defaults to `Physical` (see Conflict Avoidance below for why that matters beyond just logging).
+Always set `category` explicitly on `engagement_relation`. An unrecognized verb with no `category` defaults to `Social` (no travel gate). Physical is only for verbs the catalog marks as blocking.
 
 ### Combat Action (Attack + Damage)
 
@@ -132,7 +133,7 @@ Use `take_turn` with ruleset_action (no separate attack tool exists):
 ```json
 [
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/mysterious_stranger",
-    "engagement": { "verb": "met", "category": "Social", "distanceBand": "close" } },
+    "verb": "met", "category": "Social" },
   { "$type": "event", "category": "Narrative", "involved": ["chars/valen", "chars/mysterious_stranger"],
     "summary": "Valen encountered a mysterious stranger in the tavern." }
   // "met" is Social — Social/Attention/Proximity relations never auto-log, so this event
@@ -144,34 +145,9 @@ Use `take_turn` with ruleset_action (no separate attack tool exists):
 
 ### Auto-Logging Only Happens for Physical/Medical Relations
 
-The engine only auto-logs an event for `engagement_relation` when its `category` is `Physical` or `Medical` (grappling, restraint, dragging, tending wounds) — `Social`/`Attention`/`Proximity` never auto-log, no matter the verb. Explicitly set `category` every time; **an unrecognized verb with no `category` set silently defaults to `Physical`**, not just for logging purposes — `Physical` also changes whether the relation gates travel and emits pressure (restraint-tier defaults). Getting the category wrong isn't just a redundant-event mistake, it can misrepresent what's actually restraining/gating the character.
+The engine only auto-logs an event for `engagement_relation` when its `category` is `Physical` or `Medical`. `Social`/`Attention`/`Proximity` never auto-log. Unrecognized verbs default to `Social` (no travel gate). Physical is only for verbs the catalog marks as blocking.
 
-❌ Don't rely on the default for a Social beat:
-```json
-[
-  { "$type": "engagement_relation", "engagement": { "verb": "met" } }
-  // No category set — "met" isn't in the engine's recognized verb list, so this silently
-  // becomes category: Physical (restraint-tier defaults), NOT because it logs an event,
-  // but because it's now miscategorized as a physical engagement.
-]
-```
-
-✅ Set category explicitly, and pair an event when the category won't self-log:
-```json
-[
-  { "$type": "engagement_relation", "engagement": { "verb": "met", "category": "Social" } },
-  { "$type": "event", "summary": "Valen met someone" }
-  // Social never self-logs — this event is required, not redundant.
-]
-```
-
-❌ Don't ALSO pair an event for a genuinely Physical/Medical relation — that one really is redundant:
-```json
-[
-  { "$type": "engagement_relation", "engagement": { "verb": "Grappling", "category": "Physical" } },
-  { "$type": "event", "summary": "Valen grappled the guard" }  // redundant — Physical self-logs
-]
-```
+Set `category` explicitly. Pair an `event` for Social/Attention/Proximity. Physical/Medical self-log — do not also pair an event.
 
 ### Narrative vs. Game State
 

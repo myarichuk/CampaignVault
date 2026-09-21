@@ -74,15 +74,7 @@ Same rule as `dnd-narration`'s Prompt Discipline section — self-interest, fear
 
 When the NPC learns something, include a `knowledge_update` in your `take_turn` batch:
 
-```json
-{
-  "$type": "knowledge_update",
-  "characterId": "chars/npc-tavern-keeper",
-  "subject": "PC_background",
-  "newKnowledge": "PC is investigating the merchant guild's missing shipment",
-  "reliability": "direct_admission"
-}
-```
+Payloads: `dnd-world-change` (`topic` / `details` / `sourceEventIds` when `source` is Witnessed or Experienced).
 
 This shapes how the NPC talks about or relates to the PC later.
 

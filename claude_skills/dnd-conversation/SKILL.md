@@ -87,7 +87,7 @@ PC argues with the mayor and militia captain over recruitment. Each volley of di
 - [ ] Did someone speak? → Commit `event` with Conversation category
 - [ ] Are 3+ speakers present? → List all in `involved`
 - [ ] Did an NPC learn something? → Add `knowledge_update` to same batch
-- [ ] Did relationship shift? → Add `relationship_change`
+- [ ] Did relationship shift? → Add `relationship` (payloads: `dnd-world-change`)
 - [ ] Did time actually pass? → Include `minutesElapsed` on the request (not every line gets its own event — batch related lines, but each exchange must be committed before the player's next action)
 - [ ] Was this beat pure flavor/banter with nothing new or shifted? → Mark `narrativeImportance: "Trivial"` on the request (and the event's own `importance` if you added one)
 - [ ] Is the NPC dialogue authentic to character/world, not softened by modern politeness? → No false apologies, no consent scripts, psychology shapes tone

@@ -100,6 +100,11 @@ if [[ $DRY_RUN -eq 0 ]]; then
 fi
 
 for name in "${SOURCE_SKILLS[@]:-}"; do
+  # grok-playtest is the Grok Web playbook, not a Claude skill.
+  if [[ "$DEST_SUBPATH" == ".claude/skills" && "$name" == "grok-playtest" ]]; then
+    echo "  skip: grok-playtest (Grok Web playbook)"
+    continue
+  fi
   src="$SKILLS_SRC/$name"
   dest="$DEST_DIR/$name"
   if [[ $DRY_RUN -eq 1 ]]; then

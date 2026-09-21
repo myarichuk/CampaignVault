@@ -23,7 +23,7 @@ Region → Settlement → District → Building → Room
 
 | Type | When it's the right `locationId` |
 |------|-----------------------------------|
-| Region / Settlement | Only as the `from`/`to` of a `travel` commit, or as backdrop description ("the free city sprawls below"). **Never** the anchor of an active scene. |
+| Region / Settlement | Only as travel origin/destination backdrop ("the free city sprawls below"). **Never** the anchor of an active scene. |
 | District | Named neighborhoods/streets inside a settlement. Create these liberally — cheap, and they give the party somewhere concrete to be without needing full interiors yet. |
 | Building / Room | Anywhere a scene will actually play out for more than a beat — a specific tavern, the guard captain's office, the alley behind the smithy. This is where the anchored scene (get_entity with the location id) should resolve once the party has arrived and is doing something. |
 
@@ -108,9 +108,8 @@ When seeding a new area (session 0, arrival in a new settlement, entering a new 
 {
   "$type": "travel",
   "characterId": "chars/pc",
-  "from": "locations/village",
-  "to": "locations/dungeon-entrance",
-  "intendedHours": 6,
+  "destinationLocationId": "locations/dungeon-entrance",
+  "travelCostHoursOverride": 6,
   "encounterRiskModifier": 0
 }
 ```

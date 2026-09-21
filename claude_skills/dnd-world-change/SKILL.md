@@ -31,7 +31,8 @@ You are persisting changes to the world: events, character state, items, relatio
 | Character State | `character_update`, `mood`, `knowledge_update` | Appearance, mood, memory |
 | Relationships | `relationship`, `engagement_relation`, `spatial_position` | Social bonds, proximity, restraint |
 | NPC Behavior | `npc_initiative_nudge` | Prime a specific NPC to act/speak next based on something they just witnessed (see `dnd-npc-interaction`'s NPC Initiative section) — the engine's own scheduler can't judge a specific narrative beat the way you can. |
-| Inventory | `item`, `item_update`, `item_equip`, `item_unequip` | Carry/drop/equip items |
+| Inventory | `item`, `item_update`, `item_equip`, `item_unequip`, `item_use` | Carry/drop/equip items |
+| Conditions | `status`, `status_remove` | Apply/end named conditions |
 
 **Picking up / dropping / giving an item (`$type: "item"`):** moves an *existing* item to a new holder — character, location, or container item. Never narrate a pickup without it, or the item stays owned by its old holder and `get_entity` on the location will still list it as `visibleItems`.
 
@@ -79,7 +80,7 @@ Atomic all-or-nothing; if any change fails, the entire batch rolls back — **no
 ## Required Fields (never rely on defaults)
 
 - `ruleset_action.actionType` — "Attack", "Spell", "SkillCheck", etc.
-- `quest_progress.newState` — "Open", "Active", "Complete", "Failed", etc.
+- `quest_progress.newState` — `Open`, `InProgress`, `Complete`, `Failed`, `Skipped`
 - `quest_progress` — must also include `objectiveIndex` or `objectiveName`; there's no default, and omitting both hard-fails the change (and the whole batch with it).
 - `rest.intendedHours` — always set explicitly (positive number)
 - `event.locationId` — never put location ID inside `involved`

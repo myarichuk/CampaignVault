@@ -94,31 +94,11 @@ Same rule as `dnd-narration`'s Prompt Discipline section. Domain-specific: faile
 
 ## Relationship Changes
 
-After a significant social beat, commit relationship changes:
-
-```json
-{
-  "$type": "relationship_change",
-  "characterId": "chars/npc-tavern-keeper",
-  "targetCharacterId": "chars/pc",
-  "delta": 10,
-  "reason": "PC helped innkeeper's son escape bandits"
-}
-```
+After a significant social beat, commit a `relationship` change. Payloads: `dnd-world-change`.
 
 ## Knowledge Updates
 
-If the NPC learns something new (local rumors, PC background, strategic intel):
-
-```json
-{
-  "$type": "knowledge_update",
-  "characterId": "chars/npc-tavern-keeper",
-  "subject": "PC_background",
-  "newKnowledge": "PC is asking around about the old mine collapse",
-  "reliability": "direct_admission"
-}
-```
+If the NPC learns something new, add a `knowledge_update` (`topic` / `details` / `sourceEventIds` when `source` is Witnessed or Experienced). Payloads: `dnd-world-change`.
 
 Local rumors on a scene refresh follow the same rule as gear/appearance: on a `mode: delta` turn, a scene's rumor list only includes rumors that changed state/text this turn (`$type: "rumor"`, evolving an *existing* rumor — new rumors are seeded via `world_build`, not a take_turn commit). An empty or shorter list doesn't mean rumors died out — it means none changed. Check `WorldState.ActiveRumors` (via `includeWorldState: true`) or `get_entity` for the full current picture.
 
