@@ -178,10 +178,18 @@ public enum MemoryUrgency
     Urgent
 }
 
-public class MemoryNode
+public class MemoryNode : IHasSemanticVector
 {
     public string Topic { get; set; } = null!;
     public string Details { get; set; } = null!;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public float[]? SemanticVector { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? EmbeddingTextHash { get; set; }
+
+    public string BuildEmbeddingText() => $"{Topic}\n{Details}";
+
     public int DayAcquired { get; set; } = 0;
     public MemoryImportance Importance { get; set; } = MemoryImportance.Important;
 

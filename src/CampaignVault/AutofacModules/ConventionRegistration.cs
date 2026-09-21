@@ -10,6 +10,7 @@ using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Rulesets.Modes;
 using CampaignVault.Services;
 using CampaignVault.Tools;
 
@@ -66,6 +67,8 @@ internal static class ConventionRegistration
             RegisterCollection<IGuidanceContributor>(builder, assembly);
             RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
             RegisterCollection<IRulesetModule>(builder, assembly);
+            RegisterCollection<IInteractionMode>(builder, assembly);
+            RegisterCollection<IWorldChangeObserver>(builder, assembly);
         }
 
         // Register tools explicitly to ensure dependency order: ExplorationTools before DeepDiveTools
@@ -165,6 +168,11 @@ internal static class ConventionRegistration
             .SingleInstance();
 
         builder.RegisterType<CampaignDocumentKeys>().SingleInstance();
+        // Explicit (not namespace-convention) registration: InteractionModeSelector lives in
+        // CampaignVault.Rulesets.Modes, which RegisterNameMatchedServices does not scan (it only matches
+        // the exact namespaces listed in NameMatchedNamespaces, e.g. CampaignVault.Rulesets for
+        // RulesetModuleSelector).
+        builder.RegisterType<InteractionModeSelector>().As<IInteractionModeSelector>().InstancePerLifetimeScope();
         builder.RegisterType<WorldChangeDispatcher>().InstancePerLifetimeScope();
         builder.RegisterType<SceneAssembler>().InstancePerLifetimeScope();
         builder.RegisterType<SceneNpcMerger>().InstancePerLifetimeScope();

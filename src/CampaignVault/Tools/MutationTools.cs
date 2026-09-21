@@ -1051,12 +1051,23 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             }
         }
 
+        var triggerText = string.Join("\n",
+            ctx.AppliedChanges.OfType<EventOccurred>().Select(e => e.Summary)
+                .Concat(ctx.Request?.Narrative is { } n ? [n] : []));
+
+        float[]? triggerVector = null;
+        if (!string.IsNullOrWhiteSpace(triggerText))
+        {
+            triggerVector = await _repository.EmbedTriggerTextAsync(triggerText);
+        }
+
         foreach (var npc in selected)
         {
             try
             {
                 var enrichment = await _repository.EnrichNpcInitiativeAsync(
-                    ctx.Session, npc, ctx.Campaign, "take_turn", includeTensionBreakdown: false);
+                    ctx.Session, npc, ctx.Campaign, "take_turn", includeTensionBreakdown: false,
+                    triggerVector: triggerVector);
 
                 if (npc.Id.Equals(winner.Id, StringComparison.OrdinalIgnoreCase) && nudgeReason != null)
                 {
@@ -2004,16 +2015,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     {
         try
         {
-            var party = await ctx.Session.Query<Character>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
-                .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
-                .ToListAsync();
-
-            var locationIds = party
-                .Where(c => !string.IsNullOrWhiteSpace(c.CurrentLocationId))
-                .Select(c => c.CurrentLocationId!)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var locationIds = await SimulationQueryHelper.QueryPartyLocationIdsAsync(ctx.Session, ctx.Campaign);
 
             if (locationIds.Count == 0)
             {

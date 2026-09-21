@@ -11,6 +11,7 @@ using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Services;
 using CampaignVault.Tools;
+using CampaignVault.Tests;
 using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents;
 using Xunit;
@@ -339,7 +340,7 @@ public class SystemStatsBootstrapHarnessTests : IClassFixture<RavenDBFixture>
         new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator()),
         new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator()),
         RulesetDataTestHelper.CreateLevelUpHandler(),
-        new KnowledgeUpdateHandler(),
+        new KnowledgeUpdateHandler(new TestFakeEmbeddingService()),
         CreateRulesetActionHandler(selector, keys),
         new RumorCreateHandler(),
         RulesetDataTestHelper.CreateRestChangeHandler()

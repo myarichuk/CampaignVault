@@ -33,6 +33,7 @@ internal class SemanticVectorBootstrap
             await EnrichMissingVectorsAsync<Event>(cancellationToken);
             await EnrichMissingVectorsAsync<SessionLog>(cancellationToken);
             await EnrichMissingVectorsAsync<Character>(cancellationToken);
+            await EnrichMissingMemoryVectorsAsync(cancellationToken);
             await EnrichMissingVectorsAsync<Lore>(cancellationToken);
             await EnrichMissingVectorsAsync<Location>(cancellationToken);
             await EnrichMissingVectorsAsync<Faction>(cancellationToken);
@@ -104,5 +105,69 @@ internal class SemanticVectorBootstrap
 
         _logger.LogInformation("{EntityType}: enrichment complete ({Count} entities)", typeName, totalEnriched);
         Console.Error.WriteLine($"  {typeName}: enriched {totalEnriched} entities.");
+    }
+
+    // MemoryNode is nested inside Character.Psychology.Memories rather than being a top-level
+    // RavenDB document, so it can't use the generic Where(x => x.SemanticVector == null) query
+    // EnrichMissingVectorsAsync<T> relies on — it needs its own per-Character loop.
+    private async Task EnrichMissingMemoryVectorsAsync(CancellationToken cancellationToken)
+    {
+        const int batchSize = 50;
+        var totalEnriched = 0;
+        var totalCharacters = 0;
+        string? lastId = null;
+
+        while (true)
+        {
+            using var session = _store.OpenAsyncSession();
+            var batch = await session.Query<Character>()
+                .Where(c => lastId == null || c.Id.CompareTo(lastId) > 0)
+                .OrderBy(c => c.Id)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken);
+
+            if (batch.Count == 0)
+            {
+                break;
+            }
+
+            lastId = batch[^1].Id;
+            totalCharacters += batch.Count;
+
+            var touched = false;
+            foreach (var character in batch)
+            {
+                foreach (var memory in character.Psychology.Memories.Values)
+                {
+                    if (memory.SemanticVector != null)
+                    {
+                        continue;
+                    }
+
+                    await SemanticEnrichmentHelper.EnrichAsync(memory, _embeddingService, _logger, cancellationToken);
+                    totalEnriched++;
+                    touched = true;
+                }
+            }
+
+            if (touched)
+            {
+                await session.SaveChangesAsync(cancellationToken);
+            }
+
+            if (batch.Count < batchSize)
+            {
+                break;
+            }
+        }
+
+        if (totalEnriched == 0)
+        {
+            _logger.LogDebug("MemoryNode: all vectors present");
+            return;
+        }
+
+        _logger.LogInformation("MemoryNode: enriched {Count} memories across {Chars} characters", totalEnriched, totalCharacters);
+        Console.Error.WriteLine($"  MemoryNode: enriched {totalEnriched} memories.");
     }
 }

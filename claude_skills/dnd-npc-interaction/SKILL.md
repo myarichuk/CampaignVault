@@ -78,6 +78,8 @@ Payloads: `dnd-world-change` (`topic` / `details` / `sourceEventIds` when `sourc
 
 This shapes how the NPC talks about or relates to the PC later.
 
+**Valence is judged by this NPC, not by the event.** When you set the memory's emotional valence (Positive/Negative/Neutral/Traumatic), weigh it against *this* NPC's psychology — ideology, profession, prior trauma — not the objective severity of what happened. The same field-dressing of a kill can be Traumatic for a squeamish acolyte and Neutral (or even Positive) for a hardened assassin or a butcher's apprentice. You have their psych profile in context; use it.
+
 ## Need-Driven Behavior
 
 If an NPC is hungry, exhausted, or in pain, they're distracted, short-tempered, or desperate. Show it:
@@ -99,6 +101,8 @@ NPCs follow schedules. If an NPC should be at the market but is in the tavern, t
 NPCs remember past interactions. The engine tracks memory salience and decay. Old memories fade; recent emotional beats stay sharp. Use this:
 - Grateful NPC who you helped: warm, trusting
 - NPC you betrayed: cold, protective, watching for tricks
+
+The engine can also resurface a memory when the current beat semantically resembles it, not just when a name/place literally matches (an ex-servant watching a horse get whipped can recall their own corporal-punishment memory even though neither text says "horse" or "whip"). This only sees what's actually committed — narrate-only banter or action description that never becomes an `event`/`knowledge_update` doesn't feed it. NPC-NPC conversation specifically only registers if you commit an `event` with `Category: Conversation` and `involved: [npc1, npc2]` — no PC required.
 
 ## Relationship Modifiers
 

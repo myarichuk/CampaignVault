@@ -4,6 +4,13 @@ namespace CampaignVault.Data.Initiative;
 
 public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
 {
+    // Calibrate against real data before merging — see ItemDetailSemanticMatchThreshold (0.86) in
+    // ItemChangeHandlers.cs and EventNoveltyAdvisor's novelty/echo cutoffs as reference points from
+    // the same embedding model.
+    private const double SemanticMatchThreshold = 0.55;
+
+    private readonly record struct MemoryMatchResult(bool Matched, string? MatchReason);
+
     public IReadOnlyList<InitiativeCandidate> GetCandidates(NpcInitiativeContext ctx)
     {
         var npc = ctx.Npc;
@@ -24,7 +31,10 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
         foreach (var memory in psych.Memories.Values)
         {
             memory.ApplyMigrationDefaultsIfNeeded();
-            if (!MemoryMatchesScene(memory, presentIds, presentNames, locationName, locationId))
+            var match = MemoryMatchesScene(
+                memory, presentIds, presentNames, locationName, locationId,
+                ctx.TriggerVector, ctx.RecentEvents, ctx.NpcRecentEvents);
+            if (!match.Matched)
             {
                 continue;
             }
@@ -46,7 +56,7 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
                 weight += 20;
             }
 
-            var framing = BuildFraming(memory, ctx.Location?.Name);
+            var framing = BuildFraming(memory, ctx.Location?.Name, match.MatchReason);
             candidates.Add(new InitiativeCandidate(
                 $"memory:{npc.Id}:{memory.Topic}",
                 npc.Id,
@@ -59,16 +69,19 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
         return candidates;
     }
 
-    private static bool MemoryMatchesScene(
+    private static MemoryMatchResult MemoryMatchesScene(
         MemoryNode memory,
         HashSet<string> presentIds,
         IReadOnlyList<string> presentNames,
         string? locationName,
-        string? locationId)
+        string? locationId,
+        float[]? triggerVector,
+        IReadOnlyList<Event> recentEvents,
+        IReadOnlyList<Event> npcRecentEvents)
     {
         if (memory.RelatedEntityIds.Any(id => presentIds.Contains(id)))
         {
-            return true;
+            return new MemoryMatchResult(true, null);
         }
 
         // Details is typed non-nullable (`= null!`) but legacy/malformed knowledge_update commits
@@ -79,14 +92,14 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
             && (memory.Topic.Contains(locationId, StringComparison.OrdinalIgnoreCase)
                 || details.Contains(locationId, StringComparison.OrdinalIgnoreCase)))
         {
-            return true;
+            return new MemoryMatchResult(true, null);
         }
 
         if (!string.IsNullOrWhiteSpace(locationName)
             && (memory.Topic.Contains(locationName, StringComparison.OrdinalIgnoreCase)
                 || details.Contains(locationName, StringComparison.OrdinalIgnoreCase)))
         {
-            return true;
+            return new MemoryMatchResult(true, null);
         }
 
         // TriggerCondition is an LLM-authored freeform predicate (e.g. a name, place, or topic)
@@ -96,40 +109,80 @@ public sealed class MemoryInitiativeProvider : INpcInitiativeSignalProvider
             if (presentNames.Any(name => memory.TriggerCondition.Contains(name, StringComparison.OrdinalIgnoreCase)
                     || name.Contains(memory.TriggerCondition, StringComparison.OrdinalIgnoreCase)))
             {
-                return true;
+                return new MemoryMatchResult(true, null);
             }
 
             if (!string.IsNullOrWhiteSpace(locationName)
                 && (memory.TriggerCondition.Contains(locationName, StringComparison.OrdinalIgnoreCase)
                     || locationName.Contains(memory.TriggerCondition, StringComparison.OrdinalIgnoreCase)))
             {
-                return true;
+                return new MemoryMatchResult(true, null);
             }
 
             if (!string.IsNullOrWhiteSpace(locationId)
                 && memory.TriggerCondition.Contains(locationId, StringComparison.OrdinalIgnoreCase))
             {
-                return true;
+                return new MemoryMatchResult(true, null);
             }
         }
 
-        return false;
+        // No cheap/precise match — fall through to semantic comparison against this turn's
+        // just-committed text and recent events, only when both sides have a vector.
+        if (memory.SemanticVector is { Length: > 0 } memVec)
+        {
+            if (triggerVector is { Length: > 0 }
+                && SemanticEnrichmentHelper.CosineSimilarity(memVec, triggerVector) >= SemanticMatchThreshold)
+            {
+                return new MemoryMatchResult(true, $"reminded of \"{memory.Topic}\"");
+            }
+
+            var bestEvent = recentEvents.Concat(npcRecentEvents)
+                .Where(e => e.SemanticVector is { Length: > 0 })
+                .Select(e => (Event: e, Sim: SemanticEnrichmentHelper.CosineSimilarity(memVec, e.SemanticVector!)))
+                .OrderByDescending(x => x.Sim)
+                .FirstOrDefault();
+            if (bestEvent.Event != null && bestEvent.Sim >= SemanticMatchThreshold)
+            {
+                return new MemoryMatchResult(true, $"reminded of \"{memory.Topic}\" by {bestEvent.Event.Id}");
+            }
+        }
+
+        return new MemoryMatchResult(false, null);
     }
 
-    private static string BuildFraming(MemoryNode memory, string? locationName)
+    // Note: this method intentionally re-derives the best-match event (not just a similarity score)
+    // rather than calling SemanticTriggerMatcher.BestSimilarity, since the GM-facing framing needs to
+    // name *which* event fired the match, not just whether one did. DefaultRelevantMemorySelector's
+    // ranking term only needs the score, so it uses the shared helper directly.
+
+    private static string BuildFraming(MemoryNode memory, string? locationName, string? semanticMatchReason)
     {
+        string baseFraming;
         if (memory.Valence == EmotionalValence.Traumatic)
         {
-            return locationName != null
+            baseFraming = locationName != null
                 ? $"Painful memory tied to {locationName} — may tense, withdraw, or react sharply if it comes up."
                 : "Painful memory tied to this scene — may tense, withdraw, or react sharply if it comes up.";
         }
-
-        if (memory.Valence == EmotionalValence.Negative)
+        else if (memory.Valence == EmotionalValence.Negative)
         {
-            return $"Unsettling memory about \"{memory.Topic}\" — may become guarded if the subject arises.";
+            baseFraming = $"Unsettling memory about \"{memory.Topic}\" — may become guarded if the subject arises.";
+        }
+        else
+        {
+            baseFraming = $"Salient memory about \"{memory.Topic}\" — may color how they engage with the scene.";
         }
 
-        return $"Salient memory about \"{memory.Topic}\" — may color how they engage with the scene.";
+        // Only the semantic-match path needs an explicit pointer back to the memory — entity/
+        // location/TriggerCondition wins already read naturally without one.
+        if (semanticMatchReason == null)
+        {
+            return baseFraming;
+        }
+
+        var sourceEventSuffix = memory.SourceEventIds.Count > 0
+            ? $", source event {memory.SourceEventIds[0]}"
+            : string.Empty;
+        return $"{baseFraming} (memory topic \"{memory.Topic}\"{sourceEventSuffix})";
     }
 }

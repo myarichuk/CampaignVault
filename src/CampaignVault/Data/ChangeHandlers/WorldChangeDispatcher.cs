@@ -28,9 +28,11 @@ public sealed class WorldChangeDispatcher(
     ILogger<WorldChangeDispatcher>? logger = null,
     EncounterResolver? encounterResolver = null,
     ClassDefinitionProvider? classProvider = null,
-    BackgroundDefinitionProvider? backgroundProvider = null)
+    BackgroundDefinitionProvider? backgroundProvider = null,
+    IEnumerable<IWorldChangeObserver>? observers = null)
 {
     private readonly IReadOnlyList<IWorldChangeHandler> _handlers = handlers?.ToList() ?? [];
+    private readonly IReadOnlyList<IWorldChangeObserver> _observers = observers?.ToList() ?? [];
     private readonly ILogger<WorldChangeDispatcher> _logger = logger ?? NullLogger<WorldChangeDispatcher>.Instance;
     private readonly CampaignDocumentKeys _keys = keys ?? throw new ArgumentNullException(nameof(keys));
     private readonly EncounterResolver? _encounterResolver = encounterResolver;
@@ -71,10 +73,33 @@ public sealed class WorldChangeDispatcher(
     /// <summary>
     /// Returns the first handler that claims this change (if any).
     /// Used for hybrid dispatch during incremental migration.
+    ///
+    /// The dictionary built by <see cref="BuildHandlerDictionary"/> only enumerates WorldChange subtypes
+    /// declared in the *core* CampaignVault assembly (typeof(WorldChange).Assembly) — a plugin-defined
+    /// WorldChange subtype (e.g. a mode plugin's own verb) is never a key in it. Fall back to a linear
+    /// ShouldHandle scan for any change type not already indexed, and cache the result so repeat
+    /// dispatches of the same plugin-defined type don't re-scan. This is the mechanism that makes
+    /// PLUGINS.md's "define your own WorldChange subtype, register a handler, it Just Works" claim true
+    /// for plugin assemblies, not just the core one.
     /// </summary>
     public IWorldChangeHandler? FindHandler(WorldChange change)
     {
-        return _handlersByChangeType.TryGetValue(change.GetType(), out var handler) ? handler : null;
+        var type = change.GetType();
+        if (_handlersByChangeType.TryGetValue(type, out var handler))
+        {
+            return handler;
+        }
+
+        foreach (var candidate in _handlers)
+        {
+            if (candidate.ShouldHandle(change))
+            {
+                _handlersByChangeType[type] = candidate;
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     public async Task<CommitResult> DispatchAsync(
@@ -139,7 +164,7 @@ public sealed class WorldChangeDispatcher(
             var isBackgroundTick = change.IsEngineAuthored && change is NeedChange or AttributeChange;
             ExtractInvolvedIds(change, characterIds, locationIds, factionIds, questIds, itemIds, isBackgroundTick ? null : allInvolved);
             if (change is RulesetAction) needsCombat = true;
-            if (change is RulesetAction or LevelUpChange) needsRulesetConfig = true;
+            if (change is RulesetAction or LevelUpChange or ModeTransitionChange or CampaignUpdateChange) needsRulesetConfig = true;
         }
 
         Dictionary<string, Character> characters;
@@ -284,6 +309,10 @@ public sealed class WorldChangeDispatcher(
                 {
                     context.RecordFailure();
                     overallSuccess = false;
+                }
+                else
+                {
+                    await NotifyObserversAsync(change, context);
                 }
             }
             catch (Exception ex)
@@ -644,6 +673,32 @@ public sealed class WorldChangeDispatcher(
                 $"AMBIENT INTERRUPT at {location.Name}! {string.Join(" ", narratives)} " +
                 "Resolve before continuing.");
             break;
+        }
+    }
+
+    /// <summary>
+    /// Runs every interested IWorldChangeObserver after a change's own handler has already committed
+    /// successfully. Deliberately non-failing: an observer exception is logged and swallowed rather than
+    /// recorded via context.RecordFailure(), so a broken observer (e.g. a buggy "inner voice" plugin)
+    /// can never roll back or block an unrelated mutation. Not invoked for changes dispatched via
+    /// DispatchMutationAsync (child mutations) — only the top-level batch loop.
+    /// </summary>
+    private async Task NotifyObserversAsync(WorldChange change, ChangeContext context)
+    {
+        foreach (var observer in _observers)
+        {
+            try
+            {
+                if (observer.IsInterestedIn(change, context))
+                {
+                    await observer.OnCommittedAsync(change, context);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "IWorldChangeObserver {ObserverType} threw while handling {ChangeType}",
+                    observer.GetType().Name, change.GetType().Name);
+            }
         }
     }
 

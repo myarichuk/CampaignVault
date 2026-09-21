@@ -14,4 +14,10 @@ public sealed class NpcInitiativeContext
     public int CurrentDay { get; init; }
     public required string SurfacedViaTool { get; init; }
     public bool IncludeTensionBreakdown { get; init; }
+
+    /// <summary>
+    /// Embedding of this turn's just-committed narrative/event text, when available.
+    /// Null for query-only paths (e.g. get_scene) with no "just happened" text to embed.
+    /// </summary>
+    public float[]? TriggerVector { get; init; }
 }

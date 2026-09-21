@@ -4,6 +4,10 @@ namespace CampaignVault.Data.Initiative;
 
 public sealed class DefaultRelevantMemorySelector : IRelevantMemorySelector
 {
+    // Same threshold as MemoryInitiativeProvider's gate — see its comment for calibration notes.
+    private const double SemanticMatchThreshold = 0.55;
+
+
     public IReadOnlyList<MemoryNode> Select(Character npc, NpcInitiativeContext ctx, int maxCount = 3)
     {
         var psych = npc.Psychology ?? new PsychologyProfile();
@@ -73,6 +77,15 @@ public sealed class DefaultRelevantMemorySelector : IRelevantMemorySelector
         if (ctx.CurrentDay - memory.DayAcquired <= 7)
         {
             score += 0.15;
+        }
+
+        if (memory.SemanticVector is { Length: > 0 } memVec
+            && SemanticTriggerMatcher.BestSimilarity(memVec, ctx) >= SemanticMatchThreshold)
+        {
+            // Deliberately smaller than the +0.35 present-entity bonus — semantic match is
+            // corroborating evidence, not as strong a signal as "this NPC is literally about
+            // the entity standing right here."
+            score += 0.2;
         }
 
         return score;

@@ -669,7 +669,7 @@ internal static class CharacterHandlerHelpers
     }
 }
 
-public class KnowledgeUpdateHandler : IWorldChangeHandler
+public class KnowledgeUpdateHandler(ILocalEmbeddingService embeddingService) : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is KnowledgeUpdate;
 
@@ -749,6 +749,8 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
                 $"knowledge_update for '{ku.CharacterId}' topic '{ku.Topic}' has source={memory.Source} (directly event-sourced) "
                 + "but no sourceEventIds. Pass a client-chosen eventId on the paired event change in this same batch and reference it here.");
         }
+
+        await SemanticEnrichmentHelper.EnrichAsync(memory, embeddingService, context.Logger, ct);
 
         return ChangeHandlerResult.Ok;
     }

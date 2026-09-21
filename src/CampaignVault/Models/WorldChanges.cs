@@ -56,6 +56,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(AmbientEncounterCheck), "ambient_encounter_check")]
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 [JsonDerivedType(typeof(NpcInitiativeNudge), "npc_initiative_nudge")]
+[JsonDerivedType(typeof(ModeTransitionChange), "mode_transition")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -1445,9 +1446,9 @@ public enum ArchivableEntityType
 [Description("Soft-archive (or restore) an entity, hiding it from default search/scene/list results.")]
 public class ArchiveEntityChange : WorldChange
 {
-    [Description("The kind of entity being archived/restored. Character is not supported — see this $type's schema description.")]
+    [Description("The kind of entity being archived/restored (required). Character is not supported — Character has no IsArchived field; use keepAlive:false instead.")]
     [JsonPropertyName("entityType")]
-    public ArchivableEntityType EntityType { get; set; }
+    public ArchivableEntityType? EntityType { get; set; }
 
     [Description("The ID of the entity to archive or restore (e.g. 'quests/stop-nightshade').")]
     [JsonPropertyName("entityId")]
@@ -1469,6 +1470,10 @@ public class CampaignUpdateChange : WorldChange
     [Description("Full replacement list of narrative focus tags (e.g. ['political intrigue', 'court politics']). Pass every tag you want retained — this replaces the whole list, it does not append.")]
     [JsonPropertyName("narrativeFocus")]
     public List<string>? NarrativeFocus { get; set; }
+
+    [Description("Full replacement list of enabled interaction-mode IDs (e.g. ['crafting', 'astral_combat']) — see mode_transition. Pass every mode ID you want enabled; this replaces the whole list, it does not append. Only registered mode plugins can be enabled — see get_commit_schema for mode_transition, or the server's plugin catalog for what's installed.")]
+    [JsonPropertyName("enabledModeIds")]
+    public List<string>? EnabledModeIds { get; set; }
 }
 
 /// <summary>
@@ -1602,4 +1607,31 @@ public class WorldEventStatusChange : WorldChange
     [Description("Optional narrative note appended to the event's DmNotes.")]
     [JsonPropertyName("narrativeNote")]
     public string? NarrativeNote { get; set; }
+}
+
+/// <summary>
+/// Enters or exits a plugin-defined interaction mode (crafting, hairstyling, astral combat, ...) for a
+/// scene. See PLUGIN_SYSTEM_PLAN.md Track B / INTERACTION_MODES_PLAN.md. Validated against the mode's
+/// registration (IInteractionModeSelector), the campaign's CampaignConfig.EnabledModeIds opt-in list,
+/// and the mode's CompatibleSystems against CampaignConfig.ActiveSystem.
+/// </summary>
+[Description("Enter or exit a plugin-defined interaction mode (e.g. crafting, astral combat) for a scene.")]
+[CommitCategory("World")]
+public class ModeTransitionChange : WorldChange
+{
+    [Description("The mode's registered ModeId (e.g. 'crafting', 'astral_combat').")]
+    [JsonPropertyName("modeId")]
+    public string ModeId { get; set; } = null!;
+
+    [Description("'enter' starts a new ModeEncounter at locationId with participantIds; 'exit' ends the active one.")]
+    [JsonPropertyName("action")]
+    public string Action { get; set; } = "enter";
+
+    [Description("ID of the location the mode encounter takes place at. Required for 'enter'.")]
+    [JsonPropertyName("locationId")]
+    public string? LocationId { get; set; }
+
+    [Description("Character IDs participating in the mode encounter. Required for 'enter'.")]
+    [JsonPropertyName("participantIds")]
+    public List<string> ParticipantIds { get; set; } = [];
 }

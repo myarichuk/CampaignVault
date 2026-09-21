@@ -71,5 +71,14 @@ public sealed class CampaignDocumentKeys
     public string StateTurnCursor(string campaignName) =>
         $"campaigns/{Normalize(campaignName)}/state/turn-cursor";
 
+    /// <summary>
+    /// Returns the document ID for the active encounter of a given interaction mode within a campaign.
+    /// Mirrors <see cref="CombatCurrent"/> but namespaced per mode, since a campaign can have at most
+    /// one active encounter per mode (not one combined singleton — combat and, say, an astral-combat
+    /// mode can be tracked independently, though only one is expected to be IsActive at a time).
+    /// </summary>
+    public string ModeCurrent(string campaignName, string modeId) =>
+        $"campaigns/{Normalize(campaignName)}/mode/{modeId}/current";
+
     private static string Normalize(string name) => CampaignSlug.Canonicalize(name);
 }

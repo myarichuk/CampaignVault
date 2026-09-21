@@ -163,7 +163,8 @@ See get_help topic=world-building for the full copy-paste example, per-ruleset s
                 kindResult.CreatedIds.Add(canonicalId);
             }
 
-            if (!string.IsNullOrEmpty(res.Summary))
+            if (!string.IsNullOrEmpty(res.Summary)
+                && (res.Summary.Contains("WARNING", StringComparison.Ordinal) || res.Summary.Contains("NOTE:", StringComparison.Ordinal)))
             {
                 warnings.Add($"{kind}[{i}]: {res.Summary}");
             }

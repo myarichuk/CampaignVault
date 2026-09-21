@@ -22,6 +22,13 @@ public sealed class ArchiveEntityChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("entityId is required.");
         }
 
+        if (ac.EntityType == null)
+        {
+            return ChangeHandlerResult.Failure(
+                "entityType is required (one of: Location, Item, Faction, Quest, Creature, Spell, Feat, Rumor, PlotThread). " +
+                "Characters cannot be archived this way — Character has no IsArchived field; use keepAlive:false instead.");
+        }
+
         IArchivable? entity = ac.EntityType switch
         {
             ArchivableEntityType.Location => await context.Session.LoadAsync<Location>(ac.EntityId, ct),

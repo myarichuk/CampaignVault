@@ -117,10 +117,12 @@ public class GrappleRulesetTests
             quests: new Dictionary<string, Quest>(),
             logger: NullLogger.Instance,
             summary: [],
-            dispatcher: new WorldChangeDispatcher([new TravelChangeHandler(new EncounterResolver())], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
+            dispatcher: new WorldChangeDispatcher([new TravelChangeHandler(new EncounterResolver(() => 1.0))], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance),
             activeCombat: null);
 
-        var result = await new TravelChangeHandler(new EncounterResolver()).ApplyAsync(
+        // EncounterRiskModifier alone can't guarantee no interrupt (chance is clamped to a 1% floor,
+        // see EncounterResolver.cs), so pin the roll deterministically to never trigger.
+        var result = await new TravelChangeHandler(new EncounterResolver(() => 1.0)).ApplyAsync(
             new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2", TravelCostHoursOverride = 1, EncounterRiskModifier = -100 },
             context);
 

@@ -75,7 +75,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             campaignName: campaignName);
 
     private static WorldChangeDispatcher BuildDispatcher(ItemUpdateHandler itemHandler) =>
-        new([itemHandler, new KnowledgeUpdateHandler()], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
+        new([itemHandler, new KnowledgeUpdateHandler(new StubEmbeddingService())], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
 
     [Fact]
     public async Task ApplyAsync_IdMatch_UpdatesExistingDetail_NoDuplicate()

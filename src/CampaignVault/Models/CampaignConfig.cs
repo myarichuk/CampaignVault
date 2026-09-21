@@ -426,6 +426,16 @@ public class CampaignConfig
     /// surfacing on its own — only a materially bigger cumulative swing is. Defaults to 10.
     /// </summary>
     public float NeedsCumulativeDriftThreshold { get; set; } = 10f;
+
+    /// <summary>
+    /// Per-campaign opt-in list of interaction-mode IDs (see <see cref="Rulesets.Modes.IInteractionMode"/>)
+    /// this campaign allows entering, narrowest-wins against a mode's global availability (whether its
+    /// plugin DLL is loaded at all). Empty by default — a freshly initialized campaign has no optional
+    /// modes enabled until the GM opts in. Deliberately kept empty rather than pre-populated: RavenDB's
+    /// deserializer appends onto (rather than replaces) a pre-populated List&lt;T&gt; property (see
+    /// GratitudeHeuristicTokens above), so a non-empty default here would double on every load.
+    /// </summary>
+    public List<string> EnabledModeIds { get; set; } = [];
 }
 
 /// <summary>

@@ -71,7 +71,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
-        var dispatcher = new WorldChangeDispatcher([handler, new KnowledgeUpdateHandler()], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([handler, new KnowledgeUpdateHandler(new StubEmbeddingService())], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var context = BuildContext(session, dispatcher, campaign);
 
         var change = new ItemUpdate
@@ -108,7 +108,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(character);
         await session.SaveChangesAsync();
 
-        var dispatcher = new WorldChangeDispatcher([new KnowledgeUpdateHandler()], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
+        var dispatcher = new WorldChangeDispatcher([new KnowledgeUpdateHandler(new StubEmbeddingService())], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var context = BuildContext(session, dispatcher, campaign);
 
         await CampaignVault.Rulesets.ArmorParameterResolver.ApplyAsync(character, context);
@@ -127,7 +127,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(character);
         await session.SaveChangesAsync();
 
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new StubEmbeddingService());
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var context = BuildContext(session, dispatcher, campaign);
 

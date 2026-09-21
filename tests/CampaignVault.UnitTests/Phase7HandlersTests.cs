@@ -74,7 +74,9 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(dest);
         await session.SaveChangesAsync();
 
-        var handler = new TravelChangeHandler(new EncounterResolver());
+        // EncounterRiskModifier alone can't guarantee no interrupt (chance is clamped to a 1% floor,
+        // see EncounterResolver.cs), so pin the roll deterministically to never trigger.
+        var handler = new TravelChangeHandler(new EncounterResolver(() => 1.0));
         var capture = new CapturingHandler();
         var dispatcher = new WorldChangeDispatcher([handler, capture], new CampaignVault.Data.CampaignDocumentKeys(),
             NullLogger<WorldChangeDispatcher>.Instance);
@@ -125,7 +127,9 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(dest);
         await session.SaveChangesAsync();
 
-        var handler = new TravelChangeHandler(new EncounterResolver());
+        // EncounterRiskModifier alone can't guarantee no interrupt (chance is clamped to a 1% floor,
+        // see EncounterResolver.cs), so pin the roll deterministically to never trigger.
+        var handler = new TravelChangeHandler(new EncounterResolver(() => 1.0));
         var capture = new CapturingHandler();
         var dispatcher = new WorldChangeDispatcher([handler, capture], new CampaignVault.Data.CampaignDocumentKeys(),
             NullLogger<WorldChangeDispatcher>.Instance);
@@ -617,7 +621,9 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(dest);
         await session.SaveChangesAsync();
 
-        var handler = new TravelChangeHandler(new EncounterResolver());
+        // EncounterRiskModifier alone can't guarantee no interrupt (chance is clamped to a 1% floor,
+        // see EncounterResolver.cs), so pin the roll deterministically to never trigger.
+        var handler = new TravelChangeHandler(new EncounterResolver(() => 1.0));
         var capture = new CapturingHandler();
         var dispatcher = new WorldChangeDispatcher([handler, capture], new CampaignVault.Data.CampaignDocumentKeys(),
             NullLogger<WorldChangeDispatcher>.Instance);

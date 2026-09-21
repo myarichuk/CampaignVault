@@ -499,7 +499,8 @@ public class CampaignRepository
         string surfacedViaTool,
         bool includeTensionBreakdown,
         IReadOnlyList<Character>? presentEntities = null,
-        IReadOnlyList<Event>? recentEvents = null)
+        IReadOnlyList<Event>? recentEvents = null,
+        float[]? triggerVector = null)
     {
         var effective = ResolveCampaign(campaignName);
         var config = await GetCampaignConfigAsync(new CampaignSession(session, effective));
@@ -538,11 +539,15 @@ public class CampaignRepository
             Config = config,
             CurrentDay = currentDay,
             SurfacedViaTool = surfacedViaTool,
-            IncludeTensionBreakdown = includeTensionBreakdown
+            IncludeTensionBreakdown = includeTensionBreakdown,
+            TriggerVector = triggerVector
         };
 
         return _initiativeService.Enrich(ctx, campaign);
     }
+
+    public Task<float[]> EmbedTriggerTextAsync(string text, CancellationToken ct = default)
+        => _embeddingService.GenerateEmbeddingAsync(text, ct);
 
     private async Task<Campaign> LoadOrCreateCampaignMetaAsync(IAsyncDocumentSession session, string campaignName)
     {

@@ -83,6 +83,10 @@ Full detail includes:
 
 **Delta-mode memory & psychology trimming:** Psychology, Memory, and recent interactions often trim on unchanged deltas to save bandwidth. **When you're about to narrate an NPC's motivation, dialogue, or memory-dependent action—especially after a gap or session resume—and you're unsure whether the context is current, query explicitly.** If memory is all you need, include `memoriesOnlyCharacterId: "chars/..."` on the next `take_turn`—cheaper than `fullDetailCharacterId`, skips behavioral summary/items/recentInteractions. Otherwise use `fullDetailCharacterId` or `get_entity` for the fuller picture, before committing NPC-driven beats. Don't assume multi-turn-old memory is still accurate—it may have aged, been updated by time passage, or shifted by the engine's own event log since you last saw it.
 
+**Memory surfacing only sees what's committed.** The engine can resurface a related memory when the current beat semantically resembles something an NPC remembers (not just a literal name/place match) — but only for text that was actually committed as an `event`/`knowledge_update`. Narrate-only banter or action description that never becomes a commit doesn't feed it. NPC-NPC conversation specifically only registers if you commit an `event` with `category: Conversation` and `involved: [npc1, npc2]` — no PC needs to be involved.
+
+**Valence is judged by this NPC, not by the event.** When a `knowledge_update` sets a memory's emotional valence (Positive/Negative/Neutral/Traumatic), weigh it against *this* NPC's psychology — ideology, profession, prior trauma — not the event's objective severity. A paladin watching gore may log it Traumatic; a hardened assassin or butcher's apprentice witnessing the same thing may log it Neutral. You have their psych profile in context — use it, don't default to the "obvious" valence.
+
 ---
 
 ## Narration floor (hard)

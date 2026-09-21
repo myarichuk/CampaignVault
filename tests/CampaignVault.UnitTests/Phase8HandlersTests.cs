@@ -161,7 +161,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
 
         var ctx = CreateContext(session);
 
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/bob",
@@ -199,7 +199,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
 
         var ctx = CreateContext(session);
 
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/alice",
@@ -235,7 +235,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var ctx = CreateContext(session);
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/skip",
@@ -261,7 +261,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var ctx = CreateContext(session);
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/enriched",
@@ -295,7 +295,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var ctx = CreateContext(session);
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/sourced",
@@ -320,7 +320,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var ctx = CreateContext(session);
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/infer",
@@ -349,7 +349,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var ctx = CreateContext(session);
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/infer-missing-source",
@@ -373,7 +373,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var ctx = CreateContext(session);
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/saw-prose",
@@ -406,7 +406,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         await session.SaveChangesAsync();
 
         var ctx = CreateContext(session);
-        var handler = new KnowledgeUpdateHandler();
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var update = new KnowledgeUpdate
         {
             CharacterId = "chars/legacy",

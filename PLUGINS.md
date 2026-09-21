@@ -1,6 +1,16 @@
 # CampaignVault Plugin Architecture
 
-CampaignVault supports two plugin types: **data-only plugins** (YAML) and **code plugins** (DLL + C#). Mix and match to extend the platform without modifying core code.
+CampaignVault supports three plugin types: **data-only plugins** (YAML), **code plugins** (DLL + C#, `IRulesetModule`), and **interaction-mode plugins** (whole new turn-based activities like crafting or astral combat — see [Type 3](#type-3-interaction-mode-plugin)). Mix and match to extend the platform without modifying core code.
+
+## Trust Model
+
+**Every code plugin today runs full-trust, in-process, exactly like first-party code.** A `.dll` dropped in `/Plugins/` is loaded via `AssemblyLoadContext` and given the same access to the process as `IRulesetModule` implementations shipped with CampaignVault itself — there is no sandbox, no capability restriction, and no permission model. `AssemblyLoadContext` alone is **not** a security boundary in .NET (it isolates assembly versioning/unload, not what code is allowed to do); the vanilla plugin-loading mechanism described in this document assumes the operator trusts the author, the same way they'd trust code they wrote themselves.
+
+**In practice this means:** only load plugin DLLs from authors you trust (yourself, your table, or a vetted source), the same discipline you'd apply to any other native code you run. A malicious or buggy plugin DLL can do anything the CampaignVault process can do — read/write the database, the filesystem, the network.
+
+This is a deliberate, current-stage tradeoff, not an oversight: it's the same tradeoff the "first-party, trusted" model always makes, and it keeps plugin authoring simple (plain C#, no scripting sandbox, no serialization boundary) for the audience this exists for today. **Data-only (YAML) plugins carry no code-execution risk** — they're parsed data, not loaded assemblies — so the trust model above only applies to code plugins (`IRulesetModule` and interaction-mode plugins).
+
+A real sandboxing story (for eventually running plugins from authors you *don't* personally vet — a community marketplace) is planned but not built: see `PLUGIN_SYSTEM_PLAN.md`'s Track C for the two real tiers under consideration (Jint for lightweight scripted hooks, WebAssembly/Extism for genuine capability-isolated native-speed plugins). Until Track C ships, treat every code plugin as equivalent to first-party code.
 
 ## Quick Start
 
@@ -151,6 +161,42 @@ MyPlugin/
 - Complex calculations (XP thresholds, spell slots, etc.)
 - System-specific pressure/guidance logic
 
+### Type 3: Interaction Mode Plugin
+
+**Use case:** A whole new turn-based *activity*, distinct from combat and from the campaign's ruleset — crafting, hairstyling-as-a-state-machine, astral combat, a heist minigame. Scene-scoped, not campaign-scoped: a D&D 5e campaign can drop into "Crafting" mode for one scene without touching `ActiveSystem`.
+
+**Trust model:** same as any code plugin (see [Trust Model](#trust-model) above) — full-trust, in-process.
+
+**Files to create:**
+```
+MyModePlugin/
+├── MyModePlugin.csproj
+└── CraftingMode.cs
+    └── public class CraftingMode : IInteractionMode { ... }
+```
+
+```csharp
+public class CraftingMode : IInteractionMode
+{
+    public string ModeId => "crafting";
+    public string DisplayName => "Crafting";
+    public IReadOnlyList<string> CompatibleSystems => []; // empty = works under any ruleset
+    public IModeStateMachine StateMachine { get; } = new CraftingStateMachine();
+}
+```
+
+Its actual verbs (e.g. a `CraftingStepChange` WorldChange + handler) are ordinary `IWorldChangeHandler` registrations — not part of `IInteractionMode` itself. See [Interaction Mode Plugin](#interaction-mode-plugin) below for the full walkthrough, and `INTERACTION_MODES_PLAN.md` for the design rationale.
+
+**Behavior:**
+- A mode must be explicitly enabled per campaign (`CampaignConfig.EnabledModeIds`, set via the `campaign_update` commit type) before it can be entered — being loaded (DLL present) is necessary but not sufficient.
+- Entering/exiting is a single commit type, `mode_transition` (`ModeId`, `Action: "enter"|"exit"`, `LocationId`, `ParticipantIds`), validated against registration → enablement → `CompatibleSystems`, in that order.
+- Actual dice rolls (skill checks, saves) should delegate to the campaign's already-active `IRulesetModule.Actions` via `RulesetActionType.SkillCheck`/`SavingThrow`/etc. rather than reimplementing them — a mode plugin never needs to know 5e math vs. PF2e math.
+- Mode-specific character stats live in the existing `SystemExtension.Attributes`/`ResourcePools` dictionaries — no core model changes needed to add e.g. `Attributes["AstralAttunement"]`.
+
+**When to use:**
+- A genuinely new kind of turn-based interaction, not a variant of combat or an existing ruleset action
+- Content you want scoped to specific campaigns/systems rather than always-on
+
 ---
 
 ## Creating a Plugin: Step by Step
@@ -231,6 +277,93 @@ cp bin/Release/net10.0/MyRulesetPlugin.dll /path/to/CampaignVault/Plugins/
 **Step 5:** Restart MCP
 
 Your `IRulesetModule` is now registered and available.
+
+---
+
+### Interaction Mode Plugin
+
+**Step 1:** Implement `IInteractionMode` and `IModeStateMachine`
+
+```csharp
+using CampaignVault.Rulesets.Modes;
+using CampaignVault.Models;
+
+public class CraftingMode : IInteractionMode
+{
+    public string ModeId => "crafting";
+    public string DisplayName => "Crafting";
+    public IReadOnlyList<string> CompatibleSystems => []; // system-agnostic
+    public IModeStateMachine StateMachine { get; } = new CraftingStateMachine();
+}
+
+public class CraftingStateMachine : IModeStateMachine
+{
+    public ModeEncounter CreateEncounter(string locationId, IReadOnlyList<string> participantIds) =>
+        new()
+        {
+            LocationId = locationId,
+            Participants = participantIds.Select(id => new ModeParticipantState { CharacterId = id }).ToList()
+        };
+
+    public IReadOnlyDictionary<string, int> GetTurnActionBudget(Character participant) =>
+        new Dictionary<string, int> { ["action"] = 1 };
+
+    public bool TryConsumeActionSlot(ModeParticipantState state, WorldChange action, out string? errorReason)
+    {
+        errorReason = null;
+        return true;
+    }
+
+    public bool AdvanceTurn(ModeEncounter encounter) => encounter.IsActive;
+
+    public bool IsComplete(ModeEncounter encounter, out string? outcomeNarrative)
+    {
+        var stage = encounter.Participants.FirstOrDefault()?.State.GetValueOrDefault("stage") as string;
+        outcomeNarrative = stage == "finish" ? "The item is complete." : null;
+        return stage == "finish";
+    }
+}
+```
+
+**Step 2:** Define the mode's own verbs as ordinary `WorldChange` + `IWorldChangeHandler` pairs — these are *not* part of `IInteractionMode`, they're discovered the same way any other plugin handler is:
+
+```csharp
+public class CraftingStepChange : WorldChange
+{
+    public string CharacterId { get; set; } = null!;
+    public string Step { get; set; } = null!; // "gather" | "shape" | "finish"
+}
+
+public class CraftingStepChangeHandler : IWorldChangeHandler
+{
+    public bool ShouldHandle(WorldChange change) => change is CraftingStepChange;
+
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    {
+        var step = (CraftingStepChange)change;
+        // Mutate ModeParticipantState.State["stage"] on the active ModeEncounter, or delegate
+        // a skill check to context via the campaign's active IRulesetModule.Actions if this step
+        // requires a roll. See INTERACTION_MODES_PLAN.md's "Supporting attributes & skills" section.
+        return ChangeHandlerResult.Ok;
+    }
+}
+```
+
+**Step 3:** Build and deploy exactly like a code plugin — build to `.dll`, copy to `/Plugins/`, restart MCP. `IInteractionMode` and `IWorldChangeHandler` implementations are both discovered by the same Autofac convention scan.
+
+**Step 4:** Enable the mode for a campaign via `take_turn`'s `campaign_update` commit:
+
+```json
+{ "$type": "campaign_update", "enabledModeIds": ["crafting"] }
+```
+
+**Step 5:** Enter the mode via `take_turn`'s `mode_transition` commit:
+
+```json
+{ "$type": "mode_transition", "modeId": "crafting", "action": "enter", "locationId": "locations/forge", "participantIds": ["chars/pc1"] }
+```
+
+`get_commit_schema` documents both `campaign_update` and `mode_transition` in full (required fields, examples) — call it if you need the exact shape.
 
 ---
 
@@ -373,14 +506,17 @@ proficiencies:
 ✅ Add custom `IPressureContributor` (world pressure sources)
 ✅ Add custom `IGuidanceContributor` (proactive guidance hints)
 ✅ Add custom `IWorldChangeHandler` (react to player actions)
+✅ Add custom `IWorldChangeObserver` (post-commit, non-failing, cross-cutting hooks — e.g. a trauma-triggered "inner voice" reactor that watches every mutation without owning any of them)
 ✅ Add custom `IMcpServerTool` (new MCP tools)
+✅ Define a whole new turn-based interaction mode via `IInteractionMode`/`IModeStateMachine` (crafting, astral combat, ...) — see [Type 3: Interaction Mode Plugin](#type-3-interaction-mode-plugin)
 
 ### What Plugins Cannot Do (Yet)
 
 ❌ Hotload without restarting MCP
 ❌ Inject bootstrap steps into existing pipelines (hardcoded in resolvers)
-❌ Contribute new action types to the core enum (baked into `RulesetActionType`)
+❌ Contribute new action types to the core `RulesetActionType` enum — it remains closed by design. Define a new `WorldChange` subtype instead (fully open, no enum change needed) — this is exactly how interaction modes add new verbs; see `INTERACTION_MODES_PLAN.md`.
 ❌ Override core simulation rules (conflict resolution undefined)
+❌ Run untrusted — every code plugin is full-trust, in-process (see [Trust Model](#trust-model))
 
 ### Known Constraints
 
@@ -620,6 +756,35 @@ public interface IGuidanceContributor
 }
 ```
 
+### Interaction Mode Interfaces
+
+```csharp
+public interface IInteractionMode
+{
+    string ModeId { get; }
+    string DisplayName { get; }
+    IReadOnlyList<string> CompatibleSystems { get; } // [] = system-agnostic
+    IModeStateMachine StateMachine { get; }
+}
+
+public interface IModeStateMachine
+{
+    ModeEncounter CreateEncounter(string locationId, IReadOnlyList<string> participantIds);
+    IReadOnlyDictionary<string, int> GetTurnActionBudget(Character participant);
+    bool TryConsumeActionSlot(ModeParticipantState state, WorldChange action, out string? errorReason);
+    bool AdvanceTurn(ModeEncounter encounter);
+    bool IsComplete(ModeEncounter encounter, out string? outcomeNarrative);
+}
+
+public interface IWorldChangeObserver
+{
+    bool IsInterestedIn(WorldChange committed, ChangeContext context);
+    Task OnCommittedAsync(WorldChange committed, ChangeContext context, CancellationToken ct = default);
+}
+```
+
+See `Rulesets/Modes/IInteractionMode.cs` and `Data/ChangeHandlers/IWorldChangeObserver.cs` for full definitions, and `INTERACTION_MODES_PLAN.md` for the design rationale (why `IWorldChangeObserver` is a distinct, non-failing tier from `IWorldChangeHandler`).
+
 ---
 
 ## FAQ
@@ -645,6 +810,15 @@ A: Not yet. Community plugins can be shared as GitHub releases or hosted on pers
 **Q: Can plugins break campaigns?**
 A: Yes, if the plugin disappears. Always provide a fallback or backup campaigns before removing plugins.
 
+**Q: Are plugins sandboxed? Can I safely run a plugin I didn't write?**
+A: No. Every code plugin (both `IRulesetModule` and interaction-mode plugins) runs full-trust, in-process — the same access as first-party CampaignVault code. Only load DLLs from authors you trust. See [Trust Model](#trust-model). Real sandboxing (Jint/WebAssembly) is planned but not built — see `PLUGIN_SYSTEM_PLAN.md` Track C.
+
+**Q: Is a data-only (YAML) plugin also full-trust?**
+A: No code-execution risk applies to YAML — it's parsed data, not a loaded assembly. The trust-model caveat is specific to code plugins.
+
+**Q: What's the difference between an `IRulesetModule` and an interaction mode?**
+A: `IRulesetModule` is a whole stat system (dnd5e, pf2e, homebrew) — one per campaign, selected via `ActiveSystem`. An interaction mode is a scene-scoped *activity* (crafting, astral combat) that layers on top of whatever ruleset is active, independently enabled per campaign via `CampaignConfig.EnabledModeIds`. See [Type 3: Interaction Mode Plugin](#type-3-interaction-mode-plugin).
+
 ---
 
 ## Future Work
@@ -653,11 +827,12 @@ Deferred capabilities (not yet implemented):
 
 - [ ] Hotloading plugins without restart
 - [ ] Plugin dependency management
-- [ ] Plugin marketplace / registry
+- [ ] Plugin marketplace / registry (see `PLUGIN_SYSTEM_PLAN.md` Track D — blocked on Track C sandboxing)
 - [ ] Bootstrap step injection (currently hardcoded)
-- [ ] Action type extension (currently closed enum)
+- [x] ~~Action type extension (currently closed enum)~~ — resolved indirectly: `RulesetActionType` itself stays closed, but interaction-mode plugins (and any plugin) can define new verbs via open `WorldChange` subtypes + `IWorldChangeHandler`, with no core enum change needed. See `INTERACTION_MODES_PLAN.md`.
 - [ ] Async plugin discovery (currently happens at startup)
 - [ ] Plugin versioning / compatibility checks
+- [ ] Real plugin sandboxing tiers (Jint scripted hooks, WebAssembly/Extism) — see `PLUGIN_SYSTEM_PLAN.md` Track C. Until this ships, all code plugins are full-trust (see [Trust Model](#trust-model)).
 
 ---
 
@@ -671,5 +846,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** Phase 4.7 completion
-**Plugin API version:** 1.0 (stable)
+**Last updated:** Interaction modes + `IWorldChangeObserver` (PLUGIN_SYSTEM_PLAN.md Track A/B)
+**Plugin API version:** 1.1 (adds `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)
