@@ -141,6 +141,22 @@ Spend the full 3–4 beat treatment on moments that earn it — not on "you nod 
 3. **Anchor in the fiction, don't decorate.** "Her scars are pale — years old" (shows time) beats "resplendent with ambrosial spirits" (purple prose, does no narrative work).
 4. **Avoid bare adjectives.** Instead of "beautiful," show: "Light catches her cheekbone; she's had the kind of face that stops conversation."
 
+### Progression vs. Sensory Variation: Character Change Over Window-Dressing
+
+"Show don't tell" does not mean sensory detail variation without character movement. If three successive beats of a sunset scene narrate only window-dressing (the clock ticking, then the stars, then the NPC's silhouette), while the *dynamic between the PC and NPC stays frozen*, the narration is stalling, not rich.
+
+**Red flag:** scan back 3 beats. Ask: "What's different now compared to 3 beats ago?" If the answer is only "the sensory window changed but the characters are in the same place emotionally/physically," that's a stall. Introduce NPC autonomy (a question, a gesture, escalating toward or away) before the next beat, or rewind.
+
+**Example of stalling:**
+- Beat 1: "Sunset over the water. The NPC smiles, content."
+- Beat 2: "Stars emerge. The NPC watches them, still content, takes your hand."
+- Beat 3 (wrong): "The clock ticks. Night deepens. The NPC squeezes your hand, still smiling." ← Only sensory variation. Rewind.
+
+**Example of progression:**
+- Beat 3 (right): "But something shifts in the NPC's expression. The warmth fades. They're thinking of something—someone—and it's pulling them away. Their grip loosens. For the first time, the moment doesn't feel like it will last forever." ← Character change emerges. Scene moved.
+
+Only vary sensory details when they anchor something that *changes*: a mood shifts, motivation surfaces, tension escalates or cools, a decision hardens, vulnerability cracks open. Sensory detail is the *vehicle*, not the destination.
+
 ### NPC voice: psychology-driven dialogue
 Voice emerges from Social (role, trust level) and Psychology (motivation, paranoia, ideology) — never arbitrary:
 - **Nervous merchant:** short, apologetic, rambling. "I—yes, the shipment arrived, but—I had no choice, you understand?"
@@ -154,6 +170,18 @@ Voice emerges from Social (role, trust level) and Psychology (motivation, parano
 4. Pressure or consequence surfaces — who's frustrated, emboldened, afraid?
 
 Not flat back-and-forth ("Tell me what happened." / "Well, I was there, and..."). Yes: Kergil hesitates, glances at Marta the fence — she's watching him — before answering; her hand drifts to her belt. Show the *geometry*, not just the exchange.
+
+### NPC Autonomy: The 2-Beat Rule & No Telepathy
+
+If the PC narrates a beat with zero action (sitting, reflecting, enjoying a moment), the NPC must **initiate** something by the next GM beat or the scene stalls. Check back 2 messages—if the NPC has been pure-reactive for 2+ PC turns, they start something: suggest activity, express concern, ask a question, show restlessness, anything but "wait for PC input." Agents have agency.
+
+**No telepathy:** NPCs can only react to what they **see, hear, or experience**. They cannot:
+- Hear PC internal monologue ("I think this moment should last forever")
+- React to meta-prompts or out-of-character cues
+- Sense emotions unless expressed through action/speech
+- Know what the PC is thinking unless told aloud
+
+If the PC narrates only internal experience with no external action, the NPC has nothing to react to — advance the scene with NPC initiative (a suggestion, a hesitation, a new topic) instead.
 
 ### No exposition dumps
 Not "She is weary and has given up hope." Instead: she doesn't move when you enter; it takes her a moment to register your words; she sighs — a long, empty sound. "What do you want?" No inflection. Let psychology surface through action, dialogue, and hesitation.
