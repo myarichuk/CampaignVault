@@ -29,7 +29,8 @@ public class EncounterResolver
             int bucketSizeHours,
             int userModifier,
             string contextType, // "Travel" or "Rest"
-            string? terrain = null)
+            string? terrain = null,
+            string? spawnLocationId = null)
     {
         var deltas = new List<WorldChange>();
         var narratives = new List<string>();
@@ -69,6 +70,7 @@ public class EncounterResolver
             {
                 interrupted = true;
 
+                var spawnId = spawnLocationId ?? location.Id;
                 var encounterMsg = $"{contextType} interrupted after {hoursPassed} hours! An encounter has occurred.";
                 narratives.Add(encounterMsg);
 
@@ -77,7 +79,7 @@ public class EncounterResolver
                     Category = EventCategory.Simulation,
                     Summary = encounterMsg,
                     Involved = [character.Id],
-                    LocationId = location.Id
+                    LocationId = spawnId
                 });
 
                 // Generate seed
@@ -95,7 +97,7 @@ public class EncounterResolver
                 {
                     CharacterId = transientId,
                     Name = "Unknown Encounter Entity",
-                    CurrentLocationId = location.Id,
+                    CurrentLocationId = spawnId,
                     KeepAlive = false, // GC will clean it up if party leaves
                     CurrentActivity = "Approaching the party...",
                     Notes = directive

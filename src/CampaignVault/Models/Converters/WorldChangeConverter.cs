@@ -1,5 +1,8 @@
 using System.Text.Json.Nodes;
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace CampaignVault.Models.Converters;
 
 /// <summary>
@@ -18,6 +21,8 @@ internal static class WorldChangeNormalizer
     {
         if (string.IsNullOrWhiteSpace(json))
             return json;
+
+        json = RewriteDiscriminatorAliases(json);
 
         // Quick optimization: if the string already contains "$type" for every object marker,
         // it likely has all discriminators. Skip parsing in happy path.
@@ -41,6 +46,16 @@ internal static class WorldChangeNormalizer
             // If parsing fails, let the normal deserializer handle the error
             return json;
         }
+    }
+
+    private static string RewriteDiscriminatorAliases(string json)
+    {
+        if (!json.Contains("statusremove", StringComparison.OrdinalIgnoreCase))
+        {
+            return json;
+        }
+
+        return json.Replace("\"statusremove\"", "\"status_remove\"", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool NeedsNormalization(JsonArray array)
@@ -136,5 +151,27 @@ internal static class WorldChangeNormalizer
             return "location_update";
 
         return null;
+    }
+}
+
+public sealed class WorldChangeArrayJsonConverter : JsonConverter<WorldChange[]>
+{
+    private static readonly JsonSerializerOptions Inner = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        AllowOutOfOrderMetadataProperties = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
+    public override WorldChange[]? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        using var doc = JsonDocument.ParseValue(ref reader);
+        var json = WorldChangeNormalizer.NormalizeChangesArray(doc.RootElement.GetRawText());
+        return JsonSerializer.Deserialize<WorldChange[]>(json, Inner);
+    }
+
+    public override void Write(Utf8JsonWriter writer, WorldChange[] value, JsonSerializerOptions options)
+    {
+        JsonSerializer.Serialize(writer, value, Inner);
     }
 }

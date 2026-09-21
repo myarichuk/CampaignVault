@@ -33,10 +33,10 @@ public record LocationDetailView(
     int DangerModifier,
     ClimateZone? ClimateZone,
     /// <summary>True if Description was cut down to CampaignConfig.LocationDescriptionCharCap.
-    /// Call get_scene with fullDescription=true for the complete text.</summary>
+    /// Call get_entity with fullDescription=true for the complete text.</summary>
     bool DescriptionTruncated = false,
     /// <summary>Names of PointOfInterestDetails entries cut down to CampaignConfig.PointOfInterestDetailCharCap.
-    /// Call get_scene with detailPoi=&lt;name&gt; for one entry's complete text.</summary>
+    /// Call get_entity with detailPoi=&lt;name&gt; for one entry's complete text.</summary>
     List<string>? TruncatedPointsOfInterest = null)
 {
     /// <param name="config">Supplies the char caps; falls back to CampaignConfig's own defaults if null

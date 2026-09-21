@@ -158,6 +158,33 @@ internal static class SimulationQueryHelper
         return indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit).ToList();
     }
 
+    public static async Task<HashSet<string>> QueryPartyLocationIdsAsync(
+        IAsyncDocumentSession session,
+        string? campaignName,
+        CancellationToken ct = default)
+    {
+        var query = session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(IndexWait);
+
+        if (!string.IsNullOrWhiteSpace(campaignName))
+        {
+            query = query.WhereEquals(x => x.CampaignName, campaignName).AndAlso();
+        }
+
+        var party = await query
+            .OpenSubclause()
+            .WhereEquals(x => x.IsPc, true)
+            .OrElse()
+            .WhereEquals(x => x.IsPartyCompanion, true)
+            .CloseSubclause()
+            .ToListAsync(ct);
+
+        return party
+            .Where(c => !string.IsNullOrWhiteSpace(c.CurrentLocationId))
+            .Select(c => c.CurrentLocationId!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
     public static async Task<List<Item>> QueryCampaignItemsAsync(
         IAsyncDocumentSession session,
         string? campaignName,

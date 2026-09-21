@@ -289,4 +289,29 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(stored);
         Assert.True(stored.MaxHp > 0, "Bootstrap should have derived MaxHp from systemStats.");
     }
+
+    [Fact]
+    public async Task WorldBuild_NoCampaignConfig_DoesNotPersistDefaultConfig_AndSurfacesNote()
+    {
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture);
+        var slug = "world-build-noconfig-" + Guid.NewGuid().ToString("N")[..8];
+
+        var batch = new WorldBuildBatch
+        {
+            Characters =
+            [
+                new CharacterUpsertRequest { Id = "chars/wb-noconfig", Name = "Unconfigured", IsPc = true },
+            ],
+        };
+
+        var result = await worldBuilder.WorldBuild(batch, slug);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.Contains(result.Data!.Warnings, w => w.Contains("NOTE:"));
+
+        using var session = _fixture.Store.OpenAsyncSession();
+        var keys = new CampaignVault.Data.CampaignDocumentKeys();
+        var config = await session.LoadAsync<CampaignConfig>(keys.Config(slug));
+        Assert.Null(config);
+    }
 }

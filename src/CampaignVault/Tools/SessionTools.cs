@@ -121,14 +121,10 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
 
-            // Create starter PCs if none exist
             if (party.Count == 0)
             {
-                party = await CreateStarterPartyAsync(session, effective, _keys);
-                if (party.Count == 0)
-                {
-                    _logger?.LogWarning("No party members created for campaign '{Campaign}'", effective);
-                }
+                return new ToolResult<SessionStartView>(false, Error: ToolErrors.InvalidArgument,
+                    Summary: $"Campaign '{effective}' has no party members. Seed at least one character with IsPc via world_build before start_session.");
             }
 
             // Ensure all party members have upgraded SystemStats before building party views.
@@ -200,50 +196,4 @@ Opens a new session, or resumes the already-open one (resumed:true) — safe to 
         }, saveChanges: true);
     }
 
-    private async Task<List<Character>> CreateStarterPartyAsync(
-        Raven.Client.Documents.Session.IAsyncDocumentSession session,
-        string campaignName,
-        CampaignDocumentKeys keys)
-    {
-        var starterClasses = new[]
-        {
-            ("Fighter", 12),
-            ("Rogue", 10),
-            ("Cleric", 14),
-            ("Wizard", 12)
-        };
-
-        var createdParty = new List<Character>();
-
-        foreach (var (className, level) in starterClasses)
-        {
-            var character = new Character
-            {
-                // Campaign-scoped: Character documents aren't namespaced under campaigns/{name}/ the
-                // way singletons are (see CampaignDocumentKeys), they're scoped by the CampaignName
-                // field instead — but a fixed "chars/starter-fighter" with no campaign in the ID at
-                // all collided across every campaign that ever auto-created a starter party (they all
-                // share one RavenDB database), throwing a ConcurrencyException on the second campaign's
-                // StoreAsync ("Put was called with expecting new document"). Scoping the ID by campaign
-                // keeps it deterministic and readable while making it actually unique.
-                Id = $"chars/{campaignName}/starter-{className.ToLowerInvariant()}",
-                CampaignName = campaignName,
-                Name = $"{className} (Starter)",
-                IsPc = true,
-                IsPartyCompanion = false,
-                ClassLevel = $"{className} {level}",
-                MaxHp = 30 + (level - 1) * 5,
-                CurrentHp = 30 + (level - 1) * 5,
-                KeepAlive = true,
-                LastUpdated = DateTime.UtcNow,
-                Notes = "Auto-generated starter character"
-            };
-
-            await session.StoreAsync(character);
-            createdParty.Add(character);
-            _logger?.LogInformation("Created starter PC: {CharacterId}", character.Id);
-        }
-
-        return createdParty;
-    }
 }

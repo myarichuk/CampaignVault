@@ -43,30 +43,32 @@ public sealed class RulesetActionHandler(
         {
             var activeCombat = context.ActiveCombat;
             var combatantState = activeCombat.Combatants.FirstOrDefault(c => c.CharacterId == action.CharacterId);
-
-            if (combatantState != null)
+            if (combatantState == null)
             {
-                // Turn ownership check (unless this is a reaction)
-                if (!action.IsReaction && activeCombat.ActiveTurnId != action.CharacterId)
-                {
-                    return ChangeHandlerResult.Failure($"[NotYourTurn] {action.CharacterId} cannot act — it is {activeCombat.ActiveTurnId}'s turn.");
-                }
+                return ChangeHandlerResult.Failure(
+                    $"[NotInCombat] {action.CharacterId} is not on the active combat roster.");
+            }
 
-                // Action slot consumption check
-                if (!module.Combat.TryConsumeActionSlot(combatantState, action, out var slotError))
-                {
-                    return ChangeHandlerResult.Failure($"[NoActionAvailable] {slotError}");
-                }
+            // Turn ownership check (unless this is a reaction)
+            if (!action.IsReaction && activeCombat.ActiveTurnId != action.CharacterId)
+            {
+                return ChangeHandlerResult.Failure($"[NotYourTurn] {action.CharacterId} cannot act — it is {activeCombat.ActiveTurnId}'s turn.");
+            }
 
-                switch (action.IsReaction)
-                {
-                    // Reaction slot check (for reactions)
-                    case true when !combatantState.ReactionAvailable:
-                        return ChangeHandlerResult.Failure($"[NoReactionAvailable] {action.CharacterId} has already reacted this round.");
-                    case true:
-                        combatantState.ReactionAvailable = false;
-                        break;
-                }
+            // Action slot consumption check
+            if (!module.Combat.TryConsumeActionSlot(combatantState, action, out var slotError))
+            {
+                return ChangeHandlerResult.Failure($"[NoActionAvailable] {slotError}");
+            }
+
+            switch (action.IsReaction)
+            {
+                // Reaction slot check (for reactions)
+                case true when !combatantState.ReactionAvailable:
+                    return ChangeHandlerResult.Failure($"[NoReactionAvailable] {action.CharacterId} has already reacted this round.");
+                case true:
+                    combatantState.ReactionAvailable = false;
+                    break;
             }
         }
 

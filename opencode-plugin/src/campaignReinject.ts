@@ -22,12 +22,10 @@ export function extractCampaignInfo(payload: unknown): CampaignInfo | null {
   const slug = pick(innerObj, "name", "Name");
   if (typeof slug !== "string" || slug.length === 0) return null;
 
-  const ruleset = pick(innerObj, "activeSystem", "ActiveSystem");
+  const ruleset = pick(innerObj, "System", "system", "ActiveSystem", "activeSystem");
   const party = pick(root, "party", "Party");
   const rosterIds = Array.isArray(party)
-    ? party
-        .map((p) => (p && typeof p === "object" ? pick(p as Record<string, unknown>, "id", "Id") : undefined))
-        .filter((id): id is string => typeof id === "string")
+    ? party.map(partyMemberId).filter((id): id is string => typeof id === "string")
     : [];
 
   return {
@@ -47,6 +45,19 @@ export function buildReinjectionText(info: CampaignInfo): string {
       "re-verify current scene/NPC/party state via get_entity or start_session before narrating, " +
       "rather than trusting what you recall from earlier in the conversation.",
   ].join("\n");
+}
+
+function partyMemberId(p: unknown): string | undefined {
+  if (!p || typeof p !== "object") return undefined;
+  const rec = p as Record<string, unknown>;
+  const direct = pick(rec, "id", "Id");
+  if (typeof direct === "string" && direct.length > 0) return direct;
+  const character = pick(rec, "character", "Character");
+  if (character && typeof character === "object") {
+    const nested = pick(character as Record<string, unknown>, "id", "Id");
+    if (typeof nested === "string" && nested.length > 0) return nested;
+  }
+  return undefined;
 }
 
 function pick(obj: Record<string, unknown> | undefined, ...names: string[]): unknown {

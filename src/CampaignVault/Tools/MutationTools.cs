@@ -159,8 +159,7 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
 🚨 *** CRITICAL CONSTRAINT: MUST HAVE EITHER CHANGES OR A REFRESH PARAM *** 🚨
 You MUST pass EITHER (1) Changes with a Narrative summary, OR (2) at least one refresh parameter (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, memoriesOnlyCharacterId, or fullDetailLocationId). Passing neither (empty call with no refresh param) will be rejected. This prevents wasted no-op calls.
 
-🚨 *** CRITICAL — REQUIRED FIELD: '$type' *** 🚨
-Every single change object in the changes[] array MUST include a '$type' field (the polymorphic discriminator — see WorldChange's own description for the full list of valid values). This is NOT OPTIONAL — it is REQUIRED for every change. If ANY object lacks '$type', the entire batch will fail to deserialize and be rejected.
+Every change in changes[] MUST include '$type' (see WorldChange). Missing '$type' fails the batch.
 
 One take_turn call carries optional mutations (Changes+Narrative) and optional refresh params, and returns the commit outcome + fresh entity summaries in one response — no separate query-before/query-after calls needed.
 
@@ -255,6 +254,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 await SelectAndEnrichInitiativeAsync(ctx);
             }
 
+            await StampPartyPresentLocationsAsync(ctx);
             await RefreshInvolvedEntitiesAsync(ctx);
             await IncludePartyAsync(ctx);
             await EnsureInitiativeSurfacedAsync(ctx);
@@ -928,7 +928,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         {
             AppendReminder(result,
                 "An event in this batch flagged impliesPersistentPhysicalChange=true, but the batch has no " +
-                "matching commit (item_equip/item_unequip/item_update/status/status_remove/character_update/" +
+                "matching take_turn change (item_equip/item_unequip/item_update/status/status_remove/character_update/" +
                 "archive_entity). Add it now — otherwise the change silently reverts next scene.");
         }
     }
@@ -1997,6 +1997,45 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         catch (Exception ex)
         {
             Warn(ctx, $"Memories-only fetch failed for '{characterId}': {ex.Message}", ex);
+        }
+    }
+
+    private async Task StampPartyPresentLocationsAsync(TurnContext ctx)
+    {
+        try
+        {
+            var party = await ctx.Session.Query<Character>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+                .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
+                .ToListAsync();
+
+            var locationIds = party
+                .Where(c => !string.IsNullOrWhiteSpace(c.CurrentLocationId))
+                .Select(c => c.CurrentLocationId!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (locationIds.Count == 0)
+            {
+                return;
+            }
+
+            var time = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+            var locations = await ctx.Session.LoadAsync<Location>(locationIds);
+            foreach (var loc in locations.Values)
+            {
+                if (loc == null)
+                {
+                    continue;
+                }
+
+                loc.LastVisitedDay = time.TotalDaysElapsed;
+                loc.LastUpdated = DateTime.UtcNow;
+            }
+        }
+        catch (Exception ex)
+        {
+            Warn(ctx, $"Party visit stamp failed: {ex.Message}", ex);
         }
     }
 

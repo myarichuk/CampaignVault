@@ -12,12 +12,12 @@ namespace CampaignVault.Models;
 /// The LLM must include the exact <c>$type</c> discriminator so the server knows which concrete change to apply.
 /// Mix as many different change kinds as needed in a single call for atomicity.
 /// </summary>
-[Description("REQUIRED: Every WorldChange object MUST include the exact '$type' discriminator field. Valid values: hp, activity, relationship, need, event, status, resource, rumor, quest_progress, plot_thread_progress, plot_thread_clue, travel, rest, location_update, character_update, and 30+ others. Omitting '$type' will cause deserialization to fail. Use character_update's systemStats field to bootstrap/patch a character's ruleset combat stats — see IncompleteSystemStats ENGINE WARNING. Mix freely (hp + activity + relationship + need + event, etc.) for atomicity.")]
+[Description("REQUIRED: every WorldChange object MUST include '$type'. Hot path: hp, activity, event, travel, rest, ruleset_action, knowledge_update, item, status, status_remove, character_update, location_update, quest_progress. Full list: get_commit_schema. Mix freely in one take_turn batch.")]
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(HpChange), "hp")]
 [JsonDerivedType(typeof(ItemTransfer), "item")]
 [JsonDerivedType(typeof(StatusChange), "status")]
-[JsonDerivedType(typeof(StatusRemove), "statusremove")]
+[JsonDerivedType(typeof(StatusRemove), "status_remove")]
 [JsonDerivedType(typeof(EventOccurred), "event")]
 [JsonDerivedType(typeof(RumorEvolves), "rumor")]
 [JsonDerivedType(typeof(RelationshipChange), "relationship")]
@@ -290,7 +290,7 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
 
-    [Description("Optional. Set true when this beat's narrative describes a lasting change to a character's gear or condition — worn/removed/destroyed item, applied/ended status, a scar or outfit that should stick — that should still be true next scene. When true, this batch must also include the matching commit (item_equip/item_unequip/item_update/status/status_remove/character_update/archive_entity) or a reminder fires; otherwise the change silently reverts (get_entity reflects only what was committed, not what was narrated). Omit or leave false for beats with no lasting physical change.")]
+    [Description("Optional. Set true when this beat's narrative describes a lasting change to a character's gear or condition — worn/removed/destroyed item, applied/ended status, a scar or outfit that should stick — that should still be true next scene. When true, this batch must also include the matching take_turn change (item_equip/item_unequip/item_update/status/status_remove/character_update/archive_entity) or a reminder fires; otherwise the change silently reverts (get_entity reflects only what was committed, not what was narrated). Omit or leave false for beats with no lasting physical change.")]
     [JsonPropertyName("impliesPersistentPhysicalChange")]
     public bool? ImpliesPersistentPhysicalChange { get; set; }
 
@@ -936,7 +936,7 @@ public class TravelChange : WorldChange
     
     [Description("ID of the destination location (e.g. 'locations/highpass'). Must already exist — this does not create one. " +
         "For an off-route stop during travel (a campsite, a clearing, a hiding spot) that isn't on the map yet, first " +
-        "upsert_location a specific child Location (parentLocationId = the road/region) instead of setting the destination " +
+        "world_build a specific child Location (parentLocationId = the road/region) instead of setting the destination " +
         "to the broad Region/Wilderness itself — landing directly on the broad node pulls its whole quest/NPC/rumor scope " +
         "into this stop.")]
     [JsonPropertyName("destinationLocationId")]
@@ -1425,7 +1425,6 @@ public enum RecordingMode
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ArchivableEntityType
 {
-    Character,
     Location,
     Item,
     Faction,

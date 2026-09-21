@@ -90,7 +90,8 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
 
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
-            var existing = await _repository.GetActiveCombatAsync(new CampaignSession(session, effective));
+            var combatId = _keys.CombatCurrent(effective);
+            var existing = await session.LoadAsync<CombatEncounter>(combatId);
             if (existing?.IsActive == true && !overwriteActive)
             {
                 return new ToolResult<CombatEncounterView>(false,
@@ -159,15 +160,12 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
             // Sort by highest initiative first
             combatants = combatants.OrderByDescending(c => c.Initiative).ToList();
 
-            var encounter = new CombatEncounter
-            {
-                Id = _keys.CombatCurrent(effective),
-                LocationId = locationId,
-                Round = 1,
-                Combatants = combatants,
-                ActiveTurnId = combatants.FirstOrDefault()?.CharacterId,
-                IsActive = true
-            };
+            var encounter = existing ?? new CombatEncounter { Id = combatId };
+            encounter.LocationId = locationId;
+            encounter.Round = 1;
+            encounter.Combatants = combatants;
+            encounter.ActiveTurnId = combatants.FirstOrDefault()?.CharacterId;
+            encounter.IsActive = true;
 
             await session.StoreAsync(encounter, encounter.Id);
 
@@ -238,7 +236,12 @@ Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_t
                         characters.TryGetValue(c.CharacterId, out var character) && character != null &&
                         character.CurrentHp > 0))
                 {
-                    return new ToolResult<CombatEncounterView>(false, Error: "CombatEnded",
+                    encounter.IsActive = false;
+                    encounter.ActiveTurnId = null;
+                    await session.StoreAsync(encounter, encounter.Id);
+                    await session.SaveChangesAsync();
+                    return new ToolResult<CombatEncounterView>(false, CombatEncounterView.From(encounter),
+                        Error: "CombatEnded",
                         Summary: "No valid and alive combatants remain. Combat has ended or cannot proceed.");
                 }
 

@@ -11,84 +11,73 @@ internal static class WorldBuildSchemaBuilder
 {
     public static JsonElement Build(JsonSerializerOptions options)
     {
-        // Simplified schema for world_build request
-        // In full implementation, would build schemas for all UpsertRequest types
-        // similar to how TakeTurnSchemaBuilder handles WorldChange variants
+        static JsonObject Item(string def) => new()
+        {
+            ["type"] = "array",
+            ["items"] = new JsonObject { ["$ref"] = $"#/$defs/{def}" }
+        };
+
+        static JsonObject Obj(params (string Name, string Type)[] fields)
+        {
+            var properties = new JsonObject();
+            foreach (var (name, type) in fields)
+            {
+                properties[name] = new JsonObject { ["type"] = type };
+            }
+
+            return new JsonObject { ["type"] = "object", ["properties"] = properties };
+        }
+
+        var defs = new JsonObject
+        {
+            ["location"] = Obj(("id", "string"), ("name", "string"), ("type", "string"), ("parentLocationId", "string")),
+            ["faction"] = Obj(("id", "string"), ("name", "string")),
+            ["character"] = Obj(("id", "string"), ("name", "string"), ("systemStats", "object")),
+            ["item"] = Obj(("id", "string"), ("name", "string"), ("holderId", "string")),
+            ["quest"] = Obj(("id", "string"), ("title", "string")),
+            ["plotThread"] = Obj(("id", "string"), ("name", "string"), ("clues", "array"), ("foreshadowingHooks", "array")),
+            ["creature"] = Obj(("id", "string"), ("name", "string")),
+            ["spell"] = Obj(("id", "string"), ("name", "string")),
+            ["feat"] = Obj(("id", "string"), ("name", "string")),
+            ["worldEvent"] = Obj(("id", "string"), ("name", "string")),
+            ["lore"] = Obj(("id", "string"), ("title", "string")),
+            ["rumor"] = Obj(("id", "string"), ("subject", "string")),
+            ["needDescriptor"] = new JsonObject { ["type"] = "string" },
+        };
 
         var batchProperties = new JsonObject
         {
-            ["locations"] = new JsonObject
+            ["locations"] = Item("location"),
+            ["factions"] = Item("faction"),
+            ["creatures"] = Item("creature"),
+            ["spells"] = Item("spell"),
+            ["feats"] = Item("feat"),
+            ["characters"] = Item("character"),
+            ["items"] = Item("item"),
+            ["quests"] = Item("quest"),
+            ["plotThreads"] = Item("plotThread"),
+            ["worldEvents"] = Item("worldEvent"),
+            ["lore"] = Item("lore"),
+            ["rumors"] = Item("rumor"),
+            ["needDescriptors"] = new JsonObject
             {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Locations to create or update. Dispatched first (parentLocationId/exits target other locations in this same array)."
-            },
-            ["factions"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Factions to create or update. Dispatched after locations (territoryLocationIds may reference them)."
-            },
-            ["creatures"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Homebrew creature stat-block templates to create or update."
-            },
-            ["spells"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Homebrew spells to create or update."
-            },
-            ["feats"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Homebrew feats/perks to create or update."
-            },
-            ["characters"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Characters/NPCs to create or update. Dispatched after locations/factions (currentLocationId may reference them). Bootstrap (HP/defense derivation) runs per element."
-            },
-            ["items"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Items to create or update. Dispatched after characters (holderId may reference a character just created in this batch)."
-            },
-            ["quests"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Quests to create or update. Dispatched after characters/locations/factions (giverId/relatedLocationIds/relatedFactionIds may reference them)."
-            },
-            ["plotThreads"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "Plot threads to create or update. Dispatched after characters/locations/factions/quests (involvedEntityIds may reference them)."
-            },
-            ["worldEvents"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["items"] = new JsonObject { ["type"] = "object" },
-                ["description"] = "World events to create or update. Dispatched after plot threads (effects/conditions may reference them)."
+                ["type"] = "object",
+                ["additionalProperties"] = new JsonObject { ["$ref"] = "#/$defs/needDescriptor" },
+                ["description"] = "Need name → descriptor text."
             }
         };
 
         var root = new JsonObject
         {
             ["type"] = "object",
+            ["$defs"] = defs,
             ["properties"] = new JsonObject
             {
                 ["batch"] = new JsonObject
                 {
                     ["type"] = "object",
                     ["properties"] = batchProperties,
-                    ["description"] = "Batch of entities to create/update, grouped by kind. Each array is optional — include only the kinds you're seeding in this call."
+                    ["description"] = "Batch of entities to create/update, grouped by kind. Each array is optional."
                 },
                 ["campaignName"] = new JsonObject
                 {

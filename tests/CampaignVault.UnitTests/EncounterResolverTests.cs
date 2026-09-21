@@ -80,6 +80,42 @@ public class EncounterResolverTests
     }
 
     [Fact]
+    public async Task EvaluateAsync_TravelInterrupt_SpawnsAtOriginNotDestination()
+    {
+        var resolver = new EncounterResolver(() => 0.001);
+        var ctx = CreateContext();
+        var character = new Character { Id = "c1", Name = "Test", CurrentLocationId = "locations/origin" };
+        var destination = new Location { Id = "locations/dest", Type = LocationType.Wilderness };
+
+        var result = await resolver.EvaluateAsync(
+            ctx, character, destination, 10, 4, 0, "Travel", "wilderness",
+            spawnLocationId: character.CurrentLocationId);
+
+        Assert.True(result.Interrupted);
+        var eventOccurred = Assert.Single(result.Deltas.OfType<EventOccurred>());
+        Assert.Equal("locations/origin", eventOccurred.LocationId);
+        var charCreate = Assert.Single(result.Deltas.OfType<CharacterCreate>());
+        Assert.Equal("locations/origin", charCreate.CurrentLocationId);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_RestInterrupt_SpawnsAtRestLocation()
+    {
+        var resolver = new EncounterResolver(() => 0.001);
+        var ctx = CreateContext();
+        var character = new Character { Id = "c1", Name = "Test", CurrentLocationId = "locations/camp" };
+        var location = new Location { Id = "locations/camp", Type = LocationType.Wilderness };
+
+        var result = await resolver.EvaluateAsync(ctx, character, location, 8, 4, 0, "Rest");
+
+        Assert.True(result.Interrupted);
+        var eventOccurred = Assert.Single(result.Deltas.OfType<EventOccurred>());
+        Assert.Equal("locations/camp", eventOccurred.LocationId);
+        var charCreate = Assert.Single(result.Deltas.OfType<CharacterCreate>());
+        Assert.Equal("locations/camp", charCreate.CurrentLocationId);
+    }
+
+    [Fact]
     public async Task EvaluateAsync_FactionBias_ReducesChance()
     {
         // Base chance for wilderness is 0.15. Faction bias reduces by 0.05 -> 0.10.

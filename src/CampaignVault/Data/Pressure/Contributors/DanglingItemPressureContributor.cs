@@ -23,8 +23,8 @@ public sealed class DanglingItemPressureContributor : IPressureContributor
                 {
                     pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, item.Id,
                         $"Item '{item.Name}' is held by '{item.HolderId}' which no longer exists (likely GC'd). " +
-                        "Use item_transfer to move it to a valid location or character:\n" +
-                        "[ { \"$type\": \"item_transfer\", \"itemId\": \"" + item.Id + "\", \"newHolderId\": \"locations/some_valid_location\" } ]",
+                        "Use $type item with toHolderId to move it to a valid location or character:\n" +
+                        "[ { \"$type\": \"item\", \"itemId\": \"" + item.Id + "\", \"toHolderId\": \"locations/some_valid_location\" } ]",
                         GroupingKey));
                 }
             }

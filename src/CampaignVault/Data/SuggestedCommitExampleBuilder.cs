@@ -31,7 +31,7 @@ internal static class SuggestedCommitExampleBuilder
         if (!string.IsNullOrEmpty(stuckCharacterId) && travelPressureTriggered)
         {
             suggestedExamples.Add(
-                $"[ {{ \"$type\": \"activity\", \"characterId\": \"{stuckCharacterId}\", \"newActivity\": \"Resolved the ambush and continued\", \"updateLocation\": false }}, {{ \"$type\": \"travel\", \"characterId\": \"{stuckCharacterId}\", \"destinationLocationId\": \"locations/actual-dest\", \"encounterRiskModifier\": -30 }} ]");
+                $"[ {{ \"$type\": \"activity\", \"characterId\": \"{stuckCharacterId}\", \"newActivity\": \"Resolved the ambush and continued\", \"updateLocation\": false }}, {{ \"$type\": \"travel\", \"characterId\": \"{stuckCharacterId}\", \"destinationLocationId\": \"locations/actual-dest\", \"travelCostHoursOverride\": 4, \"encounterRiskModifier\": -30 }} ]");
         }
 
         suggestedExamples.AddRange(

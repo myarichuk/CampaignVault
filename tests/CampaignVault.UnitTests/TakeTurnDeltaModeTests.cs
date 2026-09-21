@@ -332,7 +332,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.TakeTurn(new TakeTurnRequest
         {
-            Changes = [new TravelChange { CharacterId = pcId, DestinationLocationId = locId }],
+            Changes = [new TravelChange { CharacterId = pcId, DestinationLocationId = locId, TravelCostHoursOverride = 1, EncounterRiskModifier = -100 }],
             Narrative = "The PC arrives at the destination.",
             FullDetailLocationId = locId
         }, slug);

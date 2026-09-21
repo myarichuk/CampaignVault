@@ -147,6 +147,12 @@ See get_help topic=world-building for the full copy-paste example, per-ruleset s
                 result.Kinds[kind] = kindResult;
             }
 
+            if (!res.Success)
+            {
+                throw new ArgumentException(
+                    $"{kind}[{i}] (id='{rawId}'): {res.Summary ?? res.Error ?? "apply failed"}");
+            }
+
             if (existedBefore)
             {
                 kindResult.Updated++;
@@ -157,7 +163,7 @@ See get_help topic=world-building for the full copy-paste example, per-ruleset s
                 kindResult.CreatedIds.Add(canonicalId);
             }
 
-            if (!string.IsNullOrEmpty(res.Summary) && res.Summary.Contains("WARNING", StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(res.Summary))
             {
                 warnings.Add($"{kind}[{i}]: {res.Summary}");
             }
@@ -296,16 +302,9 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
     {
         var config = await s.LoadAsync<CampaignConfig>(_keys.Config(effective));
         var noConfigYet = config is null;
-        if (noConfigYet)
-        {
-            // No ruleset has been configured for this campaign yet (create_campaign/set_active_system
-            // haven't run). Persist the Dnd5e assumption we're about to bootstrap against so it's a
-            // durable, visible fact instead of a throwaway local default — see A1 in the tool-usage audit.
-            config = new CampaignConfig { Id = _keys.Config(effective), ActiveSystem = RulesetSystem.Dnd5e };
-            await s.StoreAsync(config, config.Id);
-        }
+        config ??= new CampaignConfig { ActiveSystem = RulesetSystem.Dnd5e };
 
-        var activeSystem = config!.ActiveSystem;
+        var activeSystem = config.ActiveSystem;
         // Session-tracked load; cheap even though UpsertCharacterAsync loads the same ID again below.
         var existedBefore = !string.IsNullOrWhiteSpace(character.Id)
             && await s.LoadAsync<Character>(character.Id) is not null;

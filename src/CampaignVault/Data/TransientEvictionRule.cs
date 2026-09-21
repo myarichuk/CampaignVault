@@ -31,6 +31,8 @@ public class TransientEvictionRule : ISimulationRule
 
         var locationIds = candidatesQuery.Select(c => c.CurrentLocationId!).Distinct().ToList();
         var locations = await context.Session.LoadAsync<Location>(locationIds, ct);
+        var partyLocationIds = await SimulationQueryHelper.QueryPartyLocationIdsAsync(
+            context.Session, context.CampaignName, ct);
 
         var evictedIds = new List<string>();
         var evictedSummaries = new List<EvictedNpcSummary>();
@@ -58,9 +60,18 @@ public class TransientEvictionRule : ISimulationRule
 
             if (locations.TryGetValue(fromLocationId, out fromLoc) && fromLoc != null)
             {
+                if (fromLoc.LastVisitedDay == null)
+                {
+                    continue;
+                }
+
+                if (partyLocationIds.Contains(fromLocationId))
+                {
+                    continue;
+                }
+
                 var graceDays = context.Config?.TransientEvictionGraceDays ?? 1;
-                shouldEvict = fromLoc.LastVisitedDay == null ||
-                              (currentDay - fromLoc.LastVisitedDay.Value > graceDays);
+                shouldEvict = currentDay - fromLoc.LastVisitedDay.Value > graceDays;
                 evictionReason = "Engine transient eviction — location unvisited for > grace period";
             }
             else

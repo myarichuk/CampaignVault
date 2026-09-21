@@ -29,6 +29,8 @@ public class ToolSchemaBudgetTests
 
         Assert.NotEmpty(json);
         Assert.Contains("\"properties\"", json);
+        Assert.Contains("$defs", json);
+        Assert.DoesNotContain("\"items\":{\"type\":\"object\"}", json.Replace(" ", ""));
     }
 
     [Fact]

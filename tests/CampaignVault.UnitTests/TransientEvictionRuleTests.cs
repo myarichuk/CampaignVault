@@ -250,4 +250,68 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         Assert.Contains(result.Deltas, d => d is ActivityChange);
         Assert.DoesNotContain(result.NarrativeEvents, n => n.Contains("has an active quest"));
     }
+
+    [Fact]
+    public async Task ApplyAsync_DoesNotEvict_WhenLastVisitedDayIsNull()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var loc = new Location
+            { Id = "locations/never_visited_tavern", Name = "Tavern", LastVisitedDay = null, CampaignName = "never-visit-test" };
+        var c = new Character
+        {
+            Id = "chars/transient_never", Name = "Guy", CurrentLocationId = loc.Id, KeepAlive = false, Schedule = null,
+            CampaignName = "never-visit-test"
+        };
+
+        await session.StoreAsync(loc);
+        await session.StoreAsync(c);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
+            indexes: ["Character/Search"]);
+        await session.SaveChangesAsync();
+
+        var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
+        var time = new CampaignTime { TotalDaysElapsed = 3 };
+        var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "never-visit-test");
+
+        var result = await rule.ApplyAsync(ctx);
+
+        Assert.DoesNotContain(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == c.Id);
+        Assert.True(result.EvictedNpcSummaries == null || result.EvictedNpcSummaries.Count == 0);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_DoesNotEvict_WhenPartyIsPresent()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var loc = new Location
+            { Id = "locations/occupied_tavern", Name = "Tavern", LastVisitedDay = 1, CampaignName = "party-present-test" };
+        var transient = new Character
+        {
+            Id = "chars/transient_occupied", Name = "Guy", CurrentLocationId = loc.Id, KeepAlive = false, Schedule = null,
+            CampaignName = "party-present-test"
+        };
+        var pc = new Character
+        {
+            Id = "chars/pc_occupied", Name = "Hero", CurrentLocationId = loc.Id, IsPc = true,
+            CampaignName = "party-present-test"
+        };
+
+        await session.StoreAsync(loc);
+        await session.StoreAsync(transient);
+        await session.StoreAsync(pc);
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
+            indexes: ["Character/Search"]);
+        await session.SaveChangesAsync();
+
+        var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
+        var time = new CampaignTime { TotalDaysElapsed = 3 };
+        var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "party-present-test");
+
+        var result = await rule.ApplyAsync(ctx);
+
+        Assert.DoesNotContain(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == transient.Id);
+        Assert.True(result.EvictedNpcSummaries == null || result.EvictedNpcSummaries.Count == 0);
+    }
 }

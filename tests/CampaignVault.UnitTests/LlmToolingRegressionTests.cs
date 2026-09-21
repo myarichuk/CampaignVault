@@ -48,6 +48,21 @@ public class LlmToolingRegressionTests
         Assert.True(change.Archived);
     }
 
+    [Theory]
+    [InlineData("status_remove")]
+    [InlineData("statusremove")]
+    public void StatusRemove_BothDiscriminators_Deserialize(string discriminator)
+    {
+        var json = $$"""[{"$type":"{{discriminator}}","characterId":"chars/grog","status":"Prone"}]""";
+        using var doc = JsonDocument.Parse(json);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
+
+        Assert.True(ok, error);
+        var change = Assert.IsType<StatusRemove>(Assert.Single(parsed!));
+        Assert.Equal("chars/grog", change.CharacterId);
+        Assert.Equal("Prone", change.Status);
+    }
+
     [Fact]
     public void TryNormalize_RumorEvolve_FixesActiveStateTypoAndStripsLegacyField()
     {

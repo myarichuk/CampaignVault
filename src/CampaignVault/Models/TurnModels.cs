@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using CampaignVault.Models.Converters;
 
 namespace CampaignVault.Models;
 
@@ -20,8 +21,9 @@ public enum TurnMode
 public class TakeTurnRequest
 {
     [Description(
-        "Array of world changes to commit (optional for pure queries, but then MUST pass at least one refresh parameter). *** REQUIRED FIELD: '$type' *** Every single change object MUST include a '$type' discriminator field — this is not optional; see WorldChange's own description for the full list of valid values. Omitting '$type' on ANY item will cause the entire batch to fail deserialization. If Changes is null/empty, you MUST pass at least one of: includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, or fullDetailLocationId.")]
+        "World changes to persist (optional for pure queries). Each object needs '$type' — see WorldChange. Empty Changes requires at least one refresh param (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, fullDetailLocationId, memoriesOnlyCharacterId, forceFullReseed).")]
     [JsonPropertyName("changes")]
+    [JsonConverter(typeof(WorldChangeArrayJsonConverter))]
     public WorldChange[]? Changes { get; set; }
 
     [Description(
@@ -55,7 +57,7 @@ public class TakeTurnRequest
     public bool IncludeParty { get; set; } = false;
 
     [Description(
-        "Include WorldState (rumors, quests, factions, time) in response (default false). Set to true when you need overall campaign state context.")]
+        "Rebuild and include WorldState (world pressure, rumors, quests, factions, time) in the response (default false). Expensive — use when pressure/verification/new-location context actually matters.")]
     [JsonPropertyName("includeWorldState")]
     public bool IncludeWorldState { get; set; } = false;
 

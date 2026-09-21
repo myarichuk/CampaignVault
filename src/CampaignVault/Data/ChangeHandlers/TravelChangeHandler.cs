@@ -43,12 +43,10 @@ public class TravelChangeHandler : IWorldChangeHandler
 
         var time = await context.GetCurrentTimeAsync();
 
-        // 3. Time & Need costs based on distance
-        var totalHours = tc.TravelCostHoursOverride ?? 4; // Fallback default until exit metadata is available
         var terrain = tc.TerrainOverride;
         var encounterRiskModifier = tc.EncounterRiskModifier ?? 0;
 
-        // 2. Lookup exit metadata if we have the start location
+        LocationExit? exit = null;
         if (character.CurrentLocationId != null)
         {
             if (!context.Locations.TryGetValue(character.CurrentLocationId, out var startLoc) || startLoc == null)
@@ -58,31 +56,44 @@ public class TravelChangeHandler : IWorldChangeHandler
 
             if (startLoc != null)
             {
-                var exit = startLoc.Exits?.FirstOrDefault(e => e.TargetLocationId == tc.DestinationLocationId);
-                if (exit != null)
+                exit = startLoc.Exits?.FirstOrDefault(e => e.TargetLocationId == tc.DestinationLocationId);
+                if (exit != null && tc.TerrainOverride == null)
                 {
-                    if (tc.TravelCostHoursOverride == null && exit.TravelCostHours.HasValue && exit.TravelCostHours.Value > 0)
-                    {
-                        totalHours = exit.TravelCostHours.Value;
-                    }
-
-                    if (tc.TerrainOverride == null)
-                    {
-                        terrain = exit.Terrain;
-                    }
+                    terrain = exit.Terrain;
                 }
             }
         }
 
+        double totalHours;
+        if (tc.TravelCostHoursOverride != null)
+        {
+            totalHours = tc.TravelCostHoursOverride.Value;
+        }
+        else if (exit?.TravelCostHours is > 0)
+        {
+            totalHours = exit.TravelCostHours.Value;
+        }
+        else if (exit != null)
+        {
+            totalHours = 4;
+        }
+        else
+        {
+            var origin = character.CurrentLocationId ?? "(unknown origin)";
+            return ChangeHandlerResult.Failure(
+                $"No LocationExit from {origin} to {tc.DestinationLocationId}, and travelCostHoursOverride was not supplied. Add an exit on the origin, or pass travelCostHoursOverride.");
+        }
+
         var (interrupted, hoursTraveled, deltas, narratives) = await _resolver.EvaluateAsync(
             context,
-            character, 
-            destination, 
-            totalHours, 
+            character,
+            destination,
+            totalHours,
             6, // bucket size 6 hours
             encounterRiskModifier,
             "Travel",
-            terrain);
+            terrain,
+            spawnLocationId: character.CurrentLocationId);
 
         // Apply partial time costs
         if (hoursTraveled > 0)
@@ -140,7 +151,7 @@ public class TravelChangeHandler : IWorldChangeHandler
             {
                 context.RecordMessage(
                     $"NOTE: {destination.Name} ({destination.Id}) is a broad Region. If this stop is a specific spot " +
-                    "within it rather than the whole region, consider creating a child Location first (upsert_location " +
+                    "within it rather than the whole region, consider creating a child Location first (world_build " +
                     $"with parentLocationId='{destination.Id}') and traveling there instead — otherwise this scene inherits " +
                     "the entire region's quests/NPCs/rumors.");
             }

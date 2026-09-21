@@ -1,7 +1,9 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Models;
 using CampaignVault.Tools;
+using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -26,6 +28,7 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
         var slug = NewSlug("kickoff");
         var tools = TestCampaignToolsFactory.Create(_fixture);
         await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+        await TestCampaignDefaults.SeedPcAsync(_fixture, slug);
         var session = TestCampaignToolsFactory.CreateTool<SessionTools>(_fixture);
 
         var first = await session.StartSession(slug);
@@ -43,6 +46,28 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
         Assert.True(second.Success, second.Summary);
         Assert.True(second.Data!.Resumed);
         Assert.Equal(1, second.Data.SessionNumber);
+    }
+
+    [Fact]
+    public async Task StartSession_EmptyParty_FailsWithoutInventingStarters()
+    {
+        var slug = NewSlug("empty-party");
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+        var sessionTools = TestCampaignToolsFactory.CreateTool<SessionTools>(_fixture);
+
+        var result = await sessionTools.StartSession(slug);
+
+        Assert.False(result.Success);
+        Assert.Contains("world_build", result.Summary);
+        Assert.Contains("IsPc", result.Summary);
+
+        using var session = _fixture.Store.OpenAsyncSession();
+        var starters = await session.Query<Character>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(c => c.CampaignName == slug && c.Id.StartsWith($"chars/{slug}/starter-"))
+            .ToListAsync();
+        Assert.Empty(starters);
     }
 
     [Fact]
@@ -148,6 +173,7 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
         Assert.True(context.Success, context.Summary);
         Assert.Contains("political intrigue", context.Data!.Campaign.NarrativeFocus);
 
+        await TestCampaignDefaults.SeedPcAsync(_fixture, slug);
         var session = TestCampaignToolsFactory.CreateTool<SessionTools>(_fixture);
         var kickoff = await session.StartSession(slug);
         Assert.True(kickoff.Success, kickoff.Summary);

@@ -23,7 +23,8 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
     private class CapturingHandler : IWorldChangeHandler
     {
         public List<WorldChange> Captured { get; } = [];
-        public bool ShouldHandle(WorldChange change) => change is ActivityChange or NeedChange or EventOccurred;
+        public bool ShouldHandle(WorldChange change) =>
+            change is ActivityChange or NeedChange or EventOccurred or CharacterCreate;
 
         public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
             System.Threading.CancellationToken ct = default)
@@ -171,7 +172,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(dest);
         await session.SaveChangesAsync();
 
-        var handler = new TravelChangeHandler(new EncounterResolver());
+        var handler = new TravelChangeHandler(new EncounterResolver(() => 0.99));
         var capture = new CapturingHandler();
         var dispatcher = new WorldChangeDispatcher([handler, capture], new CampaignVault.Data.CampaignDocumentKeys(),
             NullLogger<WorldChangeDispatcher>.Instance);
@@ -567,6 +568,116 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Contains("locations/dest", result.Message ?? "");
         // Character location unchanged
         Assert.Equal("locations/start", char1.CurrentLocationId);
+    }
+
+    [Fact]
+    public async Task TravelChange_WithoutExitOrOverride_FailsClosed()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var char1 = new Character { Id = "chars/pc-no-exit", CurrentLocationId = "locations/no-exit-start" };
+        var start = new Location { Id = "locations/no-exit-start", Name = "Start" };
+        var dest = new Location { Id = "locations/no-exit-dest", Name = "Destination" };
+
+        await session.StoreAsync(char1);
+        await session.StoreAsync(start);
+        await session.StoreAsync(dest);
+        await session.SaveChangesAsync();
+
+        var handler = new TravelChangeHandler(new EncounterResolver());
+        var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, [char1], [start, dest]);
+
+        var change = new TravelChange
+        {
+            CharacterId = char1.Id,
+            DestinationLocationId = dest.Id,
+            TravelCostHoursOverride = null,
+            EncounterRiskModifier = -100
+        };
+
+        var result = await handler.ApplyAsync(change, ctx);
+        Assert.False(result.Success);
+        Assert.Contains("No LocationExit", result.Message);
+        Assert.Contains("travelCostHoursOverride", result.Message);
+    }
+
+    [Fact]
+    public async Task TravelChange_OverrideWithoutExit_StillSucceeds()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var char1 = new Character { Id = "chars/pc-override", CurrentLocationId = "locations/override-start" };
+        var start = new Location { Id = "locations/override-start", Name = "Start" };
+        var dest = new Location { Id = "locations/override-dest", Name = "Destination" };
+
+        await session.StoreAsync(char1);
+        await session.StoreAsync(start);
+        await session.StoreAsync(dest);
+        await session.SaveChangesAsync();
+
+        var handler = new TravelChangeHandler(new EncounterResolver());
+        var capture = new CapturingHandler();
+        var dispatcher = new WorldChangeDispatcher([handler, capture], new CampaignVault.Data.CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, [char1], [start, dest]);
+
+        var change = new TravelChange
+        {
+            CharacterId = char1.Id,
+            DestinationLocationId = dest.Id,
+            TravelCostHoursOverride = 4,
+            EncounterRiskModifier = -100
+        };
+
+        var result = await handler.ApplyAsync(change, ctx);
+        Assert.True(result.Success);
+        Assert.Contains(capture.Captured,
+            m => m is NeedChange nc && nc.CharacterId == char1.Id && nc.Need == "tiredness" && nc.Delta == 10f);
+    }
+
+    [Fact]
+    public async Task TravelChange_Interrupt_SpawnsTransientAtOrigin()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+
+        var char1 = new Character { Id = "chars/pc-interrupt", CurrentLocationId = "locations/interrupt-start" };
+        var start = new Location
+        {
+            Id = "locations/interrupt-start",
+            Name = "Start",
+            Exits = [new LocationExit("locations/interrupt-dest", "Road", TravelCostHours: 6, Terrain: "road")]
+        };
+        var dest = new Location { Id = "locations/interrupt-dest", Name = "Destination" };
+
+        await session.StoreAsync(char1);
+        await session.StoreAsync(start);
+        await session.StoreAsync(dest);
+        await session.SaveChangesAsync();
+
+        var handler = new TravelChangeHandler(new EncounterResolver(() => 0.0));
+        var capture = new CapturingHandler();
+        var dispatcher = new WorldChangeDispatcher([handler, capture], new CampaignVault.Data.CampaignDocumentKeys(),
+            NullLogger<WorldChangeDispatcher>.Instance);
+        var ctx = CreateTestContext(session, dispatcher, [char1], [start, dest]);
+
+        var change = new TravelChange
+        {
+            CharacterId = char1.Id,
+            DestinationLocationId = dest.Id,
+            EncounterRiskModifier = 100
+        };
+
+        var result = await handler.ApplyAsync(change, ctx);
+        Assert.True(result.Success);
+        Assert.Equal(start.Id, char1.CurrentLocationId);
+        Assert.Contains(capture.Captured,
+            m => m is CharacterCreate cc && cc.CurrentLocationId == start.Id);
+        Assert.Contains(capture.Captured,
+            m => m is EventOccurred eo && eo.Category == EventCategory.Simulation && eo.LocationId == start.Id);
+        Assert.DoesNotContain(capture.Captured,
+            m => m is ActivityChange ac && ac.UpdateLocation && ac.NewLocationId == dest.Id);
     }
 
 }

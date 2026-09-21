@@ -32,4 +32,22 @@ internal static class TestCampaignDefaults
             throw new InvalidOperationException($"Failed to ensure test campaign '{slug}': {created.Summary}");
         }
     }
+
+    public static async Task SeedPcAsync(RavenDBFixture fixture, string slug, string? characterId = null)
+    {
+        characterId ??= $"chars/{slug}-pc";
+        using var session = fixture.Store.OpenAsyncSession();
+        await session.StoreAsync(new Character
+        {
+            Id = characterId,
+            Name = "PC",
+            IsPc = true,
+            CampaignName = slug,
+            MaxHp = 10,
+            CurrentHp = 10
+        });
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
+            indexes: ["Character/Search"]);
+        await session.SaveChangesAsync();
+    }
 }

@@ -50,6 +50,8 @@ public class RestChangeHandler : IWorldChangeHandler
         }
 
         var time = await context.GetCurrentTimeAsync();
+        location.LastVisitedDay = time.TotalDaysElapsed;
+        location.LastUpdated = DateTime.UtcNow;
 
         var (interrupted, hoursRested, deltas, narratives) = await _resolver.EvaluateAsync(
             context,

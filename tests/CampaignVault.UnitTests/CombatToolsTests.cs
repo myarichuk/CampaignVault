@@ -239,7 +239,22 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         // Advance turn
         var nextResult = await tools.NextTurn(campaignName: campaign);
         Assert.False(nextResult.Success);
+        Assert.Equal("CombatEnded", nextResult.Error);
         Assert.Contains("Combat has ended", nextResult.Summary);
+        Assert.False(nextResult.Data?.IsActive ?? true);
+
+        using (var session = store.OpenAsyncSession())
+        {
+            var char1 = await session.LoadAsync<Character>(c1);
+            var char2 = await session.LoadAsync<Character>(c2);
+            char1.CurrentHp = 10;
+            char2.CurrentHp = 10;
+            await session.SaveChangesAsync();
+        }
+
+        var restart = await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
+        Assert.True(restart.Success, restart.Summary);
+        Assert.True(restart.Data?.IsActive);
     }
 
     [Fact]

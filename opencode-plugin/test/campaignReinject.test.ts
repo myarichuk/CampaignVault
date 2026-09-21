@@ -7,7 +7,22 @@ describe("extractCampaignInfo", () => {
     expect(extractCampaignInfo(null)).toBeNull();
   });
 
-  it("extracts slug/ruleset/roster from a nested start_session-shaped payload", () => {
+  it("extracts slug/ruleset/roster from a CampaignContextView-shaped start_session payload", () => {
+    const payload = {
+      campaign: {
+        campaign: { name: "dragonheist", system: "Dnd5e" },
+        posture: {},
+      },
+      party: [
+        { character: { id: "chars/valen", name: "Valen" } },
+        { character: { id: "chars/mira", name: "Mira" } },
+      ],
+    };
+    const info = extractCampaignInfo(payload);
+    expect(info).toEqual({ slug: "dragonheist", ruleset: "Dnd5e", rosterIds: ["chars/valen", "chars/mira"] });
+  });
+
+  it("reads party[].id and falls back to ActiveSystem for older payloads", () => {
     const payload = {
       campaign: {
         campaign: { name: "dragonheist", activeSystem: "Dnd5e" },

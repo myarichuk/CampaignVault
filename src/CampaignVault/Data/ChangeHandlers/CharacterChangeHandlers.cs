@@ -742,8 +742,8 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
 
         ApplyEnrichment(memory, ku, isNew);
 
-        if ((memory.Source is MemorySource.Witnessed or MemorySource.Experienced)
-            && (memory.SourceEventIds == null || memory.SourceEventIds.Count == 0))
+        if ((ku.Source is MemorySource.Witnessed or MemorySource.Experienced)
+            && (ku.SourceEventIds == null || ku.SourceEventIds.Count == 0))
         {
             return ChangeHandlerResult.Failure(
                 $"knowledge_update for '{ku.CharacterId}' topic '{ku.Topic}' has source={memory.Source} (directly event-sourced) "
@@ -766,11 +766,6 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
         if (ku.Source.HasValue)
         {
             memory.Source = ku.Source.Value;
-        }
-        else if (isDeliberate && !ku.Source.HasValue)
-        {
-            // Deliberate recording defaults to first-person experience when no Source is explicit
-            memory.Source = MemorySource.Experienced;
         }
 
         if (ku.Valence.HasValue)
@@ -816,17 +811,9 @@ public class KnowledgeUpdateHandler : IWorldChangeHandler
             return;
         }
 
-        if (ContainsAny(text, "saw", "witnessed", "watched"))
-        {
-            memory.Source = MemorySource.Witnessed;
-        }
-        else if (ContainsAny(text, "heard", "overheard", "rumor", "rumour"))
+        if (ContainsAny(text, "heard", "overheard", "rumor", "rumour"))
         {
             memory.Source = MemorySource.Heard;
-        }
-        else if (ContainsAny(text, "lived through", "survived", "experienced"))
-        {
-            memory.Source = MemorySource.Experienced;
         }
 
         if (ContainsAny(text, "love", "grateful", "kindness", "gift", "friend", "trust"))

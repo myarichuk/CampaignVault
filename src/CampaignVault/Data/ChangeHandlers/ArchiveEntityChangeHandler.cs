@@ -22,15 +22,6 @@ public sealed class ArchiveEntityChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("entityId is required.");
         }
 
-        if (ac.EntityType == ArchivableEntityType.Character)
-        {
-            return ChangeHandlerResult.Failure(
-                "Characters cannot be archived — the Character model has no archive support yet. " +
-                "To remove a mistakenly-created NPC from play, set keepAlive:false and clear its schedule " +
-                "(via character_update) so the transient-eviction GC can clean it up, or leave it in place " +
-                "and simply stop referencing it.");
-        }
-
         IArchivable? entity = ac.EntityType switch
         {
             ArchivableEntityType.Location => await context.Session.LoadAsync<Location>(ac.EntityId, ct),

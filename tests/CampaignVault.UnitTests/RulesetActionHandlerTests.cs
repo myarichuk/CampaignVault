@@ -251,4 +251,91 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
         Assert.Contains("NoActionAvailable", result.Message);
     }
 
+    [Fact]
+    public async Task ApplyAsync_OffRosterActor_DuringActiveCombat_FailsNotInCombat()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        await StoreConfigAsync(session, RulesetSystem.Dnd5e);
+
+        var actor = new Character { Id = "chars/bystander", SystemStats = new Dnd5eExtension() };
+        var combatant = new Character { Id = "chars/fighter", SystemStats = new Dnd5eExtension() };
+        var characters = new Dictionary<string, Character>
+        {
+            [actor.Id] = actor,
+            [combatant.Id] = combatant
+        };
+
+        var activeCombat = new CombatEncounter
+        {
+            Id = _keys.CombatCurrent(_campaign),
+            IsActive = true,
+            ActiveTurnId = combatant.Id,
+            Combatants =
+            [
+                new CombatantState { CharacterId = combatant.Id, ActionBudget = new Dictionary<string, int> { { "action", 1 } }, ReactionAvailable = true }
+            ]
+        };
+
+        var context = CreateContext(session, characters, activeCombat: activeCombat);
+        var selector = CreateSelector(Substitute.For<IRollService>());
+        var handler = CreateHandler(selector);
+
+        var action = new RulesetAction
+        {
+            CharacterId = actor.Id,
+            TargetIds = [],
+            ActionType = RulesetActionType.SkillCheck,
+            ActionName = "Perception",
+            Parameters = new Dictionary<string, string> { { "dc", "10" } }
+        };
+
+        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("[NotInCombat]", result.Message);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_OffRosterReaction_DuringActiveCombat_FailsNotInCombat()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        await StoreConfigAsync(session, RulesetSystem.Dnd5e);
+
+        var actor = new Character { Id = "chars/bystander-react", SystemStats = new Dnd5eExtension() };
+        var combatant = new Character { Id = "chars/fighter-react", SystemStats = new Dnd5eExtension() };
+        var characters = new Dictionary<string, Character>
+        {
+            [actor.Id] = actor,
+            [combatant.Id] = combatant
+        };
+
+        var activeCombat = new CombatEncounter
+        {
+            Id = _keys.CombatCurrent(_campaign),
+            IsActive = true,
+            ActiveTurnId = combatant.Id,
+            Combatants =
+            [
+                new CombatantState { CharacterId = combatant.Id, ActionBudget = new Dictionary<string, int> { { "action", 1 } }, ReactionAvailable = true }
+            ]
+        };
+
+        var context = CreateContext(session, characters, activeCombat: activeCombat);
+        var handler = CreateHandler(CreateSelector(Substitute.For<IRollService>()));
+        var action = new RulesetAction
+        {
+            CharacterId = actor.Id,
+            TargetIds = [],
+            ActionType = RulesetActionType.SkillCheck,
+            ActionName = "Opportunity Attack",
+            IsReaction = true,
+            Parameters = new Dictionary<string, string>()
+        };
+
+        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("[NotInCombat]", result.Message);
+    }
+
 }

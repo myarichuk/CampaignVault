@@ -121,7 +121,7 @@ public class GrappleRulesetTests
             activeCombat: null);
 
         var result = await new TravelChangeHandler(new EncounterResolver()).ApplyAsync(
-            new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2" },
+            new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2", TravelCostHoursOverride = 1, EncounterRiskModifier = -100 },
             context);
 
         Assert.True(result.Success);

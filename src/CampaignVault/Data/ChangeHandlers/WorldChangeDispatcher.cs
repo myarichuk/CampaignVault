@@ -364,7 +364,7 @@ public sealed class WorldChangeDispatcher(
             // Defer entirely to the day-tick that's about to run for this exact span (see summary
             // above) — do not also apply the instant on-screen nudge below.
             var time = await getCurrentTimeAsync();
-            time.AdvanceHours(minutesElapsed / 60);
+            time.AdvanceHours(minutesElapsed / 60.0);
             return;
         }
 

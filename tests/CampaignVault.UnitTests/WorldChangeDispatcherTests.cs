@@ -983,6 +983,36 @@ public class WorldChangeDispatcherTests
     }
 
     [Fact]
+    public async Task Dispatcher_MinutesElapsed_Ninety_AdvancesOneAndAHalfHours()
+    {
+        var pc = new Character { Id = "chars/pc1" };
+        var hpHandler = new TestHandler("Hp", c => c is HpChange, (c, ctx) => Task.FromResult(ChangeHandlerResult.Ok));
+        var dispatcher = CreateDispatcher(hpHandler, new NeedChangeHandler());
+
+        var mockSession = Substitute.For<IAsyncDocumentSession>();
+        mockSession.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character> { ["chars/pc1"] = pc });
+        mockSession.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        mockSession.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+
+        var time = new CampaignTime(); // starts at 6
+
+        var result = await dispatcher.DispatchAsync(
+            mockSession,
+            [new HpChange { CharacterId = "chars/pc1", Delta = 0, MinutesElapsed = 90 }],
+            "test_campaign",
+            () => Task.FromResult(time),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Equal(1.5, time.UnsimulatedHours);
+        Assert.Equal(8, time.Hour); // 1.5 hours rounds to 2 for the clock face
+    }
+
+    [Fact]
     public async Task Dispatcher_MinutesElapsedOnRestChange_IsExcludedFromMicroNudge()
     {
         var pc = new Character

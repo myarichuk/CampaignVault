@@ -74,8 +74,11 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
                 break;
 
             case RulesetActionType.Recovery:
-            case RulesetActionType.UseItem:
                 result = await ResolveRecoveryAsync(action, context, actorStats, mutations, ct);
+                break;
+
+            case RulesetActionType.UseItem:
+                result = await ResolveUseItemAsync(action, context, actorStats, mutations, ct);
                 break;
 
             default:
@@ -181,9 +184,18 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         CancellationToken ct)
     {
         var targets = action.TargetIds.Count > 0 ? action.TargetIds : [action.CharacterId];
-        if (!TryGetParameter(action.Parameters, out var healDice, "healDice", "damageDice"))
+        var hasHealDice = TryGetParameter(action.Parameters, out var healDice, "healDice", "damageDice");
+        var hasHealAmountKey = TryGetParameter(action.Parameters, out var healAmountRaw, "healAmount");
+        var parsedHealAmount = 0;
+        if (hasHealAmountKey && !int.TryParse(healAmountRaw, out parsedHealAmount))
         {
-            healDice = "1d4";
+            return ResolverResult.Fail("InvalidParameter", $"Error: invalid healAmount value '{healAmountRaw}'.");
+        }
+
+        if (!hasHealDice && !hasHealAmountKey)
+        {
+            return ResolverResult.Fail("InvalidParameter",
+                $"Error: {action.ActionType} requires healDice or healAmount.");
         }
 
         var healBonus = 0;
@@ -200,7 +212,9 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
                 return ResolverResult.Fail("InvalidTarget", $"Error: Target '{targetId}' not found for healing spell.");
             }
 
-            var healRoll = await RollHealAmountAsync(healDice, healBonus, ct);
+            var healRoll = hasHealAmountKey
+                ? parsedHealAmount + healBonus
+                : await RollHealAmountAsync(healDice, healBonus, ct);
             mutations.Add(new HpChange { CharacterId = targetId, Delta = healRoll });
             narratives.Add($"{action.ActionName} heals {target.Name} for {healRoll} HP.");
         }
@@ -216,6 +230,24 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         CancellationToken ct)
     {
         action.ActionCategory = action.ActionCategory == default ? ActionCategory.Survival : action.ActionCategory;
+        return await ResolveSpellHealAsync(action, context, actorStats, mutations, ct);
+    }
+
+    protected virtual async Task<ResolverResult> ResolveUseItemAsync(
+        RulesetAction action,
+        ChangeContext context,
+        TStats actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        action.ActionCategory = action.ActionCategory == default ? ActionCategory.Survival : action.ActionCategory;
+        var hasHealDice = TryGetParameter(action.Parameters, out _, "healDice", "damageDice");
+        var hasHealAmount = TryGetParameter(action.Parameters, out _, "healAmount");
+        if (!hasHealDice && !hasHealAmount)
+        {
+            return ResolverResult.Ok($"{action.ActionName} used; no HP change (no healDice/healAmount).");
+        }
+
         return await ResolveSpellHealAsync(action, context, actorStats, mutations, ct);
     }
 

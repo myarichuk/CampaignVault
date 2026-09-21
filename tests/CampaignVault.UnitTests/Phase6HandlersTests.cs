@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
+using CampaignVault.Tools;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -214,23 +216,14 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task ArchiveEntity_RejectsCharacterWithExplanatoryMessage()
+    public void ArchiveEntity_CharacterEntityType_IsRejectedAtDeserialize()
     {
-        using var session = _fixture.Store.OpenAsyncSession();
+        const string json = """[{"$type":"archive_entity","entityType":"Character","entityId":"chars/whoever","archived":true}]""";
+        using var doc = JsonDocument.Parse(json);
+        var ok = CommitChangesParser.TryParse(doc.RootElement, out _, out var error);
 
-        var handler = new ArchiveEntityChangeHandler();
-        var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
-
-        var result = await dispatcher.DispatchAsync(
-            session,
-            [new ArchiveEntityChange { EntityType = ArchivableEntityType.Character, EntityId = "chars/whoever" }],
-            "test-camp-archive",
-            () => Task.FromResult(new CampaignTime()),
-            () => Task.FromResult(new Dictionary<string, string>()),
-            _ => Task.CompletedTask);
-
-        Assert.False(result.Success);
-        Assert.Contains(result.Summary, s => s.Contains("Characters cannot be archived"));
+        Assert.False(ok);
+        Assert.Contains("Character", error, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

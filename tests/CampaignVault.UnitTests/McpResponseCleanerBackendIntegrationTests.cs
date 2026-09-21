@@ -126,6 +126,7 @@ public class McpResponseCleanerBackendIntegrationTests : IClassFixture<RavenDBFi
         var slug = NewSlug("cleaner-session");
         var tools = TestCampaignToolsFactory.Create(_fixture);
         await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+        await TestCampaignDefaults.SeedPcAsync(_fixture, slug);
         var session = TestCampaignToolsFactory.CreateTool<SessionTools>(_fixture);
 
         // Mirrors campaign-vault_start_session from the playtest transcript.

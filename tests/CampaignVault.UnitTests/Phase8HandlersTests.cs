@@ -333,7 +333,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
 
         Assert.True(result.Success);
         var mem = (await session.LoadAsync<Character>("chars/infer")).Psychology.Memories["The brawl"];
-        Assert.Equal(MemorySource.Witnessed, mem.Source);
+        Assert.NotEqual(MemorySource.Witnessed, mem.Source);
+        Assert.NotEqual(MemorySource.Experienced, mem.Source);
         Assert.Equal(EmotionalValence.Negative, mem.Valence);
         Assert.True(mem.Salience >= 0.7);
         Assert.Equal(MemoryUrgency.High, mem.Urgency);
@@ -353,13 +354,39 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/infer-missing-source",
             Topic = "The brawl",
-            Details = "I witnessed violence and death in the square."
+            Details = "I witnessed violence and death in the square.",
+            Source = MemorySource.Witnessed
         };
 
         var result = await handler.ApplyAsync(update, ctx);
 
         Assert.False(result.Success);
         Assert.Contains("sourceEventIds", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task KnowledgeUpdate_ProseSawWithoutSource_Commits()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var c = new Character { Id = "chars/saw-prose", Name = "SawProse" };
+        await session.StoreAsync(c);
+        await session.SaveChangesAsync();
+
+        var ctx = CreateContext(session);
+        var handler = new KnowledgeUpdateHandler();
+        var update = new KnowledgeUpdate
+        {
+            CharacterId = "chars/saw-prose",
+            Topic = "The square",
+            Details = "I saw the watch drag a man from the tavern."
+        };
+
+        var result = await handler.ApplyAsync(update, ctx);
+
+        Assert.True(result.Success, result.Message);
+        var mem = (await session.LoadAsync<Character>("chars/saw-prose")).Psychology.Memories["The square"];
+        Assert.NotEqual(MemorySource.Witnessed, mem.Source);
+        Assert.NotEqual(MemorySource.Experienced, mem.Source);
     }
 
     [Fact]

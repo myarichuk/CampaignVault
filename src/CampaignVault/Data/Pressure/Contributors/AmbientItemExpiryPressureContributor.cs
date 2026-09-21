@@ -58,7 +58,7 @@ public sealed class AmbientItemExpiryPressureContributor : IPressureContributor
 
             pressures.Add(new WorldPressureItem(PressureSeverity.NarrativePrompt, item.Id,
                 $"'{item.Name}' has lingered past its expected time ({noteText}). Resolve its fate: " +
-                "archive_entity if it's gone/cleared away, item_transfer if someone picked it up, or " +
+                "archive_entity if it's gone/cleared away, $type item with toHolderId if someone picked it up, or " +
                 "item_update with a fresh ambientExpiresAtDay to give it more time.",
                 GroupingKey));
         }
