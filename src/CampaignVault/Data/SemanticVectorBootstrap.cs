@@ -115,14 +115,14 @@ internal class SemanticVectorBootstrap
         const int batchSize = 50;
         var totalEnriched = 0;
         var totalCharacters = 0;
-        string? lastId = null;
+        var pageIndex = 0;
 
         while (true)
         {
             using var session = _store.OpenAsyncSession();
             var batch = await session.Query<Character>()
-                .Where(c => lastId == null || c.Id.CompareTo(lastId) > 0)
                 .OrderBy(c => c.Id)
+                .Skip(pageIndex * batchSize)
                 .Take(batchSize)
                 .ToListAsync(cancellationToken);
 
@@ -131,7 +131,7 @@ internal class SemanticVectorBootstrap
                 break;
             }
 
-            lastId = batch[^1].Id;
+            pageIndex++;
             totalCharacters += batch.Count;
 
             var touched = false;
