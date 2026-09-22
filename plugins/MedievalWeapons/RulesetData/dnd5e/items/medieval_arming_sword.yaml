@@ -1,0 +1,19 @@
+# High Medieval arming sword (12th-13th century)
+# Single-hand sword with crossguard, balanced for quick cuts and thrusts
+name: medieval_arming_sword
+system: dnd5e
+category: Weapon
+tags: [martial, melee, medieval, high-medieval]
+description: A cruciform-hilted blade (2.5–3 lb) designed for mounted or foot combat. Effective against mail; less so against plate. Versatile in one or two hands.
+properties:
+  damage: 1d8
+  damageVersatile: 1d10
+  damageType: slashing
+  weight: 3
+  costGp: 15
+  historicalPeriod: "High Medieval (11th–13th century)"
+  historicalRole: "General-purpose combat sword for knights and men-at-arms"
+  historicalMaterial: "Steel with wooden grip, iron or steel crossguard and pommel"
+equipZones: [MainHand, OffHand]
+equipLayer: Held
+twoHanded: false

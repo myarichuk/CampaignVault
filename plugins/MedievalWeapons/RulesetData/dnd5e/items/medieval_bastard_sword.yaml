@@ -1,0 +1,20 @@
+# Bastard Sword (High-Late Medieval transitional weapon)
+# Hand-and-a-half sword, usable one-handed or two-handed
+name: medieval_bastard_sword
+system: dnd5e
+category: Weapon
+tags: [martial, melee, versatile, medieval]
+description: A 3.5–4.5 lb blade with an extended grip allowing one or both hands. Transitional weapon between arming sword and greatsword; flexible in mounted or foot combat. Favored by prosperous men-at-arms.
+properties:
+  damage: 1d8
+  damageVersatile: 1d10
+  damageType: slashing
+  weight: 4
+  costGp: 25
+  historicalPeriod: "High-Late Medieval (12th–15th century)"
+  historicalRole: "Transitional versatile sword for mounted or foot combat; socially superior to arming sword"
+  historicalMaterial: "Steel with extended leather-wrapped grip"
+  specialMechanic: "Versatile: 1d8 one-hand, 1d10 two-hand. Can switch grip mid-combat."
+equipZones: [MainHand, OffHand]
+equipLayer: Held
+twoHanded: false

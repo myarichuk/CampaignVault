@@ -1,0 +1,20 @@
+# Poleaxe (Late Medieval anti-armor polearm)
+# Multipurpose: cutting blade, armor-piercing spike, and crushing hammer head
+name: medieval_poleaxe
+system: dnd5e
+category: Weapon
+tags: [martial, melee, polearm, medieval, late-medieval]
+description: A 6–7 foot wooden staff topped with a broad cutting blade, spike, and hammer or pick head. Designed specifically to exploit plate armor's joints. A versatile, anti-armor weapon favored by armored knights in foot combat.
+properties:
+  damage: 1d8
+  damageVersatile: 1d10
+  damageType: slashing
+  weight: 7
+  costGp: 25
+  historicalPeriod: "Late Medieval (14th–16th century)"
+  historicalRole: "Anti-plate armor polearm for armored foot combat; exploits armor joints"
+  historicalMaterial: "Ash or beech wood with steel blade, spike, and hammer"
+  specialMechanic: "Against enemies in plate armor (AC 16+), deals +1 damage per die. Can exploit joints to attack at disadvantage but deal +3 damage on hit."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

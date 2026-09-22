@@ -1,0 +1,20 @@
+# Bill/Bill Hook (Late Medieval peasant/Hussite polearm)
+# Hooked agricultural tool converted to anti-cavalry weapon, cheap and effective
+name: medieval_bill
+system: dnd5e
+category: Weapon
+tags: [martial, melee, polearm, reach, medieval, late-medieval]
+description: A 6–9 foot wooden pole with a large inward-curving hook at the top, often with a backward spike. Evolved from a farming tool; used by Hussite and English peasant levies to dismount and entangle mounted knights. Surprisingly effective.
+properties:
+  damage: 1d8
+  damageType: slashing
+  weight: 5
+  costGp: 3
+  range: Near  # Reach weapon
+  historicalPeriod: "Late Medieval (15th–16th century)"
+  historicalRole: "Peasant anti-cavalry polearm with hooking capability; effective in formations"
+  historicalMaterial: "Ash pole with iron-forged hook and spike"
+  specialMechanic: "Reach weapon (10 ft). Grapple bonus +2 when used to hook enemies. Against mounted enemies, advantage on disarm attempts."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

@@ -1,0 +1,19 @@
+# Mace (High Medieval)
+# Percussive weapon, effective against mail; no edge, so bounces off plate but penetrates via impact
+name: medieval_mace
+system: dnd5e
+category: Weapon
+tags: [martial, melee, bludgeoning, medieval]
+description: A 2–3 lb steel or iron head mounted on a wooden haft. No sharp edges; effective against mail armor via blunt trauma and against joints. Priests and lesser soldiers favored maces; knights preferred swords or polearms.
+properties:
+  damage: 1d6
+  damageType: bludgeoning
+  weight: 4
+  costGp: 5
+  historicalPeriod: "High Medieval (11th–14th century)"
+  historicalRole: "Armor-bypassing blunt weapon; popular with clergy and lower ranks"
+  historicalMaterial: "Steel head with wooden haft"
+  specialMechanic: "Against mail armor (AC 13–15), no penalty. Against plate, deals full damage to joints."
+equipZones: [MainHand, OffHand]
+equipLayer: Held
+twoHanded: false

@@ -1,0 +1,20 @@
+# Lance (High-Late Medieval mounted weapon)
+# Long cavalry spear for mounted charge, shatters on impact
+name: medieval_lance
+system: dnd5e
+category: Weapon
+tags: [martial, melee, reach, mounted, medieval]
+description: A 10–12 foot ash pole with a steel point, held underarm by mounted knights. Designed to shatter on impact to absorb force and prevent imbalancing rider. Devastating on horseback; useless on foot.
+properties:
+  damage: 1d12
+  damageType: piercing
+  weight: 8
+  costGp: 10
+  range: Distant  # On horseback only
+  historicalPeriod: "High-Late Medieval (12th–16th century)"
+  historicalRole: "Mounted cavalry shock weapon; devastating in charge, ineffective on foot"
+  historicalMaterial: "Ash wood pole with steel spearhead, designed to break"
+  specialMechanic: "Mounted weapon only. On horseback charge, 1d12 damage and attacker gains advantage. On foot, disadvantage on attacks. Shatters after use (requires replacement)."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

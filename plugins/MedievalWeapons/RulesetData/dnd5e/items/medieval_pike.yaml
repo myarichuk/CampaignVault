@@ -1,0 +1,20 @@
+# Pike (High-Late Medieval polearm)
+# Long thrusting weapon, effective against mounted cavalry; vulnerable at close range
+name: medieval_pike
+system: dnd5e
+category: Weapon
+tags: [martial, melee, polearm, reach, medieval]
+description: A 12–18 foot ash-wood shaft with a 1–2 foot steel point. Infantry weapon used in dense formations to set against cavalry charges. Requires significant space; weak in close quarters.
+properties:
+  damage: 1d6
+  damageType: piercing
+  weight: 10
+  costGp: 5
+  range: Near  # Reach weapon; far range if on horseback
+  historicalPeriod: "High-Late Medieval (12th–16th century)"
+  historicalRole: "Defensive anti-cavalry formation polearm; effective in massed pike blocks"
+  historicalMaterial: "Ash wood shaft with steel spearhead"
+  specialMechanic: "Reach weapon (10 ft reach). When braced against charge, grants +2 AC vs mounted attackers. Disadvantage on attacks within 5 feet."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

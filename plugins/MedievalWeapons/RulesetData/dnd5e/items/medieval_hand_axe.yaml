@@ -1,0 +1,20 @@
+# Hand Axe (High Medieval, versatile)
+# Single-hand cutting tool, throwable or two-handed for extra power
+name: medieval_hand_axe
+system: dnd5e
+category: Weapon
+tags: [martial, melee, thrown, medieval]
+description: A 1.5–2 lb axe head on a 1–1.5 foot haft, usable one-handed or thrown. Cheaper and more practical than swords for common soldiers, effective against unarmored targets or lightly armored foes.
+properties:
+  damage: 1d6
+  damageType: slashing
+  weight: 2
+  costGp: 5
+  range: Close  # Throwable
+  historicalPeriod: "High Medieval (11th–15th century)"
+  historicalRole: "Utility and combat tool; common soldier weapon; effective against leather and light armor"
+  historicalMaterial: "Steel head with wooden haft"
+  specialMechanic: "Can be thrown (Close range, 20/60 ft). One-handed."
+equipZones: [MainHand, OffHand]
+equipLayer: Held
+twoHanded: false

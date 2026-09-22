@@ -1,0 +1,19 @@
+# Warhammer (High-Late Medieval)
+# Armor-piercing percussive weapon, effective against mail and plate
+name: medieval_warhammer
+system: dnd5e
+category: Weapon
+tags: [martial, melee, medieval, bludgeoning]
+description: A 4–5 lb head mounted on a 2–3 foot wooden haft. One end is a broad hammer, the other a sharp pick or beak. Designed to pierce or crush armor. Effective against mail and effective against plate joints.
+properties:
+  damage: 1d8
+  damageType: bludgeoning
+  weight: 5
+  costGp: 20
+  historicalPeriod: "High-Late Medieval (12th–16th century)"
+  historicalRole: "Armor-piercing weapon effective against mail and plate; cavalry and foot combat"
+  historicalMaterial: "Steel head with wooden haft, sometimes reinforced with steel"
+  specialMechanic: "Against enemies in any armor (AC 14+), effective against joints. Deals +1 damage vs mail, +2 vs plate."
+equipZones: [MainHand, OffHand]
+equipLayer: Held
+twoHanded: false

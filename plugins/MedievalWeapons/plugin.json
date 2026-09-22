@@ -1,0 +1,8 @@
+{
+  "id": "com.campaignvault.medieval-weapons",
+  "displayName": "Medieval Weapons Pack",
+  "version": "1.0.0",
+  "minEngineVersion": "0.2.0",
+  "rulesetDataRoots": ["./RulesetData"],
+  "skillsPath": "./skills"
+}

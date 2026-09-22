@@ -1,0 +1,20 @@
+# Spear (High Medieval, one-handed with shield or versatile)
+# Versatile thruster, effective with shield or two-handed; common soldier's weapon
+name: medieval_spear
+system: dnd5e
+category: Weapon
+tags: [martial, melee, versatile, medieval, common]
+description: A 6–9 foot wooden shaft with a 12–18 inch steel or iron head. Effective with a shield or when used two-handed for extra reach and power. The soldier's staple weapon; cheap and effective.
+properties:
+  damage: 1d6
+  damageVersatile: 1d8
+  damageType: piercing
+  weight: 3
+  costGp: 2
+  historicalPeriod: "High Medieval (11th–15th century)"
+  historicalRole: "Versatile common soldier weapon; effective with shield or two-handed"
+  historicalMaterial: "Ash or hardwood shaft with steel spearhead"
+  specialMechanic: "Versatile (1d6 one-hand, 1d8 two-hand). Set vs charge: can brace against mounted approach for +2 AC."
+equipZones: [MainHand, OffHand]
+equipLayer: Held
+twoHanded: false

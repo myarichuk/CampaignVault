@@ -1,0 +1,20 @@
+# Halberd (Late Medieval European polearm)
+# Axe blade with spike and hook; effective at hooking riders from horseback
+name: medieval_halberd
+system: dnd5e
+category: Weapon
+tags: [martial, melee, polearm, reach, medieval, late-medieval]
+description: A 6–7 foot shaft topped with an axe blade, reverse spike, and hooking projection. Infantry weapon used both for cutting and for "unhorning" mounted knights. Effective against cavalry and formations.
+properties:
+  damage: 1d8
+  damageType: slashing
+  weight: 6
+  costGp: 20
+  range: Near  # Reach weapon
+  historicalPeriod: "Late Medieval (15th–16th century)"
+  historicalRole: "Anti-cavalry polearm with hooking capability; used to dismount mounted foes"
+  historicalMaterial: "Ash or beech wood with steel blade and spike"
+  specialMechanic: "Reach weapon (10 ft). Against mounted enemies, can attempt to disarm or knock prone (opposing Strength check)."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

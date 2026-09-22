@@ -1,0 +1,19 @@
+# Late Medieval greatsword (14th-16th century)
+# Two-handed armor penetrator, designed to defeat plate armor via weight and leverage
+name: medieval_greatsword
+system: dnd5e
+category: Weapon
+tags: [martial, melee, two-handed, medieval, late-medieval]
+description: A 5–6 lb blade with half-tang, reaching 4–5 feet in total length. Designed to penetrate plate armor through sheer weight and leverage. Requires both hands; poor for mounted combat.
+properties:
+  damage: 2d6
+  damageType: slashing
+  weight: 6
+  costGp: 50
+  historicalPeriod: "Late Medieval (14th–16th century)"
+  historicalRole: "Anti-plate armor infantry weapon; effective against heavily armored foes"
+  historicalMaterial: "Steel with leather-wrapped wooden grip"
+  specialMechanic: "Against enemies in plate armor (AC 16+), deals +2 damage per die"
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true
