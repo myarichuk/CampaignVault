@@ -141,7 +141,7 @@ internal static class WeaponParameterResolver
         var ctx = (ChangeContext)context;
         var weapons = context.Items.Values
             .Where(i => string.Equals(i.HolderId, characterId, StringComparison.OrdinalIgnoreCase)
-                        && i.CoreCategory == ItemCategory.Weapon)
+                        && i.CoreCategory == ItemCategories.Weapon)
             .ToList();
 
         if (weapons.Count > 0 || ctx.Session == null || string.IsNullOrWhiteSpace(characterId))
@@ -150,7 +150,7 @@ internal static class WeaponParameterResolver
         }
 
         var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(ctx.Session, characterId, ct: ct);
-        return held.Where(i => i.CoreCategory == ItemCategory.Weapon).ToList();
+        return held.Where(i => i.CoreCategory == ItemCategories.Weapon).ToList();
     }
 
     private static bool NameMatches(Item weapon, string actionName)

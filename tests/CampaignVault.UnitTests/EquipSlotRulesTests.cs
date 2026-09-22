@@ -8,13 +8,13 @@ namespace CampaignVault.Tests;
 
 public class EquipSlotRulesTests
 {
-    private static Item MakeItem(string id, EquipZone zone, EquipLayer layer, bool twoHanded = false, bool equipped = true) =>
+    private static Item MakeItem(string id, string zone, string layer, bool twoHanded = false, bool equipped = true) =>
         new()
         {
             Id = id,
             Name = id,
             HolderId = "chars/hero",
-            CoreCategory = ItemCategory.Armor,
+            CoreCategory = ItemCategories.Armor,
             EquipZones = [zone],
             EquipLayer = layer,
             TwoHanded = twoHanded,
@@ -24,8 +24,8 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_RobeOverChainmail_Coexist()
     {
-        var chainmail = MakeItem("items/chainmail", EquipZone.Torso, EquipLayer.Armor);
-        var robe = MakeItem("items/robe", EquipZone.Torso, EquipLayer.Outer, equipped: false);
+        var chainmail = MakeItem("items/chainmail", EquipZones.Torso, EquipLayers.Armor);
+        var robe = MakeItem("items/robe", EquipZones.Torso, EquipLayers.Outer, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(robe, [chainmail]);
 
@@ -33,10 +33,21 @@ public class EquipSlotRulesTests
     }
 
     [Fact]
+    public void FindConflicts_PluginStyleZonesNeverBuiltIn_Coexist()
+    {
+        var septumRing = MakeItem("items/septum-ring", "septum", EquipLayers.Base);
+        var anklet = MakeItem("items/anklet", "anklet", EquipLayers.Base, equipped: false);
+
+        var result = EquipSlotRules.FindConflicts(anklet, [septumRing]);
+
+        Assert.Empty(result.Items);
+    }
+
+    [Fact]
     public void FindConflicts_TwoChainmails_Conflict()
     {
-        var chainmail1 = MakeItem("items/chainmail-1", EquipZone.Torso, EquipLayer.Armor);
-        var chainmail2 = MakeItem("items/chainmail-2", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var chainmail1 = MakeItem("items/chainmail-1", EquipZones.Torso, EquipLayers.Armor);
+        var chainmail2 = MakeItem("items/chainmail-2", EquipZones.Torso, EquipLayers.Armor, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(chainmail2, [chainmail1]);
 
@@ -47,9 +58,9 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_RingCapacityTwo_ThirdRingConflictsWithOneExisting()
     {
-        var ring1 = MakeItem("items/ring-1", EquipZone.Ring, EquipLayer.Base);
-        var ring2 = MakeItem("items/ring-2", EquipZone.Ring, EquipLayer.Base);
-        var ring3 = MakeItem("items/ring-3", EquipZone.Ring, EquipLayer.Base, equipped: false);
+        var ring1 = MakeItem("items/ring-1", EquipZones.Ring, EquipLayers.Base);
+        var ring2 = MakeItem("items/ring-2", EquipZones.Ring, EquipLayers.Base);
+        var ring3 = MakeItem("items/ring-3", EquipZones.Ring, EquipLayers.Base, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(ring3, [ring1, ring2]);
 
@@ -60,8 +71,8 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_RingCapacityTwo_SecondRingFitsWithoutConflict()
     {
-        var ring1 = MakeItem("items/ring-1", EquipZone.Ring, EquipLayer.Base);
-        var ring2 = MakeItem("items/ring-2", EquipZone.Ring, EquipLayer.Base, equipped: false);
+        var ring1 = MakeItem("items/ring-1", EquipZones.Ring, EquipLayers.Base);
+        var ring2 = MakeItem("items/ring-2", EquipZones.Ring, EquipLayers.Base, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(ring2, [ring1]);
 
@@ -71,8 +82,8 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_TwoHandedWeapon_BlocksOffHandShield()
     {
-        var shield = MakeItem("items/shield", EquipZone.OffHand, EquipLayer.Held);
-        var greatsword = MakeItem("items/greatsword", EquipZone.MainHand, EquipLayer.Held, twoHanded: true, equipped: false);
+        var shield = MakeItem("items/shield", EquipZones.OffHand, EquipLayers.Held);
+        var greatsword = MakeItem("items/greatsword", EquipZones.MainHand, EquipLayers.Held, twoHanded: true, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(greatsword, [shield]);
 
@@ -83,8 +94,8 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_ShieldEquip_ConflictsWithAlreadyEquippedTwoHandedWeapon()
     {
-        var greatsword = MakeItem("items/greatsword", EquipZone.MainHand, EquipLayer.Held, twoHanded: true);
-        var shield = MakeItem("items/shield", EquipZone.OffHand, EquipLayer.Held, equipped: false);
+        var greatsword = MakeItem("items/greatsword", EquipZones.MainHand, EquipLayers.Held, twoHanded: true);
+        var shield = MakeItem("items/shield", EquipZones.OffHand, EquipLayers.Held, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(shield, [greatsword]);
 
@@ -105,8 +116,8 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_DifferentZones_NoConflict()
     {
-        var boots = MakeItem("items/boots", EquipZone.Feet, EquipLayer.Armor);
-        var helmet = MakeItem("items/helmet", EquipZone.Head, EquipLayer.Armor, equipped: false);
+        var boots = MakeItem("items/boots", EquipZones.Feet, EquipLayers.Armor);
+        var helmet = MakeItem("items/helmet", EquipZones.Head, EquipLayers.Armor, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(helmet, [boots]);
 
@@ -118,9 +129,9 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_SameZoneLayerDifferentStackGroup_Coexist()
     {
-        var pauldronLeft = MakeItem("items/pauldron-left", EquipZone.Torso, EquipLayer.Armor);
+        var pauldronLeft = MakeItem("items/pauldron-left", EquipZones.Torso, EquipLayers.Armor);
         pauldronLeft.StackGroup = "pauldron-left";
-        var pauldronRight = MakeItem("items/pauldron-right", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var pauldronRight = MakeItem("items/pauldron-right", EquipZones.Torso, EquipLayers.Armor, equipped: false);
         pauldronRight.StackGroup = "pauldron-right";
 
         var result = EquipSlotRules.FindConflicts(pauldronRight, [pauldronLeft]);
@@ -131,9 +142,9 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_SameZoneLayerSameStackGroup_StillConflicts()
     {
-        var pauldron1 = MakeItem("items/pauldron-1", EquipZone.Torso, EquipLayer.Armor);
+        var pauldron1 = MakeItem("items/pauldron-1", EquipZones.Torso, EquipLayers.Armor);
         pauldron1.StackGroup = "pauldron-left";
-        var pauldron2 = MakeItem("items/pauldron-2", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var pauldron2 = MakeItem("items/pauldron-2", EquipZones.Torso, EquipLayers.Armor, equipped: false);
         pauldron2.StackGroup = "pauldron-left";
 
         var result = EquipSlotRules.FindConflicts(pauldron2, [pauldron1]);
@@ -145,8 +156,8 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_NullStackGroupVsTaggedStackGroup_SeparatePools_NoConflict()
     {
-        var breastplate = MakeItem("items/breastplate", EquipZone.Torso, EquipLayer.Armor); // StackGroup null
-        var pauldron = MakeItem("items/pauldron", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var breastplate = MakeItem("items/breastplate", EquipZones.Torso, EquipLayers.Armor); // StackGroup null
+        var pauldron = MakeItem("items/pauldron", EquipZones.Torso, EquipLayers.Armor, equipped: false);
         pauldron.StackGroup = "pauldron-left";
 
         var result = EquipSlotRules.FindConflicts(pauldron, [breastplate]);
@@ -157,11 +168,11 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_CapacityTwoZone_FreesOldestEquippedFirst()
     {
-        var older = MakeItem("items/ring-old", EquipZone.Ring, EquipLayer.Base);
+        var older = MakeItem("items/ring-old", EquipZones.Ring, EquipLayers.Base);
         older.LastUpdated = DateTime.UtcNow.AddDays(-5);
-        var newer = MakeItem("items/ring-new", EquipZone.Ring, EquipLayer.Base);
+        var newer = MakeItem("items/ring-new", EquipZones.Ring, EquipLayers.Base);
         newer.LastUpdated = DateTime.UtcNow.AddDays(-1);
-        var incoming = MakeItem("items/ring-incoming", EquipZone.Ring, EquipLayer.Base, equipped: false);
+        var incoming = MakeItem("items/ring-incoming", EquipZones.Ring, EquipLayers.Base, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(incoming, [newer, older]);
 
@@ -172,14 +183,14 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_StructuredResult_CarriesZoneLayerStackGroupCapacityOccupants()
     {
-        var chainmail1 = MakeItem("items/chainmail-1", EquipZone.Torso, EquipLayer.Armor);
-        var chainmail2 = MakeItem("items/chainmail-2", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var chainmail1 = MakeItem("items/chainmail-1", EquipZones.Torso, EquipLayers.Armor);
+        var chainmail2 = MakeItem("items/chainmail-2", EquipZones.Torso, EquipLayers.Armor, equipped: false);
 
         var result = EquipSlotRules.FindConflicts(chainmail2, [chainmail1]);
 
         var zoneConflict = Assert.Single(result.Zones);
-        Assert.Equal(EquipZone.Torso, zoneConflict.Zone);
-        Assert.Equal(EquipLayer.Armor, zoneConflict.Layer);
+        Assert.Equal(EquipZones.Torso, zoneConflict.Zone);
+        Assert.Equal(EquipLayers.Armor, zoneConflict.Layer);
         Assert.Null(zoneConflict.StackGroup);
         Assert.Equal(1, zoneConflict.Capacity);
         Assert.Equal(1, zoneConflict.Occupied);
@@ -190,23 +201,23 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindConflicts_MultiZoneItem_OneZoneConflictEntryPerZone()
     {
-        var torsoOccupant = MakeItem("items/torso-occupant", EquipZone.Torso, EquipLayer.Armor);
+        var torsoOccupant = MakeItem("items/torso-occupant", EquipZones.Torso, EquipLayers.Armor);
         var legsOccupant = new Item
         {
             Id = "items/legs-occupant", Name = "items/legs-occupant", HolderId = "chars/hero",
-            CoreCategory = ItemCategory.Armor, EquipZones = [EquipZone.Legs], EquipLayer = EquipLayer.Armor, IsEquipped = true,
+            CoreCategory = ItemCategories.Armor, EquipZones = [EquipZones.Legs], EquipLayer = EquipLayers.Armor, IsEquipped = true,
         };
         var spanningItem = new Item
         {
             Id = "items/bodysuit", Name = "items/bodysuit", HolderId = "chars/hero",
-            CoreCategory = ItemCategory.Armor, EquipZones = [EquipZone.Torso, EquipZone.Legs], EquipLayer = EquipLayer.Armor, IsEquipped = false,
+            CoreCategory = ItemCategories.Armor, EquipZones = [EquipZones.Torso, EquipZones.Legs], EquipLayer = EquipLayers.Armor, IsEquipped = false,
         };
 
         var result = EquipSlotRules.FindConflicts(spanningItem, [torsoOccupant, legsOccupant]);
 
         Assert.Equal(2, result.Zones.Count);
-        Assert.Contains(result.Zones, z => z.Zone == EquipZone.Torso);
-        Assert.Contains(result.Zones, z => z.Zone == EquipZone.Legs);
+        Assert.Contains(result.Zones, z => z.Zone == EquipZones.Torso);
+        Assert.Contains(result.Zones, z => z.Zone == EquipZones.Legs);
         Assert.Equal(2, result.Items.Count);
     }
 
@@ -215,7 +226,7 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindTagIncompatibilities_MissingPrerequisite_ReturnsMissingTagResult()
     {
-        var pauldron = MakeItem("items/pauldron", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var pauldron = MakeItem("items/pauldron", EquipZones.Torso, EquipLayers.Armor, equipped: false);
         pauldron.RequiresEquippedTags = ["chest-armor"];
 
         var result = EquipSlotRules.FindTagIncompatibilities(pauldron, []);
@@ -229,9 +240,9 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindTagIncompatibilities_PrerequisiteSatisfied_ReturnsEmpty()
     {
-        var breastplate = MakeItem("items/breastplate", EquipZone.Torso, EquipLayer.Armor);
+        var breastplate = MakeItem("items/breastplate", EquipZones.Torso, EquipLayers.Armor);
         breastplate.Tags = ["chest-armor"];
-        var pauldron = MakeItem("items/pauldron", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var pauldron = MakeItem("items/pauldron", EquipZones.Torso, EquipLayers.Armor, equipped: false);
         pauldron.RequiresEquippedTags = ["chest-armor"];
 
         var result = EquipSlotRules.FindTagIncompatibilities(pauldron, [breastplate]);
@@ -242,9 +253,9 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindTagIncompatibilities_MultiplePrerequisiteTags_AllRequiredIndependently()
     {
-        var breastplate = MakeItem("items/breastplate", EquipZone.Torso, EquipLayer.Armor);
+        var breastplate = MakeItem("items/breastplate", EquipZones.Torso, EquipLayers.Armor);
         breastplate.Tags = ["chest-armor"];
-        var pauldron = MakeItem("items/pauldron", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var pauldron = MakeItem("items/pauldron", EquipZones.Torso, EquipLayers.Armor, equipped: false);
         pauldron.RequiresEquippedTags = ["chest-armor", "belt"];
 
         var result = EquipSlotRules.FindTagIncompatibilities(pauldron, [breastplate]);
@@ -256,9 +267,9 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindTagIncompatibilities_IncompatibleTagPresent_ReturnsConflictResult()
     {
-        var trousers = MakeItem("items/trousers", EquipZone.Legs, EquipLayer.Base);
+        var trousers = MakeItem("items/trousers", EquipZones.Legs, EquipLayers.Base);
         trousers.Tags = ["legwear-outer"];
-        var loincloth = MakeItem("items/loincloth", EquipZone.Legs, EquipLayer.Outer, equipped: false);
+        var loincloth = MakeItem("items/loincloth", EquipZones.Legs, EquipLayers.Outer, equipped: false);
         loincloth.IncompatibleWithEquippedTags = ["legwear-outer"];
 
         var result = EquipSlotRules.FindTagIncompatibilities(loincloth, [trousers]);
@@ -271,9 +282,9 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindTagIncompatibilities_NoOverlap_ReturnsEmpty()
     {
-        var boots = MakeItem("items/boots", EquipZone.Feet, EquipLayer.Armor);
+        var boots = MakeItem("items/boots", EquipZones.Feet, EquipLayers.Armor);
         boots.Tags = ["footwear"];
-        var loincloth = MakeItem("items/loincloth", EquipZone.Legs, EquipLayer.Outer, equipped: false);
+        var loincloth = MakeItem("items/loincloth", EquipZones.Legs, EquipLayers.Outer, equipped: false);
         loincloth.IncompatibleWithEquippedTags = ["legwear-outer"];
 
         var result = EquipSlotRules.FindTagIncompatibilities(loincloth, [boots]);
@@ -284,9 +295,9 @@ public class EquipSlotRulesTests
     [Fact]
     public void FindTagIncompatibilities_BothListsNullOrEmpty_ReturnsEmpty()
     {
-        var trousers = MakeItem("items/trousers", EquipZone.Legs, EquipLayer.Base);
+        var trousers = MakeItem("items/trousers", EquipZones.Legs, EquipLayers.Base);
         trousers.Tags = ["legwear-outer"];
-        var plainItem = MakeItem("items/plain", EquipZone.Torso, EquipLayer.Armor, equipped: false);
+        var plainItem = MakeItem("items/plain", EquipZones.Torso, EquipLayers.Armor, equipped: false);
 
         var result = EquipSlotRules.FindTagIncompatibilities(plainItem, [trousers]);
 

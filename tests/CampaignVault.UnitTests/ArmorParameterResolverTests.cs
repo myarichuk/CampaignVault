@@ -8,14 +8,14 @@ namespace CampaignVault.Tests;
 public class ArmorParameterResolverTests
 {
     private static Item MakeEquipped(
-        string id, EquipZone zone, EquipLayer layer,
+        string id, string zone, string layer,
         int? acBonus = null, string? armorType = null, bool stacksWithArmor = false, float? warmth = null, float? speedModifier = null) =>
         new()
         {
             Id = id,
             Name = id,
             HolderId = "chars/hero",
-            CoreCategory = ItemCategory.Armor,
+            CoreCategory = ItemCategories.Armor,
             EquipZones = [zone],
             EquipLayer = layer,
             IsEquipped = true,
@@ -41,7 +41,7 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 14 }; // +2 mod
         var character = MakeCharacter(stats);
-        var chainmail = MakeEquipped("items/chainmail", EquipZone.Torso, EquipLayer.Armor, acBonus: 4, armorType: "medium");
+        var chainmail = MakeEquipped("items/chainmail", EquipZones.Torso, EquipLayers.Armor, acBonus: 4, armorType: "medium");
 
         ArmorParameterResolver.Apply(character, [chainmail]);
 
@@ -54,8 +54,8 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 10 }; // +0 mod
         var character = MakeCharacter(stats);
-        var armor = MakeEquipped("items/armor", EquipZone.Torso, EquipLayer.Armor, acBonus: 3, armorType: "heavy");
-        var shield = MakeEquipped("items/shield", EquipZone.OffHand, EquipLayer.Held, acBonus: 2);
+        var armor = MakeEquipped("items/armor", EquipZones.Torso, EquipLayers.Armor, acBonus: 3, armorType: "heavy");
+        var shield = MakeEquipped("items/shield", EquipZones.OffHand, EquipLayers.Held, acBonus: 2);
 
         ArmorParameterResolver.Apply(character, [armor, shield]);
 
@@ -68,8 +68,8 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 10 };
         var character = MakeCharacter(stats);
-        var armor = MakeEquipped("items/armor", EquipZone.Torso, EquipLayer.Armor, acBonus: 3, armorType: "heavy");
-        var robe = MakeEquipped("items/robe", EquipZone.Torso, EquipLayer.Outer, acBonus: 5, stacksWithArmor: false);
+        var armor = MakeEquipped("items/armor", EquipZones.Torso, EquipLayers.Armor, acBonus: 3, armorType: "heavy");
+        var robe = MakeEquipped("items/robe", EquipZones.Torso, EquipLayers.Outer, acBonus: 5, stacksWithArmor: false);
 
         ArmorParameterResolver.Apply(character, [armor, robe]);
 
@@ -82,8 +82,8 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 10 };
         var character = MakeCharacter(stats);
-        var armor = MakeEquipped("items/armor", EquipZone.Torso, EquipLayer.Armor, acBonus: 3, armorType: "heavy");
-        var robe = MakeEquipped("items/robe", EquipZone.Torso, EquipLayer.Outer, acBonus: 5, stacksWithArmor: true);
+        var armor = MakeEquipped("items/armor", EquipZones.Torso, EquipLayers.Armor, acBonus: 3, armorType: "heavy");
+        var robe = MakeEquipped("items/robe", EquipZones.Torso, EquipLayers.Outer, acBonus: 5, stacksWithArmor: true);
 
         ArmorParameterResolver.Apply(character, [armor, robe]);
 
@@ -96,7 +96,7 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 20 }; // +5 mod
         var character = MakeCharacter(stats);
-        var armor = MakeEquipped("items/armor", EquipZone.Torso, EquipLayer.Armor, acBonus: 4, armorType: "medium");
+        var armor = MakeEquipped("items/armor", EquipZones.Torso, EquipLayers.Armor, acBonus: 4, armorType: "medium");
 
         ArmorParameterResolver.Apply(character, [armor]);
 
@@ -109,7 +109,7 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 20 }; // +5 mod
         var character = MakeCharacter(stats);
-        var armor = MakeEquipped("items/armor", EquipZone.Torso, EquipLayer.Armor, acBonus: 6, armorType: "heavy");
+        var armor = MakeEquipped("items/armor", EquipZones.Torso, EquipLayers.Armor, acBonus: 6, armorType: "heavy");
 
         ArmorParameterResolver.Apply(character, [armor]);
 
@@ -122,7 +122,7 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 20 }; // +5 mod
         var character = MakeCharacter(stats);
-        var armor = MakeEquipped("items/armor", EquipZone.Torso, EquipLayer.Armor, acBonus: 1, armorType: "light");
+        var armor = MakeEquipped("items/armor", EquipZones.Torso, EquipLayers.Armor, acBonus: 1, armorType: "light");
 
         ArmorParameterResolver.Apply(character, [armor]);
 
@@ -143,7 +143,7 @@ public class ArmorParameterResolverTests
         var armor = new Item
         {
             Id = "items/armor", Name = "Armor", HolderId = "chars/hero",
-            EquipZones = [EquipZone.Torso], EquipLayer = EquipLayer.Armor, IsEquipped = true,
+            EquipZones = [EquipZones.Torso], EquipLayer = EquipLayers.Armor, IsEquipped = true,
             Properties = new Dictionary<string, object> { ["acBonus"] = "2" },
         };
 
@@ -158,8 +158,8 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 10 };
         var character = MakeCharacter(stats);
-        var armor = MakeEquipped("items/armor", EquipZone.Torso, EquipLayer.Armor, acBonus: 2, armorType: "medium", warmth: 3f);
-        var cloak = MakeEquipped("items/cloak", EquipZone.Back, EquipLayer.Outer, warmth: 4f);
+        var armor = MakeEquipped("items/armor", EquipZones.Torso, EquipLayers.Armor, acBonus: 2, armorType: "medium", warmth: 3f);
+        var cloak = MakeEquipped("items/cloak", EquipZones.Back, EquipLayers.Outer, warmth: 4f);
 
         ArmorParameterResolver.Apply(character, [armor, cloak]);
 
@@ -184,8 +184,8 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 10 };
         var character = MakeCharacter(stats);
-        var shackles = MakeEquipped("items/shackles", EquipZone.Legs, EquipLayer.Base, speedModifier: -15f);
-        var hasteBoots = MakeEquipped("items/haste-boots", EquipZone.Feet, EquipLayer.Outer, speedModifier: 10f);
+        var shackles = MakeEquipped("items/shackles", EquipZones.Legs, EquipLayers.Base, speedModifier: -15f);
+        var hasteBoots = MakeEquipped("items/haste-boots", EquipZones.Feet, EquipLayers.Outer, speedModifier: 10f);
 
         ArmorParameterResolver.Apply(character, [shackles, hasteBoots]);
 
@@ -198,7 +198,7 @@ public class ArmorParameterResolverTests
     {
         var stats = new Dnd5eExtension { Dexterity = 10 };
         var character = MakeCharacter(stats);
-        var heavyChains = MakeEquipped("items/chains", EquipZone.Torso, EquipLayer.Outer, speedModifier: -20f);
+        var heavyChains = MakeEquipped("items/chains", EquipZones.Torso, EquipLayers.Outer, speedModifier: -20f);
 
         ArmorParameterResolver.Apply(character, [heavyChains]);
 
@@ -214,8 +214,8 @@ public class ArmorParameterResolverTests
         if (dexCapSource) props["dexCapSource"] = "true";
         return new Item
         {
-            Id = id, Name = id, HolderId = "chars/hero", CoreCategory = ItemCategory.Armor,
-            EquipZones = [EquipZone.Torso], EquipLayer = EquipLayer.Armor, IsEquipped = true,
+            Id = id, Name = id, HolderId = "chars/hero", CoreCategory = ItemCategories.Armor,
+            EquipZones = [EquipZones.Torso], EquipLayer = EquipLayers.Armor, IsEquipped = true,
             StackGroup = stackGroup,
             Properties = props,
         };

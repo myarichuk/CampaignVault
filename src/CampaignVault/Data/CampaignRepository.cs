@@ -2,6 +2,7 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Scenes;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Services;
@@ -25,6 +26,7 @@ public class CampaignRepository
     private readonly ClassDefinitionProvider _classProvider;
     private readonly BackgroundDefinitionProvider _backgroundProvider;
     private readonly IEntitySuggester _entitySuggester;
+    private readonly ItemDefinitionProvider _itemDefinitionProvider;
 
     private string ResolveCampaign(string? campaignName)
     {
@@ -54,7 +56,8 @@ public class CampaignRepository
         ILocalEmbeddingService embeddingService,
         ClassDefinitionProvider classProvider,
         BackgroundDefinitionProvider backgroundProvider,
-        IEntitySuggester entitySuggester)
+        IEntitySuggester entitySuggester,
+        ItemDefinitionProvider itemDefinitionProvider)
     {
         _store = store;
         _simulationEngine = simulationEngine;
@@ -68,6 +71,7 @@ public class CampaignRepository
         _classProvider = classProvider ?? throw new ArgumentNullException(nameof(classProvider));
         _backgroundProvider = backgroundProvider ?? throw new ArgumentNullException(nameof(backgroundProvider));
         _entitySuggester = entitySuggester ?? throw new ArgumentNullException(nameof(entitySuggester));
+        _itemDefinitionProvider = itemDefinitionProvider ?? throw new ArgumentNullException(nameof(itemDefinitionProvider));
     }
 
     private Task EnrichSemanticVectorAsync(IHasSemanticVector entity)
@@ -291,7 +295,7 @@ public class CampaignRepository
         var relevantFactions = await GetFactionsForLocationAsync(session, locationId, effectiveCampaign);
 
         var containerContents = new List<ContainerContentsSummary>();
-        var containerItems = items.Where(i => i.CoreCategory == ItemCategory.Container).ToList();
+        var containerItems = items.Where(i => i.CoreCategory == ItemCategories.Container).ToList();
         foreach (var container in containerItems)
         {
             var contents = await ContainerResolver.GetRecursiveContentsSummariesAsync(session, container.Id, maxDepth: 3);
@@ -1705,9 +1709,12 @@ public class CampaignRepository
     /// <summary>
     /// Inserts or updates an Item, sanitizing arbitrary properties and preserving optimistic concurrency on edits.
     /// Rich collection fields (Tags/DistinctiveFeatures/Properties) are preserved when omitted from the request.
+    /// DefinitionNameUnresolved is true only when a new item's definitionName didn't resolve to a known
+    /// ItemDefinition for the campaign's active system (advisory — the item is still created).
     /// </summary>
-    public async Task<Item> UpsertItemAsync(CampaignSession campaignSession, ItemUpsertRequest item)
+    public async Task<(Item Item, bool DefinitionNameUnresolved)> UpsertItemAsync(CampaignSession campaignSession, ItemUpsertRequest item)
     {
+        var definitionNameUnresolved = false;
         var effective = campaignSession.EffectiveCampaign;
         var session = campaignSession.Session;
 
@@ -1734,7 +1741,7 @@ public class CampaignRepository
             existing.Quantity = item.Quantity;
             existing.CurrentState = item.CurrentState;
             existing.DistinctiveFeatures = item.DistinctiveFeatures ?? existing.DistinctiveFeatures;
-            existing.CoreCategory = item.CoreCategory;
+            existing.CoreCategory = item.CoreCategory ?? existing.CoreCategory;
             existing.Tags = item.Tags ?? existing.Tags;
             existing.Properties = item.Properties ?? existing.Properties;
             existing.LastUpdated = DateTime.UtcNow;
@@ -1761,6 +1768,15 @@ public class CampaignRepository
         else
         {
             var currentDay = (await GetTimeAsync(new CampaignSession(session, effectiveCampaignName))).TotalDaysElapsed;
+
+            ItemDefinition? definition = null;
+            if (!string.IsNullOrWhiteSpace(item.DefinitionName))
+            {
+                var config = await GetCampaignConfigAsync(new CampaignSession(session, effectiveCampaignName));
+                _itemDefinitionProvider.TryGet(config.ActiveSystem, item.DefinitionName, out definition);
+                definitionNameUnresolved = definition == null;
+            }
+
             result = new Item
             {
                 Id = item.Id,
@@ -1770,23 +1786,24 @@ public class CampaignRepository
                 Quantity = item.Quantity,
                 CurrentState = item.CurrentState,
                 DistinctiveFeatures = item.DistinctiveFeatures ?? [],
-                CoreCategory = item.CoreCategory,
-                Tags = item.Tags ?? [],
-                Properties = item.Properties ?? [],
+                CoreCategory = item.CoreCategory ?? definition?.Category ?? ItemCategories.Other,
+                Tags = item.Tags ?? definition?.Tags ?? [],
+                Properties = item.Properties ?? definition?.Properties ?? [],
                 LastUpdated = DateTime.UtcNow,
                 CampaignName = effectiveCampaignName,
                 IsArchived = item.IsArchived ?? false,
-                EquipZones = item.EquipZones ?? [],
-                EquipLayer = item.EquipLayer,
-                TwoHanded = item.TwoHanded ?? false,
+                DefinitionName = item.DefinitionName,
+                EquipZones = item.EquipZones ?? definition?.EquipZones ?? [],
+                EquipLayer = item.EquipLayer ?? definition?.EquipLayer,
+                TwoHanded = item.TwoHanded ?? definition?.TwoHanded ?? false,
                 IsEquipped = item.IsEquipped ?? false,
                 Capacity = item.Capacity,
                 CapacityUnit = item.CapacityUnit,
                 MaxCharges = item.MaxCharges,
                 ChargeUnit = item.ChargeUnit,
-                StackGroup = item.StackGroup,
-                RequiresEquippedTags = item.RequiresEquippedTags,
-                IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags,
+                StackGroup = item.StackGroup ?? definition?.StackGroup,
+                RequiresEquippedTags = item.RequiresEquippedTags ?? definition?.RequiresEquippedTags,
+                IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags ?? definition?.IncompatibleWithEquippedTags,
                 VisualTags = item.VisualTags,
                 AppearanceNote = item.AppearanceNote,
                 // id/participants from the request are intentionally dropped here: a freshly
@@ -1844,7 +1861,7 @@ public class CampaignRepository
             await EnrichSemanticVectorAsync(detail);
         }
         await EnrichSemanticVectorAsync(result);
-        return result;
+        return (result, definitionNameUnresolved);
     }
 
     /// <summary>

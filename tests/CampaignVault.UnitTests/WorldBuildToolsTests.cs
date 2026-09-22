@@ -39,7 +39,7 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
             ],
             Items =
             [
-                new ItemUpsertRequest { Id = "items/wb-sword", Name = "Sword", Description = "A blade.", HolderId = "chars/wb-valen", CoreCategory = ItemCategory.Weapon },
+                new ItemUpsertRequest { Id = "items/wb-sword", Name = "Sword", Description = "A blade.", HolderId = "chars/wb-valen", CoreCategory = ItemCategories.Weapon },
             ],
             Quests =
             [
@@ -205,8 +205,8 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
                 new ItemUpsertRequest
                 {
                     Id = "items/wb-xfer-armor", Name = "Chainmail", Description = "...",
-                    HolderId = "locations/wb-xfer-start", CoreCategory = ItemCategory.Armor,
-                    EquipZones = [EquipZone.Torso], EquipLayer = EquipLayer.Armor,
+                    HolderId = "locations/wb-xfer-start", CoreCategory = ItemCategories.Armor,
+                    EquipZones = [EquipZones.Torso], EquipLayer = EquipLayers.Armor,
                     Properties = new Dictionary<string, object> { ["acBonus"] = "5" },
                 },
             ],

@@ -399,7 +399,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). This is the only tool that creates a new item. Pass itemDetails to seed persistent, granular state at creation — scratches, stains, secret compartments, existing damage or wear — instead of issuing separate item_update commits afterward. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale [itemDetails is the exception — it is creation-only and is ignored (not replaced/merged) when the item already exists]. During play, use commit's item_update (tags/state) or item_update's upsertItemDetail (persistent damage/wear/hidden features) for incremental changes to an existing item.")]
+        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). This is the only tool that creates a new item. Pass definitionName to seed a NEW item's category/tags/properties/equip fields from a RulesetData ItemDefinition template (see get_rules_reference kind:'items') instead of typing them all out — any of those fields you also set explicitly on this same request override the template's values. Pass itemDetails to seed persistent, granular state at creation — scratches, stains, secret compartments, existing damage or wear — instead of issuing separate item_update commits afterward. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale [itemDetails and definitionName are the exception — both are creation-only and ignored (not replaced/merged/re-applied) when the item already exists]. During play, use commit's item_update (tags/state) or item_update's upsertItemDetail (persistent damage/wear/hidden features) for incremental changes to an existing item.")]
     internal Task<ToolResult<Item>> UpsertItem(
         [Description("The item to create or update. Strongly typed.")]
         ItemUpsertRequest item,
@@ -412,9 +412,9 @@ This is the only tool that creates a new location. During play, use commit's loc
     private async Task<ToolResult<Item>> ApplyItemUpsertAsync(IAsyncDocumentSession s, ItemUpsertRequest item, string effective)
     {
         var alreadyExisted = await s.LoadAsync<Item>(CanonicalId.Normalize(item.Id, CanonicalId.Items)) != null;
-        var merged = await _repository.UpsertItemAsync(new CampaignSession(s, effective), item);
+        var (merged, definitionNameUnresolved) = await _repository.UpsertItemAsync(new CampaignSession(s, effective), item);
         var message = $"Item upserted (campaign context: {effective}).";
-        var nudges = ItemUpsertSanityChecker.GetNudges(item, alreadyExisted);
+        var nudges = ItemUpsertSanityChecker.GetNudges(item, alreadyExisted, definitionNameUnresolved);
         if (nudges.Count > 0)
         {
             message += " " + string.Join(" ", nudges);

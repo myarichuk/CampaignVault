@@ -13,7 +13,7 @@ public static class ItemUpsertSanityChecker
             "acBonus", "warmth", "speedModifier", "armorType", "dexCap", "dexCapSource", "stacksWithArmor",
         };
 
-    public static List<string> GetNudges(ItemUpsertRequest item, bool itemAlreadyExisted = false)
+    public static List<string> GetNudges(ItemUpsertRequest item, bool itemAlreadyExisted = false, bool definitionNameUnresolved = false)
     {
         var nudges = new List<string>();
         var zones = item.EquipZones;
@@ -26,17 +26,25 @@ public static class ItemUpsertSanityChecker
                 "(itemDetails only seeds a NEW item). Use commit's item_update/upsertItemDetail to modify an existing item's details.");
         }
 
-        if (item.TwoHanded == true && (zones == null || !zones.Contains(EquipZone.MainHand)))
+        if (definitionNameUnresolved)
+        {
+            nudges.Add(
+                $"NARRATIVE PROMPT: '{item.Id}' set definitionName:'{item.DefinitionName}' but no matching ItemDefinition " +
+                "was found for the campaign's active system — the item was created from your explicit fields only. " +
+                "Check the name via get_rules_reference (kind:'items'), or ignore if a custom item was intended.");
+        }
+
+        if (item.TwoHanded == true && (zones == null || !zones.Contains(EquipZones.MainHand, StringComparer.OrdinalIgnoreCase)))
         {
             nudges.Add(
                 $"NARRATIVE PROMPT: '{item.Id}' has twoHanded:true but its equipZones don't include MainHand — " +
                 "TwoHanded only has an effect on a MainHand item (it also blocks OffHand). Add MainHand to equipZones, or clear twoHanded if unintended.");
         }
 
-        if (zones is { Count: > 0 } && zones.Contains(EquipZone.MainHand)
-            && zones.Any(z => z != EquipZone.MainHand && z != EquipZone.OffHand))
+        if (zones is { Count: > 0 } && zones.Contains(EquipZones.MainHand, StringComparer.OrdinalIgnoreCase)
+            && zones.Any(z => !string.Equals(z, EquipZones.MainHand, StringComparison.OrdinalIgnoreCase) && !string.Equals(z, EquipZones.OffHand, StringComparison.OrdinalIgnoreCase)))
         {
-            var bodyZones = string.Join(", ", zones.Where(z => z != EquipZone.MainHand && z != EquipZone.OffHand));
+            var bodyZones = string.Join(", ", zones.Where(z => !string.Equals(z, EquipZones.MainHand, StringComparison.OrdinalIgnoreCase) && !string.Equals(z, EquipZones.OffHand, StringComparison.OrdinalIgnoreCase)));
             nudges.Add(
                 $"NARRATIVE PROMPT: '{item.Id}' combines MainHand with body-slot zone(s) ({bodyZones}) on the same item — " +
                 "this is unusual (a held weapon sharing a zone list with worn gear). Confirm this is intended.");
@@ -49,7 +57,7 @@ public static class ItemUpsertSanityChecker
                 "StackGroup only matters once the item is equippable. Set equipZones/equipLayer, or clear StackGroup if unintended.");
         }
 
-        if ((item.CoreCategory == ItemCategory.Armor || layer == EquipLayer.Held)
+        if ((item.CoreCategory == ItemCategories.Armor || layer == EquipLayers.Held)
             && item.Properties is { Count: > 0 }
             && !RecognizedDefenseKeys.Overlaps(item.Properties.Keys))
         {

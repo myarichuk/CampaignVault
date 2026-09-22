@@ -128,7 +128,7 @@ public class CommitChangesParserTests
         Assert.True(ok, error);
         Assert.NotNull(parsed);
         var itemUpdate = Assert.IsType<ItemUpdate>(parsed![0]);
-        Assert.Equal(ItemCategory.Armor, itemUpdate.CoreCategory);
+        Assert.Equal(ItemCategories.Armor, itemUpdate.CoreCategory);
     }
 
     [Fact]

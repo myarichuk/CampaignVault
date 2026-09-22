@@ -462,7 +462,7 @@ public sealed class EntityCanonicalizer
         },
         "item" => new Item
         {
-            Id = id, Name = name, CoreCategory = ItemCategory.Other, HolderId = "",
+            Id = id, Name = name, CoreCategory = ItemCategories.Other, HolderId = "",
             Description = "Item description and details."
         },
         "customcreature" => new CustomCreature

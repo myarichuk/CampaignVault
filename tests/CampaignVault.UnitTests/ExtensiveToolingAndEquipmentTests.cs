@@ -216,9 +216,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Name = "Simple Tunic",
                 Description = "A basic linen tunic",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Base,
-                CoreCategory = ItemCategory.Clothing
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Base,
+                CoreCategory = ItemCategories.Clothing
             };
             await session.StoreAsync(tunic);
 
@@ -229,9 +229,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Name = "Chainmail Vest",
                 Description = "Protection for the torso",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Armor,
-                CoreCategory = ItemCategory.Armor,
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Armor,
+                CoreCategory = ItemCategories.Armor,
                 Properties = new Dictionary<string, object> { { "acBonus", 4 }, { "armorType", "medium" } }
             };
             await session.StoreAsync(chainmail);
@@ -243,9 +243,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Name = "Travel Cloak",
                 Description = "A weathered cloak",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso, EquipZone.Back],
-                EquipLayer = EquipLayer.Outer,
-                CoreCategory = ItemCategory.Clothing,
+                EquipZones = [EquipZones.Torso, EquipZones.Back],
+                EquipLayer = EquipLayers.Outer,
+                CoreCategory = ItemCategories.Clothing,
                 Properties = new Dictionary<string, object> { { "warmth", 2f } }
             };
             await session.StoreAsync(cloak);
@@ -305,9 +305,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = sword1Id,
                 Name = "Rusty Sword",
                 HolderId = charId,
-                EquipZones = [EquipZone.MainHand],
-                EquipLayer = EquipLayer.Held,
-                CoreCategory = ItemCategory.Weapon,
+                EquipZones = [EquipZones.MainHand],
+                EquipLayer = EquipLayers.Held,
+                CoreCategory = ItemCategories.Weapon,
                 Properties = new Dictionary<string, object> { { "acBonus", 1 } }
             };
             await session.StoreAsync(sword1);
@@ -317,9 +317,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = sword2Id,
                 Name = "Elven Blade",
                 HolderId = charId,
-                EquipZones = [EquipZone.MainHand],
-                EquipLayer = EquipLayer.Held,
-                CoreCategory = ItemCategory.Weapon,
+                EquipZones = [EquipZones.MainHand],
+                EquipLayer = EquipLayers.Held,
+                CoreCategory = ItemCategories.Weapon,
                 Properties = new Dictionary<string, object> { { "acBonus", 3 } }
             };
             await session.StoreAsync(sword2);
@@ -382,9 +382,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = chestId,
                 Name = "Breastplate",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Armor,
-                CoreCategory = ItemCategory.Armor,
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Armor,
+                CoreCategory = ItemCategories.Armor,
                 Properties = new Dictionary<string, object> { { "acBonus", 6 } }
             };
             await session.StoreAsync(chest);
@@ -395,10 +395,10 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = pauldronLeftId,
                 Name = "Left Pauldron",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Armor,
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Armor,
                 StackGroup = "pauldron-left",
-                CoreCategory = ItemCategory.Armor,
+                CoreCategory = ItemCategories.Armor,
                 RequiresEquippedTags = new List<string> { "chest-armor" }
             };
             chest.Tags.Add("chest-armor");
@@ -409,10 +409,10 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = pauldronRightId,
                 Name = "Right Pauldron",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Armor,
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Armor,
                 StackGroup = "pauldron-right",
-                CoreCategory = ItemCategory.Armor,
+                CoreCategory = ItemCategories.Armor,
                 RequiresEquippedTags = new List<string> { "chest-armor" }
             };
             await session.StoreAsync(pauldronRight);
@@ -476,9 +476,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = robeId,
                 Name = "Ceremonial Robe",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Outer,
-                CoreCategory = ItemCategory.Clothing,
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Outer,
+                CoreCategory = ItemCategories.Clothing,
                 IncompatibleWithEquippedTags = new List<string> { "wielded-weapon" }
             };
             await session.StoreAsync(robe);
@@ -489,9 +489,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = swordId,
                 Name = "Holy Sword",
                 HolderId = charId,
-                EquipZones = [EquipZone.MainHand],
-                EquipLayer = EquipLayer.Held,
-                CoreCategory = ItemCategory.Weapon,
+                EquipZones = [EquipZones.MainHand],
+                EquipLayer = EquipLayers.Held,
+                CoreCategory = ItemCategories.Weapon,
                 Tags = new List<string> { "wielded-weapon" }
             };
             await session.StoreAsync(sword);
@@ -545,9 +545,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = oldBootsId,
                 Name = "Old Boots",
                 HolderId = charId,
-                EquipZones = [EquipZone.Feet],
-                EquipLayer = EquipLayer.Base,
-                CoreCategory = ItemCategory.Clothing
+                EquipZones = [EquipZones.Feet],
+                EquipLayer = EquipLayers.Base,
+                CoreCategory = ItemCategories.Clothing
             };
             await session.StoreAsync(oldBoots);
 
@@ -556,9 +556,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = newBootsId,
                 Name = "Elven Boots",
                 HolderId = charId,
-                EquipZones = [EquipZone.Feet],
-                EquipLayer = EquipLayer.Base,
-                CoreCategory = ItemCategory.Clothing,
+                EquipZones = [EquipZones.Feet],
+                EquipLayer = EquipLayers.Base,
+                CoreCategory = ItemCategories.Clothing,
                 Properties = new Dictionary<string, object> { { "speedModifier", 1f } }
             };
             await session.StoreAsync(newBoots);
@@ -630,9 +630,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = leatherArmorId,
                 Name = "Leather Armor",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Armor,
-                CoreCategory = ItemCategory.Armor,
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Armor,
+                CoreCategory = ItemCategories.Armor,
                 Properties = new Dictionary<string, object>
                 {
                     { "acBonus", 2 },
@@ -647,9 +647,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = shieldId,
                 Name = "Wooden Shield",
                 HolderId = charId,
-                EquipZones = [EquipZone.OffHand],
-                EquipLayer = EquipLayer.Held,
-                CoreCategory = ItemCategory.Armor,
+                EquipZones = [EquipZones.OffHand],
+                EquipLayer = EquipLayers.Held,
+                CoreCategory = ItemCategories.Armor,
                 Properties = new Dictionary<string, object> { { "acBonus", 2 } }
             };
             await session.StoreAsync(shield);
@@ -707,9 +707,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = winterCoatId,
                 Name = "Winter Coat",
                 HolderId = charId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Outer,
-                CoreCategory = ItemCategory.Clothing,
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Outer,
+                CoreCategory = ItemCategories.Clothing,
                 Properties = new Dictionary<string, object> { { "warmth", 5f } }
             };
             await session.StoreAsync(coat);
@@ -719,9 +719,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = fursId,
                 Name = "Fur Cloak",
                 HolderId = charId,
-                EquipZones = [EquipZone.Back],
-                EquipLayer = EquipLayer.Outer,
-                CoreCategory = ItemCategory.Clothing,
+                EquipZones = [EquipZones.Back],
+                EquipLayer = EquipLayers.Outer,
+                CoreCategory = ItemCategories.Clothing,
                 Properties = new Dictionary<string, object> { { "warmth", 7f } }
             };
             await session.StoreAsync(furs);
@@ -798,9 +798,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = elaraArmorId,
                 Name = "Studded Leather",
                 HolderId = elaraId,
-                EquipZones = [EquipZone.Torso],
-                EquipLayer = EquipLayer.Armor,
-                CoreCategory = ItemCategory.Armor,
+                EquipZones = [EquipZones.Torso],
+                EquipLayer = EquipLayers.Armor,
+                CoreCategory = ItemCategories.Armor,
                 Properties = new Dictionary<string, object>
                 {
                     { "acBonus", 2 },
@@ -815,9 +815,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 Id = elaraSwordId,
                 Name = "Longsword",
                 HolderId = elaraId,
-                EquipZones = [EquipZone.MainHand],
-                EquipLayer = EquipLayer.Held,
-                CoreCategory = ItemCategory.Weapon,
+                EquipZones = [EquipZones.MainHand],
+                EquipLayer = EquipLayers.Held,
+                CoreCategory = ItemCategories.Weapon,
                 Properties = new Dictionary<string, object> { { "acBonus", 1 } }
             };
             await session.StoreAsync(sword);

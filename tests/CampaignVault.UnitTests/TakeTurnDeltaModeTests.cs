@@ -378,9 +378,9 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 Name = "Dagger",
                 Description = "A plain dagger.",
                 HolderId = companionId,
-                CoreCategory = ItemCategory.Weapon,
-                EquipZones = [EquipZone.Accessory],
-                EquipLayer = EquipLayer.Held,
+                CoreCategory = ItemCategories.Weapon,
+                EquipZones = [EquipZones.Accessory],
+                EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
             await session.SaveChangesAsync();
@@ -456,9 +456,9 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 Name = "Dagger",
                 Description = "A plain dagger.",
                 HolderId = companionId,
-                CoreCategory = ItemCategory.Weapon,
-                EquipZones = [EquipZone.Accessory],
-                EquipLayer = EquipLayer.Held,
+                CoreCategory = ItemCategories.Weapon,
+                EquipZones = [EquipZones.Accessory],
+                EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
             await session.SaveChangesAsync();
@@ -522,9 +522,9 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 Name = "Dagger",
                 Description = "A plain dagger.",
                 HolderId = companionId,
-                CoreCategory = ItemCategory.Weapon,
-                EquipZones = [EquipZone.Accessory],
-                EquipLayer = EquipLayer.Held,
+                CoreCategory = ItemCategories.Weapon,
+                EquipZones = [EquipZones.Accessory],
+                EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
             await session.SaveChangesAsync();

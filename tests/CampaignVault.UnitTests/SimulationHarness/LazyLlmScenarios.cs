@@ -897,7 +897,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             var item = new Item
             {
                 Id = "items/sword", Name = "Sword", CampaignName = "VisualStateTest", HolderId = "locations/tavern_01",
-                CoreCategory = ItemCategory.Weapon
+                CoreCategory = ItemCategories.Weapon
             };
             await session.StoreAsync(item);
 

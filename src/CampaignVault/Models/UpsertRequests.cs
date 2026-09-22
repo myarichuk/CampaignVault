@@ -160,7 +160,8 @@ public class ItemUpsertRequest
     [Description("Omit to preserve the item's existing distinctive features. Provide to replace them wholesale.")]
     public List<string>? DistinctiveFeatures { get; set; }
 
-    public ItemCategory CoreCategory { get; set; }
+    [Description("Omit to preserve the item's existing category (on update) or derive it from definitionName's template (on create, falling back to \"Other\" if neither is set). Provide to set/override explicitly.")]
+    public string? CoreCategory { get; set; }
 
     [Description("Omit to preserve existing tags; provide to replace wholesale. Open-carry/concealed convention: tag the container, not contents. See get_commit_schema type=item_update.")]
     public List<string>? Tags { get; set; }
@@ -168,14 +169,17 @@ public class ItemUpsertRequest
     [Description("Omit to preserve the item's existing properties. Provide to replace them wholesale.")]
     public Dictionary<string, object>? Properties { get; set; }
 
+    [Description("Creation-only: seeds this new item's Category/Tags/Properties/equip fields from a RulesetData ItemDefinition template of this name (looked up via get_rules_reference kind:'items' against the campaign's active system). Any of those fields you also set explicitly on this same request override the template's values. Ignored (not re-applied) on an existing item. A back-reference only — Properties is copied at creation time, so the item keeps working even if the defining pack is later removed.")]
+    public string? DefinitionName { get; set; }
+
     [Description("Set true to hide this item from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
     public bool? IsArchived { get; set; }
 
     [Description("Omit to preserve the item's existing equip zones. Provide to replace them wholesale. Empty list = not equippable.")]
-    public List<EquipZone>? EquipZones { get; set; }
+    public List<string>? EquipZones { get; set; }
 
     [Description("Which layer this item occupies within its EquipZones (Base/Armor/Outer/Held). Required (alongside EquipZones) for the item to be equippable.")]
-    public EquipLayer? EquipLayer { get; set; }
+    public string? EquipLayer { get; set; }
 
     [Description("Set true when this item occupies MainHand and should also block OffHand (two-handed weapons). Omit to preserve the existing value on update.")]
     public bool? TwoHanded { get; set; }

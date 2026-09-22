@@ -1042,6 +1042,111 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task UpsertItem_WithDefinitionName_SeedsFromTemplate()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/definition-seed-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var (item, unresolved) = await repo.UpsertItemAsync(
+                _fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug),
+                new ItemUpsertRequest { Id = itemId, Name = "My Longsword", Description = "desc", DefinitionName = "longsword" });
+
+            Assert.False(unresolved);
+            Assert.Equal(ItemCategories.Weapon, item.CoreCategory);
+            Assert.Contains("martial", item.Tags);
+            Assert.Equal("1d8", item.Properties["damage"]?.ToString());
+            Assert.Equal("longsword", item.DefinitionName);
+            await session.SaveChangesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task UpsertItem_WithDefinitionNameAndExplicitTags_ExplicitFieldsWin()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/definition-override-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var (item, unresolved) = await repo.UpsertItemAsync(
+                _fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug),
+                new ItemUpsertRequest { Id = itemId, Name = "Custom Longsword", Description = "desc", DefinitionName = "longsword", Tags = ["custom"] });
+
+            Assert.False(unresolved);
+            Assert.Equal(["custom"], item.Tags);
+            await session.SaveChangesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task UpsertItem_WithUnresolvableDefinitionName_StillCreatesFromExplicitFields()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/definition-missing-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var (item, unresolved) = await repo.UpsertItemAsync(
+                _fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug),
+                new ItemUpsertRequest { Id = itemId, Name = "Mystery Item", Description = "desc", CoreCategory = ItemCategories.Other, DefinitionName = "no-such-template" });
+
+            Assert.True(unresolved);
+            Assert.Equal("Mystery Item", item.Name);
+            await session.SaveChangesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task UpsertItem_WithDefinitionNameOnUpdate_IsIgnored()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/definition-update-" + Guid.NewGuid();
+        var campaignSession = _fixture.CreateCampaignSession;
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            await repo.UpsertItemAsync(campaignSession(session, TestCampaignDefaults.Slug),
+                new ItemUpsertRequest { Id = itemId, Name = "Plain Stick", Description = "desc", CoreCategory = ItemCategories.Weapon });
+            await session.SaveChangesAsync();
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var (item, unresolved) = await repo.UpsertItemAsync(campaignSession(session, TestCampaignDefaults.Slug),
+                new ItemUpsertRequest { Id = itemId, Name = "Plain Stick", Description = "desc updated", DefinitionName = "longsword" });
+
+            Assert.False(unresolved);
+            Assert.Null(item.DefinitionName);
+            Assert.DoesNotContain("martial", item.Tags);
+            await session.SaveChangesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task UpsertItem_WithPluginStyleCategoryAndZone_RoundTripsWithoutError()
+    {
+        var repo = _fixture.CreateRepository();
+        var itemId = "items/jewelry-" + Guid.NewGuid();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var (item, _) = await repo.UpsertItemAsync(
+                _fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug),
+                new ItemUpsertRequest
+                {
+                    Id = itemId, Name = "Septum Ring", Description = "desc",
+                    CoreCategory = "Jewelry", EquipZones = ["septum"], EquipLayer = "Base",
+                });
+
+            Assert.Equal("Jewelry", item.CoreCategory);
+            Assert.Equal(["septum"], item.EquipZones);
+            await session.SaveChangesAsync();
+        }
+    }
+
+    [Fact]
     public async Task GetScene_Heals_Legacy_Polluted_Location_And_Item_Data()
     {
         // Simulate legacy data that was written before we had sanitization guards

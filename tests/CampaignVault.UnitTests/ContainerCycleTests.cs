@@ -21,7 +21,7 @@ public class ContainerCycleTests : IClassFixture<RavenDBFixture>
         Id = id,
         Name = id,
         HolderId = holderId,
-        CoreCategory = ItemCategory.Container,
+        CoreCategory = ItemCategories.Container,
         Capacity = capacity,
         CampaignName = "container-test",
     };

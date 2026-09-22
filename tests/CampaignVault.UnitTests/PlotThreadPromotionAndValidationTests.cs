@@ -54,7 +54,7 @@ public class PlotThreadPromotionAndValidationTests : IClassFixture<RavenDBFixtur
             Name = "Valid Item",
             Description = "A valid item",
             HolderId = "chars/valid-npc",
-            CoreCategory = ItemCategory.Valuable,
+            CoreCategory = ItemCategories.Valuable,
             CampaignName = _campaignName
         };
         await session.StoreAsync(validItem);

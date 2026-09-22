@@ -25,7 +25,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         var featuresBefore = new HashSet<string>(item.DistinctiveFeatures);
 
         if (iu.NewState != null) item.CurrentState = iu.NewState;
-        if (iu.CoreCategory.HasValue) item.CoreCategory = iu.CoreCategory.Value;
+        if (iu.CoreCategory != null) item.CoreCategory = iu.CoreCategory;
 
         if (iu.TagsToAdd != null)
         {

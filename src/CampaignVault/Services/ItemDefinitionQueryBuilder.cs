@@ -18,7 +18,7 @@ public static class ItemDefinitionQueryBuilder
         ItemDefinitionProvider provider,
         string system,
         string? nameQuery = null,
-        ItemCategory? category = null,
+        string? category = null,
         string? tag = null,
         int offset = 0,
         int? limit = null)

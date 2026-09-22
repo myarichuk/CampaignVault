@@ -92,7 +92,7 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
     public IReadOnlyList<ItemDefinition> QueryItems(
         string system,
         string? nameQuery = null,
-        Models.ItemCategory? category = null,
+        string? category = null,
         string? tag = null)
     {
         var items = GetItemsForSystem(system).Values.AsEnumerable();
@@ -102,9 +102,9 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
             items = items.Where(i => i.Name.Contains(nameQuery, StringComparison.OrdinalIgnoreCase));
         }
 
-        if (category.HasValue)
+        if (!string.IsNullOrWhiteSpace(category))
         {
-            items = items.Where(i => i.Category == category.Value);
+            items = items.Where(i => string.Equals(i.Category, category, StringComparison.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(tag))

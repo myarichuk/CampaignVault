@@ -240,7 +240,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
         string? characterId = null,
         [Description("items only: item name substring filter.")]
         string? itemNameQuery = null,
-        [Description("items only: category filter (Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other).")]
+        [Description("items only: category filter. Built-in values: Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other — a plugin item pack may also define its own (e.g. 'Jewelry').")]
         string? itemCategory = null,
         [Description("items only: tag filter (e.g. 'exotic', 'kara-tur').")]
         string? itemTag = null)
@@ -270,19 +270,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
                 }
                 return Box(await GetPendingLevelUpChoices(characterId, campaignName));
             case "items":
-                ItemCategory? parsedCategory = null;
-                if (!string.IsNullOrWhiteSpace(itemCategory))
-                {
-                    if (!Enum.TryParse<ItemCategory>(itemCategory, ignoreCase: true, out var categoryValue))
-                    {
-                        return await ToolArgumentErrors.Missing<object>(
-                            "itemCategory",
-                            $"Unknown itemCategory '{itemCategory}'. Use one of: {string.Join(", ", Enum.GetNames<ItemCategory>())}.",
-                            toolName: "get_rules_reference");
-                    }
-                    parsedCategory = categoryValue;
-                }
-                return Box(await GetItemDefinitions(campaignName, itemNameQuery, parsedCategory, itemTag, offset, limit));
+                return Box(await GetItemDefinitions(campaignName, itemNameQuery, itemCategory?.Trim(), itemTag, offset, limit));
             default:
                 return new ToolResult<object>(false, Error: ToolErrors.InvalidArgument,
                     Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', 'creatures', 'items', or 'level_up'.");
@@ -467,7 +455,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
     internal Task<ToolResult<ItemDefinitionListResponse>> GetItemDefinitions(
         string campaignName,
         string? nameQuery = null,
-        ItemCategory? category = null,
+        string? category = null,
         string? tag = null,
         int offset = 0,
         int? limit = null)

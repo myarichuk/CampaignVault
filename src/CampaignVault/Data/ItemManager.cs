@@ -50,7 +50,7 @@ internal sealed class ItemManager : IItemManager
             existing.Quantity = item.Quantity;
             existing.CurrentState = item.CurrentState;
             existing.DistinctiveFeatures = item.DistinctiveFeatures ?? existing.DistinctiveFeatures;
-            existing.CoreCategory = item.CoreCategory;
+            existing.CoreCategory = item.CoreCategory ?? existing.CoreCategory;
             existing.Tags = item.Tags ?? existing.Tags;
             existing.Properties = item.Properties ?? existing.Properties;
             existing.LastUpdated = DateTime.UtcNow;
@@ -86,7 +86,7 @@ internal sealed class ItemManager : IItemManager
                 Quantity = item.Quantity,
                 CurrentState = item.CurrentState,
                 DistinctiveFeatures = item.DistinctiveFeatures ?? [],
-                CoreCategory = item.CoreCategory,
+                CoreCategory = item.CoreCategory ?? ItemCategories.Other,
                 Tags = item.Tags ?? [],
                 Properties = item.Properties ?? [],
                 LastUpdated = DateTime.UtcNow,

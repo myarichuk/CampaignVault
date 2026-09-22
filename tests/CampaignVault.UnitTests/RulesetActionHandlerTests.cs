@@ -101,7 +101,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             Id = "items/bow",
             Name = "Shortbow",
             HolderId = actor.Id,
-            CoreCategory = ItemCategory.Weapon,
+            CoreCategory = ItemCategories.Weapon,
             Properties = new Dictionary<string, object> { ["range"] = "Near" }
         };
 
@@ -146,7 +146,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             Id = "items/bow",
             Name = "Shortbow",
             HolderId = actor.Id,
-            CoreCategory = ItemCategory.Weapon,
+            CoreCategory = ItemCategories.Weapon,
             Properties = new Dictionary<string, object> { ["range"] = "Near" }
         };
 

@@ -362,9 +362,9 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             Name = "Odd Breastplate",
             Description = "d",
             HolderId = "chars/hero",
-            CoreCategory = ItemCategory.Armor,
-            EquipZones = [EquipZone.Torso],
-            EquipLayer = EquipLayer.Armor,
+            CoreCategory = ItemCategories.Armor,
+            EquipZones = [EquipZones.Torso],
+            EquipLayer = EquipLayers.Armor,
             Properties = new Dictionary<string, object> { ["armorBonus"] = 2 },
         };
 
@@ -382,9 +382,9 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             Name = "Odd Buckler",
             Description = "d",
             HolderId = "chars/hero",
-            CoreCategory = ItemCategory.Weapon,
-            EquipZones = [EquipZone.OffHand],
-            EquipLayer = EquipLayer.Held,
+            CoreCategory = ItemCategories.Weapon,
+            EquipZones = [EquipZones.OffHand],
+            EquipLayer = EquipLayers.Held,
             Properties = new Dictionary<string, object> { ["shieldBonus"] = 1 },
         };
 
@@ -402,9 +402,9 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             Name = "Proper Breastplate",
             Description = "d",
             HolderId = "chars/hero",
-            CoreCategory = ItemCategory.Armor,
-            EquipZones = [EquipZone.Torso],
-            EquipLayer = EquipLayer.Armor,
+            CoreCategory = ItemCategories.Armor,
+            EquipZones = [EquipZones.Torso],
+            EquipLayer = EquipLayers.Armor,
             Properties = new Dictionary<string, object> { ["acBonus"] = 3 },
         };
 
@@ -422,7 +422,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             Name = "Trinket",
             Description = "d",
             HolderId = "chars/hero",
-            CoreCategory = ItemCategory.Other,
+            CoreCategory = ItemCategories.Other,
             Properties = new Dictionary<string, object> { ["glowColor"] = "blue" },
         };
 

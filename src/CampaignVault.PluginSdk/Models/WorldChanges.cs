@@ -1058,10 +1058,9 @@ public class ItemUpdate : WorldChange
     [JsonPropertyName("newState")]
     public string? NewState { get; set; }
 
-    [Description("Optional new structural category (Weapon, Armor, Clothing, etc.).")]
+    [Description("Optional new structural category (Weapon, Armor, Clothing, etc. — or a plugin-defined category).")]
     [JsonPropertyName("coreCategory")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public ItemCategory? CoreCategory { get; set; }
+    public string? CoreCategory { get; set; }
 
     [Description("Temporary tags to add (e.g. 'muddy', 'wet'). Convention for open-carry/concealed display: tag the container, not the contents. See get_commit_schema type=item_update.")]
     [JsonPropertyName("tagsToAdd")]

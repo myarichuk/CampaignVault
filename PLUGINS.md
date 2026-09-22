@@ -534,13 +534,16 @@ proficiencies:
 
 Not restricted to weapons/armor — `category` plus the open `properties` bag cover outfits, tools,
 consumables, and artifacts uniformly. This is a *template* ("what a Wakizashi is"); a campaign's
-`world_build` tool creates an `Item` *instance* ("Bob's Wakizashi") by copying a template's
-properties, not by referencing it live.
+`world_build` tool creates an `Item` *instance* ("Bob's Wakizashi") by passing `definitionName`,
+which copies the template's `category`/`tags`/`properties`/equip fields into the new item at
+creation time — any of those fields also set explicitly on the same `world_build` entry override
+the template's values. It is a one-time copy, not a live reference: the item keeps working even if
+the defining pack is later removed.
 
 ```yaml
 name: kara_tur_wakizashi
 system: dnd5e
-category: Weapon   # Weapon | Armor | Clothing | Container | Consumable | Tool | Material | Valuable | Document | Key | Other
+category: Weapon   # built-in: Weapon | Armor | Clothing | Container | Consumable | Tool | Material | Valuable | Document | Key | Other — or your own (see below)
 tags: [martial, melee, exotic, kara-tur]
 description: A curved short blade favored by Kara-Tur duelists.
 properties:
@@ -548,11 +551,23 @@ properties:
   damageType: slashing
   weight: 2
   costGp: 20
+equipZones: [MainHand]        # built-in: Head | Face | Neck | Torso | Back | Waist | Hands | Wrists | Legs | Feet | MainHand | OffHand | Ring | Accessory — or your own
+equipLayer: Held               # built-in: Base | Armor | Outer | Held
 ```
 
 A "custom firearms pack" or "mountaineering equipment pack" is just more files under
 `RulesetData/{system}/items/` — no code required (see `climbers_kit.yaml` in the directory
 structure above for a non-weapon example).
+
+**`category` and equip `zone`/`layer` values are open strings, not a fixed enum.** A pack can
+introduce its own alongside the built-in set — e.g. a jewelry/piercings pack using
+`category: Jewelry` and zones like `septum`, `anklet`, or `bellyButton`. Two different zone names
+never conflict with each other regardless of whether either is built-in, so a new zone "just works"
+for equip-slot purposes with no code change: it defaults to capacity 1 (one item at a time) and
+contributes no AC/warmth/movement unless the item's own `properties` carry `acBonus`/`warmth`/
+`speedModifier` directly. A handful of zone-specific behaviors (Ring/Accessory holding multiple
+items at once, Torso/Armor governing dex-cap, OffHand+Held being detected as a shield) only apply to
+the built-in names.
 
 ---
 

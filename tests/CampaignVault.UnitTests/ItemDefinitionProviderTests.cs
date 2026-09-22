@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Services;
 using Xunit;
@@ -28,7 +29,7 @@ public class ItemDefinitionProviderTests
         var items = Provider.GetItemsForSystem(RulesetSystem.Dnd5e);
         var longsword = items["longsword"];
 
-        Assert.Equal(ItemCategory.Weapon, longsword.Category);
+        Assert.Equal(ItemCategories.Weapon, longsword.Category);
         Assert.Contains("martial", longsword.Tags);
         Assert.Equal("1d8", longsword.Properties["damage"]?.ToString());
         Assert.Equal("slashing", longsword.Properties["damageType"]?.ToString());
@@ -40,14 +41,14 @@ public class ItemDefinitionProviderTests
         var items = Provider.GetItemsForSystem(RulesetSystem.Dnd5e);
         var kit = items["climbers_kit"];
 
-        Assert.Equal(ItemCategory.Tool, kit.Category);
+        Assert.Equal(ItemCategories.Tool, kit.Category);
         Assert.Contains("mountaineering", kit.Tags);
     }
 
     [Fact]
     public void QueryItems_FiltersByCategoryAndTag()
     {
-        var weapons = Provider.QueryItems(RulesetSystem.Dnd5e, category: ItemCategory.Weapon);
+        var weapons = Provider.QueryItems(RulesetSystem.Dnd5e, category: ItemCategories.Weapon);
         Assert.Contains(weapons, i => i.Name == "longsword");
         Assert.DoesNotContain(weapons, i => i.Name == "climbers_kit");
 
@@ -62,5 +63,28 @@ public class ItemDefinitionProviderTests
         var results = Provider.QueryItems(RulesetSystem.Dnd5e, nameQuery: "sword");
         Assert.Contains(results, i => i.Name == "longsword");
         Assert.DoesNotContain(results, i => i.Name == "climbers_kit");
+    }
+
+    [Fact]
+    public void Merge_ChildOmitsEquipZones_InheritsParent()
+    {
+        var parent = new ItemDefinition { Name = "base_armor", System = RulesetSystem.Dnd5e, EquipZones = [EquipZones.Torso], EquipLayer = EquipLayers.Armor };
+        var child = new ItemDefinition { Name = "fancy_armor", Inherits = ["base_armor"] };
+
+        var merged = ItemDefinition.Merge(child, parent);
+
+        Assert.Equal([EquipZones.Torso], merged.EquipZones);
+        Assert.Equal(EquipLayers.Armor, merged.EquipLayer);
+    }
+
+    [Fact]
+    public void Merge_ChildSetsEquipZones_ChildWins()
+    {
+        var parent = new ItemDefinition { Name = "base_armor", System = RulesetSystem.Dnd5e, EquipZones = [EquipZones.Torso], EquipLayer = EquipLayers.Armor };
+        var child = new ItemDefinition { Name = "helmet_variant", Inherits = ["base_armor"], EquipZones = [EquipZones.Head] };
+
+        var merged = ItemDefinition.Merge(child, parent);
+
+        Assert.Equal([EquipZones.Head], merged.EquipZones);
     }
 }

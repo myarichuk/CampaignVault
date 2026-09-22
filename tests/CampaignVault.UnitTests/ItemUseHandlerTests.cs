@@ -24,7 +24,7 @@ public class ItemUseHandlerTests : IClassFixture<RavenDBFixture>
         Id = id,
         Name = id,
         HolderId = "chars/hero",
-        CoreCategory = ItemCategory.Consumable,
+        CoreCategory = ItemCategories.Consumable,
         MaxCharges = maxCharges,
         CurrentCharges = currentCharges,
         CampaignName = "item-use-test",

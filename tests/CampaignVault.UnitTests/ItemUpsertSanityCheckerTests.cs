@@ -7,12 +7,40 @@ namespace CampaignVault.Tests;
 public class ItemUpsertSanityCheckerTests
 {
     [Fact]
+    public void GetNudges_DefinitionNameUnresolved_Nudges()
+    {
+        var request = new ItemUpsertRequest
+        {
+            Id = "items/mystery", Name = "Mystery Item", Description = "d", HolderId = "chars/hero",
+            DefinitionName = "no-such-template",
+        };
+
+        var nudges = ItemUpsertSanityChecker.GetNudges(request, definitionNameUnresolved: true);
+
+        Assert.Contains(nudges, n => n.Contains("definitionName"));
+    }
+
+    [Fact]
+    public void GetNudges_DefinitionNameResolved_NoNudge()
+    {
+        var request = new ItemUpsertRequest
+        {
+            Id = "items/longsword-1", Name = "Longsword", Description = "d", HolderId = "chars/hero",
+            DefinitionName = "longsword",
+        };
+
+        var nudges = ItemUpsertSanityChecker.GetNudges(request, definitionNameUnresolved: false);
+
+        Assert.DoesNotContain(nudges, n => n.Contains("definitionName"));
+    }
+
+    [Fact]
     public void GetNudges_TwoHandedWithoutMainHand_Nudges()
     {
         var request = new ItemUpsertRequest
         {
             Id = "items/greatsword", Name = "Greatsword", Description = "d", HolderId = "chars/hero",
-            EquipZones = [EquipZone.OffHand], EquipLayer = EquipLayer.Held, TwoHanded = true,
+            EquipZones = [EquipZones.OffHand], EquipLayer = EquipLayers.Held, TwoHanded = true,
         };
 
         var nudges = ItemUpsertSanityChecker.GetNudges(request);
@@ -26,7 +54,7 @@ public class ItemUpsertSanityCheckerTests
         var request = new ItemUpsertRequest
         {
             Id = "items/greatsword", Name = "Greatsword", Description = "d", HolderId = "chars/hero",
-            EquipZones = [EquipZone.MainHand], EquipLayer = EquipLayer.Held, TwoHanded = true,
+            EquipZones = [EquipZones.MainHand], EquipLayer = EquipLayers.Held, TwoHanded = true,
         };
 
         var nudges = ItemUpsertSanityChecker.GetNudges(request);
@@ -54,7 +82,7 @@ public class ItemUpsertSanityCheckerTests
         var request = new ItemUpsertRequest
         {
             Id = "items/pauldron", Name = "Pauldron", Description = "d", HolderId = "chars/hero",
-            EquipZones = [EquipZone.Torso], EquipLayer = EquipLayer.Armor, StackGroup = "pauldron-left",
+            EquipZones = [EquipZones.Torso], EquipLayer = EquipLayers.Armor, StackGroup = "pauldron-left",
         };
 
         var nudges = ItemUpsertSanityChecker.GetNudges(request);
@@ -68,7 +96,7 @@ public class ItemUpsertSanityCheckerTests
         var request = new ItemUpsertRequest
         {
             Id = "items/weird", Name = "Weird", Description = "d", HolderId = "chars/hero",
-            EquipZones = [EquipZone.MainHand, EquipZone.Torso], EquipLayer = EquipLayer.Held,
+            EquipZones = [EquipZones.MainHand, EquipZones.Torso], EquipLayer = EquipLayers.Held,
         };
 
         var nudges = ItemUpsertSanityChecker.GetNudges(request);
@@ -82,7 +110,7 @@ public class ItemUpsertSanityCheckerTests
         var request = new ItemUpsertRequest
         {
             Id = "items/breastplate", Name = "Breastplate", Description = "d", HolderId = "chars/hero",
-            EquipZones = [EquipZone.Torso], EquipLayer = EquipLayer.Armor,
+            EquipZones = [EquipZones.Torso], EquipLayer = EquipLayers.Armor,
         };
 
         var nudges = ItemUpsertSanityChecker.GetNudges(request);

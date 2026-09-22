@@ -656,7 +656,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Name = "Longsword",
                 Description = "A sword",
                 HolderId = charId,
-                CoreCategory = ItemCategory.Weapon
+                CoreCategory = ItemCategories.Weapon
             });
 
             await session.SaveChangesAsync();
@@ -709,7 +709,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Name = "Scroll",
                 Description = "A scroll",
                 HolderId = charId,
-                CoreCategory = ItemCategory.Document,
+                CoreCategory = ItemCategories.Document,
                 Tags = ["Spell Scrolls"]
             });
 

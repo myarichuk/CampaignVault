@@ -29,7 +29,7 @@ public class Item : ICampaignScopedEntity, IArchivable
 
     public List<string> DistinctiveFeatures { get; set; } = [];
 
-    public ItemCategory CoreCategory { get; set; }
+    public string CoreCategory { get; set; } = ItemCategories.Other;
 
     public List<string> Tags { get; set; } = [];
 
@@ -64,14 +64,14 @@ public class Item : ICampaignScopedEntity, IArchivable
     /// Zones this item can be equipped into (e.g. Torso, MainHand, Ring). Empty = not equippable.
     /// Set at creation via world_build; state changes go through item_equip/item_unequip.
     /// </summary>
-    public List<EquipZone> EquipZones { get; set; } = [];
+    public List<string> EquipZones { get; set; } = [];
 
     /// <summary>
     /// Which layer this item occupies within its EquipZones. Items in different layers on the
     /// same zone can coexist (e.g. Torso/Armor + Torso/Outer); items in the same zone+layer conflict.
     /// Null when EquipZones is empty (not equippable).
     /// </summary>
-    public EquipLayer? EquipLayer { get; set; }
+    public string? EquipLayer { get; set; }
 
     /// <summary>Whether this item is currently worn/wielded. Set only via item_equip/item_unequip.</summary>
     public bool IsEquipped { get; set; }
@@ -245,50 +245,68 @@ public class ItemDetailParticipant
     public ItemDetailParticipantRole Role { get; set; }
 }
 
-[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
-public enum ItemCategory
+/// <summary>
+/// Broad item classification. Open strings (not a closed enum) so plugin item packs can introduce
+/// their own categories (e.g. "Jewelry") via YAML alone, with no code/SDK change required. The
+/// constants below are the built-in/suggested set — engine logic that keys off a specific category
+/// (weapon auto-pick, container detection, a couple of heuristics) only recognizes these by name;
+/// an unrecognized category from a plugin pack simply doesn't participate in those narrow behaviors,
+/// it isn't rejected.
+/// </summary>
+public static class ItemCategories
 {
-    Weapon,
-    Armor,
-    Clothing,
-    Container,
-    Consumable,
-    Tool,
-    Material,
-    Valuable,
-    Document,
-    Key,
-    Other
+    public const string Weapon = "Weapon";
+    public const string Armor = "Armor";
+    public const string Clothing = "Clothing";
+    public const string Container = "Container";
+    public const string Consumable = "Consumable";
+    public const string Tool = "Tool";
+    public const string Material = "Material";
+    public const string Valuable = "Valuable";
+    public const string Document = "Document";
+    public const string Key = "Key";
+    public const string Other = "Other";
 }
 
-/// <summary>Body/hand slot an equippable item can occupy. An item may list several (e.g. a two-handed weapon lists MainHand only but sets TwoHanded).</summary>
-[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
-public enum EquipZone
+/// <summary>
+/// Body/hand slot an equippable item can occupy. An item may list several (e.g. a two-handed weapon
+/// lists MainHand only but sets TwoHanded). Open strings (not a closed enum) so plugin item packs
+/// can introduce their own zones (e.g. "Septum", "Anklet", "BellyButton") via YAML alone — two
+/// distinct zone names never conflict with each other regardless of whether either is a built-in
+/// value, so a new zone "just works" for slot-independence purposes. The constants below are the
+/// built-in/suggested set; a couple of zone-specific carve-outs (Ring/Accessory capacity, Torso
+/// dex-cap, OffHand shield detection, MainHand two-handed) only apply to these exact names — a new
+/// zone defaults to capacity 1 and no special AC/dex-cap treatment unless a pack's item Properties
+/// carry the relevant keys (acBonus/warmth/speedModifier) directly.
+/// </summary>
+public static class EquipZones
 {
-    Head,
-    Face,
-    Neck,
-    Torso,
-    Back,
-    Waist,
-    Hands,
-    Wrists,
-    Legs,
-    Feet,
-    MainHand,
-    OffHand,
-    Ring,
-    Accessory
+    public const string Head = "Head";
+    public const string Face = "Face";
+    public const string Neck = "Neck";
+    public const string Torso = "Torso";
+    public const string Back = "Back";
+    public const string Waist = "Waist";
+    public const string Hands = "Hands";
+    public const string Wrists = "Wrists";
+    public const string Legs = "Legs";
+    public const string Feet = "Feet";
+    public const string MainHand = "MainHand";
+    public const string OffHand = "OffHand";
+    public const string Ring = "Ring";
+    public const string Accessory = "Accessory";
 }
 
-/// <summary>Layer within an EquipZone. Distinct layers on the same zone coexist (robe over chainmail); same zone+layer conflicts.</summary>
-[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
-public enum EquipLayer
+/// <summary>
+/// Layer within an EquipZone. Distinct layers on the same zone coexist (robe over chainmail); same
+/// zone+layer conflicts. Open strings (not a closed enum) — see <see cref="EquipZones"/> for why.
+/// </summary>
+public static class EquipLayers
 {
-    Base,
-    Armor,
-    Outer,
-    Held
+    public const string Base = "Base";
+    public const string Armor = "Armor";
+    public const string Outer = "Outer";
+    public const string Held = "Held";
 }
 
 /// <summary>

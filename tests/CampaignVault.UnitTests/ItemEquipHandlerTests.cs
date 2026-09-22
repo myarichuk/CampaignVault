@@ -21,13 +21,13 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
 
     private static Character MakeCharacter(string id) => new() { Id = id, Name = id, CampaignName = "equip-test" };
 
-    private static Item MakeArmor(string id, string holderId, EquipZone zone = EquipZone.Torso, EquipLayer layer = EquipLayer.Armor, bool twoHanded = false) =>
+    private static Item MakeArmor(string id, string holderId, string zone = EquipZones.Torso, string layer = EquipLayers.Armor, bool twoHanded = false) =>
         new()
         {
             Id = id,
             Name = id,
             HolderId = holderId,
-            CoreCategory = ItemCategory.Armor,
+            CoreCategory = ItemCategories.Armor,
             EquipZones = [zone],
             EquipLayer = layer,
             TwoHanded = twoHanded,
@@ -211,7 +211,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         var character = MakeCharacter("chars/equip_ground_item_in_context");
         var item = MakeArmor("items/equip_ground_item_worn", character.Id);
-        var groundItem = MakeArmor("items/equip_ground_item_untouched", character.Id, EquipZone.Feet);
+        var groundItem = MakeArmor("items/equip_ground_item_untouched", character.Id, EquipZones.Feet);
         groundItem.HolderId = null!; // Ground/unheld item tracked in the same batch context.
 
         await session.StoreAsync(character);
@@ -237,9 +237,9 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var character = MakeCharacter("chars/equip_layering");
-        var chainmail = MakeArmor("items/equip_layering_chainmail", character.Id, EquipZone.Torso, EquipLayer.Armor);
+        var chainmail = MakeArmor("items/equip_layering_chainmail", character.Id, EquipZones.Torso, EquipLayers.Armor);
         chainmail.IsEquipped = true;
-        var robe = MakeArmor("items/equip_layering_robe", character.Id, EquipZone.Torso, EquipLayer.Outer);
+        var robe = MakeArmor("items/equip_layering_robe", character.Id, EquipZones.Torso, EquipLayers.Outer);
         robe.Properties["stacksWithArmor"] = "true";
 
         await session.StoreAsync(character);
@@ -410,10 +410,10 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var character = MakeCharacter("chars/equip_incompatible_tag");
-        var trousers = MakeArmor("items/equip_incompatible_tag_trousers", character.Id, EquipZone.Legs, EquipLayer.Base);
+        var trousers = MakeArmor("items/equip_incompatible_tag_trousers", character.Id, EquipZones.Legs, EquipLayers.Base);
         trousers.Tags = ["legwear-outer"];
         trousers.IsEquipped = true;
-        var loincloth = MakeArmor("items/equip_incompatible_tag_loincloth", character.Id, EquipZone.Legs, EquipLayer.Outer);
+        var loincloth = MakeArmor("items/equip_incompatible_tag_loincloth", character.Id, EquipZones.Legs, EquipLayers.Outer);
         loincloth.IncompatibleWithEquippedTags = ["legwear-outer"];
 
         await session.StoreAsync(character);

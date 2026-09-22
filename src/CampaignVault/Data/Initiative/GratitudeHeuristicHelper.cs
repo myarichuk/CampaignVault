@@ -15,11 +15,11 @@ internal static class GratitudeHeuristicHelper
         "gift", "reward", "jewelry", "necklace", "present", "heirloom"
     };
 
-    private static readonly HashSet<ItemCategory> GiftCategories =
-    [
-        ItemCategory.Valuable,
-        ItemCategory.Clothing
-    ];
+    private static readonly HashSet<string> GiftCategories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ItemCategories.Valuable,
+        ItemCategories.Clothing
+    };
 
     /// <summary>
     /// Fallback tokens used when CampaignConfig.GratitudeHeuristicTokens is empty (the config

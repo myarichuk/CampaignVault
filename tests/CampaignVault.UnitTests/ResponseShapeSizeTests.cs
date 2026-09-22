@@ -49,7 +49,7 @@ public class ResponseShapeSizeTests
         Name = "Rusty Sword",
         Description = "A dull, notched blade that has seen better decades.",
         HolderId = "locations/rusty-nail",
-        CoreCategory = ItemCategory.Weapon,
+        CoreCategory = ItemCategories.Weapon,
         Tags = ["rusty", "well-worn"],
         DistinctiveFeatures = ["Leather wrap loose at the hilt"],
         CurrentState = "Dull",

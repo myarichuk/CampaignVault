@@ -359,7 +359,7 @@ public class Dnd5eRulesetResolverTests
             Id = "items/schlag",
             Name = "Schlag",
             HolderId = "chars/valen",
-            CoreCategory = ItemCategory.Weapon,
+            CoreCategory = ItemCategories.Weapon,
             Properties = new Dictionary<string, object>
             {
                 ["damageDice"] = "1d10",

@@ -64,7 +64,7 @@ public class PlotThreadResponseShapeTests : IClassFixture<RavenDBFixture>
             Name = "Test Item",
             Description = "A test item",
             HolderId = "chars/response-test-npc",
-            CoreCategory = ItemCategory.Valuable,
+            CoreCategory = ItemCategories.Valuable,
             CampaignName = _campaignName
         };
         await session.StoreAsync(item);

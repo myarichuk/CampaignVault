@@ -100,11 +100,11 @@ public static class ArmorParameterResolver
 
         foreach (var item in equippedItems)
         {
-            var isShield = item.EquipLayer == Models.EquipLayer.Held && item.EquipZones.Contains(EquipZone.OffHand);
+            var isShield = item.EquipLayer == EquipLayers.Held && item.EquipZones.Contains(EquipZones.OffHand, StringComparer.OrdinalIgnoreCase);
             var stacksWithArmor = TryGetProperty(item, "stacksWithArmor", out var stacksRaw)
                                    && stacksRaw.Equals("true", StringComparison.OrdinalIgnoreCase);
 
-            var contributesAc = item.EquipLayer == Models.EquipLayer.Armor || isShield || stacksWithArmor;
+            var contributesAc = item.EquipLayer == EquipLayers.Armor || isShield || stacksWithArmor;
 
             if (contributesAc && TryGetProperty(item, "acBonus", out var acRaw) && float.TryParse(acRaw, out var ac))
             {
@@ -136,7 +136,7 @@ public static class ArmorParameterResolver
     private static Item? ResolveDexCapSource(IReadOnlyList<Item> equippedItems, List<string> messages)
     {
         var torsoArmorItems = equippedItems
-            .Where(i => i.EquipLayer == Models.EquipLayer.Armor && i.EquipZones.Contains(EquipZone.Torso))
+            .Where(i => i.EquipLayer == EquipLayers.Armor && i.EquipZones.Contains(EquipZones.Torso, StringComparer.OrdinalIgnoreCase))
             .ToList();
 
         if (torsoArmorItems.Count <= 1)

@@ -6,24 +6,26 @@ namespace CampaignVault.Models;
 /// </summary>
 public static class EquipSlotRules
 {
-    private static readonly Dictionary<EquipZone, int> ZoneCapacityOverrides = new()
+    private static readonly Dictionary<string, int> ZoneCapacityOverrides = new(StringComparer.OrdinalIgnoreCase)
     {
-        [EquipZone.Ring] = 2,
-        [EquipZone.Accessory] = 4,
+        [EquipZones.Ring] = 2,
+        [EquipZones.Accessory] = 4,
     };
 
     /// <summary>Max simultaneous items (within the same layer+StackGroup pool) a zone can hold. Default 1.</summary>
-    public static int GetCapacity(EquipZone zone) => ZoneCapacityOverrides.GetValueOrDefault(zone, 1);
+    public static int GetCapacity(string zone) => ZoneCapacityOverrides.GetValueOrDefault(zone, 1);
 
     /// <summary>
     /// The zones an item occupies once equipped, including the implicit OffHand occupation of a
     /// two-handed MainHand item.
     /// </summary>
-    public static IReadOnlyList<EquipZone> GetEffectiveZones(Item item)
+    public static IReadOnlyList<string> GetEffectiveZones(Item item)
     {
-        if (item.TwoHanded && item.EquipZones.Contains(EquipZone.MainHand) && !item.EquipZones.Contains(EquipZone.OffHand))
+        if (item.TwoHanded
+            && item.EquipZones.Contains(EquipZones.MainHand, StringComparer.OrdinalIgnoreCase)
+            && !item.EquipZones.Contains(EquipZones.OffHand, StringComparer.OrdinalIgnoreCase))
         {
-            var zones = new List<EquipZone>(item.EquipZones) { EquipZone.OffHand };
+            var zones = new List<string>(item.EquipZones) { EquipZones.OffHand };
             return zones;
         }
 
@@ -34,7 +36,7 @@ public static class EquipSlotRules
     /// Per-zone conflict detail: which zone/layer/StackGroup pool is contested, its capacity, how many
     /// items currently occupy it, and which already-equipped item(s) would need to be freed.
     /// </summary>
-    public sealed record ZoneConflict(EquipZone Zone, EquipLayer Layer, string? StackGroup, int Capacity, int Occupied, IReadOnlyList<Item> ToFree);
+    public sealed record ZoneConflict(string Zone, string Layer, string? StackGroup, int Capacity, int Occupied, IReadOnlyList<Item> ToFree);
 
     /// <summary>
     /// Result of <see cref="FindConflicts"/>: the flattened, de-duplicated set of items that must be
@@ -79,9 +81,9 @@ public static class EquipSlotRules
         {
             var capacity = GetCapacity(zone);
             var occupying = equippedList
-                .Where(i => i.EquipLayer == candidate.EquipLayer
+                .Where(i => string.Equals(i.EquipLayer, candidate.EquipLayer, StringComparison.OrdinalIgnoreCase)
                             && string.Equals(i.StackGroup, candidate.StackGroup, StringComparison.OrdinalIgnoreCase)
-                            && GetEffectiveZones(i).Contains(zone))
+                            && GetEffectiveZones(i).Contains(zone, StringComparer.OrdinalIgnoreCase))
                 .Where(i => allConflicts.All(c => c.Id != i.Id))
                 .ToList();
 
@@ -93,7 +95,7 @@ public static class EquipSlotRules
                     .Take(needToFree)
                     .ToList();
                 allConflicts.AddRange(toFree);
-                zoneConflicts.Add(new ZoneConflict(zone, candidate.EquipLayer.Value, candidate.StackGroup, capacity, occupying.Count, toFree));
+                zoneConflicts.Add(new ZoneConflict(zone, candidate.EquipLayer!, candidate.StackGroup, capacity, occupying.Count, toFree));
             }
         }
 
