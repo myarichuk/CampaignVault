@@ -18,7 +18,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
     private const int MCP_PORT = 8080;
     private const string CONTAINER_IMAGE = "campaignvault:latest";
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         try
         {
@@ -54,7 +54,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
         }
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _httpClient?.Dispose();
         if (_container != null)

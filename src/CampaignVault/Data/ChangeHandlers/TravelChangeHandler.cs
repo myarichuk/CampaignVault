@@ -13,13 +13,14 @@ public class TravelChangeHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is TravelChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var tc = (TravelChange)change;
 
-        if (!context.Characters.TryGetValue(tc.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(tc.CharacterId, out var character))
         {
-            var suggested = await context.SuggestCharacterMatchAsync(tc.CharacterId);
+            var suggested = await ctx.SuggestCharacterMatchAsync(tc.CharacterId);
             return ChangeHandlerResult.Failure($"Character {tc.CharacterId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
@@ -35,13 +36,13 @@ public class TravelChangeHandler : IWorldChangeHandler
             }
         }
 
-        if (!context.Locations.TryGetValue(tc.DestinationLocationId, out var destination))
+        if (!ctx.Locations.TryGetValue(tc.DestinationLocationId, out var destination))
         {
-            var suggested = await context.SuggestLocationMatchAsync(tc.DestinationLocationId);
+            var suggested = await ctx.SuggestLocationMatchAsync(tc.DestinationLocationId);
             return ChangeHandlerResult.Failure($"Destination location {tc.DestinationLocationId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
-        var time = await context.GetCurrentTimeAsync();
+        var time = await ctx.GetCurrentTimeAsync();
 
         var terrain = tc.TerrainOverride;
         var encounterRiskModifier = tc.EncounterRiskModifier ?? 0;
@@ -49,9 +50,9 @@ public class TravelChangeHandler : IWorldChangeHandler
         LocationExit? exit = null;
         if (character.CurrentLocationId != null)
         {
-            if (!context.Locations.TryGetValue(character.CurrentLocationId, out var startLoc) || startLoc == null)
+            if (!ctx.Locations.TryGetValue(character.CurrentLocationId, out var startLoc) || startLoc == null)
             {
-                startLoc = await context.Session.LoadAsync<Location>(character.CurrentLocationId);
+                startLoc = await ctx.Session.LoadAsync<Location>(character.CurrentLocationId);
             }
 
             if (startLoc != null)
@@ -85,7 +86,7 @@ public class TravelChangeHandler : IWorldChangeHandler
         }
 
         var (interrupted, hoursTraveled, deltas, narratives) = await _resolver.EvaluateAsync(
-            context,
+            ctx,
             character,
             destination,
             totalHours,
@@ -110,7 +111,7 @@ public class TravelChangeHandler : IWorldChangeHandler
             var tirednessDelta = (float)((hoursTraveled / 4.0) * 10.0);
             if (tirednessDelta > 0)
             {
-                await context.Dispatcher.DispatchMutationAsync(context, new NeedChange
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, new NeedChange
                 {
                     CharacterId = tc.CharacterId,
                     Need = "tiredness",
@@ -122,13 +123,13 @@ public class TravelChangeHandler : IWorldChangeHandler
         // Apply generated deltas from the rule (e.g. ActivityChange if interrupted, EventOccurred)
         foreach (var delta in deltas)
         {
-            await context.Dispatcher.DispatchMutationAsync(context, delta, ct);
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, delta, ct);
         }
 
         // 1. Update location & activity
         if (!interrupted)
         {
-            await context.Dispatcher.DispatchMutationAsync(context, new ActivityChange
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new ActivityChange
             {
                 CharacterId = tc.CharacterId,
                 NewLocationId = tc.DestinationLocationId,
@@ -149,17 +150,17 @@ public class TravelChangeHandler : IWorldChangeHandler
             // blocks the travel, since sometimes the region-level node genuinely is the destination.
             if (destination.Type == LocationType.Region)
             {
-                context.RecordMessage(
+                ctx.RecordMessage(
                     $"NOTE: {destination.Name} ({destination.Id}) is a broad Region. If this stop is a specific spot " +
                     "within it rather than the whole region, consider creating a child Location first (world_build " +
                     $"with parentLocationId='{destination.Id}') and traveling there instead — otherwise this scene inherits " +
                     "the entire region's quests/NPCs/rumors.");
             }
 
-            await ClearStaleEngagementsAsync(character, tc.DestinationLocationId, context, ct);
+            await ClearStaleEngagementsAsync(character, tc.DestinationLocationId, ctx, ct);
 
             var msg = $"Travel: {character.Name} traveled to {destination.Name}. {tc.Narrative}";
-            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new EventOccurred
             {
                 Category = EventCategory.Travel,
                 Summary = msg,
@@ -170,9 +171,9 @@ public class TravelChangeHandler : IWorldChangeHandler
         }
         else
         {
-            context.RecordMessage($"Travel interrupted: {string.Join(" ", narratives)}");
+            ctx.RecordMessage($"Travel interrupted: {string.Join(" ", narratives)}");
 
-            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new EventOccurred
             {
                 Category = EventCategory.Travel,
                 Summary = $"Travel interrupted: {character.Name} did not reach {destination.Name}. {string.Join(" ", narratives)}".Trim(),
@@ -193,8 +194,9 @@ public class TravelChangeHandler : IWorldChangeHandler
     /// kept only if its target ends up at the same destination (i.e. they traveled together).
     /// </summary>
     private static async Task ClearStaleEngagementsAsync(
-        Character character, string destinationLocationId, ChangeContext context, CancellationToken ct)
+        Character character, string destinationLocationId, IChangeContext context, CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         var relations = character.SystemStats?.EngagementRelations;
         if (relations is not { Count: > 0 })
         {
@@ -210,8 +212,8 @@ public class TravelChangeHandler : IWorldChangeHandler
 
             if (!context.Characters.TryGetValue(relation.TargetId, out var target))
             {
-                target = context.Session != null
-                    ? await context.Session.LoadAsync<Character>(relation.TargetId, ct)
+                target = ctx.Session != null
+                    ? await ctx.Session.LoadAsync<Character>(relation.TargetId, ct)
                     : null;
             }
 
@@ -222,7 +224,7 @@ public class TravelChangeHandler : IWorldChangeHandler
 
             if (target != null)
             {
-                await context.Dispatcher.DispatchMutationAsync(context, new EngagementRelationChange
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, new EngagementRelationChange
                 {
                     CharacterId = character.Id,
                     TargetId = relation.TargetId,
@@ -245,7 +247,7 @@ public class TravelChangeHandler : IWorldChangeHandler
     /// TravelChange hasn't run yet) and sever the relation, even though everyone is headed to the same
     /// place in the same beat. Checking the batch directly makes the outcome order-independent.
     /// </summary>
-    private static bool HasCoTravelInBatch(string targetId, string destinationLocationId, ChangeContext context) =>
+    private static bool HasCoTravelInBatch(string targetId, string destinationLocationId, IChangeContext context) =>
         context.Batch?.OfType<TravelChange>().Any(tc =>
             string.Equals(tc.CharacterId, targetId, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(tc.DestinationLocationId, destinationLocationId, StringComparison.OrdinalIgnoreCase)) == true;

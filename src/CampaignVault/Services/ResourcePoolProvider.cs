@@ -1,5 +1,6 @@
 using System.Reflection;
 using CampaignVault.Data.Templates;
+using CampaignVault.Plugins;
 using CampaignVault.Models;
 
 namespace CampaignVault.Services;
@@ -11,7 +12,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ResourcePoolProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<ResourcePoolTemplate>> _loaders =
+    private readonly Dictionary<string, List<RulesetTemplateLoader<ResourcePoolTemplate>>> _loaders =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, IReadOnlyDictionary<string, ResourcePoolTemplate>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
@@ -21,10 +22,10 @@ public class ResourcePoolProvider : IRulesetYamlProvider
     public ResourcePoolProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["pools"]);
-        foreach (var (systemSlug, subfolder) in discovered)
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["pools"], PluginDataRoots.Additional);
+        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
         {
-            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
         }
     }
 
@@ -36,11 +37,22 @@ public class ResourcePoolProvider : IRulesetYamlProvider
         Assembly embeddedAssembly,
         ILogger? logger)
     {
-        _loaders[system] = new RulesetTemplateLoader<ResourcePoolTemplate>(
+        if (!_loaders.TryGetValue(system, out var list))
+        {
+            list = [];
+            _loaders[system] = list;
+        }
+
+        // First loader pulls embedded host defaults; later plugin roots are disk-only overlays.
+        var embeddedPrefix = list.Count == 0
+            ? $"CampaignVault.RulesetData.{systemSlug}.{subfolder}"
+            : $"CampaignVault.RulesetData.__plugin__.{systemSlug}.{subfolder}";
+
+        list.Add(new RulesetTemplateLoader<ResourcePoolTemplate>(
             Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
             embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
-            logger);
+            embeddedPrefix,
+            logger));
     }
 
     public IReadOnlyDictionary<string, ResourcePoolTemplate> GetPoolsForSystem(string system)
@@ -50,10 +62,15 @@ public class ResourcePoolProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loader))
+            if (!_loaders.TryGetValue(system, out var loaders) || loaders.Count == 0)
                 return new Dictionary<string, ResourcePoolTemplate>();
 
-            var raw = loader.Load();
+            var raw = new Dictionary<string, ResourcePoolTemplate>(StringComparer.OrdinalIgnoreCase);
+            foreach (var loader in loaders)
+            {
+                foreach (var (name, def) in loader.Load())
+                    raw[name] = def;
+            }
             var resolver = new RulesetTemplateResolver<ResourcePoolTemplate>(
                 name => raw.GetValueOrDefault(name),
                 ResourcePoolTemplate.Merge);

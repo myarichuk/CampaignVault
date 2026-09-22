@@ -8,29 +8,30 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var act = (ActivityChange)change;
         
-        if (!context.Characters.TryGetValue(act.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(act.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(act.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(act.CharacterId, ct);
             if (character == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(act.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(act.CharacterId);
                 var msg = $"Character {act.CharacterId} not found during ActivityChange.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage("WARNING: " + msg);
-                context.RecordFailure();
+                ctx.RecordMessage("WARNING: " + msg);
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
 
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         if (act.NewActivity != null)
@@ -45,17 +46,17 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             // UpdateLocation is the sole authority for whether this change touches location — a non-null
             // NewLocationId with UpdateLocation:false must not relocate the character (see RestChangeHandler,
             // which intentionally never moves the character on rest).
-            if (!string.IsNullOrEmpty(act.NewLocationId) && !context.Locations.TryGetValue(act.NewLocationId, out _))
+            if (!string.IsNullOrEmpty(act.NewLocationId) && !ctx.Locations.TryGetValue(act.NewLocationId, out _))
             {
-                var suggested = await context.SuggestLocationMatchAsync(act.NewLocationId);
+                var suggested = await ctx.SuggestLocationMatchAsync(act.NewLocationId);
                 var msg = $"Location {act.NewLocationId} not found during ActivityChange.";
                 if (suggested != null)
                 {
                     msg += $" Did you mean: {suggested}?";
                 }
 
-                context.RecordMessage("WARNING: " + msg);
-                context.RecordFailure();
+                ctx.RecordMessage("WARNING: " + msg);
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
 

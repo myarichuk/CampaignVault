@@ -11,13 +11,14 @@ namespace CampaignVault.Data.ChangeHandlers;
 internal static class ItemHolderQueryHelper
 {
     public static async Task<List<Item>> GetHeldItemsAsync(
-        ChangeContext context, string holderId, CancellationToken ct = default)
+        IChangeContext context, string holderId, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var result = new Dictionary<string, Item>(StringComparer.OrdinalIgnoreCase);
 
-        if (context.Session != null && !string.IsNullOrWhiteSpace(holderId))
+        if (ctx.Session != null && !string.IsNullOrWhiteSpace(holderId))
         {
-            var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(context.Session, holderId, waitForNonStale: true, ct: ct);
+            var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(ctx.Session, holderId, waitForNonStale: true, ct: ct);
             foreach (var i in held) result[i.Id] = i;
         }
 
@@ -33,7 +34,7 @@ internal static class ItemHolderQueryHelper
     }
 
     public static async Task<List<Item>> GetEquippedItemsAsync(
-        ChangeContext context, string holderId, string? excludeItemId = null, CancellationToken ct = default)
+        IChangeContext context, string holderId, string? excludeItemId = null, CancellationToken ct = default)
     {
         var held = await GetHeldItemsAsync(context, holderId, ct);
         return held

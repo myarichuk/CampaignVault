@@ -151,7 +151,7 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
 
         var badKind = await mgmt.GetRulesReference(slug, "monsters");
         Assert.False(badKind.Success);
-        Assert.Contains("'handbook', 'spells', or 'creatures'", badKind.Summary);
+        Assert.Contains("'handbook', 'spells', 'creatures', 'items'", badKind.Summary);
     }
 
     [Fact]

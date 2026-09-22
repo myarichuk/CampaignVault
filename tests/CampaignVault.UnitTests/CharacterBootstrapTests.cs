@@ -641,6 +641,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
             summary,
             dispatcher,
             null,
+            null,
             campaign);
     }
 }

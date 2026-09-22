@@ -16,9 +16,10 @@ public class SceneInterruptChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var sic = (SceneInterruptCheck)change;
 
         if (string.IsNullOrWhiteSpace(sic.CharacterId))
@@ -31,23 +32,23 @@ public class SceneInterruptChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("locationId is required.");
         }
 
-        if (!context.Characters.TryGetValue(sic.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(sic.CharacterId, out var character))
         {
-            var suggested = await context.SuggestCharacterMatchAsync(sic.CharacterId);
+            var suggested = await ctx.SuggestCharacterMatchAsync(sic.CharacterId);
             return ChangeHandlerResult.Failure(
                 $"Character {sic.CharacterId} not found."
                 + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
-        if (!context.Locations.TryGetValue(sic.LocationId, out var location))
+        if (!ctx.Locations.TryGetValue(sic.LocationId, out var location))
         {
-            var suggested = await context.SuggestLocationMatchAsync(sic.LocationId);
+            var suggested = await ctx.SuggestLocationMatchAsync(sic.LocationId);
             return ChangeHandlerResult.Failure(
                 $"Location {sic.LocationId} not found."
                 + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
-        if (context.ActiveCombat != null)
+        if (ctx.ActiveCombat != null)
         {
             return ChangeHandlerResult.Failure(
                 "Scene interrupt check cannot run during active combat. Use combat promotion instead.");
@@ -59,12 +60,12 @@ public class SceneInterruptChangeHandler : IWorldChangeHandler
                 $"Character {character.Name} is not at {location.Name} (current: {character.CurrentLocationId ?? "unknown"}).");
         }
 
-        // context.Characters is only batch-preloaded from this change's own CharacterId/LocationId
+        // ctx.Characters is only batch-preloaded from this change's own CharacterId/LocationId
         // properties (the default reflection-based ExtractInvolvedEntities), so for a standalone
         // scene_interrupt_check it contains just the acting PC — union it with a direct location query
         // so NPCs present but not otherwise named in this batch still count.
         var presentIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var c in context.Characters.Values)
+        foreach (var c in ctx.Characters.Values)
         {
             if (string.Equals(c.CurrentLocationId, sic.LocationId, StringComparison.OrdinalIgnoreCase))
             {
@@ -72,9 +73,9 @@ public class SceneInterruptChangeHandler : IWorldChangeHandler
             }
         }
 
-        if (context.Session != null)
+        if (ctx.Session != null)
         {
-            var presentNpcs = await PressureQueryHelper.QueryPresentNpcsAsync(context.Session, sic.LocationId, ct);
+            var presentNpcs = await PressureQueryHelper.QueryPresentNpcsAsync(ctx.Session, sic.LocationId, ct);
             foreach (var npc in presentNpcs)
             {
                 presentIds.Add(npc.Id);
@@ -94,29 +95,29 @@ public class SceneInterruptChangeHandler : IWorldChangeHandler
                 + "Set ambientCrowd via location_update first.");
         }
 
-        var time = await context.GetCurrentTimeAsync();
+        var time = await ctx.GetCurrentTimeAsync();
         var currentDay = (int)time.TotalDaysElapsed;
 
-        if (context.Session != null
+        if (ctx.Session != null
             && await PressureQueryHelper.HasSceneInterruptTodayAsync(
-                context.Session, context.CampaignName, sic.LocationId, currentDay, ct))
+                ctx.Session, ctx.CampaignName, sic.LocationId, currentDay, ct))
         {
             return ChangeHandlerResult.Failure(
                 $"Scene interrupt cooldown active for {location.Name} today (day {currentDay}). "
                 + "Resolve the prior interrupt or wait until the next day.");
         }
 
-        var heldItems = context.Items.Values
+        var heldItems = ctx.Items.Values
             .Where(i => string.Equals(i.HolderId, character.Id, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         var personalScore = SceneVulnerabilityHeuristics.ScoreCharacter(character, heldItems);
         var riskModifier = SceneVulnerabilityHeuristics.ResolveRiskModifier(sic.RiskModifier, personalScore);
         var contextModifier = SceneVulnerabilityHeuristics.ScoreLocationInterruptContext(
-            location, presentNpcCount, context.Factions);
+            location, presentNpcCount, ctx.Factions);
 
         var (interrupted, deltas, narratives) = await _resolver.EvaluateSceneInterruptAsync(
-            context,
+            ctx,
             character,
             location,
             riskModifier,
@@ -125,14 +126,14 @@ public class SceneInterruptChangeHandler : IWorldChangeHandler
 
         foreach (var delta in deltas)
         {
-            await context.Dispatcher.DispatchMutationAsync(context, delta, ct);
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, delta, ct);
         }
 
         if (!interrupted)
         {
             return new ChangeHandlerResult(
                 true,
-                $"Crowd interrupt check: no reaction this beat (riskModifier {riskModifier}, context +{contextModifier}).");
+                $"Crowd interrupt check: no reaction this beat (riskModifier {riskModifier}, ctx +{contextModifier}).");
         }
 
         return new ChangeHandlerResult(

@@ -35,6 +35,7 @@ public class StressFatigueNeedsTests : IClassFixture<RavenDBFixture>
             [],
             new WorldChangeDispatcher(new List<IWorldChangeHandler>(), new CampaignDocumentKeys()),
             null,
+            null,
             "test-campaign"
         );
     }

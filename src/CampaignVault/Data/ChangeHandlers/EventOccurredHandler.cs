@@ -11,9 +11,10 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var ev = (EventOccurred)change;
 
         if (ev.Category == EventCategory.Conversation && (ev.Involved == null || ev.Involved.Count == 0))
@@ -25,8 +26,8 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
                 "Do NOT use 'participants' — the field name is 'involved'.");
         }
 
-        var currentTime = await context.GetCurrentTimeAsync();
-        var id = await ResolveEventIdAsync(ev.EventId, context, ct);
+        var currentTime = await ctx.GetCurrentTimeAsync();
+        var id = await ResolveEventIdAsync(ev.EventId, ctx, ct);
 
         // Resolve importance: explicit > Deliberate floor > category default
         var importance = ev.Importance ?? ResolveImportanceForCategory(ev.Category, ev.RecordingMode);
@@ -38,7 +39,7 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             ?? ev.Involved?.FirstOrDefault(id2 => id2.StartsWith("locations/", StringComparison.OrdinalIgnoreCase));
         if (locationId != null && ev.LocationId == null)
         {
-            context.RecordMessage(
+            ctx.RecordMessage(
                 $"NOTE: 'locationId' was omitted but '{locationId}' was found in 'involved' — used it as the event's location. " +
                 "Prefer setting 'locationId' explicitly next time.");
         }
@@ -59,23 +60,23 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             Details = ev.Details
         };
 
-        e.CampaignName = context.CampaignName;
+        e.CampaignName = ctx.CampaignName;
 
-        await context.LogEventAsync(e);
+        await ctx.LogEventAsync(e);
         // Don't echo ev.Summary back — the caller just supplied that exact text in this same
         // request. Only report the resolved ID when the caller didn't choose it itself (auto-generated
         // GUID) — it may need that ID later for sourceEventIds; a collision fallback is already
         // reported separately by ResolveEventIdAsync.
         if (string.IsNullOrWhiteSpace(ev.EventId))
         {
-            context.RecordMessage($"Event logged (id: {e.Id}).");
+            ctx.RecordMessage($"Event logged (id: {e.Id}).");
         }
 
         // Always echoed structurally (not just the auto-generated-ID case above) — a client-chosen
         // EventId can still come back different from what was requested (ResolveEventIdAsync's
         // collision fallback), so CommittedIds is the one place a caller can trust to hold what was
         // actually persisted, without re-deriving it from Summary text.
-        context.RecordCommittedId(e.Id);
+        ctx.RecordCommittedId(e.Id);
 
         // Skip novelty scoring for engine/bookkeeping-generated categories (transient eviction departures,
         // timeskip/simulation logging, crowd interrupts) — these are auto-narrated, not LLM narrative
@@ -84,11 +85,11 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         if (ev.Category is not (EventCategory.Departure or EventCategory.Timeskip or EventCategory.Simulation
             or EventCategory.SceneInterrupt or EventCategory.Test))
         {
-            var (similarity, noveltyHint) = await EventNoveltyAdvisor.ScoreAsync(context, e, ct);
+            var (similarity, noveltyHint) = await EventNoveltyAdvisor.ScoreAsync(ctx, e, ct);
             e.NoveltyScore = similarity;
             if (noveltyHint != null)
             {
-                context.RecordMessage(noveltyHint);
+                ctx.RecordMessage(noveltyHint);
             }
         }
 
@@ -130,8 +131,9 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
     /// unlike LocationCreate's upsert-on-collision, events are an append-only log and silent overwrite
     /// would destroy prior history.
     /// </summary>
-    private static async Task<string> ResolveEventIdAsync(string? requestedId, ChangeContext context, CancellationToken ct)
+    private static async Task<string> ResolveEventIdAsync(string? requestedId, IChangeContext context, CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         if (string.IsNullOrWhiteSpace(requestedId))
         {
             return "events/" + Guid.NewGuid();
@@ -141,9 +143,9 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
             ? requestedId
             : "events/" + requestedId;
 
-        if (context.Session != null)
+        if (ctx.Session != null)
         {
-            var existing = await context.Session.LoadAsync<Event>(id, ct);
+            var existing = await ctx.Session.LoadAsync<Event>(id, ct);
             if (existing != null)
             {
                 var fallbackId = "events/" + Guid.NewGuid();

@@ -1464,16 +1464,20 @@ public class ArchiveEntityChange : WorldChange
 /// Lets the DM shift the campaign's center of gravity (dungeon crawl → political thriller)
 /// via take_turn without a dedicated management tool.
 /// </summary>
-[Description("Update campaign-level meta (currently narrative focus tags).")]
+[Description("Update campaign-level meta (narrative focus, enabled modes, house-rule SystemOptions keys).")]
 public class CampaignUpdateChange : WorldChange
 {
     [Description("Full replacement list of narrative focus tags (e.g. ['political intrigue', 'court politics']). Pass every tag you want retained — this replaces the whole list, it does not append.")]
     [JsonPropertyName("narrativeFocus")]
     public List<string>? NarrativeFocus { get; set; }
 
-    [Description("Full replacement list of enabled interaction-mode IDs (e.g. ['crafting', 'astral_combat']) — see mode_transition. Pass every mode ID you want enabled; this replaces the whole list, it does not append. Only registered mode plugins can be enabled — see get_commit_schema for mode_transition, or the server's plugin catalog for what's installed.")]
+    [Description("Full replacement list of enabled interaction-mode IDs (e.g. ['crafting', 'astral_combat', 'lewd_encounter']) — see mode_transition. Pass every mode ID you want enabled; this replaces the whole list, it does not append. Only registered mode plugins can be enabled — see get_commit_schema for mode_transition, or the server's plugin catalog for what's installed.")]
     [JsonPropertyName("enabledModeIds")]
     public List<string>? EnabledModeIds { get; set; }
+
+    [Description("House-rule / plugin campaign options to MERGE into SystemOptions (e.g. {\"intimacyTone\": \"grimdark\"}). Only listed keys are written; existing keys are left alone. Plugin-declared keys appear in plugin.json campaignOptions.")]
+    [JsonPropertyName("systemOptions")]
+    public Dictionary<string, string>? SystemOptions { get; set; }
 }
 
 /// <summary>

@@ -128,6 +128,9 @@ public class InteractionModesTests
             context);
 
         Assert.True(result.Success);
+        Assert.NotNull(context.ActiveMode);
+        Assert.Equal("crafting", context.ActiveMode.ModeId);
+        Assert.True(context.ActiveMode.IsActive);
         await session.Received(1).StoreAsync(
             Arg.Is<ModeEncounter>(e => e.ModeId == "crafting" && e.IsActive && e.LocationId == "locations/forge"),
             Arg.Any<CancellationToken>());
@@ -181,12 +184,14 @@ public class InteractionModesTests
         var context = ChangeContextTestHelper.Create(
             session: session,
             campaignName: "test",
+            activeMode: existing,
             config: new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["crafting"] });
 
         var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "exit" }, context);
 
         Assert.True(result.Success);
         Assert.False(existing.IsActive);
+        Assert.Null(context.ActiveMode);
     }
 
     // --- Track A: CampaignConfig.EnabledModeIds write path (campaign_update) ---
@@ -227,8 +232,8 @@ public class InteractionModesTests
     private sealed class RecordingObserver : IWorldChangeObserver
     {
         public List<WorldChange> Observed { get; } = [];
-        public bool IsInterestedIn(WorldChange committed, ChangeContext context) => true;
-        public Task OnCommittedAsync(WorldChange committed, ChangeContext context, CancellationToken ct = default)
+        public bool IsInterestedIn(WorldChange committed, IChangeContext context) => true;
+        public Task OnCommittedAsync(WorldChange committed, IChangeContext context, CancellationToken ct = default)
         {
             Observed.Add(committed);
             return Task.CompletedTask;
@@ -237,15 +242,15 @@ public class InteractionModesTests
 
     private sealed class ThrowingObserver : IWorldChangeObserver
     {
-        public bool IsInterestedIn(WorldChange committed, ChangeContext context) => true;
-        public Task OnCommittedAsync(WorldChange committed, ChangeContext context, CancellationToken ct = default)
+        public bool IsInterestedIn(WorldChange committed, IChangeContext context) => true;
+        public Task OnCommittedAsync(WorldChange committed, IChangeContext context, CancellationToken ct = default)
             => throw new InvalidOperationException("boom");
     }
 
     private sealed class InlineHandler(Func<WorldChange, bool> shouldHandle) : IWorldChangeHandler
     {
         public bool ShouldHandle(WorldChange change) => shouldHandle(change);
-        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
             => Task.FromResult(ChangeHandlerResult.Ok);
     }
 
@@ -311,7 +316,7 @@ public class InteractionModesTests
     private sealed class FailingInlineHandler : IWorldChangeHandler
     {
         public bool ShouldHandle(WorldChange change) => true;
-        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
             => Task.FromResult(ChangeHandlerResult.Failure("nope"));
     }
 

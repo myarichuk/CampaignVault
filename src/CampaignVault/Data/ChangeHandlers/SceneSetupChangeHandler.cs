@@ -12,8 +12,9 @@ public sealed class SceneSetupChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is SceneSetupChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var src = (SceneSetupChange)change;
 
         if (src.Engagement is null && src.Spatial is null)
@@ -23,7 +24,7 @@ public sealed class SceneSetupChangeHandler : IWorldChangeHandler
 
         if (src.Engagement is not null)
         {
-            await context.Dispatcher.DispatchMutationAsync(context, new EngagementRelationChange
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new EngagementRelationChange
             {
                 CharacterId = src.CharacterId,
                 TargetId = src.TargetId,
@@ -36,7 +37,7 @@ public sealed class SceneSetupChangeHandler : IWorldChangeHandler
 
         if (src.Spatial is not null)
         {
-            await context.Dispatcher.DispatchMutationAsync(context, new SpatialPositionChange
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new SpatialPositionChange
             {
                 CharacterId = src.CharacterId,
                 TargetId = src.TargetId,

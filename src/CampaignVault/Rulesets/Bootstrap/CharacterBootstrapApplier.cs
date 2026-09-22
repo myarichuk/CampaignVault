@@ -12,10 +12,11 @@ internal static class CharacterBootstrapApplier
         int? commitMaxHp,
         int? commitCurrentHp,
         BootstrapTrigger trigger,
-        ChangeContext context,
+        IChangeContext context,
         HitPointDerivationMode? hpModeOverride = null,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var hp = BootstrapHpResolver.Resolve(character, commitMaxHp, commitCurrentHp);
         var report = await bootstrap.ApplyCreationAsync(new BootstrapContext
         {
@@ -25,7 +26,7 @@ internal static class CharacterBootstrapApplier
             ExplicitCurrentHp = hp.ExplicitCurrentHp,
             HpModeOverride = hpModeOverride,
             Trigger = trigger,
-            Session = context.Session,
+            Session = ctx.Session,
             CampaignName = context.CampaignName,
         }, ct);
 

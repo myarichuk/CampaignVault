@@ -80,7 +80,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         var ctx = new ChangeContext(session, new Dictionary<string, Character>(), new Dictionary<string, Item>(),
             new Dictionary<string, Location>(), new Dictionary<string, Faction>(), new Dictionary<string, Quest>(),
             NullLogger.Instance,
-            [], dispatcher, null, "test-camp-hp");
+            [], dispatcher, null, null, "test-camp-hp");
 
         var result = await handler.ApplyAsync(change, ctx);
         Assert.True(result.Success);

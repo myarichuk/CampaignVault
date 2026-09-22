@@ -1,5 +1,6 @@
 using System.Reflection;
 using CampaignVault.Data.Templates;
+using CampaignVault.Plugins;
 
 namespace CampaignVault.Services;
 
@@ -8,7 +9,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class BackgroundDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<BackgroundDefinition>> _loaders =
+    private readonly Dictionary<string, List<RulesetTemplateLoader<BackgroundDefinition>>> _loaders =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, IReadOnlyDictionary<string, BackgroundDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
@@ -18,10 +19,10 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
     public BackgroundDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["backgrounds"]);
-        foreach (var (systemSlug, subfolder) in discovered)
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["backgrounds"], PluginDataRoots.Additional);
+        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
         {
-            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
         }
     }
 
@@ -33,11 +34,22 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
         Assembly embeddedAssembly,
         ILogger? logger)
     {
-        _loaders[system] = new RulesetTemplateLoader<BackgroundDefinition>(
+        if (!_loaders.TryGetValue(system, out var list))
+        {
+            list = [];
+            _loaders[system] = list;
+        }
+
+        // First loader pulls embedded host defaults; later plugin roots are disk-only overlays.
+        var embeddedPrefix = list.Count == 0
+            ? $"CampaignVault.RulesetData.{systemSlug}.{subfolder}"
+            : $"CampaignVault.RulesetData.__plugin__.{systemSlug}.{subfolder}";
+
+        list.Add(new RulesetTemplateLoader<BackgroundDefinition>(
             Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
             embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
-            logger);
+            embeddedPrefix,
+            logger));
     }
 
     public IReadOnlyDictionary<string, BackgroundDefinition> GetBackgroundsForSystem(string system)
@@ -47,10 +59,15 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loader))
+            if (!_loaders.TryGetValue(system, out var loaders) || loaders.Count == 0)
                 return new Dictionary<string, BackgroundDefinition>();
 
-            var raw = loader.Load();
+            var raw = new Dictionary<string, BackgroundDefinition>(StringComparer.OrdinalIgnoreCase);
+            foreach (var loader in loaders)
+            {
+                foreach (var (name, def) in loader.Load())
+                    raw[name] = def;
+            }
             var resolver = new RulesetTemplateResolver<BackgroundDefinition>(
                 name => raw.GetValueOrDefault(name),
                 BackgroundDefinition.Merge);

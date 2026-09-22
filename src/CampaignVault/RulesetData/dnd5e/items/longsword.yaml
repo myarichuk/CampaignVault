@@ -1,0 +1,12 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: longsword
+system: dnd5e
+category: Weapon
+tags: [martial, melee, versatile]
+description: A versatile one-handed blade, dealing more damage when wielded two-handed.
+properties:
+  damage: 1d8
+  damageVersatile: 1d10
+  damageType: slashing
+  weight: 3
+  costGp: 15

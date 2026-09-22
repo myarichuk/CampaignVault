@@ -7,7 +7,7 @@ namespace CampaignVault.Data;
 /// comparisons/lookups deeper in the pipeline (e.g. ItemTransferHandler's "chars/"-prefix checks,
 /// or a document load against a differently-prefixed ID that was never actually stored).
 /// </summary>
-internal static class CanonicalId
+public static class CanonicalId
 {
     public const string Characters = "chars/";
     public const string Locations = "locations/";

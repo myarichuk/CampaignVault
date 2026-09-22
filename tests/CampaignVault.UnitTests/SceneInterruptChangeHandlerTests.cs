@@ -223,7 +223,7 @@ public class SceneInterruptChangeHandlerTests : IClassFixture<RavenDBFixture>
 
         public bool ShouldHandle(WorldChange change) => true;
 
-        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
         {
             _captured.Add(change);
             return Task.FromResult(ChangeHandlerResult.Ok);

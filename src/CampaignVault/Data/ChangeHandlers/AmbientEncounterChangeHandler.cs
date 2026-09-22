@@ -20,8 +20,9 @@ public class AmbientEncounterChangeHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is AmbientEncounterCheck;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var aec = (AmbientEncounterCheck)change;
 
         if (string.IsNullOrWhiteSpace(aec.LocationId) || aec.Hours <= 0)
@@ -29,18 +30,18 @@ public class AmbientEncounterChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Ok;
         }
 
-        if (!context.Locations.TryGetValue(aec.LocationId, out var location)
-            || context.Session == null
-            || context.CampaignName == null)
+        if (!ctx.Locations.TryGetValue(aec.LocationId, out var location)
+            || ctx.Session == null
+            || ctx.CampaignName == null)
         {
-            // Engine-authored and best-effort: missing context shouldn't fail the whole tick.
+            // Engine-authored and best-effort: missing ctx shouldn't fail the whole tick.
             return ChangeHandlerResult.Ok;
         }
 
         // No CharacterId on this change (it's an ambient, party-wide check, not tied to one commit's
         // acting character) — resolve whichever PC is actually here to attribute the roll to.
         var partyHere = await PressureQueryHelper.QueryPartyAtLocationAsync(
-            context.Session, context.CampaignName, aec.LocationId, 1, ct);
+            ctx.Session, ctx.CampaignName, aec.LocationId, 1, ct);
         var character = partyHere.FirstOrDefault();
         if (character == null)
         {
@@ -48,7 +49,7 @@ public class AmbientEncounterChangeHandler : IWorldChangeHandler
         }
 
         var (interrupted, _, deltas, narratives) = await _resolver.EvaluateAsync(
-            context,
+            ctx,
             character,
             location,
             aec.Hours,
@@ -58,7 +59,7 @@ public class AmbientEncounterChangeHandler : IWorldChangeHandler
 
         foreach (var delta in deltas)
         {
-            await context.Dispatcher.DispatchMutationAsync(context, delta, ct);
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, delta, ct);
         }
 
         return interrupted

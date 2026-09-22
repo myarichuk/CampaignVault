@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using CampaignVault.Models;
 using CampaignVault.Tools;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace CampaignVault.Tests;
 

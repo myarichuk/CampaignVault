@@ -12,19 +12,20 @@ public sealed class ItemPersistenceSurfacedHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var surfaced = (ItemPersistenceSurfaced)change;
 
-        if (!context.Items.TryGetValue(surfaced.ItemId, out var item))
+        if (!ctx.Items.TryGetValue(surfaced.ItemId, out var item))
         {
-            item = await context.Session.LoadAsync<Item>(surfaced.ItemId, ct);
+            item = await ctx.Session.LoadAsync<Item>(surfaced.ItemId, ct);
             if (item == null)
             {
                 return ChangeHandlerResult.Failure($"Item '{surfaced.ItemId}' not found.");
             }
-            context.RegisterNewItem(item);
+            ctx.RegisterNewItem(item);
         }
 
         if (item.Persistence == null)

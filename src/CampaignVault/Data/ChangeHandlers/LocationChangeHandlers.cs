@@ -6,19 +6,20 @@ public class LocationUpdateHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is LocationUpdate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var lu = (LocationUpdate)change;
         var createdNew = false;
 
-        if (!context.Locations.TryGetValue(lu.LocationId, out var loc))
+        if (!ctx.Locations.TryGetValue(lu.LocationId, out var loc))
         {
-            loc = await context.Session.LoadAsync<Location>(lu.LocationId, ct);
+            loc = await ctx.Session.LoadAsync<Location>(lu.LocationId, ct);
             if (loc == null)
             {
                 if (string.IsNullOrWhiteSpace(lu.Name))
                 {
-                    var hints = await context.SuggestLocationMatchAsync(lu.LocationId);
+                    var hints = await ctx.SuggestLocationMatchAsync(lu.LocationId);
                     var msg = $"Location {lu.LocationId} not found. Pass 'name' to create it as a new location instead.";
                     if (hints != null)
                     {
@@ -34,13 +35,13 @@ public class LocationUpdateHandler : IWorldChangeHandler
                     Name = lu.Name,
                     Description = lu.Description ?? "",
                     Type = lu.Type ?? LocationType.Room,
-                    CampaignName = context.CampaignName,
+                    CampaignName = ctx.CampaignName,
                     LastUpdated = DateTime.UtcNow
                 };
-                await context.Session.StoreAsync(loc, ct);
+                await ctx.Session.StoreAsync(loc, ct);
                 createdNew = true;
             }
-            context.RegisterNewLocation(loc);
+            ctx.RegisterNewLocation(loc);
         }
 
         if (lu.Name != null)
@@ -80,21 +81,21 @@ public class LocationUpdateHandler : IWorldChangeHandler
             if (added)
             {
                 var exitTargetId = lu.AddExit.TargetLocationId;
-                var exitTargetExists = context.Locations.ContainsKey(exitTargetId)
-                    || (await context.Session.LoadAsync<Location>(exitTargetId, ct) != null);
+                var exitTargetExists = ctx.Locations.ContainsKey(exitTargetId)
+                    || (await ctx.Session.LoadAsync<Location>(exitTargetId, ct) != null);
                 if (!exitTargetExists)
                 {
-                    context.RecordMessage(
+                    ctx.RecordMessage(
                         $"Warning: exit added from '{loc.Id}' to '{exitTargetId}', but '{exitTargetId}' does not currently exist. " +
                         "This is allowed (create it before the party reaches it), but verify the ID is correct.");
                 }
             }
 
             if (added
-                && context.Config?.AutoRepairLocationConnectivity == true
+                && ctx.Config?.AutoRepairLocationConnectivity == true
                 && !lu.AddExit.OneWay)
             {
-                await TryAutoRepairReverseExitAsync(context, loc, lu.AddExit, ct);
+                await TryAutoRepairReverseExitAsync(ctx, loc, lu.AddExit, ct);
             }
         }
 
@@ -183,15 +184,15 @@ public class LocationUpdateHandler : IWorldChangeHandler
         if (stateChanged)
         {
             var eventId = "events/" + Guid.NewGuid();
-            await context.LogEventAsync(new Event
+            await ctx.LogEventAsync(new Event
             {
                 Id = eventId,
                 Summary = $"{loc.Name}'s state changed: {loc.CurrentState ?? "(no override)"}; tags: [{string.Join(", ", loc.VisualTags)}]",
                 Category = EventCategory.Interaction,
                 Importance = MemoryImportance.Trivial,
                 LocationId = lu.LocationId,
-                DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
-                CampaignName = context.CampaignName,
+                DayLogged = (await ctx.GetCurrentTimeAsync()).TotalDaysElapsed,
+                CampaignName = ctx.CampaignName,
             });
 
             if (loc.CurrentState != stateBefore)
@@ -242,15 +243,16 @@ public class LocationUpdateHandler : IWorldChangeHandler
     }
 
     private static async Task TryAutoRepairReverseExitAsync(
-        ChangeContext context,
+        IChangeContext context,
         Location sourceLoc,
         LocationExit forwardExit,
         CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         var targetId = forwardExit.TargetLocationId;
         if (!context.Locations.TryGetValue(targetId, out var targetLoc))
         {
-            targetLoc = await context.Session.LoadAsync<Location>(targetId, ct);
+            targetLoc = await ctx.Session.LoadAsync<Location>(targetId, ct);
             if (targetLoc == null)
             {
                 return;

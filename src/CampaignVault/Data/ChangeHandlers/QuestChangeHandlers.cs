@@ -6,13 +6,14 @@ public class QuestProgressHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is QuestProgress;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var qp = (QuestProgress)change;
 
-        if (!context.Quests.TryGetValue(qp.QuestId, out var quest))
+        if (!ctx.Quests.TryGetValue(qp.QuestId, out var quest))
         {
-            var suggested = await context.SuggestQuestMatchAsync(qp.QuestId);
+            var suggested = await ctx.SuggestQuestMatchAsync(qp.QuestId);
             return ChangeHandlerResult.Failure($"Quest {qp.QuestId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
@@ -41,7 +42,7 @@ public class QuestProgressHandler : IWorldChangeHandler
         var objective = quest.Objectives[indexToUpdate];
         
         // Update objective state
-        var time = await context.GetCurrentTimeAsync();
+        var time = await ctx.GetCurrentTimeAsync();
         var dayCompleted = qp.NewState switch
         {
             QuestState.Complete => time.TotalDaysElapsed,
@@ -86,11 +87,11 @@ public class QuestProgressHandler : IWorldChangeHandler
         {
             if (qp.InvolvedIds is null or { Count: 0 })
             {
-                context.RecordMessage(
+                ctx.RecordMessage(
                     $"NOTE: 'involvedIds' was omitted — the auto-generated '{quest.OverallState}' event for quest '{quest.Title}' has no 'involved' entries.");
             }
 
-            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new EventOccurred
             {
                 Category = EventCategory.Discovery,
                 Summary = $"Quest '{quest.Title}' is now {quest.OverallState}.",
@@ -105,7 +106,7 @@ public class QuestProgressHandler : IWorldChangeHandler
         {
             var resolvedObjective = qp.ObjectiveIndex.HasValue ? null : $" (matched: '{quest.Objectives[indexToUpdate].Description}')";
             var overallNote = quest.OverallState != oldOverallState ? $" Quest overall state is now {quest.OverallState}." : "";
-            context.RecordMessage($"Quest '{quest.Title}': objective {indexToUpdate}{resolvedObjective}.{overallNote}");
+            ctx.RecordMessage($"Quest '{quest.Title}': objective {indexToUpdate}{resolvedObjective}.{overallNote}");
         }
 
         return ChangeHandlerResult.Ok;

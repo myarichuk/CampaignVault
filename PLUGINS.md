@@ -12,6 +12,23 @@ This is a deliberate, current-stage tradeoff, not an oversight: it's the same tr
 
 A real sandboxing story (for eventually running plugins from authors you *don't* personally vet — a community marketplace) is planned but not built: see `PLUGIN_SYSTEM_PLAN.md`'s Track C for the two real tiers under consideration (Jint for lightweight scripted hooks, WebAssembly/Extism for genuine capability-isolated native-speed plugins). Until Track C ships, treat every code plugin as equivalent to first-party code.
 
+## Installing a Plugin (For Operators)
+
+This section is for someone installing a plugin *someone else wrote*. If you're authoring your own, skip to [Quick Start](#quick-start).
+
+**Before you install — trust checklist:**
+- Does the package contain a `Plugins/*.dll`? If so, it's a **code plugin** — see [Trust Model](#trust-model) above. Only install code plugins from authors you'd trust to run any other native code on this machine.
+- `RulesetData/`-only packages (no `.dll`) are **data-only** — parsed YAML, no code execution risk — safe to try even from a less-vetted source.
+- A `plugin.json` with a `campaignOptions` block only ever *declares string/number/bool defaults* the host may merge into a campaign's house-rule settings — it is data, not code, regardless of whether the package also ships a DLL.
+
+**Steps:**
+1. Extract the package into your CampaignVault install directory, preserving its layout — a data-only pack drops files under `RulesetData/<system>/...`; a code plugin drops a folder under `Plugins/<PluginName>/` containing `plugin.json` + the `.dll` (see [Directory Structure](#directory-structure)).
+2. Restart the MCP host process (or the Docker container) so it re-scans `Plugins/` and `RulesetData/`.
+3. Verify it loaded: check startup logs for `Loaded plugin assembly: ...` (code plugins) or call `get_rules_reference(kind: 'items' | 'spells' | ...)` / `get_config` and confirm the new system, content, or `campaignOptions`-declared keys show up.
+4. If nothing shows up, see [Troubleshooting](#troubleshooting) below (`"Failed to load plugin assembly"`, `"DLL loads but module is not registered"`, `"YAML data not loading"`).
+
+Uninstalling: delete the plugin's folder/files and restart. Data-only content simply stops resolving; any campaign `SystemOptions` keys the plugin had defaulted are left as-is on existing campaigns (they were copied into the campaign's config, not referenced live).
+
 ## Quick Start
 
 ### Data-Only Plugin (5 minutes)
@@ -51,6 +68,41 @@ public class MyCustomSystem : IRulesetModule
 ```
 
 Restart MCP. Campaigns can now use `my_ruleset` with custom rules.
+
+### External plugin repo (PluginSdk) — preferred for out-of-tree modes
+
+Out-of-tree plugins should **PackageReference `CampaignVault.PluginSdk` only** (public nuget.org when published; local feed for development). Do **not** ProjectReference the host, do **not** ship `CampaignVault.PluginSdk.dll` beside your plugin, and do **not** rely on `InternalsVisibleTo`.
+
+```xml
+<PackageReference Include="CampaignVault.PluginSdk" Version="0.1.0" />
+```
+
+Layout when installing into a host:
+
+```
+Plugins/
+  YourMode/
+    plugin.json
+    YourMode.dll          # plugin assembly only — never CampaignVault.PluginSdk.dll
+    RulesetData/          # optional YAML overlay (merged last-wins on system id)
+    skills/               # optional LLM-client sidecar; host logs path only, does not load/inject
+```
+
+`plugin.json` fields: `id`, `displayName`, `version`, `minEngineVersion` (host skips on mismatch — no boot crash), optional `modeIds`, `rulesetDataRoots` (default `./RulesetData`), `skillsPath` (default `./skills`, log-only), optional `campaignOptions` (declares house-rule config keys and their defaults — see [Campaign Option Defaults](#campaign-option-defaults) below).
+
+**Custom `$type`:** annotate with `[PluginWorldChange("my_verb")]`. Handler **dispatch** already works via `WorldChangeDispatcher.FindHandler`'s `ShouldHandle` fallback. JSON wire deserialization and `get_commit_schema` require the type registry (seeded from core `[JsonDerivedType]` + plugin attributes at load). Discriminator collisions fail fast at registration.
+
+**ALC / type identity:** the host resolves `CampaignVault.PluginSdk` from `AssemblyLoadContext.Default` for plugin ALCs. Dropping a second Sdk.dll in the plugin folder is skipped with a warning.
+
+**Skills:** sidecar-only. Operators/clients install skill markdown; the MCP host never auto-discovers or serves them.
+
+**Adult / optional content:** belongs in separate repos referencing PluginSdk; the main repo ships only neutral samples (e.g. `plugins/CraftingMode`).
+
+**Compatibility:** host engine version is `0.2.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
+
+In-tree reference: `plugins/CraftingMode` (mode id `crafting`, `$type` `crafting_step`).
+
+See also `PLUGIN_SDK_PLAN.md` (platform track) and `INTERACTION_MODES_PLAN.md`.
 
 ---
 
@@ -112,8 +164,11 @@ RulesetData/
     │   └── dwarf.yaml
     ├── classes/
     │   └── warrior.yaml
-    └── feat s/
-        └── fireball_mastery.yaml
+    ├── feat s/
+    │   └── fireball_mastery.yaml
+    └── items/
+        ├── longsword.yaml
+        └── climbers_kit.yaml
 ```
 
 **Files to create:** Just YAML files in appropriate subdirectories.
@@ -406,8 +461,16 @@ Standard subdirectories (must match provider names):
 - `conditions/` — Condition definitions (ConditionDefinitionProvider)
 - `backgrounds/` — Background definitions (BackgroundDefinitionProvider)
 - `progressions/` — Class progression tables (ProgressionDefinitionProvider)
+- `items/` — Item/equipment definitions (ItemDefinitionProvider) — not restricted to weapons/armor; see below.
 
 Not found: No error. Providers return empty if subfolder missing.
+
+Multiple roots contributing the **same subfolder for the same system** (host + plugin "items" packs)
+are **merged** by the definition providers: each root with at least one `*.yaml` is loaded in order
+(host/embedded first, then plugin roots). Duplicate `name:` entries **last-wins** (plugin overlays
+host). Empty stub folders (e.g. only `.gitkeep`) are ignored so they cannot shadow host data.
+Prefer distinct, specific names (`kara_tur_wakizashi`, not `wakizashi`) when you intend coexistence
+rather than override.
 
 ---
 
@@ -466,6 +529,72 @@ proficiencies:
 ```
 
 **Note:** Schema is system-agnostic. Define what makes sense for your system. Fields not matching any property are ignored.
+
+### Item Definition
+
+Not restricted to weapons/armor — `category` plus the open `properties` bag cover outfits, tools,
+consumables, and artifacts uniformly. This is a *template* ("what a Wakizashi is"); a campaign's
+`world_build` tool creates an `Item` *instance* ("Bob's Wakizashi") by copying a template's
+properties, not by referencing it live.
+
+```yaml
+name: kara_tur_wakizashi
+system: dnd5e
+category: Weapon   # Weapon | Armor | Clothing | Container | Consumable | Tool | Material | Valuable | Document | Key | Other
+tags: [martial, melee, exotic, kara-tur]
+description: A curved short blade favored by Kara-Tur duelists.
+properties:
+  damage: 1d6
+  damageType: slashing
+  weight: 2
+  costGp: 20
+```
+
+A "custom firearms pack" or "mountaineering equipment pack" is just more files under
+`RulesetData/{system}/items/` — no code required (see `climbers_kit.yaml` in the directory
+structure above for a non-weapon example).
+
+---
+
+## Campaign Option Defaults
+
+A plugin can declare custom **house-rule config keys** — plain string/number/bool/enum values, not
+YAML content — via `campaignOptions` in `plugin.json`. This lets a plugin ship a sensible default for
+a setting it cares about (e.g. an encumbrance variant, a firearms-availability flag) without every DM
+having to know the key exists or set it by hand.
+
+```json
+{
+  "id": "com.example.kara-tur-weapons",
+  "displayName": "Kara-Tur Weapons Pack",
+  "version": "1.0.0",
+  "campaignOptions": [
+    {
+      "key": "exoticWeaponProficiencyCost",
+      "type": "int",
+      "default": "2",
+      "description": "Feats required to gain proficiency with an exotic Kara-Tur weapon."
+    },
+    {
+      "key": "firearmsEra",
+      "type": "enum",
+      "values": ["none", "early", "modern"],
+      "default": "early",
+      "description": "Which firearms tier is available in this campaign."
+    }
+  ]
+}
+```
+
+Fields: `key` (required, the `SystemOptions` key), `type` (`string` | `enum` | `bool` | `int`, informational — all values are stored as strings), `values` (optional, allowed values for `enum`), `default` (optional; omit to declare a key with no default, e.g. for `get_config`/help-surface documentation only), `description` (optional, shown in config help surfaces).
+
+**When defaults get applied:** the host merges every loaded plugin's declared defaults into a
+campaign's `SystemOptions` when the campaign is created and whenever `set_active_system` runs — and
+**only for keys not already present**. A DM's own `campaign_update` change or a prior `set_active_system`
+call always wins; a plugin default can fill a gap but never overwrite a value someone already set.
+Runtime values live in `CampaignConfig.SystemOptions`, mirrored to `Campaign.SystemOptions` for the
+handlers that read house rules mid-turn — both copies are written from the same merged dictionary, so
+they never drift apart.
 
 ---
 

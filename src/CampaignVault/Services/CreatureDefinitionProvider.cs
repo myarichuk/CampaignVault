@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using CampaignVault.Data.Templates;
+using CampaignVault.Plugins;
 
 namespace CampaignVault.Services;
 
@@ -20,10 +21,10 @@ public class CreatureDefinitionProvider : IRulesetYamlProvider
     public CreatureDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["creatures"]);
-        foreach (var (systemSlug, subfolder) in discovered)
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["creatures"], PluginDataRoots.Additional);
+        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
         {
-            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
         }
     }
 

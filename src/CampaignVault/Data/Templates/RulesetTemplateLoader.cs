@@ -117,15 +117,27 @@ public class RulesetTemplateLoader<T> where T : RulesetTemplate
 
         SaveManifest(manifest);
 
-        // 4. Load from disk (disk files win over embedded)
+        // 4. Load from disk (disk files win over embedded). Enumerated in a fixed (alphabetical)
+        //    order so that a name collision across multiple files — e.g. two content packs both
+        //    defining "wakizashi" — resolves deterministically rather than by OS directory order.
         if (Directory.Exists(_diskDirectory))
         {
-            foreach (var filePath in Directory.EnumerateFiles(_diskDirectory, "*.yaml"))
+            foreach (var filePath in Directory.EnumerateFiles(_diskDirectory, "*.yaml")
+                         .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
                 var yaml = File.ReadAllText(filePath);
                 var template = Deserializer.Deserialize<T>(yaml);
-                if (template?.Name != null)
-                    result[template.Name] = template;
+                if (template?.Name == null)
+                    continue;
+
+                if (result.ContainsKey(template.Name))
+                {
+                    _logger?.LogWarning(
+                        "Content name '{Name}' in {FilePath} overrides an existing definition of the same name (last-loaded wins).",
+                        template.Name, filePath);
+                }
+
+                result[template.Name] = template;
             }
         }
 

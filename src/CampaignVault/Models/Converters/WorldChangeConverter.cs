@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CampaignVault.Plugins;
 
 namespace CampaignVault.Models.Converters;
 
@@ -156,12 +157,32 @@ internal static class WorldChangeNormalizer
 
 public sealed class WorldChangeArrayJsonConverter : JsonConverter<WorldChange[]>
 {
-    private static readonly JsonSerializerOptions Inner = new()
+    private static readonly object InnerGate = new();
+    private static JsonSerializerOptions? _inner;
+    private static int _innerRegistryVersion = -1;
+
+    private static JsonSerializerOptions Inner
     {
-        PropertyNameCaseInsensitive = true,
-        AllowOutOfOrderMetadataProperties = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+        get
+        {
+            lock (InnerGate)
+            {
+                var version = WorldChangeTypeRegistry.Instance.Version;
+                if (_inner is null || _innerRegistryVersion != version)
+                {
+                    _inner = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        AllowOutOfOrderMetadataProperties = true,
+                        TypeInfoResolver = WorldChangeTypeRegistry.Instance.CreateTypeInfoResolver(),
+                    };
+                    _innerRegistryVersion = version;
+                }
+
+                return _inner;
+            }
+        }
+    }
 
     public override WorldChange[]? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

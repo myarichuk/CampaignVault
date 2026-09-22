@@ -320,6 +320,12 @@ public class SystemExtension
     public Dictionary<string, float> Attributes { get; set; } = [];
 
     /// <summary>
+    /// Plugin/LLM string facts that do not fit float Attributes (anatomy, sexual history ids, recovery die faces, implement proficiency lists).
+    /// Example keys: anatomy.cock, anatomy.pussy, sexual_history, recovery_die, implement_proficiencies.
+    /// </summary>
+    public Dictionary<string, string> Traits { get; set; } = [];
+
+    /// <summary>
     /// Multipliers for incoming damage types (e.g., "Fire" -> 0.5 for resistance).
     /// Used by EncounterResolver and ruleset-specific combat logic.
     /// </summary>

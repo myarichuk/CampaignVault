@@ -27,20 +27,21 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is CharacterCreate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var cc = (CharacterCreate)change;
         if (string.IsNullOrWhiteSpace(cc.CharacterId))
         {
             return ChangeHandlerResult.Failure("characterId is required.");
         }
 
-        var existing = await context.Session.LoadAsync<Character>(cc.CharacterId, ct);
+        var existing = await ctx.Session.LoadAsync<Character>(cc.CharacterId, ct);
         if (existing != null)
         {
-            if (!string.IsNullOrEmpty(context.CampaignName)
-                && CampaignEntityVisibility.TryGetInvisibilityReason(existing, context.CampaignName, out var hidden))
+            if (!string.IsNullOrEmpty(ctx.CampaignName)
+                && CampaignEntityVisibility.TryGetInvisibilityReason(existing, ctx.CampaignName, out var hidden))
             {
                 return ChangeHandlerResult.Failure(hidden);
             }
@@ -71,7 +72,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
             {
                 var mergedIsPc = cc.IsPc || existing.IsPc;
                 var mergedCompanion = cc.IsPartyCompanion || existing.IsPartyCompanion;
-                if (!CharacterPartyRules.TryValidate(mergedIsPc, mergedCompanion, existing.CampaignName ?? context.CampaignName,
+                if (!CharacterPartyRules.TryValidate(mergedIsPc, mergedCompanion, existing.CampaignName ?? ctx.CampaignName,
                         out var partyError))
                 {
                     return ChangeHandlerResult.Failure(partyError!);
@@ -108,7 +109,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
             if (cc.SystemStats != null)
             {
-                var existingSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
+                var existingSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
                 if (!SystemStatsMerger.TryValidateRuleset(cc.SystemStats, existingSystem,
                         out var existingValidationError))
                 {
@@ -122,25 +123,25 @@ public class CharacterCreateHandler : IWorldChangeHandler
             }
 
             var activeSystemForExisting =
-                await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
+                await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
             await ApplyBootstrapAsync(existing, activeSystemForExisting, cc.MaxHp, cc.CurrentHp, null,
-                BootstrapTrigger.Create, context, ct);
+                BootstrapTrigger.Create, ctx, ct);
 
             // Reinitialize resource pools if needed (in case level/class changed)
-            var campaignConfigExisting = !string.IsNullOrEmpty(context.CampaignName)
-                ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
+            var campaignConfigExisting = !string.IsNullOrEmpty(ctx.CampaignName)
+                ? await ctx.Session.LoadAsync<CampaignConfig>(_keys.Config(ctx.CampaignName), ct)
                 : null;
             _poolInitializer.InitializePools(existing, activeSystemForExisting, campaignConfigExisting);
 
             var hint = existing.KeepAlive
                 ? " For existing PCs, prefer commit with activity/character_update instead of character_create. Call get_party to confirm PCs already exist."
                 : string.Empty;
-            context.RecordEntityCollision(cc.CharacterId,
+            ctx.RecordEntityCollision(cc.CharacterId,
                 $"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.{hint}");
             return ChangeHandlerResult.Ok;
         }
 
-        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
+        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
 
         if (cc.SystemStats != null &&
             !SystemStatsMerger.TryValidateRuleset(cc.SystemStats, activeSystem, out var validationError))
@@ -177,7 +178,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
         if (string.IsNullOrEmpty(newChar.CampaignName))
         {
-            newChar.CampaignName = context.CampaignName;
+            newChar.CampaignName = ctx.CampaignName;
         }
 
         if (!CharacterPartyRules.TryValidate(newChar.IsPc, newChar.IsPartyCompanion, newChar.CampaignName,
@@ -186,28 +187,29 @@ public class CharacterCreateHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure(createPartyError!);
         }
 
-        await ApplyBootstrapAsync(newChar, activeSystem, cc.MaxHp, cc.CurrentHp, null, BootstrapTrigger.Create, context, ct);
+        await ApplyBootstrapAsync(newChar, activeSystem, cc.MaxHp, cc.CurrentHp, null, BootstrapTrigger.Create, ctx, ct);
 
         // Initialize resource pools (spell slots, focus points, action points, etc.)
-        var campaignConfig = !string.IsNullOrEmpty(context.CampaignName)
-            ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
+        var campaignConfig = !string.IsNullOrEmpty(ctx.CampaignName)
+            ? await ctx.Session.LoadAsync<CampaignConfig>(_keys.Config(ctx.CampaignName), ct)
             : null;
         _poolInitializer.InitializePools(newChar, activeSystem, campaignConfig);
 
-        RecordClassResolutionEcho(context, newChar, activeSystem, cc.ClassLevel);
+        RecordClassResolutionEcho(ctx, newChar, activeSystem, cc.ClassLevel);
 
-        await context.Session.StoreAsync(newChar, ct);
-        context.RegisterNewCharacter(newChar);
+        await ctx.Session.StoreAsync(newChar, ct);
+        ctx.RegisterNewCharacter(newChar);
 
         return ChangeHandlerResult.Ok;
     }
 
     private void RecordClassResolutionEcho(
-        ChangeContext context,
+        IChangeContext context,
         Character character,
         string system,
         string? classLevelInput)
     {
+        var ctx = (ChangeContext)context;
         if (string.IsNullOrWhiteSpace(classLevelInput))
             return;
 
@@ -250,13 +252,14 @@ public class CharacterCreateHandler : IWorldChangeHandler
         int? explicitCurrentHp,
         HitPointDerivationMode? hpMode,
         BootstrapTrigger trigger,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct) =>
         CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
             _bootstrap, character, activeSystem, explicitMaxHp, explicitCurrentHp, trigger, context, hpMode, ct);
 
-    internal static void RecordBootstrapReport(ChangeContext context, BootstrapReport report)
+    internal static void RecordBootstrapReport(IChangeContext context, BootstrapReport report)
     {
+        var ctx = (ChangeContext)context;
         foreach (var message in report.Messages)
         {
             context.RecordMessage(message);
@@ -287,9 +290,10 @@ public class LevelUpChangeHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is LevelUpChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var levelUp = (LevelUpChange)change;
         if (string.IsNullOrWhiteSpace(levelUp.CharacterId))
         {
@@ -301,19 +305,19 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("levelsGained must be positive.");
         }
 
-        if (!context.Characters.TryGetValue(levelUp.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(levelUp.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(levelUp.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(levelUp.CharacterId, ct);
             if (character == null)
             {
                 return ChangeHandlerResult.Failure($"Character '{levelUp.CharacterId}' not found.");
             }
 
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
-        if (!string.IsNullOrEmpty(context.CampaignName)
-            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
+        if (!string.IsNullOrEmpty(ctx.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(character, ctx.CampaignName, out var hidden))
         {
             return ChangeHandlerResult.Failure(hidden);
         }
@@ -324,7 +328,7 @@ public class LevelUpChangeHandler : IWorldChangeHandler
                 $"level_up applies only to player characters (isPc: true) or party companions (isPartyCompanion: true). '{levelUp.CharacterId}' is neither.");
         }
 
-        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
+        var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
         var previousMax = character.MaxHp;
         var report = await _bootstrap.ApplyLevelGainAsync(new BootstrapContext
         {
@@ -334,23 +338,23 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             ClassGained = levelUp.ClassGained,
             HpModeOverride = levelUp.HpMode,
             Trigger = BootstrapTrigger.LevelUp,
-            Session = context.Session,
-            CampaignName = context.CampaignName,
+            Session = ctx.Session,
+            CampaignName = ctx.CampaignName,
         }, ct);
 
-        CharacterCreateHandler.RecordBootstrapReport(context, report);
+        CharacterCreateHandler.RecordBootstrapReport(ctx, report);
 
         var hpStepRan = report.Steps.Any(s => s.StepName.Contains("hit_points", StringComparison.Ordinal));
         if (character.SystemStats?.StatBlockHp is > 0 && !hpStepRan)
         {
-            context.RecordMessage(
+            ctx.RecordMessage(
                 $"Warning: level_up for '{levelUp.CharacterId}' skipped formula HP gain because systemStats.statBlockHp "
                 + $"({character.SystemStats.StatBlockHp}) is set. Remove statBlockHp for leveled PCs, or patch maxHp manually.");
         }
 
         if (report.Steps.Count == 0)
         {
-            context.RecordMessage(
+            ctx.RecordMessage(
                 $"Warning: level_up for '{levelUp.CharacterId}' applied no ruleset changes. "
                 + "Ensure systemStats has bootstrap fields (5e: hitDie/level/constitution; pf2e: classHpPerLevel/ancestryHp/level) "
                 + "and the campaign active ruleset supports level_up.");
@@ -361,24 +365,25 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             character.CurrentHp += character.MaxHp - previousMax;
         }
 
-        var campaignConfig = !string.IsNullOrEmpty(context.CampaignName)
-            ? await context.Session.LoadAsync<CampaignConfig>(_keys.Config(context.CampaignName), ct)
+        var campaignConfig = !string.IsNullOrEmpty(ctx.CampaignName)
+            ? await ctx.Session.LoadAsync<CampaignConfig>(_keys.Config(ctx.CampaignName), ct)
             : null;
         _poolInitializer.InitializePools(character, activeSystem, campaignConfig);
 
         // Don't echo levelUp.Reason back — the caller just supplied that exact text in this same
         // request. The resulting MaxHp is ruleset-formula-derived (hit die rolls, CON mod, etc.), not
         // something the caller could compute itself.
-        context.RecordMessage(
+        ctx.RecordMessage(
             $"Level up: {character.Name} gained {levelUp.LevelsGained} level(s). MaxHp {previousMax} → {character.MaxHp}.");
 
-        ApplyLevelUpChoices(character, levelUp, context);
+        ApplyLevelUpChoices(character, levelUp, ctx);
 
         return ChangeHandlerResult.Ok;
     }
 
-    private static void ApplyLevelUpChoices(Character character, LevelUpChange levelUp, ChangeContext context)
+    private static void ApplyLevelUpChoices(Character character, LevelUpChange levelUp, IChangeContext context)
     {
+        var ctx = (ChangeContext)context;
         if (character.SystemStats == null)
         {
             return;
@@ -433,16 +438,17 @@ public class ScheduleChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is ScheduleChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var sc = (ScheduleChange)change;
-        if (!context.Characters.TryGetValue(sc.CharacterId, out var c))
+        if (!ctx.Characters.TryGetValue(sc.CharacterId, out var c))
         {
-            c = await context.Session.LoadAsync<Character>(sc.CharacterId, ct);
+            c = await ctx.Session.LoadAsync<Character>(sc.CharacterId, ct);
             if (c == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(sc.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(sc.CharacterId);
                 var msg = $"Character {sc.CharacterId} not found.";
                 if (hints != null)
                 {
@@ -452,11 +458,11 @@ public class ScheduleChangeHandler : IWorldChangeHandler
                 return ChangeHandlerResult.Failure(msg);
             }
 
-            context.RegisterNewCharacter(c);
+            ctx.RegisterNewCharacter(c);
         }
 
-        if (!string.IsNullOrEmpty(context.CampaignName)
-            && CampaignEntityVisibility.TryGetInvisibilityReason(c, context.CampaignName, out var hidden))
+        if (!string.IsNullOrEmpty(ctx.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(c, ctx.CampaignName, out var hidden))
         {
             return ChangeHandlerResult.Failure(hidden);
         }
@@ -480,18 +486,19 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is CharacterUpdate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var cu = (CharacterUpdate)change;
         if (string.IsNullOrWhiteSpace(cu.CharacterId)) return ChangeHandlerResult.Failure("characterId is required.");
 
-        var character = await context.Session.LoadAsync<Character>(cu.CharacterId, ct);
+        var character = await ctx.Session.LoadAsync<Character>(cu.CharacterId, ct);
         if (character == null)
             return ChangeHandlerResult.Failure($"Character '{cu.CharacterId}' not found. Cannot update.");
 
-        if (!string.IsNullOrEmpty(context.CampaignName)
-            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
+        if (!string.IsNullOrEmpty(ctx.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(character, ctx.CampaignName, out var hidden))
         {
             return ChangeHandlerResult.Failure(hidden);
         }
@@ -526,7 +533,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
         }
 
         // Appearance/features are otherwise only recoverable from conversation memory, which is lossy
-        // across context compaction. Auto-log a low-weight history entry so recall_history/NpcRecentEvents
+        // across ctx compaction. Auto-log a low-weight history entry so recall_history/NpcRecentEvents
         // can surface *when* this changed, without requiring the caller to issue a second `event` commit.
         var appearanceChanged = character.CurrentAppearance != appearanceBefore
             || !tagsBefore.SetEquals(character.VisualTags)
@@ -539,11 +546,11 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             // earlier detail (e.g. a wound, restraint, combat residue), this is the model's one chance to
             // notice the drop before it narrates from a now-stale mental picture.
             var tagsText = character.VisualTags.Count > 0 ? $" Tags: [{string.Join(", ", character.VisualTags)}]." : string.Empty;
-            context.RecordPhysicalStateNudge(
+            ctx.RecordPhysicalStateNudge(
                 $"{character.Name}'s current appearance: {character.CurrentAppearance ?? "(no override set)"}.{tagsText}");
 
             var eventId = "events/" + Guid.NewGuid();
-            await context.LogEventAsync(new Event
+            await ctx.LogEventAsync(new Event
             {
                 Id = eventId,
                 Summary = $"{character.Name}'s appearance changed: {character.CurrentAppearance ?? "(no override)"}; tags: [{string.Join(", ", character.VisualTags)}]",
@@ -551,8 +558,8 @@ public class CharacterUpdateHandler : IWorldChangeHandler
                 Importance = MemoryImportance.Trivial,
                 Involved = [cu.CharacterId],
                 LocationId = character.CurrentLocationId,
-                DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
-                CampaignName = context.CampaignName,
+                DayLogged = (await ctx.GetCurrentTimeAsync()).TotalDaysElapsed,
+                CampaignName = ctx.CampaignName,
             });
 
             // Ground-truth provenance: which event established this specific fact. Kept separate from
@@ -579,7 +586,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             // Nudge: NPC promoted from transient to permanent — suggest creating a plot thread
             if (!keepAliveBefore && cu.KeepAlive.Value)
             {
-                context.RecordMessage(
+                ctx.RecordMessage(
                     $"NARRATIVE PROMPT: '{character.Name}' promoted from transient to permanent NPC. Consider creating a plot thread " +
                     $"(\"little story\") for them with clues, foreshadowing, and resolution conditions. " +
                     $"Use world_build with plotThreads[] to seed it, or get_entity('plot-threads') to list existing threads.");
@@ -616,7 +623,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
         if (cu.SystemStats != null)
         {
-            var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(context, _keys, ct);
+            var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
             if (!SystemStatsMerger.TryValidateRuleset(cu.SystemStats, activeSystem, out var validationError))
             {
                 return ChangeHandlerResult.Failure(validationError!);
@@ -628,7 +635,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
                 activeSystem);
 
             await CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
-                _bootstrap, character, activeSystem, null, null, BootstrapTrigger.SystemStatsPatch, context, ct: ct);
+                _bootstrap, character, activeSystem, null, null, BootstrapTrigger.SystemStatsPatch, ctx, ct: ct);
         }
 
         if (cu.DepartedAtDay.HasValue)
@@ -655,16 +662,17 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
 internal static class CharacterHandlerHelpers
 {
-    public static async Task<string> ResolveActiveSystemAsync(ChangeContext context, CampaignDocumentKeys keys,
+    public static async Task<string> ResolveActiveSystemAsync(IChangeContext context, CampaignDocumentKeys keys,
         CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         if (string.IsNullOrEmpty(context.CampaignName))
         {
             return RulesetSystem.Dnd5e;
         }
 
         var configId = keys.Config(context.CampaignName);
-        var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct);
+        var config = await ctx.Session.LoadAsync<CampaignConfig>(configId, ct);
         return config?.ActiveSystem ?? RulesetSystem.Dnd5e;
     }
 }
@@ -673,9 +681,10 @@ public class KnowledgeUpdateHandler(ILocalEmbeddingService embeddingService) : I
 {
     public bool ShouldHandle(WorldChange change) => change is KnowledgeUpdate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var ku = (KnowledgeUpdate)change;
         if (string.IsNullOrWhiteSpace(ku.CharacterId)) return ChangeHandlerResult.Failure("characterId is required.");
         if (string.IsNullOrWhiteSpace(ku.Topic)) return ChangeHandlerResult.Failure("topic is required.");
@@ -684,17 +693,17 @@ public class KnowledgeUpdateHandler(ILocalEmbeddingService embeddingService) : I
 
         if (!ku.CreateMemory)
         {
-            context.RecordMessage(
+            ctx.RecordMessage(
                 $"Skipped memory update for '{ku.CharacterId}' topic '{ku.Topic}' (createMemory=false).");
             return ChangeHandlerResult.Ok;
         }
 
-        var character = await context.Session.LoadAsync<Character>(ku.CharacterId, ct);
+        var character = await ctx.Session.LoadAsync<Character>(ku.CharacterId, ct);
         if (character == null)
             return ChangeHandlerResult.Failure($"Character '{ku.CharacterId}' not found. Cannot update knowledge.");
 
-        if (!string.IsNullOrEmpty(context.CampaignName)
-            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
+        if (!string.IsNullOrEmpty(ctx.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(character, ctx.CampaignName, out var hidden))
         {
             return ChangeHandlerResult.Failure(hidden);
         }
@@ -712,7 +721,7 @@ public class KnowledgeUpdateHandler(ILocalEmbeddingService embeddingService) : I
 
         memory.Details = ku.Details;
         character.LastUpdated = DateTime.UtcNow;
-        var time = await context.GetCurrentTimeAsync();
+        var time = await ctx.GetCurrentTimeAsync();
 
         if (isNew)
         {
@@ -750,7 +759,7 @@ public class KnowledgeUpdateHandler(ILocalEmbeddingService embeddingService) : I
                 + "but no sourceEventIds. Pass a client-chosen eventId on the paired event change in this same batch and reference it here.");
         }
 
-        await SemanticEnrichmentHelper.EnrichAsync(memory, embeddingService, context.Logger, ct);
+        await SemanticEnrichmentHelper.EnrichAsync(memory, embeddingService, ctx.Logger, ct);
 
         return ChangeHandlerResult.Ok;
     }

@@ -54,4 +54,8 @@
     <None Remove="CampaignVault.Tests\**" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <ProjectReference Include="..\CampaignVault.PluginSdk\CampaignVault.PluginSdk.csproj" />
+  </ItemGroup>
 </Project>

@@ -22,12 +22,13 @@ internal static class EventNoveltyAdvisor
     /// <summary>
     /// Overload for ChangeContext (used in change handlers). Delegates to the session-based implementation.
     /// </summary>
-    public static async Task<(double? Similarity, string? Hint)> ScoreAsync(ChangeContext context, Event newEvent, CancellationToken ct = default)
+    public static async Task<(double? Similarity, string? Hint)> ScoreAsync(IChangeContext context, Event newEvent, CancellationToken ct = default)
     {
-        if (context.Session == null || string.IsNullOrEmpty(context.CampaignName))
+        var ctx = (ChangeContext)context;
+        if (ctx.Session == null || string.IsNullOrEmpty(context.CampaignName))
             return (null, null);
 
-        return await ScoreAsync(context.Session, newEvent, context.CampaignName, context.Logger, ct);
+        return await ScoreAsync(ctx.Session, newEvent, context.CampaignName, context.Logger, ct);
     }
 
     /// <summary>

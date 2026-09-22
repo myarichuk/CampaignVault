@@ -14,32 +14,33 @@ public sealed class NpcInitiativeNudgeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var nudge = (NpcInitiativeNudge)change;
 
-        if (!context.Characters.TryGetValue(nudge.CharacterId, out _))
+        if (!ctx.Characters.TryGetValue(nudge.CharacterId, out _))
         {
-            var character = await context.Session.LoadAsync<Character>(nudge.CharacterId, ct);
+            var character = await ctx.Session.LoadAsync<Character>(nudge.CharacterId, ct);
             if (character == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(nudge.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(nudge.CharacterId);
                 var msg = $"Character {nudge.CharacterId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         nudge.Intensity = Math.Clamp(nudge.Intensity, 0f, 1f);
-        context.RecordMessage($"Initiative nudge recorded for {nudge.CharacterId} (intensity {nudge.Intensity:0.00}).");
+        ctx.RecordMessage($"Initiative nudge recorded for {nudge.CharacterId} (intensity {nudge.Intensity:0.00}).");
 
         return ChangeHandlerResult.Ok;
     }

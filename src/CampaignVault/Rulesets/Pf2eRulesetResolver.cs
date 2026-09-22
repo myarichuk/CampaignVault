@@ -157,7 +157,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return degree;
     }
 
-    protected override async Task<ResolverResult> ResolveAttackAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveAttackAsync(RulesetAction action, IChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         var targets = AttackTargetHelper.SelectTargets(action);
         if (targets.Count == 0)
@@ -184,7 +184,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
     private async Task<ResolverResult> ResolveAttackAgainstTargetAsync(
         RulesetAction action,
         string targetId,
-        ChangeContext context,
+        IChangeContext context,
         Pf2eExtension actorStats,
         List<WorldChange> mutations,
         int attackIndex,
@@ -275,7 +275,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.");
     }
 
-    protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, IChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         if (!TryResolveDc(action, actorStats, "Skill check", out var dc, out var dcError))
         {
@@ -310,7 +310,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
     protected override async Task<ResolverResult> ResolveContestedCheckAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         Pf2eExtension actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -422,7 +422,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).");
     }
 
-    protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, ChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
+    protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, IChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
     {
         if (!TryResolveDc(action, actorStats, "Saving throw", out var dc, out var dcError))
         {
@@ -444,7 +444,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
     protected override async Task<ResolverResult> ResolveSpellSaveAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         Pf2eExtension actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -498,7 +498,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
     protected override async Task<ResolverResult> ResolveSpellUtilityAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         Pf2eExtension actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)

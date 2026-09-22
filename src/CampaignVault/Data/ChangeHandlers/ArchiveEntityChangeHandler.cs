@@ -12,9 +12,10 @@ public sealed class ArchiveEntityChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var ac = (ArchiveEntityChange)change;
 
         if (string.IsNullOrWhiteSpace(ac.EntityId))
@@ -31,15 +32,15 @@ public sealed class ArchiveEntityChangeHandler : IWorldChangeHandler
 
         IArchivable? entity = ac.EntityType switch
         {
-            ArchivableEntityType.Location => await context.Session.LoadAsync<Location>(ac.EntityId, ct),
-            ArchivableEntityType.Item => await context.Session.LoadAsync<Item>(ac.EntityId, ct),
-            ArchivableEntityType.Faction => await context.Session.LoadAsync<Faction>(ac.EntityId, ct),
-            ArchivableEntityType.Quest => await context.Session.LoadAsync<Quest>(ac.EntityId, ct),
-            ArchivableEntityType.Creature => await context.Session.LoadAsync<CustomCreature>(ac.EntityId, ct),
-            ArchivableEntityType.Spell => await context.Session.LoadAsync<CustomSpell>(ac.EntityId, ct),
-            ArchivableEntityType.Feat => await context.Session.LoadAsync<CustomFeat>(ac.EntityId, ct),
-            ArchivableEntityType.Rumor => await context.Session.LoadAsync<Rumor>(ac.EntityId, ct),
-            ArchivableEntityType.PlotThread => await context.Session.LoadAsync<PlotThread>(ac.EntityId, ct),
+            ArchivableEntityType.Location => await ctx.Session.LoadAsync<Location>(ac.EntityId, ct),
+            ArchivableEntityType.Item => await ctx.Session.LoadAsync<Item>(ac.EntityId, ct),
+            ArchivableEntityType.Faction => await ctx.Session.LoadAsync<Faction>(ac.EntityId, ct),
+            ArchivableEntityType.Quest => await ctx.Session.LoadAsync<Quest>(ac.EntityId, ct),
+            ArchivableEntityType.Creature => await ctx.Session.LoadAsync<CustomCreature>(ac.EntityId, ct),
+            ArchivableEntityType.Spell => await ctx.Session.LoadAsync<CustomSpell>(ac.EntityId, ct),
+            ArchivableEntityType.Feat => await ctx.Session.LoadAsync<CustomFeat>(ac.EntityId, ct),
+            ArchivableEntityType.Rumor => await ctx.Session.LoadAsync<Rumor>(ac.EntityId, ct),
+            ArchivableEntityType.PlotThread => await ctx.Session.LoadAsync<PlotThread>(ac.EntityId, ct),
             _ => null
         };
 
@@ -49,7 +50,7 @@ public sealed class ArchiveEntityChangeHandler : IWorldChangeHandler
         }
 
         entity.IsArchived = ac.Archived;
-        context.RecordMessage(ac.Archived
+        ctx.RecordMessage(ac.Archived
             ? $"{ac.EntityType} '{ac.EntityId}' archived (hidden from default search/scene/list results; the document itself is not deleted and can be restored)."
             : $"{ac.EntityType} '{ac.EntityId}' restored (visible again in default results).");
 

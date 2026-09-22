@@ -81,7 +81,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     protected override async Task<ResolverResult> ResolveAttackAsync(
         RulesetAction action, 
-        ChangeContext context, 
+        IChangeContext context, 
         Dnd5eExtension actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct)
@@ -111,7 +111,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     private async Task<ResolverResult> ResolveAttackAgainstTargetAsync(
         RulesetAction action,
         string targetId,
-        ChangeContext context,
+        IChangeContext context,
         Dnd5eExtension actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -216,7 +216,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         Dnd5eExtension actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -264,7 +264,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     protected override async Task<ResolverResult> ResolveContestedCheckAsync(
         RulesetAction action, 
-        ChangeContext context, 
+        IChangeContext context, 
         Dnd5eExtension actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct)
@@ -331,7 +331,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(
         RulesetAction action, 
-        ChangeContext context, 
+        IChangeContext context, 
         Dnd5eExtension actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct)
@@ -370,7 +370,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     protected override async Task<ResolverResult> ResolveSpellSaveAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         Dnd5eExtension actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -426,7 +426,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     protected override async Task<ResolverResult> ResolveSpellUtilityAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         Dnd5eExtension actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)

@@ -6,23 +6,24 @@ public class MemoryDecayHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is MemoryDecay;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var decay = (MemoryDecay)change;
 
         if (string.IsNullOrWhiteSpace(decay.CharacterId))
             return ChangeHandlerResult.Failure("characterId is required.");
 
-        if (!context.Characters.TryGetValue(decay.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(decay.CharacterId, out var character))
         {
-            character = context.Session != null
-                ? await context.Session.LoadAsync<Character>(decay.CharacterId, ct)
+            character = ctx.Session != null
+                ? await ctx.Session.LoadAsync<Character>(decay.CharacterId, ct)
                 : null;
 
             if (character == null)
                 return ChangeHandlerResult.Failure($"Character '{decay.CharacterId}' not found.");
 
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         if (character.Psychology?.Memories == null)

@@ -26,7 +26,7 @@ public interface IWorldChangeHandler
     /// </summary>
     Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default);
 
     /// <summary>

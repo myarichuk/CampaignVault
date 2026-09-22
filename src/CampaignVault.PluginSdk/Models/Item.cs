@@ -34,6 +34,15 @@ public class Item : ICampaignScopedEntity, IArchivable
     public List<string> Tags { get; set; } = [];
 
     /// <summary>
+    /// Name of the ItemDefinition (RulesetData YAML template) this item was created from, if any.
+    /// Set once at creation from world_build; a non-resolved back-reference only — Properties below
+    /// is copied from the definition at creation time and is always the source of truth read at
+    /// runtime, so this item keeps working even if the defining pack is later removed or changed.
+    /// Purely informational (display/debugging, and a future opt-in "re-sync from definition" tool).
+    /// </summary>
+    public string? DefinitionName { get; set; }
+
+    /// <summary>
     /// Maps a tag/feature/state text (as it appears in Tags/DistinctiveFeatures/CurrentState) to the
     /// event ID(s) that established it — objective ground truth. Engine-populated only; not an
     /// LLM-settable commit field.

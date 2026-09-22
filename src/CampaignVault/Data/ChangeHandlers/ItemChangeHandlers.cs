@@ -11,12 +11,13 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
 
     public bool ShouldHandle(WorldChange change) => change is ItemUpdate;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var iu = (ItemUpdate)change;
         if (string.IsNullOrWhiteSpace(iu.ItemId)) return ChangeHandlerResult.Failure("itemId is required.");
 
-        var item = await context.Session.LoadAsync<Item>(iu.ItemId, ct);
+        var item = await ctx.Session.LoadAsync<Item>(iu.ItemId, ct);
         if (item == null) return ChangeHandlerResult.Failure($"Item '{iu.ItemId}' not found. Cannot update.");
 
         var stateBefore = item.CurrentState;
@@ -72,13 +73,13 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
 
         if (iu.UpsertItemDetail != null)
         {
-            var detailResult = await UpsertItemDetailAsync(item, iu.UpsertItemDetail, context, ct);
+            var detailResult = await UpsertItemDetailAsync(item, iu.UpsertItemDetail, ctx, ct);
             if (detailResult != null) return detailResult.Value;
         }
 
         if (!string.IsNullOrWhiteSpace(iu.RetireItemDetailId))
         {
-            var retireResult = await RetireItemDetailAsync(item, iu.RetireItemDetailId, context, ct);
+            var retireResult = await RetireItemDetailAsync(item, iu.RetireItemDetailId, ctx, ct);
             if (retireResult != null) return retireResult.Value;
         }
 
@@ -91,7 +92,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         if (stateChanged)
         {
             var eventId = "events/" + Guid.NewGuid();
-            await context.LogEventAsync(new Event
+            await ctx.LogEventAsync(new Event
             {
                 Id = eventId,
                 Summary = $"{item.Name}'s state changed: {item.CurrentState ?? "(no override)"}; tags: [{string.Join(", ", item.Tags)}]",
@@ -100,8 +101,8 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
                 RelatedEntityId = iu.ItemId,
                 Involved = [iu.ItemId],
                 LocationId = item.HolderId?.StartsWith("locations/", StringComparison.Ordinal) == true ? item.HolderId : null,
-                DayLogged = (await context.GetCurrentTimeAsync()).TotalDaysElapsed,
-                CampaignName = context.CampaignName,
+                DayLogged = (await ctx.GetCurrentTimeAsync()).TotalDaysElapsed,
+                CampaignName = ctx.CampaignName,
             });
 
             if (item.CurrentState != stateBefore)
@@ -122,24 +123,25 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         if (item.IsEquipped && (iu.PropertiesToUpsert != null || iu.PropertiesToRemove != null)
             && !string.IsNullOrEmpty(item.HolderId))
         {
-            if (!context.Characters.TryGetValue(item.HolderId, out var wearer))
+            if (!ctx.Characters.TryGetValue(item.HolderId, out var wearer))
             {
-                wearer = await context.Session.LoadAsync<Character>(item.HolderId, ct);
-                if (wearer != null) context.RegisterNewCharacter(wearer);
+                wearer = await ctx.Session.LoadAsync<Character>(item.HolderId, ct);
+                if (wearer != null) ctx.RegisterNewCharacter(wearer);
             }
 
             if (wearer != null)
             {
-                await ArmorParameterResolver.ApplyAsync(wearer, context, ct);
-                context.RecordMessage(DerivedStatsMessage.Build(wearer));
+                await ArmorParameterResolver.ApplyAsync(wearer, ctx, ct);
+                ctx.RecordMessage(DerivedStatsMessage.Build(wearer));
             }
         }
 
         return ChangeHandlerResult.Ok;
     }
 
-    private async Task<ChangeHandlerResult?> UpsertItemDetailAsync(Item item, ItemDetailUpsertRequest req, ChangeContext context, CancellationToken ct)
+    private async Task<ChangeHandlerResult?> UpsertItemDetailAsync(Item item, ItemDetailUpsertRequest req, IChangeContext context, CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         ItemDetail detail;
         bool isNew;
 
@@ -203,7 +205,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
                     Source = participant.Role == ItemDetailParticipantRole.Caused ? MemorySource.Experienced : MemorySource.Witnessed,
                     RelatedEntityIds = [item.Id],
                 };
-                await context.Dispatcher.DispatchMutationAsync(context, ku, ct);
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, ku, ct);
             }
         }
 
@@ -254,7 +256,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         return bestScore >= ItemDetailSemanticMatchThreshold ? best : null;
     }
 
-    private async Task<ChangeHandlerResult?> RetireItemDetailAsync(Item item, string detailId, ChangeContext context, CancellationToken ct)
+    private async Task<ChangeHandlerResult?> RetireItemDetailAsync(Item item, string detailId, IChangeContext context, CancellationToken ct)
     {
         var detail = item.ItemDetails.FirstOrDefault(d => d.Id == detailId);
         if (detail == null) return ChangeHandlerResult.Failure($"ItemDetail '{detailId}' not found on item '{item.Id}'.");

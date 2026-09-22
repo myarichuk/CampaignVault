@@ -16,8 +16,9 @@ public class RestChangeHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is RestChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var rc = (RestChange)change;
 
         if (string.IsNullOrWhiteSpace(rc.CharacterId))
@@ -25,9 +26,9 @@ public class RestChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("CharacterId is required.");
         }
 
-        if (!context.Characters.TryGetValue(rc.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(rc.CharacterId, out var character))
         {
-            var suggested = await context.SuggestCharacterMatchAsync(rc.CharacterId);
+            var suggested = await ctx.SuggestCharacterMatchAsync(rc.CharacterId);
             return ChangeHandlerResult.Failure($"Character {rc.CharacterId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
@@ -36,9 +37,9 @@ public class RestChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("LocationId is required.");
         }
 
-        if (!context.Locations.TryGetValue(rc.LocationId, out var location))
+        if (!ctx.Locations.TryGetValue(rc.LocationId, out var location))
         {
-            var suggested = await context.SuggestLocationMatchAsync(rc.LocationId);
+            var suggested = await ctx.SuggestLocationMatchAsync(rc.LocationId);
             return ChangeHandlerResult.Failure($"Location {rc.LocationId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
@@ -49,12 +50,12 @@ public class RestChangeHandler : IWorldChangeHandler
                 "it was omitted or 0, which would otherwise silently default to an 8-hour long rest.");
         }
 
-        var time = await context.GetCurrentTimeAsync();
+        var time = await ctx.GetCurrentTimeAsync();
         location.LastVisitedDay = time.TotalDaysElapsed;
         location.LastUpdated = DateTime.UtcNow;
 
         var (interrupted, hoursRested, deltas, narratives) = await _resolver.EvaluateAsync(
-            context,
+            ctx,
             character,
             location,
             CalculateRestHours(rc),
@@ -79,7 +80,7 @@ public class RestChangeHandler : IWorldChangeHandler
         // Dispatch encounter events / transient NPCs
         foreach (var delta in deltas)
         {
-            await context.Dispatcher.DispatchMutationAsync(context, delta, ct);
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, delta, ct);
         }
 
         if (!interrupted)
@@ -94,7 +95,7 @@ public class RestChangeHandler : IWorldChangeHandler
 
             if (restType == RestType.LongRest)
             {
-                await ClearUntilLongRestConditionsAsync(rc.CharacterId, character, context, ct);
+                await ClearUntilLongRestConditionsAsync(rc.CharacterId, character, ctx, ct);
             }
 
             // Recover eligible resource pools immediately — don't wait for the next advance_world.
@@ -102,22 +103,22 @@ public class RestChangeHandler : IWorldChangeHandler
             var recoveryDeltas = RestRecoveryLogic.BuildRecoveryDeltas(character, recoveryNarratives);
             foreach (var recoveryDelta in recoveryDeltas)
             {
-                await context.Dispatcher.DispatchMutationAsync(context, recoveryDelta, ct);
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, recoveryDelta, ct);
             }
             foreach (var note in recoveryNarratives)
             {
-                context.RecordMessage(note);
+                ctx.RecordMessage(note);
             }
 
-            var baseline = context.Config?.NeedSatisfactionBaseline ?? 20;
+            var baseline = ctx.Config?.NeedSatisfactionBaseline ?? 20;
             var tirednessDelta = RestRecoveryLogic.BuildTirednessRecoveryDelta(character, restType, baseline);
             if (tirednessDelta != null)
             {
-                await context.Dispatcher.DispatchMutationAsync(context, tirednessDelta, ct);
-                context.RecordMessage($"{character.Name} feels rested ({restType} rest).");
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, tirednessDelta, ct);
+                ctx.RecordMessage($"{character.Name} feels rested ({restType} rest).");
             }
 
-            await context.Dispatcher.DispatchMutationAsync(context, new ActivityChange
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new ActivityChange
             {
                 CharacterId = rc.CharacterId,
                 UpdateLocation = false,
@@ -150,12 +151,13 @@ public class RestChangeHandler : IWorldChangeHandler
     private async Task ClearUntilLongRestConditionsAsync(
         string characterId,
         Character character,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         foreach (var effect in ConditionExpiryEvaluator.CollectLongRestFullClears(character, _conditionProvider))
         {
-            await context.Dispatcher.DispatchMutationAsync(context, new StatusRemove
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new StatusRemove
             {
                 CharacterId = characterId,
                 Status = effect.Name
@@ -177,7 +179,7 @@ public class RestChangeHandler : IWorldChangeHandler
 
             if (level <= 1)
             {
-                await context.Dispatcher.DispatchMutationAsync(context, new StatusRemove
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, new StatusRemove
                 {
                     CharacterId = characterId,
                     Status = effect.Name
@@ -190,13 +192,13 @@ public class RestChangeHandler : IWorldChangeHandler
                 var baseName = effect.Name[..effect.Name.LastIndexOf(' ')];
                 var newName = ConditionExpiryEvaluator.FormatStackLevel(baseName, level - 1);
 
-                await context.Dispatcher.DispatchMutationAsync(context, new StatusRemove
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, new StatusRemove
                 {
                     CharacterId = characterId,
                     Status = effect.Name
                 }, ct);
 
-                await context.Dispatcher.DispatchMutationAsync(context, new StatusChange
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, new StatusChange
                 {
                     CharacterId = characterId,
                     Effect = CloneStatusEffect(effect, newName)

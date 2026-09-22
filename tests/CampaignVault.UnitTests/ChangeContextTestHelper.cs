@@ -34,12 +34,10 @@ internal static class ChangeContextTestHelper
         List<string>? summary = null,
         WorldChangeDispatcher? dispatcher = null,
         CombatEncounter? activeCombat = null,
+        ModeEncounter? activeMode = null,
         string? campaignName = null,
         CampaignConfig? config = null)
     {
-        // Create a mock session if not provided. Most tests don't actually use the session,
-        // so a simple no-op mock is sufficient. Tests that need real queries should pass
-        // a session from RavenDBFixture.
         session ??= Substitute.For<IAsyncDocumentSession>();
 
         dispatcher ??= new WorldChangeDispatcher([], new CampaignVault.Data.CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
@@ -58,6 +56,7 @@ internal static class ChangeContextTestHelper
             summary ?? new List<string>(),
             dispatcher,
             activeCombat,
+            activeMode,
             campaignName,
             config);
     }

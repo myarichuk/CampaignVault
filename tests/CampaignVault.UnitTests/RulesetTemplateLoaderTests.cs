@@ -170,6 +170,24 @@ public class RulesetTemplateLoaderTests : IDisposable
         Assert.Equal("dm_customized_value", t!.Value);
     }
 
+    // ── Cross-file name collisions ────────────────────────────────────────────
+
+    [Fact]
+    public void Load_TwoDiskFilesSameName_LastByAlphabeticalOrderWins_Deterministically()
+    {
+        // Two files declaring the same template name (e.g. two content packs both shipping
+        // "wakizashi") must resolve deterministically rather than by OS directory-enumeration
+        // order — alphabetically-last file name wins.
+        WriteYaml(_tempDir, "a_pack.yaml", "dupe_name", "from_a");
+        WriteYaml(_tempDir, "b_pack.yaml", "dupe_name", "from_b");
+
+        var loader = BuildLoader(prefix: "CampaignVault.Tests.NoSuchPrefix");
+        var result = loader.Load();
+
+        Assert.True(result.TryGetValue("dupe_name", out var t));
+        Assert.Equal("from_b", t!.Value);
+    }
+
     private void SeedManifestEntry(string fileName, string extractedContent)
     {
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(extractedContent)));

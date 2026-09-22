@@ -8,14 +8,15 @@ public class PlotThreadProgressHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is PlotThreadProgress;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var ptp = (PlotThreadProgress)change;
 
         if (string.IsNullOrWhiteSpace(ptp.PlotThreadId))
             return ChangeHandlerResult.Failure("PlotThreadId is required.");
 
-        var thread = await context.Session.LoadAsync<PlotThread>(ptp.PlotThreadId, ct);
+        var thread = await ctx.Session.LoadAsync<PlotThread>(ptp.PlotThreadId, ct);
         if (thread == null)
             return ChangeHandlerResult.Failure($"PlotThread '{ptp.PlotThreadId}' not found.");
 
@@ -53,14 +54,14 @@ public class PlotThreadProgressHandler : IWorldChangeHandler
         // Stamp ClimaxEnteredDay when transitioning to Climax (only once)
         if (ptp.NewState == PlotThreadState.Climax && prevState != PlotThreadState.Climax && !thread.ClimaxEnteredDay.HasValue)
         {
-            var time = await context.GetCurrentTimeAsync();
+            var time = await ctx.GetCurrentTimeAsync();
             thread.ClimaxEnteredDay = time.TotalDaysElapsed;
         }
 
         // Only update LastUpdatedDay for non-engine-authored changes (7-iii: staleness metric reflects agent engagement, not engine auto-progress)
         if (!ptp.IsEngineAuthored)
         {
-            var time = await context.GetCurrentTimeAsync();
+            var time = await ctx.GetCurrentTimeAsync();
             thread.LastUpdatedDay = time.TotalDaysElapsed;
         }
 
@@ -68,7 +69,7 @@ public class PlotThreadProgressHandler : IWorldChangeHandler
         // confirming.
         if (ptp.TensionDelta.HasValue)
         {
-            context.RecordMessage($"Plot thread '{thread.Title}': TensionLevel is now {thread.TensionLevel} (clamped 0-100).");
+            ctx.RecordMessage($"Plot thread '{thread.Title}': TensionLevel is now {thread.TensionLevel} (clamped 0-100).");
         }
 
         return ChangeHandlerResult.Ok;
@@ -92,14 +93,15 @@ public class PlotThreadClueDiscoveredHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is PlotThreadClueDiscovered;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var ptcd = (PlotThreadClueDiscovered)change;
 
         if (string.IsNullOrWhiteSpace(ptcd.PlotThreadId) || string.IsNullOrWhiteSpace(ptcd.ClueId))
             return ChangeHandlerResult.Failure("PlotThreadId and ClueId are required.");
 
-        var thread = await context.Session.LoadAsync<PlotThread>(ptcd.PlotThreadId, ct);
+        var thread = await ctx.Session.LoadAsync<PlotThread>(ptcd.PlotThreadId, ct);
         if (thread == null)
             return ChangeHandlerResult.Failure($"PlotThread '{ptcd.PlotThreadId}' not found.");
 
@@ -107,18 +109,18 @@ public class PlotThreadClueDiscoveredHandler : IWorldChangeHandler
         if (clueIndex < 0)
             return ChangeHandlerResult.Failure($"Clue '{ptcd.ClueId}' not found in plot thread '{ptcd.PlotThreadId}'.");
 
-        var time = await context.GetCurrentTimeAsync();
+        var time = await ctx.GetCurrentTimeAsync();
         var clue = thread.Clues[clueIndex];
         thread.Clues[clueIndex] = clue with { IsDiscovered = true, DiscoveredOnDay = time.TotalDaysElapsed };
         thread.LastUpdatedDay = time.TotalDaysElapsed;
 
         var discoveredCount = thread.Clues.Count(c => c.IsDiscovered);
-        context.RecordMessage($"Clue '{ptcd.ClueId}' discovered in plot thread '{thread.Title}' ({discoveredCount}/{thread.Clues.Count} clues found).");
+        ctx.RecordMessage($"Clue '{ptcd.ClueId}' discovered in plot thread '{thread.Title}' ({discoveredCount}/{thread.Clues.Count} clues found).");
 
         // Auto-emit event via mutation dispatch so the party history reflects the discovery
         if (!string.IsNullOrWhiteSpace(ptcd.NarrativeNote))
         {
-            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new EventOccurred
             {
                 Category = EventCategory.Discovery,
                 Summary = $"Clue discovered for '{thread.Title}': {ptcd.NarrativeNote}",

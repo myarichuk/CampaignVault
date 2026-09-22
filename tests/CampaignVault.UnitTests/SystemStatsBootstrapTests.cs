@@ -289,6 +289,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
             [],
             dispatcher,
             null,
+            null,
             campaign);
     }
 }

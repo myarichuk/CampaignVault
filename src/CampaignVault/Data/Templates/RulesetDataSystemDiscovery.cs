@@ -5,21 +5,57 @@ namespace CampaignVault.Data.Templates;
 /// <summary>
 /// Discovers ruleset systems from both embedded resources and disk directories.
 /// Enables data-only plugins by scanning dynamically instead of hardcoding a fixed system list.
+/// Additional plugin RulesetData roots are returned alongside the primary root so providers can
+/// merge templates (plugin last-wins on duplicate <c>name:</c>).
 /// </summary>
 internal static class RulesetDataSystemDiscovery
 {
     /// <summary>
-    /// Discover all available systems by scanning embedded resources and disk directories.
-    /// Returns (systemSlug, matchedSubfolder) pairs for each discovered system.
+    /// Discover available (systemSlug, subfolder, diskRoot) triples. May return multiple roots for
+    /// the same system when plugins contribute the same subfolder — callers must merge loads.
+    /// Order: embedded/primary seed first, then primary disk, then each additional plugin root.
     /// </summary>
-    public static IEnumerable<(string systemSlug, string subfolder)> Discover(
+    public static IEnumerable<(string systemSlug, string subfolder, string diskRoot)> Discover(
         string rulesetDataDirectory,
         Assembly embeddedAssembly,
-        string[] subfolderCandidates)
+        string[] subfolderCandidates,
+        IEnumerable<string>? additionalRulesetDataRoots = null)
     {
-        var discovered = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Preserve insertion order; allow duplicate systemSlugs with different diskRoots.
+        var results = new List<(string systemSlug, string subfolder, string diskRoot)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // key: system|root|subfolder
 
-        // 1. Discover from embedded resources: CampaignVault.RulesetData.<system>.<subfolder>.*
+        void Add(string systemSlug, string subfolder, string diskRoot)
+        {
+            var key = $"{systemSlug}|{diskRoot}|{subfolder}";
+            if (!seen.Add(key))
+                return;
+            results.Add((systemSlug, subfolder, diskRoot));
+        }
+
+        void ConsiderDiskRoot(string root)
+        {
+            if (!Directory.Exists(root))
+                return;
+
+            foreach (var systemDir in Directory.EnumerateDirectories(root))
+            {
+                var systemSlug = Path.GetFileName(systemDir);
+                foreach (var candidate in subfolderCandidates)
+                {
+                    var fullPath = Path.Combine(systemDir, candidate);
+                    // Ignore empty plugin stubs (.gitkeep only) so they cannot shadow host data.
+                    if (Directory.Exists(fullPath) &&
+                        Directory.EnumerateFiles(fullPath, "*.yaml", SearchOption.TopDirectoryOnly).Any())
+                    {
+                        Add(systemSlug, candidate, root);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 1. Embedded resources seed systems (diskRoot = primary for path composition / extract).
         var embeddedPrefix = "CampaignVault.RulesetData.";
         foreach (var resourceName in embeddedAssembly.GetManifestResourceNames())
         {
@@ -33,38 +69,24 @@ internal static class RulesetDataSystemDiscovery
 
             var systemSlug = parts[0];
             var subfolder = parts[1];
-
-            // Only consider this system/subfolder if it matches one of our candidates
             if (!subfolderCandidates.Contains(subfolder, StringComparer.OrdinalIgnoreCase))
                 continue;
 
-            // Store with case-insensitive key, case-preserving value
-            discovered[systemSlug] = subfolder;
+            Add(systemSlug, subfolder, rulesetDataDirectory);
         }
 
-        // 2. Discover from disk: scan for system directories and check for matching subfolders
-        if (Directory.Exists(rulesetDataDirectory))
+        // 2. Primary disk root
+        ConsiderDiskRoot(rulesetDataDirectory);
+
+        // 3. Plugin / additional roots (appended; providers merge last-wins on template name)
+        if (additionalRulesetDataRoots != null)
         {
-            foreach (var systemDir in Directory.EnumerateDirectories(rulesetDataDirectory))
-            {
-                var systemSlug = Path.GetFileName(systemDir);
-
-                // Check which subfolder candidates exist in this system directory
-                foreach (var candidate in subfolderCandidates)
-                {
-                    var fullPath = Path.Combine(systemDir, candidate);
-                    if (Directory.Exists(fullPath))
-                    {
-                        discovered[systemSlug] = candidate;
-                        break; // Take first matching candidate
-                    }
-                }
-            }
+            foreach (var root in additionalRulesetDataRoots)
+                ConsiderDiskRoot(root);
         }
 
-        // 3. Return deduplicated results (case-insensitive keys, case-preserving values)
-        return discovered
-            .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(x => (x.Key, x.Value));
+        return results
+            .OrderBy(x => x.systemSlug, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.diskRoot, StringComparer.OrdinalIgnoreCase);
     }
 }

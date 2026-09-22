@@ -20,7 +20,7 @@ public sealed class SpyHandler<T> : IWorldChangeHandler where T : WorldChange
 
     public bool ShouldHandle(WorldChange change) => change is T;
 
-    public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
         Received.Add((T)change);
         return Task.FromResult(ChangeHandlerResult.Ok);
@@ -38,7 +38,7 @@ public sealed class SpyHandler<T> : IWorldChangeHandler where T : WorldChange
 
 public class TravelEngagementClearingTests
 {
-    private static (TravelChangeHandler handler, ChangeContext context, Character traveler, SpyHandler<EventOccurred> eventSpy)
+    private static (TravelChangeHandler handler, IChangeContext context, Character traveler, SpyHandler<EventOccurred> eventSpy)
         BuildScenario(Dictionary<string, Character> characters, Dictionary<string, Location> locations)
     {
         var travelHandler = new TravelChangeHandler(new EncounterResolver(() => 1.0)); // never interrupts
@@ -186,8 +186,8 @@ public class TravelEngagementClearingTests
         var companionChange = new TravelChange { CharacterId = companion.Id, DestinationLocationId = destination.Id, TravelCostHoursOverride = 1.0 };
 
         // Simulate WorldChangeDispatcher's batch: both TravelChanges present, traveler's processed first.
-        context.Batch = [travelerChange, companionChange];
-        context.BatchIndex = 0;
+        ((ChangeContext)context).Batch = [travelerChange, companionChange];
+        ((ChangeContext)context).BatchIndex = 0;
 
         var result = await handler.ApplyAsync(travelerChange, context);
 

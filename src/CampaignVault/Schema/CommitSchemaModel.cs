@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using CampaignVault.Models;
+using CampaignVault.Plugins;
 
 namespace CampaignVault.Schema;
 
@@ -26,10 +27,37 @@ internal sealed record CommitVariantModel(
 
 internal static class CommitSchemaModel
 {
-    private static readonly Lazy<IReadOnlyList<CommitVariantModel>> VariantsLazy =
-        new(() => BuildVariants());
+    private static readonly object VariantsGate = new();
+    private static IReadOnlyList<CommitVariantModel>? _variants;
+    private static int _variantsRegistryVersion = -1;
 
-    public static IReadOnlyList<CommitVariantModel> Variants => VariantsLazy.Value;
+    public static IReadOnlyList<CommitVariantModel> Variants
+    {
+        get
+        {
+            lock (VariantsGate)
+            {
+                var version = WorldChangeTypeRegistry.Instance.Version;
+                if (_variants is null || _variantsRegistryVersion != version)
+                {
+                    _variants = BuildVariants();
+                    _variantsRegistryVersion = version;
+                }
+
+                return _variants;
+            }
+        }
+    }
+
+    /// <summary>Forces schema rebuild after plugin $type registration (tests / late load).</summary>
+    public static void Invalidate()
+    {
+        lock (VariantsGate)
+        {
+            _variants = null;
+            _variantsRegistryVersion = -1;
+        }
+    }
 
     public static CommitVariantModel? Find(string discriminator) =>
         Variants.FirstOrDefault(v => v.Discriminator == discriminator);
@@ -39,15 +67,8 @@ internal static class CommitSchemaModel
         var variants = new List<CommitVariantModel>();
         var worldChangeType = typeof(WorldChange);
 
-        // Get all [JsonDerivedType] attributes from WorldChange
-        var derivedTypeAttrs = worldChangeType
-            .GetCustomAttributes<JsonDerivedTypeAttribute>()
-            .ToList();
-
-        foreach (var attr in derivedTypeAttrs)
+        foreach (var (discriminator, derivedType) in WorldChangeTypeRegistry.Instance.Entries)
         {
-            var derivedType = attr.DerivedType;
-            var discriminator = attr.TypeDiscriminator as string ?? derivedType.Name;
 
             // Get category from [CommitCategoryAttribute]
             var categoryAttr = derivedType.GetCustomAttribute<CommitCategoryAttribute>();

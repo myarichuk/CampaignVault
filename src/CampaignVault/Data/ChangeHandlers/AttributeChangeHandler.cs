@@ -8,34 +8,35 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var attr = (AttributeChange)change;
 
-        if (!context.Characters.TryGetValue(attr.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(attr.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(attr.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(attr.CharacterId, ct);
             if (character == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(attr.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(attr.CharacterId);
                 var msg = $"Character {attr.CharacterId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         if (character.SystemStats == null)
         {
-            context.RecordMessage($"WARNING: Character {attr.CharacterId} has no SystemStats during AttributeChange.");
-            context.RecordFailure();
+            ctx.RecordMessage($"WARNING: Character {attr.CharacterId} has no SystemStats during AttributeChange.");
+            ctx.RecordFailure();
             return ChangeHandlerResult.Failure();
         }
 

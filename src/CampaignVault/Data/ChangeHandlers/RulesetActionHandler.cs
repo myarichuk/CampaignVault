@@ -19,29 +19,30 @@ public sealed class RulesetActionHandler(
     public bool ShouldHandle(WorldChange change) => change is RulesetAction;
 
     public async Task<ChangeHandlerResult> ApplyAsync(
-        WorldChange change, ChangeContext context, CancellationToken ct = default)
+        WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         if (change is not RulesetAction action)
         {
             return ChangeHandlerResult.Failure("Change is not a RulesetAction.");
         }
 
-        if (string.IsNullOrWhiteSpace(context.CampaignName))
+        if (string.IsNullOrWhiteSpace(ctx.CampaignName))
         {
-            return new ChangeHandlerResult(false, $"The field {nameof(context.CampaignName)} is required (in the ChangeContext).");
+            return new ChangeHandlerResult(false, $"The field {nameof(ctx.CampaignName)} is required (in the ChangeContext).");
         }
 
-        var effectiveCampaign = context.CampaignName;
+        var effectiveCampaign = ctx.CampaignName;
         var configId = _keys.Config(effectiveCampaign);
-        var config = await context.Session.LoadAsync<CampaignConfig>(configId, ct)
+        var config = await ctx.Session.LoadAsync<CampaignConfig>(configId, ct)
                      ?? new CampaignConfig { Id = configId };
 
         var module = _selector.GetModule(config.ActiveSystem);
 
         // Pre-check: action economy gating (turn ownership, action slots)
-        if (context.ActiveCombat?.IsActive == true)
+        if (ctx.ActiveCombat?.IsActive == true)
         {
-            var activeCombat = context.ActiveCombat;
+            var activeCombat = ctx.ActiveCombat;
             var combatantState = activeCombat.Combatants.FirstOrDefault(c => c.CharacterId == action.CharacterId);
             if (combatantState == null)
             {
@@ -76,13 +77,13 @@ public sealed class RulesetActionHandler(
         // so weapon-based range enforcement (the documented, primary path) actually has data to check.
         if (action.ActionType == RulesetActionType.Attack)
         {
-            await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, context, ct);
+            await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, ctx, ct);
         }
 
         // Pre-check: range/AoE validation (only if the ruleset enforces it)
         if (module.Combat.EnforcesRange)
         {
-            if (!RangeValidationHelper.Validate(action, context, out var rangeError))
+            if (!RangeValidationHelper.Validate(action, ctx, out var rangeError))
             {
                 return ChangeHandlerResult.Failure($"[OutOfRange] {rangeError}");
             }
@@ -91,14 +92,14 @@ public sealed class RulesetActionHandler(
         // Pre-check: spell component gating (Verbal/Somatic/Material vs. caster's condition state).
         if (action.ActionType == RulesetActionType.Spell)
         {
-            var componentFailure = await EvaluateSpellComponentsAsync(action, context, ct);
+            var componentFailure = await EvaluateSpellComponentsAsync(action, ctx, ct);
             if (componentFailure != null)
             {
                 return componentFailure.Value;
             }
         }
 
-        var output = await module.Actions.ResolveAsync(context, action, ct);
+        var output = await module.Actions.ResolveAsync(ctx, action, ct);
 
         if (!output.Result.Success)
         {
@@ -108,7 +109,7 @@ public sealed class RulesetActionHandler(
 
         foreach (var mutation in output.Mutations)
         {
-            await context.Dispatcher.DispatchMutationAsync(context, mutation, ct);
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, mutation, ct);
         }
 
         return string.IsNullOrWhiteSpace(output.Result.Narrative)
@@ -122,8 +123,9 @@ public sealed class RulesetActionHandler(
     /// See CastingComponentGate for the StatModifiers-tag convention this relies on.
     /// </summary>
     private async Task<ChangeHandlerResult?> EvaluateSpellComponentsAsync(
-        RulesetAction action, ChangeContext context, CancellationToken ct)
+        RulesetAction action, IChangeContext context, CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         if (!context.Characters.TryGetValue(action.CharacterId, out var character) || character.SystemStats == null)
         {
             return null;
@@ -145,7 +147,7 @@ public sealed class RulesetActionHandler(
         }
 
         var components = await CastingComponentGate.ResolveSpellComponentsAsync(
-            context.Session, _spellProvider, system!, action.ActionName, context.CampaignName);
+            ctx.Session, _spellProvider, system!, action.ActionName, context.CampaignName);
 
         if (components == null)
         {
@@ -167,7 +169,7 @@ public sealed class RulesetActionHandler(
         {
             var knownFeats = CastingComponentGate.GetKnownFeatNames(character.SystemStats);
             var hasPassiveWaiver = await CastingComponentGate.HasCastingWaiverAsync(
-                context.Session, _featProvider, system!, knownFeats,
+                ctx.Session, _featProvider, system!, knownFeats,
                 CastingComponentGate.SomaticHandsFullWaiver, context.CampaignName);
 
             if (!hasPassiveWaiver)

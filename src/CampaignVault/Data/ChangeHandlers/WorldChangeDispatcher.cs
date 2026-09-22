@@ -29,7 +29,8 @@ public sealed class WorldChangeDispatcher(
     EncounterResolver? encounterResolver = null,
     ClassDefinitionProvider? classProvider = null,
     BackgroundDefinitionProvider? backgroundProvider = null,
-    IEnumerable<IWorldChangeObserver>? observers = null)
+    IEnumerable<IWorldChangeObserver>? observers = null,
+    IRollService? rollService = null)
 {
     private readonly IReadOnlyList<IWorldChangeHandler> _handlers = handlers?.ToList() ?? [];
     private readonly IReadOnlyList<IWorldChangeObserver> _observers = observers?.ToList() ?? [];
@@ -38,6 +39,7 @@ public sealed class WorldChangeDispatcher(
     private readonly EncounterResolver? _encounterResolver = encounterResolver;
     private readonly ClassDefinitionProvider? _classProvider = classProvider;
     private readonly BackgroundDefinitionProvider? _backgroundProvider = backgroundProvider;
+    private readonly IRollService? _rollService = rollService;
 
     private readonly Dictionary<Type, IWorldChangeHandler> _handlersByChangeType = BuildHandlerDictionary(handlers ?? []);
 
@@ -173,6 +175,7 @@ public sealed class WorldChangeDispatcher(
         Dictionary<string, Faction> factions;
         Dictionary<string, Quest> quests;
         CombatEncounter? activeCombat = null;
+        ModeEncounter? activeMode = null;
         CampaignConfig? config = null;
 
         if (session != null)
@@ -234,12 +237,29 @@ public sealed class WorldChangeDispatcher(
                 activeCombat = await session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(effectiveCampaign));
             }
 
-            // Preload campaign config when ruleset resolvers or level_up need feature flags.
-            if (needsRulesetConfig && !string.IsNullOrEmpty(effectiveCampaign))
+            // Config is needed for EnabledModeIds (plugin mode verbs) as well as ruleset/level-up flags.
+            if (!string.IsNullOrEmpty(effectiveCampaign))
             {
                 var configId = _keys.Config(effectiveCampaign);
-                config = await session.LoadAsync<CampaignConfig>(configId)
-                         ?? new CampaignConfig { Id = configId };
+                var loaded = await session.LoadAsync<CampaignConfig>(configId);
+                if (loaded != null)
+                    config = loaded;
+                else if (needsRulesetConfig)
+                    config = new CampaignConfig { Id = configId };
+            }
+
+            // Preload the first active ModeEncounter among EnabledModeIds (mirrors ActiveCombat).
+            if (config?.EnabledModeIds is { Count: > 0 } && !string.IsNullOrEmpty(effectiveCampaign))
+            {
+                foreach (var modeId in config.EnabledModeIds)
+                {
+                    var enc = await session.LoadAsync<ModeEncounter>(_keys.ModeCurrent(effectiveCampaign, modeId));
+                    if (enc is { IsActive: true })
+                    {
+                        activeMode = enc;
+                        break;
+                    }
+                }
             }
         }
         else
@@ -259,11 +279,13 @@ public sealed class WorldChangeDispatcher(
         {
             // Support pure unit tests of handler selection / duplicate detection / result aggregation
             // that use fake TestHandlers which never access Session / time / logging hooks.
-            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, effectiveCampaign, config, physicalStateNudges);
+            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, activeMode, effectiveCampaign, config, physicalStateNudges);
+            context.Rolls = _rollService;
         }
         else
         {
-            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, effectiveCampaign, config, physicalStateNudges);
+            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, activeMode, effectiveCampaign, config, physicalStateNudges);
+            context.Rolls = _rollService;
         }
 
         foreach (var id in allInvolved)
@@ -378,7 +400,7 @@ public sealed class WorldChangeDispatcher(
     /// for the same stretch of time.
     /// </summary>
     private async Task ApplyMicroTimeNudgeAsync(
-        ChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+        IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
     {
         var minutesElapsed = changes
             .Where(c => c is not RestChange and not TravelChange)
@@ -508,8 +530,9 @@ public sealed class WorldChangeDispatcher(
     /// (EventOccurred with no time cost) still counts as a beat, since that's exactly the "pure banter"
     /// case this is meant to catch.
     /// </summary>
-    private static void ApplyMomentumTracking(ChangeContext context, WorldChange[] changes)
+    private static void ApplyMomentumTracking(IChangeContext context, WorldChange[] changes)
     {
+        var ctx = (ChangeContext)context;
         var onScreenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var change in changes)
         {
@@ -588,9 +611,10 @@ public sealed class WorldChangeDispatcher(
     /// time/needs nudge this batch (i.e. actually on-screen for this beat).
     /// </summary>
     private async Task ApplyAmbientInterruptCheckAsync(
-        ChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+        IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
     {
-        if (_encounterResolver is null || context.Session is null || context.ActiveCombat != null)
+        var ctx = (ChangeContext)context;
+        if (_encounterResolver is null || ctx.Session is null || context.ActiveCombat != null)
         {
             return;
         }
@@ -624,7 +648,7 @@ public sealed class WorldChangeDispatcher(
         {
             if (!context.Locations.TryGetValue(locationId, out var location))
             {
-                location = await context.Session.LoadAsync<Location>(locationId);
+                location = await ctx.Session.LoadAsync<Location>(locationId);
                 if (location is null) continue;
                 context.RegisterNewLocation(location);
             }
@@ -637,7 +661,7 @@ public sealed class WorldChangeDispatcher(
             }
 
             if (await PressureQueryHelper.HasSceneInterruptTodayAsync(
-                    context.Session, context.CampaignName, locationId, currentDay))
+                    ctx.Session, context.CampaignName, locationId, currentDay))
             {
                 continue;
             }
@@ -683,7 +707,7 @@ public sealed class WorldChangeDispatcher(
     /// can never roll back or block an unrelated mutation. Not invoked for changes dispatched via
     /// DispatchMutationAsync (child mutations) — only the top-level batch loop.
     /// </summary>
-    private async Task NotifyObserversAsync(WorldChange change, ChangeContext context)
+    private async Task NotifyObserversAsync(WorldChange change, IChangeContext context)
     {
         foreach (var observer in _observers)
         {
@@ -706,15 +730,16 @@ public sealed class WorldChangeDispatcher(
     /// Dispatches a single child mutation directly within an ongoing change context.
     /// Used by handlers like RulesetActionHandler that compute secondary mutations.
     /// </summary>
-    public async Task DispatchMutationAsync(ChangeContext parentContext, WorldChange mutation, CancellationToken ct = default)
+    public async Task DispatchMutationAsync(IChangeContext parentContext, WorldChange mutation, CancellationToken ct = default)
     {
+        var parent = (ChangeContext)parentContext;
         WorldChangeHandlerHelpers.NormalizeIdFields(mutation);
         var chosen = FindHandler(mutation);
         
         if (chosen == null)
         {
             _logger.LogWarning("No handler found for child mutation of type {ChangeType}", mutation?.GetType().Name);
-            parentContext.RecordFailure();
+            parent.RecordFailure();
             return;
         }
 
@@ -726,21 +751,21 @@ public sealed class WorldChangeDispatcher(
             TrackInvolvedEntities(mutation, parentContext);
             if (result.Message is not null)
             {
-                parentContext.RecordMessage(result.Message);
+                parent.RecordMessage(result.Message);
             }
             if (!result.Success)
             {
-                parentContext.RecordFailure();
+                parent.RecordFailure();
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing child mutation of type {ChangeType}", mutation?.GetType().Name);
-            parentContext.RecordFailure();
+            parent.RecordFailure();
         }
     }
 
-    private void TrackInvolvedEntities(WorldChange change, ChangeContext context)
+    private void TrackInvolvedEntities(WorldChange change, IChangeContext context)
     {
         ExtractInvolvedIds(change, null, null, null, null, null, context.InvolvedEntities);
     }

@@ -35,6 +35,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             [],
             new WorldChangeDispatcher(new List<IWorldChangeHandler>(), new CampaignVault.Data.CampaignDocumentKeys()),
             null,
+            null,
             "test-campaign"
         );
     }
@@ -531,6 +532,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             _ => Task.CompletedTask,
             [],
             new WorldChangeDispatcher(new List<IWorldChangeHandler>(), new CampaignVault.Data.CampaignDocumentKeys()),
+            null,
             null,
             "test-campaign"
         );

@@ -79,6 +79,7 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
             [],
             dispatcher,
             null,
+            null,
             _campaign);
     }
 

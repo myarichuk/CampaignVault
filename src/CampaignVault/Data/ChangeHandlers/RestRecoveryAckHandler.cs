@@ -6,9 +6,10 @@ public class RestRecoveryAckHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is RestRecoveryAck;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var ack = (RestRecoveryAck)change;
 
         if (string.IsNullOrWhiteSpace(ack.CharacterId))
@@ -16,10 +17,10 @@ public class RestRecoveryAckHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("characterId is required.");
         }
 
-        if (!context.Characters.TryGetValue(ack.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(ack.CharacterId, out var character))
         {
-            character = context.Session != null
-                ? await context.Session.LoadAsync<Character>(ack.CharacterId, ct)
+            character = ctx.Session != null
+                ? await ctx.Session.LoadAsync<Character>(ack.CharacterId, ct)
                 : null;
 
             if (character == null)
@@ -27,7 +28,7 @@ public class RestRecoveryAckHandler : IWorldChangeHandler
                 return ChangeHandlerResult.Failure($"Character '{ack.CharacterId}' not found.");
             }
 
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         character.LastRestRecoveredDay = ack.RestDay;

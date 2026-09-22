@@ -6,15 +6,16 @@ public sealed class SpatialPositionChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is SpatialPositionChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var src = (SpatialPositionChange)change;
 
-        if (!context.Characters.TryGetValue(src.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(src.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(src.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(src.CharacterId, ct);
             if (character == null) return ChangeHandlerResult.Failure($"Character {src.CharacterId} not found.");
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         character.SystemStats ??= new SystemExtension();

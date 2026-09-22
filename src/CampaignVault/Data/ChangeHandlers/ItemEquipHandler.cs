@@ -10,9 +10,10 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var equip = (ItemEquip)change;
 
         if (string.IsNullOrWhiteSpace(equip.CharacterId) || string.IsNullOrWhiteSpace(equip.ItemId))
@@ -20,57 +21,57 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("characterId and itemId are required.");
         }
 
-        if (!context.Characters.TryGetValue(equip.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(equip.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(equip.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(equip.CharacterId, ct);
             if (character == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(equip.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(equip.CharacterId);
                 var msg = $"Character {equip.CharacterId} not found.";
                 if (hints != null) msg += $" Did you mean: {hints}?";
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
-        if (!context.Items.TryGetValue(equip.ItemId, out var item))
+        if (!ctx.Items.TryGetValue(equip.ItemId, out var item))
         {
-            item = await context.Session.LoadAsync<Item>(equip.ItemId, ct);
+            item = await ctx.Session.LoadAsync<Item>(equip.ItemId, ct);
             if (item == null)
             {
-                var hints = await context.SuggestItemMatchAsync(equip.ItemId);
+                var hints = await ctx.SuggestItemMatchAsync(equip.ItemId);
                 var msg = $"Item {equip.ItemId} not found.";
                 if (hints != null) msg += $" Did you mean: {hints}?";
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewItem(item);
+            ctx.RegisterNewItem(item);
         }
 
         if (!string.Equals(item.HolderId, equip.CharacterId, StringComparison.OrdinalIgnoreCase))
         {
             var msg = $"Item '{equip.ItemId}' is not carried by '{equip.CharacterId}' (currently held by '{item.HolderId}'). Transfer it there first.";
-            context.RecordFailure();
+            ctx.RecordFailure();
             return ChangeHandlerResult.Failure(msg);
         }
 
         if (item.EquipZones.Count == 0 || item.EquipLayer == null)
         {
             var msg = $"Item '{equip.ItemId}' has no EquipZones/EquipLayer set — it is not equippable. Set these via world_build.";
-            context.RecordFailure();
+            ctx.RecordFailure();
             return ChangeHandlerResult.Failure(msg);
         }
 
         if (item.IsEquipped)
         {
-            context.RecordMessage($"Item '{equip.ItemId}' is already equipped.");
+            ctx.RecordMessage($"Item '{equip.ItemId}' is already equipped.");
             return ChangeHandlerResult.Ok;
         }
 
-        var equippedItems = await ItemHolderQueryHelper.GetEquippedItemsAsync(context, equip.CharacterId, item.Id, ct);
+        var equippedItems = await ItemHolderQueryHelper.GetEquippedItemsAsync(ctx, equip.CharacterId, item.Id, ct);
 
         // Tag-based prerequisite/incompatibility checks are declared design statements, independent of
         // zone/layer/StackGroup slot capacity. They always hard-fail — never auto-resolved by
@@ -79,7 +80,7 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
         if (tagCheck.HasIssues)
         {
             var msg = BuildTagIssueMessage(item, tagCheck);
-            context.RecordFailure();
+            ctx.RecordFailure();
             return ChangeHandlerResult.Failure(msg);
         }
 
@@ -90,12 +91,12 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
             if (!equip.ReplaceConflicts)
             {
                 var msg = BuildConflictMessage(item, conflictResult);
-                var reorderNudge = BuildBatchReorderNudge(context, conflictResult);
+                var reorderNudge = BuildBatchReorderNudge(ctx, conflictResult);
                 if (reorderNudge != null)
                 {
                     msg += "\n" + reorderNudge;
                 }
-                context.RecordFailure();
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
 
@@ -103,16 +104,16 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
             {
                 conflict.IsEquipped = false;
                 conflict.LastUpdated = DateTime.UtcNow;
-                context.RegisterNewItem(conflict);
+                ctx.RegisterNewItem(conflict);
             }
-            context.RecordMessage(BuildReplaceMessage(item, conflictResult));
+            ctx.RecordMessage(BuildReplaceMessage(item, conflictResult));
         }
 
         item.IsEquipped = true;
         item.LastUpdated = DateTime.UtcNow;
 
-        await ArmorParameterResolver.ApplyAsync(character, context, ct);
-        context.RecordMessage(DerivedStatsMessage.Build(character));
+        await ArmorParameterResolver.ApplyAsync(character, ctx, ct);
+        ctx.RecordMessage(DerivedStatsMessage.Build(character));
 
         return ChangeHandlerResult.Ok;
     }
@@ -183,8 +184,9 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
     /// already atomic (see CampaignToolBase.ExecuteAsync), the only real gap is that item_equip only
     /// sees conflicts freed earlier in the same batch, not later.
     /// </summary>
-    private static string? BuildBatchReorderNudge(ChangeContext context, EquipSlotRules.ConflictResult conflictResult)
+    private static string? BuildBatchReorderNudge(IChangeContext context, EquipSlotRules.ConflictResult conflictResult)
     {
+        var ctx = (ChangeContext)context;
         if (context.Batch == null)
         {
             return null;
@@ -222,9 +224,10 @@ public sealed class ItemUnequipHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var unequip = (ItemUnequip)change;
 
         if (string.IsNullOrWhiteSpace(unequip.CharacterId) || string.IsNullOrWhiteSpace(unequip.ItemId))
@@ -232,52 +235,52 @@ public sealed class ItemUnequipHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("characterId and itemId are required.");
         }
 
-        if (!context.Items.TryGetValue(unequip.ItemId, out var item))
+        if (!ctx.Items.TryGetValue(unequip.ItemId, out var item))
         {
-            item = await context.Session.LoadAsync<Item>(unequip.ItemId, ct);
+            item = await ctx.Session.LoadAsync<Item>(unequip.ItemId, ct);
             if (item == null)
             {
-                var hints = await context.SuggestItemMatchAsync(unequip.ItemId);
+                var hints = await ctx.SuggestItemMatchAsync(unequip.ItemId);
                 var msg = $"Item {unequip.ItemId} not found.";
                 if (hints != null) msg += $" Did you mean: {hints}?";
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewItem(item);
+            ctx.RegisterNewItem(item);
         }
 
         if (!string.Equals(item.HolderId, unequip.CharacterId, StringComparison.OrdinalIgnoreCase))
         {
             var msg = $"Item '{unequip.ItemId}' is not carried by '{unequip.CharacterId}'.";
-            context.RecordFailure();
+            ctx.RecordFailure();
             return ChangeHandlerResult.Failure(msg);
         }
 
         if (!item.IsEquipped)
         {
-            context.RecordMessage($"Item '{unequip.ItemId}' is already unequipped.");
+            ctx.RecordMessage($"Item '{unequip.ItemId}' is already unequipped.");
             return ChangeHandlerResult.Ok;
         }
 
-        if (!context.Characters.TryGetValue(unequip.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(unequip.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(unequip.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(unequip.CharacterId, ct);
             if (character == null)
             {
                 var msg = $"Character {unequip.CharacterId} not found.";
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         item.IsEquipped = false;
         item.LastUpdated = DateTime.UtcNow;
 
-        await ArmorParameterResolver.ApplyAsync(character, context, ct);
-        context.RecordMessage(DerivedStatsMessage.Build(character));
+        await ArmorParameterResolver.ApplyAsync(character, ctx, ct);
+        ctx.RecordMessage(DerivedStatsMessage.Build(character));
 
         return ChangeHandlerResult.Ok;
     }

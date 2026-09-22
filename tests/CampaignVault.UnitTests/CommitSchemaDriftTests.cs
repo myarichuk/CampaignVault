@@ -34,7 +34,11 @@ public class CommitSchemaDriftTests
             registryEntries.Select(s => s.Type)
         );
 
-        Assert.Equal(discriminatorsFromAttrs, discriminatorsFromRegistry);
+        // Plugin $types may extend the live schema beyond core [JsonDerivedType] attributes.
+        // Drift guard: every core discriminator must still be present.
+        var missing = discriminatorsFromAttrs.Except(discriminatorsFromRegistry).OrderBy(x => x).ToList();
+        Assert.True(missing.Count == 0,
+            "Core discriminators missing from CommitSchemaRegistry: " + string.Join(", ", missing));
     }
 
     [Fact]

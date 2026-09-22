@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,11 +22,11 @@ public class WorldChangeDispatcherTests
     private sealed class TestHandler : IWorldChangeHandler
     {
         private readonly Func<WorldChange, bool> _shouldHandle;
-        private readonly Func<WorldChange, ChangeContext, Task<ChangeHandlerResult>> _apply;
+        private readonly Func<WorldChange, IChangeContext, Task<ChangeHandlerResult>> _apply;
         public string Name { get; }
 
         public TestHandler(string name, Func<WorldChange, bool> shouldHandle,
-            Func<WorldChange, ChangeContext, Task<ChangeHandlerResult>> apply)
+            Func<WorldChange, IChangeContext, Task<ChangeHandlerResult>> apply)
         {
             Name = name;
             _shouldHandle = shouldHandle;
@@ -34,7 +35,7 @@ public class WorldChangeDispatcherTests
 
         public bool ShouldHandle(WorldChange change) => _shouldHandle(change);
 
-        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context,
             CancellationToken ct = default)
             => _apply(change, context);
 
@@ -1128,6 +1129,7 @@ public class WorldChangeDispatcherTests
             summary: [],
             dispatcher: dispatcher,
             activeCombat: null,
+            activeMode: null,
             campaignName: "test_campaign");
 
         var targetId = "chars/goblin-42";
@@ -1242,5 +1244,54 @@ public class WorldChangeDispatcherTests
             _ => Task.CompletedTask);
 
         Assert.Equal(0, flavorNpc.IdleSceneBeats);
+    }
+
+    private sealed class PluginModeVerbChange : WorldChange;
+
+    [Fact]
+    public async Task Dispatcher_PreloadsActiveMode_ForPluginVerbOnlyBatch()
+    {
+        var keys = new CampaignDocumentKeys();
+        var config = new CampaignConfig { Id = keys.Config("test"), EnabledModeIds = ["crafting"] };
+        var encounter = new ModeEncounter
+        {
+            Id = keys.ModeCurrent("test", "crafting"),
+            ModeId = "crafting",
+            LocationId = "locations/forge",
+            IsActive = true,
+            Participants = [new ModeParticipantState { CharacterId = "chars/smith" }]
+        };
+
+        ModeEncounter? seen = null;
+        var handler = new TestHandler(
+            "plugin-verb",
+            c => c is PluginModeVerbChange,
+            (_, ctx) =>
+            {
+                seen = ctx.ActiveMode;
+                return Task.FromResult(ChangeHandlerResult.Ok);
+            });
+
+        var dispatcher = CreateDispatcher(handler);
+        var session = Substitute.For<IAsyncDocumentSession>();
+        session.LoadAsync<Character>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Character>());
+        session.LoadAsync<Item>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Item>());
+        session.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, Location>());
+        session.LoadAsync<CampaignConfig>(Arg.Any<string>()).Returns(config);
+        session.LoadAsync<ModeEncounter>(Arg.Any<string>()).Returns(encounter);
+
+        var result = await dispatcher.DispatchAsync(
+            session,
+            [new PluginModeVerbChange()],
+            "test",
+            () => Task.FromResult(new CampaignTime()),
+            () => Task.FromResult(new Dictionary<string, string>()),
+            _ => Task.CompletedTask);
+
+        Assert.True(result.Success);
+        Assert.Same(encounter, seen);
     }
 }

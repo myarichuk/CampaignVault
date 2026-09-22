@@ -8,34 +8,35 @@ public sealed class NeedChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var nc = (NeedChange)change;
 
-        if (!context.Characters.TryGetValue(nc.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(nc.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(nc.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(nc.CharacterId, ct);
             if (character == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(nc.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(nc.CharacterId);
                 var msg = $"Character {nc.CharacterId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         if (character.Needs == null)
         {
-            context.RecordMessage($"WARNING: Character {nc.CharacterId} has no NeedsProfile during NeedChange.");
-            context.RecordFailure();
+            ctx.RecordMessage($"WARNING: Character {nc.CharacterId} has no NeedsProfile during NeedChange.");
+            ctx.RecordFailure();
             return ChangeHandlerResult.Failure();
         }
 

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using CampaignVault.Models;
 using CampaignVault.Models.Converters;
+using CampaignVault.Plugins;
 
 namespace CampaignVault.Tools;
 
@@ -11,10 +12,33 @@ namespace CampaignVault.Tools;
 /// </summary>
 internal static class CommitChangesParser
 {
-    internal static readonly JsonSerializerOptions Options = new()
+    private static readonly object OptionsGate = new();
+    private static JsonSerializerOptions? _options;
+    private static int _optionsRegistryVersion = -1;
+
+    internal static JsonSerializerOptions Options
+    {
+        get
+        {
+            lock (OptionsGate)
+            {
+                var version = WorldChangeTypeRegistry.Instance.Version;
+                if (_options is null || _optionsRegistryVersion != version)
+                {
+                    _options = CreateOptions();
+                    _optionsRegistryVersion = version;
+                }
+
+                return _options;
+            }
+        }
+    }
+
+    internal static JsonSerializerOptions CreateOptions() => new()
     {
         PropertyNameCaseInsensitive = true,
         AllowOutOfOrderMetadataProperties = true,
+        TypeInfoResolver = WorldChangeTypeRegistry.Instance.CreateTypeInfoResolver(),
     };
 
     public static bool TryParse(JsonElement? changes, out WorldChange[]? parsed, out string? error)

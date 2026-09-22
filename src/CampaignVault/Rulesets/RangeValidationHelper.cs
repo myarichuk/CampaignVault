@@ -33,7 +33,7 @@ internal static class RangeValidationHelper
     /// <param name="context">The ChangeContext with loaded Character entities.</param>
     /// <param name="errorReason">On failure, a narrative-friendly error message.</param>
     /// <returns>True if validation passes (or does not apply); false if a target is out of range.</returns>
-    public static bool Validate(RulesetAction action, ChangeContext context, out string? errorReason)
+    public static bool Validate(RulesetAction action, IChangeContext context, out string? errorReason)
     {
         errorReason = null;
 

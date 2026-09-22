@@ -33,24 +33,26 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         return change switch
         {
-            StatusChange add    => await HandleAdd(add, context, ct),
-            StatusRemove remove => await HandleRemove(remove, context, ct),
+            StatusChange add    => await HandleAdd(add, ctx, ct),
+            StatusRemove remove => await HandleRemove(remove, ctx, ct),
             _                  => ChangeHandlerResult.Failure("StatusChangeHandler received unexpected change type")
         };
     }
 
     // ── Add ───────────────────────────────────────────────────────────────────
 
-    private async Task<ChangeHandlerResult> HandleAdd(StatusChange add, ChangeContext context, CancellationToken ct)
+    private async Task<ChangeHandlerResult> HandleAdd(StatusChange add, IChangeContext context, CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         if (!context.Characters.TryGetValue(add.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(add.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(add.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(add.CharacterId);
@@ -120,8 +122,9 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
     // Status effects (restrained, poisoned, etc.) often gate what actions are legal, so their history
     // is Important, not Trivial. Auto-logged so recall_history/NpcRecentEvents can surface it without a
     // second, separate `event` commit for the same narrative beat.
-    private static async Task LogStatusEventAsync(ChangeContext context, Character character, string summary)
+    private static async Task LogStatusEventAsync(IChangeContext context, Character character, string summary)
     {
+        var ctx = (ChangeContext)context;
         await context.LogEventAsync(new Event
         {
             Id = "events/" + Guid.NewGuid(),
@@ -136,10 +139,11 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
     }
 
     private void RecordConditionValidationWarning(
-        ChangeContext context,
+        IChangeContext context,
         SystemExtension stats,
         StatusEffect effect)
     {
+        var ctx = (ChangeContext)context;
         if (string.IsNullOrWhiteSpace(effect.ConditionName))
             return;
 
@@ -171,11 +175,12 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
 
     // ── Remove ────────────────────────────────────────────────────────────────
 
-    private async Task<ChangeHandlerResult> HandleRemove(StatusRemove remove, ChangeContext context, CancellationToken ct)
+    private async Task<ChangeHandlerResult> HandleRemove(StatusRemove remove, IChangeContext context, CancellationToken ct)
     {
+        var ctx = (ChangeContext)context;
         if (!context.Characters.TryGetValue(remove.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(remove.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(remove.CharacterId, ct);
             if (character == null)
             {
                 var hints = await context.SuggestCharacterMatchAsync(remove.CharacterId);

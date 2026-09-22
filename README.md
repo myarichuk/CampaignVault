@@ -87,6 +87,7 @@ A pure story-focused ruleset with d6 Oracle resolution. No classes, levels, or h
 ## Documentation
 
 - **[INSTALLATION.md](./INSTALLATION.md)** — Docker, local dev, remote deployment (ngrok, Fly.io), authentication
+- **[PLUGINS.md](./PLUGINS.md)** — Homebrew content packs (custom items/spells/creatures), new rulesets, and code plugins; includes the trust model and an installation guide
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** — System design, simulation rules, pressure system, ruleset integration
 - **[System Prompt](./recommended-system-prompt.md)** — Copy-paste LLM system prompt (or [opencode-specific](./recommended-system-prompt.opencode.md))
 - **[Licensing](./LICENSING.md)** — Game content attribution and legal notes

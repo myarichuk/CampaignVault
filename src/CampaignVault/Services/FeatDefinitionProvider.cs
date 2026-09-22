@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using CampaignVault.Data.Templates;
+using CampaignVault.Plugins;
 
 namespace CampaignVault.Services;
 
@@ -10,7 +11,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class FeatDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<FeatDefinition>> _loaders =
+    private readonly Dictionary<string, List<RulesetTemplateLoader<FeatDefinition>>> _loaders =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, IReadOnlyDictionary<string, FeatDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
@@ -20,10 +21,10 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
     public FeatDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["feats"]);
-        foreach (var (systemSlug, subfolder) in discovered)
+        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["feats"], PluginDataRoots.Additional);
+        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
         {
-            Register(systemSlug, rulesetDataDirectory, systemSlug, subfolder, embeddedAssembly, logger);
+            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
         }
     }
 
@@ -35,11 +36,22 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
         Assembly embeddedAssembly,
         ILogger? logger)
     {
-        _loaders[system] = new RulesetTemplateLoader<FeatDefinition>(
+        if (!_loaders.TryGetValue(system, out var list))
+        {
+            list = [];
+            _loaders[system] = list;
+        }
+
+        // First loader pulls embedded host defaults; later plugin roots are disk-only overlays.
+        var embeddedPrefix = list.Count == 0
+            ? $"CampaignVault.RulesetData.{systemSlug}.{subfolder}"
+            : $"CampaignVault.RulesetData.__plugin__.{systemSlug}.{subfolder}";
+
+        list.Add(new RulesetTemplateLoader<FeatDefinition>(
             Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
             embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
-            logger);
+            embeddedPrefix,
+            logger));
     }
 
     public IReadOnlyDictionary<string, FeatDefinition> GetFeatsForSystem(string system)
@@ -49,10 +61,15 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loader))
+            if (!_loaders.TryGetValue(system, out var loaders) || loaders.Count == 0)
                 return new Dictionary<string, FeatDefinition>();
 
-            var raw = loader.Load();
+            var raw = new Dictionary<string, FeatDefinition>(StringComparer.OrdinalIgnoreCase);
+            foreach (var loader in loaders)
+            {
+                foreach (var (name, def) in loader.Load())
+                    raw[name] = def;
+            }
             var resolver = new RulesetTemplateResolver<FeatDefinition>(
                 name => raw.GetValueOrDefault(name),
                 FeatDefinition.Merge);

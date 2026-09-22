@@ -9,50 +9,51 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var transfer = (ItemTransfer)change;
 
-        if (!context.Items.TryGetValue(transfer.ItemId, out var item))
+        if (!ctx.Items.TryGetValue(transfer.ItemId, out var item))
         {
-            item = await context.Session.LoadAsync<Item>(transfer.ItemId, ct);
+            item = await ctx.Session.LoadAsync<Item>(transfer.ItemId, ct);
             if (item == null)
             {
-                var hints = await context.SuggestItemMatchAsync(transfer.ItemId);
+                var hints = await ctx.SuggestItemMatchAsync(transfer.ItemId);
                 var msg = $"Item {transfer.ItemId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewItem(item);
+            ctx.RegisterNewItem(item);
         }
 
         // Verify destination exists (must be a character, location, or container item)
-        var destinationExists = context.Characters.ContainsKey(transfer.ToHolderId)
-            || context.Locations.ContainsKey(transfer.ToHolderId)
-            || context.Items.ContainsKey(transfer.ToHolderId);
+        var destinationExists = ctx.Characters.ContainsKey(transfer.ToHolderId)
+            || ctx.Locations.ContainsKey(transfer.ToHolderId)
+            || ctx.Items.ContainsKey(transfer.ToHolderId);
 
-        var destinationItem = context.Items.GetValueOrDefault(transfer.ToHolderId);
+        var destinationItem = ctx.Items.GetValueOrDefault(transfer.ToHolderId);
 
         if (!destinationExists)
         {
-            // Try loading from session if not in context
+            // Try loading from session if not in ctx
             try
             {
                 if (transfer.ToHolderId.StartsWith("items/", StringComparison.OrdinalIgnoreCase))
                 {
-                    destinationItem = await context.Session.LoadAsync<Item>(transfer.ToHolderId, ct);
+                    destinationItem = await ctx.Session.LoadAsync<Item>(transfer.ToHolderId, ct);
                     destinationExists = destinationItem != null;
                 }
                 else
                 {
-                    var dest = await context.Session.LoadAsync<dynamic>(transfer.ToHolderId, ct);
+                    var dest = await ctx.Session.LoadAsync<dynamic>(transfer.ToHolderId, ct);
                     destinationExists = dest != null;
                 }
             }
@@ -69,10 +70,10 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
 
         if (destinationItem != null)
         {
-            var nestingError = await ContainerResolver.ValidateNestingAsync(context.Session, item, destinationItem, ct);
+            var nestingError = await ContainerResolver.ValidateNestingAsync(ctx.Session, item, destinationItem, ct);
             if (nestingError != null)
             {
-                context.RecordFailure();
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(nestingError);
             }
         }
@@ -101,17 +102,17 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             // Recompute AC/warmth for the previous holder if it's a character
             if (previousHolderId!.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
             {
-                if (context.Characters.TryGetValue(previousHolderId, out var previousHolder))
+                if (ctx.Characters.TryGetValue(previousHolderId, out var previousHolder))
                 {
-                    await ArmorParameterResolver.ApplyAsync(previousHolder, context, ct);
+                    await ArmorParameterResolver.ApplyAsync(previousHolder, ctx, ct);
                 }
                 else
                 {
-                    var prevChar = await context.Session.LoadAsync<Character>(previousHolderId, ct);
+                    var prevChar = await ctx.Session.LoadAsync<Character>(previousHolderId, ct);
                     if (prevChar != null)
                     {
-                        await ArmorParameterResolver.ApplyAsync(prevChar, context, ct);
-                        context.RegisterNewCharacter(prevChar);
+                        await ArmorParameterResolver.ApplyAsync(prevChar, ctx, ct);
+                        ctx.RegisterNewCharacter(prevChar);
                     }
                 }
             }
@@ -121,7 +122,7 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
         // an echo of what it just specified.
         if (autoUnequipped)
         {
-            context.RecordMessage($"Item {transfer.ItemId} was equipped and is auto-unequipped from {previousHolderId} by this transfer.");
+            ctx.RecordMessage($"Item {transfer.ItemId} was equipped and is auto-unequipped from {previousHolderId} by this transfer.");
         }
 
         return ChangeHandlerResult.Ok;

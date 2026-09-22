@@ -8,47 +8,48 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var rel = (RelationshipChange)change;
 
-        if (!context.Characters.TryGetValue(rel.CharacterId, out var source))
+        if (!ctx.Characters.TryGetValue(rel.CharacterId, out var source))
         {
-            source = await context.Session.LoadAsync<Character>(rel.CharacterId, ct);
+            source = await ctx.Session.LoadAsync<Character>(rel.CharacterId, ct);
             if (source == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(rel.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(rel.CharacterId);
                 var msg = $"Character {rel.CharacterId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(source);
+            ctx.RegisterNewCharacter(source);
         }
 
-        if (!context.Characters.ContainsKey(rel.TargetId))
+        if (!ctx.Characters.ContainsKey(rel.TargetId))
         {
-            var target = await context.Session.LoadAsync<Character>(rel.TargetId, ct);
+            var target = await ctx.Session.LoadAsync<Character>(rel.TargetId, ct);
             if (target == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(rel.TargetId);
+                var hints = await ctx.SuggestCharacterMatchAsync(rel.TargetId);
                 var msg = $"Relationship target character {rel.TargetId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(target);
+            ctx.RegisterNewCharacter(target);
         }
 
         source.Social ??= new SocialProfile();
@@ -57,7 +58,7 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
         var currentVal = source.Social.Relationships.GetValueOrDefault(rel.TargetId, 0);
         source.Social.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
 
-        context.RecordMessage($"Relationship from {rel.CharacterId} to {rel.TargetId} is now {source.Social.Relationships[rel.TargetId]} (clamped -100 to 100).");
+        ctx.RecordMessage($"Relationship from {rel.CharacterId} to {rel.TargetId} is now {source.Social.Relationships[rel.TargetId]} (clamped -100 to 100).");
 
         return ChangeHandlerResult.Ok;
     }

@@ -129,3 +129,6 @@ public record ProgressionDefinition : RulesetTemplate
         return merged;
     }
 }
+
+public enum CasterType { None, Full, Half, Third, Warlock, HalfRoundUp }
+

@@ -174,6 +174,7 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
             [],
             dispatcher,
             null,
+            null,
             campaign);
     }
 }

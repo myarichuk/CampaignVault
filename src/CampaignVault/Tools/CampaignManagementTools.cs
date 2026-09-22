@@ -21,6 +21,7 @@ public class CampaignManagementTools(
     ConditionDefinitionProvider conditionProvider,
     CreatureDefinitionProvider creatureProvider,
     ProgressionDefinitionProvider progressionProvider,
+    ItemDefinitionProvider itemProvider,
     ILogger<CampaignManagementTools>? logger = null)
     : CampaignToolBase(repository, keys, logger), IMcpServerTool
 {
@@ -58,8 +59,16 @@ public class CampaignManagementTools(
 
             var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
             config.ActiveSystem = activeSystem;
-            config.SystemOptions = systemOptions ?? [];
+
+            // Start from the caller-supplied overrides (or whatever's already on file), then fill in
+            // any keys plugins declared defaults for via plugin.json campaignOptions — operator/DM
+            // values always win, plugin defaults only ever fill gaps, never overwrite.
+            config.SystemOptions = systemOptions ?? config.SystemOptions;
+            var options = ApplyPluginCampaignOptionDefaults(config);
             await _repository.UpsertCampaignConfigAsync(session, config, effective);
+
+            // Keep meta SystemOptions in sync — take_turn handlers read Campaign.SystemOptions.
+            campaign.SystemOptions = options;
 
             if (!campaign.IsSystemLocked)
             {
@@ -206,6 +215,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 - kind:'spells' — spell metadata (level, concentration, casting time). REQUIRES className (e.g. 'Wizard'); level filter strongly recommended (0 = cantrip); paginated via offset/limit (default 40/page). Use these spell names in resource commits (spellName) for slot validation.
 - kind:'creatures' — creature stat-block *templates* (SRD + campaign homebrew merged, homebrew wins by name), filtered by nameQuery/levelMin/levelMax, paginated. Templates only — use world_build (characters[]) to place a live instance.
 - kind:'level_up' — read-only lookup of the choices a character faces at their next level (subclass, fighting style, ASI/feat, invocations, PF2e feat budget). REQUIRES characterId. No session is created — talk through the choices with the player, then commit a single 'level_up' change via take_turn with the answers in 'choices'/'abilityScoreIncreases'.
+- kind:'items' — item/equipment *templates* (weapons, armor, outfits, tools, artifacts — anything, via Category + an open Properties bag), filtered by nameQuery/category/tag, paginated. Templates only — use world_build (items[]) to place a live instance in a campaign.
 Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData/{system}/ YAML appear automatically. Requires campaignName.")]
     public async Task<ToolResult<object>> GetRulesReference(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -227,7 +237,13 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
         [Description("spells/creatures: page size (default 40, max 100).")]
         int? limit = null,
         [Description("level_up only (required there): character ID, e.g. 'chars/hero-123'.")]
-        string? characterId = null)
+        string? characterId = null,
+        [Description("items only: item name substring filter.")]
+        string? itemNameQuery = null,
+        [Description("items only: category filter (Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other).")]
+        string? itemCategory = null,
+        [Description("items only: tag filter (e.g. 'exotic', 'kara-tur').")]
+        string? itemTag = null)
     {
         switch (kind?.Trim().ToLowerInvariant())
         {
@@ -253,9 +269,23 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
                         toolName: "get_rules_reference");
                 }
                 return Box(await GetPendingLevelUpChoices(characterId, campaignName));
+            case "items":
+                ItemCategory? parsedCategory = null;
+                if (!string.IsNullOrWhiteSpace(itemCategory))
+                {
+                    if (!Enum.TryParse<ItemCategory>(itemCategory, ignoreCase: true, out var categoryValue))
+                    {
+                        return await ToolArgumentErrors.Missing<object>(
+                            "itemCategory",
+                            $"Unknown itemCategory '{itemCategory}'. Use one of: {string.Join(", ", Enum.GetNames<ItemCategory>())}.",
+                            toolName: "get_rules_reference");
+                    }
+                    parsedCategory = categoryValue;
+                }
+                return Box(await GetItemDefinitions(campaignName, itemNameQuery, parsedCategory, itemTag, offset, limit));
             default:
                 return new ToolResult<object>(false, Error: ToolErrors.InvalidArgument,
-                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', or 'creatures' (or 'level_up').");
+                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', 'creatures', 'items', or 'level_up'.");
         }
     }
 
@@ -428,6 +458,30 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
             var response = CreatureQueryBuilder.ToResponse(system, page);
 
             return new ToolResult<CreatureListResponse>(
+                true,
+                response,
+                response.Hint);
+        }, saveChanges: false);
+    }
+
+    internal Task<ToolResult<ItemDefinitionListResponse>> GetItemDefinitions(
+        string campaignName,
+        string? nameQuery = null,
+        ItemCategory? category = null,
+        string? tag = null,
+        int offset = 0,
+        int? limit = null)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
+            var system = config.ActiveSystem;
+            var page = ItemDefinitionQueryBuilder.QueryPage(
+                itemProvider, system, nameQuery, category, tag, offset, limit);
+
+            var response = ItemDefinitionQueryBuilder.ToResponse(system, page);
+
+            return new ToolResult<ItemDefinitionListResponse>(
                 true,
                 response,
                 response.Hint);

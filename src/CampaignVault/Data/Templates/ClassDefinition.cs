@@ -26,4 +26,3 @@ public record ClassDefinition : RulesetTemplate
         };
 }
 
-public enum CasterType { None, Full, Half, Third, Warlock, HalfRoundUp }

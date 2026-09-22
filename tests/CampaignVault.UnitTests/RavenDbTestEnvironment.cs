@@ -43,7 +43,7 @@ public sealed class RavenDbTestEnvironment : IAsyncLifetime
     private IDocumentStore? _sharedFallbackStore;
     private string? _embeddedDataDir;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         CleanupOldTestDirectories();
 
@@ -259,7 +259,7 @@ public sealed class RavenDbTestEnvironment : IAsyncLifetime
         throw new TimeoutException("Static RavenDB indexes did not become non-stale during test environment startup.");
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_container != null)
         {

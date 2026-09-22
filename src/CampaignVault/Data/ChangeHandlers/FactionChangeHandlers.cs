@@ -6,19 +6,20 @@ public class FactionReputationChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is FactionReputationChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var frc = (FactionReputationChange)change;
 
-        if (!context.Characters.TryGetValue(frc.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(frc.CharacterId, out var character))
         {
-            var suggested = await context.SuggestCharacterMatchAsync(frc.CharacterId);
+            var suggested = await ctx.SuggestCharacterMatchAsync(frc.CharacterId);
             return ChangeHandlerResult.Failure($"Character {frc.CharacterId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
-        if (!context.Factions.TryGetValue(frc.FactionId, out var faction))
+        if (!ctx.Factions.TryGetValue(frc.FactionId, out var faction))
         {
-            var suggested = await context.SuggestFactionMatchAsync(frc.FactionId);
+            var suggested = await ctx.SuggestFactionMatchAsync(frc.FactionId);
             return ChangeHandlerResult.Failure($"Faction {frc.FactionId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
@@ -38,7 +39,7 @@ public class FactionReputationChangeHandler : IWorldChangeHandler
 
         if (!string.IsNullOrWhiteSpace(frc.Reason))
         {
-            await context.Dispatcher.DispatchMutationAsync(context, new EventOccurred
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new EventOccurred
             {
                 Category = EventCategory.Interaction,
                 Summary = $"Reputation with {faction.Name} changed. {frc.Reason}",
@@ -46,7 +47,7 @@ public class FactionReputationChangeHandler : IWorldChangeHandler
             }, ct);
         }
 
-        context.RecordMessage($"Reputation for {character.Name} with {faction.Name} changed by {frc.Delta} to {character.Social.FactionReputations[frc.FactionId]}.");
+        ctx.RecordMessage($"Reputation for {character.Name} with {faction.Name} changed by {frc.Delta} to {character.Social.FactionReputations[frc.FactionId]}.");
 
         return ChangeHandlerResult.Ok;
     }
@@ -56,19 +57,20 @@ public class FactionStateChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is FactionStateChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var fsc = (FactionStateChange)change;
 
-        if (!context.Factions.TryGetValue(fsc.FactionId, out var faction))
+        if (!ctx.Factions.TryGetValue(fsc.FactionId, out var faction))
         {
-            var suggested = await context.SuggestFactionMatchAsync(fsc.FactionId);
+            var suggested = await ctx.SuggestFactionMatchAsync(fsc.FactionId);
             return ChangeHandlerResult.Failure($"Faction {fsc.FactionId} not found." + (suggested != null ? $" Did you mean: {suggested}?" : ""));
         }
 
         if (fsc.NewStance == null && !fsc.InfluenceDelta.HasValue)
         {
-            context.RecordMessage($"FactionStateChange for {fsc.FactionId}: no stance or influence delta specified — no changes made.");
+            ctx.RecordMessage($"FactionStateChange for {fsc.FactionId}: no stance or influence delta specified — no changes made.");
             return ChangeHandlerResult.Ok;
         }
 
@@ -93,7 +95,7 @@ public class FactionStateChangeHandler : IWorldChangeHandler
 
         if (fsc.InfluenceDelta.HasValue)
         {
-            context.RecordMessage($"{faction.Name}'s InfluenceLevel is now {faction.InfluenceLevel} (clamped 0-100).");
+            ctx.RecordMessage($"{faction.Name}'s InfluenceLevel is now {faction.InfluenceLevel} (clamped 0-100).");
         }
 
         return ChangeHandlerResult.Ok;

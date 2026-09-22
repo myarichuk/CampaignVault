@@ -27,9 +27,10 @@ internal static class WeaponParameterResolver
 
     public static async Task ApplyHeldWeaponDefaultsAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         if (action.ActionType != RulesetActionType.Attack)
         {
             return;
@@ -44,9 +45,10 @@ internal static class WeaponParameterResolver
 
     public static async Task<Item?> ResolveWeaponItemAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         if (TryGetItemId(action.Parameters, out var explicitId))
         {
             if (context.Items.TryGetValue(explicitId, out var preloaded))
@@ -54,9 +56,9 @@ internal static class WeaponParameterResolver
                 return preloaded;
             }
 
-            if (context.Session != null)
+            if (ctx.Session != null)
             {
-                return await context.Session.LoadAsync<Item>(explicitId, ct);
+                return await ctx.Session.LoadAsync<Item>(explicitId, ct);
             }
         }
 
@@ -132,21 +134,22 @@ internal static class WeaponParameterResolver
     }
 
     private static async Task<List<Item>> GetHeldWeaponsAsync(
-        ChangeContext context,
+        IChangeContext context,
         string characterId,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var weapons = context.Items.Values
             .Where(i => string.Equals(i.HolderId, characterId, StringComparison.OrdinalIgnoreCase)
                         && i.CoreCategory == ItemCategory.Weapon)
             .ToList();
 
-        if (weapons.Count > 0 || context.Session == null || string.IsNullOrWhiteSpace(characterId))
+        if (weapons.Count > 0 || ctx.Session == null || string.IsNullOrWhiteSpace(characterId))
         {
             return weapons;
         }
 
-        var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(context.Session, characterId, ct: ct);
+        var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(ctx.Session, characterId, ct: ct);
         return held.Where(i => i.CoreCategory == ItemCategory.Weapon).ToList();
     }
 

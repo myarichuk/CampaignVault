@@ -25,7 +25,7 @@ public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, IComb
 
     public IEnumerable<IRulesetPressureContributor> PressureContributors => [];
 
-    public async Task<ResolverOutput> ResolveAsync(ChangeContext context, RulesetAction action, CancellationToken ct = default)
+    public async Task<ResolverOutput> ResolveAsync(IChangeContext context, RulesetAction action, CancellationToken ct = default)
     {
         var mutations = new List<WorldChange>();
         

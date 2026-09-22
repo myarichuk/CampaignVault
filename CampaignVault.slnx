@@ -6,8 +6,12 @@
     <File Path="Dockerfile" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/plugins/">
+    <Project Path="plugins\CraftingMode\CraftingMode.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src\CampaignVault\CampaignVault.csproj" />
+    <Project Path="src\CampaignVault.PluginSdk\CampaignVault.PluginSdk.csproj" />
     <Project Path="src\CampaignVault.Authoring\CampaignVault.Authoring.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -1,5 +1,7 @@
+using CampaignVault.AutofacModules;
 using CampaignVault.Data;
 using CampaignVault.Models;
+using CampaignVault.Plugins;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents.Session;
@@ -157,6 +159,8 @@ public abstract class CampaignToolBase
                 // see A1 in the tool-usage audit). The explicit system chosen here always wins.
                 config.ActiveSystem = defaultSystem;
             }
+
+            campaign.SystemOptions = ApplyPluginCampaignOptionDefaults(config);
         }
         else if (forceLock && !campaign.IsSystemLocked)
         {
@@ -184,7 +188,21 @@ public abstract class CampaignToolBase
             {
                 config.ActiveSystem = defaultSystem;
             }
+
+            campaign.SystemOptions = ApplyPluginCampaignOptionDefaults(config);
         }
         return campaign;
+    }
+
+    /// <summary>
+    /// Fills any campaign-option keys plugins declared defaults for (plugin.json campaignOptions) into
+    /// <paramref name="config"/>.SystemOptions, never overwriting a key already present, and returns the
+    /// resulting dictionary so callers can mirror it onto Campaign.SystemOptions (the copy handlers read).
+    /// </summary>
+    protected Dictionary<string, string> ApplyPluginCampaignOptionDefaults(CampaignConfig config)
+    {
+        config.SystemOptions ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        PluginAssemblyLoader.ApplyCampaignOptionDefaults(PluginDataRoots.DeclaredCampaignOptions, config.SystemOptions, logger: _logger);
+        return config.SystemOptions;
     }
 }

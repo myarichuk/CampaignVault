@@ -6,14 +6,15 @@ public class WorldEventStatusChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is WorldEventStatusChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var wesc = (WorldEventStatusChange)change;
 
         if (string.IsNullOrWhiteSpace(wesc.WorldEventId))
             return ChangeHandlerResult.Failure("WorldEventId is required.");
 
-        var evt = await context.Session.LoadAsync<WorldEvent>(wesc.WorldEventId, ct);
+        var evt = await ctx.Session.LoadAsync<WorldEvent>(wesc.WorldEventId, ct);
         if (evt == null)
             return ChangeHandlerResult.Failure($"WorldEvent '{wesc.WorldEventId}' not found.");
 
@@ -31,7 +32,7 @@ public class WorldEventStatusChangeHandler : IWorldChangeHandler
         // Only update LastUpdatedDay for non-engine-authored changes
         if (!wesc.IsEngineAuthored)
         {
-            var time = await context.GetCurrentTimeAsync();
+            var time = await ctx.GetCurrentTimeAsync();
             evt.LastUpdatedDay = (int)time.TotalDaysElapsed;
         }
 
@@ -39,7 +40,7 @@ public class WorldEventStatusChangeHandler : IWorldChangeHandler
         // is just an echo of what it specified.
         if (wesc.IsEngineAuthored)
         {
-            context.RecordMessage($"World event '{evt.Title}' auto-triggered: status={evt.Status}.");
+            ctx.RecordMessage($"World event '{evt.Title}' auto-triggered: status={evt.Status}.");
         }
 
         return ChangeHandlerResult.Ok;

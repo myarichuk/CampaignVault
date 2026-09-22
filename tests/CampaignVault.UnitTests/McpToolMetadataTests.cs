@@ -8,7 +8,6 @@ using CampaignVault.Models;
 using CampaignVault.Tools;
 using ModelContextProtocol.Server;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace CampaignVault.Tests;
 

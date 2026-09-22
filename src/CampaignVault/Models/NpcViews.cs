@@ -1,16 +1,6 @@
 namespace CampaignVault.Models;
 
 /// <summary>
-/// Minimal plot thread summary embedded in entity detail responses.
-/// Payload restricted to: id, title, state, tensionLevel only.
-/// </summary>
-public record PlotThreadMinimal(
-    string Id,
-    string Title,
-    PlotThreadState State,
-    int TensionLevel);
-
-/// <summary>
 /// GM/DM-eyes-only authored content. This is backstage material for your own use — judging pacing,
 /// tension, and what an NPC privately wants or knows — not something the player character already
 /// knows. Never narrate it verbatim or treat it as spoken/observed fact. Only surface it once the

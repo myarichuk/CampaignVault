@@ -6,22 +6,23 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is EngagementRelationChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var src = (EngagementRelationChange)change;
 
-        if (!context.Characters.TryGetValue(src.CharacterId, out var actor))
+        if (!ctx.Characters.TryGetValue(src.CharacterId, out var actor))
         {
-            actor = await context.Session.LoadAsync<Character>(src.CharacterId, ct);
+            actor = await ctx.Session.LoadAsync<Character>(src.CharacterId, ct);
             if (actor == null) return ChangeHandlerResult.Failure($"Character {src.CharacterId} not found.");
-            context.RegisterNewCharacter(actor);
+            ctx.RegisterNewCharacter(actor);
         }
 
-        if (!context.Characters.TryGetValue(src.TargetId, out var target))
+        if (!ctx.Characters.TryGetValue(src.TargetId, out var target))
         {
-            target = await context.Session.LoadAsync<Character>(src.TargetId, ct);
+            target = await ctx.Session.LoadAsync<Character>(src.TargetId, ct);
             if (target == null) return ChangeHandlerResult.Failure($"Target {src.TargetId} not found.");
-            context.RegisterNewCharacter(target);
+            ctx.RegisterNewCharacter(target);
         }
 
         actor.SystemStats ??= new SystemExtension();
@@ -43,9 +44,9 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
             // per-pair commits for a multi-person conversation) and would flood the event log otherwise.
             if (removedRelation != null && IsHistoryWorthy(removedRelation.Category))
             {
-                context.RecordPhysicalStateNudge(
+                ctx.RecordPhysicalStateNudge(
                     $"{actor.Name} is no longer {removedRelation.Verb.ToLowerInvariant()} with {target.Name}.");
-                await LogEngagementEventAsync(context, actor, target,
+                await LogEngagementEventAsync(ctx, actor, target,
                     $"{actor.Name}'s engagement with {target.Name} ended.");
             }
         }
@@ -84,8 +85,8 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
 
             if (!isNoOp && IsHistoryWorthy(category))
             {
-                context.RecordPhysicalStateNudge($"{actor.Name} is now {verb.ToLowerInvariant()} with {target.Name}.");
-                await LogEngagementEventAsync(context, actor, target,
+                ctx.RecordPhysicalStateNudge($"{actor.Name} is now {verb.ToLowerInvariant()} with {target.Name}.");
+                await LogEngagementEventAsync(ctx, actor, target,
                     $"{actor.Name} is now {verb} ({category}) with {target.Name}.");
             }
         }
@@ -104,7 +105,7 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
     // Engagement relations (restraint, grappling, escort) often gate what actions are legal, so their
     // history is Important, not Trivial. Auto-logged so recall_history/NpcRecentEvents can surface it
     // without a second, separate `event` commit for the same narrative beat.
-    private static async Task LogEngagementEventAsync(ChangeContext context, Character actor, Character target, string summary)
+    private static async Task LogEngagementEventAsync(IChangeContext context, Character actor, Character target, string summary)
     {
         await context.LogEventAsync(new Event
         {

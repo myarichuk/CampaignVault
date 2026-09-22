@@ -1,0 +1,9 @@
+{
+  "id": "com.campaignvault.crafting",
+  "displayName": "Crafting",
+  "version": "0.1.0",
+  "minEngineVersion": "0.2.0",
+  "modeIds": ["crafting"],
+  "rulesetDataRoots": ["./RulesetData"],
+  "skillsPath": "./skills"
+}

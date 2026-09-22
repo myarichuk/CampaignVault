@@ -37,6 +37,7 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
             summaryList ?? [],
             dispatcher,
             null,
+            null,
             campaignName
         );
     }

@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json;
 using CampaignVault.Models;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace CampaignVault.Tests;
 

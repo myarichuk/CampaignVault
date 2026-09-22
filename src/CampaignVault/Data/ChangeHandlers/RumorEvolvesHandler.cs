@@ -11,26 +11,27 @@ public sealed class RumorEvolvesHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var rumor = (RumorEvolves)change;
 
-        var existing = await context.Session.LoadAsync<Rumor>(rumor.RumorId, ct);
+        var existing = await ctx.Session.LoadAsync<Rumor>(rumor.RumorId, ct);
         if (existing is null)
         {
             return ChangeHandlerResult.Failure($"Rumor '{rumor.RumorId}' not found.");
         }
 
-        context.Session.Advanced.Patch<Rumor, RumorState>(rumor.RumorId, x => x.State, rumor.NewState);
+        ctx.Session.Advanced.Patch<Rumor, RumorState>(rumor.RumorId, x => x.State, rumor.NewState);
 
         if (rumor.NewText != null)
         {
-            context.Session.Advanced.Patch<Rumor, string>(rumor.RumorId, x => x.CurrentText, rumor.NewText);
+            ctx.Session.Advanced.Patch<Rumor, string>(rumor.RumorId, x => x.CurrentText, rumor.NewText);
         }
 
-        var rtime = await context.GetCurrentTimeAsync();
-        context.Session.Advanced.Patch<Rumor, int>(rumor.RumorId, x => x.LastStateChangeDay, rtime.TotalDaysElapsed);
+        var rtime = await ctx.GetCurrentTimeAsync();
+        ctx.Session.Advanced.Patch<Rumor, int>(rumor.RumorId, x => x.LastStateChangeDay, rtime.TotalDaysElapsed);
 
         return ChangeHandlerResult.Ok;
     }
@@ -42,18 +43,19 @@ public sealed class RumorCreateHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var rc = (RumorCreate)change;
 
-        var existing = await context.Session.LoadAsync<Rumor>(rc.RumorId, ct);
+        var existing = await ctx.Session.LoadAsync<Rumor>(rc.RumorId, ct);
         if (existing is not null)
         {
             return ChangeHandlerResult.Failure($"Rumor '{rc.RumorId}' already exists. Use rumor_evolves to update it.");
         }
 
-        var time = await context.GetCurrentTimeAsync();
+        var time = await ctx.GetCurrentTimeAsync();
         var rumor = new Rumor
         {
             Id = rc.RumorId,
@@ -62,7 +64,7 @@ public sealed class RumorCreateHandler : IWorldChangeHandler
             State = RumorState.Nascent,
             DayCreated = time.TotalDaysElapsed,
             LastStateChangeDay = time.TotalDaysElapsed,
-            CampaignName = context.CampaignName
+            CampaignName = ctx.CampaignName
         };
 
         if (rc.RelatedLocationIds != null && rc.RelatedLocationIds.Any())
@@ -74,7 +76,7 @@ public sealed class RumorCreateHandler : IWorldChangeHandler
             rumor.RegionLocationId = "global";
         }
 
-        await context.Session.StoreAsync(rumor, ct);
+        await ctx.Session.StoreAsync(rumor, ct);
         return ChangeHandlerResult.Ok;
     }
 }

@@ -4,13 +4,6 @@ using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets.Bootstrap;
 
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum HitPointDerivationMode
-{
-    Average,
-    Rolled
-}
-
 public enum BootstrapTrigger
 {
     Create,

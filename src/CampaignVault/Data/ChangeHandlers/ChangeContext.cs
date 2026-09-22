@@ -10,7 +10,7 @@ namespace CampaignVault.Data.ChangeHandlers;
 /// Pre-loaded entities are provided so handlers can work with tracked objects (preferred pattern)
 /// instead of raw Patch operations.
 /// </summary>
-public sealed class ChangeContext
+public sealed class ChangeContext : IChangeContext
 {
     public IAsyncDocumentSession Session { get; }
     public IReadOnlyDictionary<string, Character> Characters => _characters;
@@ -20,7 +20,11 @@ public sealed class ChangeContext
     public IReadOnlyDictionary<string, Quest> Quests => _quests;
     public ILogger Logger { get; }
     public CombatEncounter? ActiveCombat { get; }
+    public ModeEncounter? ActiveMode { get; internal set; }
     public CampaignConfig? Config { get; }
+
+    /// <inheritdoc />
+    public IRollService? Rolls { get; internal set; }
 
     /// <summary>
     /// The effective campaign name for this change context (for scoping entities like Characters/Locations on create).
@@ -86,6 +90,7 @@ public sealed class ChangeContext
         List<string> summary,
         WorldChangeDispatcher dispatcher,
         CombatEncounter? activeCombat = null,
+        ModeEncounter? activeMode = null,
         string? campaignName = null,
         CampaignConfig? config = null,
         List<string>? physicalStateNudges = null)
@@ -104,6 +109,7 @@ public sealed class ChangeContext
         _physicalStateNudges = physicalStateNudges ?? [];
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
+        ActiveMode = activeMode;
         CampaignName = campaignName;
         Config = config;
         InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -124,6 +130,7 @@ public sealed class ChangeContext
         List<string> summary,
         WorldChangeDispatcher dispatcher,
         CombatEncounter? activeCombat = null,
+        ModeEncounter? activeMode = null,
         string? campaignName = null,
         CampaignConfig? config = null,
         List<string>? physicalStateNudges = null)
@@ -142,6 +149,7 @@ public sealed class ChangeContext
         _physicalStateNudges = physicalStateNudges ?? [];
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
+        ActiveMode = activeMode;
         CampaignName = campaignName;
         Config = config;
         InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

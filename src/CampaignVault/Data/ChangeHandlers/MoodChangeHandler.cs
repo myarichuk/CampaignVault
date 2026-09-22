@@ -8,34 +8,35 @@ public sealed class MoodChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var mood = (MoodChange)change;
 
-        if (!context.Characters.TryGetValue(mood.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(mood.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(mood.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(mood.CharacterId, ct);
             if (character == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(mood.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(mood.CharacterId);
                 var msg = $"Character {mood.CharacterId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         if (character.Psychology == null)
         {
-            context.RecordMessage($"WARNING: Character {mood.CharacterId} has no PsychologyProfile during MoodChange.");
-            context.RecordFailure();
+            ctx.RecordMessage($"WARNING: Character {mood.CharacterId} has no PsychologyProfile during MoodChange.");
+            ctx.RecordFailure();
             return ChangeHandlerResult.Failure();
         }
 
@@ -45,7 +46,7 @@ public sealed class MoodChangeHandler : IWorldChangeHandler
         // couldn't have known. An explicit, LLM-authored mood change is just an echo of what it set.
         if (mood.IsEngineAuthored)
         {
-            context.RecordMessage($"{mood.CharacterId}'s mood shifted to '{mood.NewMood}' (needs-driven).");
+            ctx.RecordMessage($"{mood.CharacterId}'s mood shifted to '{mood.NewMood}' (needs-driven).");
         }
 
         return ChangeHandlerResult.Ok;

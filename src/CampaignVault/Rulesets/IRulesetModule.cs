@@ -2,7 +2,6 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
-using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
 
@@ -25,18 +24,13 @@ public class ResolverOutput
 public interface IActionResolution
 {
     Task<ResolverOutput> ResolveAsync(
-        ChangeContext context,
+        IChangeContext context,
         RulesetAction action,
         CancellationToken ct = default);
 }
 
 public interface ICombatRuleset
 {
-    Task<float> RollInitiativeAsync(
-        IAsyncDocumentSession session,
-        string characterId,
-        CancellationToken ct = default);
-
     Task<float> RollInitiativeAsync(
         Character character,
         CancellationToken ct = default);

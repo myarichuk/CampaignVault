@@ -22,7 +22,7 @@ public class EncounterResolver
     /// </summary>
     public async Task<(bool Interrupted, double HoursPassed, List<WorldChange> Deltas, List<string> Narratives)>
         EvaluateAsync(
-            ChangeContext context,
+            IChangeContext context,
             Character character,
             Location location,
             double totalHours,
@@ -121,7 +121,7 @@ public class EncounterResolver
     /// </summary>
     public async Task<(bool Interrupted, List<WorldChange> Deltas, List<string> Narratives)>
         EvaluateSceneInterruptAsync(
-            ChangeContext context,
+            IChangeContext context,
             Character character,
             Location location,
             int riskModifier,

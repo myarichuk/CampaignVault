@@ -18,8 +18,9 @@ public class ResourceChangeHandler : IWorldChangeHandler
 
     public bool ShouldHandle(WorldChange change) => change is ResourceChange;
 
-    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context, CancellationToken ct = default)
+    public async Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var rc = (ResourceChange)change;
 
         if (string.IsNullOrWhiteSpace(rc.CharacterId))
@@ -32,10 +33,10 @@ public class ResourceChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure("PoolName is required.");
         }
 
-        if (!context.Characters.TryGetValue(rc.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(rc.CharacterId, out var character))
         {
-            character = context.Session != null
-                ? await context.Session.LoadAsync<Character>(rc.CharacterId, ct)
+            character = ctx.Session != null
+                ? await ctx.Session.LoadAsync<Character>(rc.CharacterId, ct)
                 : null;
 
             if (character == null)
@@ -43,11 +44,11 @@ public class ResourceChangeHandler : IWorldChangeHandler
                 return ChangeHandlerResult.Failure($"Character '{rc.CharacterId}' not found.");
             }
 
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
-        if (!string.IsNullOrEmpty(context.CampaignName)
-            && CampaignEntityVisibility.TryGetInvisibilityReason(character, context.CampaignName, out var hidden))
+        if (!string.IsNullOrEmpty(ctx.CampaignName)
+            && CampaignEntityVisibility.TryGetInvisibilityReason(character, ctx.CampaignName, out var hidden))
         {
             return ChangeHandlerResult.Failure(hidden);
         }
@@ -57,7 +58,7 @@ public class ResourceChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure($"Resource pool '{rc.PoolName}' does not exist for character '{rc.CharacterId}'.");
         }
 
-        var spellFailure = TryValidateSpellSpend(rc, character, context);
+        var spellFailure = TryValidateSpellSpend(rc, character, ctx);
         if (spellFailure != null)
             return spellFailure.Value;
 
@@ -88,7 +89,7 @@ public class ResourceChangeHandler : IWorldChangeHandler
         return new ChangeHandlerResult(true, $"{character.Name}'s {rc.PoolName}: {oldCurrent} → {newCurrent}.{clampNote}");
     }
 
-    private ChangeHandlerResult? TryValidateSpellSpend(ResourceChange rc, Character character, ChangeContext context)
+    private ChangeHandlerResult? TryValidateSpellSpend(ResourceChange rc, Character character, IChangeContext context)
     {
         if (_spellProvider == null || !SpellSlotValidator.IsSpellSlotSpend(rc.Delta, rc.PoolName))
             return null;

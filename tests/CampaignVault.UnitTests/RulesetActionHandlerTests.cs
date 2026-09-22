@@ -77,6 +77,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             [],
             dispatcher,
             activeCombat,
+            null,
             _campaign);
     }
 

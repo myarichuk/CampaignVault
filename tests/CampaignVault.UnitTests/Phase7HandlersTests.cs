@@ -26,7 +26,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         public bool ShouldHandle(WorldChange change) =>
             change is ActivityChange or NeedChange or EventOccurred or CharacterCreate;
 
-        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, ChangeContext context,
+        public Task<ChangeHandlerResult> ApplyAsync(WorldChange change, IChangeContext context,
             System.Threading.CancellationToken ct = default)
         {
             Captured.Add(change);
@@ -55,6 +55,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             _ => Task.CompletedTask,
             [],
             dispatcher,
+            null,
             null,
             "test-camp"
         );
@@ -356,6 +357,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             [],
             dispatcher,
             null,
+            null,
             "test-camp"
         );
 
@@ -448,6 +450,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             _ => Task.CompletedTask,
             summary,
             dispatcher,
+            null,
             null,
             "test-camp"
         );

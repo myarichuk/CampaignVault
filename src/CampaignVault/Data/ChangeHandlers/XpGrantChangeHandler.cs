@@ -8,28 +8,29 @@ public sealed class XpGrantChangeHandler : IWorldChangeHandler
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change,
-        ChangeContext context,
+        IChangeContext context,
         CancellationToken ct = default)
     {
+        var ctx = (ChangeContext)context;
         var xpGrant = (XpGrantChange)change;
 
-        if (!context.Characters.TryGetValue(xpGrant.CharacterId, out var character))
+        if (!ctx.Characters.TryGetValue(xpGrant.CharacterId, out var character))
         {
-            character = await context.Session.LoadAsync<Character>(xpGrant.CharacterId, ct);
+            character = await ctx.Session.LoadAsync<Character>(xpGrant.CharacterId, ct);
             if (character == null)
             {
-                var hints = await context.SuggestCharacterMatchAsync(xpGrant.CharacterId);
+                var hints = await ctx.SuggestCharacterMatchAsync(xpGrant.CharacterId);
                 var msg = $"Character {xpGrant.CharacterId} not found.";
                 if (hints != null)
                 {
                     msg += $" Did you mean: {hints}?";
                 }
 
-                context.RecordMessage($"WARNING: {msg}");
-                context.RecordFailure();
+                ctx.RecordMessage($"WARNING: {msg}");
+                ctx.RecordFailure();
                 return ChangeHandlerResult.Failure(msg);
             }
-            context.RegisterNewCharacter(character);
+            ctx.RegisterNewCharacter(character);
         }
 
         var previousXp = character.ExperiencePoints;
@@ -38,7 +39,7 @@ public sealed class XpGrantChangeHandler : IWorldChangeHandler
         // Don't echo xpGrant.Reason/Source back — the caller just supplied them in this same request.
         // The clamped resulting total is the only part it couldn't already compute itself.
         var direction = xpGrant.Amount >= 0 ? "gained" : "lost";
-        context.RecordMessage(
+        ctx.RecordMessage(
             $"{character.Name} {direction} {Math.Abs(xpGrant.Amount)} XP ({previousXp} → {character.ExperiencePoints}).");
 
         return ChangeHandlerResult.Ok;

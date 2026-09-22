@@ -19,7 +19,7 @@ namespace CampaignVault.Data.ChangeHandlers;
 public interface IWorldChangeObserver
 {
     /// <summary>Cheap interest check, no side effects. Runs only after the change's own handler already succeeded.</summary>
-    bool IsInterestedIn(WorldChange committed, ChangeContext context);
+    bool IsInterestedIn(WorldChange committed, IChangeContext context);
 
-    Task OnCommittedAsync(WorldChange committed, ChangeContext context, CancellationToken ct = default);
+    Task OnCommittedAsync(WorldChange committed, IChangeContext context, CancellationToken ct = default);
 }

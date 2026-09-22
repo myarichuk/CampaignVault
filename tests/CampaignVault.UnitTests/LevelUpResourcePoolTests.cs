@@ -154,6 +154,7 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
             [],
             dispatcher,
             null,
+            null,
             campaign);
     }
 }

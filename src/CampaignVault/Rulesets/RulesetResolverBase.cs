@@ -14,7 +14,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
     public virtual IEnumerable<IRulesetPressureContributor> PressureContributors => [];
 
     public async Task<ResolverOutput> ResolveAsync(
-        ChangeContext context, 
+        IChangeContext context, 
         RulesetAction action, 
         CancellationToken ct = default)
     {
@@ -95,35 +95,35 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
 
     protected abstract Task<ResolverResult> ResolveAttackAsync(
         RulesetAction action, 
-        ChangeContext context, 
+        IChangeContext context, 
         TStats actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct);
 
     protected abstract Task<ResolverResult> ResolveSkillCheckAsync(
         RulesetAction action, 
-        ChangeContext context, 
+        IChangeContext context, 
         TStats actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct);
 
     protected abstract Task<ResolverResult> ResolveContestedCheckAsync(
         RulesetAction action, 
-        ChangeContext context, 
+        IChangeContext context, 
         TStats actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct);
 
     protected abstract Task<ResolverResult> ResolveSavingThrowAsync(
         RulesetAction action, 
-        ChangeContext context, 
+        IChangeContext context, 
         TStats actorStats, 
         List<WorldChange> mutations, 
         CancellationToken ct);
 
     protected virtual async Task<ResolverResult> ResolveSpellAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         TStats actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -152,7 +152,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
 
     protected virtual Task<ResolverResult> ResolveSpellSaveAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         TStats actorStats,
         List<WorldChange> mutations,
         CancellationToken ct) =>
@@ -162,7 +162,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
 
     protected virtual async Task<ResolverResult> ResolveSpellUtilityAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         TStats actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -178,7 +178,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
 
     protected virtual async Task<ResolverResult> ResolveSpellHealAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         TStats actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -224,7 +224,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
 
     protected virtual async Task<ResolverResult> ResolveRecoveryAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         TStats actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
@@ -235,7 +235,7 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
 
     protected virtual async Task<ResolverResult> ResolveUseItemAsync(
         RulesetAction action,
-        ChangeContext context,
+        IChangeContext context,
         TStats actorStats,
         List<WorldChange> mutations,
         CancellationToken ct)
