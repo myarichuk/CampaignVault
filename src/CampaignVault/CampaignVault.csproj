@@ -57,5 +57,39 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CampaignVault.PluginSdk\CampaignVault.PluginSdk.csproj" />
+    <!-- Plugin references: build DLLs but don't reference them in host assembly -->
+    <ProjectReference Include="..\..\plugins\CraftingMode\CraftingMode.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\plugins\MedievalWeapons\MedievalWeapons.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <!-- Copy plugin DLLs and static files to bin/Plugins folder after build -->
+  <Target Name="CopyPluginsToOutput" AfterTargets="Build">
+    <PropertyGroup>
+      <PluginsOutputDir>$(OutDir)Plugins</PluginsOutputDir>
+    </PropertyGroup>
+
+    <Message Text="Copying plugins to $(PluginsOutputDir)" Importance="High" />
+
+    <!-- Copy CraftingMode plugin -->
+    <ItemGroup>
+      <CraftingModeDll Include="..\..\plugins\CraftingMode\bin\$(Configuration)\net10.0\CraftingMode.dll" />
+      <CraftingModeManifest Include="..\..\plugins\CraftingMode\plugin.json" />
+      <CraftingModeRulesetData Include="..\..\plugins\CraftingMode\RulesetData\**\*.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CraftingModeDll)" DestinationFolder="$(PluginsOutputDir)\CraftingMode" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(CraftingModeManifest)" DestinationFolder="$(PluginsOutputDir)\CraftingMode" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(CraftingModeRulesetData)" DestinationFolder="$(PluginsOutputDir)\CraftingMode\RulesetData\%(RecursiveDir)" SkipUnchangedFiles="false" />
+
+    <!-- Copy MedievalWeapons plugin -->
+    <ItemGroup>
+      <MedievalWeaponsDll Include="..\..\plugins\MedievalWeapons\bin\$(Configuration)\net10.0\MedievalWeapons.dll" />
+      <MedievalWeaponsManifest Include="..\..\plugins\MedievalWeapons\plugin.json" />
+      <MedievalWeaponsRulesetData Include="..\..\plugins\MedievalWeapons\RulesetData\**\*.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MedievalWeaponsDll)" DestinationFolder="$(PluginsOutputDir)\MedievalWeapons" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(MedievalWeaponsManifest)" DestinationFolder="$(PluginsOutputDir)\MedievalWeapons" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(MedievalWeaponsRulesetData)" DestinationFolder="$(PluginsOutputDir)\MedievalWeapons\RulesetData\%(RecursiveDir)" SkipUnchangedFiles="false" />
+
+    <Message Text="Plugins copied successfully" Importance="High" />
+  </Target>
 </Project>
