@@ -11,14 +11,15 @@ internal static class McpSchemaInstaller
 {
     public static IServiceCollection AddCampaignVaultToolSchemas(this IServiceCollection services)
     {
-        return services.PostConfigure<McpServerOptions>(options =>
+        services.AddOptions<McpServerOptions>().PostConfigure<IConfiguration>((options, configuration) =>
         {
+            var mode = ResolveMode(configuration);
             var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Install take_turn schema
             if (options.ToolCollection?.TryGetPrimitive("take_turn", out var takeTurnTool) == true)
             {
-                var takeTurnSchema = TakeTurnSchemaBuilder.Build(jsonOptions);
+                var takeTurnSchema = TakeTurnSchemaBuilder.Build(jsonOptions, mode);
                 takeTurnTool.ProtocolTool.InputSchema = takeTurnSchema;
             }
 
@@ -65,5 +66,15 @@ internal static class McpSchemaInstaller
                 }
             }
         });
+
+        return services;
     }
+
+    internal static ToolSchemaMode ResolveMode(IConfiguration configuration) =>
+        ParseMode(configuration["CampaignVault:ToolSchemaMode"]);
+
+    internal static ToolSchemaMode ParseMode(string? value) =>
+        Enum.TryParse<ToolSchemaMode>(value, ignoreCase: true, out var mode)
+            ? mode
+            : ToolSchemaMode.Stub;
 }

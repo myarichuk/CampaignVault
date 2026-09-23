@@ -95,4 +95,47 @@ public class ToolSchemaBudgetTests
         Assert.True(typeConstCount >= variantCount,
             $"Expected at least {variantCount} $type discriminators, found {typeConstCount}");
     }
+
+    private static string[] RequiredOf(JsonDocument doc, string def) =>
+        doc.RootElement.GetProperty("$defs").GetProperty(def).GetProperty("required")
+            .EnumerateArray().Select(x => x.GetString()!).ToArray();
+
+    [Fact]
+    public void FullSchema_RequiredArrays_OnlyListRealRequirements()
+    {
+        using var doc = JsonDocument.Parse(TakeTurnSchemaBuilder.Build(JsonOptions, ToolSchemaMode.Full).GetRawText());
+
+        Assert.Equal(["$type", "locationId"], RequiredOf(doc, "location_update"));
+        Assert.DoesNotContain("eventId", RequiredOf(doc, "event"));
+        Assert.DoesNotContain("locationId", RequiredOf(doc, "event"));
+        Assert.DoesNotContain("initiatorId", RequiredOf(doc, "event"));
+        Assert.DoesNotContain("isReaction", RequiredOf(doc, "ruleset_action"));
+        Assert.DoesNotContain("parameters", RequiredOf(doc, "ruleset_action"));
+        Assert.Contains("characterId", RequiredOf(doc, "hp"));
+    }
+
+    [Fact]
+    public void StubSchema_IsConstantSmallAndHasNoDefs()
+    {
+        var json = TakeTurnSchemaBuilder.Build(JsonOptions, ToolSchemaMode.Stub).GetRawText();
+        using var doc = JsonDocument.Parse(json);
+
+        Assert.False(doc.RootElement.TryGetProperty("$defs", out _));
+        Assert.DoesNotContain("\"hp\"", json);
+        Assert.Contains("get_commit_schema", json);
+        Assert.Contains("\"forceFullReseed\"", json);
+        Assert.Contains("\"clientPartyFingerprint\"", json);
+        Assert.True(json.Length < 5000, $"Stub schema grew to {json.Length} chars");
+    }
+
+    [Theory]
+    [InlineData(null, ToolSchemaMode.Stub)]
+    [InlineData("", ToolSchemaMode.Stub)]
+    [InlineData("garbage", ToolSchemaMode.Stub)]
+    [InlineData("full", ToolSchemaMode.Full)]
+    [InlineData("Stub", ToolSchemaMode.Stub)]
+    public void ParseMode_DefaultsToStub(string? value, ToolSchemaMode expected)
+    {
+        Assert.Equal(expected, McpSchemaInstaller.ParseMode(value));
+    }
 }

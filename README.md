@@ -84,6 +84,24 @@ A pure story-focused ruleset with d6 Oracle resolution. No classes, levels, or h
 
 ---
 
+## Skills Requirement & Tool Schema Mode
+
+CampaignVault assumes your LLM client **loads the skills in [`claude_skills/`](./claude_skills)** (or an equivalent unified skill set). The skills are the source of truth for which `$type` verbs exist and how to use them.
+
+`take_turn`'s advertised input schema is controlled by `CampaignVault:ToolSchemaMode` (`appsettings.json`, or env var `CampaignVault__ToolSchemaMode`):
+
+| Mode | What tools/list advertises | Use when |
+|------|----------------------------|----------|
+| `Stub` (default) | The request envelope, plus `changes[]` items that only require `$type`. Verbs/fields are **not** listed; the description tells the model to consult its skills and call `get_commit_schema` (no args = index, `type=X` = one verb's fields). ~300 tokens. | Normal operation with skills loaded |
+| `Full` | A `$defs` entry per `$type` (~7k tokens). | Clients with no skill mechanism, or debugging schemas |
+
+**Why Stub is the default:**
+- **Cost.** The full schema reprinted on every connector discovery cost ~7k tokens per beat, most of it verbs a campaign never uses (plugin verbs included).
+- **Staleness.** Some clients (e.g. Grok Web) cache tool schemas. A cached full schema goes wrong when plugins or fields change; a constant stub can never be stale.
+- **One source of truth.** Skills describe the verbs; `get_commit_schema` returns live server truth on demand; the server validates every commit regardless.
+
+---
+
 ## Documentation
 
 - **[INSTALLATION.md](./INSTALLATION.md)** — Docker, local dev, remote deployment (ngrok, Fly.io), authentication

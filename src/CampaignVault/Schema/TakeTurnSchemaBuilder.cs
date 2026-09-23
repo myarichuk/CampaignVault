@@ -9,7 +9,12 @@ namespace CampaignVault.Schema;
 /// </summary>
 internal static class TakeTurnSchemaBuilder
 {
-    public static JsonElement Build(JsonSerializerOptions options)
+    internal const string StubChangesDescription =
+        "World changes to commit. Every item needs '$type'. Verbs and their fields are NOT listed here — consult your " +
+        "CampaignVault skills. If unsure or a change fails, call get_commit_schema (no args = index of $types; type='<one $type>' = its fields). " +
+        "Send sparse objects: $type plus only the fields you mean, no nulls.";
+
+    public static JsonElement Build(JsonSerializerOptions options, ToolSchemaMode mode = ToolSchemaMode.Full)
     {
         // For now, return a simplified version of the schema
         // In a full implementation, this would use JsonSchemaExporter to generate per-variant
@@ -132,8 +137,31 @@ internal static class TakeTurnSchemaBuilder
                 }
             },
             ["required"] = new JsonArray("request", "campaignName"),
-            ["$defs"] = BuildDefs(options)
         };
+
+        if (mode == ToolSchemaMode.Stub)
+        {
+            // Constant on purpose: no verb list, so a client-side cached copy can never go stale.
+            requestProperties["changes"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["$type"] = new JsonObject { ["type"] = "string" }
+                    },
+                    ["required"] = new JsonArray("$type"),
+                    ["additionalProperties"] = true
+                },
+                ["description"] = StubChangesDescription
+            };
+        }
+        else
+        {
+            root["$defs"] = BuildDefs(options);
+        }
 
         using var doc = JsonDocument.Parse(root.ToJsonString());
         return doc.RootElement.Clone();

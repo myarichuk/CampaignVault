@@ -90,13 +90,7 @@ internal static class CommitSchemaModel
 
                 var jsonNameAttr = pi.GetCustomAttribute<JsonPropertyNameAttribute>();
                 var jsonName = jsonNameAttr?.Name ?? pi.Name;
-                // IsNullableProperty already handles both Nullable<T> (Nullable.GetUnderlyingType) and
-                // nullable reference types, so it alone determines optionality. The previous
-                // `pi.PropertyType.IsValueType ||` short-circuited that check to true for every value-type
-                // property — including nullable ones like `int?`/`bool?`/`EngagementCategory?`, which are
-                // the overwhelming majority of WorldChange fields (almost everything here is optional) —
-                // marking nearly every optional field "required" in the generated take_turn schema.
-                var isRequired = !IsNullableProperty(pi);
+                var isRequired = IsRequiredProperty(pi);
 
                 var fieldDesc = pi.GetCustomAttribute<DescriptionAttribute>()?.Description;
 
@@ -136,15 +130,24 @@ internal static class CommitSchemaModel
         return variants.AsReadOnly();
     }
 
-    private static bool IsNullableProperty(PropertyInfo prop)
-    {
-        // Check if it's a nullable reference type or Nullable<T>
-        if (prop.PropertyType.IsValueType)
-        {
-            return Nullable.GetUnderlyingType(prop.PropertyType) != null;
-        }
+    private static readonly NullabilityInfoContext NullabilityContext = new();
 
-        var nullableAttr = prop.GetCustomAttribute<System.Runtime.CompilerServices.NullableAttribute>();
-        return nullableAttr != null && nullableAttr.NullableFlags[0] != 1;
+    /// <summary>
+    /// A field is emitted as schema-required only when omitting it can never be valid: a C# <c>required</c>
+    /// member, or a non-nullable reference-type scalar (typically the target id). Value types (int/bool/enum)
+    /// and collections default sensibly server-side, and nullability must be read via NullabilityInfoContext —
+    /// the per-property NullableAttribute is absent whenever a NullableContext covers the type, which used to
+    /// mark nearly every optional string "required".
+    /// </summary>
+    private static bool IsRequiredProperty(PropertyInfo prop)
+    {
+        if (prop.GetCustomAttribute<System.Runtime.CompilerServices.RequiredMemberAttribute>() != null)
+            return true;
+
+        var type = prop.PropertyType;
+        if (type.IsValueType || type != typeof(string))
+            return false;
+
+        return NullabilityContext.Create(prop).WriteState != NullabilityState.Nullable;
     }
 }

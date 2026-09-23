@@ -9,6 +9,8 @@ metadata:
 
 **Context**: Campaign Vault's `take_turn` tool handles all mutations atomically with bundled auto-refresh. This skill guides which WorldChange types to bundle in one `take_turn` call for cohesion and narrative clarity. There is no separate commit tool and no wrapper tools — `take_turn` with your chosen changes[] is the one mutation pattern.
 
+**Tool schema (Stub mode, the default):** `take_turn`'s advertised schema deliberately does NOT list `$type` verbs or fields — these skills are the source of truth. Cache the `campaignvault___*` tool names after the first successful call; do not re-run `search_connected_tools` or re-request the schema each beat. Send sparse objects (`$type` + the fields you mean, no nulls). If a `$type` is unfamiliar or a commit fails, call `get_commit_schema` (no args = index; `type=<one $type>` = its fields) instead of guessing.
+
 ## Core Principle: Bundling Cohesion
 
 A **bundle** is a set of `WorldChange` types that logically belong together — they describe one atomic action from the player's perspective.
