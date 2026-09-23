@@ -546,6 +546,10 @@ public class NeedChange : WorldChange
     [Description("Delta to apply. Negative values satisfy/reduce the need (e.g. feeding someone). Positive values increase the drive (e.g. marching all day raises tiredness).")]
     [JsonPropertyName("delta")]
     public float Delta { get; set; }
+
+    [Description("Set/replace this need's passive per-day accumulation rate (points/day). Omit to leave the current rate unchanged; set 0 to stop passive drift without deleting history. Independent of Delta, which still applies an immediate one-time push — set both in the same commit to establish a need's starting value and its ongoing rate together.")]
+    [JsonPropertyName("accumulationRate")]
+    public float? AccumulationRate { get; set; }
 }
 
 /// <summary>Set or delta an arbitrary narrative attribute on a character (willpower, temperature, morale, corruption, reputation, etc.).</summary>

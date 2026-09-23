@@ -19,11 +19,14 @@ internal static class PressureHelpers
     /// text would treat every tick as brand-new and defeat suppression entirely. Digit-stripped hashing
     /// keeps "same nag category, value changed" suppressible/escalatable as before, while text that
     /// differs in its non-numeric part gets a distinct signature and a fresh escalation cycle instead of
-    /// silently inheriting stale state.
+    /// silently inheriting stale state. Pass <paramref name="normalizeDigits"/>=false where the numbers
+    /// are discrete state the reader must see (e.g. a quest deadline countdown).
     /// </summary>
-    public static string ComputeContentSignature(string text)
+    public static string ComputeContentSignature(string text, bool normalizeDigits = true)
     {
-        var normalized = Regex.Replace(text ?? string.Empty, "[0-9]+", "#");
+        var normalized = normalizeDigits
+            ? Regex.Replace(text ?? string.Empty, "[0-9]+", "#")
+            : text ?? string.Empty;
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
         return Convert.ToHexString(bytes)[..16];
     }

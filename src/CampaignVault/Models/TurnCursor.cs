@@ -15,7 +15,10 @@ public class TurnCursor
     [JsonPropertyName("campaignName")]
     public string? CampaignName { get; set; }
 
-    /// <summary>Number of take_turn calls (mutation or pure-query) since the last Full response. Reset to 0 on Full.</summary>
+    /// <summary>Number of substantial take_turn calls since the last Full response. Reset to 0 on Full.
+    /// A call counts only when it committed mutations or returned substantial state (includeWorldState /
+    /// includeParty / full-detail present) — pure extraCharacterIds/extraLocationIds-only polls persist
+    /// (saveChanges:true for pressure-cooldown state) but do not age this clock (P2-11).</summary>
     [JsonPropertyName("turnsSinceReseed")]
     public int TurnsSinceReseed { get; set; }
 
@@ -43,25 +46,30 @@ public class TurnCursor
     [JsonPropertyName("worldSequence")]
     public long WorldSequence { get; set; }
 
-    /// <summary>Readable fingerprint of party state as of the end of the last take_turn call ("charId:hp/maxHp@locationId",
-    /// sorted by ID). Compared against the client's echoed TakeTurnRequest.ClientPartyFingerprint on the next call to
-    /// detect narrative drift (a delta the client missed or misread) independent of the periodic reseed cadence.</summary>
+    /// <summary>P2-10(b): deliberately narrow party HP/location fingerprint as of the end of the last
+    /// take_turn call ("charId:hp/maxHp@locationId", sorted by ID). Compared against the client's echoed
+    /// TakeTurnRequest.ClientPartyFingerprint on the next call to detect HP/location drift (a missed or
+    /// misread delta) independent of the periodic reseed cadence. Does NOT cover NPC/need/memory/rumor
+    /// drift — that is covered only by the periodic reseed + integrity pressure.</summary>
     [JsonPropertyName("lastPartyFingerprint")]
     public string? LastPartyFingerprint { get; set; }
 
-    /// <summary>Topic of the high-salience-memory nudge (NpcSummaryView/EntityChangeDelta.MemoryHint)
-    /// last surfaced to the client per entity ID. take_turn skips re-sending a MemoryHint whose topic
-    /// matches what's already here — the client already has the nudge — and updates the entry whenever
-    /// a new/different topic is surfaced. Entities are only added here once their top memory first
-    /// clears the salience bar, so this stays small relative to campaign NPC count.</summary>
+    /// <summary>Topic + content hash of the high-salience-memory nudge (NpcSummaryView/
+    /// EntityChangeDelta.MemoryHint) last surfaced to the client per entity ID, e.g.
+    /// "Secret#AB12..". take_turn skips re-sending a MemoryHint whose key matches what's already
+    /// here — the client already has the nudge — and updates the entry whenever a new/different
+    /// topic OR newly-edited details under the same topic are surfaced. Entities are only added
+    /// here once their top memory first clears the salience bar, so this stays small relative to
+    /// campaign NPC count.</summary>
     [JsonPropertyName("surfacedMemoryHintTopicsByEntityId")]
     public Dictionary<string, string> SurfacedMemoryHintTopicsByEntityId { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Topics of CompressedMemory entries (NpcPresenceSummary/NpcInitiativeEnrichment) already
-    /// sent to the client per entity ID, as of the last delta turn that surfaced them — same "don't
-    /// re-cost tokens for a stable reading" gate as <see cref="SurfacedMemoryHintTopicsByEntityId"/>, but
-    /// per-entity a full topic set rather than a single topic since an NPC can carry several relevant
-    /// memories at once. Replaced (not unioned) with each call's current topic set, so a memory that
+    /// <summary>Topic + content-hash keys ("Topic#HASH", see MutationTools.MemorySuppressionKey) of
+    /// CompressedMemory entries (NpcPresenceSummary/NpcInitiativeEnrichment) already sent to the
+    /// client per entity ID, as of the last delta turn that surfaced them — same "don't
+    /// re-cost tokens for a stable reading" gate as <see cref="SurfacedMemoryHintTopicsByEntityId"/>,
+    /// but per-entity a full key set rather than a single key since an NPC can carry several relevant
+    /// memories at once. Replaced (not unioned) with each call's current key set, so a memory that
     /// drops out of relevance and later returns is treated as new again.</summary>
     [JsonPropertyName("surfacedCompressedMemoryTopicsByEntityId")]
     public Dictionary<string, List<string>> SurfacedCompressedMemoryTopicsByEntityId { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -70,9 +78,9 @@ public class TurnCursor
     /// baseline cumulative drift is measured against, not any single turn's NeedChange alone. A need
     /// clears CampaignConfig.NeedsChangeSignificanceThreshold when its live value has drifted far
     /// enough from THIS baseline since it was last surfaced, even if no single turn's delta was enough
-    /// on its own. Seeded for every NPC's full KnownNeeds on a Full reseed, and updated only for needs
-    /// actually included in a Delta response, so an omitted need keeps accumulating drift against its
-    /// last-sent baseline.</summary>
+    /// on its own. Seeded for every NPC's AND every party member's full needs on a Full reseed (P2-12),
+    /// and updated only for needs actually included in a Delta response, so an omitted need keeps
+    /// accumulating drift against its last-sent baseline.</summary>
     [JsonPropertyName("surfacedNeedValuesByEntityId")]
     public Dictionary<string, Dictionary<string, float>> SurfacedNeedValuesByEntityId { get; set; }
         = new(StringComparer.OrdinalIgnoreCase);
@@ -118,6 +126,28 @@ public class TurnCursor
     [JsonPropertyName("consecutiveUnconsumedNudgesByEntityId")]
     public Dictionary<string, int> ConsecutiveUnconsumedNudgesByEntityId { get; set; }
         = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>P2-13: day/month/year + coarse time-of-day bucket (CampaignTime.GetTimeOfDayName) of the
+    /// Time last actually carried in a WorldStateDelta. Null = no delta has carried Time yet, so the next
+    /// one always sends. Tracked like the need baselines — same "last actually surfaced" semantics.</summary>
+    [JsonPropertyName("lastSurfacedDay")]
+    public int? LastSurfacedDay { get; set; }
+
+    [JsonPropertyName("lastSurfacedMonth")]
+    public int? LastSurfacedMonth { get; set; }
+
+    [JsonPropertyName("lastSurfacedYear")]
+    public int? LastSurfacedYear { get; set; }
+
+    [JsonPropertyName("lastSurfacedTimeOfDay")]
+    public string? LastSurfacedTimeOfDay { get; set; }
+
+    /// <summary>P2-13: display-string set (ordered, grouping-key keyed via the display text) of the
+    /// WorldPressure last actually carried in a WorldStateDelta. Null = no delta has carried pressure
+    /// yet, so the next one always sends — suppression must be conservative (new/changed always sends;
+    /// only identical-to-last may drop).</summary>
+    [JsonPropertyName("lastSurfacedPressureKeys")]
+    public List<string>? LastSurfacedPressureKeys { get; set; }
 }
 
 /// <summary>A pending, not-yet-consumed NpcInitiativeNudge — see

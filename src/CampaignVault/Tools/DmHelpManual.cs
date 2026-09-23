@@ -16,11 +16,11 @@ internal static class DmHelpManual
 ## Full vs Delta
 
 - **mode=Full**: `includeParty`/`includeWorldState` return complete `Party`/`WorldState` snapshots (the whole picture).
-- **mode=Delta** (the common case): they return `PartyDelta`/`WorldStateDelta` instead — only what changed this turn, echoing the applied commit objects rather than full entity state. NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and `KnownNeeds` is filtered to needs that moved >= 2 points (pass `leanMode: true` to cap that at the top 2 movers, for long multi-NPC scenes).
+- **mode=Delta** (the common case): they return `PartyDelta`/`WorldStateDelta` instead — only what changed this turn, echoing the applied commit objects rather than full entity state. NPC summaries also drop appearance/behavioral-summary/gear fields that didn't change this turn, and `KnownNeeds` is filtered to needs that moved >= 2 points (pass leanMode: true to cap that at the top 2 movers, for long multi-NPC scenes). PartyDelta likewise surfaces only members with ambient changes, need movers (same significance/cumulative-drift gates), or initiative/memory enrichment — an absent PartyDelta on a quiet turn means ""no party change worth surfacing"", not ""no party"". WorldStateDelta sends Time only when day/time-of-day shifted since last surfaced and WorldPressure only when the evaluated set differs (pressureUnchanged: true otherwise; new/changed always sends).
 
 ## When a full reseed happens
 
-Periodically (server-configured, default every 40 turns), and escalates early — even mid-delta-run — on:
+Periodically (server-configured, default every 40 substantial turns — pure extraCharacterIds-only polls don't advance the clock), and escalates early — even mid-delta-run — on:
 - a major PC location change
 - a relationship shift crossing a ±40 band
 - a significant plot-thread beat (once at least 3 delta turns have elapsed since the last reseed)
@@ -42,7 +42,9 @@ On a delta-mode scene refetch, an NPC who was already present the last time you 
 
 ## Drift Protection
 
-Every response carries `partyFingerprint` (a readable ""charId:hp/maxHp@locationId"" list for the party). Pass it back as `clientPartyFingerprint` on your NEXT `take_turn` call, unchanged. If it doesn't match what the server computed, that means you missed or misread a prior delta — the server forces a full resync and flags it in the response, so you don't keep narrating from a stale mental model (e.g. treating a PC as still in a location they already left). You can also eyeball the fingerprint yourself each turn as a sanity check against your own understanding of the party's state.
+Every response carries `partyFingerprint` — a deliberately NARROW readable hash (""charId:hp/maxHp@locationId"" per PC/companion). It detects HP/location drift only; NPC/need/memory/rumor drift never trips it. Those are covered by the periodic full reseed (default every 40 substantial turns — pure extraCharacterIds-only polls don't advance the clock) + integrity pressure, not by this hash. Pass the fingerprint back as `clientPartyFingerprint` on your NEXT `take_turn` call, unchanged. Omit it if you don't have a prior value handy — an omitted echo is never treated as a mismatch. If it doesn't match what the server computed, that means you missed or misread a prior HP/location delta — the server forces a full resync and flags it in the response, so you don't keep narrating from a stale mental model (e.g. treating a PC as still in a location they already left). You can also eyeball the fingerprint yourself each turn as a sanity check against your own understanding of the party's state.
+
+An absent `PartyDelta` on a quiet delta turn means ""no party change worth surfacing"", not ""no party"" — `PartyDelta` echoes only ambient (server-derived) non-need changes, needs that crossed the significance or cumulative-drift gates, and initiative/memory enrichment. `includeWorldState` is expensive (pressure evaluation + serialization run even when the delta suppresses Time/pressure) — use it when pressure/verification actually matters.
 ";
 
     internal const string CommitEnumSection = @"# Change Type Enum Reference

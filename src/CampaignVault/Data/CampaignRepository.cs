@@ -2216,6 +2216,28 @@ public class CampaignRepository
         if (pcCharacterCount == 0) gaps.Add("no PC characters yet");
         if (partyLocation != null && partyLocation.ClimateZone == null) gaps.Add($"starting location '{partyLocation.Id}' has no climateZone set");
 
+        // P0-3 integrity signal: count characters that would surface EntityIntegrity warnings so
+        // the session-0 checklist covers data health without duplicating the pressure payload.
+        // Evaluates the contributor directly (idempotent auto-normalization rides the caller's save).
+        // Never let a scan failure break kickoff — pressure itself remains the primary channel.
+        try
+        {
+            var integrityTime = await GetTimeAsync(new CampaignSession(session, effective));
+            var integrityConfig = await GetCampaignConfigAsync(new CampaignSession(session, effective));
+            var integrityItems = await new CampaignVault.Data.Pressure.Contributors.EntityIntegrityPressureContributor()
+                .EvaluateAsync(new PressureContext(effective, integrityTime, integrityConfig, session, RequestedLocationId: partyLocationId, DisableCooldowns: true));
+            var integrityCount = integrityItems
+                .Where(p => p.GroupingKey.StartsWith("Character:Integrity", StringComparison.Ordinal))
+                .Select(p => p.EntityId)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+            if (integrityCount > 0) gaps.Add($"{integrityCount} characters with integrity warnings — see WorldPressure");
+        }
+        catch
+        {
+            // Intentionally swallowed: seed coverage is advisory.
+        }
+
         return new SeedCoverageSummary
         {
             Locations = locationCount,

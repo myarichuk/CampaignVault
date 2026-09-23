@@ -67,8 +67,19 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
     /// A delta turn may return at most this fraction of the STATE the full snapshot before it returned.
     /// Measured share across the three scenarios sits at 33–42%, so 0.65 leaves real room for content to
     /// grow while still failing well before delta mode degenerates into a second full snapshot.
+    /// P1-4 legitimately raises the travel scenario: a genuine A→B transition now refetches the
+    /// departure scene alongside the destination (stale-roster fix), so the two travel delta turns
+    /// carry ~2 scenes against the full's ~1 and sit just above the gate. The travel scenario gets
+    /// its own ratio below rather than weakening the shared gate.
     /// </summary>
     private const double MaxDeltaShareOfFull = 0.65;
+
+    /// <summary>
+    /// Travel-only delta ratio: P1-4 departure-side refetch means each genuine transition turn
+    /// carries both the destination and the source scene. Measured at ~0.66 post-P1-4, so 0.80
+    /// leaves growth room while still failing well before a second full snapshot.
+    /// </summary>
+    private const double MaxTravelDeltaShareOfFull = 0.80;
 
     public TokenBudgetMeasurementTests(RavenDBFixture fixture, ITestOutputHelper output)
     {
@@ -106,8 +117,10 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
     }
 
     /// <summary>Applies both gates to a scenario's turns and, on failure, prints where the tokens went.</summary>
-    private void AssertWithinBudget(string scenario, int ceiling, IReadOnlyList<TurnCost> turns)
+    private void AssertWithinBudget(string scenario, int ceiling, IReadOnlyList<TurnCost> turns,
+        double? maxDeltaShareOverride = null)
     {
+        var maxShare = maxDeltaShareOverride ?? MaxDeltaShareOfFull;
         foreach (var turn in turns)
         {
             if (turn.Tokens > ceiling)
@@ -147,12 +160,12 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
             _output.WriteLine(
                 $"[{scenario}] turn {turn.TurnNumber} delta state is {share:P0} of the full snapshot at turn {lastFull.TurnNumber}");
 
-            if (share > MaxDeltaShareOfFull)
+            if (share > maxShare)
             {
                 DumpBreakdown(scenario, turn);
             }
 
-            Assert.True(share <= MaxDeltaShareOfFull,
+            Assert.True(share <= maxShare,
                 $"[{scenario}] delta turn {turn.TurnNumber} returned {share:P0} as much STATE as the full snapshot at " +
                 $"turn {lastFull.TurnNumber} (~{turn.StateTokens} vs ~{lastFull.StateTokens} tokens). Delta mode is " +
                 "supposed to send only what changed — something is re-sending state the client already has.");
@@ -368,7 +381,7 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
         Assert.True(t3.Success, t3.Summary);
         var v3 = Measure("Travel", 3, t3.Data!);
 
-        AssertWithinBudget("Travel", TravelTurnTokenCeiling, [v1, v2, v3]);
+        AssertWithinBudget("Travel", TravelTurnTokenCeiling, [v1, v2, v3], MaxTravelDeltaShareOfFull);
     }
 
     /// <summary>

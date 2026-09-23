@@ -83,7 +83,7 @@ public sealed class SceneAssembler
         // none of them currently think it's their move. Never a hard gate, unlike combat's ActiveTurnId.
         var turnIntentHolder = presenceSummaries
             .Where(n => n.TurnIntent?.Holder == "npc")
-            .OrderByDescending(n => n.BehavioralTension)
+            .OrderByDescending(n => n.BehavioralTension ?? double.MinValue)
             .FirstOrDefault();
 
         return new SceneView

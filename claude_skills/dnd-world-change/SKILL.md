@@ -29,6 +29,7 @@ You are persisting changes to the world: events, character state, items, relatio
 |----------|-------|---------|
 | Narrative | `event`, `rumor` | Record dialogue, actions, discoveries |
 | Character State | `character_update`, `mood`, `knowledge_update` | Appearance, mood, memory |
+| Needs/Attributes | `need`, `attribute` | Open-ended narrative drives and stats — see below |
 | Relationships | `relationship`, `engagement_relation`, `spatial_position` | Social bonds, proximity, restraint |
 | NPC Behavior | `npc_initiative_nudge` | Prime a specific NPC to act/speak next based on something they just witnessed (see `dnd-npc-interaction`'s NPC Initiative section) — the engine's own scheduler can't judge a specific narrative beat the way you can. |
 | Inventory | `item`, `item_update`, `item_equip`, `item_unequip`, `item_use` | Carry/drop/equip items |
@@ -54,6 +55,34 @@ Set `event.impliesPersistentPhysicalChange: true` on the paired `event` whenever
 | Campaign | `campaign_update` | Narrative focus tags (full replacement list) |
 
 Call `get_commit_schema` for the machine-readable field list per $type.
+
+## Needs, Attributes & Traits — the open-ended bags
+
+Three separate extension points exist for narrative state that isn't one of the named fields above. They are NOT interchangeable — picking the wrong one silently drops the value from the surface that should show it.
+
+- **`need`** (`$type: "need"`) — pushes `characterId`/`need`/`delta` into that character's `NeedsProfile.ActiveNeeds`. The name is unrestricted; invent any narrative-appropriate need (`paranoia`, `bloodlust`, `homesickness`). Only the core four (`hunger`, `thirst`, `tiredness`, `social_drive`) auto-tick from `minutesElapsed`/`advance_world` — an invented need moves **only** when you explicitly commit a `need` change for it, so if a need should track ongoing time pressure (not just discrete events), either give it an `accumulationRate` once (below) or push it yourself every turn it's relevant. Needs surface to you via `take_turn`'s `KnownNeeds` and participate in delta-mode "significant mover" filtering — this is the bag to use for anything you want the player-facing need list to show.
+- **`attribute`** (`$type: "attribute"`) — pushes `characterId`/`attribute`/`value`(+`isDelta`) into `SystemStats.Attributes`, a float bag clamped 0–100 (e.g. `corruption`, `reputation`, `fear`, `debt_pressure`). Never surfaces in `KnownNeeds` and is not part of the needs-accumulation sweep — use this for a persistent narrative score you'll reference in prose or pressure checks, not for anything meant to read like a need.
+- **`character_update.systemStats.traits`** — a `Dictionary<string,string>` inside `character_update`'s `systemStats` object (`SystemStats.Traits`), for open-ended string facts that don't fit a float (categorical tags, freeform descriptors). Example:
+  ```json
+  { "$type": "character_update", "characterId": "chars/lyra", "systemStats": { "$system": "dnd5e", "traits": { "disguise_persona": "traveling merchant" } } }
+  ```
+  Sending one key patches only that key — it merges into the existing `Traits` dict rather than replacing it, so you don't need to resend every trait the character already has.
+
+Rule of thumb: something the player should see tracked as a rising/falling need → `need`. A persistent narrative score/flag → `attribute`. A freeform string fact → `character_update.systemStats.traits`.
+
+**Giving a custom need its own passive drift:** set `accumulationRate` (points/day) on a `need` commit once — omit it to leave the current rate unchanged, set `0` to stop drift without deleting history. It is independent of `delta`, so you can set both in one commit to establish a starting value and its ongoing rate together; if you're only setting the rate, pass `delta: 0` so you don't also push the value.
+
+`accumulationRate` is for steady time-based drift only. Event-driven spikes — a big drink, a magical effect — still use a direct `delta` push in the *same* commit as the triggering event. Don't model "that ale hit harder" as a rate change.
+
+```json
+[
+  { "$type": "need", "characterId": "chars/grog", "need": "bladder", "delta": 0, "accumulationRate": 20 },
+  { "$type": "event", "involved": ["chars/grog"], "category": "Conversation", "summary": "Grog downs a full tankard of ale" },
+  { "$type": "need", "characterId": "chars/grog", "need": "bladder", "delta": 15 }
+]
+```
+
+The first `need` establishes `bladder` drifting at 20/day with no immediate push; the second is the same-turn spike for that specific drink.
 
 ## Entity Creation
 

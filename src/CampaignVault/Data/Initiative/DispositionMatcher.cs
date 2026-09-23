@@ -6,7 +6,7 @@ public static class DispositionMatcher
 {
     public static (int FearHits, int WantHits, float DispositionStress) Score(
         PsychologyProfile psychology,
-        IReadOnlyList<Character> presentEntities,
+        IReadOnlyList<Character>? presentEntities,
         Location? location,
         CampaignConfig config)
     {
@@ -14,10 +14,11 @@ public static class DispositionMatcher
         var fearHits = CountMatches(psychology.Fears, sceneTokens, config, config.DispositionMinTokenLength);
         var wantHits = CountMatches(psychology.Wants, sceneTokens, config, config.DispositionMinTokenLength);
 
-        var anxiousTraits = psychology.Traits.Count(t =>
-            t.Equals("anxious", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("timid", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("paranoid", StringComparison.OrdinalIgnoreCase));
+        var anxiousTraits = (psychology.Traits ?? []).Count(t =>
+            t is not null
+            && (t.Equals("anxious", StringComparison.OrdinalIgnoreCase)
+                || t.Equals("timid", StringComparison.OrdinalIgnoreCase)
+                || t.Equals("paranoid", StringComparison.OrdinalIgnoreCase)));
 
         var baseScore = fearHits * 25f - wantHits * 10f;
         var traitMult = 1.0f + (0.15f * anxiousTraits);
@@ -28,7 +29,7 @@ public static class DispositionMatcher
 
     public static IReadOnlyList<string> GetMatchedFears(
         PsychologyProfile psychology,
-        IReadOnlyList<Character> presentEntities,
+        IReadOnlyList<Character>? presentEntities,
         Location? location,
         CampaignConfig config)
     {
@@ -37,13 +38,13 @@ public static class DispositionMatcher
     }
 
     private static List<string> GetMatchedPhrases(
-        IEnumerable<string> phrases,
+        IEnumerable<string>? phrases,
         HashSet<string> sceneTokens,
         CampaignConfig config,
         int minTokenLength)
     {
         var matched = new List<string>();
-        foreach (var phrase in phrases)
+        foreach (var phrase in phrases ?? [])
         {
             if (string.IsNullOrWhiteSpace(phrase))
             {
@@ -61,7 +62,7 @@ public static class DispositionMatcher
     }
 
     internal static HashSet<string> BuildSceneTokens(
-        IReadOnlyList<Character> presentEntities,
+        IReadOnlyList<Character>? presentEntities,
         Location? location,
         int minTokenLength)
     {
@@ -71,6 +72,11 @@ public static class DispositionMatcher
         {
             foreach (var tag in location.VisualTags ?? [])
             {
+                if (tag is null)
+                {
+                    continue;
+                }
+
                 AddToken(tokens, tag, minTokenLength);
             }
 
@@ -83,11 +89,26 @@ public static class DispositionMatcher
             }
         }
 
-        foreach (var entity in presentEntities)
+        foreach (var entity in presentEntities ?? [])
         {
+            if (entity is null)
+            {
+                continue;
+            }
+
             foreach (var tag in entity.VisualTags ?? [])
             {
+                if (tag is null)
+                {
+                    continue;
+                }
+
                 AddToken(tokens, tag, minTokenLength);
+            }
+
+            if (string.IsNullOrWhiteSpace(entity.Name))
+            {
+                continue;
             }
 
             foreach (var token in Tokenize(entity.Name, minTokenLength))
@@ -100,13 +121,13 @@ public static class DispositionMatcher
     }
 
     private static int CountMatches(
-        IEnumerable<string> phrases,
+        IEnumerable<string>? phrases,
         HashSet<string> sceneTokens,
         CampaignConfig config,
         int minTokenLength)
     {
         var hits = 0;
-        foreach (var phrase in phrases)
+        foreach (var phrase in phrases ?? [])
         {
             if (string.IsNullOrWhiteSpace(phrase))
             {
@@ -123,14 +144,16 @@ public static class DispositionMatcher
         return hits;
     }
 
-    internal static IEnumerable<string> ExpandKeywords(string phrase, CampaignConfig config, int minTokenLength)
+    internal static IEnumerable<string> ExpandKeywords(string? phrase, CampaignConfig config, int minTokenLength)
     {
         var keywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var token in Tokenize(phrase, minTokenLength))
         {
             keywords.Add(token);
 
-            if (config.DispositionKeywordExpansions.TryGetValue(token, out var synonyms))
+            if (config.DispositionKeywordExpansions is not null
+                && config.DispositionKeywordExpansions.TryGetValue(token, out var synonyms)
+                && synonyms is not null)
             {
                 foreach (var synonym in synonyms)
                 {
@@ -142,8 +165,13 @@ public static class DispositionMatcher
         return keywords;
     }
 
-    internal static bool TokensMatch(string left, string right, int minTokenLength)
+    internal static bool TokensMatch(string? left, string? right, int minTokenLength)
     {
+        if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right))
+        {
+            return false;
+        }
+
         if (left.Length < minTokenLength || right.Length < minTokenLength)
         {
             return false;
@@ -153,8 +181,13 @@ public static class DispositionMatcher
                || left.Contains(right, StringComparison.OrdinalIgnoreCase);
     }
 
-    internal static IEnumerable<string> Tokenize(string text, int minTokenLength)
+    internal static IEnumerable<string> Tokenize(string? text, int minTokenLength)
     {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            yield break;
+        }
+
         foreach (var raw in text.Split([' ', ',', '.', ';', ':', '-', '(', ')', '[', ']', '"', '\''], StringSplitOptions.RemoveEmptyEntries))
         {
             var token = raw.Trim().ToLowerInvariant();
@@ -165,8 +198,13 @@ public static class DispositionMatcher
         }
     }
 
-    private static void AddToken(ISet<string> tokens, string value, int minTokenLength)
+    private static void AddToken(ISet<string> tokens, string? value, int minTokenLength)
     {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
         var normalized = value.Trim().ToLowerInvariant();
         if (normalized.Length >= minTokenLength)
         {

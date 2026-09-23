@@ -6,6 +6,7 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Guidance;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Pressure;
+using CampaignVault.Data.Pressure.Contributors;
 using CampaignVault.Models;
 using ModelContextProtocol.Server;
 using Raven.Client.Documents.Session;
@@ -22,36 +23,111 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
 
     // Keyed per-campaign so commits in one campaign never throttle another. Bounded so a
     // long-running multi-campaign server can't grow this dictionary without limit: past the cap,
-    // idle limiters (full token bucket = no recent commits) are evicted and disposed.
+    // the least-recently-seen limiters are evicted (idle-first, then least-recent) and disposed.
     private const int RateLimiterCap = 256;
     private static readonly ConcurrentDictionary<string, RateLimiter> CommitRateLimiters = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, long> RateLimiterLastSeenTicks = new(StringComparer.OrdinalIgnoreCase);
+
+    internal static int RateLimiterCount => CommitRateLimiters.Count;
+
+    internal static void ClearRateLimitersForTests()
+    {
+        foreach (var (key, limiter) in CommitRateLimiters)
+        {
+            if (CommitRateLimiters.TryRemove(key, out var removed))
+            {
+                RateLimiterLastSeenTicks.TryRemove(key, out _);
+                removed.Dispose();
+            }
+        }
+    }
 
     private static RateLimiter GetRateLimiter(string campaignName)
     {
+        RateLimiterLastSeenTicks[campaignName] = DateTime.UtcNow.Ticks;
+
         if (CommitRateLimiters.Count > RateLimiterCap)
         {
-            foreach (var (key, limiter) in CommitRateLimiters)
+            EvictStaleRateLimiters(campaignName);
+        }
+
+        return CommitRateLimiters.GetOrAdd(campaignName, key =>
+        {
+            RateLimiterLastSeenTicks[key] = DateTime.UtcNow.Ticks;
+            return new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
             {
-                if (key.Equals(campaignName, StringComparison.OrdinalIgnoreCase))
+                TokenLimit = 50,
+                TokensPerPeriod = 10,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                AutoReplenishment = true
+            });
+        });
+    }
+
+    private static void EvictStaleRateLimiters(string exemptCampaignName)
+    {
+        // Pass 1: evict fully-idle limiters (full bucket = no recent commits).
+        foreach (var (key, limiter) in CommitRateLimiters)
+        {
+            if (CommitRateLimiters.Count <= RateLimiterCap)
+            {
+                break;
+            }
+
+            if (key.Equals(exemptCampaignName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (limiter.GetStatistics() is { CurrentAvailablePermits: >= 50 } &&
+                CommitRateLimiters.TryRemove(key, out var removed))
+            {
+                RateLimiterLastSeenTicks.TryRemove(key, out _);
+                removed.Dispose();
+            }
+        }
+
+        // Pass 2 (user decision: bound incl. hot keys): still over cap, evict
+        // least-recently-seen non-exempt limiters regardless of token balance.
+        while (CommitRateLimiters.Count > RateLimiterCap)
+        {
+            string? oldestKey = null;
+            var oldestTicks = long.MaxValue;
+            foreach (var (key, seenTicks) in RateLimiterLastSeenTicks)
+            {
+                if (key.Equals(exemptCampaignName, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
-                if (limiter.GetStatistics() is { CurrentAvailablePermits: >= 50 } &&
-                    CommitRateLimiters.TryRemove(key, out var removed))
+                if (!CommitRateLimiters.ContainsKey(key))
                 {
-                    removed.Dispose();
+                    RateLimiterLastSeenTicks.TryRemove(key, out _);
+                    continue;
+                }
+
+                if (seenTicks < oldestTicks)
+                {
+                    oldestTicks = seenTicks;
+                    oldestKey = key;
                 }
             }
-        }
 
-        return CommitRateLimiters.GetOrAdd(campaignName, _ => new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = 50,
-            TokensPerPeriod = 10,
-            ReplenishmentPeriod = TimeSpan.FromSeconds(10),
-            AutoReplenishment = true
-        }));
+            if (oldestKey is null)
+            {
+                break;
+            }
+
+            if (CommitRateLimiters.TryRemove(oldestKey, out var removed))
+            {
+                RateLimiterLastSeenTicks.TryRemove(oldestKey, out _);
+                removed.Dispose();
+            }
+            else
+            {
+                RateLimiterLastSeenTicks.TryRemove(oldestKey, out _);
+            }
+        }
     }
 
     public MutationTools(
@@ -92,12 +168,11 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         public IReadOnlyList<WorldChange> AppliedChanges { get; set; } = [];
 
         /// <summary>Subset of <see cref="AppliedChanges"/> the caller did NOT itself submit this call — i.e.
-        /// CommitResult.AmbientDeltas alone. PartyDelta echoes only this subset in its Changes field: the
-        /// caller already has the change objects it just wrote in its own Changes[] (same rationale as
-        /// <see cref="InvolvedEntityIds"/> not echoing caller-chosen IDs back), and echoing them isn't even a
-        /// reliable receipt — a relative NeedChange delta echoed verbatim doesn't reflect server-side
-        /// clamping, so it can't confirm what actually landed either. Only genuinely new, server-derived
-        /// deltas are worth the bytes.</summary>
+        /// CommitResult.AmbientDeltas alone. Pre-P2-12, PartyDelta echoed only this subset in its Changes
+        /// field; post-P2-12 it echoes the member's own applied movers too (see NeedsMoved), since a
+        /// PartyDelta entry exists precisely to say "this member moved". Echoing still isn't a perfect
+        /// receipt — a relative NeedChange delta echoed verbatim doesn't reflect server-side clamping —
+        /// but NeedsMoved carries the live post-commit values, which do.</summary>
         public IReadOnlyList<WorldChange> AmbientChanges { get; set; } = [];
 
         /// <summary>Persisted ambient simulation narrative text from this turn (see CommitResult.AmbientNarrativeSummaries).</summary>
@@ -133,6 +208,13 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         /// UpdateLocation:true) — only the former should escalate to a full reseed.</summary>
         public Dictionary<string, string?> LocationBaselines { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>Pre-commit itemId -> HolderId snapshot, taken before CommitChangesAsync applies any
+        /// ItemTransfer/ItemUpdate in this batch. ItemTransfer names only the destination (ToHolderId —
+        /// there is no FromHolderId field), and ItemUpdate names no holder at all, so without this the
+        /// giver's gear (and any update-only holder's gear) would stay delta-stripped. Used by
+        /// AffectsGearOrStats to keep both sides of a transfer (and update holders) fresh.</summary>
+        public Dictionary<string, string?> ItemHolderBaselines { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>Campaign config loaded once by DecideTurnModeAsync — reused by later steps (e.g.
         /// ChangedNeedsKeys' significance threshold) instead of re-fetching.</summary>
         public CampaignConfig Config { get; set; } = null!;
@@ -151,8 +233,16 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         /// used internally to drive RefreshInvolvedEntitiesAsync's auto-bundling into Npcs/Scenes and to
         /// tag the auto-logged SceneCommit event's Involved list. Not part of the response payload — the
         /// caller already knows every ID it just wrote in its own Changes[] (IDs are client-chosen, not
-        /// server-generated), so echoing them back added no information.</summary>
+        /// server-generated), so echoing them back added no information. (P2-12 exception: PartyDelta
+        /// entries DO echo the member's own applied per-turn movers, via Changes + NeedsMoved, so a
+        /// caller-submitted PC need push has a visible receipt.)</summary>
         public List<string> InvolvedEntityIds { get; set; } = [];
+
+        /// <summary>Per-turn memo of ChangedNeedsKeys results by character ID. ChangedNeedsKeys advances
+        /// the cursor drift baseline as a side effect, so a party companion evaluated for both Npcs[] and
+        /// PartyDelta must reuse the first answer — a second evaluation would see the just-reset baseline
+        /// and drop drift-only movers.</summary>
+        public Dictionary<string, IReadOnlyCollection<string>> NeedsMoversByEntityId { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     [ToolCategory("Mutation & time")]
@@ -171,7 +261,7 @@ AUTO-REFRESH (default on): response includes lightweight summaries of entities t
 
 FULL/DELTA MODE: see 'mode' in the response. mode=delta (the common case) returns PartyDelta/WorldStateDelta — only what changed, not full state. Use get_entity, includeParty/includeWorldState, or forceFullReseed=true to get anything a delta didn't cover; check 'querySuggestions' in the response for concrete follow-ups. Full mode-mechanics reference: get_help topic=take-turn-modes.
 
-DRIFT PROTECTION: response carries 'partyFingerprint'; echo it back unchanged as clientPartyFingerprint on your next call. A mismatch means you missed a prior delta — the server forces a resync and flags it.
+DRIFT PROTECTION (narrow by design): 'partyFingerprint' covers party HP + location only ('charId:hp/maxHp@locationId'), NOT NPC/need/memory/rumor drift — those are covered by the periodic full reseed (~40 turns) + integrity pressure, not by this hash. Echo it back unchanged as clientPartyFingerprint on your next call; a mismatch (or an omitted echo, which is never a mismatch) means you may have missed a prior HP/location delta — the server forces a resync and flags it. An absent PartyDelta on a quiet turn likewise means 'no party change worth surfacing', not 'no party'.
 
 Pure queries (no Changes): omit Changes, provide at least one refresh param instead. Check 'warnings' in the response for anything that couldn't be assembled.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
@@ -225,11 +315,17 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         }
 
         var rateLimiter = GetRateLimiter(effective);
-        if (hasChanges && !rateLimiter.AttemptAcquire().IsAcquired)
+        if (hasChanges && rateLimiter.GetStatistics() is { CurrentAvailablePermits: <= 0 })
         {
+            // Peek-only gate: validation failures (CommitChangesAsync below) never consume a
+            // token, so "fix and resend FULL batch" retries don't wedge. The token is consumed
+            // after a successful stage (see below) — TokenBucketRateLimiter has no refund API,
+            // so consume-on-success is the only way to not charge client-fixable errors.
             return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
                 Summary: "Commit rate limit exceeded. Please wait a few seconds before making more world changes."));
         }
+
+        var commitTokenConsumed = false;
 
         // saveChanges: true so pressure-cooldown state mutated by world-state/pressure evaluation is
         // persisted even on pure-query turns (FilterAndCapAsync requires the caller to save).
@@ -247,7 +343,27 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 var commitFailure = await CommitChangesAsync(ctx);
                 if (commitFailure != null)
                 {
+                    // Validation errors are client-fixable, not server overload: nothing
+                    // consumed above (peek-only gate), so failed validation costs no budget.
                     return commitFailure;
+                }
+
+                // Stage succeeded: consume one token. TokenBucketRateLimiter has no refund
+                // API, so consume-on-success (not acquire-then-refund) is what keeps failed
+                // validation free while still throttling successful commits. The peek above is
+                // racy under concurrent commits, so this acquire is the authoritative gate: a
+                // failed result skips SaveChanges, discarding the staged batch. Charged once
+                // across ExecuteAsync concurrency retries.
+                if (!commitTokenConsumed)
+                {
+                    using var successLease = rateLimiter.AttemptAcquire();
+                    if (!successLease.IsAcquired)
+                    {
+                        return new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
+                            Summary: "Commit rate limit exceeded. Please wait a few seconds before making more world changes.");
+                    }
+
+                    commitTokenConsumed = true;
                 }
 
                 await DetectAndApplyReseedTriggersAsync(ctx);
@@ -277,6 +393,9 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     /// Decides Full vs Delta for this call and persists the updated TurnCursor (via the already-open
     /// session — no extra SaveChangesAsync needed, ExecuteAsync's saveChanges:true covers it). Absence of
     /// a cursor document means take_turn has never been called for this campaign — naturally Full.
+    /// P2-11: TurnsSinceReseed only advances on calls that committed mutations or returned substantial
+    /// state (includeWorldState/includeParty/full-detail present); pure extraCharacterIds-only polls
+    /// persist (saveChanges:true for pressure-cooldown state) but do not age the clock.
     /// Imprecision (e.g. a retried commit double-incrementing the counter) is accepted; this is a
     /// token-budget heuristic, not a correctness guarantee.
     /// </summary>
@@ -326,8 +445,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             turnCursor.ForcedFullReseedPending = false;
             turnCursor.LastFullReseedUtc = DateTime.UtcNow;
         }
-        else
+        else if (!isNewCursor && ClockAdvancingCall(ctx))
         {
+            // New-cursor seed call: Full by definition ("never called before"), and it must not
+            // pre-advance the clock — otherwise the NEXT call sees TurnsSinceReseed=1 from a seed
+            // that was itself a Full, compressing interval bookkeeping by one.
             turnCursor.TurnsSinceReseed++;
         }
         turnCursor.ConsecutiveClientForcedReseeds = clientForced ? turnCursor.ConsecutiveClientForcedReseeds + 1 : 0;
@@ -363,6 +485,26 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         ctx.Config = config;
         ctx.Mode = mode;
         ctx.Result.Mode = mode;
+    }
+
+    /// <summary>
+    /// P2-11: whether this call ages the reseed clock. A call counts when it will commit mutations
+    /// (Changes non-empty) or return substantial state (includeWorldState/includeParty/full-detail
+    /// present); pure extraCharacterIds/extraLocationIds-only polls persist (saveChanges:true keeps
+    /// pressure-cooldown state fresh) but do not advance TurnsSinceReseed.
+    /// </summary>
+    private static bool ClockAdvancingCall(TurnContext ctx)
+    {
+        if (ctx.Request?.Changes is { Length: > 0 })
+        {
+            return true;
+        }
+
+        return ctx.Request?.IncludeWorldState == true
+            || ctx.Request?.IncludeParty == true
+            || !string.IsNullOrEmpty(ctx.Request?.FullDetailCharacterId)
+            || !string.IsNullOrEmpty(ctx.Request?.FullDetailLocationId)
+            || !string.IsNullOrEmpty(ctx.Request?.MemoriesOnlyCharacterId);
     }
 
     /// <summary>
@@ -403,13 +545,16 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     }
 
     /// <summary>
-    /// Readable fingerprint of current party (PC + companion) state: "charId:hp/maxHp@locationId" per
-    /// member, sorted by ID for determinism. Deliberately readable rather than an opaque hash — an LLM
+    /// P2-10 option (b): deliberately NARROW party fingerprint — "charId:hp/maxHp@locationId" per PC /
+    /// companion, sorted by ID for determinism. It detects HP/location drift only; NPC/need/memory/
+    /// rumor drift never trips it (that is covered by the 40-turn reseed + EntityIntegrityPressure +
+    /// integrity pressure, not by this hash). Deliberately readable rather than an opaque hash — an LLM
     /// client can sanity-check it against its own narrative model directly, not just detect a dropped
     /// response. Mirrors IncludePartyAsync's WaitForNonStaleResults customization so a checksum computed
     /// immediately after a commit reflects what was just written, not a stale index read.
+    /// An omitted client echo is never treated as a mismatch (see DetectPartyFingerprintDrift).
     /// </summary>
-    private async Task<string> ComputePartyFingerprintAsync(TurnContext ctx)
+    private async Task<string> ComputePartyLocationHpFingerprintAsync(TurnContext ctx)
     {
         var party = await ctx.Session.Query<Character>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
@@ -428,38 +573,87 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     /// </summary>
     private async Task RefreshPartyFingerprintAsync(TurnContext ctx)
     {
-        var fingerprint = await ComputePartyFingerprintAsync(ctx);
+        var fingerprint = await ComputePartyLocationHpFingerprintAsync(ctx);
         ctx.Cursor.LastPartyFingerprint = fingerprint;
         ctx.Result.PartyFingerprint = fingerprint;
         ctx.Result.WorldSequence = ctx.Cursor.WorldSequence;
     }
 
+    // P2-10(b): the old ComputePartyFingerprintAsync name was retired in favor of
+    // ComputePartyLocationHpFingerprintAsync so the symbol says what the narrow hash covers.
+
     /// <summary>
-    /// Collect scene-scoped guidance hints from all contributors.
-    /// Guidance is character-filtered by contributors checking Scene.PresentNPCs/Party.
+    /// Collect guidance hints into the dedicated <see cref="TurnResult.GuidanceHints"/> field (own
+    /// budget via CampaignConfig.MaxGuidanceHintsPerResponse/MaxGuidanceCharsPerResponse/
+    /// GuidanceEnabled). PhysicalStateNudges stays physical/visual only per its V4Views contract.
+    /// Runs only when characters actually surfaced this turn; skips quiet pure-query turns.
+    /// Covers every surfaced section: Npcs, Party, PartyDelta, scene PresentNPCs, FullNpcContext.
     /// </summary>
     private async Task CollectCharacterGuidanceAsync(TurnContext ctx)
     {
-        if (ctx.Result.PhysicalStateNudges == null || ctx.Result.PhysicalStateNudges.Count == 0)
+        if (ctx.Config?.GuidanceEnabled == false)
         {
-            ctx.Result.PhysicalStateNudges = [];
+            return;
         }
 
-        // Collect character IDs from Npcs and Party for context
-        var partyCharacterIds = new List<string>();
+        // Build the surfaced-character id list from already-materialized sections (no extra
+        // queries): Npcs, Party, PartyDelta, scene PresentNPCs (Scenes + FullScene), FullNpcContext.
+        var surfacedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var npc in ctx.Result.Npcs ?? [])
         {
-            partyCharacterIds.Add(npc.CharacterId);
+            if (!string.IsNullOrWhiteSpace(npc.CharacterId))
+            {
+                surfacedIds.Add(npc.CharacterId);
+            }
         }
 
         foreach (var member in ctx.Result.Party ?? [])
         {
-            partyCharacterIds.Add(member.Id);
+            if (!string.IsNullOrWhiteSpace(member.Id))
+            {
+                surfacedIds.Add(member.Id);
+            }
         }
 
-        if (partyCharacterIds.Count == 0)
+        foreach (var delta in ctx.Result.PartyDelta ?? [])
         {
-            return; // No characters to evaluate guidance for
+            if (!string.IsNullOrWhiteSpace(delta.EntityId))
+            {
+                surfacedIds.Add(delta.EntityId);
+            }
+        }
+
+        foreach (var scene in ctx.Result.Scenes ?? [])
+        {
+            foreach (var present in scene.PresentNPCs ?? [])
+            {
+                if (!string.IsNullOrWhiteSpace(present.Id))
+                {
+                    surfacedIds.Add(present.Id);
+                }
+            }
+        }
+
+        if (ctx.Result.FullScene is not null)
+        {
+            foreach (var present in ctx.Result.FullScene.PresentNPCs ?? [])
+            {
+                if (!string.IsNullOrWhiteSpace(present.Id))
+                {
+                    surfacedIds.Add(present.Id);
+                }
+            }
+        }
+
+        var fullContextId = ctx.Result.FullNpcContext?.Character?.Id;
+        if (!string.IsNullOrWhiteSpace(fullContextId))
+        {
+            surfacedIds.Add(fullContextId);
+        }
+
+        if (surfacedIds.Count == 0)
+        {
+            return; // No characters surfaced this turn — no guidance cost on quiet turns.
         }
 
         try
@@ -472,24 +666,34 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 Config: ctx.Config,
                 Session: ctx.Session,
                 Scene: null, // Scene details not needed for character-scoped guidance
-                PartyCharacterIds: partyCharacterIds.AsReadOnly(),
+                PartyCharacterIds: surfacedIds.ToList().AsReadOnly(),
                 PartyPresent: true);
 
+            // Both scopes: Scene-only with a null Scene would never fire any contributor
+            // (CombatStarted needs Scene.ActiveCombat; World contributors would never run),
+            // leaving GuidanceHints permanently empty. World-scope hints are still
+            // character-relevant via PartyCharacterIds; Scene contributors without a Scene
+            // safely return empty.
             var hints = await _guidanceOrchestrator.CollectAsync(
-                PressureScope.Scene,
+                PressureScope.Both,
                 pressureContext,
                 ignoreLedger: false);
 
-            // Convert hints to strings and append
+            if (hints.Count == 0)
+            {
+                return;
+            }
+
+            ctx.Result.GuidanceHints ??= [];
             foreach (var hint in hints)
             {
-                var guidanceText = $"[GUIDANCE] {hint.Text}";
+                var guidanceText = hint.Text;
                 if (hint.Example != null)
                 {
                     guidanceText += $" Example: {hint.Example}";
                 }
 
-                ctx.Result.PhysicalStateNudges.Add(guidanceText);
+                ctx.Result.GuidanceHints.Add(guidanceText);
             }
         }
         catch (Exception ex)
@@ -499,11 +703,12 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     }
 
     /// <summary>
-    /// Snapshots (characterId,targetId) -> current relationship value for every RelationshipChange, and
-    /// characterId -> CurrentLocationId for every location-touching ActivityChange/TravelChange, in this
-    /// batch, before CommitChangesAsync applies them — see TurnContext.RelationshipBaselines/
-    /// LocationBaselines for why these can't be reconstructed after the fact. Same session, so these loads
-    /// are first-level-cache hits (CommitChangesAsync's handlers will load the same characters).
+    /// Snapshots (characterId,targetId) -> current relationship value for every RelationshipChange,
+    /// characterId -> CurrentLocationId for every location-touching ActivityChange/TravelChange, and
+    /// itemId -> HolderId for every ItemTransfer/ItemUpdate, in this batch, before CommitChangesAsync
+    /// applies them — see TurnContext.RelationshipBaselines/LocationBaselines/ItemHolderBaselines for
+    /// why these can't be reconstructed after the fact. Same session, so these loads
+    /// are first-level-cache hits (CommitChangesAsync's handlers will load the same characters/items).
     /// </summary>
     private static async Task SnapshotTurnBaselinesAsync(TurnContext ctx)
     {
@@ -536,6 +741,20 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 {
                     var character = await ctx.Session.LoadAsync<Character>(tc.CharacterId);
                     ctx.LocationBaselines[tc.CharacterId] = character?.CurrentLocationId;
+                    break;
+                }
+
+                case ItemTransfer it when !string.IsNullOrWhiteSpace(it.ItemId) && !ctx.ItemHolderBaselines.ContainsKey(it.ItemId):
+                {
+                    var transferItem = await ctx.Session.LoadAsync<Item>(it.ItemId);
+                    ctx.ItemHolderBaselines[it.ItemId] = transferItem?.HolderId;
+                    break;
+                }
+
+                case ItemUpdate iu when !string.IsNullOrWhiteSpace(iu.ItemId) && !ctx.ItemHolderBaselines.ContainsKey(iu.ItemId):
+                {
+                    var updatedItem = await ctx.Session.LoadAsync<Item>(iu.ItemId);
+                    ctx.ItemHolderBaselines[iu.ItemId] = updatedItem?.HolderId;
                     break;
                 }
             }
@@ -679,7 +898,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
 
         if (request.Changes!.Length > 50)
         {
-            return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.RateLimitExceeded,
+            return Task.FromResult(new ToolResult<TurnResult>(false, Error: ToolErrors.InvalidArgument,
                 Summary: $"Commit rejected: Too many changes in a single batch ({request.Changes.Length}). Maximum allowed is 50."));
         }
 
@@ -1181,11 +1400,13 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                     continue;
                 }
 
-                // Only re-surface this NPC's MemoryHint when the topic differs from what the client
-                // was already told (tracked on TurnCursor, no extra query) — a stable high-salience
-                // memory shouldn't re-cost tokens every delta call it sits unresolved.
-                var alreadySurfaced = ctx.Cursor.SurfacedMemoryHintTopicsByEntityId.TryGetValue(npc.Id, out var lastTopic)
-                    && string.Equals(lastTopic, topMemory.Topic, StringComparison.OrdinalIgnoreCase);
+                // Only re-surface this NPC's MemoryHint when the topic+content differs from what the
+                // client was already told (tracked on TurnCursor, no extra query) — a stable
+                // high-salience memory shouldn't re-cost tokens every delta call it sits unresolved,
+                // but an edit under the same topic is new information and must resurface.
+                var hintKey = MemorySuppressionKey(topMemory);
+                var alreadySurfaced = ctx.Cursor.SurfacedMemoryHintTopicsByEntityId.TryGetValue(npc.Id, out var lastHintKey)
+                    && string.Equals(lastHintKey, hintKey, StringComparison.OrdinalIgnoreCase);
                 if (alreadySurfaced)
                 {
                     continue;
@@ -1193,7 +1414,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
 
                 ctx.MemoryHintsByNpcId[npc.Id] =
                     $"{npc.Name} still has a high-salience memory '{topMemory.Topic}' — consider get_entity/recall_history if the conversation drifts toward it.";
-                ctx.Cursor.SurfacedMemoryHintTopicsByEntityId[npc.Id] = topMemory.Topic;
+                ctx.Cursor.SurfacedMemoryHintTopicsByEntityId[npc.Id] = hintKey;
             }
         }
     }
@@ -1215,13 +1436,35 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     private static string Truncate(string text, int maxLength) =>
         text.Length <= maxLength ? text : text[..maxLength].TrimEnd() + "…";
 
-    /// <summary>Compresses an NPC's currently-relevant memories to topic+one-liner, dropping any topic
-    /// already sent to the client as of the last delta turn that surfaced it for this NPC — mirrors
-    /// MemoryHintsByNpcId/SurfacedMemoryHintTopicsByEntityId's "don't re-cost tokens for a stable
-    /// reading" gate (:978-990), which CompressedMemories never had despite being the largest single
-    /// field in a typical delta scene NPC. The cursor entry is replaced (not unioned) with the current
-    /// topic set every call, so a memory that drops out of relevance and later returns is treated as new
-    /// again rather than permanently suppressed.</summary>
+    /// <summary>Suppression key for one memory's last-surfaced content: the topic plus a
+    /// content hash (EmbeddingTextHash where the memory has been embedded, otherwise a cheap
+    /// Topic+Details hash) — so an edit under the same topic re-surfaces while a stable topic
+    /// stays suppressed. Mirrors ChangedNeedsKeys' baseline-comparison design: compare live state
+    /// against what was last sent, and move the baseline forward only to what was actually sent.</summary>
+    private static string MemorySuppressionKey(MemoryNode memory)
+    {
+        var contentHash = memory.EmbeddingTextHash ?? SemanticEnrichmentHash(memory.Topic, memory.Details);
+        return $"{memory.Topic ?? string.Empty}#{contentHash}";
+    }
+
+    /// <summary>Hash fallback for memories that were never embedded (EmbeddingTextHash == null):
+    /// same Topic+Details embedding-text shape SemanticEnrichmentHelper hashes post-embed, so the key
+    /// stays stable across the pre/post-embed boundary rather than spuriously re-surfacing once.</summary>
+    private static string SemanticEnrichmentHash(string? topic, string? details)
+    {
+        var text = $"{topic ?? string.Empty}\n{details ?? string.Empty}";
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text));
+        return Convert.ToHexString(bytes);
+    }
+
+    /// <summary>Compresses an NPC's currently-relevant memories to topic+one-liner, dropping any
+    /// memory whose topic+content hash was already sent to the client as of the last delta turn
+    /// that surfaced it for this NPC — mirrors MemoryHintsByNpcId/
+    /// SurfacedMemoryHintTopicsByEntityId's "don't re-cost tokens for a stable reading" gate, which
+    /// CompressedMemories never had despite being the largest single field in a typical delta
+    /// scene NPC. The cursor entry is replaced (not unioned) with the current key set every call,
+    /// so a memory that drops out of relevance and later returns is treated as new again rather
+    /// than permanently suppressed.</summary>
     private static List<CompressedMemory> CompressAndDedupeMemories(TurnContext ctx, string npcId, IReadOnlyList<MemoryNode> memories)
     {
         if (memories.Count == 0)
@@ -1230,16 +1473,16 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             return [];
         }
 
-        var alreadySurfaced = ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId.TryGetValue(npcId, out var priorTopics)
-            ? new HashSet<string>(priorTopics, StringComparer.OrdinalIgnoreCase)
+        var alreadySurfaced = ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId.TryGetValue(npcId, out var priorKeys)
+            ? new HashSet<string>(priorKeys, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         var result = memories
-            .Where(m => !alreadySurfaced.Contains(m.Topic))
-            .Select(m => new CompressedMemory(m.Topic, Truncate(m.Details, 140)))
+            .Where(m => !alreadySurfaced.Contains(MemorySuppressionKey(m)))
+            .Select(m => new CompressedMemory(m.Topic, Truncate(m.Details ?? string.Empty, 140)))
             .ToList();
 
-        ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId[npcId] = memories.Select(m => m.Topic).ToList();
+        ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId[npcId] = memories.Select(MemorySuppressionKey).ToList();
         return result;
     }
 
@@ -1318,12 +1561,19 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     /// purely narrative changes (activity, event, mood) that reference the character without
     /// changing anything worth re-sending.
     /// </summary>
-    private static bool AffectsGearOrStats(WorldChange change, string characterId)
+    private bool AffectsGearOrStats(TurnContext ctx, WorldChange change, string characterId)
     {
         var eq = StringComparer.OrdinalIgnoreCase;
         return change switch
         {
-            ItemTransfer it => eq.Equals(it.ToHolderId, characterId),
+            // ItemTransfer names only the destination — the giver is recovered from the pre-commit
+            // holder snapshot (see TurnContext.ItemHolderBaselines); ItemTransfer has no FromHolderId.
+            ItemTransfer it => eq.Equals(it.ToHolderId, characterId) ||
+                (!string.IsNullOrWhiteSpace(it.ItemId) && ctx.ItemHolderBaselines.TryGetValue(it.ItemId, out var beforeHolder) &&
+                 eq.Equals(beforeHolder, characterId)),
+            // ItemUpdate names no holder at all — match via the pre-commit holder snapshot.
+            ItemUpdate iu => !string.IsNullOrWhiteSpace(iu.ItemId) && ctx.ItemHolderBaselines.TryGetValue(iu.ItemId, out var holder) &&
+                eq.Equals(holder, characterId),
             ItemEquip ie => eq.Equals(ie.CharacterId, characterId),
             ItemUnequip iu => eq.Equals(iu.CharacterId, characterId),
             HpChange hp => eq.Equals(hp.CharacterId, characterId),
@@ -1351,7 +1601,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     /// reseed (or a prior delta that did change them). Full mode always leaves data untouched.
     /// </summary>
     private bool ShouldStripUnchangedGear(TurnContext ctx, string characterId) =>
-        ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsGearOrStats(c, characterId));
+        ctx.Mode == TurnMode.Delta && !ctx.AppliedChanges.Any(c => AffectsGearOrStats(ctx, c, characterId));
 
     /// <summary>
     /// True if this change could have altered the given character's narrative appearance (the fields
@@ -1368,6 +1618,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 (cu.AppearanceOverride != null || cu.TagsToAdd is { Count: > 0 } || cu.TagsToRemove is { Count: > 0 } ||
                  cu.FeaturesToAdd is { Count: > 0 } || cu.FeaturesToRemove is { Count: > 0 }),
             CharacterCreate cc => eq.Equals(cc.CharacterId, characterId),
+            // Injury beats plausibly change appearance (gash, limp, pallor) — resend it so a
+            // narrated wound doesn't desync from the engine's stored CurrentAppearance.
+            HpChange hp => eq.Equals(hp.CharacterId, characterId),
+            StatusChange sc => eq.Equals(sc.CharacterId, characterId),
+            StatusRemove sr => eq.Equals(sr.CharacterId, characterId),
             _ => false
         };
     }
@@ -1405,6 +1660,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         if (ctx.Mode != TurnMode.Delta)
         {
             return null;
+        }
+
+        if (ctx.NeedsMoversByEntityId.TryGetValue(characterId, out var memoized))
+        {
+            return memoized;
         }
 
         var threshold = ctx.Config?.NeedsChangeSignificanceThreshold ?? 2f;
@@ -1468,6 +1728,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             }
         }
 
+        ctx.NeedsMoversByEntityId[characterId] = movers;
         return movers;
     }
 
@@ -1617,9 +1878,10 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         // "Nothing new to say about this NPC this turn": every per-field trim gate stripped its field
         // and there's no fresh memory content riding along either. Consumed by
         // RefreshInvolvedEntitiesAsync to decide whether a scene-present NPC can shrink further, to an
-        // id/name/roster-flags stub (see TurnCursor.SurfacedPresentNpcIdsByLocationId). Deliberately
-        // excludes BehavioralTension/ActiveInitiatives/TurnIntent — those reflect current state, not
-        // AppliedChanges, and are out of scope for this gate (see DELTA_PRESENCE_TRIM_PLAN.md non-goals).
+        // id/name/roster-flags stub (see TurnCursor.SurfacedPresentNpcIdsByLocationId). Tension is
+        // deliberately left OUT of this gate (it reflects live state, not AppliedChanges): a stale
+        // non-zero tension must not keep an otherwise-unchanged row "interesting" — the stub path
+        // below nulls it to "unknown" (see StubPresence) instead of echoing a cached reading.
         fullyUnchanged = trim.StripAppearance && trim.SkipBehavioralSummary && trim.StripGear &&
             knownNeeds.Count == 0 && (compressedMemories == null || compressedMemories.Count == 0);
 
@@ -1649,7 +1911,10 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     /// <summary>Shrinks an already delta-trimmed, fully-unchanged scene-present NPC entry down to
     /// id/name/roster-flags — the fields TurnResult.KnownCharacterIds' do-not-hallucinate check actually
     /// needs. The entry is never omitted entirely (that would drop a present character out of the
-    /// known-entities list); only its content shrinks. See TurnCursor.SurfacedPresentNpcIdsByLocationId.</summary>
+    /// known-entities list); only its content shrinks. BehavioralTension is nulled (unknown) rather
+    /// than zeroed: the stub means "no fresh reading this turn", and McpResponseCleaner strips nulls
+    /// while keeping a genuine measured 0 — so a stubbed row carries no key while measured-calm keeps
+    /// 0. See TurnCursor.SurfacedPresentNpcIdsByLocationId.</summary>
     private static NpcPresenceSummary StubPresence(NpcPresenceSummary npc) => npc with
     {
         CurrentActivity = null,
@@ -1663,7 +1928,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         VisualTags = null,
         DistinctiveFeatures = null,
         SystemStats = null,
-        BehavioralTension = 0,
+        BehavioralTension = null,
         ActiveInitiatives = null,
         RelevantMemories = null,
         EquippedItems = null,
@@ -1732,6 +1997,50 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             }
         }
 
+        // Departure-side scenes: AffectsScenePresence only matches the destination, so without this
+        // the source scene's roster goes stale (still lists the departed) until the next full reseed.
+        // Only genuine transitions (LocationChanged against the pre-commit LocationBaselines) earn the
+        // extra fetch; unknown origins (before == null) are skipped. Delta-only — Full mode fetches
+        // every candidate unfiltered, so this stays scoped to the delta gate below.
+        var departureSceneIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (ctx.Mode == TurnMode.Delta)
+        {
+            foreach (var change in ctx.AppliedChanges)
+            {
+                string? moverId = null;
+                string? newLocationId = null;
+                if (change is TravelChange tc)
+                {
+                    moverId = tc.CharacterId;
+                    newLocationId = tc.DestinationLocationId;
+                }
+                else if (change is ActivityChange ac && ac.UpdateLocation)
+                {
+                    moverId = ac.CharacterId;
+                    newLocationId = ac.NewLocationId;
+                }
+                else
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(moverId) || !LocationChanged(ctx, moverId!, newLocationId))
+                {
+                    continue;
+                }
+
+                if (!ctx.LocationBaselines.TryGetValue(moverId!, out var before) || string.IsNullOrWhiteSpace(before))
+                {
+                    continue;
+                }
+
+                if (departureSceneIds.Add(before!))
+                {
+                    AddCandidate(before!, explicitlyRequested: false);
+                }
+            }
+        }
+
         if (npcCandidates.Count > 0)
         {
             // PCs travel via Party/PartyDelta, not Npcs[] — filter them out here (not just at
@@ -1769,6 +2078,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             // full reseed or a prior delta that changed it, same rationale as ApplyLocationDeltaTrim below.
             scenesToFetch = scenesToFetch
                 .Where(id => explicitSceneCandidates.Contains(id)
+                    || departureSceneIds.Contains(id)
                     || ctx.AppliedChanges.Any(c => AffectsLocationDetail(c, id) || AffectsScenePresence(c, id)))
                 .ToList();
         }
@@ -1900,22 +2210,38 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             }
             else
             {
+                // P2-12 OMISSION CONTRACT: a quiet turn surfaces no PartyDelta at all — absence means
+                // "no party change worth surfacing", not "no party". A member surfaces when it has
+                // ambient (server-derived) non-need changes, need movers past the significance +
+                // cumulative-drift gates (same ChangedNeedsKeys machinery as Npcs[], reused not
+                // duplicated), or initiative/memory enrichment.
                 var deltas = new List<EntityChangeDelta>();
                 foreach (var member in party)
                 {
-                    // Only echo ambient/server-derived changes (ctx.AmbientChanges) — the caller already has
-                    // every change object it just submitted in this same call's Changes[], so re-sending it
-                    // is pure redundant bytes. Also exclude background need/attribute simulation ticks
-                    // (hunger, tiredness, morale drift, climate readings) — they fire every turn for every
-                    // scheduled NPC and are individually meaningless; MoodChange already surfaces the
-                    // threshold crossings that matter narratively.
-                    var memberChanges = ctx.AmbientChanges
+                    // Echo the member's own applied Changes[] objects here (unlike the pre-P2-12 rule):
+                    // a PartyDelta entry exists precisely to say "this member moved", and the caller-side
+                    // suppression rationale (already-has-it) is outweighed by symmetry with Npcs[] (whose
+                    // KnownNeeds surfaces caller-submitted per-turn movers via ChangedNeedsKeys) — without
+                    // this, a caller-submitted PC hunger push would trip the mover gate yet surface no
+                    // receipt of what landed. Still exclude background engine-authored need/attribute
+                    // simulation ticks (hunger, tiredness, morale drift, climate readings) — they fire
+                    // every turn for every scheduled NPC and are individually meaningless; the
+                    // ChangedNeedsKeys gate below surfaces the threshold crossings instead.
+                    var memberChanges = ctx.AppliedChanges
                         .Where(c => _repository.ExtractInvolvedEntityIds(c).Contains(member.Id, StringComparer.OrdinalIgnoreCase))
                         .Where(c => !(c.IsEngineAuthored && c is NeedChange or AttributeChange))
                         .ToList();
+                    var liveNeeds = member.Needs?.ActiveNeeds
+                        ?? new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+                    // ChangedNeedsKeys is Delta-only here by construction (this branch runs only on
+                    // Delta) and updates the cumulative-drift baseline for surfaced keys as a side
+                    // effect, exactly like the Npcs[] path via BuildTrim/ApplyDeltaTrim.
+                    var movedNeedKeys = ChangedNeedsKeys(ctx, member.Id, liveNeeds)
+                        ?? new List<string>();
                     var hasInitiative = ctx.InitiativeByNpcId.TryGetValue(member.Id, out var initiative);
+                    var hasMemoryHint = ctx.MemoryHintsByNpcId.TryGetValue(member.Id, out var memoryHint);
 
-                    if (memberChanges.Count == 0 && !hasInitiative)
+                    if (memberChanges.Count == 0 && movedNeedKeys.Count == 0 && !hasInitiative && !hasMemoryHint)
                     {
                         continue;
                     }
@@ -1925,8 +2251,13 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                         EntityId = member.Id,
                         Name = member.Name,
                         Changes = memberChanges,
+                        NeedsMoved = movedNeedKeys.Count > 0
+                            ? liveNeeds
+                                .Where(kv => movedNeedKeys.Contains(kv.Key, StringComparer.OrdinalIgnoreCase))
+                                .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase)
+                            : null,
                         Initiative = initiative,
-                        MemoryHint = ctx.MemoryHintsByNpcId.GetValueOrDefault(member.Id)
+                        MemoryHint = memoryHint
                     });
                 }
 
@@ -1968,28 +2299,153 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                     worldState.SuggestedCommitExamples
                 );
                 ctx.Result.WorldState.WorldPressureItems = worldState.WorldPressureItems;
+
+                // P2-13: a Full carries complete Time + pressure — it also (re)baselines the delta
+                // suppression markers, same as SeedNeedBaselinesOnFullReseed does for needs.
+                ctx.Cursor.LastSurfacedDay = worldState.Time.Day;
+                ctx.Cursor.LastSurfacedMonth = worldState.Time.Month;
+                ctx.Cursor.LastSurfacedYear = worldState.Time.Year;
+                ctx.Cursor.LastSurfacedTimeOfDay = TimeOfDayBucket(worldState.Time.Hour);
+                // Baseline the pressure marker on the rich items (grouping+entity+signature — stable
+                // across the ToDisplayStrings batching that collapses N items into one rendered line).
+                // An empty set is still a reading the next identical poll suppresses against.
+                ctx.Cursor.LastSurfacedPressureKeys = (worldState.WorldPressureItems?.ToList() ?? [])
+                    .Select(p => PressureItemKey(p))
+                    .OrderBy(k => k, StringComparer.Ordinal)
+                    .ToList();
             }
             else
             {
+                // P2-13 pure suppression: Time sends only when day/time-of-day shifted since last
+                // surfaced; WorldPressure sends only when the evaluated set differs from the
+                // last-surfaced set (grouping-key keyed — new/changed always sends; only
+                // identical-to-last drops, flagged via PressureUnchanged:true). Rumor/quest/faction
+                // change-filtering is unchanged (AppliedChanges-gated).
                 var newEvents = new List<string>();
                 newEvents.AddRange(ctx.AmbientNarrativeSummaries);
 
+                var timeShifted = IsTimeShiftedSinceSurfaced(ctx, worldState.Time);
+                var (pressureChanged, pressureToSend) = DiffWorldPressureSinceSurfaced(ctx, worldState);
+
                 ctx.Result.WorldStateDelta = new WorldStateDeltaView
                 {
-                    Time = worldState.Time,
-                    WorldPressure = worldState.WorldPressure,
+                    Time = timeShifted ? worldState.Time : null,
+                    PressureUnchanged = !pressureChanged,
+                    WorldPressure = pressureToSend,
                     RumorChanges = ctx.AppliedChanges.OfType<RumorEvolves>().ToList(),
                     QuestChanges = ctx.AppliedChanges.OfType<QuestProgress>().ToList(),
                     FactionReputationChanges = ctx.AppliedChanges.OfType<FactionReputationChange>().ToList(),
                     FactionStateChanges = ctx.AppliedChanges.OfType<FactionStateChange>().ToList(),
                     NewEvents = newEvents.Count > 0 ? newEvents : null
                 };
+
+                if (timeShifted)
+                {
+                    ctx.Cursor.LastSurfacedDay = worldState.Time.Day;
+                    ctx.Cursor.LastSurfacedMonth = worldState.Time.Month;
+                    ctx.Cursor.LastSurfacedYear = worldState.Time.Year;
+                    ctx.Cursor.LastSurfacedTimeOfDay = TimeOfDayBucket(worldState.Time.Hour);
+                }
+
+                if (pressureChanged)
+                {
+                    ctx.Cursor.LastSurfacedPressureKeys = (worldState.WorldPressureItems?.ToList() ?? [])
+                        .Select(p => PressureItemKey(p))
+                        .OrderBy(k => k, StringComparer.Ordinal)
+                        .ToList();
+                }
             }
         }
         catch (Exception ex)
         {
             Warn(ctx, $"World-state section failed: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// P2-13: Time is "shifted" when the calendar day/month/year moved or the coarse time-of-day bucket
+    /// (CampaignTime.GetTimeOfDayName) changed since the last delta that actually carried Time. Tracked
+    /// on the TurnCursor like the need baselines, so hour-level ticks inside one bucket stay suppressed.
+    /// First-ever delta (no surfaced marker yet) always sends — absence of a baseline is not sameness.
+    /// </summary>
+    private static bool IsTimeShiftedSinceSurfaced(TurnContext ctx, CampaignTimeView time)
+    {
+        if (ctx.Cursor.LastSurfacedTimeOfDay is null)
+        {
+            return true;
+        }
+
+        return ctx.Cursor.LastSurfacedDay != time.Day
+            || ctx.Cursor.LastSurfacedMonth != time.Month
+            || ctx.Cursor.LastSurfacedYear != time.Year
+            || !string.Equals(ctx.Cursor.LastSurfacedTimeOfDay, TimeOfDayBucket(time.Hour),
+                StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// P2-13: coarse time-of-day bucket mirrored from CampaignTime.GetTimeOfDayName (kept local so the
+    /// delta gate doesn't depend on allocating a FormattedDate string parse per poll).
+    /// </summary>
+    private static string TimeOfDayBucket(int hour) =>
+        hour switch
+        {
+            >= 0 and < 6 => "Night",
+            >= 6 and < 9 => "Dawn",
+            >= 9 and < 12 => "Morning",
+            >= 12 and < 15 => "Noon",
+            >= 15 and < 18 => "Afternoon",
+            >= 18 and < 21 => "Evening",
+            >= 21 and < 24 => "Dusk",
+            _ => "Night"
+        };
+
+    /// <summary>
+    /// P2-13 pure suppression for WorldPressure: compares the currently evaluated rich pressure items
+    /// against the last-surfaced set, keyed on grouping+entity+severity+content signature (see
+    /// PressureItemKey; digit-normalized except quest countdowns) —
+    /// the same identity the pressure pipeline itself uses (PressureOrchestrator merge key +
+    /// PressureHelpers.ComputeContentSignature, so numeric-only text changes like 66%-&gt;67% do not
+    /// count as changed, and ToDisplayStrings batching that collapses N items into one rendered line
+    /// does not look like churn). Order-insensitive; identical-to-last yields (false, []) with the
+    /// caller flagging PressureUnchanged:true; any difference yields (true, full current set).
+    /// First-ever delta (no surfaced set yet) always sends — suppression must be conservative per the
+    /// skill-docs gotcha (omit includeWorldState → never see resolution).
+    /// </summary>
+    private static (bool Changed, List<string> ToSend) DiffWorldPressureSinceSurfaced(
+        TurnContext ctx, WorldStateView worldState)
+    {
+        var current = (worldState.WorldPressureItems?.ToList() ?? [])
+            .Select(p => PressureItemKey(p))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+        var prior = (ctx.Cursor.LastSurfacedPressureKeys ?? [])
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+        // No baseline yet (pre-P2-13 cursor, or a cursor from a campaign whose Full never
+        // ran through this code): always send — absence of a baseline is not sameness. Note a
+        // post-P2-13 Full always writes the marker (even for an empty set), so this branch only
+        // fires for legacy cursors, where one extra send self-heals the baseline going forward.
+        if (ctx.Cursor.LastSurfacedPressureKeys is null)
+        {
+            return (true, worldState.WorldPressure?.ToList() ?? []);
+        }
+
+        if (current.SequenceEqual(prior, StringComparer.Ordinal))
+        {
+            return (false, []);
+        }
+
+        return (true, worldState.WorldPressure?.ToList() ?? []);
+    }
+
+    internal static string PressureItemKey(WorldPressureItem item)
+    {
+        // Digit-normalized so per-turn ticks (hunger %, felt temperature, HP) don't churn the delta,
+        // except quest countdowns: "3 days" -> "1 days" is a discrete step the client must see.
+        // Severity is part of the identity so an escalation always re-sends.
+        var normalizeDigits = item.GroupingKey != QuestDeadlinePressureContributor.ApproachingDeadlineGroupingKey;
+        return $"{item.GroupingKey}:{item.EntityId}:{item.Severity}:{PressureHelpers.ComputeContentSignature(item.Text, normalizeDigits)}";
     }
 
     private async Task IncludeFullNpcDetailAsync(TurnContext ctx)
@@ -2183,10 +2639,12 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         return new ToolResult<TurnResult>(true, result, successMsg);
     }
 
-    /// <summary>On a Full response, every present NPC's KnownNeeds is exactly what the client just
-    /// received — reset the cumulative-drift baseline (see ChangedNeedsKeys/TurnCursor.
-    /// SurfacedNeedValuesByEntityId) to match, so a subsequent Delta call measures drift from what was
-    /// actually sent, not from stale values left over from before the reseed.</summary>
+    /// <summary>On a Full response, every present NPC's KnownNeeds (and every party member's full needs)
+    /// is exactly what the client just received — reset the cumulative-drift baseline (see
+    /// ChangedNeedsKeys/TurnCursor.SurfacedNeedValuesByEntityId) to match, so a subsequent Delta call
+    /// measures drift from what was actually sent, not from stale values left over from before the
+    /// reseed. P2-12: seeds Full Party[] members alongside Npcs[]/Scenes[] so PC drift baselines
+    /// initialize like NPC ones.</summary>
     private static void SeedNeedBaselinesOnFullReseed(TurnContext ctx)
     {
         var eq = StringComparer.OrdinalIgnoreCase;
@@ -2207,6 +2665,16 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             {
                 Seed(presentNpc.Id, presentNpc.KnownNeeds);
             }
+        }
+
+        // P2-12: seed party baselines too — Full Party[] carries the whole Needs dict (via
+        // CharacterDetailView); without this, PC drift baselines never initialize and slow hunger
+        // accumulation stays invisible forever. (Delta PartyDelta[].NeedsMoved needs no seeding here:
+        // ChangedNeedsKeys already updated the cursor baseline for surfaced keys as a side effect.)
+        foreach (var member in ctx.Result.Party ?? [])
+        {
+            Seed(member.Id, new Dictionary<string, float>(member.Character.Needs?.ActiveNeeds
+                ?? new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase), eq));
         }
     }
 
@@ -2304,19 +2772,61 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             return;
         }
 
-        NpcPresenceSummary MergeInitiative(NpcPresenceSummary n, NpcSummaryView dropped) =>
-            n.Id.Equals(dropped.CharacterId, StringComparison.OrdinalIgnoreCase)
-                && n.BehavioralTension == 0
-                && (n.ActiveInitiatives?.Count ?? 0) == 0
-                && n.TurnIntent == null
-                ? n with
+        NpcPresenceSummary MergeInitiative(NpcPresenceSummary n, NpcSummaryView dropped)
+        {
+            if (!n.Id.Equals(dropped.CharacterId, StringComparison.OrdinalIgnoreCase)
+                || dropped.Initiative == null)
+            {
+                return n;
+            }
+
+            var droppedInitiatives = dropped.Initiative.ActiveInitiatives ?? [];
+            var sceneInitiatives = n.ActiveInitiatives ?? [];
+            var droppedTension = dropped.Initiative.BehavioralTension;
+
+            // The winner's enrichment (Npcs[] side) is strictly richer — full candidate list plus
+            // memories computed at real cost this turn — so when it carries initiative signal it wins
+            // over the scene-presence copy, which may itself be a stubbed/unknown row (null tension =
+            // "no signal", not "calm") from StubPresence. An absent tension on the scene side never
+            // blocks the merge the way a fabricated zero once did.
+            var sceneHasSignal = (n.BehavioralTension ?? 0) != 0
+                || sceneInitiatives.Count > 0
+                || n.TurnIntent != null;
+            var droppedHasSignal = droppedTension != 0
+                || droppedInitiatives.Count > 0
+                || dropped.Initiative.TurnIntent != null;
+
+            if (!droppedHasSignal)
+            {
+                return n;
+            }
+
+            if (!sceneHasSignal)
+            {
+                return n with
                 {
-                    BehavioralTension = dropped.Initiative!.BehavioralTension,
+                    BehavioralTension = droppedTension,
                     ActiveInitiatives = dropped.Initiative.ActiveInitiatives,
                     RelevantMemories = dropped.Initiative.RelevantMemories,
                     TurnIntent = dropped.Initiative.TurnIntent
-                }
-                : n;
+                };
+            }
+
+            // Both sides carry signal (the P1-9 loss case): prefer the winner — max-merge tension so
+            // the hotter reading survives, concat initiatives (winner first) so neither side's
+            // candidates are silently discarded, and let the winner's explicit TurnIntent win.
+            var mergedInitiatives = droppedInitiatives
+                .Concat(sceneInitiatives.Where(s => !droppedInitiatives.Any(d =>
+                    string.Equals(d.Key, s.Key, StringComparison.OrdinalIgnoreCase))))
+                .ToList();
+            return n with
+            {
+                BehavioralTension = Math.Max(n.BehavioralTension ?? 0, droppedTension),
+                ActiveInitiatives = mergedInitiatives,
+                RelevantMemories = dropped.Initiative.RelevantMemories ?? n.RelevantMemories,
+                TurnIntent = dropped.Initiative.TurnIntent ?? n.TurnIntent
+            };
+        }
 
         foreach (var dropped in toDrop)
         {

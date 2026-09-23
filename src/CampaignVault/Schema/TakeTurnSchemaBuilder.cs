@@ -70,7 +70,7 @@ internal static class TakeTurnSchemaBuilder
             {
                 ["type"] = "boolean",
                 ["default"] = false,
-                ["description"] = "Include WorldState in response"
+                ["description"] = "Include WorldState in response. Expensive — pressure evaluation + serialization run even when the delta suppresses unchanged Time/pressure; use when pressure/verification actually matters."
             },
             ["partyLocationId"] = new JsonObject
             {
@@ -107,7 +107,7 @@ internal static class TakeTurnSchemaBuilder
             ["clientPartyFingerprint"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "Echo back the previous response's partyFingerprint unchanged, so the server can detect drift and force a resync if it doesn't match. Omit if you don't have a prior value."
+                ["description"] = "Echo back the previous response's narrow partyFingerprint (party HP/location only — NPC/need/memory drift is covered by reseed + integrity pressure, not this hash) unchanged, so the server can detect HP/location drift and force a resync if it doesn't match. Omit if you don't have a prior value (never treated as a mismatch)."
             }
         };
 

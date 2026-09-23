@@ -248,6 +248,17 @@ public class NeedsProfile
         ["fatigue"] = "Physical exhaustion level (0-100). D&D 5e exhaustion track, PF2e Fatigued condition, survival systems."
     };
 
+    /// <summary>
+    /// Optional per-need passive accumulation rate (points/day), for needs the LLM wants to drift
+    /// on their own via the existing time-passage machinery (NeedsAccumulationRule /
+    /// WorldChangeDispatcher.ApplyMicroTimeNudgeAsync) instead of requiring an explicit `need` push
+    /// every turn. Empty by default — only hunger/thirst/tiredness/social_drive drift automatically
+    /// without an entry here. A key matching one of those four overrides that need's
+    /// CampaignConfig-driven rate for this character only. Not for temporary/event-driven spikes —
+    /// use NeedChange.Delta for those (e.g. a big drink bumping thirst/bladder once).
+    /// </summary>
+    public Dictionary<string, float> AccumulationRates { get; set; } = [];
+
     public bool ActivityConflictActive { get; set; }
     public string? ActivityConflictNeed { get; set; }
 }

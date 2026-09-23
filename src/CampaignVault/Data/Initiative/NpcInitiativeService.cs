@@ -1,4 +1,6 @@
 using CampaignVault.Models;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CampaignVault.Data.Initiative;
 
@@ -6,17 +8,38 @@ public sealed class NpcInitiativeService(
     IEnumerable<INpcInitiativeSignalProvider> providers,
     IRelevantMemorySelector memorySelector,
     IBehavioralTensionCalculator tensionCalculator,
-    IInitiativeSuppressionStore suppressionStore) : INpcInitiativeService
+    IInitiativeSuppressionStore suppressionStore,
+    ILogger<NpcInitiativeService>? logger = null) : INpcInitiativeService
 {
     private readonly IReadOnlyList<INpcInitiativeSignalProvider> _providers = providers.ToList();
+    private readonly ILogger<NpcInitiativeService> _logger = logger ?? NullLogger<NpcInitiativeService>.Instance;
 
     public NpcInitiativeEnrichment Enrich(NpcInitiativeContext ctx, Campaign campaign)
     {
         var npc = ctx.Npc;
         var psych = npc.Psychology ?? new PsychologyProfile();
 
-        var candidates = _providers
-            .SelectMany(p => p.GetCandidates(ctx))
+        // Per-provider isolation: one throwing heuristic must not zero the whole
+        // enrichment (or skip suppression bookkeeping below). The per-NPC try/catch in
+        // MutationTools.SelectAndEnrichInitiativeAsync stays as the outer net.
+        var provided = new List<InitiativeCandidate>();
+        foreach (var provider in _providers)
+        {
+            try
+            {
+                provided.AddRange(provider.GetCandidates(ctx) ?? []);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Initiative provider {ProviderType} failed for NPC '{NpcId}'; continuing with remaining providers.",
+                    provider.GetType().Name,
+                    npc.Id);
+            }
+        }
+
+        var candidates = provided
             .Where(c => c.NpcId == npc.Id)
             .Where(c => !suppressionStore.IsConsumed(campaign, BuildSuppressionKey(npc.Id, c.Key)))
             .Select(c => ApplyPersonalityWeight(c, psych))

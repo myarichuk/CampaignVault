@@ -309,7 +309,12 @@ public record NpcPresenceSummary(
     /// Essential for the LLM to understand mechanical capabilities at a glance.
     /// </summary>
     SystemExtension? SystemStats = null,
-    double BehavioralTension = 0,
+    /// <summary>Measured behavioral tension (0-100). Null means "unknown / not measured this turn"
+    /// (e.g. a delta-mode stubbed presence entry) — distinct from a genuine measured 0 (calm).
+    /// Defaults to 0 so freshly-assembled presence rows (SceneNpcPresenceFactory) carry a reading;
+    /// only the delta stub path nulls it. McpResponseCleaner strips null keys, so a stubbed entry
+    /// carries no key while measured-calm keeps 0.</summary>
+    double? BehavioralTension = 0,
     IReadOnlyList<InitiativeCandidate>? ActiveInitiatives = null,
     /// <summary>
     /// Top memories scored relevant to this moment (present entities, location, recency) — not this

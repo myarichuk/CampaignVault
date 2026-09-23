@@ -184,6 +184,30 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task KnowledgeUpdate_ExistingNodeWithNullTopic_BackfillsTopic()
+    {
+        // The repair EntityIntegrityPressureContributor suggests for a null-Topic memory is a
+        // knowledge_update addressed by the dict key — it must actually clear the null Topic.
+        using var session = _fixture.Store.OpenAsyncSession();
+        var c = new Character { Id = "chars/nulltopic", Name = "Nell" };
+        c.Psychology.Memories["The Old Mill"] = new MemoryNode { Topic = null!, Details = "Burned down." };
+        await session.StoreAsync(c);
+        await session.SaveChangesAsync();
+
+        var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
+        var result = await handler.ApplyAsync(new KnowledgeUpdate
+        {
+            CharacterId = "chars/nulltopic",
+            Topic = "The Old Mill",
+            Details = "Burned down."
+        }, CreateContext(session));
+
+        Assert.True(result.Success);
+        var loaded = await session.LoadAsync<Character>("chars/nulltopic");
+        Assert.Equal("The Old Mill", loaded.Psychology.Memories["The Old Mill"].Topic);
+    }
+
+    [Fact]
     public async Task KnowledgeUpdate_UpdatesExistingMemory()
     {
         using var session = _fixture.Store.OpenAsyncSession();

@@ -717,6 +717,14 @@ public class KnowledgeUpdateHandler(ILocalEmbeddingService embeddingService) : I
         else
         {
             memory!.ApplyMigrationDefaultsIfNeeded();
+
+            // Self-heal a legacy node whose Topic was lost: the caller addressed it by this exact
+            // topic, so it's the caller's identity, not an engine invention. This is the repair
+            // EntityIntegrityPressureContributor's null-Topic warning suggests.
+            if (string.IsNullOrWhiteSpace(memory.Topic))
+            {
+                memory.Topic = ku.Topic;
+            }
         }
 
         memory.Details = ku.Details;

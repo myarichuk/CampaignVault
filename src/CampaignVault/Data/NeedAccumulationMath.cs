@@ -10,19 +10,31 @@ namespace CampaignVault.Data;
 /// </summary>
 public static class NeedAccumulationMath
 {
-    public static IReadOnlyDictionary<string, float> ComputeDeltas(CampaignConfig? config, double days)
+    public static IReadOnlyDictionary<string, float> ComputeDeltas(CampaignConfig? config, double days, Dictionary<string, float>? accumulationRates = null)
     {
         var needRate = config?.NeedAccumulationRate ?? 10f;
         var thirstMult = config?.ThirstAccumulationMultiplier ?? 1.2f;
         var tiredMult = config?.TirednessAccumulationMultiplier ?? 0.8f;
         var amount = needRate * (float)days;
 
-        return new Dictionary<string, float>
+        var deltas = new Dictionary<string, float>
         {
             ["hunger"] = amount,
             ["thirst"] = amount * thirstMult,
             ["tiredness"] = amount * tiredMult,
             ["social_drive"] = amount * 0.15f
         };
+
+        // Per-character custom rates: a key matching a core need overrides the config-driven
+        // value for that character only; other keys add new drifting needs at rate * days.
+        if (accumulationRates is not null)
+        {
+            foreach (var (need, rate) in accumulationRates)
+            {
+                deltas[need] = rate * (float)days;
+            }
+        }
+
+        return deltas;
     }
 }

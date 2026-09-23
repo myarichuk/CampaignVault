@@ -26,10 +26,7 @@ public class NeedsAccumulationRule : ISimulationRule
 
         // Use consistent float math (addresses review point about casts)
         var days = (float)context.DaysPassed;
-        var tiredMult = context.Config?.TirednessAccumulationMultiplier ?? 0.8f;
         var moraleDriftPerDay = context.Config?.MoraleDriftPerDay ?? -0.8f;
-        var amount = (context.Config?.NeedAccumulationRate ?? 10f) * days;
-        var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, context.DaysPassed);
 
         foreach (var npc in context.ScheduledNpcs)
         {
@@ -46,8 +43,14 @@ public class NeedsAccumulationRule : ISimulationRule
                 continue;
             }
 
+            // Per-character rates: each NPC's own AccumulationRates apply (core-need keys
+            // override the config-driven value for that NPC only).
+            var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, context.DaysPassed, npc.Needs.AccumulationRates);
+
             // Accumulate core needs, but cap the delta so we don't emit meaningless " +120 when already at 100"
-            // (CommitChangesAsync will still clamp, but this keeps summaries and rule output cleaner)
+            // (CommitChangesAsync will still clamp, but this keeps summaries and rule output cleaner).
+            // Note: this clamp-to-100 headroom (Math.Min with 100 - current) bounds output regardless
+            // of rate magnitude — no separate cap is needed for custom AccumulationRates.
             void AddCappedNeed(string need, float baseAmount)
             {
                 var current = npc.Needs.ActiveNeeds.GetValueOrDefault(need, 0f);
@@ -77,8 +80,10 @@ public class NeedsAccumulationRule : ISimulationRule
             // Re-evaluate mood after accumulation (the actual mood value will be applied by the MoodChange we emit below)
             // We compute what the mood *should* become based on the post-delta state.
             // Note: Because deltas are applied later, we approximate using current + projected.
-            var projectedHunger = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("hunger") + amount, 0f, 100f);
-            var projectedTiredness = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("tiredness") + (amount * tiredMult), 0f, 100f);
+            // Project from the same per-character deltas emitted above, so a custom rate (e.g. 0 =
+            // no passive hunger) can't yield a mood/morale swing for a need that never moved.
+            var projectedHunger = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("hunger") + perDayDeltas.GetValueOrDefault("hunger"), 0f, 100f);
+            var projectedTiredness = Math.Clamp(npc.Needs.ActiveNeeds.GetValueOrDefault("tiredness") + perDayDeltas.GetValueOrDefault("tiredness"), 0f, 100f);
 
             var newMood = npc.Psychology.CurrentMood ?? "Content";
             if (projectedTiredness > NpcMoodThresholds.ExhaustedTiredness)

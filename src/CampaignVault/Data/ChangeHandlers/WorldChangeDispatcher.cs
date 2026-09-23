@@ -431,7 +431,6 @@ public sealed class WorldChangeDispatcher(
         }
 
         var days = minutesElapsed / 1440.0;
-        var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, days);
         var nudgedCharacterIds = new List<string>();
 
         // Applies deltas directly (bypassing NeedChangeHandler/DispatchMutationAsync's per-need
@@ -445,11 +444,17 @@ public sealed class WorldChangeDispatcher(
                 continue;
             }
 
+            // Per-character rates: each on-screen character's own AccumulationRates apply
+            // (core-need keys override the config-driven value for that character only).
+            var perDayDeltas = NeedAccumulationMath.ComputeDeltas(context.Config, days, character.Needs.AccumulationRates);
+
             var updatedNeeds = new Dictionary<string, float>(character.Needs.ActiveNeeds);
             var changedAny = false;
             foreach (var (need, delta) in perDayDeltas)
             {
                 var current = updatedNeeds.GetValueOrDefault(need, 0f);
+                // Clamp-to-100 headroom bounds output regardless of rate magnitude —
+                // no separate cap is needed for custom AccumulationRates.
                 var effective = Math.Min(delta, 100f - current);
                 if (effective > 0.0001f)
                 {

@@ -51,6 +51,14 @@ public sealed class NeedChangeHandler : IWorldChangeHandler
         };
         character.Needs.ActiveNeeds = updatedNeeds;
 
+        // Optional rate-setting: independent of the immediate delta push above. Omit leaves the
+        // current rate unchanged; 0 stops passive drift without deleting history. (AccumulationRate
+        // is not a C# reserved keyword and does not shadow any existing NeedChange member.)
+        if (nc.AccumulationRate.HasValue)
+        {
+            character.Needs.AccumulationRates[nc.Need] = nc.AccumulationRate.Value;
+        }
+
         // No success message: the caller specified the need/delta itself (nothing computed to echo
         // back), and background accumulation ticks were already silent before this.
 

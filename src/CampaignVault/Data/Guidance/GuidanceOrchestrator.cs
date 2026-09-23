@@ -34,7 +34,7 @@ internal sealed class GuidanceOrchestrator : IGuidanceOrchestrator
         var contributed = new List<GuidanceHint>();
 
         foreach (var contributor in _contributors
-            .Where(c => c.Scope == scope)
+            .Where(c => (c.Scope & scope) != 0)
             .OrderBy(c => c.Order))
         {
             try

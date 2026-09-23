@@ -10,9 +10,12 @@ public sealed class RelationalInitiativeProvider : INpcInitiativeSignalProvider
         var psych = npc.Psychology ?? new PsychologyProfile();
         var social = npc.Social ?? new SocialProfile();
         var presentIds = new HashSet<string>(
-            ctx.PresentEntities.Select(e => e.Id),
+            ctx.PresentEntities.Where(e => e is not null && e.Id is not null).Select(e => e.Id!),
             StringComparer.OrdinalIgnoreCase);
-        var presentById = ctx.PresentEntities.ToDictionary(e => e.Id, e => e, StringComparer.OrdinalIgnoreCase);
+        var presentById = ctx.PresentEntities
+            .Where(e => e is not null && e.Id is not null)
+            .GroupBy(e => e.Id!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var candidates = new List<InitiativeCandidate>();
         var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

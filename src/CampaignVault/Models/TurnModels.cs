@@ -57,7 +57,7 @@ public class TakeTurnRequest
     public bool IncludeParty { get; set; } = false;
 
     [Description(
-        "Rebuild and include WorldState (world pressure, rumors, quests, factions, time) in the response (default false). Expensive — use when pressure/verification/new-location context actually matters.")]
+        "Rebuild and include WorldState (world pressure, rumors, quests, factions, time) in the response (default false). Expensive — pressure evaluation + serialization run even for delta suppression, so use when pressure/verification/new-location context actually matters.")]
     [JsonPropertyName("includeWorldState")]
     public bool IncludeWorldState { get; set; } = false;
 
@@ -97,9 +97,10 @@ public class TakeTurnRequest
     public MemoryImportance? NarrativeImportance { get; set; }
 
     [Description(
-        "Echo back the 'partyFingerprint' value from the PREVIOUS take_turn response, unchanged. Lets the server detect narrative " +
-        "drift (e.g. a delta you missed) independent of the periodic reseed cadence: if this doesn't match what the server computed " +
-        "last turn, the response is forced to Full and a resync advisory is added. Omit on your very first call for a session, or " +
+        "Echo back the narrow 'partyFingerprint' value (party HP/location only) from the PREVIOUS take_turn response, unchanged. " +
+        "Lets the server detect HP/location drift (e.g. a delta you missed) independent of the periodic reseed cadence: if this doesn't match what the server computed " +
+        "last turn, the response is forced to Full and a resync advisory is added. NPC/need/memory/rumor drift is NOT covered by this hash " +
+        "(covered by the periodic reseed + integrity pressure instead). Omit on your very first call for a session, or " +
         "whenever you don't have a prior value handy — an omitted value is never treated as a mismatch.")]
     [JsonPropertyName("clientPartyFingerprint")]
     public string? ClientPartyFingerprint { get; set; }
@@ -145,6 +146,13 @@ public class TurnResult
         "physical/visual changed this turn.")]
     public List<string>? PhysicalStateNudges { get; set; }
 
+    [Description("Character guidance hints collected this turn (rules/pattern nudges from guidance contributors, " +
+        "e.g. first-commit quickstart, rest/travel patterns). Separate from PhysicalStateNudges, which carries " +
+        "physical/visual state only. Null when no characters surfaced this turn, when guidance is disabled " +
+        "(CampaignConfig.GuidanceEnabled), or when no contributor fired. Budgeted by " +
+        "CampaignConfig.MaxGuidanceHintsPerResponse/MaxGuidanceCharsPerResponse.")]
+    public List<string>? GuidanceHints { get; set; }
+
     [Description("Remaining rate-limit tokens for this campaign after this commit.")]
     public int? RateLimitTokensRemaining { get; set; }
 
@@ -161,15 +169,18 @@ public class TurnResult
     public List<PartyMemberView>? Party { get; set; }
 
     [Description("Delta-mode party entries (if includeParty=true AND mode=delta); otherwise null. One entry per party member with " +
-        "a change this turn, plus any member selected for initiative/memory enrichment even with zero changes. Call get_entity for a " +
-        "member's full current state.")]
+        "a change this turn (ambient non-need changes, need movers past the significance/cumulative-drift gates, initiative/memory enrichment). " +
+        "OMISSION CONTRACT: an absent PartyDelta on a quiet turn means 'no party change worth surfacing', not 'no party' — call get_entity for a " +
+        "member's full current state when you need ground truth.")]
     public List<EntityChangeDelta>? PartyDelta { get; set; }
 
     [Description("World state including rumors, active quests, faction standings, and campaign time (if includeWorldState=true AND mode=full); otherwise null. See WorldStateDelta for mode=delta.")]
     public WorldStateView? WorldState { get; set; }
 
     [Description("Delta-mode world state (if includeWorldState=true AND mode=delta); otherwise null. Only rumor/quest/faction changes " +
-        "from this turn, plus current time/pressure (always populated). Pass forceFullReseed=true on the next take_turn call for the full picture.")]
+        "from this turn, plus Time only when day/time-of-day shifted since last surfaced and WorldPressure only when the evaluated set differs " +
+        "(new/changed always sends; identical-to-last suppresses to pressureUnchanged:true). includeWorldState is expensive — use when pressure/verification actually matters. " +
+        "Pass forceFullReseed=true on the next take_turn call for the full picture.")]
     public WorldStateDeltaView? WorldStateDelta { get; set; }
 
     [Description("Full NPC context view for the requested NPC (if fullDetailCharacterId was provided); includes all relationships, history, and behavior synthesis. Otherwise null.")]
@@ -187,8 +198,9 @@ public class TurnResult
     [Description("Concrete follow-up tool calls worth making before narrating further — populated when a memoryHint fired (get_entity/recall_history) or entities were dropped from Npcs/Scenes by the refresh cap (RefreshTruncatedIds). Models respond more reliably to an explicit suggested call than to silently querying more; null when nothing is flagged this turn.")]
     public List<string>? QuerySuggestions { get; set; }
 
-    [Description("Readable fingerprint of current party state ('charId:hp/maxHp@locationId', one per PC/companion, sorted by ID) — pass this back " +
-        "as clientPartyFingerprint on your NEXT take_turn call so the server can catch drift (a missed or misread delta) before it compounds. " +
+    [Description("Narrow party HP/location fingerprint ('charId:hp/maxHp@locationId', one per PC/companion, sorted by ID) — pass this back " +
+        "as clientPartyFingerprint on your NEXT take_turn call so the server can catch HP/location drift (a missed or misread delta) before it compounds. " +
+        "Does NOT cover NPC/need/memory/rumor drift (covered by the periodic reseed + integrity pressure). " +
         "Also useful to self-check your own narrative model against right now: if this doesn't match what you believe about the party, trust this.")]
     public string? PartyFingerprint { get; set; }
 
@@ -211,16 +223,21 @@ public class TurnResult
 }
 
 /// <summary>
-/// Delta-mode world-state view: only the rumor/quest/faction WorldChanges actually applied this turn,
-/// rather than the full active-rumors/quests/factions lists BuildWorldStateAsync would return. Time and
-/// WorldPressure are always populated (small, fixed-shape, and needed every turn regardless of mode).
+/// Delta-mode world-state view (P2-13 pure suppression): only the rumor/quest/faction WorldChanges
+/// actually applied this turn, rather than the full lists BuildWorldStateAsync would return. Time sends
+/// only when day/time-of-day shifted since last surfaced; WorldPressure sends only when the evaluated
+/// set differs from the last-surfaced set (PressureUnchanged:true otherwise). New/changed pressure
+/// always sends — only identical-to-last may drop.
 /// </summary>
 public class WorldStateDeltaView
 {
-    [Description("Current campaign time — always populated.")]
+    [Description("Current campaign time — sent only when day/time-of-day shifted since last surfaced; null means unchanged since the last delta that carried it.")]
     public CampaignTimeView? Time { get; set; }
 
-    [Description("Active world pressure nags — always populated, same as WorldStateView.WorldPressure.")]
+    [Description("True when the evaluated pressure set was identical to the last-surfaced set, so WorldPressure was suppressed to save tokens. New/changed pressure always sends.")]
+    public bool PressureUnchanged { get; set; }
+
+    [Description("Active world pressure nags — populated only when the evaluated set differs from the last-surfaced set (grouping-key keyed; new/changed always sends). Empty + PressureUnchanged:true means 'same as last time'.")]
     public IEnumerable<string> WorldPressure { get; set; } = [];
 
     [Description("Rumors that changed state this turn (RumorEvolves commits applied). Empty if none.")]
@@ -251,8 +268,11 @@ public class EntityChangeDelta
     [Description("Character name, for display without a follow-up lookup.")]
     public string? Name { get; set; }
 
-    [Description("Server-derived (ambient simulation) WorldChanges applied to this entity this turn — needs/memory decay etc. from crossing a day boundary. Does NOT include changes this same call's own Changes[] submitted for this entity, since the caller already has those. Each entry is already a delta, e.g. NeedChange carries {Need, Delta}.")]
+    [Description("WorldChanges applied to this party member this turn — including the member's own applied movers from this call's Changes[] (a PartyDelta entry exists precisely to say 'this member moved'; NeedsMoved carries the live post-commit values as receipt). Only background engine-authored need/attribute tick noise stays filtered.")]
     public List<WorldChange> Changes { get; set; } = [];
+
+    [Description("P2-12: live need values for this member's needs that crossed the significance or cumulative-drift gates this turn (same ChangedNeedsKeys machinery as Npcs[] KnownNeeds filtering) — includes the caller's own applied NeedChange movers for this member, not just ambient drift. Null when no need moved enough to mention — an absent PartyDelta entry likewise means 'no party change worth surfacing', not 'no party'.")]
+    public Dictionary<string, float>? NeedsMoved { get; set; }
 
     [Description("RP-advisory initiative/memory enrichment, present only for the up-to-2 NPCs selected this call (see take_turn's tool description). Null otherwise, and always null for player characters.")]
     public NpcInitiativeEnrichment? Initiative { get; set; }

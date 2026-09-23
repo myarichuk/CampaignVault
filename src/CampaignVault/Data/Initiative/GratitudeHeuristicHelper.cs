@@ -35,8 +35,13 @@ internal static class GratitudeHeuristicHelper
     public static bool IsStructuredGratitudeBeat(string? beat) =>
         !string.IsNullOrWhiteSpace(beat) && StructuredGratitudeBeats.Contains(beat);
 
-    public static bool SummaryMatchesHeuristic(string summary, IReadOnlyList<string> tokens)
+    public static bool SummaryMatchesHeuristic(string? summary, IReadOnlyList<string>? tokens)
     {
+        if (string.IsNullOrWhiteSpace(summary) || tokens is null)
+        {
+            return false;
+        }
+
         foreach (var token in tokens)
         {
             if (string.IsNullOrWhiteSpace(token))
@@ -53,13 +58,18 @@ internal static class GratitudeHeuristicHelper
         return false;
     }
 
-    public static bool ItemSuggestsGift(Item item)
+    public static bool ItemSuggestsGift(Item? item)
     {
-        if (item.Tags.Any(t => GiftItemTags.Contains(t)))
+        if (item is null)
+        {
+            return false;
+        }
+
+        if ((item.Tags ?? []).Any(t => t is not null && GiftItemTags.Contains(t)))
         {
             return true;
         }
 
-        return GiftCategories.Contains(item.CoreCategory);
+        return item.CoreCategory is not null && GiftCategories.Contains(item.CoreCategory);
     }
 }
