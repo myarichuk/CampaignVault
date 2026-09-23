@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading.RateLimiting;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Guidance;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
@@ -16,6 +17,7 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
 {
     private readonly IPressureManager _pressureManager;
     private readonly IPressureOrchestrator _pressureOrchestrator;
+    private readonly IGuidanceOrchestrator _guidanceOrchestrator;
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
 
     // Keyed per-campaign so commits in one campaign never throttle another. Bounded so a
@@ -57,12 +59,14 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         CampaignDocumentKeys keys,
         IPressureManager pressureManager,
         IPressureOrchestrator pressureOrchestrator,
+        IGuidanceOrchestrator guidanceOrchestrator,
         INpcBehaviorSynthesizer behaviorSynthesizer,
         ILogger<MutationTools>? logger = null)
         : base(repository, keys, logger)
     {
         _pressureManager = pressureManager;
         _pressureOrchestrator = pressureOrchestrator;
+        _guidanceOrchestrator = guidanceOrchestrator;
         _behaviorSynthesizer = behaviorSynthesizer;
     }
 
@@ -263,6 +267,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             await IncludeMemoriesOnlyAsync(ctx);
             await IncludeFullSceneDetailAsync(ctx);
             await RefreshPartyFingerprintAsync(ctx);
+            await CollectCharacterGuidanceAsync(ctx);
 
             return Finalize(ctx, rateLimiter);
         }, saveChanges: true);
@@ -427,6 +432,68 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         ctx.Cursor.LastPartyFingerprint = fingerprint;
         ctx.Result.PartyFingerprint = fingerprint;
         ctx.Result.WorldSequence = ctx.Cursor.WorldSequence;
+    }
+
+    /// <summary>
+    /// Collect scene-scoped guidance hints from all contributors.
+    /// Guidance is character-filtered by contributors checking Scene.PresentNPCs/Party.
+    /// </summary>
+    private async Task CollectCharacterGuidanceAsync(TurnContext ctx)
+    {
+        if (ctx.Result.PhysicalStateNudges == null || ctx.Result.PhysicalStateNudges.Count == 0)
+        {
+            ctx.Result.PhysicalStateNudges = [];
+        }
+
+        // Collect character IDs from Npcs and Party for context
+        var partyCharacterIds = new List<string>();
+        foreach (var npc in ctx.Result.Npcs ?? [])
+        {
+            partyCharacterIds.Add(npc.CharacterId);
+        }
+
+        foreach (var member in ctx.Result.Party ?? [])
+        {
+            partyCharacterIds.Add(member.Id);
+        }
+
+        if (partyCharacterIds.Count == 0)
+        {
+            return; // No characters to evaluate guidance for
+        }
+
+        try
+        {
+            var pressureContext = new PressureContext(
+                CampaignName: ctx.Campaign,
+                Time: null, // Time is loaded on-demand by pressure manager if needed
+                Config: ctx.Config,
+                Session: ctx.Session,
+                Scene: null, // Scene details not needed for character-scoped guidance
+                PartyCharacterIds: partyCharacterIds.AsReadOnly(),
+                PartyPresent: true);
+
+            var hints = await _guidanceOrchestrator.CollectAsync(
+                PressureScope.Scene,
+                pressureContext,
+                ignoreLedger: false);
+
+            // Convert hints to strings and append
+            foreach (var hint in hints)
+            {
+                var guidanceText = $"[GUIDANCE] {hint.Text}";
+                if (hint.Example != null)
+                {
+                    guidanceText += $" Example: {hint.Example}";
+                }
+
+                ctx.Result.PhysicalStateNudges.Add(guidanceText);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to collect guidance hints");
+        }
     }
 
     /// <summary>
