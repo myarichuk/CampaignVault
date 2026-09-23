@@ -40,7 +40,7 @@ You are persisting changes to the world: events, character state, items, relatio
 { "$type": "item", "itemId": "items/gold-coin", "toHolderId": "chars/lyra" }
 ```
 
-For a brand-new item (loot that didn't exist yet), create it via `world_build`'s `items[]` first, then transfer if needed.
+For a brand-new item (loot that didn't exist yet), create it via `world_build`'s `items[]` first, then transfer if needed. If it matches a known template, set `definitionName` (check via `get_rules_reference` kind:`items`) instead of typing out category/tags/properties/equip fields by hand — any of those you also set explicitly on the same entry still override the template.
 | Combat/Mechanics | `ruleset_action`, `status`, `hp`, `resource` | Dice rolls, HP, spell slots |
 
 **Persistent physical state (gear worn, conditions, lasting appearance changes) needs a commit, or it silently reverts next scene** — same failure mode as the item-pickup warning above. Putting on a gifted item → `item_equip`; cutting someone's bonds, ending a condition → `status_remove` (not just narration — "still bound" a few beats later is this bug); a scar or new outfit that should stick → `character_update`'s appearance fields; gear destroyed/dissolved/lost → `item_unequip`/`item_update`/`archive_entity`.
@@ -59,7 +59,7 @@ Call `get_commit_schema` for the machine-readable field list per $type.
 
 Never create entities through take_turn changes — there are no `_create` $types. Use `world_build` (batch: characters, locations, items, factions, quests, rumors, plotThreads, creatures, spells, feats, lore, needDescriptors), even for a single new entity (a one-item batch is fine). It reports a merge (not a duplicate) if the id already exists.
 
-**Before calling world_build**, run the world-building seeding checklist in `dnd-exploration` — especially the 6-step location depth + plot thread enrichment check. A missed district, missing PoIs, or unfilled clues are gaps that surface as a broken `get_entity` or a flat narration later.
+**Before calling world_build**, run the world-building seeding checklist in `dnd-world-building` — especially the 6-step location depth + plot thread enrichment check, and its item-template/tag lookup step. A missed district, missing PoIs, or unfilled clues are gaps that surface as a broken `get_entity` or a flat narration later.
 
 **Plot thread clues must materialize as real items or NPCs:** If a clue references a physical object, seed it as an `items[]` entry. The clue's `involvedEntityIds` must include the item ID so `get_entity` on the item surfaces clue context. Tag the item: `tags: ["clue:plot-threads/..."]`. Without this, the party searches the world and finds nothing.
 

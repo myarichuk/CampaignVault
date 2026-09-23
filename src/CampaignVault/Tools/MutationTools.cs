@@ -464,9 +464,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
 
         try
         {
+            var campaignTime = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+
             var pressureContext = new PressureContext(
                 CampaignName: ctx.Campaign,
-                Time: null, // Time is loaded on-demand by pressure manager if needed
+                Time: campaignTime,
                 Config: ctx.Config,
                 Session: ctx.Session,
                 Scene: null, // Scene details not needed for character-scoped guidance

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Models;
@@ -148,6 +149,11 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
 
         var creatures = await mgmt.GetRulesReference(slug, "creatures", nameQuery: "goblin");
         Assert.True(creatures.Success, creatures.Summary);
+
+        var itemTags = await mgmt.GetRulesReference(slug, "item_tags");
+        Assert.True(itemTags.Success, itemTags.Summary);
+        var tags = Assert.IsType<List<string>>(itemTags.Data);
+        Assert.Contains("martial", tags);
 
         var badKind = await mgmt.GetRulesReference(slug, "monsters");
         Assert.False(badKind.Success);

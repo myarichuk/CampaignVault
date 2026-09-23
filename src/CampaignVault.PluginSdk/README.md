@@ -20,6 +20,14 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## Breaking Changes
+
+**0.2.0** — `ItemCategory`, `EquipZone`, and `EquipLayer` are no longer enums. They're now open
+string-constants classes (`ItemCategories`, `EquipZones`, `EquipLayers`) so item packs can define
+their own categories/zones via YAML alone. `Item.CoreCategory`/`EquipLayer` are now `string`/
+`string?`, and `Item.EquipZones` is `List<string>`. Update any code referencing the old enum
+members (e.g. `ItemCategory.Weapon` → `ItemCategories.Weapon`).
+
 ## License
 
 PolyForm Noncommercial 1.0.0 — see the bundled `LICENSE` file.

@@ -216,6 +216,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 - kind:'creatures' — creature stat-block *templates* (SRD + campaign homebrew merged, homebrew wins by name), filtered by nameQuery/levelMin/levelMax, paginated. Templates only — use world_build (characters[]) to place a live instance.
 - kind:'level_up' — read-only lookup of the choices a character faces at their next level (subclass, fighting style, ASI/feat, invocations, PF2e feat budget). REQUIRES characterId. No session is created — talk through the choices with the player, then commit a single 'level_up' change via take_turn with the answers in 'choices'/'abilityScoreIncreases'.
 - kind:'items' — item/equipment *templates* (weapons, armor, outfits, tools, artifacts — anything, via Category + an open Properties bag), filtered by nameQuery/category/tag, paginated. Templates only — use world_build (items[]) to place a live instance in a campaign.
+- kind:'item_tags' — the distinct set of tags already used across item templates for the campaign's active system. Check this (or filter kind:'items' by name) before inventing a new tag for a homebrew item — reusing an existing tag (e.g. 'exotic') instead of a near-duplicate ('rare') keeps kind:'items' itemTag filtering useful.
 Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData/{system}/ YAML appear automatically. Requires campaignName.")]
     public async Task<ToolResult<object>> GetRulesReference(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -271,9 +272,11 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
                 return Box(await GetPendingLevelUpChoices(characterId, campaignName));
             case "items":
                 return Box(await GetItemDefinitions(campaignName, itemNameQuery, itemCategory?.Trim(), itemTag, offset, limit));
+            case "item_tags":
+                return Box(await GetItemTags(campaignName));
             default:
                 return new ToolResult<object>(false, Error: ToolErrors.InvalidArgument,
-                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', 'creatures', 'items', or 'level_up'.");
+                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', 'creatures', 'items', 'item_tags', or 'level_up'.");
         }
     }
 
@@ -473,6 +476,22 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
                 true,
                 response,
                 response.Hint);
+        }, saveChanges: false);
+    }
+
+    internal Task<ToolResult<List<string>>> GetItemTags(
+        string campaignName)
+    {
+        return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
+        {
+            var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
+            var tags = itemProvider.GetDistinctTags(config.ActiveSystem);
+
+            var hint = tags.Count == 0
+                ? "No item tags found for this system yet — verify the system's items pack is loaded, or this is a fresh homebrew system."
+                : $"{tags.Count} distinct tag(s) in use across item templates for '{config.ActiveSystem}'.";
+
+            return new ToolResult<List<string>>(true, tags.ToList(), hint);
         }, saveChanges: false);
     }
 

@@ -215,13 +215,14 @@ Example: engine warns "NPC 'Kergil' is transient and will evict if party leaves.
 
 Arriving somewhere the engine doesn't know yet — no Settlement/District/Building entity, or an ENGINE WARNING flags a missing one — seed it via `world_build` in the same beat. Don't narrate a placeholder and leave it dangling; the next `get_entity` on it comes back empty and breaks continuity.
 
-Condensed checklist (full version lives in `dnd-exploration` for Claude Code sessions, but Grok Web doesn't load that — this is the whole thing):
+Condensed checklist (full version lives in `dnd-world-building` for Claude Code sessions, but Grok Web doesn't load that — this is the whole thing):
 - **Settlement/region:** type, `ambientCrowd`, `dangerModifier`, one faction-flavor NPC (`keepAlive: true`, exists to make the world feel lived-in, not a quest-giver).
 - **3–5 named districts:** each with `ambientCrowd`, `dangerModifier`, a 2–3 detail description.
 - **2–3 buildings per district:** a tavern/inn, a shop/temple/guildhall, a landmark. Each gets `connectedFromLocationId` + `connectionDescription` set so it auto-links — don't create an orphan.
 - **2–4 `pointsOfInterest`** per district and building.
 - **At least one exit** everywhere — no dead ends.
 - **Plot threads seeded here** need `foreshadowingHooks` (2–4), `clues` (2–4, with a matching `items[]` entry — `holderId` set — for any physical clue, bidirectionally tagged: item gets `tags: ["clue:plot-threads/…"]`, clue's `involvedEntityIds` includes the item), and a testable `resolutionCondition`.
+- **Items:** check `get_rules_reference` kind:'items' for a matching template before typing fields by hand (`definitionName` seeds category/tags/properties/equip fields for you); for a new homebrew tag, check kind:'item_tags' first to reuse an existing one instead of a near-duplicate.
 
 If you catch yourself thinking "I'll seed that later" — stop, seed it now, in this `world_build` batch.
 

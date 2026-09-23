@@ -117,6 +117,19 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
             .ToList();
     }
 
+    /// <summary>
+    /// Distinct tags across every item template (built-in + plugin packs) for a system, sorted.
+    /// Lets a caller check the existing tag vocabulary before inventing a new one — avoids
+    /// near-duplicate tags (e.g. "exotic" vs "rare") that silently break <see cref="QueryItems"/>'s
+    /// exact-match tag filter.
+    /// </summary>
+    public IReadOnlyList<string> GetDistinctTags(string system) =>
+        GetItemsForSystem(system).Values
+            .SelectMany(i => i.Tags)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
     public void Reload()
     {
         lock (_lock)

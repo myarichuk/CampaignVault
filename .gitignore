@@ -3,6 +3,7 @@
 [Oo]bj/
 out/
 log/
+nupkgs/
 # LiteDB
 *.db
 *.db-log

@@ -1,0 +1,75 @@
+{
+  "packDate": "2026-09-23T03:25:04.951724",
+  "packVersion": "1.0",
+  "packTimestamp": "20260923_032504",
+  "folder": "grok-skills-20260923_032504",
+  "format": "markdown-with-yaml-frontmatter",
+  "skills": [
+    {
+      "id": "dnd-bundling",
+      "file": "20260923_032504_dnd-bundling.md",
+      "description": "Which WorldChange types to bundle in one take_turn call \u2014 cohesion rules, decision tree, and common patterns",
+      "sizeBytes": 8705
+    },
+    {
+      "id": "dnd-campaign-events",
+      "file": "20260923_032504_dnd-campaign-events.md",
+      "description": "Quests, rumors, factions, pressures, time advancement, and campaign-level events",
+      "sizeBytes": 6555
+    },
+    {
+      "id": "dnd-combat",
+      "file": "20260923_032504_dnd-combat.md",
+      "description": "D&D combat initialization, turn order, actions, spells, HP, grapple, and status effects",
+      "sizeBytes": 5556
+    },
+    {
+      "id": "dnd-conversation",
+      "file": "20260923_032504_dnd-conversation.md",
+      "description": "Dialogue flow, event commits, multi-speaker scenes, and conversation tracking",
+      "sizeBytes": 4130
+    },
+    {
+      "id": "dnd-exploration",
+      "file": "20260923_032504_dnd-exploration.md",
+      "description": "Travel, discovery, exploration checks, search, encounters, navigation, and location granularity",
+      "sizeBytes": 15654
+    },
+    {
+      "id": "dnd-narration",
+      "file": "20260923_032504_dnd-narration.md",
+      "description": "Rich scene narration, sensory detail, prose quality, and mechanics-first discipline",
+      "sizeBytes": 26114
+    },
+    {
+      "id": "dnd-npc-interaction",
+      "file": "20260923_032504_dnd-npc-interaction.md",
+      "description": "NPC psychology, needs, motivations, schedules, memory, and decision-making",
+      "sizeBytes": 11679
+    },
+    {
+      "id": "dnd-social",
+      "file": "20260923_032504_dnd-social.md",
+      "description": "Social encounters, persuasion, deception, relationship modifiers, trust mechanics, and NPC psychology",
+      "sizeBytes": 5578
+    },
+    {
+      "id": "dnd-world-building",
+      "file": "20260923_032504_dnd-world-building.md",
+      "description": "Seeding a new campaign, settlement, or region via world_build \u2014 location depth, plot thread scaffolding, clue materialization, and item templates",
+      "sizeBytes": 7831
+    },
+    {
+      "id": "dnd-world-change",
+      "file": "20260923_032504_dnd-world-change.md",
+      "description": "Atomic take_turn batches, entity creation/updates, and world state persistence",
+      "sizeBytes": 11402
+    },
+    {
+      "id": "grok-playtest",
+      "file": "20260923_032504_grok-playtest.md",
+      "description": "Narration discipline, session continuity, and world-state verification for Grok Web playtesting",
+      "sizeBytes": 38056
+    }
+  ]
+}

@@ -298,7 +298,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var summary = $"Found {count} matches (campaign: {effective}).";
             if (count == 0)
             {
-                summary += "\n\n💡 **No matches found.** If the party is looking for a specific location, NPC, item, or quest that doesn't exist yet, consider seeding it with `world_build`. See `get_help topic=world-building` or the dnd-exploration skill for lazy-seeding guidelines.";
+                summary += "\n\n💡 **No matches found.** If the party is looking for a specific location, NPC, item, or quest that doesn't exist yet, consider seeding it with `world_build`. See `get_help topic=world-building` or the dnd-world-building skill for the seeding checklist (dnd-exploration for lazy-seeding-on-arrival/location-hierarchy guidance).";
             }
             return new ToolResult<UnifiedSearchResult>(true, new UnifiedSearchResult(results), summary);
         }, saveChanges: false);

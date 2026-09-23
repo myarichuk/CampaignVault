@@ -59,14 +59,16 @@ internal static class EntitySeedingAdvisor
 
             case "item":
                 sb.AppendLine("**To seed an item:**");
-                sb.AppendLine("1. Use `world_build` to create it with:");
-                sb.AppendLine("   - `name`, `description`, `rarity` (Common/Uncommon/etc.)");
-                sb.AppendLine("   - `equipZones`, `capacity` (if container or wearable)");
-                sb.AppendLine("   - `heldById` (who owns it, or omit if loose)");
-                sb.AppendLine("2. Link it to a clue in a `plotThread` if it's narrative-critical");
-                sb.AppendLine("3. Use `get_entity(itemId)` to fetch it before interacting");
+                sb.AppendLine("1. Check `get_rules_reference` kind:'items' for a matching template first — if found, set `definitionName` instead of typing fields by hand.");
+                sb.AppendLine("2. Otherwise use `world_build` to create it with:");
+                sb.AppendLine("   - `name`, `description`, `coreCategory` (Weapon/Armor/Clothing/etc., or your own)");
+                sb.AppendLine("   - `equipZones`, `equipLayer`, `capacity` (if equippable or a container)");
+                sb.AppendLine("   - `holderId` (owning character/location, required)");
+                sb.AppendLine("   - `tags` — check `get_rules_reference` kind:'item_tags' first to reuse an existing tag");
+                sb.AppendLine("3. Link it to a clue in a `plotThread` if it's narrative-critical");
+                sb.AppendLine("4. Use `get_entity(itemId)` to fetch it before interacting");
                 sb.AppendLine();
-                sb.AppendLine("**References:** SACRED RULES rule 4 (Mutations), dnd-world-change skill");
+                sb.AppendLine("**References:** SACRED RULES rule 4 (Mutations), dnd-world-change skill, dnd-world-building skill");
                 break;
 
             case "quest":
@@ -106,7 +108,7 @@ internal static class EntitySeedingAdvisor
                 sb.AppendLine("2. Surface clues as the party explores; check for ENGINE WARNING (missing clue entities)");
                 sb.AppendLine("3. Use `get_entity(plot-threadId)` to review state and clues");
                 sb.AppendLine();
-                sb.AppendLine("**References:** SACRED RULES rule 4 (Plot Threads), CLUE VALIDATION & LAZY ENTITY SEEDING, dnd-exploration skill");
+                sb.AppendLine("**References:** SACRED RULES rule 4 (Plot Threads), CLUE VALIDATION & LAZY ENTITY SEEDING, dnd-world-building skill");
                 break;
 
             default:
