@@ -103,8 +103,11 @@ public class PluginAssemblyLoaderTests
                 ["conditions"],
                 [plugin]).ToList();
 
-            var dnd = Assert.Single(discovered, x => x.systemSlug.Equals("dnd5e", StringComparison.OrdinalIgnoreCase));
-            Assert.Equal(plugin, dnd.diskRoot);
+            // Discover returns both primary and plugin roots for the same system so they can be merged.
+            var dndEntries = discovered.Where(x => x.systemSlug.Equals("dnd5e", StringComparison.OrdinalIgnoreCase)).ToList();
+            Assert.Equal(2, dndEntries.Count);
+            Assert.Contains(dndEntries, e => e.diskRoot == primary);
+            Assert.Contains(dndEntries, e => e.diskRoot == plugin);
         }
         finally
         {

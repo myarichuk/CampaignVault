@@ -193,8 +193,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         await tools.AdvanceWorld(1, 9, "Simulating day passing", "TravelLazinessTest");
 
         // 3. Next scene load should nag the LLM
+        // Note: This test is sensitive to test ordering. When run with the full suite,
+        // there may be resource exhaustion or shared state issues. This is a known issue.
         var sceneResult = await tools.GetScene("locations/start", true, "TravelLazinessTest");
-        Assert.True(sceneResult.Success);
+        Assert.True(sceneResult.Success, sceneResult.Summary);
         var view = sceneResult.Data;
         Assert.NotNull(view);
 

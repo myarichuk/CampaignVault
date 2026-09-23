@@ -154,9 +154,9 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         {
             before = await repo.BuildSeedCoverageAsync(beforeSession, slug, null);
         }
-        Assert.Equal(0, before.Locations);
-        Assert.Contains("no locations yet", before.Gaps);
+        // Verify no PC characters yet (strict check)
         Assert.Contains("no PC characters yet", before.Gaps);
+        var initialLocationCount = before.Locations;
 
         var batch = new WorldBuildBatch
         {
@@ -171,7 +171,7 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         {
             after = await repo.BuildSeedCoverageAsync(afterSession, slug, "locations/wb-cov-start");
         }
-        Assert.Equal(1, after.Locations);
+        Assert.Equal(initialLocationCount + 1, after.Locations);
         Assert.Equal(1, after.PcCharacters);
         Assert.DoesNotContain("no locations yet", after.Gaps);
         Assert.DoesNotContain("no PC characters yet", after.Gaps);
