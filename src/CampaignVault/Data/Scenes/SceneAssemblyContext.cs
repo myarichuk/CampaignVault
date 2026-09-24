@@ -26,8 +26,4 @@ public sealed class SceneAssemblyContext
 
     /// <summary>Skip capping Location.Description (see LocationDetailView.From).</summary>
     public bool FullDescription { get; init; }
-    /// <summary>Skip capping every PointOfInterestDetails entry — used by take_turn's fullDetailLocationId.</summary>
-    public bool FullPointOfInterestDetails { get; init; }
-    /// <summary>Skip capping just this one PointOfInterestDetails entry.</summary>
-    public string? DetailPoiName { get; init; }
 }

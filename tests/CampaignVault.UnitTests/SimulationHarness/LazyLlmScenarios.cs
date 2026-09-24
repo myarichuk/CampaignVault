@@ -33,34 +33,6 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task GetScene_EmptyFlavorVacuum_ProducesNarrativePrompt()
-    {
-        var (tools, repo) = CreateScenarioHarness();
-        using (var session = _store.OpenAsyncSession())
-        {
-            var loc = new LocationUpsertRequest
-            {
-                Id = "locations/empty-room-" + Guid.NewGuid(),
-                Name = "Empty Room",
-                Description = "A completely bare room.",
-                Type = LocationType.Room,
-                CampaignName = "test-campaign"
-            };
-            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, "test-campaign"), loc);
-            await session.SaveChangesAsync();
-
-    
-
-            var result = await tools.GetScene(loc.Id, partyPresent: true, campaignName: "test-campaign");
-
-            Assert.True(result.Success);
-            var pressures = result.WorldPressure;
-            Assert.NotNull(pressures);
-            Assert.Contains(pressures, p => p.Contains("lacks flavor"));
-        }
-    }
-
-    [Fact]
     public async Task GetScene_MisspelledLocation_ProvidesSuggestions()
     {
         var (tools, repo) = CreateScenarioHarness();

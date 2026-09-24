@@ -224,7 +224,7 @@ Combat flow: `start_combat` rolls initiative once per combatant, sorts turn orde
 
 ## Environmental & Economic Simulation
 
-- **Location state:** `CurrentState`, `VisualTags`, `DistinctiveFeatures`, `PointsOfInterest`, `AmbientCrowd` — surfaced via `get_entity` (location) and monitored by `LocationFlavorPressureContributor`.
+- **Location state:** `CurrentState`, `VisualTags`, `DistinctiveFeatures`, `AmbientCrowd` — surfaced via `get_entity` (location) and monitored by `LocationFlavorPressureContributor`.
 - **Faction economics:** `Faction.EconomicDemand` dictionaries; `FactionEcosystemRule` simulates decay/recovery; `FactionEconomyPressureContributor` surfaces opportunities when the party carries demanded items.
 - **Travel:** `TravelChangeHandler` + `EncounterResolver` apply time/need costs, optional random encounters, interrupted-travel activity states, and Hard engagement locks.
 

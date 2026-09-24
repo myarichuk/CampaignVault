@@ -84,10 +84,10 @@ public class LocationUpsertRequest
     [Description("Omit to preserve the location's existing exits. Provide to replace them wholesale.")]
     public List<LocationExit>? Exits { get; set; }
 
-    [Description("Omit to preserve the location's existing points of interest. Provide to replace them wholesale.")]
+    [Description("Deprecated and ignored: points of interest are retired. Create fixtures as items held by the location.")]
     public List<string>? PointsOfInterest { get; set; }
 
-    [Description("Omit to preserve existing point-of-interest details. Provide to replace them wholesale.")]
+    [Description("Deprecated: each entry becomes a fixture item held by this location (name -> description).")]
     [JsonPropertyName("pointOfInterestDetails")]
     public Dictionary<string, string>? PointOfInterestDetails { get; set; }
 

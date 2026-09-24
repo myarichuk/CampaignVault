@@ -136,7 +136,7 @@ public class TurnResult
         "them from Summary text. Empty when nothing in the batch created an ID.")]
     public List<string> CommittedIds { get; set; } = [];
 
-    [Description("Optional reminder about the commit outcome (e.g. 'missing narrative event', 'missing PoI detail').")]
+    [Description("Optional reminder about the commit outcome (e.g. 'missing narrative event').")]
     public string? NarrativeReminder { get; set; }
 
     [Description("Plain-narrative reminders of physical/visual state that changed this turn — restraints removed/applied, " +

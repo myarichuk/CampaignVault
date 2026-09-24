@@ -94,7 +94,7 @@ public class AmbientCrowdPressureContributorTests
     }
 
     [Fact]
-    public async Task Evaluate_NagsEmptyAmbientCrowd_WhenNoPointsOfInterestEither()
+    public async Task Evaluate_DoesNotNagEmptyAmbientCrowd()
     {
         var contributor = new AmbientCrowdPressureContributor();
         var scene = new SceneView
@@ -104,8 +104,7 @@ public class AmbientCrowdPressureContributorTests
             {
                 Id = "locations/driftwood-tavern",
                 Name = "The Driftwood Tavern",
-                AmbientCrowd = null,
-                PointsOfInterest = []
+                AmbientCrowd = null
             }),
             PresentNPCs = [],
             RecentEvents = []
@@ -118,36 +117,7 @@ public class AmbientCrowdPressureContributorTests
             Session: null!,
             Scene: scene));
 
-        Assert.Contains(pressures, p =>
-            p.GroupingKey == AmbientCrowdPressureContributor.SparseCrowdGroupingKey
-            && p.Text.Contains("AmbientCrowd", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [Fact]
-    public async Task Evaluate_SkipsEmptyAmbientCrowdNag_WhenPointsOfInterestPresent()
-    {
-        var contributor = new AmbientCrowdPressureContributor();
-        var scene = new SceneView
-        {
-            IsLocationAnchored = true,
-            Location = LocationDetailView.From(new Location
-            {
-                Id = "locations/quiet-study",
-                Name = "Quiet Study",
-                AmbientCrowd = null,
-                PointsOfInterest = ["A cluttered writing desk"]
-            }),
-            PresentNPCs = [],
-            RecentEvents = []
-        };
-
-        var pressures = await contributor.EvaluateAsync(new PressureContext(
-            CampaignName: "test",
-            Time: new CampaignTime(),
-            Config: new CampaignConfig(),
-            Session: null!,
-            Scene: scene));
-
+        // The sparse-crowd nag retired with points of interest: seeding flavor is no longer pushed.
         Assert.DoesNotContain(pressures, p => p.GroupingKey == AmbientCrowdPressureContributor.SparseCrowdGroupingKey);
     }
 

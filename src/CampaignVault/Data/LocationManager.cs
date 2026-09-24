@@ -46,10 +46,6 @@ internal sealed class LocationManager : ILocationManager
             existing.Type = location.Type;
             existing.ParentLocationId = location.ParentLocationId;
             existing.Exits = location.Exits ?? existing.Exits;
-            existing.PointsOfInterest = location.PointsOfInterest ?? existing.PointsOfInterest;
-            existing.PointOfInterestDetails = location.PointOfInterestDetails != null
-                ? new Dictionary<string, string>(location.PointOfInterestDetails, StringComparer.OrdinalIgnoreCase)
-                : existing.PointOfInterestDetails;
             existing.AmbientCrowd = location.AmbientCrowd;
             existing.LastVisitedDay = location.LastVisitedDay;
             existing.Metadata = location.Metadata ?? existing.Metadata;
@@ -78,10 +74,6 @@ internal sealed class LocationManager : ILocationManager
                 Type = location.Type,
                 ParentLocationId = location.ParentLocationId,
                 Exits = location.Exits ?? [],
-                PointsOfInterest = location.PointsOfInterest ?? [],
-                PointOfInterestDetails = location.PointOfInterestDetails != null
-                    ? new Dictionary<string, string>(location.PointOfInterestDetails, StringComparer.OrdinalIgnoreCase)
-                    : new(StringComparer.OrdinalIgnoreCase),
                 AmbientCrowd = location.AmbientCrowd,
                 LastVisitedDay = location.LastVisitedDay,
                 Metadata = location.Metadata ?? [],
@@ -95,6 +87,8 @@ internal sealed class LocationManager : ILocationManager
             };
             await session.StoreAsync(result);
         }
+
+        await PoiFixtureShim.ApplyAsync(session, result, effectiveCampaignName, location.PointOfInterestDetails);
 
         if (isNew && !string.IsNullOrEmpty(location.ConnectedFromLocationId))
         {

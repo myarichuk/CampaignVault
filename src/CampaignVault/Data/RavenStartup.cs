@@ -81,6 +81,11 @@ public static class RavenStartup
             await systemIdMigration.ExecuteAsync(ct);
             logger.LogInformation("✓ RulesetSystem string id migration: completed");
 
+            // Points of interest are retired: detailed ones become fixture items, name-only ones are dropped.
+            var poiMigration = new MigratePointsOfInterestToFixtures(documentStore);
+            var (poiLocations, poiItems) = await poiMigration.ExecuteAsync(ct);
+            logger.LogInformation("✓ Points-of-interest migration: {Locations} location(s) cleared, {Items} fixture item(s) created", poiLocations, poiItems);
+
             // Upgrade characters whose SystemStats collapsed to the base type before
             // SystemExtensionNewtonsoftConverter existed — see RepairDegradedSystemStats for why.
             var systemStatsRepair = new RepairDegradedSystemStats(documentStore);

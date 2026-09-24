@@ -1,7 +1,7 @@
 namespace CampaignVault.Data;
 
 /// <summary>
-/// Caps free-text fields (Location.Description, PointOfInterestDetails values, Character.Notes) at the
+/// Caps free-text fields (Location.Description, Character.Notes) at the
 /// wire-projection boundary — the underlying document keeps the full text; only what goes out over MCP
 /// is shortened. See CampaignConfig.LocationDescriptionCharCap and friends for the configured caps.
 /// </summary>

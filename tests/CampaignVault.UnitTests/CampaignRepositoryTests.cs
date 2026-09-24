@@ -1763,7 +1763,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
     [Fact]
     public async Task
-        GetScene_ViaTools_AnchoredLocation_Emits_Additional_AntiLaziness_Pressures_For_BrokenLinks_And_FlavorVacuum()
+        GetScene_ViaTools_AnchoredLocation_Emits_Additional_AntiLaziness_Pressures_For_BrokenLinks()
     {
         // Verifies new Phase 6/7 laziness mitigations: engine detects one-way links (missing reverse from parent)
         // even for non-create paths, and detects "flavor vacuum" (no PoIs/Ambient + empty) and provides ready update JSON.
@@ -1808,30 +1808,6 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Contains("location_update", pressureText);
         Assert.Contains(parentId, pressureText); // targets the parent for the fix
         Assert.Contains("addExit", pressureText);
-
-        // Also test flavor vacuum pressure on a clean empty room (no PoI, no Ambient, no NPCs)
-        var vacuumId = "locations/vacuum-room-" + Guid.NewGuid();
-        using (var session2 = _store.OpenAsyncSession())
-        {
-            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session2, TestCampaignDefaults.Slug), new LocationUpsertRequest
-            {
-                Id = vacuumId,
-                Name = "Empty Stone Room",
-                Description = "Nothing here but echoes.",
-                Type = LocationType.Room
-                // deliberately no PoIs, no AmbientCrowd
-            });
-            await session2.SaveChangesAsync();
-        }
-
-        var vacuumResult = await tools.GetScene(vacuumId);
-        Assert.True(vacuumResult.Success);
-        var vacuumPressure = string.Join(" ", vacuumResult.WorldPressure ?? []);
-        Assert.Contains("NARRATIVE PROMPT", vacuumPressure);
-        Assert.Contains("lacks flavor details", vacuumPressure);
-        Assert.Contains("location_update", vacuumPressure);
-        Assert.Contains("addPointOfInterest", vacuumPressure);
-        Assert.Contains("ambientCrowd", vacuumPressure);
     }
 
     [Fact]

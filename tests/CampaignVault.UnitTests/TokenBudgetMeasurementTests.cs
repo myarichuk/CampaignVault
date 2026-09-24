@@ -417,13 +417,7 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
             {
                 Id = locId,
                 Name = "The Sunken Archive",
-                Description = BigText("description"),
-                PointsOfInterest = ["Reading room", "Sealed vault"],
-                PointOfInterestDetails = new Dictionary<string, string>
-                {
-                    ["Reading room"] = BigText("reading-room"),
-                    ["Sealed vault"] = BigText("sealed-vault")
-                }
+                Description = BigText("description")
             });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             {
@@ -444,16 +438,14 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
             _output.WriteLine($"    {property,-28} ~{tokens}");
         }
 
-        // Regression gate: Description/PointOfInterestDetails/Notes are capped at the wire-projection
+        // Regression gate: Description/Notes are capped at the wire-projection
         // boundary (LocationDetailView.From, SceneNpcPresenceFactory) — this asserts the cap actually
         // applies and is flagged, not just that the response happens to be small today. Ceiling is loose
         // (measured ~900 tokens for this scenario) since normal scene content (NPCs, rumors, quests) adds
         // up separately from these three fields.
         Assert.True(sceneTokens < 2000,
-            $"[LargeAuthoredContent] get_scene cost ~{sceneTokens} tokens for capped content — Description/PointOfInterestDetails/Notes truncation may have regressed.");
+            $"[LargeAuthoredContent] get_scene cost ~{sceneTokens} tokens for capped content — Description/Notes truncation may have regressed.");
         Assert.True(scene.Data!.Location.DescriptionTruncated, "Location.Description should have been truncated.");
-        Assert.NotNull(scene.Data!.Location.TruncatedPointsOfInterest);
-        Assert.Equal(2, scene.Data!.Location.TruncatedPointsOfInterest!.Count);
 
         var entity = await tools.GetNpcContext(npcId, campaignName: slug);
         Assert.True(entity.Success, entity.Summary);
@@ -469,11 +461,5 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
         Assert.True(fullDescScene.Success, fullDescScene.Summary);
         Assert.False(fullDescScene.Data!.Location.DescriptionTruncated);
         Assert.True(fullDescScene.Data!.Location.Description.Length > 1000);
-
-        var fullPoiScene = await tools.GetScene(locId, partyPresent: true, campaignName: slug, detailPoi: "Reading room");
-        Assert.True(fullPoiScene.Success, fullPoiScene.Summary);
-        Assert.True(fullPoiScene.Data!.Location.PointOfInterestDetails["Reading room"].Length > 1000);
-        // The other PoI wasn't targeted, so it should still be capped.
-        Assert.Contains("Sealed vault", fullPoiScene.Data!.Location.TruncatedPointsOfInterest ?? []);
     }
 }

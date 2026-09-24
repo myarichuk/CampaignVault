@@ -99,7 +99,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         var result1 = await tools.GetScene(locId, campaignName: campaignName);
         Assert.True(result1.Success);
         Assert.NotNull(result1.WorldPressure);
-        Assert.True(result1.WorldPressure.Length >= 2); // It was processed but not truncated.
+        Assert.True(result1.WorldPressure.Length >= 1); // It was processed but not truncated.
 
         // It should be stored in tracking for cooldown.
         // Wait, if it's stored in tracking, then on Day 1 it's surfaced.
@@ -135,7 +135,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         // 1. Initial read -> Surface pressure
         var result1 = await tools.GetScene(locId, campaignName: campaignName);
         Assert.NotNull(result1.WorldPressure);
-        Assert.True(result1.WorldPressure.Length >= 2);
+        Assert.True(result1.WorldPressure.Length >= 1);
 
         // 2. Second read -> Suppressed
         var result2 = await tools.GetScene(locId, campaignName: campaignName);
@@ -151,7 +151,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         // (Our LocationUpdate didn't fix the lack of exits, so the pressure still exists)
         var result3 = await tools.GetScene(locId, campaignName: campaignName);
         Assert.NotNull(result3.WorldPressure);
-        Assert.True(result3.WorldPressure.Length >= 2);
+        Assert.True(result3.WorldPressure.Length >= 1);
     }
 
     /// <summary>
@@ -633,41 +633,6 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             // Null LastSignature => treated as "no prior signature to compare" => normal cooldown applies.
             Assert.Empty(items);
         }
-    }
-
-    /// <summary>
-    /// Regression guard: the "you haven't set an ambient crowd here" nag used to only fire via get_scene's
-    /// Scene-scoped pressure pass. take_turn/get_world_state only ever ran World scope, which this
-    /// contributor's Scene-only gate never satisfied — so ambient crowd was never mentioned across an
-    /// entire take_turn-driven session. It's now reachable from World scope too when a location is known.
-    /// </summary>
-    [Fact]
-    public async Task GetWorldState_SurfacesSparseAmbientCrowd_ForKnownLocation()
-    {
-        var tools = TestCampaignToolsFactory.Create(_fixture);
-        var campaignName = "ambient-crowd-world-scope-" + Guid.NewGuid().ToString("N")[..8];
-        await TestCampaignDefaults.EnsureExistsAsync(tools, campaignName);
-
-        var locationId = "locations/sparse-crowd-test";
-        using (var session = _fixture.Store.OpenAsyncSession())
-        {
-            await session.StoreAsync(new Location
-            {
-                Id = locationId,
-                Name = "Quiet Tavern",
-                CampaignName = campaignName,
-                AmbientCrowd = null,
-                PointsOfInterest = []
-            });
-            await session.SaveChangesAsync();
-        }
-
-        var result = await tools.GetWorldState(locationId, campaignName);
-        Assert.True(result.Success);
-        var pressureText = string.Join("\n", result.Data?.WorldPressure ?? []);
-        // Suggestion-severity items get abbreviated (e.g. "CROWD:refresh") by PressureAbbreviator — the
-        // point of this test is that the nag fires at all via World scope, not its exact wording.
-        Assert.Contains("CROWD", pressureText, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

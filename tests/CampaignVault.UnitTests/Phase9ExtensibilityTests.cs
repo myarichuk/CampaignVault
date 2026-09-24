@@ -70,7 +70,7 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
         var scenePressures = await orchestrator.CollectAndCapAsync(PressureScope.Scene, sceneCtx);
         var sceneText = string.Join(" | ", scenePressures);
 
-        Assert.Contains("flavor details", sceneText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("flavor details", sceneText, StringComparison.OrdinalIgnoreCase); // nag retired with PoIs
     }
 
     [Fact]

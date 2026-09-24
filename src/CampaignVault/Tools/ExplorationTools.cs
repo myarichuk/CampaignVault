@@ -63,12 +63,11 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         [Description("The unique ID of the location.")] string locationId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false,
-        [Description("Return the location's Description untruncated instead of the default capped copy. Use sparingly — only when you actually need the full text (e.g. after SceneView reports descriptionTruncated=true).")] bool fullDescription = false,
-        [Description("Return one named PointOfInterestDetails entry (case-insensitive) untruncated instead of the default capped copy. Use after SceneView reports it in truncatedPointsOfInterest.")] string? detailPoi = null)
+        [Description("Return the location's Description untruncated instead of the default capped copy. Use sparingly — only when you actually need the full text (e.g. after SceneView reports descriptionTruncated=true).")] bool fullDescription = false)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var scene = await _repository.GetSceneAsync(new CampaignSession(session, effective), locationId,
-                markVisited: partyPresent, fullDescription: fullDescription, detailPoiName: detailPoi);
+                markVisited: partyPresent, fullDescription: fullDescription);
             var time = await _repository.GetTimeAsync(new CampaignSession(session, effective));
             var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
 
@@ -110,11 +109,6 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             if (scene.Location?.DescriptionTruncated == true)
             {
                 summary += " NOTE: Description was truncated — call get_entity with fullDescription=true for the complete text.";
-            }
-            if (scene.Location?.TruncatedPointsOfInterest is { Count: > 0 } truncatedPois)
-            {
-                summary += $" NOTE: these PointOfInterestDetails entries were truncated: [{string.Join(", ", truncatedPois)}] — " +
-                    "call get_entity with detailPoi='<name>' for one entry's complete text.";
             }
             if (partyPresent && scene.Location != null && scene.PresentNPCs != null)
             {

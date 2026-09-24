@@ -11,7 +11,7 @@ You are persisting changes to the world: events, character state, items, relatio
 
 ## Skill Ownership (canonical homes — pointers elsewhere defer here)
 
-`dnd-world-change`: mutation syntax, batching, required fields, delta/refresh. `dnd-bundling`: which types cohere in one beat. `dnd-combat`: turn order, action types, spell components. `dnd-exploration`: location hierarchy, travel/rest, PoI-vs-Location, encounter cleanup. `dnd-narration`: prose craft only. `dnd-npc-interaction`: psychology, memory, initiative. `dnd-social`: checks, DCs, modifiers. `dnd-campaign-events`: pressure, quests, rumors, factions, time. `dnd-world-building`: seeding. On conflict, the owning skill wins — never restate another skill's rule inline.
+`dnd-world-change`: mutation syntax, batching, required fields, delta/refresh. `dnd-bundling`: which types cohere in one beat. `dnd-combat`: turn order, action types, spell components. `dnd-exploration`: location hierarchy, travel/rest, fixtures-vs-Location, encounter cleanup. `dnd-narration`: prose craft only. `dnd-npc-interaction`: psychology, memory, initiative. `dnd-social`: checks, DCs, modifiers. `dnd-campaign-events`: pressure, quests, rumors, factions, time. `dnd-world-building`: seeding. On conflict, the owning skill wins — never restate another skill's rule inline.
 
 ## No-Op Rule (diagnosis is read-only)
 
@@ -64,9 +64,9 @@ For a brand-new item (loot that didn't exist yet), create it via `world_build`'s
 Set `event.impliesPersistentPhysicalChange: true` on the paired `event` whenever a beat does this — the server checks it against what the batch actually committed and fires a `narrativeReminder` if they don't match, catching the case where you narrated the change but forgot the commit. This is a self-report, not a text scan: it only works if you actually set the flag, but unlike guessing from prose it never misfires on ordinary narration.
 | Activities | `activity`, `travel`, `rest` | Movement, waiting, recovery |
 | Quests/World | `quest_progress`, `rumor`, `faction_state`, `plot_thread_progress` | Story progression |
-| Locations | `location_update` | State, PoI materialization, danger modifier |
+| Locations | `location_update` | State, tags/features, danger modifier |
 
-**`location_update.description` is static prose** — independent of `currentState`/`pointOfInterestDetails` and never auto-rewritten. If a state change would make the old description contradict canon (e.g. a body removed from a scene, a fire put out), explicitly resend a new `description` in the same `location_update`, or `get_entity` will keep surfacing the stale text.
+**`location_update.description` is static prose** — independent of `currentState` and never auto-rewritten. If a state change would make the old description contradict canon (e.g. a body removed from a scene, a fire put out), explicitly resend a new `description` in the same `location_update`, or `get_entity` will keep surfacing the stale text.
 | Campaign | `campaign_update` | Narrative focus tags (full replacement list) |
 
 Call `lookup kind=commit_schema` for the machine-readable field list per $type.
@@ -105,11 +105,11 @@ Never create entities through take_turn changes — there are no `_create` $type
 
 **Seed before you name.** Never narrate a named actor into existence: before giving someone a name, a voice, or an action distinct from the crowd, check the response's `KnownCharacterIds` (take_turn) / `SeededNpcIds` (scene view, same IDs as `PresentNPCs[].Id`). Missing? `world_build` them (a `chars[]` entry, `keepAlive: true` if worth keeping) *before or in the same batch as* the narration — never after. Unnamed background stays unnamed (`ambientCrowd` flavor needs no ID). A `world_build`'d name you then reference that still fails means the ID doesn't exist server-side — `search_world` before retrying, don't re-narrate.
 
-**Before calling world_build**, run the world-building seeding checklist in `dnd-world-building` — especially the 6-step location depth + plot thread enrichment check, and its item-template/tag lookup step. A missed district, missing PoIs, or unfilled clues are gaps that surface as a broken `get_entity` or a flat narration later.
+**Before calling world_build**, run the world-building seeding checklist in `dnd-world-building` — especially the 6-step location depth + plot thread enrichment check, and its item-template/tag lookup step. A missed district, missing fixtures, or unfilled clues are gaps that surface as a broken `get_entity` or a flat narration later.
 
 **Plot thread clues must materialize as real items or NPCs:** If a clue references a physical object, seed it as an `items[]` entry. The clue's `involvedEntityIds` must include the item ID so `get_entity` on the item surfaces clue context. Tag the item: `tags: ["clue:plot-threads/..."]`. Without this, the party searches the world and finds nothing.
 
-New locations follow the same rule — see `dnd-exploration` for the Region→Settlement→District→Building→Room hierarchy and when a spot needs a full Location vs. just a PoI.
+New locations follow the same rule — see `dnd-exploration` for the Region→Settlement→District→Building→Room hierarchy and when a spot needs a full Location vs. just narration.
 
 ## Batch Changes (one take_turn, multiple changes)
 
@@ -160,7 +160,7 @@ Example: Don't use take_turn changes to rewrite a character's entire Psychology.
 
 `take_turn` echoes touched-entity summaries automatically (cap 6 NPCs / 3 scenes); extend with opt-ins on the SAME call instead of a follow-up query: `includeParty: true` (only when a PC's HP/slots/gold/needs/AC/gear changed or before first narrating PC need values this session — `partyFingerprint` already covers HP + location, so conversation beats don't need it), `includeWorldState: true` (full world-state rebuild every time — reserve for pressure/verification, never a default), `fullDetailCharacterId`/`fullDetailLocationId` (one deep dossier), `extraCharacterIds`/`extraLocationIds` (untouched entities). Standalone reads with no mutation use `get_entity`. If an expected section comes back null, check the response's `warnings` array.
 
-Don't set `forceFullReseed: true` unless context was just compacted or a fresh session started — the engine already decides `mode: full` vs `delta` each turn, and a same-location activity/PoI update stays delta-eligible on its own.
+Don't set `forceFullReseed: true` unless context was just compacted or a fresh session started — the engine already decides `mode: full` vs `delta` each turn, and a same-location activity update stays delta-eligible on its own.
 
 ## Checklist (per-beat — scene/session tiers live in `dnd-narration` / `dnd-campaign-events`)
 

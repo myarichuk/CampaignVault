@@ -36,8 +36,7 @@ internal static class EntitySeedingAdvisor
                 sb.AppendLine("   - `name`, `description`, `type` (Building/District/etc.)");
                 sb.AppendLine("   - `parentLocationId` (the parent region/settlement/district)");
                 sb.AppendLine("   - `dangerModifier` (adjust from default 0)");
-                sb.AppendLine("   - `pointsOfInterest` (2–4 named POIs, e.g., Altar, Herb Screen)");
-                sb.AppendLine("   - `pointOfInterestDetails` (descriptions for each POI)");
+                sb.AppendLine("   - a description that names what is here; fixtures worth interacting with are items held by the location, and enterable spots are child locations");
                 sb.AppendLine("2. Use `take_turn` → `activity` to move the party there");
                 sb.AppendLine("3. Use `get_entity(locationId, partyPresent:true)` to load the scene for narration");
                 sb.AppendLine();

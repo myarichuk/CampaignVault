@@ -262,8 +262,7 @@ public class CampaignRepository
     /// This is the primary read operation used by the LLM when entering a new scene.
     /// </summary>
     public async Task<SceneView> GetSceneAsync(CampaignSession campaignSession, string locationId,
-        bool markVisited = false, bool fullDescription = false, bool fullPointOfInterestDetails = false,
-        string? detailPoiName = null)
+        bool markVisited = false, bool fullDescription = false)
     {
         var effective = campaignSession.EffectiveCampaign;
         var session = campaignSession.Session;
@@ -277,7 +276,7 @@ public class CampaignRepository
         }
         var sceneContext = await LoadSceneAssemblyContextAsync(
             session, location, locationId, effective, markVisited,
-            fullDescription, fullPointOfInterestDetails, detailPoiName);
+            fullDescription);
         return _sceneAssembler.Assemble(sceneContext);
     }
 
@@ -287,9 +286,7 @@ public class CampaignRepository
         string locationId,
         string effectiveCampaign,
         bool markVisited,
-        bool fullDescription = false,
-        bool fullPointOfInterestDetails = false,
-        string? detailPoiName = null)
+        bool fullDescription = false)
     {
         var campaignSession = new CampaignSession(session, effectiveCampaign);
         var regionId = location.ParentLocationId ?? locationId;
@@ -359,8 +356,6 @@ public class CampaignRepository
             MarkVisited = markVisited,
             ContainerContents = containerContents,
             FullDescription = fullDescription,
-            FullPointOfInterestDetails = fullPointOfInterestDetails,
-            DetailPoiName = detailPoiName
         };
     }
 
@@ -1451,10 +1446,6 @@ public class CampaignRepository
             existing.Type = location.Type;
             existing.ParentLocationId = location.ParentLocationId;
             existing.Exits = location.Exits ?? existing.Exits;
-            existing.PointsOfInterest = location.PointsOfInterest ?? existing.PointsOfInterest;
-            existing.PointOfInterestDetails = location.PointOfInterestDetails != null
-                ? new Dictionary<string, string>(location.PointOfInterestDetails, StringComparer.OrdinalIgnoreCase)
-                : existing.PointOfInterestDetails;
             existing.AmbientCrowd = location.AmbientCrowd;
             existing.LastVisitedDay = location.LastVisitedDay;
             existing.Metadata = location.Metadata ?? existing.Metadata;
@@ -1483,10 +1474,6 @@ public class CampaignRepository
                 Type = location.Type,
                 ParentLocationId = location.ParentLocationId,
                 Exits = location.Exits ?? [],
-                PointsOfInterest = location.PointsOfInterest ?? [],
-                PointOfInterestDetails = location.PointOfInterestDetails != null
-                    ? new Dictionary<string, string>(location.PointOfInterestDetails, StringComparer.OrdinalIgnoreCase)
-                    : new(StringComparer.OrdinalIgnoreCase),
                 AmbientCrowd = location.AmbientCrowd,
                 LastVisitedDay = location.LastVisitedDay,
                 Metadata = location.Metadata ?? [],
@@ -1500,6 +1487,8 @@ public class CampaignRepository
             };
             await session.StoreAsync(result);
         }
+
+        await PoiFixtureShim.ApplyAsync(session, result, effectiveCampaignName, location.PointOfInterestDetails);
 
         if (isNew && !string.IsNullOrEmpty(location.ConnectedFromLocationId))
         {

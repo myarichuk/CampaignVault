@@ -17,11 +17,6 @@ public record LocationDetailView(
     LocationType Type,
     string? ParentLocationId,
     List<LocationExit> Exits,
-    /// <summary>Trimmed to PoI names with no entry in <see cref="PointOfInterestDetails"/> — a
-    /// materialized name is already implied by its details key, so listing it again here would just
-    /// repeat the same string. Use PointOfInterestDetails.Keys for the full known-PoI set.</summary>
-    List<string> PointsOfInterest,
-    Dictionary<string, string> PointOfInterestDetails,
     string? AmbientCrowd,
     int? LastVisitedDay,
     List<DepartedNpcRecord> RecentlyDeparted,
@@ -34,52 +29,21 @@ public record LocationDetailView(
     ClimateZone? ClimateZone,
     /// <summary>True if Description was cut down to CampaignConfig.LocationDescriptionCharCap.
     /// Call get_entity with fullDescription=true for the complete text.</summary>
-    bool DescriptionTruncated = false,
-    /// <summary>Names of PointOfInterestDetails entries cut down to CampaignConfig.PointOfInterestDetailCharCap.
-    /// Call get_entity with detailPoi=&lt;name&gt; for one entry's complete text.</summary>
-    List<string>? TruncatedPointsOfInterest = null)
+    bool DescriptionTruncated = false)
 {
     /// <param name="config">Supplies the char caps; falls back to CampaignConfig's own defaults if null
     /// (e.g. the unanchored-scene stub, whose fixed short text never needs capping anyway).</param>
     /// <param name="fullDescription">Skip capping Description.</param>
-    /// <param name="fullPointOfInterestDetails">Skip capping every PointOfInterestDetails entry (used by
-    /// take_turn's fullDetailLocationId, which already bounds the blast radius to one location per call).</param>
-    /// <param name="detailPoiName">Skip capping just this one PointOfInterestDetails entry (case-insensitive).</param>
     public static LocationDetailView From(
         Location l,
         CampaignConfig? config = null,
-        bool fullDescription = false,
-        bool fullPointOfInterestDetails = false,
-        string? detailPoiName = null)
+        bool fullDescription = false)
     {
         var descriptionCap = config?.LocationDescriptionCharCap ?? 600;
-        var poiCap = config?.PointOfInterestDetailCharCap ?? 300;
 
         var (description, descriptionTruncated) = fullDescription
             ? (l.Description, false)
             : TextTruncation.TruncateAtBoundary(l.Description, descriptionCap);
-
-        var poiDetails = l.PointOfInterestDetails;
-        List<string>? truncatedPois = null;
-        if (!fullPointOfInterestDetails && poiDetails.Count > 0)
-        {
-            var trimmed = new Dictionary<string, string>(poiDetails, StringComparer.OrdinalIgnoreCase);
-            foreach (var key in poiDetails.Keys)
-            {
-                if (detailPoiName != null && string.Equals(key, detailPoiName, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                var (text, truncated) = TextTruncation.TruncateAtBoundary(poiDetails[key], poiCap);
-                if (truncated)
-                {
-                    trimmed[key] = text!;
-                    (truncatedPois ??= []).Add(key);
-                }
-            }
-            poiDetails = trimmed;
-        }
 
         return new(
             l.Id,
@@ -88,8 +52,6 @@ public record LocationDetailView(
             l.Type,
             l.ParentLocationId,
             l.Exits,
-            PointOfInterestHeuristics.GetUnmaterializedPois(l.PointsOfInterest, l.PointOfInterestDetails),
-            poiDetails,
             l.AmbientCrowd,
             l.LastVisitedDay,
             l.RecentlyDeparted,
@@ -100,8 +62,7 @@ public record LocationDetailView(
             l.ControllingFactionId,
             l.DangerModifier,
             l.ClimateZone,
-            descriptionTruncated,
-            truncatedPois);
+            descriptionTruncated);
     }
 }
 

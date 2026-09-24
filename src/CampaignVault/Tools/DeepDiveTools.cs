@@ -32,9 +32,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
         [Description("Locations: true if the party is here (keeps transient NPCs).")]
         bool partyPresent = false,
         [Description("Locations: full Description, after a response reported descriptionTruncated.")]
-        bool fullDescription = false,
-        [Description("Locations: one point of interest in full, after it was listed in truncatedPointsOfInterest.")]
-        string? detailPoi = null)
+        bool fullDescription = false)
     {
         if (string.IsNullOrWhiteSpace(entityId))
         {
@@ -58,7 +56,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
 
         if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
         {
-            return Box(await _exploration.GetScene(id, campaignName, partyPresent, fullDescription, detailPoi));
+            return Box(await _exploration.GetScene(id, campaignName, partyPresent, fullDescription));
         }
 
         if (id.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))

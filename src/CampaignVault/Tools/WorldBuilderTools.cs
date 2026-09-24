@@ -354,9 +354,9 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
 
     [Description(@"WORLD BUILDER TOOL: Create or overwrite a location on the world map.
 
-Use for seeding new areas or replacing/updating full location documents — exits, parent links, ambientCrowd, pointsOfInterest, descriptions, and hierarchy.
+Use for seeding new areas or replacing/updating full location documents — exits, parent links, ambientCrowd, descriptions, and hierarchy.
 
-Omitted fields are preserved: on an existing location, omitting exits/pointsOfInterest/pointOfInterestDetails/metadata keeps the stored value; providing one replaces it wholesale.
+Omitted fields are preserved: on an existing location, omitting exits/metadata keeps the stored value; providing one replaces it wholesale.
 
 This is the only tool that creates a new location. During play, use commit's location_update for incremental changes to an existing one.")]
     internal Task<ToolResult<Location>> UpsertLocation(

@@ -30,11 +30,7 @@ public sealed class AmbientCrowdPressureContributor : IPressureContributor
             // never assemble a full SceneView (PresentNPCs/RecentEvents), but the sparse-crowd check below
             // only needs the Location doc itself, so it doesn't need one either. The dense-crowd/
             // unanchored-beat checks above genuinely need scene data and stay Scene-only.
-            var loc = await ctx.Session.LoadAsync<Location>(ctx.RequestedLocationId, ct);
-            if (loc != null)
-            {
-                pressures.AddRange(EvaluateSparseCrowd(loc.Id, loc.PointsOfInterest.Count, loc.AmbientCrowd));
-            }
+            // Sparse-crowd suggestion retired with points of interest: nagging to seed flavor is no longer wanted.
         }
 
         if (ctx.DaysAdvanced is > 0)
@@ -45,34 +41,9 @@ public sealed class AmbientCrowdPressureContributor : IPressureContributor
         return pressures;
     }
 
-    /// <summary>
-    /// The only ambient-crowd check that needs nothing but the Location doc itself (no PresentNPCs/
-    /// RecentEvents) — shared between the full Scene-scoped evaluation and the location-only World-scope
-    /// path used by take_turn/get_world_state.
-    /// </summary>
-    private static IEnumerable<WorldPressureItem> EvaluateSparseCrowd(string locationId, int poiCount, string? ambientCrowd)
-    {
-        if (poiCount == 0 && string.IsNullOrWhiteSpace(ambientCrowd))
-        {
-            AmbientCrowdHeuristics.TryBuildAmbientPopulateExample(locationId, ambientCrowd, out var example);
-
-            yield return new WorldPressureItem(
-                PressureSeverity.Suggestion,
-                locationId,
-                $"SUGGESTION: Location may narratively require ambient crowd but {nameof(Location.AmbientCrowd)} property is null or empty. "
-                + "Example:\n" + example,
-                SparseCrowdGroupingKey);
-        }
-    }
-
     private static IEnumerable<WorldPressureItem> EvaluateScene(SceneView scene)
     {
         var loc = scene.Location;
-        foreach (var item in EvaluateSparseCrowd(loc.Id, loc.PointsOfInterest.Count, loc.AmbientCrowd))
-        {
-            yield return item;
-        }
-
         var presentCount = scene.PresentNPCs?.Count() ?? 0;
         var implied = AmbientCrowdHeuristics.EstimateImpliedCrowdSize(loc.AmbientCrowd);
         var dense = AmbientCrowdHeuristics.IsCrowdDenseEnough(loc.AmbientCrowd);

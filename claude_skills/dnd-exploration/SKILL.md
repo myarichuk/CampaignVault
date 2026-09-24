@@ -54,11 +54,11 @@ If the party arrives in a settlement and you're about to narrate a scene (a conv
 
 `connectedFromLocationId` + `connectionDescription` auto-links the new location to its parent on creation — set both, don't create an orphan.
 
-**Sub-scene detail that doesn't deserve a full Location** (a hiding spot, a stash, a lookout ledge inside an existing Building/Wilderness location) → use `location_update`'s `materializePointOfInterest` instead (see Wayfinding below), not a new Location entity. Create a full child Location when the party can return to it later, it has its own exits, or it will host its own future scenes; use a PoI for a tactical detail that only matters for the current beat.
+**Sub-scene detail that doesn't deserve a full Location** (a hiding spot, a stash, a lookout ledge inside an existing Building/Wilderness location) → narrate it from the description; don't create an entity for a detail that only matters this beat. If the party will touch, take or return to it, make it real: a fixture or object is an item held by the location (contents are items held by that item), and a place they can enter or come back to is a child Location with exits. There are no points of interest.
 
 ## Seeding a New Area? Load `dnd-world-building`
 
-The full world-building seeding checklist (settlement/district/building/PoI/exit depth, plot thread enrichment, clue materialization, item templates) now lives in the **`dnd-world-building`** skill — load it before any `world_build` call that seeds a new area (session 0, arrival in a new settlement, entering a new region) or a new plot thread. This skill (`dnd-exploration`) covers the location-hierarchy model that checklist assumes (Region → Settlement → District → Building → Room, above), plus in-play navigation, search, and encounters — not the seeding process itself.
+The full world-building seeding checklist (settlement/district/building/exit depth, fixtures and secrets, plot thread enrichment, clue materialization, item templates) now lives in the **`dnd-world-building`** skill — load it before any `world_build` call that seeds a new area (session 0, arrival in a new settlement, entering a new region) or a new plot thread. This skill (`dnd-exploration`) covers the location-hierarchy model that checklist assumes (Region → Settlement → District → Building → Room, above), plus in-play navigation, search, and encounters — not the seeding process itself.
 
 ## Travel vs. Activity
 
@@ -115,13 +115,9 @@ After arriving at a location:
 
 Two different moves depending on how far/long/exposed the departure is — don't default to the lighter one just because it's a single field:
 
-**Staying inside the current location** (corner, behind the bar, alcove, cot) — `newActivity` alone repositions; it carries no PoI fields and needs no `newLocationId`/`updateLocation` when the location document isn't changing. Reserve those for a genuine transition to a *different*, already-existing `Location` (invented ids are rejected, not accepted). Lasting physical detail → a *separate* `location_update` in the same batch (flavor on the *existing* location, not a new place).
+**Staying inside the current location** (corner, behind the bar, alcove, cot) — `newActivity` alone repositions; it needs no `newLocationId`/`updateLocation` when the location document isn't changing. Reserve those for a genuine transition to a *different*, already-existing `Location` (invented ids are rejected, not accepted). Lasting physical detail → `location_update` (state, tags, features) or an `item_update` detail on the fixture, in the same batch.
 
-**`poiDetails` = durable physical facts about the PoI, never a character's current action/state** ("thrashed sheets" persists; "Lyra sleeping" is `newActivity` + `event`). Re-issue only when the room itself changes.
-
-**Promote to a real child `Location` on the *second* occupied PoI** (`materializePointOfInterest` + `poiOccupantCharacterId`) — or immediately for anywhere the party returns to/lingers (rented room, hideout, sickbed). Presence tracks per exact `locationId`: anyone still anchored to the parent reads as co-located with the PoI-placed character. An ENGINE WARNING naming this PoI is a hard cue to promote now.
-
-**Leaving to a real, distinct spot** (an hour into the woods, off the road to make camp) — `location_update` create-and-link a real child `Location` in the same batch, then `travel`/`activity` into it. Never staple a distinct spot onto a broad Region/Wilderness as a PoI (misreports who's "present" and gets no tuned exits/danger):
+**Leaving to a real, distinct spot** (an hour into the woods, off the road to make camp) — `location_update` create-and-link a real child `Location` in the same batch, then `travel`/`activity` into it. Never staple a distinct spot onto a broad Region/Wilderness (misreports who's "present" and gets no tuned exits/danger):
 
 ```json
 {
@@ -167,8 +163,6 @@ Travel and rest advance time via their own hour fields (not `minutesElapsed` —
 - [ ] Is there a check (Perception, Investigation, Survival)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll?
 - [ ] Did time pass? → `minutesElapsed` on the request (rest/travel use their own hour fields instead)
-- [ ] Are they in a tactical waypoint (first use, transient)? → a `location_update` with `materializePointOfInterest`/`poiDetails` in the same commit, to persist a physical fact, never a character's current action/state
-- [ ] Has a `location_update` marked the same PoI occupied (`poiOccupantCharacterId`) a second time, or is it clearly somewhere the party returns to/lingers? → promote it to a real child `Location` before narrating anyone as separated from the group
 - [ ] Is the scene anchored at Settlement/Region level? → Descend to District/Building/Room first
 - [ ] Did an encounter/`scene_interrupt_check` NPC just resolve (left, dealt with, party moved on)? → `activity` change clearing their `CurrentLocationId` in the same batch as the resolution narration
 

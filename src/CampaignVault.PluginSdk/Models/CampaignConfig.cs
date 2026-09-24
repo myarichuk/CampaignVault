@@ -391,12 +391,6 @@ public class CampaignConfig
     /// </summary>
     public int LocationDescriptionCharCap { get; set; } = 600;
 
-    /// <summary>
-    /// Max characters per Location.PointOfInterestDetails value sent by default (same rationale as
-    /// LocationDescriptionCharCap, applied per-PoI since a location can have several). Reachable in full
-    /// via get_scene's detailPoi=&lt;name&gt; for one PoI at a time. Defaults to 300 (~75 tokens).
-    /// </summary>
-    public int PointOfInterestDetailCharCap { get; set; } = 300;
 
     /// <summary>
     /// Max characters of Character.Notes carried into NpcPresenceSummary (SceneView/SceneSummaryView's

@@ -31,8 +31,6 @@ public sealed class SceneAssembler
                 Description = "This location does not exist in the persistent world model yet.",
                 Type = LocationType.Room,
                 Exits = [],
-                PointsOfInterest = [],
-                PointOfInterestDetails = new(StringComparer.OrdinalIgnoreCase),
                 AmbientCrowd = null,
                 LastVisitedDay = null
             }),
@@ -92,9 +90,7 @@ public sealed class SceneAssembler
             Location = LocationDetailView.From(
                 context.Location,
                 context.Config,
-                context.FullDescription,
-                context.FullPointOfInterestDetails,
-                context.DetailPoiName),
+                context.FullDescription),
             PresentNPCs = presenceSummaries,
             LocalRumors = context.Rumors.Select(r => new RumorSummary(r.Id, r.Subject, r.CurrentText, r.State)).ToList(),
             NeedDescriptorLegend = new Dictionary<string, string>(context.GlobalNeedDescriptors),

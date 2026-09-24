@@ -23,6 +23,8 @@ public class Location : ICampaignScopedEntity, IArchivable
     
     public List<LocationExit> Exits { get; set; } = [];
     
+    /// <summary>LEGACY (points of interest are retired). Kept only so MigratePointsOfInterestToFixtures can read and clear
+    /// old documents; nothing else reads or writes it. Remove once every deployment has run the migration.</summary>
     public List<string> PointsOfInterest { get; set; } = [];
     
     /// <summary>

@@ -148,8 +148,6 @@ internal static class WorldChangeNormalizer
             return "quest_progress";
         if (obj.ContainsKey("plotThreadId") && obj.ContainsKey("clueId"))
             return "plot_thread_clue";
-        if (obj.ContainsKey("locationId") && obj.ContainsKey("materializePointOfInterest"))
-            return "location_update";
 
         return null;
     }

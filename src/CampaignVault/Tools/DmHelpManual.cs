@@ -149,7 +149,7 @@ For more details, call `lookup kind=commit_schema` (optional category filter: Co
 
 **Transients created with `schedule: null` + `keepAlive: false` auto-GC:** If you create an NPC for a single scene and don't want to keep them around, leave schedule unset and keepAlive false. Engine cleans up when the area goes cold.
 
-**Location state persists:** After combat, vandalism, or major events, use `location_update` to record the state. `pointsOfInterest` evolve over time; narrate the decay realistically.
+**Location state persists:** After combat, vandalism, or major events, use `location_update` to record the state. Fixtures are items held by the location (item_update); narrate their decay realistically.
 
 **Engage visual tags early:** Persist visual state (bloodied, disheveled, wanted) via `character_update` early so crowd interrupt and faction pressure can react naturally.
 

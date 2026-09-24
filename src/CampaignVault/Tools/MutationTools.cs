@@ -1187,32 +1187,6 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 "Add an EventOccurred to record the narrative beat.");
         }
 
-        var significantEventLocations = changes.OfType<EventOccurred>()
-            .Where(e => e.Importance is MemoryImportance.Important or MemoryImportance.Core)
-            .SelectMany(e => (e.RelatedLocationIds ?? []).Append(e.LocationId))
-            .Where(id => !string.IsNullOrEmpty(id))
-            .ToHashSet();
-        if (significantEventLocations.Count > 0)
-        {
-            var poiCoveredLocations = changes.OfType<LocationUpdate>()
-                .Where(lu => !string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
-                .Select(lu => lu.LocationId)
-                .ToHashSet();
-            var uncoveredMoves = changes.OfType<ActivityChange>()
-                .Where(a => a.UpdateLocation && !string.IsNullOrEmpty(a.NewLocationId)
-                            && significantEventLocations.Contains(a.NewLocationId!)
-                            && !poiCoveredLocations.Contains(a.NewLocationId!))
-                .Select(a => a.NewLocationId!)
-                .Distinct()
-                .ToList();
-            if (uncoveredMoves.Count > 0)
-            {
-                AppendReminder(result,
-                    $"This commit moved a character to {string.Join(", ", uncoveredMoves)} alongside an Important/Core event " +
-                    "but recorded no location detail. If the spot matters, add a location_update with materializePointOfInterest/poiDetails in the same commit.");
-            }
-        }
-
         if (changes.OfType<EventOccurred>().Any(e => e.ImpliesPersistentPhysicalChange == true)
             && !changes.Any(c => c is ItemEquip or ItemUnequip or ItemUpdate or StatusChange or StatusRemove
                 or CharacterUpdate or ArchiveEntityChange { EntityType: ArchivableEntityType.Item }))
@@ -1833,8 +1807,6 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     {
         Description = "",
         Exits = [],
-        PointsOfInterest = [],
-        PointOfInterestDetails = [],
         AmbientCrowd = null,
         LastVisitedDay = null,
         RecentlyDeparted = [],
@@ -2583,7 +2555,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             // Full detail here means full — bypass the Description/PointOfInterestDetails caps that
             // apply everywhere else, since this call is already bounded to one location per take_turn.
             var scene = await _repository.GetSceneAsync(new CampaignSession(ctx.Session, ctx.Campaign), locationId,
-                markVisited: false, fullDescription: true, fullPointOfInterestDetails: true);
+                markVisited: false, fullDescription: true);
             if (scene != null)
             {
                 // Parity with get_entity's scene view, so arriving via travel + fullDetailLocationId

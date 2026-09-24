@@ -104,38 +104,6 @@ public class LocationUpdateHandler : IWorldChangeHandler
             loc.Exits.RemoveAll(e => e.TargetLocationId == lu.RemoveExitTarget);
         }
 
-        if (!string.IsNullOrWhiteSpace(lu.AddPointOfInterest))
-        {
-            if (!loc.PointsOfInterest.Contains(lu.AddPointOfInterest))
-            {
-                loc.PointsOfInterest.Add(lu.AddPointOfInterest);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(lu.RemovePointOfInterest))
-        {
-            loc.PointsOfInterest.RemoveAll(p => string.Equals(p, lu.RemovePointOfInterest, StringComparison.OrdinalIgnoreCase));
-            if (loc.PointOfInterestDetails != null)
-            {
-                var keysToRemove = loc.PointOfInterestDetails.Keys
-                    .Where(k => string.Equals(k, lu.RemovePointOfInterest, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-                foreach (var k in keysToRemove)
-                    loc.PointOfInterestDetails.Remove(k);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(lu.MaterializePointOfInterest))
-        {
-            LocationPoiMaterializer.Apply(loc, lu.MaterializePointOfInterest, lu.PoiDetails);
-
-            if (!string.IsNullOrWhiteSpace(lu.PoiOccupantCharacterId)
-                && !loc.PoisUsedByActivity.Any(p => string.Equals(p, lu.MaterializePointOfInterest, StringComparison.OrdinalIgnoreCase)))
-            {
-                loc.PoisUsedByActivity.Add(lu.MaterializePointOfInterest);
-            }
-        }
-
         var stateBefore = loc.CurrentState;
         var tagsBefore = new HashSet<string>(loc.VisualTags);
         var featuresBefore = new HashSet<string>(loc.DistinctiveFeatures);
@@ -223,20 +191,6 @@ public class LocationUpdateHandler : IWorldChangeHandler
             }
         }
 
-        if (lu.PointOfInterestDetails != null)
-        {
-            loc.PointOfInterestDetails ??= new(StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in lu.PointOfInterestDetails)
-            {
-                var poiName = kv.Key;
-                if (!loc.PointsOfInterest.Contains(poiName))
-                {
-                    loc.PointsOfInterest.Add(poiName);
-                }
-                loc.PointOfInterestDetails[poiName] = kv.Value;  // last write wins for the key
-            }
-        }
-        
         return createdNew
             ? new ChangeHandlerResult(true, $"Created new location {loc.Id} ('{loc.Name}').")
             : ChangeHandlerResult.Ok;

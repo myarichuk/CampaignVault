@@ -28,7 +28,7 @@ For the exact field-level schema and a full copy-paste JSON example, call `looku
 
 ## World-Building Seeding Checklist (Mandatory Rigor)
 
-When seeding a new area, apply these layers in order. **Any missing layer is a gap** — the party should navigate the world at this resolution without the GM inventing it wholesale mid-scene. (Location hierarchy — Region → Settlement → District → Building → Room — and when a spot needs a full `Location` vs. just a PoI is covered in `dnd-exploration`; this checklist assumes that model.)
+When seeding a new area, apply these layers in order. **Any missing layer is a gap** — the party should navigate the world at this resolution without the GM inventing it wholesale mid-scene. (Location hierarchy — Region → Settlement → District → Building → Room — and when a spot needs a full `Location` vs. just narration is covered in `dnd-exploration`; this checklist assumes that model.)
 
 **Step 1 — Settlement & Factions:**
 - The settlement/region itself (e.g. `locations/neverwinter`, type: Settlement, with `ambientCrowd`, description, `dangerModifier`)
@@ -47,13 +47,13 @@ When seeding a new area, apply these layers in order. **Any missing layer is a g
 - A notable landmark (theater, bathhouse, prison, barracks)
 - Each gets `type: Building`, `connectedFromLocationId: <district>`, `connectionDescription`
 
-**Step 4 — Points of Interest:** Every district AND every building should have 2-4 `pointsOfInterest` (light strings: "Fountain of the Swords", "Torn wanted poster"). For mechanically significant PoIs, add `pointOfInterestDetails` entries.
+**Step 4 — Fixtures and secrets (there are no "points of interest"):** A description that names what is here is enough for ambience; don't pre-seed placeholder names. Seed a real entity only when it matters: an enterable spot is a child `Location` with an exit, a fixture worth touching (desk, notice board, altar) is an `items[]` entry held by the location, and its contents are items held by that item. For each location tied to a plot thread, quest or NPC secret, ask "what is hidden here, and who hid it?" and seed 0-2 answers, each with a reason: a false-bottomed desk, a sealed passage, a trapped chest. Record the DM-only truth as an `ItemDetail` with `intent` (e.g. "false bottom, DC 15; someone searched it recently"). Never seed secrets as a quota.
 
 **Step 5 — Exits:** Every location must have at least one exit (auto-linked via `connectedFromLocationId` on creation). No dead ends.
 
 **Step 6 — Plot Thread Enrichment:** Every plot thread seeded via `world_build` MUST include `foreshadowingHooks` (2-4 narratable teasers), `clues` (2-4 entries, each with `id`, `description`, `involvedEntityIds` — clue types: physical, behavioral, relational), a testable `resolutionCondition` ("party presents evidence of the Thayan camp to Maeva, and she calls off the elven war parties" — not "the party talks to them"), and `involvedEntityIds` (primary NPCs + factions). (Canonical counts: 2–4 everywhere; `dnd-campaign-events` and `dnd-npc-interaction` defer here.)
 
-**Apply this checklist BEFORE committing any `world_build` call.** Run through each layer mentally. If you catch yourself saying "I'll add that later," stop — seed it now. The cost of a missed location is a broken `get_entity` call or a dead-end scene. The cost of a missed PoI, unfilled plot thread, or non-materialized clue is flat narration without narrative scaffolding.
+**Apply this checklist BEFORE committing any `world_build` call.** Run through each layer mentally. If you catch yourself saying "I'll add that later," stop — seed it now. The cost of a missed location is a broken `get_entity` call or a dead-end scene. The cost of a missed fixture, unfilled plot thread, or non-materialized clue is flat narration without narrative scaffolding.
 
 ## Materializing Clues in the World
 
@@ -74,7 +74,7 @@ Items aren't restricted to weapons/armor — `coreCategory` plus the open `prope
 ## Checklist
 
 **When seeding a new area (world_build):**
-- [ ] Steps 1–5: Settlement, districts, buildings, PoIs, exits all complete?
+- [ ] Steps 1–5: Settlement, districts, buildings, fixtures/secrets where they matter, exits all complete?
 - [ ] Every plot thread has foreshadowingHooks (2-4), clues (2-4), resolutionCondition, involvedEntityIds?
 - [ ] Every clue referencing a physical object has a matching, bidirectionally-tagged `items[]` entry?
 - [ ] For each item: checked kind:'items' for a `definitionName` match, or kind:'item_tags' before inventing a new tag?

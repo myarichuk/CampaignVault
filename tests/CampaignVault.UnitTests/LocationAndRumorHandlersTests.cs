@@ -107,7 +107,6 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
             DangerModifier = -99, // Clamped to -50
             AddExit = new LocationExit("locations/new-exit", "New Exit"),
             RemoveExitTarget = "locations/exit-to-remove",
-            AddPointOfInterest = "New PoI",
             NewState = "Flooded",
             TagsToAdd = ["tag-add"],
             TagsToRemove = ["tag-remove"],
@@ -128,8 +127,6 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
         Assert.Equal(-50, reloaded.DangerModifier);
         Assert.Single(reloaded.Exits);
         Assert.Equal("locations/new-exit", reloaded.Exits[0].TargetLocationId);
-        Assert.Contains("Old PoI", reloaded.PointsOfInterest);
-        Assert.Contains("New PoI", reloaded.PointsOfInterest);
         Assert.Equal("Flooded", reloaded.CurrentState);
         Assert.Contains("tag-add", reloaded.VisualTags);
         Assert.DoesNotContain("tag-remove", reloaded.VisualTags);
