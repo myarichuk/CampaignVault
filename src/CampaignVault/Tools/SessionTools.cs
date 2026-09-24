@@ -261,6 +261,10 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
     /// </summary>
     private async Task PrimeTurnCursorAsync(IAsyncDocumentSession session, string effective, string fingerprint)
     {
+        // A new conversation hasn't seen the one-shot guidance hints: teach each once per session.
+        var ledger = await session.LoadAsync<GuidanceLedger>(_keys.StateGuidance(effective));
+        ledger?.Delivered.Clear();
+
         var cursor = await _repo.GetTurnCursorAsync(new CampaignSession(session, effective));
         if (cursor == null)
         {

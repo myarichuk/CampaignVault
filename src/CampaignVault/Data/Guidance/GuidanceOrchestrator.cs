@@ -105,7 +105,30 @@ internal sealed class GuidanceOrchestrator : IGuidanceOrchestrator
             totalChars += hintSize;
         }
 
+        if (!ignoreLedger && ctx.Session != null && hints.Count > 0)
+        {
+            await RecordDeliveryAsync(ctx, ledger, hints, ct);
+        }
+
         return hints.AsReadOnly();
+    }
+
+    /// <summary>Hints fire once: mark them delivered so the next response skips them (until
+    /// RepeatAfterDays, or until start_session clears the ledger for a new session).</summary>
+    private async Task RecordDeliveryAsync(PressureContext ctx, GuidanceLedger? ledger, IReadOnlyList<GuidanceHint> delivered, CancellationToken ct)
+    {
+        if (ledger == null)
+        {
+            ledger = new GuidanceLedger { Id = _keys.StateGuidance(ctx.CampaignName), CampaignName = ctx.CampaignName };
+            await ctx.Session!.StoreAsync(ledger, ledger.Id, ct);
+        }
+
+        var day = (int)(ctx.Time?.TotalDaysElapsed ?? 0);
+        foreach (var hint in delivered)
+        {
+            ledger.Delivered[hint.Key] = new GuidanceDelivery(day, DateTime.UtcNow, "take_turn");
+            ledger.TokensDeliveredTotal += (hint.Text.Length + (hint.Example?.Length ?? 0)) / 4;
+        }
     }
 
     private async Task<List<GuidanceHint>> CollectPluginHintsAsync(PressureContext ctx, CancellationToken ct)

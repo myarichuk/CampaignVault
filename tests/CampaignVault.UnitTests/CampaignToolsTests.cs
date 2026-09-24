@@ -1118,7 +1118,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result1 = await tools.TakeTurn(mutationRequest);
         Assert.True(result1.Success);
-        var tokensAfterMutation = result1.Data!.RateLimitTokensRemaining;
+        var tokensAfterMutation = MutationTools.PeekRateLimitTokensForTests(TestCampaignDefaults.Slug);
         Assert.NotNull(tokensAfterMutation);
 
         // Pure query should not consume a token
@@ -1130,7 +1130,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
         var result2 = await tools.TakeTurn(queryRequest);
         Assert.True(result2.Success);
-        var tokensAfterQuery = result2.Data!.RateLimitTokensRemaining;
+        var tokensAfterQuery = MutationTools.PeekRateLimitTokensForTests(TestCampaignDefaults.Slug);
         Assert.Equal(tokensAfterMutation, tokensAfterQuery);
     }
 
@@ -1175,7 +1175,8 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         };
         var probeResult = await tools.TakeTurn(probe, slug);
         Assert.True(probeResult.Success, probeResult.Summary);
-        Assert.Equal(50 - 1, probeResult.Data!.RateLimitTokensRemaining);
+        Assert.Equal(50 - 1, MutationTools.PeekRateLimitTokensForTests(slug));
+        Assert.Null(probeResult.Data!.RateLimitTokensRemaining); // a full-ish bucket isn't reported
         Assert.NotEqual("RateLimitExceeded", last!.Error);
     }
 

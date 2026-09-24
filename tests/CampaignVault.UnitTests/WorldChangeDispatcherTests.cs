@@ -484,7 +484,8 @@ public class WorldChangeDispatcherTests
             _ => Task.CompletedTask);
 
         Assert.True(result.Success);
-        Assert.Contains(result.Summary, s => s.StartsWith("Event logged (id: events/"));
+        Assert.DoesNotContain(result.Summary, s => s.Contains("Event logged"));
+        Assert.Contains(result.CommittedIds, id => id.StartsWith("events/"));
     }
 
     [Fact]

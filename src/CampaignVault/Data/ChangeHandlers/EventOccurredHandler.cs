@@ -64,15 +64,8 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         e.CampaignName = ctx.CampaignName;
 
         await ctx.LogEventAsync(e);
-        // Don't echo ev.Summary back — the caller just supplied that exact text in this same
-        // request. Only report the resolved ID when the caller didn't choose it itself (auto-generated
-        // GUID) — it may need that ID later for sourceEventIds; a collision fallback is already
-        // reported separately by ResolveEventIdAsync.
-        if (string.IsNullOrWhiteSpace(ev.EventId))
-        {
-            ctx.RecordMessage($"Event logged (id: {e.Id}).");
-        }
-
+        // No summary line: the caller supplied the text, and the resolved ID (auto-generated or a
+        // collision fallback) travels in CommittedIds below.
         // Always echoed structurally (not just the auto-generated-ID case above) — a client-chosen
         // EventId can still come back different from what was requested (ResolveEventIdAsync's
         // collision fallback), so CommittedIds is the one place a caller can trust to hold what was

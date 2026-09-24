@@ -30,6 +30,15 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
 
     internal static int RateLimiterCount => CommitRateLimiters.Count;
 
+    /// <summary>At or below this many commit tokens, take_turn reports rateLimitTokensRemaining.</summary>
+    internal const int LowRateLimitTokens = 10;
+
+    /// <summary>Test hook: the commit tokens left for a campaign (null when it has no limiter yet).</summary>
+    internal static int? PeekRateLimitTokensForTests(string campaignName) =>
+        CommitRateLimiters.TryGetValue(campaignName, out var limiter)
+            ? (int?)limiter.GetStatistics()?.CurrentAvailablePermits
+            : null;
+
     internal static void ClearRateLimitersForTests()
     {
         foreach (var (key, limiter) in CommitRateLimiters)
@@ -972,7 +981,9 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         var (similarity, noveltyHint) = await EventNoveltyAdvisor.ScoreAsync(
             ctx.Session, sceneEvent, ctx.Campaign, _logger);
         sceneEvent.NoveltyScore = similarity;
-        if (!string.IsNullOrEmpty(noveltyHint))
+        // An explicit event in the batch already carries its own novelty line (or is an engine category
+        // that skips one); a second hint for the narrative that restates it is the same advice twice.
+        if (!string.IsNullOrEmpty(noveltyHint) && !changes.Any(c => c is EventOccurred))
         {
             result.NarrativeReminder = result.NarrativeReminder is null
                 ? noveltyHint
@@ -1178,7 +1189,9 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     /// physical-state commit) without discarding earlier reminders.</summary>
     private static void ComposeReminders(WorldChange[] changes, TurnResult result)
     {
-        var hasCombatMutation = changes.Any(c => c is HpChange or RulesetAction or StatusChange);
+        // A ruleset_action alone (a skill check, an attack roll) is fine without an event; the
+        // narrative already logs the beat. Only raw HP/status edits lose their why.
+        var hasCombatMutation = changes.Any(c => c is HpChange or StatusChange);
         var hasNarrativeEvent = changes.Any(c => c is EventOccurred);
         if (hasCombatMutation && !hasNarrativeEvent)
         {
@@ -2615,14 +2628,16 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             AppendReminder(result, ctx.NudgeAdvisory);
         }
 
+        // Only worth a field when the caller is about to hit the wall; a full bucket every turn was
+        // noise that some models misread as a token budget.
         var stats = rateLimiter.GetStatistics();
-        if (stats != null)
+        if (stats != null && stats.CurrentAvailablePermits <= LowRateLimitTokens)
         {
             result.RateLimitTokensRemaining = (int)stats.CurrentAvailablePermits;
         }
 
         var successMsg = result.Committed
-            ? $"World updated with {result.ChangesProcessed} changes and fresh state echoed."
+            ? $"Committed {result.ChangesProcessed} changes."
             : "State refreshed.";
         if (result.Warnings is { Count: > 0 })
         {
