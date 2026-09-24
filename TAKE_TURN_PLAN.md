@@ -145,15 +145,35 @@ Conversation → psychology + memories is one case of a general rule: **the comm
 
 Mostly this *moves* chars from every turn to the turns that use them. Its value is accuracy as much as size: the trade beat gets gold without an `includeParty`, and the stealth beat gets passive Perception without a `get_entity`.
 
-### Points of interest: materialize on use, don't pre-seed
+### Remove points of interest; hidden content becomes real entities
 
 Probe (same street with and without 6 POI names): the arrival goes from **1,362 to 3,228 chars**. The names cost 130. The rest is a ~1.1k "these PoIs have no materialized details… use location_update" SUGGESTION on every arrival at that location. It lists the placeholders, includes a JSON example, and has a doubled `SUGGESTION: SUGGESTION:` prefix.
 
-A POI name without details adds nothing the location description doesn't ("a market street of vendors: fish, barrels, herbs, candles"). It also nudges the model to reuse those exact names instead of answering the player. What matters is **consistency after something is narrated**: the alchemist the PC visited must still be there next time. Proposal:
-- **Improvise, then persist on use.** "I look for an alchemist" → the model decides from the description and the settlement's size, narrates, and persists only if the party engages: `location_update` POI with details, or a child location plus an NPC if they go in. The next visit shows it, because it now has details.
-- **A POI exists on the wire only if it has details**, from prep (authored module content: the notice board's posters, the hidden trapdoor) or from play. Names-only placeholders are ignored by the scene and the nag. `world_build` stays compatible.
-- **Drop the per-arrival materialize nag.** The rule moves to the prompt and `lookup help` ("persist places and objects the party interacts with"). The "promote a used PoI to a child location" suggestion stays, since it fires on real use.
-- **Optional: an existence oracle.** For questions where "is there one?" is genuinely uncertain, the model sets a likelihood (likely/even/unlikely from town size and context) and the engine rolls. This keeps the DM from always saying yes, the same honesty `ruleset_action` gives rolls. Worth a played test before building.
+**Why remove them:**
+- A POI name adds nothing the description doesn't ("a market street of vendors: fish, barrels, herbs, candles").
+- It pulls the model toward the seeded names instead of answering the player ("I look for an alchemist").
+- Every job a POI does already has a real entity that does it better:
+
+| A POI stood for | Real home | Exists? |
+|---|---|---|
+| A place you can enter (back room, cellar, the alchemist's shop) | Child `Location` plus an exit | Yes |
+| Furniture or objects you interact with (desk, notice board, well) | `Item` held by the location (`HolderId` accepts a location) | Yes |
+| Contents (a key in the drawer, posters on the board) | `Item` held by that item (items hold items) | Yes |
+| Secret compartment, carved glyph, scorch mark | `ItemDetail` on the fixture; its DM-only `intent` holds the DC or discovery condition | Yes |
+| Changed fixture state ("tavern cleaned after the brawl") | `ItemDetail` update, or the location description | Yes |
+| Hidden door or passage | Exit with `hidden` + `discoverDc`/`intent` | **No**: `LocationExit` has `lockCondition` only |
+| Hidden object | Item `hidden` + `discoverDc` | **No**: `IsArchived` is soft delete, not concealment |
+| Trap | A `hazard` on an exit, item or location: trigger, `detectDc`, `disarmDc`, effect as a `ruleset_action` | **No**: there's no trap concept |
+
+The **"is there an alchemist?"** flow then needs no placeholder. The model decides from the settlement and the description (or rolls the optional existence oracle) and narrates. It creates the entity only when the party engages: a child location and an NPC if they go in, an item if they pick something up. Next visit it's there because it's real.
+
+**Seeding hidden things: yes, with purpose, and enforced by the engine:**
+- **Guidance, not quota.** `world_build` guidance (the `dnd-world-building` skill, `lookup help`) asks for each location that matters to a plot thread, quest or NPC secret: "What's hidden here, and who hid it?" Zero to two things, each tied to a reason. Random secrets everywhere are noise, and they cost seeding tokens.
+- **Hidden means hidden on the wire.** Hidden exits, items, details and hazards stay out of scene payloads, which saves tokens and stops accidental leaks. On the first visit this session the model gets one DM-only line: the `intent` (e.g. "desk: false bottom, DC 15; someone searched it recently"). That's enough to foreshadow without the content.
+- **The engine resolves discovery, as it does dice.** An Investigation/Perception `ruleset_action` at the location is checked against the hidden DCs. The result names what was found and un-hides it; that's the "search" row of the context-contributor table. Passive Perception on arrival catches the obvious ones. A hazard's trigger (entering, opening) fires the trap's `ruleset_action`, unless it was detected and disarmed.
+- **Migration.** POIs with details become fixture items held by the location, with their details as `ItemDetail`s. Name-only POIs are dropped, or folded into the description if it's empty. `world_build` still accepts `pointsOfInterest` for older prompts and converts names to fixture items only when details come with them. Remove the POI pressure contributors, `LocationPoiMaterializer` and the POI fields on `location_update`.
+
+**Optional: an existence oracle.** For genuinely uncertain "is there one?" questions, the model sets a likelihood (likely/even/unlikely from town size and context) and the engine rolls. This keeps the DM from always saying yes, the same honesty `ruleset_action` gives rolls. Worth a played test before building.
 
 ## Functional bugs found while measuring
 
@@ -182,7 +202,18 @@ A POI name without details adds nothing the location description doesn't ("a mar
 - [ ] T3 **Beat trims** (C1, C2, D1). `EventNoveltyAdvisor` (skip engine-generated events, one per turn), commit echo, `McpResponseCleaner` `tokensEst`. Also Round 4 item 1 (guidance ledger write), since that path is being touched anyway.
 - [ ] T4 **Reseed correctness** (B1, F6). `advance_world` returns and stores `partyFingerprint`; HP-only drift sends `partyDelta`, location drift stays Full.
 - [ ] T5 **Travel** (F1, F2, F3). Party move as one group: one roll, one clock advance. Prorated buckets. Separation as a rare outcome that needs a reason (optional `hazard`), reported explicitly.
-- [ ] T5b **POIs** (materialize on use): details-only POIs on the wire, drop the unmaterialized-PoI nag (and its doubled prefix), prompt/help rule. Existence oracle only after a played test.
+- [ ] T5b **Remove POIs** (feature work, not just trimming):
+  - Migration: POIs with details → fixture items + `ItemDetail`s.
+  - `world_build` compatibility shim.
+  - Remove the POI contributors, materializer and `location_update` POI fields.
+  - Update prompts, skills and help.
+- [ ] T5c **Hidden content and hazards:**
+  - `hidden` + `discoverDc`/`intent` on exits and items; hidden items and details stay off the wire.
+  - First-visit DM-only intent line.
+  - Engine-resolved discovery on Investigation/Perception and passive Perception on arrival.
+  - A minimal `hazard` (trigger, detect/disarm DC, effect as `ruleset_action`).
+  - `world_build` guidance: 0–2 purposeful secrets per plot-relevant location.
+  - Existence oracle only after a played test.
 - [ ] T6 **Need-driven responses** (N3 + context contributors table, replaces A2). Delivery ledger on `TurnCursor`; roster lines; spotlight cards on arrival; first-commit briefing; semantic memory push ≤2; edge-trigger lines; echo only for changed, involved NPCs. Prompt: open a first contact with an approach beat. Plugin: `forceFullReseed` after compaction. Done after T1–T4 so the card format is settled.
 - [ ] T7 Response-size budget tests like `ToolListBudgetTests`: arrival, beat, after-rest; plus the full suite green.
 - [ ] T8 Rerun `scripts/measure/take_turn_replay.py` and compare against this page.
