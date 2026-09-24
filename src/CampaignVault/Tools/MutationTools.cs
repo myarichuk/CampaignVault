@@ -1907,7 +1907,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     }
 
     /// <summary>Shrinks an already delta-trimmed, fully-unchanged scene-present NPC entry down to
-    /// id/name/roster-flags — the fields TurnResult.KnownCharacterIds' do-not-hallucinate check actually
+    /// id/name/roster-flags — the fields the roster's do-not-hallucinate check actually
     /// needs. The entry is never omitted entirely (that would drop a present character out of the
     /// known-entities list); only its content shrinks. BehavioralTension is nulled (unknown) rather
     /// than zeroed: the stub means "no fresh reading this turn", and McpResponseCleaner strips nulls

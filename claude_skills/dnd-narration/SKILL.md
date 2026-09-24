@@ -156,7 +156,7 @@ Show the *social geometry*, not just the exchange.
 
 ## Named NPC Discipline: Seed Before You Name
 
-Per `dnd-world-change` — never narrate a named actor into existence; check `KnownCharacterIds`/`SeededNpcIds`, `world_build` first.
+Per `dnd-world-change` — never narrate a named actor into existence; check the scene roster (`presentNPCs`), `world_build` first. Open a first contact with an approach beat; the NPC's card arrives with that commit, then play their reaction.
 
 ## Bad Narration Guardrails: What NPCs Cannot Know
 

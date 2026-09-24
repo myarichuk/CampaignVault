@@ -89,7 +89,7 @@ public class TurnCursor
     /// take_turn response (Full or Delta), keyed by location ID. On a Delta refetch, an NPC ID already
     /// in this set whose presence/fields are both unchanged this turn (see MutationTools.ApplyDeltaTrim's
     /// fullyUnchanged out-param) shrinks to an id/name/roster-flags stub instead of resending its full
-    /// trimmed entry — it must still appear (TurnResult.KnownCharacterIds' do-not-hallucinate guard),
+    /// trimmed entry — it must still appear (the roster is the do-not-hallucinate list of who is present),
     /// just smaller. Replaced (not unioned) with each scene fetch's current present-NPC set, so a
     /// departed-then-returned NPC or a newly arrived one is never mistaken for "already surfaced."</summary>
     [JsonPropertyName("surfacedPresentNpcIdsByLocationId")]

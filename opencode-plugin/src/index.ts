@@ -3,6 +3,7 @@ import { checkPressure, tryParseToolOutput } from "./pressure.js";
 import { formatStatusBar } from "./statusbar.js";
 import { checkDiceRollAttempt } from "./diceGuard.js";
 import { CampaignInfoCache, extractCampaignInfo, buildReinjectionText } from "./campaignReinject.js";
+import { PendingReseed } from "./reseedAfterCompaction.js";
 
 // MCP tool names arrive prefixed by the server id configured in opencode.json (e.g. "campaign-vault"),
 // so match on suffix rather than exact name. Confirm the actual prefix against a real opencode log line
@@ -33,9 +34,13 @@ export const CampaignVaultPlugin: Plugin = async ({ client }) => {
   // scene. Cache the last rendered bar per session and re-emit it (marked as carried over) so the
   // model still gets a bar to repeat instead of silently dropping the block.
   const lastStatusBarBySession = new Map<string, string>();
+  // A compaction drops the once-per-session NPC cards/descriptions: the next take_turn asks for them again.
+  const pendingReseed = new PendingReseed();
 
   return {
-    "tool.execute.before": async ({ tool }, output) => {
+    "tool.execute.before": async ({ tool, sessionID }, output) => {
+      pendingReseed.applyTo(tool, sessionID, output.args as Record<string, unknown> | undefined);
+
       const command = typeof output.args?.command === "string" ? output.args.command : undefined;
       const guard = checkDiceRollAttempt(tool, command);
       if (guard.blocked) {
@@ -86,6 +91,7 @@ export const CampaignVaultPlugin: Plugin = async ({ client }) => {
       if (event.type !== "session.idle" && event.type !== "session.compacted") return;
 
       const sessionID = event.properties.sessionID;
+      if (event.type === "session.compacted") pendingReseed.mark(sessionID);
       const info = campaignInfoBySession.get(sessionID);
       if (!info) return;
 

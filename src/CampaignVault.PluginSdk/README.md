@@ -25,8 +25,14 @@ the main repository for the full plugin architecture, trust model, and quick-sta
 - Implement `IPluginGuidanceContributor` to append a short hint to take_turn responses. It receives a
   Raven-free `IGuidanceContext` (campaign, time, config, surfaced character IDs, and the changes this
   turn committed). The host namespaces your hint keys, admits at most one plugin hint per response, and
-  does not yet deduplicate across turns, so fire on an edge (a `ModeTransitionChange` entering your mode
-  just landed), not on a level.
+  delivers each key once per session (again after `RepeatAfterDays`, or in a new session); still, fire on
+  an edge (a `ModeTransitionChange` entering your mode just landed), not on a level.
+- Implement `IPluginContextContributor` to push one-line facts the next prose needs on the beat that uses
+  them (recipe state on your crafting verb, a meter on your mode's action). It receives a Raven-free
+  `IContextTurn` (campaign, committed changes, involved entity IDs, party IDs, the party's location) after
+  every committed take_turn. Each `PluginContextItem` key is namespaced and delivered once per session, so
+  put the value in the key when a changed fact should go out again (`"meter:3"`). Core and plugin lines
+  share one ~800-char budget per response, ranked by `Priority`.
 - Set `[PluginWorldChange("my_verb", ModeId = "my_mode")]` on verbs that only make sense inside your
   interaction mode. They drop out of the `lookup kind=commit_schema` index but still resolve with `type=`;
   pair that with a guidance hint on mode entry so the model gets the schema when it needs it.

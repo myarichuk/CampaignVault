@@ -179,15 +179,20 @@ internal sealed class StealthContextContributor : IContextContributor
 {
     public async Task<IEnumerable<ContextItem>> ContributeAsync(ContextTurn turn, CancellationToken ct = default)
     {
-        if (!turn.AppliedChanges.Any(c => ContextTurnReads.IsSkillCheck(c, "stealth")) || turn.PresentNpcIds.Count == 0)
+        if (string.IsNullOrEmpty(turn.PartyLocationId)
+            || !turn.AppliedChanges.Any(c => ContextTurnReads.IsSkillCheck(c, "stealth")))
         {
             return [];
         }
 
-        var npcs = await turn.Session.LoadAsync<Character>(turn.PresentNpcIds, ct);
-        var watchers = npcs.Values
-            .Where(c => c is { IsPc: false, IsPartyCompanion: false })
-            .Select(c => $"{c!.Name} {ContextTurnReads.PassivePerception(c)}")
+        // Who is here right now, not who this response happened to carry a scene for.
+        var npcs = await turn.Session.Query<Character>()
+            .Where(c => c.CampaignName == turn.CampaignName && c.CurrentLocationId == turn.PartyLocationId
+                        && !c.IsPc && !c.IsPartyCompanion)
+            .Take(12)
+            .ToListAsync(ct);
+        var watchers = npcs
+            .Select(c => $"{c.Name} {ContextTurnReads.PassivePerception(c)}")
             .ToList();
         if (watchers.Count == 0)
         {

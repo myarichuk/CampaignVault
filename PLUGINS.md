@@ -649,6 +649,7 @@ they never drift apart.
 ✅ Add custom `ISimulationRule` (simulation event handlers)
 ✅ Add custom `IPressureContributor` (world pressure sources)
 ✅ Add custom `IGuidanceContributor` (proactive guidance hints)
+✅ Add `IPluginContextContributor` (one-line facts pushed on the take_turn beat that needs them, once per session)
 ✅ Add custom `IWorldChangeHandler` (react to player actions)
 ✅ Add custom `IWorldChangeObserver` (post-commit, non-failing, cross-cutting hooks — e.g. a trauma-triggered "inner voice" reactor that watches every mutation without owning any of them)
 ✅ Add custom `IMcpServerTool` (new MCP tools)

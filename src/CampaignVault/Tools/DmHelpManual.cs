@@ -59,7 +59,6 @@ Don't restate engine facts (HP, exact gear, conditions): the next start_session 
 
 Periodically (server-configured, default every 40 substantial turns — pure extraCharacterIds-only polls don't advance the clock), and escalates early — even mid-delta-run — on:
 - a major PC location change
-- a relationship shift crossing a ±40 band
 - a significant plot-thread beat (once at least 3 delta turns have elapsed since the last reseed)
 - a party-fingerprint mismatch (see Drift Protection below)
 
@@ -73,13 +72,20 @@ Independent of mode, the single highest-priority NPC this call carries RP-adviso
 
 `KnownNeeds` on a delta turn isn't only gated by this turn's own change — a need that ticks slowly (e.g. hunger +1.5/turn) and never clears the significance threshold in any single turn will still surface once its *cumulative* drift since it was last actually sent to you crosses that threshold. This closes a correctness gap: without it, slow drift could silently diverge from what the server has been tracking. A full reseed always resets that baseline to exactly what it just sent.
 
-## FAQ: why does a scene's PresentNPCs entry have almost every field null?
+## Rosters, cards and context (what each turn sends)
 
-On a delta-mode scene refetch, an NPC who was already present the last time you saw that scene and has nothing new to report this turn (no appearance/behavior/gear/needs change, no fresh memory) shrinks to just `id`/`name`/roster flags (`isPc`/`isPartyCompanion`/`keepAlive`) with everything else null. This is not a malformed or truncated response — it means ""still here, nothing changed"". The entry is never omitted entirely (only shrunk), so you can always trust the full set of IDs across `Npcs`/`Party`/`Scenes[].PresentNPCs` as the complete list of who's actually present — see the response's `KnownCharacterIds`.
+Each turn sends what this beat needs, once per session:
+- **Roster.** Every present NPC is listed in the scene's `presentNPCs` (id, name, activity, mood, a short note until their card arrives). The roster is the complete list of who is here; a name not on it doesn't exist yet: `world_build` it before narrating it. On a delta refetch a row carries only what changed this turn (need movers, gear, looks); a row with only id/name means ""still here, nothing changed"".
+- **Cards** (`cards[]`: traits, wants, fears, stance toward the party, AC/level, gear, pressing needs ≥60, two key memories) arrive once per session: on arrival for NPCs in the spotlight (plot- or quest-linked, about to act, keepAlive, an opinion of the party, companions) and on the first commit that involves anyone else. Keep a card in mind for the session; it is resent only when it changes. **Open a first contact with an approach beat** (an event, no reaction yet), then author the NPC's mood/knowledge/relationship once the card is in.
+- **Context** (`context[]`): one-line facts pushed on the beat that uses them, each once per session: a memory the topic brings up, a relationship tier crossing, a pressing need, party gold and the merchant's wares on a trade, passive Perception on a stealth roll, what a searched room holds, an open quest objective an entity is tied to.
+- A location's description goes out on your first arrival this session; a revisit says ""(described earlier this session)"".
+- `npcs[]` echoes an involved NPC only when this beat changed their mood, activity, looks or gear, or they are about to act.
+
+Everything else is pull: `get_entity`, `fullDetailCharacterId`, `recall_history`. After your context is compacted or summarized, send `forceFullReseed: true`: it clears the once-per-session ledger so cards and descriptions come again.
 
 ## Drift Protection
 
-Every response carries `partyFingerprint` — a deliberately NARROW readable hash (""charId:hp/maxHp@locationId"" per PC/companion). It detects HP/location drift only; NPC/need/memory/rumor drift never trips it. Those are covered by the periodic full reseed (default every 40 substantial turns — pure extraCharacterIds-only polls don't advance the clock) + integrity pressure, not by this hash. Pass the fingerprint back as `clientPartyFingerprint` on your NEXT `take_turn` call, unchanged. Omit it if you don't have a prior value handy — an omitted echo is never treated as a mismatch. If it doesn't match what the server computed, that means you missed or misread a prior HP/location delta — the server forces a full resync and flags it in the response, so you don't keep narrating from a stale mental model (e.g. treating a PC as still in a location they already left). You can also eyeball the fingerprint yourself each turn as a sanity check against your own understanding of the party's state.
+`partyFingerprint` is sent on full turns and whenever your echoed copy is stale — a deliberately NARROW readable hash (""charId:hp/maxHp@locationId"" per PC/companion). It detects HP/location drift only; NPC/need/memory/rumor drift never trips it. Those are covered by the periodic full reseed (default every 40 substantial turns — pure extraCharacterIds-only polls don't advance the clock) + integrity pressure, not by this hash. Pass the last one you received back as `clientPartyFingerprint` on every `take_turn` call, unchanged. Omit it if you don't have a prior value handy — an omitted echo is never treated as a mismatch. If it doesn't match what the server computed, that means you missed or misread a prior HP/location delta — the server forces a full resync and flags it in the response, so you don't keep narrating from a stale mental model (e.g. treating a PC as still in a location they already left). You can also eyeball the fingerprint yourself each turn as a sanity check against your own understanding of the party's state.
 
 An absent `PartyDelta` on a quiet delta turn means ""no party change worth surfacing"", not ""no party"" — `PartyDelta` echoes only ambient (server-derived) non-need changes, needs that crossed the significance or cumulative-drift gates, and initiative/memory enrichment. `includeWorldState` is expensive (pressure evaluation + serialization run even when the delta suppresses Time/pressure) — use it when pressure/verification actually matters.
 ";
