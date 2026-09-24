@@ -11,6 +11,7 @@ using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Scenes;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
+using CampaignVault.Plugins;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Rulesets.Modes;
@@ -71,6 +72,7 @@ internal static class ConventionRegistration
             RegisterCollection<IPluginGuidanceContributor>(builder, assembly);
             RegisterCollection<IContextContributor>(builder, assembly);
             RegisterCollection<IPluginContextContributor>(builder, assembly);
+            RegisterCollection<IPluginTraitsUpgrader>(builder, assembly);
             RegisterCollection<IDomainEventHandler>(builder, assembly);
             RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
             RegisterCollection<IRulesetModule>(builder, assembly);

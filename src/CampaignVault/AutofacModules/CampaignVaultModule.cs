@@ -72,6 +72,15 @@ public class CampaignVaultModule : Autofac.Module
                 .Select(g => g.Last())
                 .ToList();
 
+            // Trait-key prefixes ("<pluginId>." or "<modeId>.") a loaded plugin can claim — read at
+            // startup by PluginTraitsUpgradeRunner.WarnOnOrphanedTraitPrefixesAsync to flag prefixes
+            // in the data that no loaded plugin owns anymore.
+            PluginTraitsClaims.Claimed = plugins
+                .SelectMany(p => (p.Manifest?.ModeIds ?? []).Append(p.Manifest?.Id ?? ""))
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             // Wire/schema half of plugin WorldChange $types (dispatch already works via FindHandler fallback).
             WorldChangeTypeRegistry.Instance.RegisterPluginAssemblies(pluginAssemblies);
             CommitSchemaModel.Invalidate();

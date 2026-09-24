@@ -2,6 +2,7 @@ using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using CampaignVault.Data;
 using CampaignVault.Middleware;
+using CampaignVault.Plugins;
 using CampaignVault.Schema;
 using CampaignVault.Services;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -255,7 +256,7 @@ var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 // Data migrations: handle schema upgrades, format conversions, repairs.
 // stdout carries the JSON-RPC channel in MCP_STDIO mode, so startup status goes to stderr.
 Console.Error.WriteLine("[Startup] Running data migrations...");
-await RavenStartup.RunDataMigrationsAsync(documentStore, loggerFactory);
+await RavenStartup.RunDataMigrationsAsync(documentStore, loggerFactory, PluginTraitsClaims.Claimed);
 Console.Error.WriteLine("[Startup] Data migrations complete ✓\n");
 
 // Semantic vector bootstrap: repair any entities missing embeddings

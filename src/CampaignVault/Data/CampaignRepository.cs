@@ -4,6 +4,7 @@ using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Scenes;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
+using CampaignVault.Plugins;
 using CampaignVault.Rulesets;
 using CampaignVault.Services;
 using Raven.Client.Documents.Indexes;
@@ -27,6 +28,7 @@ public class CampaignRepository
     private readonly BackgroundDefinitionProvider _backgroundProvider;
     private readonly IEntitySuggester _entitySuggester;
     private readonly ItemDefinitionProvider _itemDefinitionProvider;
+    private readonly IEnumerable<IPluginTraitsUpgrader> _traitsUpgraders;
 
     private string ResolveCampaign(string? campaignName)
     {
@@ -57,8 +59,10 @@ public class CampaignRepository
         ClassDefinitionProvider classProvider,
         BackgroundDefinitionProvider backgroundProvider,
         IEntitySuggester entitySuggester,
-        ItemDefinitionProvider itemDefinitionProvider)
+        ItemDefinitionProvider itemDefinitionProvider,
+        IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null)
     {
+        _traitsUpgraders = traitsUpgraders ?? [];
         _store = store;
         _simulationEngine = simulationEngine;
         _logger = logger;
@@ -1055,7 +1059,7 @@ public class CampaignRepository
         var activeSystem = config.ActiveSystem;
 
         await SystemStatsUpgradeHelper.UpgradeSystemStatsIfNeededAsync(
-            session, character, activeSystem, _classProvider, _backgroundProvider, _keys, campaignName);
+            session, character, activeSystem, _classProvider, _backgroundProvider, _keys, campaignName, _traitsUpgraders, _logger);
     }
 
     /// <summary>

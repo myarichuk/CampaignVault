@@ -281,7 +281,7 @@ Pass changes[] + narrative, and/or a refresh param (includeParty, includeWorldSt
 
 Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + location, and a mismatch forces a resync. So set includeParty only when party HP/slots/gold/needs/AC/gear changed, and use fullDetailLocationId on the travel turn instead of a separate get_entity. ruleset_action auto-applies its damage/healing and grapple; don't also send hp for it. Utility-spell statuses are yours to commit in the same batch. Lasting item wear (scratches, stains, hidden compartments): item_update.upsertItemDetail. Delta-mode mechanics: lookup kind=help topic=take-turn-modes.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
-        [Description("Bundled turn request: MUST contain EITHER (1) Changes with Narrative, OR (2) at least one refresh parameter. Passing neither will be rejected. Mutations: Changes+Narrative. Refresh params: AutoRefreshInvolved (default true), ExtraCharacterIds, ExtraLocationIds, IncludeWorldState, IncludeParty, FullDetailCharacterId, MemoriesOnlyCharacterId, FullDetailLocationId.")]
+        [Description("Bundled turn request: MUST contain EITHER (1) Changes with Narrative, OR (2) at least one refresh parameter — see this tool's own description for the field list. Passing neither is rejected. AutoRefreshInvolved (default true) controls whether entities touched by Changes get auto-refreshed; it does not itself satisfy the refresh-parameter requirement.")]
         TakeTurnRequest request,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
@@ -1340,7 +1340,10 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             return;
         }
 
-        var config = await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+        // ctx.Config is loaded once by DecideTurnModeAsync (see TurnContext.Config's doc comment) — every
+        // take_turn path reaches this method after that step runs, but fall back defensively rather than
+        // assume, same idiom as the ctx.Config ?? ... fallback a few hundred lines down in this file.
+        var config = ctx.Config ?? await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign));
         var campaignDoc = await ctx.Session.LoadAsync<Campaign>(_keys.Meta(ctx.Campaign));
         var recentWinners = campaignDoc?.RecentInitiativeSlotNpcIds ?? [];
 
@@ -2222,8 +2225,14 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
 
-            if (ctx.Mode == TurnMode.Full)
+            if (ctx.Mode == TurnMode.Full || ctx.PartyResyncRequested)
             {
+                // B1: an HP-only fingerprint mismatch sets PartyResyncRequested (see
+                // DetectPartyFingerprintDrift) specifically so the client gets current HP without a full
+                // scene/NPC reseed. The Delta branch below can't carry that — EntityChangeDelta has no HP
+                // field; HP only travels via Changes/NeedsMoved, neither of which fires on a pure HP-drift
+                // resync with no HpChange/need mover this turn. Only this section escalates to the
+                // full per-member snapshot; Mode itself (and everything else gated on it) stays Delta.
                 var partyMembers = new List<PartyMemberView>();
                 foreach (var member in party)
                 {
