@@ -567,8 +567,8 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.Null(data.Party);
         Assert.Null(data.PartyDelta);
 
-        var companionSummary = Assert.Single(data.Npcs ?? [], n => n.CharacterId == companionId);
-        Assert.NotNull(companionSummary.Initiative);
+        // T6: a routine pick with nothing to act on is one context line, not a full npcs[] row.
+        Assert.Contains(data.Context ?? [], l => l == $"Likely to act next: Companion ({companionId}).");
     }
 
     /// <summary>
@@ -864,9 +864,11 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.DoesNotContain(data.Npcs ?? [], n => n.CharacterId == companionId);
 
         var scene = Assert.Single(data.Scenes!, s => s.Location.Id == locId);
-        var presence = Assert.Single(scene.PresentNPCs, n => n.Id == companionId);
-        Assert.True((presence.BehavioralTension ?? 0) != 0 || (presence.ActiveInitiatives?.Count ?? 0) > 0 || presence.TurnIntent != null,
-            "Expected initiative context to survive dedup via the scene-side NpcPresenceSummary.");
+        Assert.Single(scene.PresentNPCs, n => n.Id == companionId);
+        // T6: this first call is a Full turn, whose roster rows are lean (a tension-only reading is scheduler
+        // bookkeeping); the involved companion is briefed by its card instead. Delta rows keep the live
+        // initiative reading (see DeltaMode_StubbedPresence_CarriesNoTensionKey_WhileMeasuredCalm_KeepsZero).
+        Assert.Contains(data.Cards ?? [], c => c.Id == companionId);
     }
 
     [Fact]

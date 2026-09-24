@@ -164,6 +164,11 @@ public class TurnCursor
     [JsonPropertyName("briefedLocationIds")]
     public List<string> BriefedLocationIds { get; set; } = [];
 
+    /// <summary>Set by start_session: a new conversation has none of the once-per-session deliveries, so the
+    /// next take_turn clears the ledger. (A Full forced by advance_world is not a context loss and keeps it.)</summary>
+    [JsonPropertyName("ledgerResetPending")]
+    public bool LedgerResetPending { get; set; }
+
     /// <summary>Forget what this session has been sent: the next cards, context lines and location
     /// descriptions go out again.</summary>
     public void ClearDeliveryLedger()

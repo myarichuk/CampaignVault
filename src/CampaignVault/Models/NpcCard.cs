@@ -90,9 +90,12 @@ internal static class NpcCardFactory
             .Where(kv => !(SceneNpcPresenceFactory.DefaultNeedDescriptors.TryGetValue(kv.Key, out var builtIn) && builtIn == kv.Value))
             .ToDictionary(kv => kv.Key, kv => kv.Value);
 
+        // Memories the beat is about (preferredMemories), else only defining ones (Core or urgent): routine
+        // memories come when their topic does (MemoryRecallContextContributor), not on sight.
         var memories = (preferredMemories is { Count: > 0 }
                 ? preferredMemories
                 : (psych.Memories ?? []).Values
+                    .Where(m => m.Importance == MemoryImportance.Core || m.Urgency >= MemoryUrgency.High)
                     .OrderByDescending(m => m.Importance)
                     .ThenByDescending(m => m.Salience)
                     .ToList())

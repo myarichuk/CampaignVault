@@ -272,6 +272,7 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
         }
 
         cursor.ForcedFullReseedPending = true;
+        cursor.LedgerResetPending = true;
         cursor.LastPartyFingerprint = fingerprint;
     }
 

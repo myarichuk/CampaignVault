@@ -170,6 +170,10 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
         /// <summary>Set when an HP-only fingerprint mismatch asks for the party block instead of a reseed.</summary>
         public bool PartyResyncRequested { get; set; }
 
+        /// <summary>True when the client may have lost what this session delivered (new conversation, a client
+        /// forceFullReseed after a compaction, fingerprint drift, the periodic reseed): the T6 ledger clears.</summary>
+        public bool ContextMayBeLost { get; set; }
+
         /// <summary>Embedding of this turn's narrative (the logged SceneCommit event); drives T6 memory matching.</summary>
         public float[]? NarrativeVector { get; set; }
 
@@ -452,6 +456,10 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             isNewCursor, clientForced, cursor?.ForcedFullReseedPending ?? false, driftDetected);
 
         var turnCursor = cursor ?? new TurnCursor { Id = _keys.StateTurnCursor(ctx.Campaign), CampaignName = ctx.Campaign };
+        ctx.ContextMayBeLost = mode == TurnMode.Full
+            && (clientForced || driftDetected || turnCursor.LedgerResetPending
+                || turnCursor.TurnsSinceReseed >= config.DeltaModeReseedIntervalTurns);
+        turnCursor.LedgerResetPending = false;
         if (mode == TurnMode.Full)
         {
             turnCursor.TurnsSinceReseed = 0;
@@ -952,7 +960,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         var result = ctx.Result;
         result.Committed = true;
         result.ChangesProcessed = commitResult.ChangesProcessed;
-        result.Summary = commitResult.Summary;
+        result.Summary = DeliverAdvisoryHintsOnce(ctx, commitResult.Summary);
         ctx.InvolvedEntityIds = commitResult.InvolvedEntities;
         result.EntityCollisions = commitResult.EntityCollisions;
         result.CommittedIds = commitResult.CommittedIds;
@@ -1004,6 +1012,33 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
         await ctx.Session.SaveChangesAsync();
         return null;
+    }
+
+    /// <summary>"Hint: no 'activity' commit found for ..." style follow-up nudges (EventFollowUpAdvisor) teach a
+    /// habit; after the first one of a kind in a session they are noise on every conversation beat. Keyed on the
+    /// hint text with the quoted beat removed, in the same once-per-session ledger as context lines.</summary>
+    private static List<string> DeliverAdvisoryHintsOnce(TurnContext ctx, List<string> summary)
+    {
+        var kept = new List<string>(summary.Count);
+        foreach (var line in summary)
+        {
+            if (!line.StartsWith("Hint:", StringComparison.Ordinal))
+            {
+                kept.Add(line);
+                continue;
+            }
+
+            var key = "hint:" + System.Text.RegularExpressions.Regex.Replace(line, "\"[^\"]*\"", "\"\"");
+            if (ctx.Cursor.DeliveredContextKeys.Contains(key))
+            {
+                continue;
+            }
+
+            ctx.Cursor.DeliveredContextKeys.Add(key);
+            kept.Add(line);
+        }
+
+        return kept;
     }
 
     /// <summary>Ages pending NpcInitiativeNudges from prior calls, then registers this turn's own

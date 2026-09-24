@@ -27,7 +27,7 @@ public partial class MutationTools
     {
         try
         {
-            if (ctx.Mode == TurnMode.Full)
+            if (ctx.ContextMayBeLost)
             {
                 // The client may have lost everything (new conversation, compaction, drift): start over.
                 ctx.Cursor.ClearDeliveryLedger();
@@ -63,10 +63,15 @@ public partial class MutationTools
 
             var spotlight = await SpotlightIdsAsync(ctx, presentNpcs, partyIds);
             // Companions ride in party sections only with includeParty, so they are always in the spotlight.
+            // An NPC surfaced because they are about to act is in the spotlight too.
+            var initiativeNpcIds = (ctx.Result.Npcs ?? [])
+                .Where(n => !partyIds.Contains(n.CharacterId) && n.Initiative is { } i && (i.TurnIntent != null || i.ActiveInitiatives is { Count: > 0 }))
+                .Select(n => n.CharacterId);
             var cardIds = presentNpcs
                 .Where(n => n.IsPartyCompanion || spotlight.Contains(n.Id))
                 .Select(n => n.Id)
                 .Concat(involvedNpcIds)
+                .Concat(initiativeNpcIds)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -83,12 +88,26 @@ public partial class MutationTools
                 scene.Set(scene.Get().Select(n => n.IsPc ? n : RosterEntry(n,
                     // The hook note stands in for a card not yet sent; a card in this response carries the notes.
                     withNote: !ctx.Cursor.DeliveredCardHashes.ContainsKey(n.Id),
-                    keepChanges: trimmed && !cardedIds.Contains(n.Id))).ToList());
+                    keepChanges: trimmed && !cardedIds.Contains(n.Id),
+                    keepInitiative: trimmed)).ToList());
             }
 
-            FilterNpcEcho(ctx, partyIds, cardedIds);
+            FilterNpcEcho(ctx, party.Where(p => p.IsPc).Select(p => p.Id).ToHashSet(StringComparer.OrdinalIgnoreCase), cardedIds);
             await BriefLocationsAsync(ctx);
             DropEmptyDeltaScenes(ctx, party);
+
+            // A card's pressing needs are already said: the need edge lines for them would repeat it.
+            foreach (var card in cards)
+            {
+                foreach (var need in card.PressingNeeds?.Keys.ToList() ?? [])
+                {
+                    var key = $"need:{card.Id}:{need}";
+                    if (!ctx.Cursor.DeliveredContextKeys.Contains(key))
+                    {
+                        ctx.Cursor.DeliveredContextKeys.Add(key);
+                    }
+                }
+            }
 
             if (ctx.AppliedChanges.Count > 0)
             {
@@ -110,7 +129,7 @@ public partial class MutationTools
                 var lines = await _contextOrchestrator.CollectAsync(turn, ctx.Cursor.DeliveredContextKeys);
                 if (lines.Count > 0)
                 {
-                    ctx.Result.Context = lines.ToList();
+                    (ctx.Result.Context ??= []).InsertRange(0, lines);
                 }
             }
         }
@@ -238,22 +257,24 @@ public partial class MutationTools
 
     /// <summary>A present NPC as the scene roster lists them: who, doing what, in what mood, plus a short
     /// hook until their card has been sent.</summary>
-    /// <param name="keepChanges">Delta-trimmed rows keep what changed this turn (need movers, gear, looks).</param>
-    private static NpcPresenceSummary RosterEntry(NpcPresenceSummary n, bool withNote, bool keepChanges) => n with
+    /// <param name="keepChanges">Delta-trimmed rows keep what changed this turn (need movers, gear, looks),
+    /// unless a card in this response already carries it.</param>
+    /// <param name="keepInitiative">Delta-trimmed rows keep the live initiative reading (who is about to act).</param>
+    private static NpcPresenceSummary RosterEntry(NpcPresenceSummary n, bool withNote, bool keepChanges, bool keepInitiative) => n with
     {
         KnownNeeds = keepChanges ? n.KnownNeeds : new Dictionary<string, float>(),
         NeedDescriptors = keepChanges ? n.NeedDescriptors : new Dictionary<string, string>(),
         BehavioralSummary = null,
         Notes = withNote && !string.IsNullOrWhiteSpace(n.Notes)
-            ? TextTruncation.TruncateAtBoundary(n.Notes, RosterNoteCap) is var (text, cut) && cut ? text + "…" : n.Notes
+            ? TextTruncation.TruncateAtBoundary(n.Notes, RosterNoteCap).Text
             : null,
         NotesTruncated = null,
         CurrentAppearance = keepChanges ? n.CurrentAppearance : null,
         VisualTags = keepChanges ? n.VisualTags : null,
         DistinctiveFeatures = keepChanges ? n.DistinctiveFeatures : null,
         Stats = keepChanges ? n.Stats : null,
-        BehavioralTension = keepChanges ? n.BehavioralTension : null,
-        ActiveInitiatives = keepChanges || n.TurnIntent != null ? n.ActiveInitiatives : null,
+        BehavioralTension = keepInitiative ? n.BehavioralTension : null,
+        ActiveInitiatives = keepInitiative || n.TurnIntent != null ? n.ActiveInitiatives : null,
         RelevantMemories = null,
         EquippedItems = keepChanges ? n.EquippedItems : null,
         CarriedItems = keepChanges ? n.CarriedItems : null,
@@ -264,42 +285,50 @@ public partial class MutationTools
     /// activity, looks, gear) or the NPC is about to act. Party members travel in the party sections; a
     /// fresh card already covers looks and gear; tension-only initiative rows and behavioralSummary were
     /// restating what the roster and the model's own narrative already say.</summary>
-    private void FilterNpcEcho(TurnContext ctx, HashSet<string> partyIds, HashSet<string> cardedIds)
+    /// <param name="pcIds">PCs travel in the party sections; companions follow the NPC rules here.</param>
+    private void FilterNpcEcho(TurnContext ctx, HashSet<string> pcIds, HashSet<string> cardedIds)
     {
-        foreach (var npc in ctx.Result.Npcs ?? [])
-        {
-            npc.BehavioralSummary = null; // Restated mood + activity + the last event; never needed.
-        }
-
-        if (ctx.Mode != TurnMode.Delta || ctx.Result.Npcs is not { Count: > 0 } npcs)
+        if (ctx.Result.Npcs is not { Count: > 0 } npcs)
         {
             return;
         }
 
         var requested = new HashSet<string>(ctx.Request?.ExtraCharacterIds ?? [], StringComparer.OrdinalIgnoreCase);
+        var involved = new HashSet<string>(ctx.InvolvedEntityIds, StringComparer.OrdinalIgnoreCase);
+        var full = ctx.Mode == TurnMode.Full;
         var kept = new List<NpcSummaryView>();
         foreach (var npc in npcs)
         {
+            npc.BehavioralSummary = null; // Restated mood + activity + the last event; never needed.
             if (requested.Contains(npc.CharacterId))
             {
                 kept.Add(npc); // Asked for by name: never filtered.
                 continue;
             }
 
-            if (partyIds.Contains(npc.CharacterId))
+            if (pcIds.Contains(npc.CharacterId))
             {
                 continue;
             }
 
+            // Tension alone is the scheduler's bookkeeping, not something to narrate from.
             if (npc.Initiative is { } initiative && initiative.TurnIntent == null && initiative.ActiveInitiatives is not { Count: > 0 })
             {
                 npc.Initiative = null;
             }
 
-            var moodOrActivity = ctx.AppliedChanges.Any(c => AffectsMoodOrActivity(c, npc.CharacterId));
+            if (!involved.Contains(npc.CharacterId) && npc.Initiative == null && npc.MemoryHint == null)
+            {
+                // Surfaced only as the scheduler's routine pick: one line keeps the "who might act next" signal.
+                (ctx.Result.Context ??= []).Add($"Likely to act next: {npc.Name} ({npc.CharacterId}).");
+                continue;
+            }
+
+            // A card (this turn or earlier this session) carries looks, gear, pressing needs and key memories.
+            var carded = cardedIds.Contains(npc.CharacterId) || ctx.Cursor.DeliveredCardHashes.ContainsKey(npc.CharacterId);
+            var moodOrActivity = full || ctx.AppliedChanges.Any(c => AffectsMoodOrActivity(c, npc.CharacterId));
             var looks = ctx.AppliedChanges.Any(c => AffectsAppearance(c, npc.CharacterId));
             var gear = ctx.AppliedChanges.Any(c => AffectsGearOrStats(ctx, c, npc.CharacterId));
-            var carded = cardedIds.Contains(npc.CharacterId);
 
             if (!moodOrActivity)
             {
@@ -316,6 +345,16 @@ public partial class MutationTools
             {
                 npc.Equipped = null;
                 npc.Carried = null;
+            }
+
+            if (carded || full)
+            {
+                npc.KnownNeeds = []; // the card's pressing needs and the need edge lines say what matters
+            }
+
+            if (npc.Initiative != null && (carded || full))
+            {
+                npc.Initiative = npc.Initiative with { RelevantMemories = null };
             }
 
             if (npc.CurrentMood != null || npc.CurrentActivity != null || npc.CurrentAppearance != null
