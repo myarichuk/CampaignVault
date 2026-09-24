@@ -50,7 +50,7 @@ public sealed class LocationConnectivityPressureContributor : IPressureContribut
             }
         }
 
-        foreach (var exit in loc.Exits.Where(e => !e.OneWay))
+        foreach (var exit in loc.Exits.Where(e => e.OneWay != true))
         {
             try
             {

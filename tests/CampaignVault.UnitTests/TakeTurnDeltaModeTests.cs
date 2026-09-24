@@ -2103,7 +2103,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         }, slug);
         Assert.True(second.Success, second.Summary);
         Assert.Equal(TurnMode.Delta, second.Data!.Mode);
-        Assert.Equal(first.Data.PartyFingerprint, second.Data.PartyFingerprint);
+        Assert.Null(second.Data.PartyFingerprint); // unchanged and echoed: not repeated
         Assert.Null(second.Data.NarrativeReminder);
     }
 

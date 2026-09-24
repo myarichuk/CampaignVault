@@ -98,7 +98,7 @@ public sealed class SceneAssembler
             RecentEvents = context.Events,
             // A4: engine travel events restate what the scene already shows (LastKnownTravel keeps the route); cap at 4.
             RecentEventSummaries = context.Events.Where(e => e.Category != EventCategory.Travel)
-                .Take(4).Select(EventSummaryView.From).ToList(),
+                .Take(4).Select(EventSummaryView.ForScene).ToList(),
             ActiveCombat = NormalizeActiveCombat(context.ActiveCombat, context.Location.Id),
             IsLocationAnchored = true,
             ActiveQuests = context.ActiveQuests.Select(CampaignRepository.ToActiveQuestSummary).ToList(),

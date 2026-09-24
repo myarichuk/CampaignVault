@@ -70,7 +70,7 @@ public sealed class NpcInitiativeService(
             : null;
 
         return new NpcInitiativeEnrichment(
-            tension,
+            Math.Round(tension),
             ctx.IncludeTensionBreakdown ? breakdown : null,
             candidates,
             relevantMemories)

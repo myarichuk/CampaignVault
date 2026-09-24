@@ -16,7 +16,7 @@ public record LocationDetailView(
     string Description,
     LocationType Type,
     string? ParentLocationId,
-    List<LocationExit> Exits,
+    List<LocationExitView> Exits,
     string? AmbientCrowd,
     int? LastVisitedDay,
     List<DepartedNpcRecord> RecentlyDeparted,
@@ -25,11 +25,12 @@ public record LocationDetailView(
     List<string> VisualTags,
     List<string> DistinctiveFeatures,
     string? ControllingFactionId,
-    int DangerModifier,
+    /// <summary>Null when 0 (no danger adjustment).</summary>
+    int? DangerModifier,
     ClimateZone? ClimateZone,
-    /// <summary>True if Description was cut down to CampaignConfig.LocationDescriptionCharCap.
-    /// Call get_entity with fullDescription=true for the complete text.</summary>
-    bool DescriptionTruncated = false)
+    /// <summary>True if Description was cut down to CampaignConfig.LocationDescriptionCharCap (null when
+    /// it wasn't). Call get_entity with fullDescription=true for the complete text.</summary>
+    bool? DescriptionTruncated = null)
 {
     /// <param name="config">Supplies the char caps; falls back to CampaignConfig's own defaults if null
     /// (e.g. the unanchored-scene stub, whose fixed short text never needs capping anyway).</param>
@@ -51,7 +52,7 @@ public record LocationDetailView(
             description!,
             l.Type,
             l.ParentLocationId,
-            l.Exits,
+            (l.Exits ?? []).Select(LocationExitView.From).ToList(),
             l.AmbientCrowd,
             l.LastVisitedDay,
             l.RecentlyDeparted,
@@ -60,10 +61,30 @@ public record LocationDetailView(
             l.VisualTags,
             l.DistinctiveFeatures,
             l.ControllingFactionId,
-            l.DangerModifier,
+            l.DangerModifier == 0 ? null : l.DangerModifier,
             l.ClimateZone,
-            descriptionTruncated);
+            descriptionTruncated ? true : null);
     }
+}
+
+/// <summary>Wire form of <see cref="LocationExit"/>: defaults (oneWay false, zero travel cost) are omitted.</summary>
+public record LocationExitView(
+    string TargetLocationId,
+    string? Description,
+    string? LockCondition = null,
+    double? TravelCostHours = null,
+    string? Terrain = null,
+    string? EncounterHint = null,
+    bool? OneWay = null)
+{
+    public static LocationExitView From(LocationExit e) => new(
+        e.TargetLocationId,
+        string.IsNullOrWhiteSpace(e.Description) ? null : e.Description,
+        e.LockCondition,
+        e.TravelCostHours is > 0 ? e.TravelCostHours : null,
+        e.Terrain,
+        e.EncounterHint,
+        e.OneWay ? true : null);
 }
 
 public class SceneView
@@ -258,9 +279,14 @@ public record NpcStatLine(
             Pf2eExtension p => (p.ArmorClass, p.Level),
             _ => ((int?)null, (int?)null)
         };
+        // Proficiency bonus follows from level; everything else in Attributes (passive Perception,
+        // custom scores) is what a scene actually rolls against.
+        var attributes = stats.Attributes?
+            .Where(kv => !kv.Key.Equals("proficiencyBonus", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
         return new NpcStatLine(
             ac, level,
-            stats.Attributes is { Count: > 0 } a ? a : null,
+            attributes is { Count: > 0 } a ? a : null,
             stats.Traits is { Count: > 0 } t ? t : null);
     }
 }
@@ -485,9 +511,21 @@ public record EventSummaryView(
     List<string> Involved,
     string? LocationId,
     int DayLogged,
-    MemoryImportance Importance,
+    MemoryImportance? Importance,
     string? EmotionalBeat)
 {
+    /// <summary>Scene form: the scene names the location, the involved list repeats the roster, and
+    /// Important is the default, so only the event line itself (plus an unusual importance) travels.</summary>
+    public static EventSummaryView ForScene(Event ev) => new(
+        ev.Id,
+        ev.Summary,
+        ev.Category,
+        [],
+        null,
+        ev.DayLogged,
+        ev.Importance == MemoryImportance.Important ? null : ev.Importance,
+        ev.EmotionalBeat);
+
     public static EventSummaryView From(Event ev) => new(
         ev.Id,
         ev.Summary,

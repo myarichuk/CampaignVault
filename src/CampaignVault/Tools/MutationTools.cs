@@ -583,7 +583,13 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     {
         var fingerprint = await ComputePartyLocationHpFingerprintAsync(ctx);
         ctx.Cursor.LastPartyFingerprint = fingerprint;
-        ctx.Result.PartyFingerprint = fingerprint;
+        // Sent when the client's copy is stale (or absent) and on Full turns; an unchanged fingerprint
+        // is the one the client just echoed, so repeating it every beat was pure echo.
+        if (ctx.Mode == TurnMode.Full
+            || !string.Equals(ctx.Request?.ClientPartyFingerprint, fingerprint, StringComparison.Ordinal))
+        {
+            ctx.Result.PartyFingerprint = fingerprint;
+        }
         ctx.Result.WorldSequence = ctx.Cursor.WorldSequence;
     }
 

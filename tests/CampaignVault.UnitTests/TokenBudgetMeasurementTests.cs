@@ -462,7 +462,7 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
         // The on-demand escape hatches should still return the full text when explicitly requested.
         var fullDescScene = await tools.GetScene(locId, partyPresent: true, campaignName: slug, fullDescription: true);
         Assert.True(fullDescScene.Success, fullDescScene.Summary);
-        Assert.False(fullDescScene.Data!.Location.DescriptionTruncated);
+        Assert.Null(fullDescScene.Data!.Location.DescriptionTruncated);
         Assert.True(fullDescScene.Data!.Location.Description.Length > 1000);
     }
 }
