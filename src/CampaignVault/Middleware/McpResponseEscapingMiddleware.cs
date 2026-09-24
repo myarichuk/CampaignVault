@@ -20,7 +20,7 @@ namespace CampaignVault.Middleware;
 /// This buffers the final MCP response and re-emits it through the relaxed encoder — a pure
 /// wire-format transform, no semantic change. Two shapes are handled: a plain `application/json` body
 /// (single JSON-RPC object), and the `text/event-stream` framing the SDK actually uses for every
-/// request in this server's stateless HTTP transport (confirmed live: every `tools/call` response comes
+/// POST response in this server's HTTP transport (confirmed live: every `tools/call` response comes
 /// back as a single `event: message\ndata: {...}\n\n` block, never bare JSON) — each `data:` line's JSON
 /// payload is parsed and re-serialized in place, leaving the `event:`/blank-line framing untouched.
 /// </summary>
@@ -39,7 +39,9 @@ public class McpResponseEscapingMiddleware(RequestDelegate next, int[] mcpPorts)
         // gRPC traffic (served from the same Kestrel pipeline on a different port). Buffering would
         // defeat incremental flushing for the gRPC streaming sync service. Check the port BEFORE
         // swapping Response.Body, not after — swapping it is what causes the buffering.
-        if (Array.IndexOf(mcpPorts, context.Connection.LocalPort) < 0)
+        // Only POST carries a JSON-RPC response. In stateful mode GET opens a long-lived event stream for
+        // server-initiated messages: buffering it would hold the headers back until the stream closes.
+        if (Array.IndexOf(mcpPorts, context.Connection.LocalPort) < 0 || !HttpMethods.IsPost(context.Request.Method))
         {
             await next(context);
             return;

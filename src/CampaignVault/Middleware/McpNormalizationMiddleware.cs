@@ -14,7 +14,7 @@ public class McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormali
     public async Task InvokeAsync(HttpContext context)
     {
         if (context.Request.Method == "POST" &&
-            context.Request.Path == "/" &&
+            CampaignVault.Schema.ToolProfiles.IsMcpRoute(context.Request.Path.Value) &&
             context.Request.ContentType != null &&
             context.Request.ContentType.Contains("application/json"))
         {

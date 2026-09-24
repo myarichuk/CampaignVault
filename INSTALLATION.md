@@ -137,6 +137,19 @@ All configuration is via environment variables. No config files are needed for b
 | `MCP_BIND_ANY` | Bind `0.0.0.0` instead of `localhost` | `1` in Docker/Fly; `0` in local dev |
 | `MCP_STDIO` | Enable stdio MCP transport | unset |
 | `GRPC_PORT` | gRPC sync port for authoring UI | `50051` |
+| `MCP_STATELESS` | `1` = stateless HTTP (no `Mcp-Session-Id`; any instance serves any request). Use for multi-instance hosting or a client that mishandles session ids | unset = stateful |
+
+### Connectors: `/play` and `/build`
+
+Tool definitions are sent to the model on every call, so each connector should expose only what it needs. The server serves three MCP URLs on the same port:
+
+| URL | Tools | Use for |
+|-----|-------|---------|
+| `http://localhost:5275/play` | take_turn, get_entity, search_world, recall_history, combat, advance_world, start_session, end_session, lookup, world_build | Running a game |
+| `http://localhost:5275/build` | create_campaign, list_campaigns, get_config, onboarding (3), world_build, get_entity, search_world, lookup | Creating and seeding a campaign |
+| `http://localhost:5275/` | everything | Older clients; one connector for both |
+
+A call to a tool outside the connector's set fails as an unknown tool. `/play` is ~16k chars of tool definitions vs ~21k for `/`.
 
 ### Campaign Scoping
 

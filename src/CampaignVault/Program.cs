@@ -43,6 +43,15 @@ var httpsCertPassword = Environment.GetEnvironmentVariable("HTTPS_CERT_PASSWORD"
 // Most MCP hosts (opencode among them) only forward Content into the model's context and never
 // read StructuredContent at all, so populating it by default just doubles every response's token
 // cost for no benefit. Off unless a host that actually reads StructuredContent needs it.
+// Stateful by default: the client keeps an Mcp-Session-Id, so it can cache tools/list and the server can push
+// notifications. MCP_STATELESS=1 drops sessions (no per-session memory, any instance can serve any request) for
+// multi-instance hosting or clients that mishandle session ids. Neither mode changes model token cost: tool
+// definitions ride along on every model call either way.
+var mcpStateless = string.Equals(
+    Environment.GetEnvironmentVariable("MCP_STATELESS"),
+    "1",
+    StringComparison.OrdinalIgnoreCase);
+
 var mcpIncludeStructuredContent = string.Equals(
     Environment.GetEnvironmentVariable("MCP_INCLUDE_STRUCTURED_CONTENT"),
     "1",
@@ -216,7 +225,17 @@ if (enableStdioTransport)
 }
 
 mcpServerBuilder
-    .WithHttpTransport(options => { options.Stateless = true; })
+    .WithHttpTransport(options =>
+    {
+        options.Stateless = mcpStateless;
+        // "/play" and "/build" serve a tool subset (see ToolProfiles); runs once per session, or per request when stateless.
+        options.ConfigureSessionOptions = (httpContext, serverOptions, _) =>
+        {
+            serverOptions.ToolCollection = ToolProfiles.Filter(
+                serverOptions.ToolCollection, ToolProfiles.FromPath(httpContext.Request.Path.Value));
+            return Task.CompletedTask;
+        };
+    })
     .WithToolsFromAssembly()
     .WithRequestFilters(filters =>
     {
@@ -268,7 +287,10 @@ if (!string.IsNullOrEmpty(bearerToken))
     app.UseMiddleware<AuthMiddleware>(bearerToken);
 }
 
-app.MapMcp("/").RequireLocalPort(mcpPorts);
+foreach (var route in ToolProfiles.Routes)
+{
+    app.MapMcp(route).RequireLocalPort(mcpPorts);
+}
 app.MapGet("/info", () => "CampaignVault MCP Server (RavenDB) is running.")
     .RequireLocalPort(mcpPorts);
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
@@ -300,7 +322,8 @@ app.Lifetime.ApplicationStarted.Register(() =>
     Console.Error.WriteLine($"Database Path: {dbPathSetting}");
     Console.Error.WriteLine($"Auth Enabled: {authEnabled}");
     Console.Error.WriteLine($"HTTPS Enabled: {httpsEnabled}");
-    Console.Error.WriteLine("MCP HTTP: stateless");
+    Console.Error.WriteLine($"MCP HTTP: {(mcpStateless ? "stateless (MCP_STATELESS=1)" : "stateful")}");
+    Console.Error.WriteLine($"MCP connectors: http://localhost:{mcpPort}/ (all tools), /play, /build");
     Console.Error.WriteLine($"MCP Bind: {(bindAny ? "0.0.0.0" : "localhost")}:{mcpPort}");
     Console.Error.WriteLine($"MCP / HTTP:  http://localhost:{mcpPort}");
     if (httpsEnabled)

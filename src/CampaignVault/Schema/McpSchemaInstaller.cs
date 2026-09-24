@@ -4,30 +4,34 @@ using ModelContextProtocol.Server;
 namespace CampaignVault.Schema;
 
 /// <summary>
-/// Installs pre-built, tiered tool schemas at startup, replacing per-request generation.
-/// This runs once via PostConfigure and never recomputes—dramatically reducing tools/list overhead.
+/// Installs pre-built, tiered tool schemas via PostConfigure. The HTTP transport builds fresh
+/// McpServerOptions for every session (every request when stateless, or whenever ConfigureSessionOptions
+/// is set), so this PostConfigure runs per session: the schemas are built once and cached here.
 /// </summary>
 internal static class McpSchemaInstaller
 {
+    private static readonly JsonSerializerOptions SchemaJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<ToolSchemaMode, JsonElement> TakeTurnSchemas = new();
+    private static readonly Lazy<JsonElement> WorldBuildSchema = new(() => WorldBuildSchemaBuilder.Build(SchemaJsonOptions));
+    private static readonly JsonElement MinimalOutputSchema = JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone();
+
     public static IServiceCollection AddCampaignVaultToolSchemas(this IServiceCollection services)
     {
         services.AddOptions<McpServerOptions>().PostConfigure<IConfiguration>((options, configuration) =>
         {
             var mode = ResolveMode(configuration);
-            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Install take_turn schema
             if (options.ToolCollection?.TryGetPrimitive("take_turn", out var takeTurnTool) == true)
             {
-                var takeTurnSchema = TakeTurnSchemaBuilder.Build(jsonOptions, mode);
-                takeTurnTool.ProtocolTool.InputSchema = takeTurnSchema;
+                takeTurnTool.ProtocolTool.InputSchema =
+                    TakeTurnSchemas.GetOrAdd(mode, m => TakeTurnSchemaBuilder.Build(SchemaJsonOptions, m));
             }
 
             // Install world_build schema
             if (options.ToolCollection?.TryGetPrimitive("world_build", out var worldBuildTool) == true)
             {
-                var worldBuildSchema = WorldBuildSchemaBuilder.Build(jsonOptions);
-                worldBuildTool.ProtocolTool.InputSchema = worldBuildSchema;
+                worldBuildTool.ProtocolTool.InputSchema = WorldBuildSchema.Value;
             }
 
             // Reflection-derived OutputSchemas are pure response-shape scaffolding (~17k chars across
@@ -37,15 +41,13 @@ internal static class McpSchemaInstaller
             // summary) — it never validates the return value against the schema's shape. Verified
             // live: a bare {"type":"object"} stub still produces full StructuredContent and a collapsed
             // Content. The model reads the real response JSON on every call anyway.
-            using var minimalOutputSchemaDoc = JsonDocument.Parse("""{"type":"object"}""");
-            var minimalOutputSchema = minimalOutputSchemaDoc.RootElement.Clone();
             if (options.ToolCollection is not null)
             {
                 foreach (var tool in options.ToolCollection)
                 {
                     if (tool.ProtocolTool.OutputSchema is not null)
                     {
-                        tool.ProtocolTool.OutputSchema = minimalOutputSchema;
+                        tool.ProtocolTool.OutputSchema = MinimalOutputSchema;
                     }
                 }
             }
