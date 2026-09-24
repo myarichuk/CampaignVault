@@ -26,11 +26,14 @@ public sealed class SceneNpcPresenceFactory
             // fields, or written by a path that skipped them) despite the C# `= new()` defaults —
             // mirrors the same defensive null-coalescing in CampaignRepository.BuildNpcSummaryAsync.
             var knownNeeds = (npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>())
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+                .Where(kv => Math.Round(kv.Value) > 0)
+                .ToDictionary(kv => kv.Key, kv => (float)Math.Round(kv.Value));
             // Only this NPC's custom overrides travel here — campaign-wide descriptor text (e.g.
             // stress/fatigue) is shared by every present NPC and goes once into the scene-level
             // NeedDescriptorLegend instead (SceneAssembler.Assemble), not repeated per NPC.
-            var needDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
+            var needDescriptors = (npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>())
+                .Where(kv => !context.GlobalNeedDescriptors.TryGetValue(kv.Key, out var global) || global != kv.Value)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             var initiativeContext = new NpcInitiativeContext
             {
@@ -62,7 +65,7 @@ public sealed class SceneNpcPresenceFactory
                 CurrentMood: npc.Psychology?.CurrentMood,
                 KnownNeeds: knownNeeds,
                 NeedDescriptors: needDescriptors,
-                BehavioralSummary: _behaviorSynthesizer.GenerateSummary(npc, context.Time, context.RecentSceneEvents),
+                BehavioralSummary: null,
                 Notes: notes,
                 NotesTruncated: string.IsNullOrEmpty(notes) ? null : notesTruncated,
                 KeepAlive: npc.KeepAlive,
@@ -74,9 +77,10 @@ public sealed class SceneNpcPresenceFactory
                 TagProvenance: npc.TagProvenance,
                 Memories: npc.Psychology?.Memories ?? new Dictionary<string, MemoryNode>(),
                 SystemStats: npc.SystemStats,
-                BehavioralTension: enrichment.BehavioralTension,
+                Stats: NpcStatLine.From(npc.SystemStats),
+                BehavioralTension: Math.Round(enrichment.BehavioralTension),
                 ActiveInitiatives: enrichment.ActiveInitiatives.ToList(),
-                RelevantMemories: enrichment.RelevantMemories.ToList(),
+                RelevantMemories: enrichment.RelevantMemories.Take(2).ToList(),
                 EquippedItems: equippedItems,
                 CarriedItems: carriedItems,
                 TurnIntent: enrichment.TurnIntent

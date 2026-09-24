@@ -68,7 +68,8 @@ public sealed class SceneAssembler
             ItemsByHolder = context.ItemsByHolder,
             Time = context.Time,
             Config = context.Config,
-            Campaign = context.Campaign
+            Campaign = context.Campaign,
+            GlobalNeedDescriptors = context.GlobalNeedDescriptors
         });
 
         // Generate recognition hints for PCs based on their skills/background vs. location/NPC features
@@ -99,7 +100,9 @@ public sealed class SceneAssembler
             NeedDescriptorLegend = new Dictionary<string, string>(context.GlobalNeedDescriptors),
             VisibleItems = context.Items.Select(ItemSummaryView.From).ToList(),
             RecentEvents = context.Events,
-            RecentEventSummaries = context.Events.Select(EventSummaryView.From).ToList(),
+            // A4: engine travel events restate what the scene already shows (LastKnownTravel keeps the route); cap at 4.
+            RecentEventSummaries = context.Events.Where(e => e.Category != EventCategory.Travel)
+                .Take(4).Select(EventSummaryView.From).ToList(),
             ActiveCombat = NormalizeActiveCombat(context.ActiveCombat, context.Location.Id),
             IsLocationAnchored = true,
             ActiveQuests = context.ActiveQuests.Select(CampaignRepository.ToActiveQuestSummary).ToList(),

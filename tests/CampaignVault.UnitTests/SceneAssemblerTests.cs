@@ -113,8 +113,8 @@ public class SceneAssemblerTests
         // repeated for every present NPC.
         Assert.Equal("Personal hunger descriptor", summary.NeedDescriptors["hunger"]);
         Assert.DoesNotContain("tiredness", summary.NeedDescriptors.Keys);
-        Assert.Equal(42.5, summary.BehavioralTension);
-        Assert.Equal("Alice looks ready to bolt.", summary.BehavioralSummary);
+        Assert.Equal(42, summary.BehavioralTension); // wire value is rounded
+        Assert.Null(summary.BehavioralSummary); // dropped from scene cards (A1)
         Assert.Single(summary.ActiveInitiatives!);
         Assert.NotNull(summary.CarriedItems);
         Assert.Single(summary.CarriedItems!);

@@ -1819,7 +1819,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.Equal(TurnMode.Full, seed.Data!.Mode);
         var seedPresence = Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
         Assert.NotNull(seedPresence.CurrentAppearance);
-        Assert.NotNull(seedPresence.BehavioralSummary);
+        Assert.NotNull(seedPresence.CurrentActivity); // BehavioralSummary is no longer on scene cards (A1)
 
         var untouched = await Refresh([new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery, Involved = [companionId] }]);
         Assert.True(untouched.Success, untouched.Summary);
@@ -1832,7 +1832,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.True(touched.Success, touched.Summary);
         Assert.Equal(TurnMode.Delta, touched.Data!.Mode);
         var touchedPresence = Assert.Single(touched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
-        Assert.NotNull(touchedPresence.BehavioralSummary);
+        Assert.NotNull(touchedPresence.CurrentActivity);
         Assert.Equal("elated", touchedPresence.CurrentMood);
     }
 

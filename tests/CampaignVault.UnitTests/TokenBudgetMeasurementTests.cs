@@ -77,9 +77,10 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
     /// <summary>
     /// Travel-only delta ratio: P1-4 departure-side refetch means each genuine transition turn
     /// carries both the destination and the source scene. Measured at ~0.66 post-P1-4, so 0.80
-    /// leaves growth room while still failing well before a second full snapshot.
+    /// leaves growth room while still failing well before a second full snapshot. Raised to 0.85 when the
+    /// scene NPC card projection shrank the full snapshot (357 tokens); the delta itself did not grow.
     /// </summary>
-    private const double MaxTravelDeltaShareOfFull = 0.80;
+    private const double MaxTravelDeltaShareOfFull = 0.85;
 
     public TokenBudgetMeasurementTests(RavenDBFixture fixture, ITestOutputHelper output)
     {

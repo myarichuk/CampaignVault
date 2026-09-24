@@ -12,4 +12,6 @@ public sealed class SceneNpcPresenceContext
     public required CampaignTime Time { get; init; }
     public required CampaignConfig Config { get; init; }
     public required Campaign Campaign { get; init; }
+    /// <summary>Campaign-wide need descriptors; these ride the scene legend, so per-NPC copies are dropped.</summary>
+    public IReadOnlyDictionary<string, string> GlobalNeedDescriptors { get; init; } = new Dictionary<string, string>();
 }

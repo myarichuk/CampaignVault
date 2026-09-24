@@ -153,6 +153,9 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     private sealed class TurnContext(TakeTurnRequest? request, string campaign, IAsyncDocumentSession session)
     {
         public TakeTurnRequest? Request { get; } = request;
+
+        /// <summary>Set when an HP-only fingerprint mismatch asks for the party block instead of a reseed.</summary>
+        public bool PartyResyncRequested { get; set; }
         public string Campaign { get; } = campaign;
         public IAsyncDocumentSession Session { get; } = session;
         public TurnResult Result { get; } = new();
@@ -524,6 +527,15 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         if (string.Equals(clientValue, cursor.LastPartyFingerprint, StringComparison.Ordinal))
         {
             _logger.LogDebug("take_turn party fingerprint (campaign {Campaign}): echo-match", ctx.Campaign);
+            return false;
+        }
+
+        if (PartyFingerprint.SameLocations(clientValue, cursor.LastPartyFingerprint))
+        {
+            // B1: HP-only drift doesn't need a scene reseed; resend the party block so the model resyncs cheaply.
+            _logger.LogInformation(
+                "take_turn party fingerprint HP-only mismatch (campaign {Campaign}) — sending party instead of a full reseed", ctx.Campaign);
+            ctx.PartyResyncRequested = true;
             return false;
         }
 
@@ -1891,7 +1903,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             BehavioralSummary = trim.SkipBehavioralSummary ? null : npc.BehavioralSummary,
             KnownNeeds = knownNeeds,
             NeedDescriptors = needDescriptors,
-            SystemStats = trim.StripGear ? null : npc.SystemStats,
+            Stats = trim.StripGear ? null : npc.Stats,
             EquippedItems = trim.StripGear ? null : npc.EquippedItems,
             CarriedItems = trim.StripGear ? null : npc.CarriedItems,
             RelevantMemories = npc.RelevantMemories is { Count: > 0 } ? [] : npc.RelevantMemories,
@@ -1919,6 +1931,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         VisualTags = null,
         DistinctiveFeatures = null,
         SystemStats = null,
+        Stats = null,
         BehavioralTension = null,
         ActiveInitiatives = null,
         RelevantMemories = null,
@@ -2159,7 +2172,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
     private async Task IncludePartyAsync(TurnContext ctx)
     {
-        if (ctx.Request?.IncludeParty != true)
+        if (ctx.Request?.IncludeParty != true && !ctx.PartyResyncRequested)
         {
             return;
         }
@@ -2985,9 +2998,8 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             var turnCursor = await _repository.GetTurnCursorAsync(new CampaignSession(session, effective));
             if (turnCursor == null)
             {
-                await session.StoreAsync(
-                    new TurnCursor { Id = _keys.StateTurnCursor(effective), CampaignName = effective, ForcedFullReseedPending = true },
-                    _keys.StateTurnCursor(effective));
+                turnCursor = new TurnCursor { Id = _keys.StateTurnCursor(effective), CampaignName = effective, ForcedFullReseedPending = true };
+                await session.StoreAsync(turnCursor, _keys.StateTurnCursor(effective));
             }
             else
             {
@@ -2999,6 +3011,13 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 .Customize(x => x.WaitForNonStaleResults())
                 .Select(c => c.Id)
                 .ToListAsync();
+
+            // F6: the skip heals HP in this session; load tracked instances (not an index query) so the
+            // fingerprint reflects the unsaved changes, and store it so the next take_turn sees no false drift.
+            var partyDocs = await session.LoadAsync<Character>(partyIds);
+            var fingerprint = PartyFingerprint.Compute(partyDocs.Values.Where(c => c != null));
+            result.PartyFingerprint = fingerprint;
+            turnCursor.LastPartyFingerprint = fingerprint;
 
             await _repository.LogEventAsync(session,
                 new Event

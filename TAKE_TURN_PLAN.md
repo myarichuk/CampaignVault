@@ -203,7 +203,7 @@ The **"is there an alchemist?"** flow then needs no placeholder. The model decid
 - [ ] T4 **Reseed correctness** (B1, F6). `advance_world` returns and stores `partyFingerprint`; HP-only drift sends `partyDelta`, location drift stays Full.
 - [ ] T5 **Travel** (F1, F2, F3). Party move as one group: one roll, one clock advance. Prorated buckets. Separation as a rare outcome that needs a reason (optional `hazard`), reported explicitly.
 - [ ] T5b **Remove POIs** (feature work, not just trimming):
-  - Migration: POIs with details → fixture items + `ItemDetail`s.
+  - Startup data migration (decided: remove them from existing data, don't just ignore them). An idempotent, versioned step that runs once per campaign at startup: POIs with details → fixture items + `ItemDetail`s held by the location; name-only POIs dropped (folded into an empty description); then clears `PointsOfInterest`, `PointOfInterestDetails`, `PoisUsedByActivity`. Tested on a scratch DB only; never run against real campaign data by me.
   - `world_build` compatibility shim.
   - Remove the POI contributors, materializer and `location_update` POI fields.
   - Update prompts, skills and help.

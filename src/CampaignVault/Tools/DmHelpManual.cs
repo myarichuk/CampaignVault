@@ -154,6 +154,11 @@ For more details, call `lookup kind=commit_schema` (optional category filter: Co
 **Engage visual tags early:** Persist visual state (bloodied, disheveled, wanted) via `character_update` early so crowd interrupt and faction pressure can react naturally.
 
 **Watch your WorldPressure — it's your co-DM:** Never ignore ENGINE WARNING or NARRATIVE PROMPT. If you see the same pressure twice, you didn't commit the fix.
+
+
+## FAQ: crowd reactions to a vulnerable party member
+
+When a scene pressure says a party member looks vulnerable in a crowd, pick one: (1) one roll, `{ ""$type"": ""scene_interrupt_check"", ""locationId"": ""<loc>"", ""characterId"": ""<pc>"", ""riskModifier"": 20, ""notes"": ""bloodied, crowd tense"" }`; (2) promote a single aggressor via `world_build` with `batch.characters: [{ id: ""chars/crowd-figure-1"", name: ""Figure from the Crowd"", currentLocationId: ""<loc>"", currentActivity: ""Stepping forward from the crowd"", keepAlive: false }]`; (3) persist the appearance first with `character_update` (`currentAppearance`/`visualTags`) if it isn't committed yet. Never spawn the whole crowd.
 ";
 
     internal const string OnboardingSection = @"# Guided Campaign Onboarding (Session 0 Q&A)

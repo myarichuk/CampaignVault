@@ -278,6 +278,33 @@ public record FactionPresenceSummary(
 }
 
 /// <summary>
+/// Wire projection of an NPC's SystemExtension for scenes: what the DM narrates from (AC, level, custom
+/// attributes/traits). Ability scores, skill/save modifiers and engine caches stay server-side; the
+/// full block is available through get_entity.
+/// </summary>
+public record NpcStatLine(
+    int? ArmorClass = null,
+    int? Level = null,
+    Dictionary<string, float>? Attributes = null,
+    Dictionary<string, string>? Traits = null)
+{
+    public static NpcStatLine? From(SystemExtension? stats)
+    {
+        if (stats == null) return null;
+        var (ac, level) = stats switch
+        {
+            Dnd5eExtension d => ((int?)d.ArmorClass, d.Level),
+            Pf2eExtension p => (p.ArmorClass, p.Level),
+            _ => ((int?)null, (int?)null)
+        };
+        return new NpcStatLine(
+            ac, level,
+            stats.Attributes is { Count: > 0 } a ? a : null,
+            stats.Traits is { Count: > 0 } t ? t : null);
+    }
+}
+
+/// <summary>
 /// Lightweight view of an NPC for scene exploration.
 /// Contains just enough psychological + situational data for the DM to roleplay without dumping entire documents.
 /// </summary>
@@ -325,6 +352,7 @@ public record NpcPresenceSummary(
     /// System-specific TTRPG stats (e.g. AC, Ability Scores, Skills).
     /// Essential for the LLM to understand mechanical capabilities at a glance.
     /// </summary>
+    [property: JsonIgnore]
     SystemExtension? SystemStats = null,
     /// <summary>Measured behavioral tension (0-100). Null means "unknown / not measured this turn"
     /// (e.g. a delta-mode stubbed presence entry) — distinct from a genuine measured 0 (calm).
@@ -349,7 +377,9 @@ public record NpcPresenceSummary(
     /// <summary>Populated instead of RelevantMemories (which is emptied) on take_turn delta-mode
     /// responses — same memories, compressed to topic + one-line detail. Null on Full mode / outside
     /// take_turn (e.g. get_scene), where RelevantMemories carries the full MemoryNode objects.</summary>
-    IReadOnlyList<CompressedMemory>? CompressedMemories = null)
+    IReadOnlyList<CompressedMemory>? CompressedMemories = null,
+    /// <summary>Compact wire projection of SystemStats (the full block stays in-process, see above).</summary>
+    NpcStatLine? Stats = null)
 {
     public NpcPresenceSummary() : this(null!, null!, null!, null!, null!, null!) { }
 }
@@ -416,6 +446,8 @@ public class AdvanceResult
     public int? HoursAdvanced { get; set; }
     /// <summary>Whole calendar days actually crossed (may be 0 for a sub-day 'hours' call that doesn't cross midnight).</summary>
     public int DaysAdvanced { get; set; }
+    /// <summary>Party HP/location fingerprint after the skip; echo it as clientPartyFingerprint on the next take_turn.</summary>
+    public string? PartyFingerprint { get; set; }
 }
 
 public record RumorSummary(string Id, string Subject, string CurrentText, RumorState State)
