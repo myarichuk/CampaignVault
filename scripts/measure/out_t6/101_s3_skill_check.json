@@ -1,0 +1,33 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 79: skill check.",
+   "partyLocationId": "locations/lighthouse",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/lighthouse,chars/tamsin:17/21@locations/lighthouse",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/tamsin",
+     "actionType": "SkillCheck",
+     "actionName": "Perception",
+     "parameters": {
+      "skill": "Perception",
+      "dc": "12"
+     }
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s3-e51",
+     "summary": "Tamsin spots boot prints in the lamp room.",
+     "involvedEntityIds": [
+      "chars/tamsin"
+     ],
+     "locationId": "locations/lighthouse"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Perception (Perception): Failure. Rolled 3 vs DC 12. [3] = 3\",\"Novel beat (sim 0.48): if it reveals new info, use Important/Core on related knowledge_update; consider a plot_thread.\"],\"committedIds\":[\"events/s3-e51\"],\"worldSequence\":69},\"summary\":\"Committed 2 changes.\"}"
+}

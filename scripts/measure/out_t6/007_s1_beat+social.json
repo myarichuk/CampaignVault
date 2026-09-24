@@ -1,0 +1,31 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 7: beat+social.",
+   "partyLocationId": "locations/harbor",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/harbor,chars/tamsin:21/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s1-e4",
+     "summary": "Oda begs them to keep it quiet.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/oda"
+     ],
+     "locationId": "locations/harbor"
+    },
+    {
+     "$type": "relationship",
+     "characterId": "chars/oda",
+     "targetId": "chars/tamsin",
+     "reason": "Oda begs them to keep it quiet.",
+     "delta": 5
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Novel beat (sim 0.41): if it reveals new info, use Important/Core on related knowledge_update; consider a plot_thread.\",\"Relationship from chars/oda to chars/tamsin is now 5 (clamped -100 to 100).\"],\"committedIds\":[\"events/s1-e4\"],\"worldSequence\":5},\"summary\":\"Committed 2 changes.\"}"
+}

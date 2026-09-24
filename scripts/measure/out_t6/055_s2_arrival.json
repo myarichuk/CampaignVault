@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 44: arrival.",
+   "partyLocationId": "locations/lighthouse",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/harbor,chars/tamsin:20/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/lighthouse"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/lighthouse"
+    }
+   ],
+   "fullDetailLocationId": "locations/lighthouse"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/d7e583ed-0aed-4833-962f-b28fc4599349\",\"events/4ad9742b-6932-4b14-a7fd-8e953c5c67bc\"],\"npcs\":[{\"characterId\":\"chars/sera\",\"name\":\"Sera the Baker\",\"currentAppearance\":\"\",\"currentMood\":\"Content\",\"knownNeeds\":{\"hunger\":29,\"thirst\":25,\"tiredness\":18,\"social_drive\":11},\"initiative\":{\"behavioralTension\":8}}],\"cards\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"mood\":\"Content\",\"stats\":{\"armorClass\":16,\"level\":3,\"attributes\":{\"passivePerception\":11}},\"gear\":\"*Mace\"}],\"fullScene\":{\"location\":{\"id\":\"locations/lighthouse\",\"name\":\"Lighthouse\",\"description\":\"The lighthouse of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true}],\"recentEventSummaries\":[{\"id\":\"events/64d75d41-0972-4568-bc25-8ee0885539c0\",\"summary\":\"S2 beat 44: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/a9c8ecb6-a415-407c-9680-dcfbd5edc96f\",\"summary\":\"S1 beat 13: includeParty.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/s1-e9\",\"summary\":\"The party regroups on the stairs.\",\"category\":\"Unresolved\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Lighthouse. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/lighthouse,chars/tamsin:20/21@locations/lighthouse\",\"worldSequence\":38},\"summary\":\"Committed 2 changes.\"}"
+}

@@ -1,0 +1,36 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 63: beat+social.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/tavern,chars/tamsin:17/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s2-e41",
+     "summary": "Marta the Innkeeper trades gossip about the smugglers (s2).",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/marta"
+     ],
+     "locationId": "locations/tavern"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/marta",
+     "newMood": "amused"
+    },
+    {
+     "$type": "relationship",
+     "characterId": "chars/marta",
+     "targetId": "chars/tamsin",
+     "reason": "Marta the Innkeeper trades gossip about the smugglers (s2).",
+     "delta": 3
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":3,\"summary\":[\"Relationship from chars/marta to chars/tamsin is now 6 (clamped -100 to 100).\"],\"committedIds\":[\"events/s2-e41\"],\"npcs\":[{\"characterId\":\"chars/marta\",\"name\":\"Marta the Innkeeper\",\"currentMood\":\"amused\"}],\"worldSequence\":56},\"summary\":\"Committed 3 changes.\"}"
+}

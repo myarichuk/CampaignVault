@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 94: arrival.",
+   "partyLocationId": "locations/bell-square",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/harbor,chars/tamsin:17/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/bell-square"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/bell-square"
+    }
+   ],
+   "fullDetailLocationId": "locations/bell-square"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/5f745b8d-aeed-4816-b141-23f82d385fc2\",\"events/0aead1c2-898e-4f2f-9685-ff437a5a8a6f\"],\"narrativeReminder\":\"Echoes a recent event (sim 0.95): if only reinforcement, Trivial or skip the knowledge_update.\",\"fullScene\":{\"location\":{\"id\":\"locations/bell-square\",\"name\":\"Bell Square\",\"description\":\"The bell square of a small fishing town; salt, tar and gulls.\",\"type\":\"District\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/tavern\",\"description\":\"Path to the tavern\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/chapel\",\"description\":\"Path to the chapel\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/pim\",\"name\":\"Pim the Lamplighter\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Pim the Lamplighter knows something about the dark lighthouse.\"},{\"id\":\"chars/sera\",\"name\":\"Sera the Baker\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Sera the Baker knows something about the dark lighthouse.\"}],\"recentEventSummaries\":[{\"id\":\"events/575897d4-c49a-4f04-a8c0-01de4d5be3d7\",\"summary\":\"S3 beat 94: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/2b93559d-9014-4ebf-bd10-032254cbba80\",\"summary\":\"S3 beat 71: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Bell Square. \"},\"partyFingerprint\":\"chars/bram:21/24@locations/bell-square,chars/tamsin:17/21@locations/bell-square\",\"worldSequence\":83},\"summary\":\"Committed 2 changes.\"}"
+}

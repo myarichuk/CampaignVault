@@ -1,0 +1,29 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 70: beat+social.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/tavern,chars/tamsin:17/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s3-e46",
+     "summary": "Tamsin asks Marta the Innkeeper about the dark lamp (s3).",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/marta"
+     ],
+     "locationId": "locations/tavern"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/marta",
+     "newMood": "curious"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/s3-e46\"],\"npcs\":[{\"characterId\":\"chars/marta\",\"name\":\"Marta the Innkeeper\",\"currentMood\":\"curious\"}],\"worldSequence\":61},\"summary\":\"Committed 2 changes.\"}"
+}

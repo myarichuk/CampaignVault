@@ -1,5 +1,5 @@
 import os, json, sys, collections
-HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, os.environ.get('OUT_DIR', 'out'))
 SESS = sys.argv[1] if len(sys.argv) > 1 else 's1'
 J = lambda v: len(json.dumps(v, separators=(',', ':'), ensure_ascii=False))
 

@@ -81,7 +81,8 @@ public partial class MutationTools
             {
                 var trimmed = scene.Trimmed;
                 scene.Set(scene.Get().Select(n => n.IsPc ? n : RosterEntry(n,
-                    withNote: !ctx.Cursor.DeliveredCardHashes.ContainsKey(n.Id) || cardedIds.Contains(n.Id),
+                    // The hook note stands in for a card not yet sent; a card in this response carries the notes.
+                    withNote: !ctx.Cursor.DeliveredCardHashes.ContainsKey(n.Id),
                     keepChanges: trimmed && !cardedIds.Contains(n.Id))).ToList());
             }
 

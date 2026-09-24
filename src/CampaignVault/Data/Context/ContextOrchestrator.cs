@@ -90,6 +90,7 @@ internal sealed class ContextOrchestrator(
         var deliveredSet = new HashSet<string>(delivered, StringComparer.OrdinalIgnoreCase);
         var lines = new List<string>();
         var used = 0;
+        var withheld = 0;
         foreach (var item in items
                      .Where(i => !deliveredSet.Contains(i.Key))
                      .GroupBy(i => i.Key, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
@@ -98,12 +99,18 @@ internal sealed class ContextOrchestrator(
             if (used + item.Text.Length > CharBudget && lines.Count > 0)
             {
                 // Not recorded as delivered: it can ride a later turn if it is still relevant.
+                withheld++;
                 continue;
             }
 
             lines.Add(item.Text);
             used += item.Text.Length;
             delivered.Add(item.Key);
+        }
+
+        if (withheld > 0)
+        {
+            lines.Add($"(+{withheld} more context line(s) held back for space; they come with a later turn, or pull with get_entity.)");
         }
 
         return lines;

@@ -1,0 +1,13 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 32: world state.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/tavern,chars/tamsin:20/21@locations/tavern",
+   "includeWorldState": true
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":false,\"changesProcessed\":0,\"worldStateDelta\":{\"time\":{\"epoch\":\"Current Era\",\"year\":1492,\"month\":1,\"day\":1,\"hour\":6,\"totalDaysElapsed\":0,\"formattedDate\":\"Day 1, Month 1, Year 1492 (Current Era) \u2014 Dawn\"},\"pressureUnchanged\":false,\"worldPressure\":[\"SIMULATION PRESSURE: (5 similar issues - Unresolved): Unresolved thread: 'Tamsin asks Pim the Lamplighter about the dark lamp (s1).' (0 days old). Resolve or advance via commit e.g. [ { \\\"$type\\\": \\\"event\\\", \\\"category\\\": \\\"Resolution\\\", \\\"summary\\\": \\\"...resolved...\\\", \\\"involved\\\": [\\\"ids...\\\"] } ] or convert to rumor. [id: events/s1-e1], Unresolved thread: 'Tamsin asks Sera the Baker about the dark lamp (s1).' (0 days old). Resolve or advance via commit e.g. [ { \\\"$type\\\": \\\"event\\\", \\\"category\\\": \\\"Resolution\\\", \\\"summary\\\": \\\"...resolved...\\\", \\\"involved\\\": [\\\"ids...\\\"] } ] or convert to rumor. [id: events/s1-e2], Unresolved thread: 'Oda admits the oil ledger went missing (s1).' (0 days old). Resolve or advance via commit e.g. [ { \\\"$type\\\": \\\"event\\\", \\\"category\\\": \\\"Resolution\\\", \\\"summary\\\": \\\"...resolved...\\\", \\\"involved\\\": [\\\"ids...\\\"] } ] or convert to rumor. [id: events/s1-e3], Unresolved thread: 'Oda begs them to keep it quiet.' (0 days old). Resolve or advance via commit e.g. [ { \\\"$type\\\": \\\"event\\\", \\\"category\\\": \\\"Resolution\\\", \\\"summary\\\": \\\"...resolved...\\\", \\\"involved\\\": [\\\"ids...\\\"] } ] or convert to rumor. [id: events/s1-e4], Unresolved thread: 'Fenn says boats moved at night tide.' (0 days old). Resolve or advance via commit e.g. [ { \\\"$type\\\": \\\"event\\\", \\\"category\\\": \\\"Resolution\\\", \\\"summary\\\": \\\"...resolved...\\\", \\\"involved\\\": [\\\"ids...\\\"] } ] or convert to rumor. [id: events/s1-e5]\"]},\"worldSequence\":28},\"summary\":\"State refreshed.\"}"
+}

@@ -322,7 +322,8 @@ public class TakeTurnNeedDrivenTests : IClassFixture<RavenDBFixture>
 
         var lines = await orchestrator.CollectAsync(turn, delivered, TestContext.Current.CancellationToken);
 
-        Assert.Equal([big], lines); // the rest would overflow the budget and waits for a later turn
+        Assert.Equal(big, lines[0]); // the rest would overflow the budget and waits for a later turn
+        Assert.StartsWith("(+2 more context line(s)", lines[1]);
         Assert.Equal(["a"], delivered);
 
         var next = await orchestrator.CollectAsync(turn, delivered, TestContext.Current.CancellationToken);

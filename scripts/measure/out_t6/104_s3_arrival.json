@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 82: arrival.",
+   "partyLocationId": "locations/harbor",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/lighthouse,chars/tamsin:17/21@locations/lighthouse",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/harbor"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/harbor"
+    }
+   ],
+   "fullDetailLocationId": "locations/harbor"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/2f24f9c0-03c5-40c3-ac34-a512c0239efe\",\"events/7ab20546-007e-4923-a507-1184254c90b5\"],\"npcs\":[{\"characterId\":\"chars/pim\",\"name\":\"Pim the Lamplighter\",\"currentAppearance\":\"\",\"currentMood\":\"Content\",\"knownNeeds\":{\"hunger\":34,\"thirst\":30,\"tiredness\":22,\"social_drive\":11},\"initiative\":{\"behavioralTension\":9}}],\"cards\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"mood\":\"Content\",\"stats\":{\"armorClass\":16,\"level\":3,\"attributes\":{\"passivePerception\":11}},\"gear\":\"*Mace\"},{\"id\":\"chars/oda\",\"name\":\"Oda the Harbormaster\",\"mood\":\"Content\",\"stance\":\"Tamsin: neutral (15)\",\"notes\":\"Oda the Harbormaster knows something about the dark lighthouse.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}},\"memories\":[\"Tamsin asked: customs seal s3: Tamsin the stranger pressed me about customs seal s3; I told her more than I meant to.\",\"Tamsin asked: missing ledger s3: Tamsin the stranger pressed me about missing ledger s3; I told her more than I meant to.\"]},{\"id\":\"chars/fenn\",\"name\":\"Fenn the Netmender\",\"mood\":\"Content\",\"notes\":\"Fenn the Netmender knows something about the dark lighthouse.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}},\"memories\":[\"Tamsin asked: night boats s3: Tamsin the stranger pressed me about night boats s3; I told her more than I meant to.\",\"Tamsin asked: night boats s2: Tamsin the stranger pressed me about night boats s2; I told her more than I meant to.\"]}],\"fullScene\":{\"location\":{\"id\":\"locations/harbor\",\"name\":\"Harbor\",\"description\":\"The harbor of a small fishing town; salt, tar and gulls.\",\"type\":\"District\",\"exits\":[{\"targetLocationId\":\"locations/bell-square\",\"description\":\"Path to the bell square\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/lighthouse\",\"description\":\"Path to the lighthouse\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/warehouse\",\"description\":\"Path to the warehouse\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/oda\",\"name\":\"Oda the Harbormaster\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Oda the Harbormaster knows something about the dark lighthouse.\"},{\"id\":\"chars/fenn\",\"name\":\"Fenn the Netmender\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Fenn the Netmender knows something about the dark lighthouse.\"},{\"id\":\"chars/dock-guard\",\"name\":\"Dock Guard Hal\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Dock Guard Hal knows something about the dark lighthouse.\"}],\"recentEventSummaries\":[{\"id\":\"events/a398ee73-4ae3-442c-9f74-bdb129911681\",\"summary\":\"S3 beat 82: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/48ae5e69-9b3b-478a-add0-78f3e45a05f4\",\"summary\":\"S3 beat 77: skill check.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/s3-e50\",\"summary\":\"Tamsin studies the tar marks on the pier.\",\"category\":\"Unresolved\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Harbor. \"},\"partyFingerprint\":\"chars/bram:21/24@locations/harbor,chars/tamsin:17/21@locations/harbor\",\"worldSequence\":72},\"summary\":\"Committed 2 changes.\"}"
+}

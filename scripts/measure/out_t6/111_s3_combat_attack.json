@@ -1,0 +1,34 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 87: combat attack.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/warehouse,chars/tamsin:17/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/thug-b",
+     "actionType": "Attack",
+     "actionName": "Club",
+     "targetIds": [
+      "chars/bram"
+     ]
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s3-e56",
+     "summary": "Exchange 2: steel in the salt dust.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/thug-a",
+      "chars/thug-b"
+     ],
+     "locationId": "locations/warehouse"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Club vs Bram: Missed. Attack 8 vs AC 16. [8] = 8\",\"Echoes a recent event (sim 0.96): if only reinforcement, Trivial or skip the knowledge_update.\"],\"committedIds\":[\"events/s3-e56\"],\"cards\":[{\"id\":\"chars/thug-b\",\"name\":\"Club Thug\",\"mood\":\"Content\",\"notes\":\"Club Thug knows something about the dark lighthouse.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}}}],\"worldSequence\":76},\"summary\":\"Committed 2 changes.\"}"
+}

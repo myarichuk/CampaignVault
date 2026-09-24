@@ -9,7 +9,10 @@ import os, sys, json, time, statistics
 sys.argv = ['m', '/']
 HERE = os.path.dirname(os.path.abspath(__file__))
 exec(open(os.path.join(HERE, 'mcp_client.py')).read())
-OUT = os.path.join(HERE, 'out'); os.makedirs(OUT, exist_ok=True)
+# RICH=1 gives every NPC SFW traits/wants/fears (real campaigns have them; empty scratch NPCs make
+# need-driven cards look cheaper than they are). OUT_DIR picks the capture folder.
+RICH = os.environ.get('RICH') == '1'
+OUT = os.path.join(HERE, os.environ.get('OUT_DIR', 'out')); os.makedirs(OUT, exist_ok=True)
 
 C = "saltmarsh-bell"
 PC, CO = "chars/tamsin", "chars/bram"
@@ -60,6 +63,12 @@ def seed():
         for n in ids:
             chars.append({"id": f"chars/{n}", "name": NAMES[n], "currentLocationId": L[loc], "currentHp": 11, "maxHp": 11,
                           "systemStats": stats(2, 12), "notes": f"{NAMES[n]} knows something about the dark lighthouse."})
+            if RICH:
+                chars[-1]["psychology"] = {"traits": ["patient", "dry humor", "keeps promises"],
+                                           "wants": ["a quiet season", "the lamp relit"],
+                                           "fears": ["the sea at night", "debt"]}
+                chars[-1]["notes"] += " Grew up in town; owes the chapel a favor and never talks about the storm of '09."
+
     items = [{"id": "items/tamsin-lockpicks", "name": "Thieves' Tools", "holderId": PC},
              {"id": "items/tamsin-shortsword", "name": "Shortsword", "holderId": PC, "isEquipped": True},
              {"id": "items/bram-mace", "name": "Mace", "holderId": CO, "isEquipped": True},

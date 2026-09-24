@@ -1,0 +1,29 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 35: beat+social.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/tavern,chars/tamsin:20/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s2-e23",
+     "summary": "Tamsin asks Captain Rhel about the dark lamp (s2).",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/rhel"
+     ],
+     "locationId": "locations/tavern"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/rhel",
+     "newMood": "curious"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Novel beat (sim 0.29): if it reveals new info, use Important/Core on related knowledge_update; consider a plot_thread.\"],\"committedIds\":[\"events/s2-e23\"],\"npcs\":[{\"characterId\":\"chars/rhel\",\"name\":\"Captain Rhel\",\"currentMood\":\"curious\"}],\"worldSequence\":30},\"summary\":\"Committed 2 changes.\"}"
+}

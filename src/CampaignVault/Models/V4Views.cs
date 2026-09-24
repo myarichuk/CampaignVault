@@ -494,7 +494,8 @@ public record ItemSummaryView(
 /// Event directly.
 /// </summary>
 public record EventSummaryView(
-    string Id,
+    /// <summary>Null for scene copies of auto-logged SceneCommit narratives (never cited by id).</summary>
+    string? Id,
     string Summary,
     EventCategory Category,
     List<string> Involved,
@@ -506,7 +507,8 @@ public record EventSummaryView(
     /// <summary>Scene form: the scene names the location, the involved list repeats the roster, and
     /// Important is the default, so only the event line itself (plus an unusual importance) travels.</summary>
     public static EventSummaryView ForScene(Event ev) => new(
-        ev.Id,
+        // The auto-logged narrative of a take_turn is never cited by id; other events may be (sourceEventIds).
+        ev.Category == EventCategory.SceneCommit ? null : ev.Id,
         ev.Summary,
         ev.Category,
         [],

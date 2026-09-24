@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 49: arrival.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/harbor,chars/tamsin:20/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/warehouse"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/warehouse"
+    }
+   ],
+   "fullDetailLocationId": "locations/warehouse"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/53482b10-0040-4ddd-9e6f-1fb4e1b555a0\",\"events/51a2f13b-a077-415d-956e-110eb1611310\"],\"narrativeReminder\":\"Echoes a recent event (sim 0.93): if only reinforcement, Trivial or skip the knowledge_update.\",\"cards\":[{\"id\":\"chars/vess\",\"name\":\"Vess\",\"mood\":\"Content\",\"stance\":\"Tamsin: neutral (\u200e-5)\",\"notes\":\"Vess knows something about the dark lighthouse.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}},\"gear\":\"Oil Ledger\"}],\"fullScene\":{\"location\":{\"id\":\"locations/warehouse\",\"name\":\"Warehouse\",\"description\":\"The warehouse of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/vess\",\"name\":\"Vess\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Vess knows something about the dark lighthouse.\"},{\"id\":\"chars/thug-a\",\"name\":\"Knife Thug\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Knife Thug knows something about the dark lighthouse.\"},{\"id\":\"chars/thug-b\",\"name\":\"Club Thug\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Club Thug knows something about the dark lighthouse.\"}],\"recentEventSummaries\":[{\"id\":\"events/38355638-f525-4195-9239-57b0be89b040\",\"summary\":\"S2 beat 49: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/80946519-f75c-4cd6-95cb-75cbcc1a23f8\",\"summary\":\"S1 beat 24: includeParty.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/s1-e17\",\"summary\":\"Bandaging after the fight.\",\"category\":\"Unresolved\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Warehouse. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/warehouse,chars/tamsin:20/21@locations/warehouse\",\"worldSequence\":43},\"summary\":\"Committed 2 changes.\"}"
+}

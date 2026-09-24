@@ -1,0 +1,29 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 36: beat+social.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/tavern,chars/tamsin:20/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s2-e24",
+     "summary": "Tamsin asks Marta the Innkeeper about the dark lamp (s2).",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/marta"
+     ],
+     "locationId": "locations/tavern"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/marta",
+     "newMood": "curious"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/s2-e24\"],\"npcs\":[{\"characterId\":\"chars/marta\",\"name\":\"Marta the Innkeeper\",\"currentMood\":\"curious\"}],\"worldSequence\":31},\"summary\":\"Committed 2 changes.\"}"
+}

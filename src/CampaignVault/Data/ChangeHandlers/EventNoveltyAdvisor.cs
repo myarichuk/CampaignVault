@@ -73,12 +73,12 @@ internal static class EventNoveltyAdvisor
 
         if (maxSimilarity < LowSimilarityThreshold)
         {
-            return (maxSimilarity, $"Novel beat (sim {maxSimilarity:F2}): if it reveals new info, use Important/Core on related knowledge_update; consider a plot_thread.");
+            return (maxSimilarity, $"Novel beat ({maxSimilarity:F2}): new info → Important/Core memory, maybe a plot_thread.");
         }
 
         if (maxSimilarity > HighSimilarityThreshold)
         {
-            return (maxSimilarity, $"Echoes a recent event (sim {maxSimilarity:F2}): if only reinforcement, Trivial or skip the knowledge_update.");
+            return (maxSimilarity, $"Echoes a recent event ({maxSimilarity:F2}): Trivial or no knowledge_update.");
         }
 
         return (maxSimilarity, null);

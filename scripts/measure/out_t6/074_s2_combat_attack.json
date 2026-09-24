@@ -1,0 +1,34 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 57: combat attack.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/warehouse,chars/tamsin:17/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/thug-b",
+     "actionType": "Attack",
+     "actionName": "Club",
+     "targetIds": [
+      "chars/bram"
+     ]
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s2-e38",
+     "summary": "Exchange 6: steel in the salt dust.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/thug-a",
+      "chars/thug-b"
+     ],
+     "locationId": "locations/warehouse"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"HP adjusted for chars/bram by \u200e-3 (now 21/24)\",\"Club vs Bram: Hit for 3 damage. (Attack 16 vs AC 16).\",\"Echoes a recent event (sim 0.91): if only reinforcement, Trivial or skip the knowledge_update.\"],\"committedIds\":[\"events/s2-e38\"],\"partyFingerprint\":\"chars/bram:21/24@locations/warehouse,chars/tamsin:17/21@locations/warehouse\",\"worldSequence\":50},\"summary\":\"Committed 2 changes.\"}"
+}

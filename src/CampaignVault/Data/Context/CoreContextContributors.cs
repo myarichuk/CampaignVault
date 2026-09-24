@@ -233,6 +233,40 @@ internal sealed class SearchContextContributor : IContextContributor
     }
 }
 
+/// <summary>Spell beat: the caster's remaining slots and other spell pools after the cast.</summary>
+internal sealed class SpellResourceContextContributor : IContextContributor
+{
+    public async Task<IEnumerable<ContextItem>> ContributeAsync(ContextTurn turn, CancellationToken ct = default)
+    {
+        var casterIds = turn.AppliedChanges.OfType<RulesetAction>()
+            .Where(a => a.ActionType == RulesetActionType.Spell)
+            .Select(a => a.CharacterId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var items = new List<ContextItem>();
+        foreach (var id in casterIds)
+        {
+            var caster = await turn.Session.LoadAsync<Character>(id, ct);
+            var pools = (caster?.SystemStats?.ResourcePools ?? [])
+                .Where(kv => kv.Key.StartsWith("spell_slots", StringComparison.OrdinalIgnoreCase)
+                             || kv.Key.Contains("focus", StringComparison.OrdinalIgnoreCase)
+                             || kv.Key.Contains("sorcery", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(kv => kv.Key)
+                .Select(kv => $"{kv.Key} {kv.Value.Current}/{kv.Value.Max}")
+                .ToList();
+            if (caster == null || pools.Count == 0)
+            {
+                continue;
+            }
+
+            var text = $"{caster.Name} has left: {string.Join(", ", pools)}";
+            items.Add(new ContextItem("slots:" + text, text, 65));
+        }
+
+        return items;
+    }
+}
+
 /// <summary>An entity tied to an open quest objective was touched: the objective's state, once.</summary>
 internal sealed class QuestLinkContextContributor : IContextContributor
 {

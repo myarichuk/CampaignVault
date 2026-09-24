@@ -1,0 +1,22 @@
+{
+ "tool": "end_session",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "handoff": {
+   "storySoFar": "Harbor mystery, session 3: the lighthouse went dark; Vess moves oil at night; Oda owes smugglers.",
+   "lastSession": "Session 3: harbor, lighthouse, warehouse fight, tavern gossip.",
+   "openThreads": [
+    "Who holds the lamp key"
+   ],
+   "npcsInPlay": [
+    {
+     "id": "chars/vess",
+     "stance": "hostile"
+    }
+   ],
+   "partyIntent": "Watch the night tide.",
+   "tone": "Slow-burn harbor mystery."
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"session\":3,\"checkpoint\":false,\"handoffChars\":244},\"summary\":\"Session 3 of 'saltmarsh-bell' ended; the handoff will open session 4.\"}"
+}

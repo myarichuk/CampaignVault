@@ -1,0 +1,8 @@
+{
+ "tool": "combat",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "action": "next"
+ },
+ "text": "{\"success\":true,\"data\":{\"locationId\":\"locations/warehouse\",\"round\":1,\"combatants\":[{\"characterId\":\"chars/thug-a\",\"initiative\":20.1,\"hasActedThisRound\":true,\"actionBudget\":{\"action\":0,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/thug-b\",\"initiative\":14.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/tamsin\",\"initiative\":13.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/bram\",\"initiative\":9.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true}],\"activeTurnId\":\"chars/thug-b\",\"isActive\":true},\"summary\":\"Advanced to turn of chars/thug-b (Round 1).\"}"
+}
