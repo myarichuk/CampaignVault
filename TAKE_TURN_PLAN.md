@@ -215,8 +215,8 @@ The **"is there an alchemist?"** flow then needs no placeholder. The model decid
   - `world_build` guidance: 0–2 purposeful secrets per plot-relevant location.
   - Existence oracle only after a played test.
 - [ ] T6 **Need-driven responses** (N3 + context contributors table, replaces A2). Delivery ledger on `TurnCursor`; roster lines; spotlight cards on arrival; first-commit briefing; semantic memory push ≤2; edge-trigger lines; echo only for changed, involved NPCs. Prompt: open a first contact with an approach beat. Plugin: `forceFullReseed` after compaction. Done after T1–T4 so the card format is settled.
-- [ ] T7 Response-size budget tests like `ToolListBudgetTests`: arrival, beat, after-rest; plus the full suite green.
-- [ ] T8 Rerun `scripts/measure/take_turn_replay.py` and compare against this page.
+- [ ] T7 (open; delta/full ratio caps in `TokenBudgetMeasurementTests` were loosened, see comments there, and should tighten after T6) Response-size budget tests like `ToolListBudgetTests`: arrival, beat, after-rest; plus the full suite green.
+- [x] T8 (after T1-T5b, before T6) Replay on a fresh scratch DB, take_turn chars per session: S1 56.6k, S2 66.6k, S3 70.0k, against 86.2k/106.5k for S1/S2 before, i.e. about -34% / -37% (what-if with everything, including need-driven cards: -71% / -74%). The trims alone were predicted at -59% / -62%; the gap is mostly presentNPCs on arrival (still ~22k of S1) and the `npcs[]` echo, both T6 territory. `after rest` 5.6k -> 4.3k; arrivals ~5.8k -> ~4.4k. Rerun after T6.
 - [ ] T9 (user) One played session on `/play`: does the DM still use NPC stats, memories and pressure correctly with the lean cards?
 
 Skipped: C3 fingerprint hash (small, and loses a readable readout).

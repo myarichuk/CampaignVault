@@ -5,6 +5,10 @@ namespace CampaignVault.Data.Scenes;
 
 public sealed class SceneNpcPresenceFactory
 {
+    /// <summary>The descriptors every new NeedsProfile is stamped with (stress, fatigue). Identical on every NPC, so they ride
+    /// the scene legend (see SceneAssembler) rather than each card.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> DefaultNeedDescriptors = new NeedsProfile().NeedDescriptors;
+
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
     private readonly INpcInitiativeService _initiativeService;
 
@@ -32,7 +36,8 @@ public sealed class SceneNpcPresenceFactory
             // stress/fatigue) is shared by every present NPC and goes once into the scene-level
             // NeedDescriptorLegend instead (SceneAssembler.Assemble), not repeated per NPC.
             var needDescriptors = (npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>())
-                .Where(kv => !context.GlobalNeedDescriptors.TryGetValue(kv.Key, out var global) || global != kv.Value)
+                .Where(kv => (!context.GlobalNeedDescriptors.TryGetValue(kv.Key, out var global) || global != kv.Value)
+                             && !(DefaultNeedDescriptors.TryGetValue(kv.Key, out var builtIn) && builtIn == kv.Value))
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             var initiativeContext = new NpcInitiativeContext

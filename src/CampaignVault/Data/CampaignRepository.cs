@@ -3037,6 +3037,11 @@ public class CampaignRepository
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
         }
 
+        // Wire form: whole numbers, and zeros carry no information.
+        knownNeeds = knownNeeds
+            .Where(kv => Math.Round(kv.Value) > 0)
+            .ToDictionary(kv => kv.Key, kv => (float)Math.Round(kv.Value));
+
         var summary = new NpcSummaryView
         {
             CharacterId = npc.Id,

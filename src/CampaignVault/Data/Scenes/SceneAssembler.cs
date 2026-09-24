@@ -93,7 +93,7 @@ public sealed class SceneAssembler
                 context.FullDescription),
             PresentNPCs = presenceSummaries,
             LocalRumors = context.Rumors.Select(r => new RumorSummary(r.Id, r.Subject, r.CurrentText, r.State)).ToList(),
-            NeedDescriptorLegend = new Dictionary<string, string>(context.GlobalNeedDescriptors),
+            NeedDescriptorLegend = BuildNeedLegend(context.GlobalNeedDescriptors, presenceSummaries),
             VisibleItems = context.Items.Select(ItemSummaryView.From).ToList(),
             RecentEvents = context.Events,
             // A4: engine travel events restate what the scene already shows (LastKnownTravel keeps the route); cap at 4.
@@ -119,5 +119,21 @@ public sealed class SceneAssembler
         }
 
         return CombatEncounterView.From(activeCombat);
+    }
+
+    /// <summary>Campaign descriptors plus the built-in ones (stress, fatigue) for any need an NPC in the scene actually has.</summary>
+    private static Dictionary<string, string> BuildNeedLegend(
+        IReadOnlyDictionary<string, string> global, IReadOnlyList<NpcPresenceSummary> present)
+    {
+        var legend = new Dictionary<string, string>(global);
+        foreach (var (key, text) in SceneNpcPresenceFactory.DefaultNeedDescriptors)
+        {
+            if (!legend.ContainsKey(key) && present.Any(n => n.KnownNeeds.ContainsKey(key)))
+            {
+                legend[key] = text;
+            }
+        }
+
+        return legend;
     }
 }
