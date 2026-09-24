@@ -218,7 +218,7 @@ Tool definitions are cacheable; tool *results* stay in the conversation and comp
 
 - [ ] P1 Guidance ledger write (item 1) + commit echo dedup (item 2). Every turn, zero accuracy risk.
 - [ ] P2 `start_session`: see `SESSION_HANDOFF_PLAN.md` (model-authored handoff at `end_session`; measured 13.5k → 2.6k after 3 sessions, flat thereafter). Covers items 5 and 6 for `start_session`.
-- [ ] P3 Scene/NPC projection (items 3, 4, 7).
+- [ ] P3 Scene/NPC projection (items 3, 4, 7): see `TAKE_TURN_PLAN.md` (scratch-measured: `take_turn` is ~90% of a session's tool output; −62% simulated, plus 6 engine bugs).
 - [ ] P4 PC memory top-N (item 5): behind a played-session check.
 - [ ] P5 advance_world / search_world / recall_history (items 8–10).
 - [ ] P6 F1–F2.
