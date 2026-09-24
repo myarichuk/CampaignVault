@@ -313,6 +313,35 @@ public class SessionHandoffTests : IClassFixture<RavenDBFixture>
         Assert.Equal(PartySessionView.KeyMemoryCount, last.Data.Party.Single(p => p.Id == pcA.Id).KeyMemories!.Count);
     }
 
+    /// <summary>T6/T3 ledger: a follow-up hint goes out once per session, and a new session (start_session)
+    /// teaches it once more; the ledger clears before the commit step reads it.</summary>
+    [Fact]
+    public async Task FollowUpHint_GoesOutOncePerSession_AndAgainAfterStartSession()
+    {
+        var (slug, session, tools) = await NewCampaignAsync("hint-ledger");
+        var pcId = $"chars/{slug}-pc";
+        await StoreAsync(Pc(slug, pcId, "Tamsin"));
+
+        async Task<bool> BeatHasHint()
+        {
+            var beat = await tools.TakeTurn(new TakeTurnRequest
+            {
+                Changes = [new EventOccurred { Summary = "Tamsin talks to herself.", Category = EventCategory.Conversation, Involved = [pcId] }],
+                Narrative = "Tamsin mutters."
+            }, slug);
+            Assert.True(beat.Success, beat.Summary);
+            return beat.Data!.Summary.Any(l => l.StartsWith("Hint: no 'activity'"));
+        }
+
+        Assert.True((await session.StartSession(slug)).Success);
+        Assert.True(await BeatHasHint());
+        Assert.False(await BeatHasHint());
+
+        Assert.True((await session.StartSession(slug)).Success);
+        Assert.True(await BeatHasHint());
+        Assert.False(await BeatHasHint());
+    }
+
     [Fact]
     public async Task FirstTakeTurnAfterStartSession_IsFull_AndKickoffFingerprintIsNotDrift()
     {

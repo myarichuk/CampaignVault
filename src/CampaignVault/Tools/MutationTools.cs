@@ -460,6 +460,11 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             && (clientForced || driftDetected || turnCursor.LedgerResetPending
                 || turnCursor.TurnsSinceReseed >= config.DeltaModeReseedIntervalTurns);
         turnCursor.LedgerResetPending = false;
+        if (ctx.ContextMayBeLost)
+        {
+            // Cleared here, before the commit step: its once-per-session hints read this same ledger.
+            turnCursor.ClearDeliveryLedger();
+        }
         if (mode == TurnMode.Full)
         {
             turnCursor.TurnsSinceReseed = 0;

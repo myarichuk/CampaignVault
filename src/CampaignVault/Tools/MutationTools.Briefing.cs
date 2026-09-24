@@ -27,12 +27,6 @@ public partial class MutationTools
     {
         try
         {
-            if (ctx.ContextMayBeLost)
-            {
-                // The client may have lost everything (new conversation, compaction, drift): start over.
-                ctx.Cursor.ClearDeliveryLedger();
-            }
-
             var party = await ctx.Session.Query<Character>()
                 .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();

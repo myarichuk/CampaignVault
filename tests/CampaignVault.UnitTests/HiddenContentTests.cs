@@ -247,6 +247,7 @@ public class HiddenContentTests : IClassFixture<RavenDBFixture>
 
         var roll = TravelChangeHandler.SeparationRoll;
         TravelChangeHandler.SeparationRoll = () => 0.0; // the roll always "hits"; only the reason gate decides
+        EncounterResolver.RollOverrideForTests = () => 0.999; // no random encounter interrupts a leg
         try
         {
             var shortHop = await Go(inn, "dense fog"); // under an hour: never
@@ -265,6 +266,7 @@ public class HiddenContentTests : IClassFixture<RavenDBFixture>
         finally
         {
             TravelChangeHandler.SeparationRoll = roll;
+            EncounterResolver.RollOverrideForTests = null;
         }
 
         using var check = _fixture.Store.OpenAsyncSession();

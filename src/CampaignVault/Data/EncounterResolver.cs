@@ -9,7 +9,10 @@ public class EncounterResolver
 {
     private readonly Func<double> _nextDouble;
 
-    public EncounterResolver() : this(() => Random.Shared.NextDouble())
+    /// <summary>Test seam for the DI-constructed resolver: when set, replaces the random roll.</summary>
+    internal static Func<double>? RollOverrideForTests { get; set; }
+
+    public EncounterResolver() : this(() => (RollOverrideForTests ?? Random.Shared.NextDouble)())
     {
     }
 

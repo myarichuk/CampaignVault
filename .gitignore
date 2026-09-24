@@ -2,6 +2,7 @@
 [Bb]in/
 [Oo]bj/
 out/
+scripts/measure/out*/
 log/
 nupkgs/
 # LiteDB

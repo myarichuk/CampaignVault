@@ -18,7 +18,7 @@ namespace CampaignVault.Tests;
 /// "/play" 16.3k, "/build" 11.9k in this serializer. With the /play world_build stub and prose trims,
 /// live: "/" 19.5k, "/play" 12.5k, "/build" 11.4k.
 /// </summary>
-public class ToolListBudgetTests
+public class ToolListBudgetTests(ITestOutputHelper output)
 {
     private const int ToolListCharBudget = 21_000;
     private const int PlayCharBudget = 13_000;
@@ -40,6 +40,7 @@ public class ToolListBudgetTests
         var tools = BuildOptions().ToolCollection!.Select(t => t.ProtocolTool).ToList();
         var json = JsonSerializer.Serialize(tools, McpJsonUtilities.DefaultOptions);
 
+        output.WriteLine($"tools/list: {json.Length} chars, {tools.Count} tools");
         Assert.True(tools.Count >= 15, $"expected the full tool set, got {tools.Count}");
         Assert.True(json.Length <= ToolListCharBudget,
             $"tools/list grew to {json.Length} chars ({tools.Count} tools); budget {ToolListCharBudget}. " +
@@ -58,6 +59,7 @@ public class ToolListBudgetTests
         var profile = ToolProfiles.FromPath(path);
         var json = Serialize(ToolProfiles.Filter(all, profile));
 
+        output.WriteLine($"{path} tools/list: {json.Length} chars");
         Assert.Equal(expected, profile);
         Assert.True(json.Length <= budget, $"{path} tools/list is {json.Length} chars; budget {budget}.");
         Assert.True(json.Length < Serialize(all).Length);
