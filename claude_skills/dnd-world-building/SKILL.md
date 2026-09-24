@@ -47,7 +47,12 @@ When seeding a new area, apply these layers in order. **Any missing layer is a g
 - A notable landmark (theater, bathhouse, prison, barracks)
 - Each gets `type: Building`, `connectedFromLocationId: <district>`, `connectionDescription`
 
-**Step 4 — Fixtures and secrets (there are no "points of interest"):** A description that names what is here is enough for ambience; don't pre-seed placeholder names. Seed a real entity only when it matters: an enterable spot is a child `Location` with an exit, a fixture worth touching (desk, notice board, altar) is an `items[]` entry held by the location, and its contents are items held by that item. For each location tied to a plot thread, quest or NPC secret, ask "what is hidden here, and who hid it?" and seed 0-2 answers, each with a reason: a false-bottomed desk, a sealed passage, a trapped chest. Record the DM-only truth as an `ItemDetail` with `intent` (e.g. "false bottom, DC 15; someone searched it recently"). Never seed secrets as a quota.
+**Step 4 — Fixtures and secrets (there are no "points of interest"):** A description that names what is here is enough for ambience; don't pre-seed placeholder names. Seed a real entity only when it matters: an enterable spot is a child `Location` with an exit, a fixture worth touching (desk, notice board, altar) is an `items[]` entry held by the location, and its contents are items held by that item. For each location tied to a plot thread, quest or NPC secret, ask "what is hidden here, and who hid it?" and seed 0-2 answers, each with a reason. Never seed secrets as a quota. The engine keeps them off the scene and resolves finding them, as it does dice:
+- a secret passage: an exit with `hidden: true`, `discoverDc`, `intent` ("the smuggler's way down; a draft moves the candle");
+- a concealed object: an item with `hidden: true`, `discoverDc` (held by the location, or by a fixture: a key in the desk);
+- a secret on a fixture: an `ItemDetail` with `hidden: true`, `discoverDc`, `intent` (false bottom, a glyph under the varnish);
+- a trap: a `hazard` on an exit (fires passing through), an item (fires when taken) or the location's `hazards` (fires on entering): `{name, trigger, detectDc, disarmDc, effect, saveDc, saveAbility, intent}`.
+You get every secret of a location once, as `fullScene.dmOnly`, on the first arrival of a session: foreshadow from it, never read it out.
 
 **Step 5 — Exits:** Every location must have at least one exit (auto-linked via `connectedFromLocationId` on creation). No dead ends.
 

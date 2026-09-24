@@ -7,8 +7,16 @@ public class TravelChangeHandler : IWorldChangeHandler
 {
     private readonly EncounterResolver _resolver;
 
-    /// <summary>Outcome of a group move, shared by every traveler with the same origin and destination in one commit.</summary>
-    private sealed record GroupOutcome(bool Interrupted, double HoursTraveled);
+    /// <summary>Outcome of a group move, shared by every traveler with the same origin and destination in one commit.
+    /// <see cref="SeparationReason"/> is set when the roll says someone gets lost; the first non-PC follower is.</summary>
+    private sealed record GroupOutcome(bool Interrupted, double HoursTraveled, string? SeparationReason = null);
+
+    /// <summary>Separation chance per group move with a stated hazard / at night in the wild. Rare by design.</summary>
+    internal const double HazardSeparationChance = 0.12;
+    internal const double NightWildernessSeparationChance = 0.04;
+
+    /// <summary>Uniform [0,1) roll for separation; a test seam.</summary>
+    internal static Func<double> SeparationRoll { get; set; } = Random.Shared.NextDouble;
 
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<IChangeContext, Dictionary<string, GroupOutcome>> GroupOutcomes = new();
 
@@ -55,9 +63,10 @@ public class TravelChangeHandler : IWorldChangeHandler
         var encounterRiskModifier = tc.EncounterRiskModifier ?? 0;
 
         LocationExit? exit = null;
+        Location? startLoc = null;
         if (character.CurrentLocationId != null)
         {
-            if (!ctx.Locations.TryGetValue(character.CurrentLocationId, out var startLoc) || startLoc == null)
+            if (!ctx.Locations.TryGetValue(character.CurrentLocationId, out startLoc) || startLoc == null)
             {
                 startLoc = await ctx.Session.LoadAsync<Location>(character.CurrentLocationId);
             }
@@ -108,6 +117,23 @@ public class TravelChangeHandler : IWorldChangeHandler
             hoursTraveled = shared.HoursTraveled;
             deltas = [];
             narratives = [];
+
+            // F1 done right: a separation needs a reason (SeparationReasonFor) and lands the lost one
+            // somewhere findable (the origin), with an explicit report instead of a silent split.
+            if (!interrupted && shared.SeparationReason is { } reason && !character.IsPc && startLoc != null)
+            {
+                outcomes[groupKey] = shared with { SeparationReason = null }; // one lost traveler per move
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, new ActivityChange
+                {
+                    CharacterId = tc.CharacterId,
+                    NewActivity = $"Lost in the {reason}, separated from the party",
+                    Reason = "Separated on the road"
+                }, ct);
+                ctx.RecordMessage(
+                    $"SEPARATED: {character.Name} lost the party in the {reason} and is back at {startLoc.Name} ({startLoc.Id}). " +
+                    "Reunite by traveling there, or by waiting for them.");
+                return ChangeHandlerResult.Ok;
+            }
         }
         else
         {
@@ -121,7 +147,8 @@ public class TravelChangeHandler : IWorldChangeHandler
                 "Travel",
                 terrain,
                 spawnLocationId: character.CurrentLocationId);
-            outcomes[groupKey] = new GroupOutcome(interrupted, hoursTraveled);
+            var separation = interrupted ? null : SeparationReasonFor(tc, destination, time, totalHours, terrain);
+            outcomes[groupKey] = new GroupOutcome(interrupted, hoursTraveled, separation);
         }
 
         // Apply partial time costs
@@ -190,6 +217,11 @@ public class TravelChangeHandler : IWorldChangeHandler
 
             await ClearStaleEngagementsAsync(character, tc.DestinationLocationId, ctx, ct);
 
+            foreach (var line in await ResolveRouteSecretsAsync(ctx, character, startLoc, exit, destination, ct))
+            {
+                ctx.RecordMessage(line);
+            }
+
             var msg = $"Travel: {character.Name} traveled to {destination.Name}. {tc.Narrative}";
             await ctx.Dispatcher.DispatchMutationAsync(ctx, new EventOccurred
             {
@@ -228,6 +260,92 @@ public class TravelChangeHandler : IWorldChangeHandler
         }
 
         return ChangeHandlerResult.Ok;
+    }
+
+    /// <summary>Why this group move could lose someone, if anything: a stated hazard, or night in the wild.
+    /// Never on an in-town hop (under an hour). Null when the roll says everyone keeps together.</summary>
+    private static string? SeparationReasonFor(TravelChange tc, Location destination, CampaignTime time, double totalHours, string? terrain)
+    {
+        if (totalHours < 1)
+        {
+            return null;
+        }
+
+        var night = time.Hour < 6 || time.Hour >= 20;
+        var wild = destination.Type == LocationType.Wilderness || !string.IsNullOrWhiteSpace(terrain);
+        var (reason, chance) = !string.IsNullOrWhiteSpace(tc.Hazard)
+            ? (tc.Hazard!.Trim(), HazardSeparationChance)
+            : night && wild ? ("dark", NightWildernessSeparationChance) : ((string?)null, 0.0);
+        return reason != null && SeparationRoll() < chance ? reason : null;
+    }
+
+    /// <summary>T5c on the road: using a secret passage reveals it; a live trap on the exit or in the
+    /// destination goes off unless it was spotted; arriving party members get a passive Perception pass
+    /// over the destination's secrets.</summary>
+    private static async Task<List<string>> ResolveRouteSecretsAsync(
+        ChangeContext ctx, Character traveler, Location? origin, LocationExit? exit, Location destination, CancellationToken ct)
+    {
+        var lines = new List<string>();
+        if (origin != null && exit != null)
+        {
+            var index = origin.Exits.IndexOf(exit);
+            if (index >= 0)
+            {
+                var used = exit.Hidden ? exit with { Hidden = false } : exit;
+                if (used.Hazard is { IsLive: true } h)
+                {
+                    var where = $"on the way to {destination.Name}";
+                    if (h.Detected)
+                    {
+                        lines.Add(HiddenContent.Known(h, where, traveler.Name));
+                    }
+                    else
+                    {
+                        var (message, after) = HiddenContent.Fire(h, where, traveler.Name);
+                        lines.Add(message);
+                        used = used with { Hazard = after };
+                    }
+                }
+
+                origin.Exits[index] = used;
+            }
+
+            if (exit.Hidden)
+            {
+                var back = destination.Exits.FindIndex(e => e.TargetLocationId == origin.Id && e.Hidden);
+                if (back >= 0)
+                {
+                    destination.Exits[back] = destination.Exits[back] with { Hidden = false };
+                }
+            }
+        }
+
+        for (var i = 0; i < destination.Hazards.Count; i++)
+        {
+            var h = destination.Hazards[i];
+            if (!h.IsLive || !h.Trigger.Equals("enter", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (h.Detected)
+            {
+                lines.Add(HiddenContent.Known(h, $"in {destination.Name}", traveler.Name));
+                continue;
+            }
+
+            var (message, after) = HiddenContent.Fire(h, $"in {destination.Name}", traveler.Name);
+            lines.Add(message);
+            destination.Hazards[i] = after;
+        }
+
+        if ((traveler.IsPc || traveler.IsPartyCompanion) && ctx.Session != null)
+        {
+            var passive = traveler.SystemStats?.Attributes?.TryGetValue("passivePerception", out var pp) == true ? (int)Math.Round(pp) : 10;
+            lines.AddRange(await HiddenContent.DiscoverAsync(ctx.Session, destination.Id, passive, "NOTICED", traveler.Name, ct));
+        }
+
+        return lines;
     }
 
     /// <summary>

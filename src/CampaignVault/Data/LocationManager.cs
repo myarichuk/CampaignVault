@@ -57,6 +57,7 @@ internal sealed class LocationManager : ILocationManager
             {
                 existing.DangerModifier = Math.Clamp(location.DangerModifier.Value, -50, 50);
             }
+            existing.Hazards = location.Hazards ?? existing.Hazards;
             if (location.IsArchived.HasValue)
             {
                 existing.IsArchived = location.IsArchived.Value;
@@ -82,6 +83,7 @@ internal sealed class LocationManager : ILocationManager
                 ControllingFactionId = location.ControllingFactionId,
                 CurrentState = location.CurrentState,
                 DangerModifier = Math.Clamp(location.DangerModifier ?? 0, -50, 50),
+                Hazards = location.Hazards ?? [],
                 IsArchived = location.IsArchived ?? false,
                 ClimateZone = location.ClimateZone,
             };

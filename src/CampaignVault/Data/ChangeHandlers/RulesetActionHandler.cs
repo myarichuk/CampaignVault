@@ -120,9 +120,38 @@ public sealed class RulesetActionHandler(
             ctx.AutoApplyDepth--;
         }
 
-        return string.IsNullOrWhiteSpace(output.Result.Narrative)
+        var narrative = output.Result.Narrative;
+        foreach (var line in await ResolveSecretsAsync(action, output.Result, ctx, ct))
+        {
+            narrative = string.IsNullOrWhiteSpace(narrative) ? line : narrative + " " + line;
+        }
+
+        return string.IsNullOrWhiteSpace(narrative)
             ? ChangeHandlerResult.Ok
-            : new ChangeHandlerResult(true, output.Result.Narrative);
+            : new ChangeHandlerResult(true, narrative);
+    }
+
+    /// <summary>T5c: a skill check at a location resolves against its secrets, as dice do. A check whose
+    /// parameters carry "disarm" (a hazard's name) tries to make that hazard safe; an Investigation/
+    /// Perception check reveals every hidden exit, item, detail and trap its total meets.</summary>
+    private static async Task<List<string>> ResolveSecretsAsync(RulesetAction action, ResolverResult result, ChangeContext ctx, CancellationToken ct)
+    {
+        if (action.ActionType != RulesetActionType.SkillCheck || result.RollTotal is not { } total
+            || !ctx.Characters.TryGetValue(action.CharacterId, out var actor)
+            || string.IsNullOrEmpty(actor.CurrentLocationId))
+        {
+            return [];
+        }
+
+        if (action.Parameters.TryGetValue("disarm", out var hazardName) && !string.IsNullOrWhiteSpace(hazardName))
+        {
+            var disarm = await HiddenContent.DisarmAsync(ctx.Session, actor.CurrentLocationId, hazardName, total, actor.Name, ct);
+            return disarm == null ? [] : [disarm];
+        }
+
+        return HiddenContent.IsSearchSkill(result.Skill)
+            ? await HiddenContent.DiscoverAsync(ctx.Session, actor.CurrentLocationId, total, "FOUND", actor.Name, ct)
+            : [];
     }
 
     /// <summary>

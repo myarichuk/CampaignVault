@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
@@ -144,12 +145,12 @@ public record LocationExit(
     bool OneWay = false,
     /// <summary>A secret door or passage: kept out of scene payloads until found (a check or passive
     /// Perception at this location meeting DiscoverDc, or the party using it).</summary>
-    bool Hidden = false,
-    int? DiscoverDc = null,
+    [property: Description("Secret passage: off the scene until found.")] bool Hidden = false,
+    [property: Description("Perception/Investigation DC that finds it while hidden.")] int? DiscoverDc = null,
     /// <summary>DM-only: who hid it and why, how it is found. Never shown as scene text.</summary>
-    string? Intent = null,
+    [property: Description("DM-only: who made it, why, how it is found.")] string? Intent = null,
     /// <summary>A trap on this exit, fired when someone travels through it.</summary>
-    Hazard? Hazard = null
+    [property: Description("Trap fired by passing through.")] Hazard? Hazard = null
 )
 {
     public LocationExit() : this(null!, null!) { }
@@ -163,37 +164,51 @@ public record LocationExit(
 public record Hazard
 {
     /// <summary>Short name, unique on its host (e.g. "needle trap", "loose flagstone").</summary>
+    [Description("Short name, unique on its host.")]
     public string Name { get; init; } = null!;
 
     /// <summary>"enter" (exits and locations: passing through / arriving) or "take" (items: taking or opening it).</summary>
+    [Description("enter (exit/location) or take (item).")]
     public string Trigger { get; init; } = "enter";
 
     /// <summary>Perception/Investigation DC to spot it. Null: it is only spotted when the DM says so.</summary>
+    [Description("DC to spot it.")]
     public int? DetectDc { get; init; }
 
     /// <summary>DC for a check whose parameters name it as "disarm" to make it safe.</summary>
+    [Description("DC for a check with parameters.disarm naming it.")]
     public int? DisarmDc { get; init; }
 
     /// <summary>What happens when it fires, e.g. "2d10 piercing, DC 13 Dex save for half".</summary>
+    [Description("What happens, e.g. 2d10 piercing, half on a save.")]
     public string Effect { get; init; } = null!;
 
     /// <summary>Save DC the DM should roll against when it fires (the ruleset_action SavingThrow's dc).</summary>
+    [Description("Save DC to roll when it fires.")]
     public int? SaveDc { get; init; }
 
     /// <summary>Save ability or skill, e.g. "Dexterity".</summary>
+    [Description("e.g. Dexterity.")]
     public string? SaveAbility { get; init; }
 
+    [Description("Engine-set when spotted.")]
     public bool Detected { get; init; }
+
+    [Description("Engine-set when made safe.")]
     public bool Disarmed { get; init; }
 
     /// <summary>A fired one-shot trap stays spent.</summary>
+    [Description("Engine-set when a one-shot trap has fired.")]
     public bool Spent { get; init; }
 
     /// <summary>Re-arms after firing (a pressure plate) instead of staying spent (a gas cloud).</summary>
+    [Description("Re-arms after firing.")]
     public bool Rearms { get; init; }
 
     /// <summary>DM-only: who set it, why, what it guards.</summary>
+    [Description("DM-only: who set it and why.")]
     public string? Intent { get; init; }
 
+    [JsonIgnore]
     public bool IsLive => !Disarmed && !Spent;
 }

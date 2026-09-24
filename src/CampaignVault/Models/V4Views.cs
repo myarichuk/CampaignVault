@@ -52,7 +52,8 @@ public record LocationDetailView(
             description!,
             l.Type,
             l.ParentLocationId,
-            (l.Exits ?? []).Select(LocationExitView.From).ToList(),
+            // A secret passage stays off the wire until found (T5c); the DM gets it in the first-visit dmOnly line.
+            (l.Exits ?? []).Where(e => !e.Hidden).Select(LocationExitView.From).ToList(),
             l.AmbientCrowd,
             l.LastVisitedDay,
             l.RecentlyDeparted,
@@ -184,6 +185,11 @@ public class SceneView
 
     /// <summary>Plot threads associated with this location (referenced via thread-level or clue-level involvedEntityIds).</summary>
     public List<PlotThreadMinimal> AssociatedPlotThreads { get; set; } = [];
+
+    /// <summary>DM-only (take_turn, first arrival this session): this location's secrets with their DCs and
+    /// intents (hidden ways, concealed items, secret details, traps). Foreshadow, never read out. The
+    /// engine reveals them when a check or passive Perception meets the DC.</summary>
+    public List<string>? DmOnly { get; set; }
 }
 
 /// <summary>
@@ -480,7 +486,7 @@ public record ItemSummaryView(
         item.DistinctiveFeatures ?? [],
         item.VisualTags,
         item.AppearanceNote,
-        item.ItemDetails.Where(d => !d.IsRetired).Select(d => new ItemDetailSummary(d.Id, d.Name, d.Status)).ToList() is { Count: > 0 } details ? details : null
+        item.ItemDetails.Where(d => !d.IsRetired && !d.Hidden).Select(d => new ItemDetailSummary(d.Id, d.Name, d.Status)).ToList() is { Count: > 0 } details ? details : null
     );
 }
 

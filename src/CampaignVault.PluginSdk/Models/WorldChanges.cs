@@ -739,6 +739,10 @@ public class LocationUpdate : WorldChange
     [JsonPropertyName("removeExitTarget")]
     public string? RemoveExitTarget { get; set; }
 
+    [Description("Add (or replace, by name) a trap in the location, fired on entering.")]
+    [JsonPropertyName("addHazard")]
+    public Hazard? AddHazard { get; set; }
+
     [Description("Set or clear the ambient crowd. Use empty string to clear. Always set when narratively justified. Taverns, for example, should always have some sort of a crowd - if active, of course")]
     [JsonPropertyName("ambientCrowd")]
     public string? AmbientCrowd { get; set; }
@@ -938,6 +942,10 @@ public class TravelChange : WorldChange
     [Description("Abstract modifier from -50 to +50 representing the risk of an encounter during this travel. Should always be set if narratively justified (either by plot, situation or player actions - such as declaring caution or not declaring caution - never assume player intent). Negative numbers mean safer/stealthy travel (e.g. Pass Without Trace cast, cautious pace). Positive numbers mean reckless/noisy travel (clanking armor, large group).")]
     [JsonPropertyName("encounterRiskModifier")]
     public int? EncounterRiskModifier { get; set; }
+
+    [Description("Optional: what makes this leg treacherous (dense fog, a storm, a night marsh crossing). Out-of-town legs only; gives a rare chance that a companion loses the party.")]
+    [JsonPropertyName("hazard")]
+    public string? Hazard { get; set; }
 }
 
 /// <summary>
@@ -1081,6 +1089,18 @@ public class ItemUpdate : WorldChange
     [Description("Marks an existing ItemDetail (by its id) as retired — sets isRetired=true and a terminal status. Does NOT delete the record, so any memory referencing it stays resolvable. Use when a detail is no longer true (compartment discovered and emptied, stain cleaned) rather than pretending it never existed.")]
     [JsonPropertyName("retireItemDetailId")]
     public string? RetireItemDetailId { get; set; }
+
+    [Description("Conceal (true) or reveal (false) the item.")]
+    [JsonPropertyName("hidden")]
+    public bool? Hidden { get; set; }
+
+    [Description("DC that finds it while hidden.")]
+    [JsonPropertyName("discoverDc")]
+    public int? DiscoverDc { get; set; }
+
+    [Description("Set a trap on the item (fires when taken/opened).")]
+    [JsonPropertyName("hazard")]
+    public Hazard? Hazard { get; set; }
 }
 
 /// <summary>
@@ -1111,6 +1131,14 @@ public class ItemDetailUpsertRequest
     [Description("DM-only guidance for narrating/adjudicating this detail (suggested DC, discovery conditions, ongoing effects). Never shown to players. See lookup kind=commit_schema type=item_update for examples.")]
     [JsonPropertyName("intent")]
     public string? Intent { get; set; }
+
+    [Description("Secret detail (false bottom): name off the wire until found.")]
+    [JsonPropertyName("hidden")]
+    public bool? Hidden { get; set; }
+
+    [Description("DC that finds it while hidden.")]
+    [JsonPropertyName("discoverDc")]
+    public int? DiscoverDc { get; set; }
 
     [Description("Optional origin of this detail — what caused/created it.")]
     [JsonPropertyName("origin")]

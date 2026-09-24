@@ -11,6 +11,12 @@ public class ResolverResult
     public string? ErrorCode { get; init; }
     public string Narrative { get; init; } = string.Empty;
 
+    /// <summary>Skill checks: the rolled total and the skill, so the engine can resolve what the roll finds
+    /// (hidden content, disarming a trap) the same way it resolves the roll itself.</summary>
+    public int? RollTotal { get; init; }
+
+    public string? Skill { get; init; }
+
     public static ResolverResult Ok(string narrative) => new() { Success = true, Narrative = narrative };
     public static ResolverResult Fail(string errorCode, string narrative) => new() { Success = false, ErrorCode = errorCode, Narrative = narrative };
 }

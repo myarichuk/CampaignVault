@@ -64,7 +64,9 @@ internal static class InitiativeQueryHelper
         var result = new Dictionary<string, List<Item>>(StringComparer.OrdinalIgnoreCase);
         foreach (var holderId in holderIds)
         {
-            var items = await QueryItemsHeldByAsync(session, holderId, limitPerHolder, ct: ct);
+            // Scene-facing (NPC gear in a scene): an NPC's concealed item stays off the wire. Equip
+            // validation calls QueryItemsHeldByAsync directly and still sees everything.
+            var items = (await QueryItemsHeldByAsync(session, holderId, limitPerHolder, ct: ct)).Where(i => !i.Hidden).ToList();
             if (items.Count > 0)
             {
                 result[holderId] = items;

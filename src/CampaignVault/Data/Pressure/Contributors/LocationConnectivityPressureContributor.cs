@@ -50,6 +50,7 @@ public sealed class LocationConnectivityPressureContributor : IPressureContribut
             }
         }
 
+        // Scene-view exits: hidden (secret) ones are already filtered out by LocationDetailView.From.
         foreach (var exit in loc.Exits.Where(e => e.OneWay != true))
         {
             try

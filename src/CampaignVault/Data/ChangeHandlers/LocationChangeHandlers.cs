@@ -104,6 +104,12 @@ public class LocationUpdateHandler : IWorldChangeHandler
             loc.Exits.RemoveAll(e => e.TargetLocationId == lu.RemoveExitTarget);
         }
 
+        if (lu.AddHazard != null)
+        {
+            loc.Hazards.RemoveAll(h => string.Equals(h.Name, lu.AddHazard.Name, StringComparison.OrdinalIgnoreCase));
+            loc.Hazards.Add(lu.AddHazard);
+        }
+
         var stateBefore = loc.CurrentState;
         var tagsBefore = new HashSet<string>(loc.VisualTags);
         var featuresBefore = new HashSet<string>(loc.DistinctiveFeatures);
@@ -221,6 +227,8 @@ public class LocationUpdateHandler : IWorldChangeHandler
         }
 
         var reverseDesc = $"Leads back to {sourceLoc.Name}";
-        targetLoc.Exits.Add(new LocationExit(sourceLoc.Id, reverseDesc));
+        // The far side of a secret passage is just as secret until someone finds or uses it.
+        targetLoc.Exits.Add(new LocationExit(sourceLoc.Id, reverseDesc,
+            Hidden: forwardExit.Hidden, DiscoverDc: forwardExit.DiscoverDc, Intent: forwardExit.Intent));
     }
 }

@@ -85,6 +85,33 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
         item.HolderId = transfer.ToHolderId;
         item.LastUpdated = DateTime.UtcNow;
 
+        // T5c: a character taking something from a place or a container: a concealed item is plainly in
+        // hand now, and a live "take" trap on the item (or on the container it came out of) goes off.
+        if (transfer.ToHolderId.StartsWith("chars/", StringComparison.OrdinalIgnoreCase)
+            && previousHolderId?.StartsWith("chars/", StringComparison.OrdinalIgnoreCase) != true)
+        {
+            item.Hidden = false;
+            var taker = ctx.Characters.GetValueOrDefault(transfer.ToHolderId)?.Name ?? transfer.ToHolderId;
+            var container = previousHolderId?.StartsWith("items/", StringComparison.OrdinalIgnoreCase) == true
+                ? ctx.Items.GetValueOrDefault(previousHolderId) ?? await ctx.Session.LoadAsync<Item>(previousHolderId, ct)
+                : null;
+            foreach (var host in new[] { item, container })
+            {
+                if (host?.Hazard is { IsLive: true } h && h.Trigger.Equals("take", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (h.Detected)
+                    {
+                        ctx.RecordMessage(HiddenContent.Known(h, $"on {host.Name}", taker));
+                        continue;
+                    }
+
+                    var (message, after) = HiddenContent.Fire(h, $"on {host.Name}", taker);
+                    host.Hazard = after;
+                    ctx.RecordMessage(message);
+                }
+            }
+        }
+
         // If transferring to a character or container, clear ambient-decay persistence
         // (no longer ambient at a location)
         if (transfer.ToHolderId.StartsWith("chars/", StringComparison.OrdinalIgnoreCase)

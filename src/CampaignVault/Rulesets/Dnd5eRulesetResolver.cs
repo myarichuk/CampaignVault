@@ -259,7 +259,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var resultStr = isSuccess ? "Success" : "Failure";
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
 
-        return ResolverResult.Ok($"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}");
+        return new ResolverResult
+        {
+            Narrative = $"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}",
+            RollTotal = outcome.Result,
+            Skill = skillName
+        };
     }
 
     protected override async Task<ResolverResult> ResolveContestedCheckAsync(

@@ -26,6 +26,9 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
 
         if (iu.NewState != null) item.CurrentState = iu.NewState;
         if (iu.CoreCategory != null) item.CoreCategory = iu.CoreCategory;
+        if (iu.Hidden != null) item.Hidden = iu.Hidden.Value;
+        if (iu.DiscoverDc != null) item.DiscoverDc = iu.DiscoverDc;
+        if (iu.Hazard != null) item.Hazard = iu.Hazard;
 
         if (iu.TagsToAdd != null)
         {
@@ -164,6 +167,8 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
         detail.Description = req.Description;
         if (req.Status != null) detail.Status = req.Status;
         if (req.Intent != null) detail.Intent = req.Intent;
+        if (req.Hidden != null) detail.Hidden = req.Hidden.Value;
+        if (req.DiscoverDc != null) detail.DiscoverDc = req.DiscoverDc;
         if (req.Origin != null) detail.Origin = req.Origin;
         if (req.TetheredToId != null) detail.TetheredToId = req.TetheredToId.Length == 0 ? null : req.TetheredToId;
         if (req.Participants != null) detail.Participants = req.Participants;

@@ -124,7 +124,7 @@ public static class ContainerResolver
             .Take(256)
             .ToListAsync(ct);
 
-        foreach (var item in direct.Where(x => !x.IsArchived))
+        foreach (var item in direct.Where(x => !x.IsArchived && !x.Hidden)) // concealed contents stay off the wire
         {
             var nested = new List<ContainedItemSummary>();
             await CollectSummariesAsync(session, item.Id, nested, depth + 1, maxDepth, ct);

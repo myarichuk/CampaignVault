@@ -91,7 +91,9 @@ Perception, Investigation, Survival:
 }
 ```
 
-Narrate the sensory outcome from the roll result—don't invent what they find.
+Narrate the sensory outcome from the roll result—don't invent what they find. The engine checks the total against the location's secrets (hidden ways, concealed items, secret details, traps) and reports each `FOUND:` in the summary; arrivals get the same from passive Perception (`NOTICED:`). Narrate exactly those. To disarm a trap, add `"disarm": "<trap name>"` to a check's parameters (Thieves' Tools / Sleight of Hand, `dc` = its disarm DC): `DISARMED:`, still armed, or on a bad miss it goes off. A `HAZARD:` line means a trap fired: roll the save it names with `ruleset_action`, then commit the result.
+
+Treacherous travel (fog, storm, a night marsh): put it in the travel change's `hazard`. On out-of-town legs it gives a rare chance that a companion loses the party; the engine reports `SEPARATED:` with where they are, so play the reunion rather than assuming it.
 
 ## Encounter Resolution
 

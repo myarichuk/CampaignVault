@@ -428,7 +428,7 @@ public class CampaignRepository
             .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
         items = items
-            .Where(i => IsVisibleInCampaign(i.CampaignName, effectiveCampaign) && !i.IsArchived)
+            .Where(i => IsVisibleInCampaign(i.CampaignName, effectiveCampaign) && !i.IsArchived && !i.Hidden)
             .ToList();
 
         foreach (var item in items)
@@ -824,7 +824,8 @@ public class CampaignRepository
         results.AddRange(factions.Where(f => !f.IsArchived).Select(f => new SearchMatch("faction", FactionSearchSummary.From(f))));
         results.AddRange(quests.Where(q => !q.IsArchived).Select(q => new SearchMatch("quest", QuestSearchSummary.From(q))));
         results.AddRange(events.Select(e => new SearchMatch("event", EventSummaryView.From(e))));
-        results.AddRange(items.Where(i => !i.IsArchived).Select(i => new SearchMatch("item", ItemSummaryView.From(i))));
+        // Concealed items stay out of search too: a hit here reads as "the party can see this" (T5c).
+        results.AddRange(items.Where(i => !i.IsArchived && !i.Hidden).Select(i => new SearchMatch("item", ItemSummaryView.From(i))));
         return results;
     }
 
@@ -1457,6 +1458,7 @@ public class CampaignRepository
             {
                 existing.DangerModifier = Math.Clamp(location.DangerModifier.Value, -50, 50);
             }
+            existing.Hazards = location.Hazards ?? existing.Hazards;
             if (location.IsArchived.HasValue)
             {
                 existing.IsArchived = location.IsArchived.Value;
@@ -1482,6 +1484,7 @@ public class CampaignRepository
                 ControllingFactionId = location.ControllingFactionId,
                 CurrentState = location.CurrentState,
                 DangerModifier = Math.Clamp(location.DangerModifier ?? 0, -50, 50),
+                Hazards = location.Hazards ?? [],
                 IsArchived = location.IsArchived ?? false,
                 ClimateZone = location.ClimateZone,
             };
@@ -1784,6 +1787,9 @@ public class CampaignRepository
             existing.IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags ?? existing.IncompatibleWithEquippedTags;
             existing.VisualTags = item.VisualTags ?? existing.VisualTags;
             existing.AppearanceNote = item.AppearanceNote ?? existing.AppearanceNote;
+            if (item.Hidden.HasValue) existing.Hidden = item.Hidden.Value;
+            existing.DiscoverDc = item.DiscoverDc ?? existing.DiscoverDc;
+            existing.Hazard = item.Hazard ?? existing.Hazard;
             result = existing;
         }
         else
@@ -1827,6 +1833,9 @@ public class CampaignRepository
                 IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags ?? definition?.IncompatibleWithEquippedTags,
                 VisualTags = item.VisualTags,
                 AppearanceNote = item.AppearanceNote,
+                Hidden = item.Hidden ?? false,
+                DiscoverDc = item.DiscoverDc,
+                Hazard = item.Hazard,
                 // id/participants from the request are intentionally dropped here: a freshly
                 // created item has no existing details to match by id and no in-fiction moment
                 // to push a participant memory for (see ItemDetailUpsertRequest doc comment).
@@ -1837,6 +1846,8 @@ public class CampaignRepository
                     Description = d.Description,
                     Status = d.Status,
                     Intent = d.Intent,
+                    Hidden = d.Hidden ?? false,
+                    DiscoverDc = d.DiscoverDc,
                     Origin = d.Origin,
                     TetheredToId = string.IsNullOrEmpty(d.TetheredToId) ? null : d.TetheredToId,
                     Participants = [],
@@ -3020,10 +3031,12 @@ public class CampaignRepository
         List<ItemSummaryView>? carried = null;
         if (!trim.StripGear)
         {
-            var heldItems = await session.Query<Item>()
+            var heldItems = (await session.Query<Item>()
                 .Where(i => i.HolderId == characterId && !i.IsArchived)
                 .Customize(x => x.WaitForNonStaleResults())
-                .ToListAsync();
+                .ToListAsync())
+                .Where(i => !i.Hidden)
+                .ToList();
 
             equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
             carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();

@@ -72,6 +72,9 @@ internal sealed class ItemManager : IItemManager
             existing.IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags ?? existing.IncompatibleWithEquippedTags;
             existing.VisualTags = item.VisualTags ?? existing.VisualTags;
             existing.AppearanceNote = item.AppearanceNote ?? existing.AppearanceNote;
+            if (item.Hidden.HasValue) existing.Hidden = item.Hidden.Value;
+            existing.DiscoverDc = item.DiscoverDc ?? existing.DiscoverDc;
+            existing.Hazard = item.Hazard ?? existing.Hazard;
             result = existing;
         }
         else
@@ -105,6 +108,9 @@ internal sealed class ItemManager : IItemManager
                 IncompatibleWithEquippedTags = item.IncompatibleWithEquippedTags,
                 VisualTags = item.VisualTags,
                 AppearanceNote = item.AppearanceNote,
+                Hidden = item.Hidden ?? false,
+                DiscoverDc = item.DiscoverDc,
+                Hazard = item.Hazard,
                 ItemDetails = (item.ItemDetails ?? []).Select(d => new ItemDetail
                 {
                     Id = "detail-" + Guid.NewGuid(),
@@ -112,6 +118,8 @@ internal sealed class ItemManager : IItemManager
                     Description = d.Description,
                     Status = d.Status,
                     Intent = d.Intent,
+                    Hidden = d.Hidden ?? false,
+                    DiscoverDc = d.DiscoverDc,
                     Origin = d.Origin,
                     TetheredToId = string.IsNullOrEmpty(d.TetheredToId) ? null : d.TetheredToId,
                     Participants = [],

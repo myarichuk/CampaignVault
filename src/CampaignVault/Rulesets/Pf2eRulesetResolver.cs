@@ -305,7 +305,12 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var degree = CalculateDegreeOfSuccess(outcome, dc);
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
 
-        return ResolverResult.Ok($"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}");
+        return new ResolverResult
+        {
+            Narrative = $"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}",
+            RollTotal = outcome.Result,
+            Skill = skillName
+        };
     }
 
     protected override async Task<ResolverResult> ResolveContestedCheckAsync(

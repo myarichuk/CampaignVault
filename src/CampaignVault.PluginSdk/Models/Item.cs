@@ -194,6 +194,12 @@ public class ItemDetail : IHasSemanticVector
     /// </summary>
     public string? Intent { get; set; }
 
+    /// <summary>A secret detail (false bottom, carved glyph under the varnish): its name stays off the wire
+    /// until an Investigation/Perception check at the item's location meets <see cref="DiscoverDc"/>.</summary>
+    public bool Hidden { get; set; }
+
+    public int? DiscoverDc { get; set; }
+
     /// <summary>Soft-delete flag. Retired details are kept (not removed) so memory references stay resolvable.</summary>
     public bool IsRetired { get; set; }
 

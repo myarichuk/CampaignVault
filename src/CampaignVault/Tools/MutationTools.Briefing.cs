@@ -87,7 +87,7 @@ public partial class MutationTools
             }
 
             FilterNpcEcho(ctx, partyIds, cardedIds);
-            BriefLocations(ctx);
+            await BriefLocationsAsync(ctx);
             DropEmptyDeltaScenes(ctx, party);
 
             if (ctx.AppliedChanges.Count > 0)
@@ -333,23 +333,34 @@ public partial class MutationTools
     /// session; a revisit with the same description sends exits and roster only (the description is
     /// already in the conversation, and a compaction or new session clears the ledger). A changed
     /// description is a new key, so it goes out again. Delta scenes have their own unchanged-location trim.</summary>
-    private static void BriefLocations(TurnContext ctx)
+    private static async Task BriefLocationsAsync(TurnContext ctx)
     {
-        if (ctx.Result.FullScene is not { } full || string.IsNullOrEmpty(full.Location.Description))
+        if (ctx.Result.FullScene is not { } full || !full.IsLocationAnchored)
         {
             return;
         }
 
         var key = full.Location.Id + "#" + Convert.ToHexString(
-            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(full.Location.Description)))[..12];
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(full.Location.Description ?? "")))[..12];
         if (ctx.Cursor.BriefedLocationIds.Contains(key, StringComparer.OrdinalIgnoreCase))
         {
-            full.Location = full.Location with { Description = "(described earlier this session)", DescriptionTruncated = null };
+            if (!string.IsNullOrEmpty(full.Location.Description))
+            {
+                full.Location = full.Location with { Description = "(described earlier this session)", DescriptionTruncated = null };
+            }
+
             full.RecentEventSummaries = [];
             return;
         }
 
         ctx.Cursor.BriefedLocationIds.Add(key);
+
+        // T5c: the first visit also carries the DM-only secrets line (hidden ways, concealed items, traps).
+        var secrets = await HiddenContent.DmSecretsAsync(ctx.Session, full.Location.Id, CancellationToken.None);
+        if (secrets.Count > 0)
+        {
+            full.DmOnly = secrets;
+        }
     }
 
     /// <summary>A refetched delta scene with no news is dropped: location trimmed, no rumor or combat, no

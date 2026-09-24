@@ -105,6 +105,9 @@ public class LocationUpsertRequest
     [Description("Narrative danger modifier (-50 to +50), used to seed random encounters. Omit to preserve the existing value on update.")]
     public int? DangerModifier { get; set; }
 
+    [Description("Traps in the location itself, fired on entering. Omit to preserve on update.")]
+    public List<Hazard>? Hazards { get; set; }
+
     [Description("Set true to hide this location from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
     public bool? IsArchived { get; set; }
 
@@ -192,6 +195,15 @@ public class ItemUpsertRequest
 
     [Description("Unit label for Capacity (e.g. \"items\", \"liters\"). Omit to preserve the existing value on update.")]
     public string? CapacityUnit { get; set; }
+
+    [Description("Concealed: off the scene until a check or passive Perception meets discoverDc.")]
+    public bool? Hidden { get; set; }
+
+    [Description("DC that finds it while hidden.")]
+    public int? DiscoverDc { get; set; }
+
+    [Description("Trap on the item, fired when taken/opened.")]
+    public Hazard? Hazard { get; set; }
 
     [Description("Maximum charges/doses this item can hold (water gourd, healing ointment, reagent vial). Omit to preserve the existing value on update.")]
     public int? MaxCharges { get; set; }
