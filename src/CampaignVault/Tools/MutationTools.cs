@@ -586,7 +586,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     /// Collect guidance hints into the dedicated <see cref="TurnResult.GuidanceHints"/> field (own
     /// budget via CampaignConfig.MaxGuidanceHintsPerResponse/MaxGuidanceCharsPerResponse/
     /// GuidanceEnabled). PhysicalStateNudges stays physical/visual only per its V4Views contract.
-    /// Runs only when characters actually surfaced this turn; skips quiet pure-query turns.
+    /// Runs when characters surfaced or changes were committed this turn; skips quiet pure-query turns.
     /// Covers every surfaced section: Npcs, Party, PartyDelta, scene PresentNPCs, FullNpcContext.
     /// </summary>
     private async Task CollectCharacterGuidanceAsync(TurnContext ctx)
@@ -651,9 +651,11 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
             surfacedIds.Add(fullContextId);
         }
 
-        if (surfacedIds.Count == 0)
+        // A commit also counts: a delta turn that only enters a mode may surface nobody, and that is
+        // exactly the edge plugin contributors key on.
+        if (surfacedIds.Count == 0 && ctx.AppliedChanges.Count == 0)
         {
-            return; // No characters surfaced this turn — no guidance cost on quiet turns.
+            return; // Quiet pure-query turn — no guidance cost.
         }
 
         try
@@ -667,7 +669,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 Session: ctx.Session,
                 Scene: null, // Scene details not needed for character-scoped guidance
                 PartyCharacterIds: surfacedIds.ToList().AsReadOnly(),
-                PartyPresent: true);
+                PartyPresent: true,
+                AppliedChanges: ctx.AppliedChanges);
 
             // Both scopes: Scene-only with a null Scene would never fire any contributor
             // (CombatStarted needs Scene.ActiveCombat; World contributors would never run),
@@ -938,7 +941,8 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         result.CommittedIds = commitResult.CommittedIds;
         result.NarrativeReminder = commitResult.NarrativeReminder;
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
-        ctx.AppliedChanges = changes.Concat(commitResult.AmbientDeltas).ToList();
+        // Plugin faults need no field of their own: each one is already a "PLUGIN FAULT ..." line in Summary.
+        ctx.AppliedChanges = changes.Concat(commitResult.ReactionChanges).Concat(commitResult.AmbientDeltas).ToList();
         ctx.AmbientChanges = commitResult.AmbientDeltas;
         ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
         ApplyInitiativeNudges(ctx);

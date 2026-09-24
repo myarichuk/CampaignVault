@@ -77,7 +77,7 @@ file sealed class CraftingStateMachine : IModeStateMachine
     }
 }
 
-[PluginWorldChange("crafting_step")]
+[PluginWorldChange("crafting_step", ModeId = "crafting")]
 public sealed class CraftingStepChange : WorldChange
 {
     public string CharacterId { get; set; } = null!;
@@ -98,9 +98,7 @@ public sealed class CraftingStepHandler : IWorldChangeHandler
         if (string.IsNullOrWhiteSpace(step.CharacterId))
             return Task.FromResult(ChangeHandlerResult.Failure("characterId is required."));
 
-        var mode = context.ActiveMode;
-        if (mode is null || !mode.IsActive ||
-            !string.Equals(mode.ModeId, "crafting", StringComparison.OrdinalIgnoreCase))
+        if (!context.ActiveModes.TryGetValue("crafting", out var mode) || !mode.IsActive)
         {
             return Task.FromResult(ChangeHandlerResult.Failure(
                 "crafting_step requires an active crafting mode encounter. Enter via mode_transition first."));

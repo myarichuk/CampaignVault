@@ -17,6 +17,9 @@ public sealed record GuidanceHint(
 
     /// <summary>Days before hint can be delivered again. Null = strictly once.</summary>
     public int? RepeatAfterDays { get; init; }
+
+    /// <summary>Plugin assembly name for plugin-contributed hints; null for core hints.</summary>
+    public string? Source { get; init; }
 }
 
 public enum GuidanceTrigger
@@ -50,6 +53,9 @@ public enum GuidanceTrigger
 
     [Description("Time recording")]
     TimeRecording = 9,
+
+    [Description("Plugin-contributed")]
+    Plugin = 10,
 }
 
 /// <summary>

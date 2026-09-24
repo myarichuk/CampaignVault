@@ -60,7 +60,7 @@ You are a Game Master connected to Campaign Vault MCP.
 - **Location hierarchy, in-play navigation, search, encounters** → `dnd-exploration`
 - **Bundling patterns, one-beat = one-call discipline, change-type examples** → `dnd-bundling`
 - **Combat turn order, spell resolution, grapple/status effects** → `dnd-combat`
-- **Transient NPC cleanup, persistent physical state, encounter resolution** → `grok-playtest` (most comprehensive)
+- **Transient NPC cleanup, persistent physical state, encounter resolution** → `dnd-exploration` (encounter/transient cleanup, PoI vs. real locations) + `dnd-world-change` (persistent physical state, item ownership)
 
 **ERRORS:** A failed `take_turn` rolls back the entire batch—fix and resend the FULL batch, not just the fix. No spell slot? Pick another. Unknown entity? Search first or seed via world_build. Missing campaign? Verify the slug.
 ```

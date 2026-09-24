@@ -1,3 +1,4 @@
+using CampaignVault.Events;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -77,6 +78,18 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         // collision fallback), so CommittedIds is the one place a caller can trust to hold what was
         // actually persisted, without re-deriving it from Summary text.
         ctx.RecordCommittedId(e.Id);
+
+        ctx.Publish(CoreEvents.EventLogged, new Dictionary<string, object?>
+        {
+            [CoreEvents.Fields.EventId] = e.Id,
+            [CoreEvents.Fields.Category] = e.Category.ToString(),
+            [CoreEvents.Fields.Summary] = e.Summary,
+            [CoreEvents.Fields.Involved] = e.Involved,
+            [CoreEvents.Fields.InitiatorId] = e.InitiatorId,
+            [CoreEvents.Fields.LocationId] = e.LocationId,
+            [CoreEvents.Fields.EmotionalBeat] = e.EmotionalBeat,
+            [CoreEvents.Fields.RelatedEntityId] = e.RelatedEntityId
+        });
 
         // Skip novelty scoring for engine/bookkeeping-generated categories (transient eviction departures,
         // timeskip/simulation logging, crowd interrupts) — these are auto-narrated, not LLM narrative

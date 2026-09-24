@@ -58,8 +58,19 @@ public static class XpThresholdCalculator
         [20] = 19000
     };
 
+    private static IReadOnlyDictionary<int, int>? TryGetTable(string system) => system switch
+    {
+        RulesetSystem.Dnd5e => Dnd5eStandardXp,
+        RulesetSystem.Pathfinder2e => Pf2eStandardXp,
+        _ => null
+    };
+
+    /// <summary>True when the system ships a built-in XP table (Narrative and unknown systems do not).</summary>
+    public static bool HasXpTable(string system) => TryGetTable(system) is not null;
+
     /// <summary>
     /// Gets the XP required to reach the specified level for the given system and progression type.
+    /// Throws <see cref="NotSupportedException"/> when the system has no XP table and no custom threshold covers the level.
     /// </summary>
     public static int GetXpForLevel(string system, int level, XpProgressionType progression = XpProgressionType.Standard, Dictionary<int, int>? customThresholds = null)
     {
@@ -68,12 +79,9 @@ public static class XpThresholdCalculator
             return customXp;
         }
 
-        var table = system switch
-        {
-            RulesetSystem.Dnd5e => Dnd5eStandardXp,
-            RulesetSystem.Pathfinder2e => Pf2eStandardXp,
-            _ => Dnd5eStandardXp // Default to 5e for Narrative/other systems
-        };
+        var table = TryGetTable(system)
+            ?? throw new NotSupportedException(
+                $"No XP table defined for ruleset system '{system}'. Use milestone progression or supply CustomXpThresholds.");
 
         if (!table.TryGetValue(level, out var baseXp))
         {

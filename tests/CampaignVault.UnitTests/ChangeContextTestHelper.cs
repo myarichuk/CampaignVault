@@ -36,7 +36,8 @@ internal static class ChangeContextTestHelper
         CombatEncounter? activeCombat = null,
         ModeEncounter? activeMode = null,
         string? campaignName = null,
-        CampaignConfig? config = null)
+        CampaignConfig? config = null,
+        IEnumerable<ModeEncounter>? activeModes = null)
     {
         session ??= Substitute.For<IAsyncDocumentSession>();
 
@@ -58,6 +59,7 @@ internal static class ChangeContextTestHelper
             activeCombat,
             activeMode,
             campaignName,
-            config);
+            config,
+            activeModes: activeModes);
     }
 }

@@ -86,9 +86,9 @@ public class CampaignManagementTools(
     [Description(@"CAMPAIGN TOOL: Creates a new campaign with a slug and initial ruleset (locked immediately).
 Pass campaignName on subsequent calls.
 Slugs are canonicalized ('Dragon Heist' → dragon-heist).
-Available Systems: Dnd5e, Pathfinder2e, Narrative
+Available system ids: dnd5e, pf2e, narrative (plugins may add more)
 
-Example: create_campaign(""dragon-heist"", RulesetSystem.Dnd5e, ""Waterdeep: Dragon Heist"")")]
+Example: create_campaign(""dragon-heist"", ""dnd5e"", ""Waterdeep: Dragon Heist"")")]
     public Task<ToolResult<Campaign>> CreateCampaign(
         [Description(ToolParameterDescriptions.CampaignSlugRequired)]
         string name,
@@ -347,12 +347,10 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
                     Summary: $"Character {characterId} not found.");
             }
 
-            var system = character.SystemStats switch
-            {
-                Dnd5eExtension => RulesetSystem.Dnd5e,
-                Pf2eExtension => RulesetSystem.Pathfinder2e,
-                _ => RulesetSystem.Dnd5e
-            };
+            var levelUpConfig = await session.LoadAsync<CampaignConfig>(_keys.Config(effective));
+            var system = levelUpConfig?.ActiveSystem
+                ?? throw new InvalidOperationException(
+                    $"No campaign config found for '{effective}'; cannot determine its ruleset system.");
 
             var currentLevel = XpThresholdCalculator.GetCurrentLevel(character);
             var targetLevel = currentLevel + 1;

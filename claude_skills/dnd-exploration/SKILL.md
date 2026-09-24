@@ -97,79 +97,31 @@ Narrate the sensory outcome from the roll result—don't invent what they find.
 
 Travel can trigger random encounters. Engine resolves and returns encounter NPC/creature. You narrate the scene and run the interaction (combat, negotiation, flight).
 
-**`scene_interrupt_check`** is the sibling mechanism for crowded locations: a single-roll check (not a full travel/rest span) for whether someone steps out of the `ambientCrowd` and interrupts a tense beat. Call it after a beat that raises stakes in a crowded place — not on every line of dialogue. It has a one-interrupt-per-location-per-day cooldown, so don't call it repeatedly hoping for a hit.
+**Blank sheet until you write one — decide who the NPC is *before* resolving the check** (from location flavor + PC's visible state), never retconning motive to justify a roll (detail: `dnd-social`'s Method-Not-Job).
 
-```json
-{
-  "$type": "scene_interrupt_check",
-  "locationId": "locations/high-road-leilon-stretch",
-  "characterId": "chars/lyra",
-  "riskModifier": 10,
-  "notes": "Bloodied, wanted face, crowd already hostile"
-}
-```
-
-**Every encounter/interrupt NPC has a blank sheet until you write one — don't retroactively invent motive to justify a roll result.** The engine hands you a bare `Unknown Encounter Entity`/`Figure from the Crowd` with an `ENGINE DIRECTIVE` note, not a backstory. Decide who they are (toll collector, drunk, mistaken-identity grab, actual threat) *before* resolving the check, from location flavor + the PC's visible state — not by seeing a social-roll result first and retconning a faction/plot connection into "explain" it. A successful Persuasion/Deception roll changes *how* that person does the job they already have (see `dnd-social`'s NPC Trust & Self-Interest); it doesn't let you upgrade "random road muscle" into "secretly here for the PC's backstory" after the fact.
-
-**Clear the NPC from the scene once the encounter resolves.** These are `keepAlive: false` transients placed AT the scene location — they stay in `PresentNPCs` on every future `get_entity`/`take_turn` scene fetch at that location until their `CurrentLocationId` is explicitly cleared. The engine's own eviction sweep is day-granularity and NOT triggered by narrative resolution, so don't rely on it. As soon as you narrate the encounter as over (they leave, are dealt with, party moves on), commit, in the same batch as that narration:
-
-```json
-{
-  "$type": "activity",
-  "characterId": "chars/transient_encounter_cfbd70",
-  "newLocationId": null,
-  "updateLocation": true,
-  "reason": "Encounter resolved; NPC moves on"
-}
-```
-
-This doesn't delete them (they stay in the DB — reusable if genuinely still nearby), it just stops them cluttering scene presence. If you want them to matter again (recurring threat, promoted to a real NPC), use `character_update` with `keepAlive: true` or `schedule_change` instead of clearing location — don't do both.
+**Clear the transient once the encounter resolves** — `keepAlive: false` NPCs linger in `PresentNPCs` until their `CurrentLocationId` is cleared (engine eviction is day-granularity). Same batch as the resolution narration: `activity` with `newLocationId: null` + `updateLocation: true`. To promote instead (recurring threat), `character_update` with `keepAlive: true` — don't do both.
 
 ## Location Transitions & Plot Threads
 
 After arriving at a location:
 1. Call `get_entity` with the location id (partyPresent: true) to read location state + any NPCs/creatures present
-2. Check `AssociatedPlotThreads` (plots referencing this location via clues or involvement)
-   - For Dormant threads: weave one foreshadowing hook into scene description
-   - For Active threads: surface a clue or NPC motivation hint
-   - For Climax threads: immediate consequences manifest in the scene
-3. Check `WorldPressure` for location-specific ENGINE WARNINGs (missing clue entities, unvisited transients, etc.)
-   - Missing entity in a clue? Seed it via world_build or remove the stale reference
-   - **To verify resolution:** After committing a fix via `take_turn`, pass `includeWorldState: true` and check the response's `WorldPressure` — the warning should be gone. If it's still there, your fix didn't work; investigate why.
+2. Check `AssociatedPlotThreads`: Dormant → weave one foreshadowing hook; Active → surface a clue/NPC hint; Climax → immediate consequences
+3. Check `WorldPressure` for location-specific ENGINE WARNINGs (missing clue entities, unvisited transients) — fix per `dnd-campaign-events`
 4. Narrate arrival sensory details
-5. Continue from there
 
-**Lazy Seeding on Arrival:** If the location or its parent district/building isn't yet seeded, surface ENGINE WARNING will nudge you to create it. Use checklist above to seed it before continuing—don't let dead-end or half-described locations ruin the scene.
+**Lazy Seeding on Arrival:** If the location or its parent district/building isn't yet seeded, an ENGINE WARNING will nudge you — seed it (`dnd-world-building` checklist) before continuing.
 
 ## Wayfinding & Landmarks
 
 Two different moves depending on how far/long/exposed the departure is — don't default to the lighter one just because it's a single field:
 
-**Staying inside the current location** (fleeing to a corner, hiding behind the bar, ducking into an alcove, flipping a table for cover, sitting on the bar with legs dangling, sleeping on a cot) — `newActivity` alone is enough to reposition the character; it's free-text narration, carries no PoI fields, and doesn't need `newLocationId`/`updateLocation` at all when the character's location document isn't actually changing. Reserve `newLocationId`/`updateLocation` for a genuine transition to a *different*, already-existing `Location` (it must resolve to a real location — the engine rejects an invented or nonexistent id rather than silently accepting it). If the spot has a lasting physical detail worth persisting, add a *separate* `location_update` in the same commit batch — this is flavor persisted on the *existing* location, not a new place:
+**Staying inside the current location** (corner, behind the bar, alcove, cot) — `newActivity` alone repositions; it carries no PoI fields and needs no `newLocationId`/`updateLocation` when the location document isn't changing. Reserve those for a genuine transition to a *different*, already-existing `Location` (invented ids are rejected, not accepted). Lasting physical detail → a *separate* `location_update` in the same batch (flavor on the *existing* location, not a new place).
 
-```json
-{
-  "changes": [
-    {
-      "$type": "activity",
-      "characterId": "chars/lyra",
-      "newActivity": "slipping behind the waterfall"
-    },
-    {
-      "$type": "location_update",
-      "locationId": "locations/forest",
-      "materializePointOfInterest": "Hidden Stream Grotto",
-      "poiDetails": "Narrow cave entrance behind waterfall, good cover from above, fresh water, no fire risk"
-    }
-  ]
-}
-```
+**`poiDetails` = durable physical facts about the PoI, never a character's current action/state** ("thrashed sheets" persists; "Lyra sleeping" is `newActivity` + `event`). Re-issue only when the room itself changes.
 
-**`poiDetails` is for durable physical facts about the PoI, never for a character's current action or state.** "Thrashed sheets and a crumpled pillow on the cot" is a physical trace worth persisting. "Lyra sleeping on the cot" or "Mira giving what help she can" is a snapshot of what someone is doing *right now* — use `newActivity` for that, plus `event`/`knowledge_update` to log the conversation/beat. Narrating a character's state through `poiDetails` goes stale the instant the beat ends, and forces every future scene refresh of the parent location to resend in full. Don't re-issue `location_update` every time the character's verb changes at the same spot — only when the room itself changes or is first established.
+**Promote to a real child `Location` on the *second* occupied PoI** (`materializePointOfInterest` + `poiOccupantCharacterId`) — or immediately for anywhere the party returns to/lingers (rented room, hideout, sickbed). Presence tracks per exact `locationId`: anyone still anchored to the parent reads as co-located with the PoI-placed character. An ENGINE WARNING naming this PoI is a hard cue to promote now.
 
-**One use is a place, not flavor — promote as soon as a PoI is marked occupied a second time, don't wait longer.** When a `location_update` sets `materializePointOfInterest` + `poiOccupantCharacterId` (a character is really placed there, not just described) — or it's clearly somewhere the party will return to or linger (a rented room, a hideout, a sickbed) — that already satisfies "the party can return to it later" / "will host its own future scenes" above. Stop persisting it as `poiDetails` text and promote it to a real child `Location` (same pattern as the Hidden Forest Hollow example below) *before* narrating anyone as separated from the rest of the group. The engine tracks presence per exact `locationId` only — everyone still anchored to the parent shows up as co-located with whoever you just placed at the PoI, even when they're narratively in a different room. If you skip this, the engine will flag it as an ENGINE WARNING once other NPCs are present at the parent location — treat that as a hard cue to promote, not a suggestion to defer again.
-
-**Leaving to a real, distinct spot** (an hour into the woods, off the road to make camp, down into an unmapped ravine) — `location_update` create-and-link a real child `Location` in the same `take_turn` batch, then `travel`/`activity` into it. Don't staple this onto the parent Region/Wilderness as a PoI — a giant location used as a catch-all destination misrepresents who else is "present" there (anyone else nominally at that same broad location shows up in the scene) and never gets its own exits/danger tuned for the spot:
+**Leaving to a real, distinct spot** (an hour into the woods, off the road to make camp) — `location_update` create-and-link a real child `Location` in the same batch, then `travel`/`activity` into it. Never staple a distinct spot onto a broad Region/Wilderness as a PoI (misreports who's "present" and gets no tuned exits/danger):
 
 ```json
 {

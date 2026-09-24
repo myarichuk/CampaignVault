@@ -7,71 +7,25 @@ metadata:
 
 # Bundling & Composite Actions
 
-**Context**: Campaign Vault's `take_turn` tool handles all mutations atomically with bundled auto-refresh. This skill guides which WorldChange types to bundle in one `take_turn` call for cohesion and narrative clarity. There is no separate commit tool and no wrapper tools — `take_turn` with your chosen changes[] is the one mutation pattern.
+**Context**: `take_turn` handles all mutations atomically with bundled auto-refresh (caps/opt-ins: `dnd-world-change`). No separate commit tool exists — `take_turn` with changes[] is the one mutation pattern. Mutation syntax, required fields, auto-apply/auto-log rules → `dnd-world-change` (canonical); this skill decides *which* types cohere in one beat.
 
 **Tool schema (Stub mode, the default):** `take_turn`'s advertised schema deliberately does NOT list `$type` verbs or fields — these skills are the source of truth. Cache the `campaignvault___*` tool names after the first successful call; do not re-run `search_connected_tools` or re-request the schema each beat. Send sparse objects (`$type` + the fields you mean, no nulls). If a `$type` is unfamiliar or a commit fails, call `get_commit_schema` (no args = index; `type=<one $type>` = its fields) instead of guessing.
 
 ## Core Principle: Bundling Cohesion
 
-A **bundle** is a set of `WorldChange` types that logically belong together — they describe one atomic action from the player's perspective.
+One narrative beat = one `take_turn` call, however many change types it needs — never split a beat across calls (a failed batch rolls back atomically; a split batch can half-persist). A **bundle** is the set of `WorldChange` types describing one atomic action from the player's perspective.
 
-✅ **Cohesive bundles**:
-- `ruleset_action` + `engagement_relation` (skill check shifts trust/suspicion) — commit `engagement_relation` explicitly here; only grapple/escape-grapple `ruleset_action`s auto-apply one, an ordinary skill check does not
-- `ruleset_action` + `character_update` + `event` (combat damage wounds someone)
-- `engagement_relation` + `event` (establish a new relationship, log it) — see the Conflict Avoidance note below on when the event is actually redundant vs. required
-- `ruleset_action` + `event` + `activity` (an attack triggers an immediate cascading consequence — alarm bells, guards mobilizing — still one beat, one call)
-- Any ENGINE WARNING/pressure fix + the beat you were already about to commit — never a dedicated call just for the fix
+✅ **Cohesive**: `ruleset_action` + `engagement_relation` (check establishes a lasting state — explicit commit; only grapple/escape-grapple auto-applies); `ruleset_action` + `character_update` + `event` (damage wounds someone); `ruleset_action` + `event` + `activity` (attack's immediate cascade — alarm, mobilization — still one beat); any pressure fix + the beat already being committed (never a dedicated fix call).
 
-❌ **Incoherent bundles**:
-- `ruleset_action` (attack) + `item_update` (unrelated item state) — use two separate take_turn calls
-- `event` + `event` — typically redundant; one event should suffice
-- `character_update` (mood) + `spatial_position` + `activity` (unclustered changes) — break into separate beats
+❌ **Incoherent**: `ruleset_action` (attack) + `item_update` (unrelated item) — two calls; `event` + `event` — one suffices; unclustered `character_update` + `spatial_position` + `activity` — separate beats. An intervening player decision/round always splits beats (attack now vs. ambush two rounds later = two calls); immediate same-beat consequences never split.
+
+Auto-apply/auto-log (which pairs are redundant vs. required) → `dnd-world-change`, never re-decided here: `status` and Physical/Medical `engagement_relation` self-log (no paired `event`); HP-only `ruleset_action` and Social/Attention/Proximity relations need an explicit `event`.
 
 ## Decision Tree
 
-### 1. **Is this one narrative beat?**
-
-**Yes** → Go to #2
-**No** (multiple distinct events) → Call `take_turn` separately for each beat
-
-**Example: Yes**
-```
-Valen tries to seduce the guard.
-→ One beat, one skill check, one relationship outcome
-→ Single take_turn bundle
-```
-
-**Example: No**
-```
-Valen attacks the guard this turn. Two rounds later, after regrouping, the guard's allies set an ambush down the corridor.
-→ Two turns separated by an intervening player decision/round
-→ Two separate take_turn calls, one per turn
-
-(Contrast: the attack + the alarm it triggers + guards mobilizing in response are
-all IMMEDIATE, same-beat consequences of one action — that's a cohesive bundle,
-ONE take_turn call: ruleset_action + event + activity. Don't split cascading
-same-beat consequences just because they touch different WorldChange types.)
-```
-
-### 2. **Does the outcome change character state?**
-
-**Yes** → Go to #3
-**No** → Just an `event` or `ruleset_action` (read-only check)
-
-**Example: Yes**
-```
-Valen persuades the barkeep → Barkeep's trust increases → character state changed
-```
-
-**Example: No**
-```
-Valen asks the barkeep "Have you heard of the Shadow Guild?"
-→ DM responds with roleplay → no game state change (unless barkeep gives an item)
-```
-
-### 3. **How many WorldChange types does this action need?**
-
-However many the beat genuinely needs — one, two, or five — they all go in ONE `take_turn` changes[] array. Never split a single beat's changes across calls (a failed batch rolls back atomically; a split batch can half-persist). Reference `get_help topic=patterns` for worked examples.
+**1. One narrative beat?** No (distinct events separated by a decision/round) → separate `take_turn` per beat. Yes → #2.
+**2. Does the outcome change state?** No → bare `event` or `ruleset_action`. Yes → #3.
+**3. How many types?** All of them, in ONE changes[] array. Worked examples: `get_help topic=patterns`.
 
 ## Common Bundling Patterns
 
@@ -89,16 +43,14 @@ However many the beat genuinely needs — one, two, or five — they all go in O
 ]
 ```
 
-**Failure case** (suspicion increases, no reward):
+**Failure case** (Social relation + optional record — never auto-logged, so pair an `event` if the attempt is worth recording):
 ```json
 [
-  { "$type": "ruleset_action", ... },  // skill check failed
+  { "$type": "ruleset_action", ... },
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep",
     "verb": "accused", "category": "Social" }
-  // Social-category relations don't auto-log — add an event yourself if the failed attempt is worth recording
 ]
 ```
-Always set `category` explicitly on `engagement_relation`. An unrecognized verb with no `category` defaults to `Social` (no travel gate). Physical is only for verbs the catalog marks as blocking.
 
 ### Combat Action (Attack + Damage)
 
@@ -130,7 +82,7 @@ Use `take_turn` with ruleset_action (no separate attack tool exists):
 ]
 ```
 
-### NPC Relationship Milestone (First Meeting)
+### NPC Relationship Milestone (First Meeting — Social never auto-logs, so the event is the ONLY record; don't drop it)
 
 ```json
 [
@@ -138,18 +90,10 @@ Use `take_turn` with ruleset_action (no separate attack tool exists):
     "verb": "met", "category": "Social" },
   { "$type": "event", "category": "Narrative", "involved": ["chars/valen", "chars/mysterious_stranger"],
     "summary": "Valen encountered a mysterious stranger in the tavern." }
-  // "met" is Social — Social/Attention/Proximity relations never auto-log, so this event
-  // is the ONLY record of the beat. Don't drop it.
 ]
 ```
 
 ## Conflict Avoidance
-
-### Auto-Logging Only Happens for Physical/Medical Relations
-
-The engine only auto-logs an event for `engagement_relation` when its `category` is `Physical` or `Medical`. `Social`/`Attention`/`Proximity` never auto-log. Unrecognized verbs default to `Social` (no travel gate). Physical is only for verbs the catalog marks as blocking.
-
-Set `category` explicitly. Pair an `event` for Social/Attention/Proximity. Physical/Medical self-log — do not also pair an event.
 
 ### Narrative vs. Game State
 
@@ -186,20 +130,6 @@ Set `category` explicitly. Pair an `event` for Social/Attention/Proximity. Physi
 ]
 ```
 
-| **Unsure about bundling** | Use `take_turn` with explicit changes[] batch — auto-refresh handles follow-up reads |
+| **Unsure about bundling** | Inspect first (`get_entity` / `get_commit_schema`) — never a speculative `take_turn` (see `dnd-world-change` No-Op Rule) |
 
-## Refresh Opt-Ins (avoid extra round-trips)
-
-`take_turn` echoes touched-entity summaries automatically. When the next beat needs more, opt in on the SAME call instead of a follow-up query:
-- `includeParty: true` — full party roster refresh. **PCs are excluded from the automatic Npcs[] refresh** (they ride `Party`/`PartyDelta` only) — this is the only `take_turn` channel for a PC's actual need values (hunger/thirst/tiredness/etc.); don't state one you haven't fetched.
-- `includeWorldState: true` (+ `partyLocationId`) — rumors/quests/factions/time/pressures. This runs a full world-state rebuild every time it's set — reserve it for when pressure/verification actually matters, not every beat by default.
-- `fullDetailCharacterId` / `fullDetailLocationId` — one full NPC/scene view bundled in
-- `extraCharacterIds` / `extraLocationIds` — refresh entities the batch didn't touch
-
-Standalone reads with no mutation use `get_entity` instead.
-
-For bundling decisions, use:
-- This decision tree
-- `get_help topic=patterns` (worked examples)
-- `recommended-system-prompt.md` (SACRED RULES section)
-- `get_commit_schema` (per-$type required fields and co-commit hints)
+For bundling decisions, use this decision tree, `get_help topic=patterns`, and `get_commit_schema`.

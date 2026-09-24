@@ -28,7 +28,12 @@ public static class SystemStatsUpgradeHelper
         }
 
         var config = await session.LoadAsync<CampaignConfig>(keys.Config(campaignName));
-        var activeSystem = config?.ActiveSystem ?? RulesetSystem.Dnd5e;
+        if (config is null)
+        {
+            return; // No configured ruleset: nothing to upgrade toward, and we don't guess 5e.
+        }
+
+        var activeSystem = config.ActiveSystem;
 
         foreach (var character in characters.Values)
         {

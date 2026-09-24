@@ -47,12 +47,16 @@ public class InteractionModesTests
         }
     }
 
-    private sealed class FakeMode(string modeId, IReadOnlyList<string>? compatibleSystems = null) : IInteractionMode
+    private sealed class FakeMode(
+        string modeId,
+        IReadOnlyList<string>? compatibleSystems = null,
+        ModeParticipantClaim claim = ModeParticipantClaim.Independent) : IInteractionMode
     {
         public string ModeId { get; } = modeId;
         public string DisplayName => ModeId;
         public IReadOnlyList<string> CompatibleSystems { get; } = compatibleSystems ?? [];
         public IModeStateMachine StateMachine { get; } = new FakeModeStateMachine();
+        public ModeParticipantClaim ParticipantClaim { get; } = claim;
     }
 
     [Fact]
@@ -192,6 +196,90 @@ public class InteractionModesTests
         Assert.True(result.Success);
         Assert.False(existing.IsActive);
         Assert.Null(context.ActiveMode);
+    }
+
+    private static ModeEncounter ActiveEncounter(string modeId, params string[] participantIds) => new()
+    {
+        Id = new CampaignDocumentKeys().ModeCurrent("test", modeId),
+        ModeId = modeId,
+        LocationId = "locations/pool",
+        IsActive = true,
+        Participants = participantIds.Select(id => new ModeParticipantState { CharacterId = id }).ToList()
+    };
+
+    private static async Task<(ChangeHandlerResult Result, ChangeContext Context)> EnterWhileActive(
+        FakeMode entering, FakeMode alreadyActive, string participantId)
+    {
+        var selector = new InteractionModeSelector([entering, alreadyActive]);
+        var handler = new ModeTransitionChangeHandler(selector, new CampaignDocumentKeys());
+        var config = new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = [entering.ModeId, alreadyActive.ModeId] };
+        var context = ChangeContextTestHelper.Create(
+            session: MockSessionWithNoExistingEncounter(), campaignName: "test", config: config,
+            activeModes: [ActiveEncounter(alreadyActive.ModeId, "chars/aang")]);
+
+        var result = await handler.ApplyAsync(
+            new ModeTransitionChange { ModeId = entering.ModeId, Action = "enter", LocationId = "locations/pool", ParticipantIds = [participantId] },
+            context);
+        return (result, context);
+    }
+
+    [Fact]
+    public async Task ModeTransitionHandler_Enter_AllowsOverlappingModes_WhenNeitherIsExclusive()
+    {
+        var (result, context) = await EnterWhileActive(new FakeMode("crafting"), new FakeMode("social"), "chars/aang");
+
+        Assert.True(result.Success);
+        Assert.Equal(["crafting", "social"], context.ActiveModes.Keys.Order());
+        Assert.Equal("crafting", context.ActiveMode?.ModeId);
+    }
+
+    [Fact]
+    public async Task ModeTransitionHandler_Enter_Fails_WhenParticipantHeldByExclusiveMode()
+    {
+        var (result, context) = await EnterWhileActive(
+            new FakeMode("crafting"), new FakeMode("astral", claim: ModeParticipantClaim.Exclusive), "chars/aang");
+
+        Assert.False(result.Success);
+        Assert.Contains("astral", result.Message);
+        Assert.DoesNotContain("crafting", context.ActiveModes.Keys);
+    }
+
+    [Fact]
+    public async Task ModeTransitionHandler_Enter_Fails_WhenExclusiveModeClaimsBusyParticipant()
+    {
+        var (result, _) = await EnterWhileActive(
+            new FakeMode("astral", claim: ModeParticipantClaim.Exclusive), new FakeMode("crafting"), "chars/aang");
+
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public async Task ModeTransitionHandler_Enter_AllowsExclusiveMode_ForDifferentParticipants()
+    {
+        var (result, _) = await EnterWhileActive(
+            new FakeMode("crafting"), new FakeMode("astral", claim: ModeParticipantClaim.Exclusive), "chars/sokka");
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task ModeTransitionHandler_Exit_KeepsOtherActiveModes()
+    {
+        var selector = new InteractionModeSelector([new FakeMode("crafting"), new FakeMode("astral")]);
+        var handler = new ModeTransitionChangeHandler(selector, new CampaignDocumentKeys());
+        var config = new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["crafting", "astral"] };
+        var crafting = ActiveEncounter("crafting", "chars/aang");
+        var session = Substitute.For<IAsyncDocumentSession>();
+        session.LoadAsync<ModeEncounter>(crafting.Id, Arg.Any<CancellationToken>()).Returns(crafting);
+        var context = ChangeContextTestHelper.Create(
+            session: session, campaignName: "test", config: config, activeMode: crafting,
+            activeModes: [ActiveEncounter("astral", "chars/aang")]);
+
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "exit" }, context);
+
+        Assert.True(result.Success);
+        Assert.Equal(["astral"], context.ActiveModes.Keys);
+        Assert.Equal("astral", context.ActiveMode?.ModeId);
     }
 
     // --- Track A: CampaignConfig.EnabledModeIds write path (campaign_update) ---

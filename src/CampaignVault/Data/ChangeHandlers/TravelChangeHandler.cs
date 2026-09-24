@@ -1,3 +1,4 @@
+using CampaignVault.Events;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -43,6 +44,7 @@ public class TravelChangeHandler : IWorldChangeHandler
         }
 
         var time = await ctx.GetCurrentTimeAsync();
+        var fromLocationId = character.CurrentLocationId;
 
         var terrain = tc.TerrainOverride;
         var encounterRiskModifier = tc.EncounterRiskModifier ?? 0;
@@ -168,6 +170,14 @@ public class TravelChangeHandler : IWorldChangeHandler
                 LocationId = destination.Id,
                 Details = new Dictionary<string, object> { ["hoursTraveled"] = hoursTraveled }
             }, ct);
+
+            ctx.Publish(CoreEvents.Traveled, new Dictionary<string, object?>
+            {
+                [CoreEvents.Fields.CharacterId] = character.Id,
+                [CoreEvents.Fields.FromLocationId] = fromLocationId,
+                [CoreEvents.Fields.LocationId] = destination.Id,
+                [CoreEvents.Fields.Hours] = hoursTraveled
+            });
         }
         else
         {

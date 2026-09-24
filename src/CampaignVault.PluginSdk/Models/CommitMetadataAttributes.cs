@@ -54,3 +54,10 @@ internal sealed class CommitRequiredHintAttribute(string hint) : Attribute
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
 internal sealed class NarrativeOnlyAttribute : Attribute;
+
+/// <summary>
+/// Marks a WorldChange type as simulation-internal: the engine emits it and its handler applies it, but the model
+/// never authors it. Hidden from get_commit_schema; still registered so it round-trips through JSON and handlers.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class)]
+internal sealed class EngineOnlyAttribute : Attribute;

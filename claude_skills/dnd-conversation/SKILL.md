@@ -1,13 +1,15 @@
 ---
 name: dnd-conversation
-description: Dialogue flow, event commits, multi-speaker scenes, and conversation tracking
+description: Committing dialogue beats — Conversation events, involved lists, Trivial flavor marking (load when words were exchanged and must be logged)
 metadata:
   type: skill
 ---
 
 # Conversation Mode
 
-You are narrating dialogue and NPC interactions. Every exchange gets committed.
+You are logging dialogue: who spoke, where, what was said. Checks/DCs/modifiers → `dnd-social`. Voice/psychology → `dnd-npc-interaction`. Only committed `event`/`knowledge_update` text feeds NPC memory resurfacing — narrate-only banter is invisible to it.
+
+**Memory rule:** an `event` with `category: Conversation` and `involved: [npc1, npc2]` registers NPC-NPC conversation — no PC required.
 
 ## Sacred Rule: Commit Every Dialogue Beat
 
@@ -43,24 +45,16 @@ Don't use `engagement_relation` to mark participation—those are for physical/s
 
 ## Engagement vs. Conversation
 
-**Engagement relations** track *how* NPCs relate spatially or physically:
-- Restraining, escorting, grappling, performing, tending wounds
-
-**Conversation events** track *what* was said. They are separate. Don't use engagement to mark dialogue participants.
+**Engagement relations** track lasting states (restraining, escorting, grappling — see `dnd-world-change` for the `relationship` vs `engagement_relation` split).
+**Conversation events** track *what* was said. Don't use engagement to mark dialogue participants.
 
 ## Narration Format
 
-Show, don't tell. Weave in ONE visual/voice detail per NPC mention—never recite the entire character sheet:
-
-```
-The guard's jaw tightens. "Merchant, eh? We've had trouble with the southern trade route lately."
-```
-
-Not: "The guard (male, late 30s, scarred cheek, suspicious) demands to know your business."
+Show, don't tell. Weave in ONE visual/voice detail per NPC mention — see `dnd-narration` for the full compression rules.
 
 ### Dialogue Authenticity
 
-Same rule as `dnd-narration`'s Prompt Discipline section — psychology is the dialogue, not courtesy. Domain-specific: don't invent an apology, consent check, or softening line the engine didn't record; a coercive NPC demands or takes, it doesn't ask.
+Same rule as `dnd-narration`'s Prompt Discipline section — psychology is the dialogue, not courtesy.
 
 ## Time During Conversation
 
@@ -82,12 +76,10 @@ PC: "Just looking for work."
 **Multi-turn heated debate:**
 PC argues with the mayor and militia captain over recruitment. Each volley of dialogue → separate event commit with all three speakers in `involved`.
 
-## Checklist
+## Checklist (per-beat commit mechanics — checks/psychology live in `dnd-social` / `dnd-npc-interaction`)
 
 - [ ] Did someone speak? → Commit `event` with Conversation category
 - [ ] Are 3+ speakers present? → List all in `involved`
-- [ ] Did an NPC learn something? → Add `knowledge_update` to same batch
-- [ ] Did relationship shift? → Add `relationship` (payloads: `dnd-world-change`)
+- [ ] Did an NPC learn something? → Add `knowledge_update` to same batch (fields: `dnd-world-change`)
 - [ ] Did time actually pass? → Include `minutesElapsed` on the request (not every line gets its own event — batch related lines, but each exchange must be committed before the player's next action)
 - [ ] Was this beat pure flavor/banter with nothing new or shifted? → Mark `narrativeImportance: "Trivial"` on the request (and the event's own `importance` if you added one)
-- [ ] Is the NPC dialogue authentic to character/world, not softened by modern politeness? → No false apologies, no consent scripts, psychology shapes tone

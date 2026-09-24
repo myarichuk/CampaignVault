@@ -95,6 +95,33 @@ public class CampaignRepository
     ///
     /// Use this for all atomic world mutations coming from tools or simulation rules.
     /// </summary>
+    /// <summary>
+    /// Delivers core domain events raised outside a take_turn batch (e.g. the combat lifecycle). Reactions are
+    /// staged on the same session; the caller saves. Success is false only when a FailCommit subscriber faulted.
+    /// </summary>
+    public Task<CommitResult> PublishEventsAsync(
+        CampaignSession campaignSession,
+        IReadOnlyList<(string Topic, object? Data)> events,
+        IEnumerable<Character> loadedCharacters,
+        CombatEncounter? activeCombat)
+    {
+        var effective = campaignSession.EffectiveCampaign;
+        var session = campaignSession.Session;
+        return _changeDispatcher.PublishAsync(
+            session,
+            effective,
+            events,
+            loadedCharacters,
+            activeCombat,
+            () => GetTimeAsync(campaignSession),
+            async () =>
+            {
+                var camp = await session.LoadAsync<Campaign>(_keys.Meta(effective));
+                return camp?.SystemOptions ?? new();
+            },
+            ev => LogEventAsync(session, ev, effective));
+    }
+
     public async Task<CommitResult> StageChangesAsync(CampaignSession campaignSession, WorldChange[]? changes, string? partyLocationId = null)
     {
         changes ??= [];
@@ -1024,7 +1051,12 @@ public class CampaignRepository
         }
 
         var config = await session.LoadAsync<CampaignConfig>(_keys.Config(campaignName));
-        var activeSystem = config?.ActiveSystem ?? RulesetSystem.Dnd5e;
+        if (config is null)
+        {
+            return; // No configured ruleset: skip the upgrade rather than guess 5e.
+        }
+
+        var activeSystem = config.ActiveSystem;
 
         await SystemStatsUpgradeHelper.UpgradeSystemStatsIfNeededAsync(
             session, character, activeSystem, _classProvider, _backgroundProvider, _keys, campaignName);

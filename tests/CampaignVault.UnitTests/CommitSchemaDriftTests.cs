@@ -36,7 +36,9 @@ public class CommitSchemaDriftTests
 
         // Plugin $types may extend the live schema beyond core [JsonDerivedType] attributes.
         // Drift guard: every core discriminator must still be present.
-        var missing = discriminatorsFromAttrs.Except(discriminatorsFromRegistry).OrderBy(x => x).ToList();
+        // Engine-only verbs are deliberately hidden from the model-facing registry.
+        var engineOnly = CommitSchemaModel.Variants.Where(v => v.IsEngineOnly).Select(v => v.Discriminator);
+        var missing = discriminatorsFromAttrs.Except(discriminatorsFromRegistry).Except(engineOnly).OrderBy(x => x).ToList();
         Assert.True(missing.Count == 0,
             "Core discriminators missing from CommitSchemaRegistry: " + string.Join(", ", missing));
     }
@@ -103,5 +105,43 @@ public class CommitSchemaDriftTests
             Assert.False(string.IsNullOrWhiteSpace(variant.Discriminator));
             Assert.False(string.IsNullOrWhiteSpace(variant.Category));
         }
+    }
+
+    [Fact]
+    public void EngineOnlyVerbs_AreHiddenFromIndexAndLookup()
+    {
+        var engineOnly = new[] { "rest_recovery_ack", "item_persistence_surfaced", "memory_decay", "ambient_encounter_check" };
+        var index = CommitSchemaRegistry.GetIndex().Select(s => s.Type).ToHashSet();
+
+        foreach (var type in engineOnly)
+        {
+            Assert.True(CommitSchemaModel.Find(type)?.IsEngineOnly, $"{type} should be [EngineOnly]");
+            Assert.DoesNotContain(type, index);
+            Assert.Empty(CommitSchemaRegistry.GetAll(type: type));
+        }
+    }
+
+    [Fact]
+    public void Index_OmitsModeScopedPluginVerbs_ButLookupResolvesThem()
+    {
+        foreach (var variant in CommitSchemaModel.Variants.Where(v => v.ModeId is not null))
+        {
+            Assert.DoesNotContain(variant.Discriminator, CommitSchemaRegistry.GetIndex().Select(s => s.Type));
+            Assert.Single(CommitSchemaRegistry.GetAll(type: variant.Discriminator));
+        }
+    }
+
+    [Theory]
+    [InlineData("Short one.", "Short one.")]
+    [InlineData("First sentence here. Second sentence follows.", "First sentence here.")]
+    public void ClipSummary_KeepsFirstSentence(string input, string expected) =>
+        Assert.Equal(expected, CommitSchemaRegistry.ClipSummary(input));
+
+    [Fact]
+    public void ClipSummary_CapsLongSummaries()
+    {
+        var clipped = CommitSchemaRegistry.ClipSummary(new string('a', 30) + " " + new string('b', 60));
+        Assert.True(clipped.Length <= 62, clipped);
+        Assert.EndsWith("…", clipped);
     }
 }

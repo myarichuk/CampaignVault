@@ -59,7 +59,7 @@ public class MetaTools : IMcpServerTool
             return Task.FromResult(new ToolResult<IReadOnlyList<CommitTypeSchema>>(
                 true, index,
                 $"Returned an index of all {index.Count} commit types (name/category/summary only — no field lists). " +
-                "Call again with category or type to get a specific variant's full schema (required/optional fields, side effects, example)."));
+                "Call again with category or type to get a specific variant's full schema (required/optional fields, side effects, example). Plugin mode verbs (e.g. crafting_step) are not listed here; look one up with type= once its mode is enabled."));
         }
 
         var schema = CommitSchemaRegistry.GetAll(category, type);

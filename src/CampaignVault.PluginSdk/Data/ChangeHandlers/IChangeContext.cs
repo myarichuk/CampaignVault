@@ -21,7 +21,14 @@ public interface IChangeContext
     IReadOnlyDictionary<string, Quest> Quests { get; }
     ILogger Logger { get; }
     CombatEncounter? ActiveCombat { get; }
+    /// <summary>
+    /// Most recently entered active mode. Several modes can be active at once (crafting mid-astral, ...), so
+    /// mode verb handlers should look up their own mode in <see cref="ActiveModes"/> instead.
+    /// </summary>
     ModeEncounter? ActiveMode { get; }
+
+    /// <summary>Every active mode encounter in the campaign, keyed by ModeId (case-insensitive).</summary>
+    IReadOnlyDictionary<string, ModeEncounter> ActiveModes { get; }
     CampaignConfig? Config { get; }
 
     /// <summary>Optional dice service for handlers that resolve rolls in-process. Null in tests or hosts that omit wiring; plugins must degrade to pre-resolved fields.</summary>
@@ -40,6 +47,14 @@ public interface IChangeContext
     void RegisterNewItem(Item i);
     void RegisterNewFaction(Faction f);
     void RegisterNewQuest(Quest q);
+
+    /// <summary>
+    /// Publishes a domain event (see <c>CampaignVault.Events.DomainEvent</c>) for delivery once the current
+    /// change succeeds; dropped if it fails. <paramref name="topic"/> must start with your own source prefix
+    /// (your manifest id + "."); anything else is rejected and logged. <paramref name="data"/> must serialize
+    /// to a JSON object of plain values.
+    /// </summary>
+    void Publish(string topic, object? data = null);
 
     void RecordMessage(string message);
     void RecordPhysicalStateNudge(string message);

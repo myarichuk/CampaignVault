@@ -55,7 +55,8 @@ public class AmbientEncounterChangeHandler : IWorldChangeHandler
             aec.Hours,
             6, // bucket size — same granularity as travel
             0,
-            "Rest"); // closest existing chance tier for extended idle/stationary time at a location
+            "Rest", // closest existing chance tier for extended idle/stationary time at a location
+            eventContext: "Ambient");
 
         foreach (var delta in deltas)
         {

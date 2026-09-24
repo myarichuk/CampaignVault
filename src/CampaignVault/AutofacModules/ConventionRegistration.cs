@@ -2,7 +2,9 @@ using System.Reflection;
 using Autofac;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Events;
 using CampaignVault.Data.Guidance;
+using CampaignVault.Events;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Data.Scenes;
@@ -65,6 +67,8 @@ internal static class ConventionRegistration
             RegisterCollection<ISimulationRule>(builder, assembly);
             RegisterCollection<IPressureContributor>(builder, assembly);
             RegisterCollection<IGuidanceContributor>(builder, assembly);
+            RegisterCollection<IPluginGuidanceContributor>(builder, assembly);
+            RegisterCollection<IDomainEventHandler>(builder, assembly);
             RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
             RegisterCollection<IRulesetModule>(builder, assembly);
             RegisterCollection<IInteractionMode>(builder, assembly);
@@ -201,6 +205,35 @@ internal static class ConventionRegistration
 
             ValidateHandlerCoverage(handlers);
         });
+
+        builder.RegisterBuildCallback(WarnOnUnpublishedEventSubscriptions);
+    }
+
+    /// <summary>
+    /// String topics fail silently on a typo or a missing publisher plugin, so log each subscription to a topic
+    /// that neither core nor any loaded plugin's manifest "publishes" declares. Advisory only: never fails startup.
+    /// </summary>
+    private static void WarnOnUnpublishedEventSubscriptions(Autofac.ILifetimeScope ctx)
+    {
+        var logger = ctx.ResolveOptional<Microsoft.Extensions.Logging.ILoggerFactory>()?.CreateLogger("CampaignVault.Plugins");
+        try
+        {
+            var sources = ctx.ResolveOptional<PluginEventSources>() ?? PluginEventSources.CoreOnly;
+            foreach (var subscriber in ctx.Resolve<IEnumerable<IDomainEventHandler>>())
+            {
+                foreach (var topic in subscriber.Topics.Where(t => !sources.DeclaredTopics.Contains(t)))
+                {
+                    logger?.LogWarning(
+                        "{Handler} subscribes to domain event '{Topic}', which no loaded plugin declares under \"publishes\" " +
+                        "in plugin.json. It will never fire unless the publisher is installed (or the topic is a typo).",
+                        subscriber.GetType().Name, topic);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Skipped domain event subscription check");
+        }
     }
 
     private static void ValidateHandlerCoverage(IEnumerable<IWorldChangeHandler> handlers)

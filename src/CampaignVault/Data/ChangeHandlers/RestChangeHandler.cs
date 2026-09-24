@@ -1,3 +1,4 @@
+using CampaignVault.Events;
 using CampaignVault.Models;
 using CampaignVault.Services;
 
@@ -125,6 +126,14 @@ public class RestChangeHandler : IWorldChangeHandler
                 NewActivity = rc.NarrativeNote ?? "Rested peacefully.",
                 Reason = "Rest complete"
             }, ct);
+
+            ctx.Publish(CoreEvents.Rested, new Dictionary<string, object?>
+            {
+                [CoreEvents.Fields.CharacterId] = character.Id,
+                [CoreEvents.Fields.LocationId] = location.Id,
+                [CoreEvents.Fields.RestType] = restType.ToString(),
+                [CoreEvents.Fields.Hours] = hoursRested
+            });
 
             var recoverySummary = recoveryNarratives.Count > 0
                 ? "Resource pools recovered immediately."
