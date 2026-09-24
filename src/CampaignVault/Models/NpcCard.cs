@@ -67,8 +67,10 @@ internal static class NpcCardFactory
     /// <param name="preferredMemories">Memories already ranked relevant to this moment; falls back to salience.</param>
     /// <param name="modeParticipants">Every campaign-enabled mode id mapped to the character IDs currently
     /// active in that mode's encounter (empty set if the mode is enabled but has no active encounter).
-    /// Gates SystemExtension.Traits entries prefixed "&lt;modeId&gt;.&lt;name&gt;"; null/empty treats every
-    /// prefixed trait as gated-and-hidden, same as an enabled-but-inactive mode.</param>
+    /// Gates SystemExtension.Traits entries prefixed "&lt;modeId&gt;.&lt;name&gt;": such a key rides only
+    /// while this NPC is in the participant set for that modeId. A prefix that isn't a key here — because
+    /// modeParticipants is null/empty, or because that mode isn't currently enabled, or because the prefix
+    /// was never a mode id at all (e.g. "anatomy.cock") — is not gated data and always rides.</param>
     public static NpcCard Build(
         Character npc,
         IReadOnlyList<Character> party,
@@ -161,6 +163,7 @@ internal static class NpcCardFactory
 
         var visible = traits
             .Where(kv => !string.IsNullOrWhiteSpace(kv.Value) && IsSystemTraitVisible(kv.Key, npc.Id, modeParticipants))
+            .OrderBy(kv => kv.Key)
             .Select(kv => $"{kv.Key}={kv.Value}")
             .ToList();
 
@@ -176,8 +179,11 @@ internal static class NpcCardFactory
         }
 
         var modeId = key[..dot];
-        return modeParticipants != null
-            && modeParticipants.TryGetValue(modeId, out var participants)
-            && participants.Contains(npcId);
+        if (modeParticipants == null || !modeParticipants.TryGetValue(modeId, out var participants))
+        {
+            return true; // the prefix isn't a currently-enabled mode, so it's not gated data either
+        }
+
+        return participants.Contains(npcId);
     }
 }

@@ -8,9 +8,11 @@ namespace CampaignVault.Tests;
 /// <summary>
 /// SystemExtension.Traits gating on NpcCard: an out-of-tree plugin writes "&lt;modeId&gt;.&lt;name&gt;"
 /// entries into the character's shared Traits dictionary (its only extension point on SystemExtension,
-/// whose $system-discriminated derived types are a closed set). Unprefixed entries always ride the card;
-/// prefixed ones ride only while the NPC is an active participant in that mode's encounter, so a plugin's
-/// mode-only facts don't cost tokens on every turn regardless of whether the mode is in play.
+/// whose $system-discriminated derived types are a closed set). Unprefixed entries always ride the card.
+/// A dotted entry is gated only when its prefix is a key in modeParticipants (i.e. a currently-enabled
+/// mode) — then it rides only while the NPC is an active participant in that mode's encounter. A dotted
+/// entry whose prefix isn't a currently-enabled mode (including "anatomy.cock"-style non-mode data, and
+/// the case where modeParticipants itself is null/empty) always rides, same as an unprefixed entry.
 /// </summary>
 public class NpcCardFactoryTests
 {
@@ -36,13 +38,29 @@ public class NpcCardFactoryTests
     }
 
     [Fact]
-    public void Build_PrefixedTrait_Hidden_WhenNoModeParticipantsSupplied()
+    public void Build_PrefixedTrait_Visible_WhenNoModeParticipantsSupplied()
     {
+        // "crafting" is never a key in a null/empty modeParticipants dict, same as a non-mode prefix
+        // like "anatomy.cock" — not gated data, so it rides.
         var npc = MakeNpc(systemTraits: new() { ["crafting.tool_quality"] = "masterwork" });
 
         var card = Build(npc, modeParticipants: null);
 
-        Assert.Null(card.SystemTraits);
+        Assert.Equal("crafting.tool_quality=masterwork", card.SystemTraits);
+    }
+
+    [Fact]
+    public void Build_NonModePrefixedTrait_AlwaysVisible_EvenWhenOtherModesAreActive()
+    {
+        var npc = MakeNpc(id: "chars/npc1", systemTraits: new() { ["anatomy.cock"] = "described in appearance" });
+        var modeParticipants = new Dictionary<string, HashSet<string>>
+        {
+            ["crafting"] = ["chars/someone_else"] // "anatomy" is not a registered mode at all
+        };
+
+        var card = Build(npc, modeParticipants);
+
+        Assert.Equal("anatomy.cock=described in appearance", card.SystemTraits);
     }
 
     [Fact]
@@ -133,9 +151,30 @@ public class NpcCardFactoryTests
     {
         var npc = MakeNpc(id: "chars/npc1", systemTraits: new() { ["crafting.tool_quality"] = "masterwork" });
 
-        var hiddenCard = Build(npc, modeParticipants: null);
+        // "crafting" enabled but this NPC isn't a participant: gated-and-hidden.
+        var hiddenCard = Build(npc, modeParticipants: new Dictionary<string, HashSet<string>> { ["crafting"] = ["chars/someone_else"] });
         var visibleCard = Build(npc, modeParticipants: new Dictionary<string, HashSet<string>> { ["crafting"] = ["chars/npc1"] });
 
         Assert.NotEqual(hiddenCard.StableHash(), visibleCard.StableHash());
+    }
+
+    [Fact]
+    public void StableHash_UnaffectedByTraitsDictionaryEnumerationOrder()
+    {
+        var npcA = MakeNpc(id: "chars/npc1", systemTraits: new()
+        {
+            ["astral.tether_strength"] = "3",
+            ["recovery_die"] = "d8"
+        });
+        var npcB = MakeNpc(id: "chars/npc1", systemTraits: new()
+        {
+            ["recovery_die"] = "d8",
+            ["astral.tether_strength"] = "3"
+        });
+
+        var cardA = Build(npcA);
+        var cardB = Build(npcB);
+
+        Assert.Equal(cardA.StableHash(), cardB.StableHash());
     }
 }
