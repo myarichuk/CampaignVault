@@ -651,6 +651,7 @@ they never drift apart.
 ✅ Add custom `IPressureContributor` (world pressure sources)
 ✅ Add custom `IGuidanceContributor` (proactive guidance hints)
 ✅ Add `IPluginContextContributor` (one-line facts pushed on the take_turn beat that needs them, once per session)
+✅ Add `IPluginTraitsUpgrader` (migrate your own `SystemExtension.Traits` keys — rename, reshape, or retire — when you change your own trait schema; see [Migrating Your Own Traits Schema](#migrating-your-own-traits-schema) below)
 ✅ Add custom `IWorldChangeHandler` (react to player actions)
 ✅ Add custom `IWorldChangeObserver` (post-commit, non-failing, cross-cutting hooks — e.g. a trauma-triggered "inner voice" reactor that watches every mutation without owning any of them)
 ✅ Add custom `IMcpServerTool` (new MCP tools)
@@ -933,6 +934,46 @@ See `Rulesets/Modes/IInteractionMode.cs` and `Data/ChangeHandlers/IWorldChangeOb
 
 ---
 
+## Migrating Your Own Traits Schema
+
+`SystemExtension.Traits` (`Dictionary<string,string>`) is a closed dictionary shared by every plugin — you cannot add your own `[JsonDerivedType]` to `SystemExtension`, only write keys into this shared bag (see [Type 3](#type-3-interaction-mode-plugin)'s "Key convention"). That's a problem the moment you need to rename a key, change what a value means, or retire a field on data that already exists in someone's campaign: there's no code-level equivalent of a database migration for your own namespaced keys, short of asking every operator to hand-edit JSON.
+
+`IPluginTraitsUpgrader` closes that gap:
+
+```csharp
+public interface IPluginTraitsUpgrader
+{
+    string PluginId { get; }
+    bool TryUpgrade(IDictionary<string, string> traits);
+}
+```
+
+Implement it, and it's discovered by the same Autofac convention scan as every other plugin type — no registration needed. The host calls `TryUpgrade` once per character, every time that character is loaded (alongside the existing `SystemStats` type-coercion pass), and passes the character's live `Traits` dictionary. By convention (not enforced by the host — every code plugin is full-trust, see [Trust Model](#trust-model)) only touch keys under your own `"<pluginId|modeId>."` prefix. Return `true` only when you actually changed something, so the host knows to persist the character; an already-current document should return `false` to avoid a write on every load. Make `TryUpgrade` idempotent — it may run again on a document your own prior run already upgraded.
+
+```csharp
+public class CraftingTraitsUpgrader : IPluginTraitsUpgrader
+{
+    public string PluginId => "crafting";
+
+    public bool TryUpgrade(IDictionary<string, string> traits)
+    {
+        // v1 -> v2: "crafting.tool_quality" renamed to "crafting.toolQuality".
+        if (traits.Remove("crafting.tool_quality", out var value))
+        {
+            traits["crafting.toolQuality"] = value;
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+**Exceptions are caught and logged, never fatal.** A throwing upgrader doesn't block character load or any other registered upgrader — but a partial mutation it made before throwing is not rolled back, so keep each rename/reshape as a single, cheap dictionary operation rather than a multi-step edit.
+
+**Orphaned prefixes ("missing master").** If a plugin is later uninstalled, its trait keys don't get deleted — there's no upgrader instance to call, since none is loaded, so those keys simply sit inert in the data (same as a Skyrim plugin's records when its master `.esp` isn't loaded: present, unresolved, untouched). At startup the host scans every character's `Traits` keys and logs one warning per `"<prefix>."` that no currently loaded plugin's id or `modeIds` claims — a single summary line per orphaned prefix, not per character, so a retired plugin with hundreds of affected characters doesn't flood the log. Reinstalling the plugin resumes normal upgrades on the next load; the data was never lost.
+
+---
+
 ## FAQ
 
 **Q: Can I have multiple systems in one plugin?**
@@ -992,5 +1033,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** Interaction modes + `IWorldChangeObserver` (PLUGIN_SYSTEM_PLAN.md Track A/B)
-**Plugin API version:** 1.1 (adds `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)
+**Last updated:** `IPluginTraitsUpgrader` (SystemExtension.Traits schema migration)
+**Plugin API version:** 1.2 (adds `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)

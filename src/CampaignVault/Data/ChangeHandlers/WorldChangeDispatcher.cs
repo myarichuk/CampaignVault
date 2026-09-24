@@ -3,6 +3,7 @@ using CampaignVault.Data.Events;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Events;
 using CampaignVault.Models;
+using CampaignVault.Plugins;
 using CampaignVault.Rulesets;
 using CampaignVault.Services;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -34,7 +35,8 @@ public sealed class WorldChangeDispatcher(
     IEnumerable<IWorldChangeObserver>? observers = null,
     IRollService? rollService = null,
     IEnumerable<IDomainEventHandler>? eventHandlers = null,
-    PluginEventSources? eventSources = null)
+    PluginEventSources? eventSources = null,
+    IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null)
 {
     /// <summary>
     /// Events at this depth are dropped instead of delivered: batch change (0) → reaction (1) → reaction (2)
@@ -52,6 +54,7 @@ public sealed class WorldChangeDispatcher(
     private readonly ClassDefinitionProvider? _classProvider = classProvider;
     private readonly BackgroundDefinitionProvider? _backgroundProvider = backgroundProvider;
     private readonly IRollService? _rollService = rollService;
+    private readonly IReadOnlyList<IPluginTraitsUpgrader> _traitsUpgraders = traitsUpgraders?.ToList() ?? [];
 
     private readonly Dictionary<Type, IWorldChangeHandler> _handlersByChangeType = BuildHandlerDictionary(handlers ?? []);
 
@@ -202,7 +205,7 @@ public sealed class WorldChangeDispatcher(
             if (!string.IsNullOrEmpty(effectiveCampaign))
             {
                 await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
-                    session, characters, effectiveCampaign, _keys, _classProvider, _backgroundProvider);
+                    session, characters, effectiveCampaign, _keys, _classProvider, _backgroundProvider, _traitsUpgraders, _logger);
             }
             items = (await session.LoadAsync<Item>(itemIds))
                 .Where(kv => kv.Value != null)
@@ -1034,7 +1037,7 @@ public sealed class WorldChangeDispatcher(
             if (loaded.Count > 0 && !string.IsNullOrEmpty(context.CampaignName))
             {
                 await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
-                    session, loaded, context.CampaignName, _keys, _classProvider, _backgroundProvider);
+                    session, loaded, context.CampaignName, _keys, _classProvider, _backgroundProvider, _traitsUpgraders, _logger);
             }
 
             foreach (var character in loaded.Values)

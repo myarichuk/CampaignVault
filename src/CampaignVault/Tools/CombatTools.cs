@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Events;
 using CampaignVault.Models;
+using CampaignVault.Plugins;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Modes;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,17 +16,20 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
 {
     private readonly IRulesetModuleSelector _rulesetSelector;
     private readonly IInteractionModeSelector? _modeSelector;
+    private readonly IEnumerable<IPluginTraitsUpgrader> _traitsUpgraders;
 
     public CombatTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
         IRulesetModuleSelector rulesetSelector,
         ILogger<CombatTools>? logger = null,
-        IInteractionModeSelector? modeSelector = null)
+        IInteractionModeSelector? modeSelector = null,
+        IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null)
         : base(repository, keys, logger)
     {
         _rulesetSelector = rulesetSelector;
         _modeSelector = modeSelector;
+        _traitsUpgraders = traitsUpgraders ?? [];
     }
 
     [ToolCategory("Combat & rulesets")]
@@ -105,7 +109,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             // Ensure all loaded characters have upgraded SystemStats (type coercion + SkillModifiers derivation).
             // Initiative rolls and other combat resolution need SkillModifiers to be populated.
             await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
-                session, loadedCharacters, effective, _keys);
+                session, loadedCharacters, effective, _keys, traitsUpgraders: _traitsUpgraders, logger: _logger);
 
             var validCharacters = new List<Character>();
             var droppedForZeroHp = new List<string>();
@@ -239,7 +243,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
 
             // Ensure all loaded characters have upgraded SystemStats before resolving their actions.
             await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
-                session, characters, effective, _keys);
+                session, characters, effective, _keys, traitsUpgraders: _traitsUpgraders, logger: _logger);
 
             // Mark current actor as having acted
             var current = encounter.Combatants.FirstOrDefault(c => c.CharacterId == encounter.ActiveTurnId);
@@ -366,7 +370,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
 
             // Ensure all loaded characters have upgraded SystemStats before processing end-of-combat effects.
             await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
-                session, characters, effective, _keys);
+                session, characters, effective, _keys, traitsUpgraders: _traitsUpgraders, logger: _logger);
 
             var expiredMessages = new List<string>();
 

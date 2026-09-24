@@ -1,4 +1,5 @@
 using CampaignVault.Data.Migrations;
+using CampaignVault.Rulesets;
 using Raven.Client.Documents.Indexes;
 using Raven.Embedded;
 
@@ -56,6 +57,7 @@ public static class RavenStartup
     public static async Task RunDataMigrationsAsync(
         IDocumentStore documentStore,
         ILoggerFactory loggerFactory,
+        IReadOnlyCollection<string>? claimedTraitPrefixes = null,
         CancellationToken ct = default)
     {
         var logger = loggerFactory.CreateLogger(nameof(RavenStartup));
@@ -109,6 +111,15 @@ public static class RavenStartup
             else
             {
                 logger.LogInformation("✓ SystemStats type validation: no degraded characters found");
+            }
+
+            // Advisory-only: flag SystemStats.Traits key prefixes with no loaded plugin claiming them
+            // (a "missing master" — data is left untouched, never deleted, until the plugin returns).
+            var orphanedPrefixes = await PluginTraitsUpgradeRunner.WarnOnOrphanedTraitPrefixesAsync(
+                documentStore, claimedTraitPrefixes ?? [], logger, ct);
+            if (orphanedPrefixes.Count == 0)
+            {
+                logger.LogInformation("✓ Plugin trait prefix validation: no orphaned prefixes found");
             }
 
             // Repair corrupted Event documents

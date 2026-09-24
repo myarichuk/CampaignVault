@@ -1,6 +1,7 @@
 using CampaignVault.Data;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
+using CampaignVault.Plugins;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Services;
 using Raven.Client.Documents.Session;
@@ -20,7 +21,9 @@ public static class SystemStatsUpgradeHelper
         string campaignName,
         CampaignDocumentKeys keys,
         ClassDefinitionProvider? classProvider = null,
-        BackgroundDefinitionProvider? backgroundProvider = null)
+        BackgroundDefinitionProvider? backgroundProvider = null,
+        IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null,
+        ILogger? logger = null)
     {
         if (characters.Count == 0)
         {
@@ -37,7 +40,8 @@ public static class SystemStatsUpgradeHelper
 
         foreach (var character in characters.Values)
         {
-            await UpgradeSystemStatsIfNeededAsync(session, character, activeSystem, classProvider, backgroundProvider, keys, campaignName);
+            await UpgradeSystemStatsIfNeededAsync(
+                session, character, activeSystem, classProvider, backgroundProvider, keys, campaignName, traitsUpgraders, logger);
         }
     }
 
@@ -48,11 +52,24 @@ public static class SystemStatsUpgradeHelper
         ClassDefinitionProvider? classProvider = null,
         BackgroundDefinitionProvider? backgroundProvider = null,
         CampaignDocumentKeys? keys = null,
-        string? campaignName = null)
+        string? campaignName = null,
+        IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null,
+        ILogger? logger = null)
     {
         if (character?.SystemStats == null)
         {
             return;
+        }
+
+        // Independent of ruleset-type coercion below (and must run even when that coercion bails out
+        // on a type mismatch) — a plugin's trait schema migration has nothing to do with which
+        // SystemExtension subtype the character carries. RavenDB's tracked-entity dirty-checking picks
+        // up the dictionary mutation regardless, but log on an actual change so an operator can see a
+        // plugin's migration ran (same visibility RepairDegradedSystemStats gives its own repairs).
+        if (PluginTraitsUpgradeRunner.ApplyUpgrades(character, traitsUpgraders, logger))
+        {
+            logger?.LogInformation(
+                "Plugin traits upgrader(s) migrated SystemStats.Traits for character '{CharacterId}'.", character.Id);
         }
 
         var statsType = character.SystemStats.GetType();

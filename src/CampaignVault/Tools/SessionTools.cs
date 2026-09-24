@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
+using CampaignVault.Plugins;
 using CampaignVault.Rulesets;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
@@ -16,16 +17,19 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
 
     private readonly CampaignRepository _repo;
     private readonly IPressureOrchestrator _pressureOrchestrator;
+    private readonly IEnumerable<IPluginTraitsUpgrader> _traitsUpgraders;
 
     public SessionTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
         IPressureOrchestrator pressureOrchestrator,
-        ILogger<SessionTools>? logger = null)
+        ILogger<SessionTools>? logger = null,
+        IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null)
         : base(repository, keys, logger)
     {
         _repo = repository;
         _pressureOrchestrator = pressureOrchestrator;
+        _traitsUpgraders = traitsUpgraders ?? [];
     }
 
     [ToolCategory("Session & exploration")]
@@ -112,7 +116,7 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
 
             // Ensure all party members have upgraded SystemStats before reading AC/level off them.
             await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
-                session, party.ToDictionary(m => m.Id), effective, _keys);
+                session, party.ToDictionary(m => m.Id), effective, _keys, traitsUpgraders: _traitsUpgraders, logger: _logger);
 
             var pcLocationId = party.Where(m => m.IsPc).Select(m => m.CurrentLocationId).FirstOrDefault(l => !string.IsNullOrEmpty(l))
                                ?? party.Select(m => m.CurrentLocationId).FirstOrDefault(l => !string.IsNullOrEmpty(l));
