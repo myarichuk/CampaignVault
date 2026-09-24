@@ -51,11 +51,7 @@ When seeding a new area, apply these layers in order. **Any missing layer is a g
 
 **Step 5 — Exits:** Every location must have at least one exit (auto-linked via `connectedFromLocationId` on creation). No dead ends.
 
-**Step 6 — Plot Thread Enrichment:** Every plot thread seeded via `world_build` MUST include:
-- `foreshadowingHooks` (2-4 strings) — concrete, narratable teasers the GM can deploy before the thread activates. Examples: a glimpse of someone watching from a rooftop, a rumor overheard in a tavern, a letter found in a desk, a pattern noticed across multiple scenes. These are the *before* signals.
-- `clues` (2-4 entries minimum, each with `id`, `description`, `involvedEntityIds`) — discoverable evidence the party might find once the thread is active. A scrap of paper, a witness memory, a tracking mark. Each clue should be findable at a specific location or from a specific NPC.
-- `resolutionCondition` — a clear, testable end condition. Not "the party talks to them" but "the party presents evidence of the Thayan camp to Maeva, and she calls off the elven war parties."
-- `involvedEntityIds` — at minimum the primary NPC(s) the thread revolves around. Add faction IDs if the thread spans faction politics.
+**Step 6 — Plot Thread Enrichment:** Every plot thread seeded via `world_build` MUST include `foreshadowingHooks` (2-4 narratable teasers), `clues` (2-4 entries, each with `id`, `description`, `involvedEntityIds` — clue types: physical, behavioral, relational), a testable `resolutionCondition` ("party presents evidence of the Thayan camp to Maeva, and she calls off the elven war parties" — not "the party talks to them"), and `involvedEntityIds` (primary NPCs + factions). (Canonical counts: 2–4 everywhere; `dnd-campaign-events` and `dnd-npc-interaction` defer here.)
 
 **Apply this checklist BEFORE committing any `world_build` call.** Run through each layer mentally. If you catch yourself saying "I'll add that later," stop — seed it now. The cost of a missed location is a broken `get_entity` call or a dead-end scene. The cost of a missed PoI, unfilled plot thread, or non-materialized clue is flat narration without narrative scaffolding.
 

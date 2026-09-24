@@ -36,6 +36,13 @@ public sealed class PluginManifest
     [JsonPropertyName("campaignOptions")]
     public List<PluginCampaignOption> CampaignOptions { get; set; } = [];
 
+    /// <summary>
+    /// Domain event topics this plugin publishes (each must start with "{id}."). Informational: the host uses
+    /// it at startup to warn about subscriptions to topics nobody publishes (usually a typo or a missing plugin).
+    /// </summary>
+    [JsonPropertyName("publishes")]
+    public List<string> Publishes { get; set; } = [];
+
     public static PluginManifest? TryLoad(string pluginJsonPath, out string? error)
     {
         error = null;

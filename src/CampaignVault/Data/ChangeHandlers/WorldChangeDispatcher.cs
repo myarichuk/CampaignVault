@@ -1,5 +1,7 @@
 using System.Reflection;
+using CampaignVault.Data.Events;
 using CampaignVault.Data.Pressure;
+using CampaignVault.Events;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Services;
@@ -30,8 +32,18 @@ public sealed class WorldChangeDispatcher(
     ClassDefinitionProvider? classProvider = null,
     BackgroundDefinitionProvider? backgroundProvider = null,
     IEnumerable<IWorldChangeObserver>? observers = null,
-    IRollService? rollService = null)
+    IRollService? rollService = null,
+    IEnumerable<IDomainEventHandler>? eventHandlers = null,
+    PluginEventSources? eventSources = null)
 {
+    /// <summary>
+    /// Events at this depth are dropped instead of delivered: batch change (0) → reaction (1) → reaction (2)
+    /// is plenty for any real integration; deeper chains are almost always a publish loop.
+    /// </summary>
+    internal const int MaxEventDepth = 3;
+
+    private readonly IReadOnlyList<IDomainEventHandler> _eventHandlers = eventHandlers?.ToList() ?? [];
+    private readonly PluginEventSources _eventSources = eventSources ?? PluginEventSources.CoreOnly;
     private readonly IReadOnlyList<IWorldChangeHandler> _handlers = handlers?.ToList() ?? [];
     private readonly IReadOnlyList<IWorldChangeObserver> _observers = observers?.ToList() ?? [];
     private readonly ILogger<WorldChangeDispatcher> _logger = logger ?? NullLogger<WorldChangeDispatcher>.Instance;
@@ -176,6 +188,7 @@ public sealed class WorldChangeDispatcher(
         Dictionary<string, Quest> quests;
         CombatEncounter? activeCombat = null;
         ModeEncounter? activeMode = null;
+        List<ModeEncounter>? activeModes = null;
         CampaignConfig? config = null;
 
         if (session != null)
@@ -248,18 +261,21 @@ public sealed class WorldChangeDispatcher(
                     config = new CampaignConfig { Id = configId };
             }
 
-            // Preload the first active ModeEncounter among EnabledModeIds (mirrors ActiveCombat).
+            // Preload every active ModeEncounter among EnabledModeIds (modes can overlap, e.g. crafting
+            // mid-combat). activeMode stays the first for the legacy single-mode view.
             if (config?.EnabledModeIds is { Count: > 0 } && !string.IsNullOrEmpty(effectiveCampaign))
             {
+                activeModes = [];
                 foreach (var modeId in config.EnabledModeIds)
                 {
                     var enc = await session.LoadAsync<ModeEncounter>(_keys.ModeCurrent(effectiveCampaign, modeId));
                     if (enc is { IsActive: true })
                     {
-                        activeMode = enc;
-                        break;
+                        activeModes.Add(enc);
                     }
                 }
+
+                activeMode = activeModes.FirstOrDefault();
             }
         }
         else
@@ -279,12 +295,12 @@ public sealed class WorldChangeDispatcher(
         {
             // Support pure unit tests of handler selection / duplicate detection / result aggregation
             // that use fake TestHandlers which never access Session / time / logging hooks.
-            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, activeMode, effectiveCampaign, config, physicalStateNudges);
+            context = new ChangeContext(null, characters, items, locations, factions, quests, _logger, summary, this, activeCombat, activeMode, effectiveCampaign, config, physicalStateNudges, activeModes);
             context.Rolls = _rollService;
         }
         else
         {
-            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, activeMode, effectiveCampaign, config, physicalStateNudges);
+            context = new ChangeContext(session, characters, items, locations, factions, quests, _logger, getCurrentTimeAsync, getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, activeMode, effectiveCampaign, config, physicalStateNudges, activeModes);
             context.Rolls = _rollService;
         }
 
@@ -314,7 +330,7 @@ public sealed class WorldChangeDispatcher(
                 ChangeHandlerResult result;
                 try
                 {
-                    result = await chosen.ApplyAsync(change, context);
+                    result = await RunAsSourceAsync(context, chosen, () => chosen.ApplyAsync(change, context));
                 }
                 catch (ArgumentNullException ex)
                 {
@@ -329,18 +345,23 @@ public sealed class WorldChangeDispatcher(
 
                 if (!result.Success)
                 {
+                    context.DiscardPendingEvents();
                     context.RecordFailure();
                     overallSuccess = false;
                 }
                 else
                 {
                     await NotifyObserversAsync(change, context);
+                    await DeliverDomainEventsAsync(context);
                 }
             }
             catch (Exception ex)
             {
+                context.DiscardPendingEvents();
                 _logger.LogError(ex, "Error processing change of type {ChangeType}", change?.GetType().Name);
-                summary.Add($"ERROR: Failed to process {change?.GetType().Name}: {ex.Message}");
+                summary.Add(ex is PluginFaultException { FixHint: { Length: > 0 } fixHint }
+                    ? $"ERROR: Failed to process {change?.GetType().Name}: {ex.Message} Fix: {fixHint}"
+                    : $"ERROR: Failed to process {change?.GetType().Name}: {ex.Message}");
                 context.RecordFailure();
                 overallSuccess = false;
             }
@@ -361,7 +382,12 @@ public sealed class WorldChangeDispatcher(
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
             ApplyMomentumTracking(context, changes);
             await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
+
+            // Engine steps above can dispatch child mutations (e.g. ambient damage) that publish events.
+            await DeliverDomainEventsAsync(context);
         }
+
+        context.DiscardPendingEvents();
 
         _logger.LogInformation("WorldChangeDispatcher processed {Processed} changes (overall success: {Success})",
             changes.Length, overallSuccess);
@@ -374,7 +400,78 @@ public sealed class WorldChangeDispatcher(
             InvolvedEntities = context.InvolvedEntities.ToList(),
             EntityCollisions = context.EntityCollisions.ToList(),
             CommittedIds = context.CommittedIds.ToList(),
-            PhysicalStateNudges = physicalStateNudges
+            PhysicalStateNudges = physicalStateNudges,
+            PluginFaults = context.PluginFaults.ToList(),
+            ReactionChanges = overallSuccess ? context.ReactionChanges.ToList() : []
+        };
+    }
+
+    /// <summary>
+    /// Delivers core events raised outside a take_turn batch (the combat lifecycle lives in CombatTools, not in a
+    /// WorldChange handler). Same delivery rules as a batch: reactions dispatch as follow-ups on
+    /// <paramref name="session"/>, faults are isolated unless a subscriber opts into FailCommit (then
+    /// Success is false and the caller must not save). Pass the characters the caller already loaded, plus the
+    /// tracked encounter, so reactions mutate the same instances the caller saves.
+    /// </summary>
+    public async Task<CommitResult> PublishAsync(
+        IAsyncDocumentSession session,
+        string campaign,
+        IReadOnlyList<(string Topic, object? Data)> events,
+        IEnumerable<Character> loadedCharacters,
+        CombatEncounter? activeCombat,
+        Func<Task<CampaignTime>> getCurrentTimeAsync,
+        Func<Task<Dictionary<string, string>>> getSystemOptionsAsync,
+        Func<Event, Task> logEventAsync)
+    {
+        var subscribed = events.Any(e => _eventHandlers.Any(h =>
+            h.Topics.Contains(e.Topic, StringComparer.OrdinalIgnoreCase)));
+        if (!subscribed)
+        {
+            return new CommitResult { Success = true };
+        }
+
+        var config = await session.LoadAsync<CampaignConfig>(_keys.Config(campaign));
+        var activeModes = new List<ModeEncounter>();
+        foreach (var modeId in config?.EnabledModeIds ?? [])
+        {
+            var enc = await session.LoadAsync<ModeEncounter>(_keys.ModeCurrent(campaign, modeId));
+            if (enc is { IsActive: true })
+            {
+                activeModes.Add(enc);
+            }
+        }
+
+        var summary = new List<string>();
+        var characters = loadedCharacters
+            .Where(c => c != null)
+            .GroupBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var context = new ChangeContext(session, characters, new Dictionary<string, Item>(), new Dictionary<string, Location>(),
+            new Dictionary<string, Faction>(), new Dictionary<string, Quest>(), _logger, getCurrentTimeAsync,
+            getSystemOptionsAsync, logEventAsync, summary, this, activeCombat, activeModes.FirstOrDefault(), campaign,
+            config, [], activeModes)
+        {
+            Rolls = _rollService,
+            Batch = [],
+            BatchIndex = -1
+        };
+
+        foreach (var (topic, data) in events)
+        {
+            context.EnqueueCoreEvent(topic, data, depth: 0);
+        }
+
+        await DeliverDomainEventsAsync(context);
+        context.DiscardPendingEvents();
+
+        var success = !context.HasFailure;
+        return new CommitResult
+        {
+            Success = success,
+            Summary = summary,
+            InvolvedEntities = context.InvolvedEntities.ToList(),
+            PluginFaults = context.PluginFaults.ToList(),
+            ReactionChanges = success ? context.ReactionChanges.ToList() : []
         };
     }
 
@@ -720,7 +817,11 @@ public sealed class WorldChangeDispatcher(
             {
                 if (observer.IsInterestedIn(change, context))
                 {
-                    await observer.OnCommittedAsync(change, context);
+                    await RunAsSourceAsync((ChangeContext)context, observer, async () =>
+                    {
+                        await observer.OnCommittedAsync(change, context);
+                        return true;
+                    });
                 }
             }
             catch (Exception ex)
@@ -732,28 +833,283 @@ public sealed class WorldChangeDispatcher(
     }
 
     /// <summary>
+    /// Runs <paramref name="action"/> with the context's event source set to <paramref name="actor"/>'s source,
+    /// so anything it publishes is stamped (and prefix-checked) as coming from the actor's assembly.
+    /// </summary>
+    private async Task<T> RunAsSourceAsync<T>(ChangeContext context, object actor, Func<Task<T>> action)
+    {
+        var previous = context.EventSource;
+        context.EventSource = _eventSources.SourceFor(actor.GetType());
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            context.EventSource = previous;
+        }
+    }
+
+    /// <summary>
+    /// Delivers pending domain events synchronously, in publish order, until none are left. Subscriber
+    /// reactions (follow-up changes) dispatch as child mutations of the current commit, one depth level deeper,
+    /// so whatever they publish is delivered in a later wave. Events at <see cref="MaxEventDepth"/> are dropped.
+    /// </summary>
+    private async Task DeliverDomainEventsAsync(ChangeContext context)
+    {
+        if (_eventHandlers.Count == 0)
+        {
+            context.DiscardPendingEvents();
+            return;
+        }
+
+        for (var wave = context.TakePendingEvents(); wave.Count > 0; wave = context.TakePendingEvents())
+        {
+            foreach (var domainEvent in wave)
+            {
+                var subscribers = _eventHandlers
+                    .Where(s => s.Topics.Contains(domainEvent.Topic, StringComparer.OrdinalIgnoreCase))
+                    .ToList();
+                if (subscribers.Count == 0)
+                {
+                    continue;
+                }
+
+                if (domainEvent.Depth >= MaxEventDepth)
+                {
+                    _logger.LogWarning(
+                        "Dropped domain event {Topic} from {Source}: depth cap {MaxDepth} reached (likely a publish loop)",
+                        domainEvent.Topic, domainEvent.Source, MaxEventDepth);
+                    RecordFault(context, domainEvent, new PluginFault(
+                        domainEvent.Source, "(dispatcher)", domainEvent.Topic, PluginFault.DepthCapped, null,
+                        $"Event dropped: reaction chains stop at depth {MaxEventDepth}.",
+                        "A subscriber republishes events that trigger itself again. Break the loop (publish only on an edge, not on every reaction).",
+                        [], CommitKept: true));
+                    continue;
+                }
+
+                foreach (var subscriber in subscribers)
+                {
+                    await DeliverToSubscriberAsync(context, subscriber, domainEvent);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Runs one subscriber's reaction. A fault (the handler throws, or a follow-up is rejected) stops the reaction:
+    /// events it published after the last good step are dropped, the fault is recorded, and under
+    /// <see cref="ReactionFailurePolicy.Isolate"/> the commit's failure state is restored so the turn is kept.
+    /// Follow-ups that already applied are not rolled back (handlers mutate tracked entities in place); the
+    /// fault lists them so the model knows the reaction is partial.
+    /// </summary>
+    private async Task DeliverToSubscriberAsync(ChangeContext context, IDomainEventHandler subscriber, DomainEvent domainEvent)
+    {
+        var previousDepth = context.EventDepth;
+        context.EventDepth = domainEvent.Depth + 1;
+        var policy = subscriber.FailurePolicy;
+        var pluginId = _eventSources.SourceFor(subscriber.GetType());
+        var handlerName = subscriber.GetType().Name;
+        var failuresBefore = context.FailureCount;
+        try
+        {
+            var mark = context.PendingEventMark;
+            IReadOnlyList<WorldChange> followUps;
+            try
+            {
+                followUps = await RunAsSourceAsync(context, subscriber, () => subscriber.HandleAsync(domainEvent, context));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "IDomainEventHandler {HandlerType} threw while handling {Topic}", handlerName, domainEvent.Topic);
+                context.TruncatePendingEvents(mark);
+                if (policy == ReactionFailurePolicy.FailCommit)
+                {
+                    context.RecordFailure();
+                }
+
+                RecordFault(context, domainEvent, new PluginFault(
+                    pluginId, handlerName, domainEvent.Topic, PluginFault.HandlerThrew, null,
+                    $"{ex.GetType().Name}: {ex.Message}",
+                    (ex as PluginFaultException)?.FixHint ?? "Bug in the plugin's event handler; check the host log for the stack trace.",
+                    [], CommitKept: policy == ReactionFailurePolicy.Isolate));
+                return;
+            }
+
+            var applied = new List<string>();
+            foreach (var followUp in followUps ?? [])
+            {
+                if (followUp is null)
+                {
+                    continue;
+                }
+
+                mark = context.PendingEventMark;
+                var failuresBeforeStep = context.FailureCount;
+                await PreloadAsync(context, followUp);
+                var result = await DispatchChildAsync(context, followUp);
+                if (result.Success && context.FailureCount == failuresBeforeStep)
+                {
+                    applied.Add(followUp.GetType().Name);
+                    context.ReactionChanges.Add(followUp);
+                    await NotifyObserversAsync(followUp, context);
+                    continue;
+                }
+
+                context.TruncatePendingEvents(mark);
+                if (policy == ReactionFailurePolicy.Isolate)
+                {
+                    context.ResetFailureCount(failuresBefore);
+                }
+                else
+                {
+                    context.RecordFailure();
+                }
+
+                RecordFault(context, domainEvent, new PluginFault(
+                    pluginId, handlerName, domainEvent.Topic, PluginFault.FollowUpFailed, followUp.GetType().Name,
+                    $"Follow-up rejected: {result.Message ?? "the change's handler reported a failure (see summary)."}",
+                    result.FixHint ?? "The plugin returned a change the engine rejected; check the ids and required fields it sets.",
+                    applied, CommitKept: policy == ReactionFailurePolicy.Isolate));
+                return;
+            }
+        }
+        finally
+        {
+            context.EventDepth = previousDepth;
+        }
+    }
+
+    /// <summary>
+    /// Loads the entities a reaction's follow-up references that the batch did not preload (a subscriber may
+    /// touch any character, e.g. the astral self when the body is hit). Most handlers read only the preloaded
+    /// dictionaries, so without this a valid follow-up would be rejected as "not found".
+    /// </summary>
+    private async Task PreloadAsync(ChangeContext context, WorldChange change)
+    {
+        if (context.Session is not { } session)
+        {
+            return;
+        }
+
+        var characterIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var itemIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var locationIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var factionIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var questIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        WorldChangeHandlerHelpers.NormalizeIdFields(change);
+        ExtractInvolvedIds(change, characterIds, locationIds, factionIds, questIds, itemIds);
+
+        bool Visible(string? campaignName) =>
+            string.IsNullOrEmpty(context.CampaignName) || CampaignEntityVisibility.IsVisibleInCampaign(campaignName, context.CampaignName);
+
+        var missingCharacters = characterIds.Where(id => !context.Characters.ContainsKey(id)).ToList();
+        if (missingCharacters.Count > 0)
+        {
+            var loaded = (await session.LoadAsync<Character>(missingCharacters) ?? new Dictionary<string, Character>())
+                .Where(kv => kv.Value != null && Visible(kv.Value.CampaignName))
+                .ToDictionary(kv => kv.Key, kv => kv.Value!);
+            if (loaded.Count > 0 && !string.IsNullOrEmpty(context.CampaignName))
+            {
+                await SystemStatsUpgradeHelper.UpgradeCharacterSystemStatsAsync(
+                    session, loaded, context.CampaignName, _keys, _classProvider, _backgroundProvider);
+            }
+
+            foreach (var character in loaded.Values)
+            {
+                context.RegisterNewCharacter(character);
+            }
+        }
+
+        foreach (var item in await LoadMissingAsync<Item>(session, itemIds, context.Items))
+        {
+            if (Visible(item.CampaignName)) context.RegisterNewItem(item);
+        }
+
+        foreach (var location in await LoadMissingAsync<Location>(session, locationIds, context.Locations))
+        {
+            if (Visible(location.CampaignName)) context.RegisterNewLocation(location);
+        }
+
+        foreach (var faction in await LoadMissingAsync<Faction>(session, factionIds, context.Factions))
+        {
+            if (Visible(faction.CampaignName)) context.RegisterNewFaction(faction);
+        }
+
+        foreach (var quest in await LoadMissingAsync<Quest>(session, questIds, context.Quests))
+        {
+            if (Visible(quest.CampaignName)) context.RegisterNewQuest(quest);
+        }
+    }
+
+    private static async Task<IEnumerable<T>> LoadMissingAsync<T>(
+        IAsyncDocumentSession session, HashSet<string> ids, IReadOnlyDictionary<string, T> have)
+    {
+        var missing = ids.Where(id => !have.ContainsKey(id)).ToList();
+        if (missing.Count == 0)
+        {
+            return [];
+        }
+
+        var loaded = await session.LoadAsync<T>(missing);
+        return loaded?.Values.Where(v => v != null).Select(v => v!) ?? [];
+    }
+
+    /// <summary>
+    /// Records a fault for the response and publishes <see cref="CoreEvents.PluginFaulted"/>, except for a fault
+    /// raised while handling that topic itself (a broken fault listener must not feed on its own faults).
+    /// </summary>
+    private void RecordFault(ChangeContext context, DomainEvent cause, PluginFault fault)
+    {
+        context.PluginFaults.Add(fault);
+        context.RecordMessage(fault.Describe());
+
+        if (string.Equals(cause.Topic, CoreEvents.PluginFaulted, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        context.EnqueueCoreEvent(CoreEvents.PluginFaulted, new Dictionary<string, object?>
+        {
+            [CoreEvents.Fields.PluginId] = fault.PluginId,
+            [CoreEvents.Fields.Handler] = fault.Handler,
+            [CoreEvents.Fields.Topic] = fault.Topic,
+            [CoreEvents.Fields.Stage] = fault.Stage,
+            [CoreEvents.Fields.ChangeType] = fault.ChangeType,
+            [CoreEvents.Fields.Message] = fault.Message,
+            [CoreEvents.Fields.FixHint] = fault.FixHint,
+            [CoreEvents.Fields.AppliedChangeTypes] = fault.AppliedChangeTypes,
+            [CoreEvents.Fields.CommitKept] = fault.CommitKept
+        }, cause.Depth + 1);
+    }
+
+    /// <summary>
     /// Dispatches a single child mutation directly within an ongoing change context.
     /// Used by handlers like RulesetActionHandler that compute secondary mutations.
     /// </summary>
-    public async Task DispatchMutationAsync(IChangeContext parentContext, WorldChange mutation, CancellationToken ct = default)
+    public async Task DispatchMutationAsync(IChangeContext parentContext, WorldChange mutation, CancellationToken ct = default) =>
+        await DispatchChildAsync((ChangeContext)parentContext, mutation, ct);
+
+    private readonly record struct ChildResult(bool Success, string? Message, string? FixHint);
+
+    private async Task<ChildResult> DispatchChildAsync(ChangeContext parent, WorldChange mutation, CancellationToken ct = default)
     {
-        var parent = (ChangeContext)parentContext;
         WorldChangeHandlerHelpers.NormalizeIdFields(mutation);
         var chosen = FindHandler(mutation);
-        
+
         if (chosen == null)
         {
             _logger.LogWarning("No handler found for child mutation of type {ChangeType}", mutation?.GetType().Name);
             parent.RecordFailure();
-            return;
+            return new ChildResult(false, $"No handler for change type {mutation?.GetType().Name}.", null);
         }
 
-        TrackInvolvedEntities(mutation, parentContext);
+        TrackInvolvedEntities(mutation, parent);
 
         try
         {
-            var result = await chosen.ApplyAsync(mutation, parentContext, ct);
-            TrackInvolvedEntities(mutation, parentContext);
+            var result = await RunAsSourceAsync(parent, chosen, () => chosen.ApplyAsync(mutation, parent, ct));
+            TrackInvolvedEntities(mutation, parent);
             if (result.Message is not null)
             {
                 parent.RecordMessage(result.Message);
@@ -762,11 +1118,14 @@ public sealed class WorldChangeDispatcher(
             {
                 parent.RecordFailure();
             }
+
+            return new ChildResult(result.Success, result.Message, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing child mutation of type {ChangeType}", mutation?.GetType().Name);
             parent.RecordFailure();
+            return new ChildResult(false, $"{ex.GetType().Name}: {ex.Message}", (ex as PluginFaultException)?.FixHint);
         }
     }
 

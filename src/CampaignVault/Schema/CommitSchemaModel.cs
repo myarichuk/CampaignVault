@@ -23,7 +23,9 @@ internal sealed record CommitVariantModel(
     bool IsHotTier,
     IReadOnlyList<string> SideEffects,
     IReadOnlyList<string> CoCommitHints,
-    string? Example);
+    string? Example,
+    bool IsEngineOnly = false,
+    string? ModeId = null);
 
 internal static class CommitSchemaModel
 {
@@ -123,7 +125,9 @@ internal static class CommitSchemaModel
                 isHotTier,
                 sideEffects,
                 coCommits,
-                example
+                example,
+                derivedType.GetCustomAttribute<EngineOnlyAttribute>() != null,
+                derivedType.GetCustomAttribute<PluginWorldChangeAttribute>()?.ModeId
             ));
         }
 

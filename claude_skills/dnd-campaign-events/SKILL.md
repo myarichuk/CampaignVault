@@ -26,7 +26,7 @@ Whenever a response carries `WorldPressure` (start_session, a scene fetch via ge
 }
 ```
 
-Include the suggested resolution in the same `take_turn` batch **and always pass `includeWorldState: true`** to verify the warning is resolved:
+Include the suggested resolution in the same `take_turn` batch **and always pass `includeWorldState: true`** to verify the warning is resolved. After the response, **check `WorldPressure` again** — still listed means the fix didn't land; investigate, don't defer. Without `includeWorldState: true` the response carries no WorldPressure, so an unverified "fix" is unconfirmed. 5+ unresolved warnings cap progress; `get_help topic=world-pressure` drains the backlog.
 
 ```json
 {
@@ -39,15 +39,9 @@ Include the suggested resolution in the same `take_turn` batch **and always pass
 }
 ```
 
-After the response, **check `WorldPressure` in the response**. If the warning still appears, it wasn't actually resolved—investigate why and try again. Do not skip or defer ENGINE WARNINGs. 5+ unresolved warnings cap progress; call `get_help topic=world-pressure` to drain the backlog.
-
-**Critical gotcha:** If you call `take_turn` with Changes but omit `includeWorldState: true`, the response won't include WorldPressure, so you'll never know if the warning was actually resolved. Always verify.
-
 ## Quest Progress
 
-Track quest milestones:
-
-Payloads: `dnd-world-change`. `quest_progress.newState` is `Open` → `InProgress` → `Complete` / `Failed` / `Skipped`.
+Track quest milestones: `quest_progress.newState` is `Open` → `InProgress` → `Complete` / `Failed` / `Skipped`, plus `objectiveIndex`/`objectiveName` (required — fields: `dnd-world-change`).
 
 ## Rumor Evolution
 
@@ -61,15 +55,11 @@ Rumors progress through lifecycle:
 }
 ```
 
-States: Nascent → Spreading → Peak → Fading → Resolved (or Forgotten).
-
-Create new rumors via `world_build` (batch). Evolve existing rumors via a `rumor` change in `take_turn`.
+States: Nascent → Spreading → Peak → Fading → Resolved (or Forgotten). New rumors are seeded via `world_build`; existing ones evolve via a `rumor` change in `take_turn` (on a delta turn only changed rumors resurface — an empty list means none changed, not that they died; full picture via `includeWorldState: true` / `get_entity`).
 
 ## Faction State & Economy
 
-Track faction stance changes:
-
-Use `faction_state` with `factionId` (the faction being updated) and `targetFactionId` only when setting a stance *toward* another faction. Payloads: `dnd-world-change`.
+Track faction stance changes: `faction_state` with `factionId` (the subject) and `targetFactionId` only for a stance *toward* another faction (fields: `dnd-world-change`).
 
 Factions have `EconomicDemand` (items they want). If the party carries demanded items, `FactionEconomyPressureContributor` surfaces opportunities in `WorldPressure`.
 
@@ -93,24 +83,9 @@ This rolls simulation rules (needs, rumors, status expiry, NPC schedules) and re
 
 ## Plot Thread Progression & Scaffolding
 
-Every plot thread seeded via `world_build` MUST include:
+Scaffolding fields are canonical in `dnd-world-building` (2–4 `foreshadowingHooks`, 2–4 `clues` with `id`/`description`/`involvedEntityIds`, testable `resolutionCondition`, `involvedEntityIds`). Progress in play via `plot_thread_progress`; escalate per pressure below.
 
-1. **`foreshadowingHooks` (2-4 strings):** Narratable teasers BEFORE the thread activates
-   - Example: "A robed figure watching from a rooftop", "Overheard tavern rumor about strange shipments", "A letter found in a desk"
-   - Weave these into scenes before plot activates; they prime the party for what's coming
-
-2. **`clues` (2-4+ entries, each with id, description, involvedEntityIds):** Discoverable evidence DURING the thread
-   - A scrap of paper, a witness statement, a tracking mark, a behavioral tic, a relationship dynamic
-   - Each clue should be findable at a location or from an NPC
-   - **Clue types:** physical (objects/locations), behavioral (NPC quirks/responses), relational (ties between NPCs/factions)
-
-3. **`resolutionCondition` (testable end state):** Not "the party talks to them" but "party presents evidence of the camp to Maeva, and she calls off the war parties"
-
-4. **`involvedEntityIds` (NPC IDs + related characters/factions):** At minimum the primary NPC the thread revolves around
-
-**Clue materialization:** When a clue references a physical object, seed it via `world_build` as an `items[]` entry with `holderId` pointing to location/NPC. The clue's `involvedEntityIds` must include the item ID. Tag the item: `tags: ["clue:plot-threads/..."]`. Without this link, party searches find nothing.
-
-**Reverse connections & validation:** Use `get_entity(plot-threads/...)` to fetch a thread. If ENGINE WARNING appears, the thread references missing entities (items/NPCs not yet seeded). Either seed them on-demand when plot demands, or remove stale clue references via `world_build`.
+**Clue materialization:** a clue referencing a physical object needs a matching `world_build` `items[]` entry (`holderId` set; clue's `involvedEntityIds` includes the item; item tagged `tags: ["clue:plot-threads/..."]`) — otherwise searches find nothing. **Validation:** `get_entity(plot-threads/...)`; an ENGINE WARNING means missing entities — seed on demand or drop the stale reference.
 
 ## Campaign Time
 
@@ -125,7 +100,7 @@ Read `WorldPressure` after every major scene:
 
 Use pressure as a narrative cue: when pressure peaks, events accelerate.
 
-## Campaign Checklist
+## Campaign Checklist (session tier — per-beat mechanics: `dnd-world-change`; prose: `dnd-narration`)
 
 - [ ] Did I read campaign time + pressure (start_session at kickoff; take_turn includeWorldState mid-play)?
 - [ ] Are there ENGINE WARNINGs? → Resolve atomically before continuing

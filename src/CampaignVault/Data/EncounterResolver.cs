@@ -1,3 +1,4 @@
+using CampaignVault.Events;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
@@ -109,6 +110,8 @@ public class EncounterResolver
                     NewActivity = "Dealing with an unexpected encounter."
                 });
 
+                // Every caller dispatches these deltas when interrupted, so the encounter is real by commit end.
+                PublishInterrupted(context, character, spawnId, contextType, category, transientId);
                 break;
             }
         }
@@ -211,8 +214,20 @@ public class EncounterResolver
             NewActivity = "Reacting to someone stepping out of the crowd."
         });
 
+        PublishInterrupted(context, character, location.Id, "Scene", category, transientId);
         return (true, deltas, narratives);
     }
+
+    private static void PublishInterrupted(
+        IChangeContext context, Character character, string locationId, string contextType, object category, string spawnedId) =>
+        context.Publish(CoreEvents.EncounterInterrupted, new Dictionary<string, object?>
+        {
+            [CoreEvents.Fields.CharacterId] = character.Id,
+            [CoreEvents.Fields.LocationId] = locationId,
+            [CoreEvents.Fields.Context] = contextType,
+            [CoreEvents.Fields.EncounterCategory] = category.ToString(),
+            [CoreEvents.Fields.SpawnedId] = spawnedId
+        });
 
     private double GetBaseChance(Location location, Dictionary<string, string> options, string contextType,
         string? terrain)

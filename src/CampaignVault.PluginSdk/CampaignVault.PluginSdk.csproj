@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>CampaignVault</RootNamespace>
     <AssemblyName>CampaignVault.PluginSdk</AssemblyName>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>CampaignVault</Authors>
     <Description>Raven-free plugin contracts and models for CampaignVault out-of-tree plugins.</Description>
     <PackageId>CampaignVault.PluginSdk</PackageId>

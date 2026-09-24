@@ -1024,7 +1024,12 @@ public class CampaignRepository
         }
 
         var config = await session.LoadAsync<CampaignConfig>(_keys.Config(campaignName));
-        var activeSystem = config?.ActiveSystem ?? RulesetSystem.Dnd5e;
+        if (config is null)
+        {
+            return; // No configured ruleset: skip the upgrade rather than guess 5e.
+        }
+
+        var activeSystem = config.ActiveSystem;
 
         await SystemStatsUpgradeHelper.UpgradeSystemStatsIfNeededAsync(
             session, character, activeSystem, _classProvider, _backgroundProvider, _keys, campaignName);

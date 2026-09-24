@@ -365,6 +365,12 @@ public class CommitResult
     /// wounds, appearance/tags) — see <see cref="TurnResult.PhysicalStateNudges"/> for why these are
     /// kept separate from <see cref="Summary"/>.</summary>
     public List<string> PhysicalStateNudges { get; set; } = [];
+    /// <summary>Domain-event reactions that broke this commit (see IDomainEventHandler). Isolated faults
+    /// leave <see cref="Success"/> true; the turn is kept and the fault is reported.</summary>
+    public List<CampaignVault.Data.Events.PluginFault> PluginFaults { get; set; } = [];
+    /// <summary>Follow-up changes domain-event subscribers applied, in order. Part of the turn's applied
+    /// changes alongside the caller's batch.</summary>
+    public List<WorldChange> ReactionChanges { get; set; } = [];
 }
 
 /// <summary>Rich eviction record returned from advance_world for transient NPC departures.</summary>

@@ -668,12 +668,14 @@ internal static class CharacterHandlerHelpers
         var ctx = (ChangeContext)context;
         if (string.IsNullOrEmpty(context.CampaignName))
         {
-            return RulesetSystem.Dnd5e;
+            throw new InvalidOperationException("Cannot resolve the active ruleset system without a campaign name.");
         }
 
         var configId = keys.Config(context.CampaignName);
         var config = await ctx.Session.LoadAsync<CampaignConfig>(configId, ct);
-        return config?.ActiveSystem ?? RulesetSystem.Dnd5e;
+        return config?.ActiveSystem
+            ?? throw new InvalidOperationException(
+                $"No campaign config found for '{context.CampaignName}'; cannot determine its ruleset system.");
     }
 }
 

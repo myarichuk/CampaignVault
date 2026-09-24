@@ -13,9 +13,8 @@ You are running a D&D combat encounter. These rules apply **only during active c
 
 1. **Start combat** → `combat(action: "start", locationId, combatantIds)` → each combatant rolls initiative once
 2. **Turn order** → `combat(action: "next")` advances turns, expires round-based status effects
-3. **Every action resolves via `ruleset_action`** — never invent rolls yourself
-4. **HP changes from `ruleset_action` only** — engine auto-applies, don't commit HP separately
-5. **Grapple:** `ContestedCheck` + `Maneuver` in `ruleset_action`; engine handles engagement
+3. **Every action resolves via `ruleset_action`** — never invent rolls yourself; never pair it with a manual `hp`/`status`/`engagement_relation` on the same character (damage, conditions, grapple engagement auto-apply — the batch hard-fails as a duplicate; see `dnd-world-change`)
+4. **Grapple:** `ContestedCheck` + `Maneuver` in `ruleset_action`; engine auto-applies engagement on success (manual `engagement_relation` only for non-grapple restraint)
 6. **A PC's turn is a hard stop, not a beat to narrate through.** When `combat(action: "next")` lands on a PC, describe the round state (what changed, who's threatening whom, any status ticking) and stop — wait for the player's stated action before committing any `ruleset_action` for that PC. Never pick their target, action, or spell for them, and never chain a PC's turn straight into the next NPC's without their input in between. An NPC combatant's turn is the one case you resolve and narrate in the same batch — their action comes from Psychology/TurnIntent, not the player.
 7. **Don't refuse a legal combat action outright.** If a PC declares an attack/maneuver the rules and fiction support, resolve it via the matching `ruleset_action` and let the roll decide — a low chance to hit is not a reason to refuse the attempt.
 
@@ -74,11 +73,13 @@ Before resolving a `Spell` action, check whether the caster can actually supply 
 - **Somatic** — does the caster have a free hand/gesture available? Bound or fully-occupied hands block this (unless a feat like War Caster waives it).
 - **Material** — does the caster possess the required component/focus, or is it a costly component they're carrying?
 
-The engine enforces this automatically for known SRD/homebrew spells against the caster's active status effects — you don't need to hand-roll the check. But when *you* apply a status effect (standard or homebrew — Gagged, Bound, mind control, a magical silence zone, etc.) that should block a component, tag it so the engine actually catches it on later turns instead of just this one narration: set `BlocksVerbalComponents`, `BlocksSomaticComponents`, `BlocksMaterialComponents`, or `BlocksAllActions` (any nonzero value) in that status effect's `statModifiers`. A feat or temporary effect that lifts a block (e.g. Subtle Spell) uses the matching `WaivesVerbalComponents`/`WaivesSomaticComponents`/`WaivesMaterialComponents` key instead. If the engine rejects a cast with `[SpellcastingBlocked]`, that's a legitimate mechanical outcome — narrate why, don't retry around it.
+When *you* apply a status effect (Gagged, Bound, silence zone, etc.) that should block a component, tag it so the engine catches it on later turns: set `BlocksVerbalComponents`, `BlocksSomaticComponents`, `BlocksMaterialComponents`, or `BlocksAllActions` (any nonzero value) in that status effect's `statModifiers` (lifting feat/effect uses the matching `Waives*` key). A `[SpellcastingBlocked]` rejection is a legitimate outcome — narrate why, don't retry around it.
+
+Casting also spends the slot — commit `{ "$type": "resource", "characterId": "chars/wizard", "poolName": "spell_slots_3", "delta": -1 }` in the same batch. Overspend hard-fails; narrate the fizzle and let the player pick another.
 
 ## Engagement & Spatial
 
-After grapple success, engine auto-creates engagement. For manual engagement:
+Manual `engagement_relation` only for non-grapple restraint (grapple success auto-applies — rule 4 above):
 ```json
 {
   "$type": "engagement_relation",
@@ -107,7 +108,7 @@ Commit status changes:
 - [ ] Is this an action (attack/spell/move)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll result?
 - [ ] Did time pass (turn advanced)? → `combat(action: "next")` or `minutesElapsed` on the take_turn request
-- [ ] Did HP/status change? → Only via `ruleset_action` or dedicated `status`/`hp` commits
-- [ ] Is someone grappling? → Include `engagement_relation` or let engine auto-create
+- [ ] Did HP/status/engagement change? → Only via `ruleset_action` auto-apply, or a dedicated `status` commit for an unrelated condition
+- [ ] Is someone grappling? → Engine auto-applies engagement; manual `engagement_relation` only for non-grapple restraint
 - [ ] If it just advanced to a PC's turn, did I stop instead of choosing their action for them?
 - [ ] Did I resolve the PC's declared action via a check instead of refusing it outright?

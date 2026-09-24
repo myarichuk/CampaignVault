@@ -30,8 +30,9 @@ public static class SocialSkillGating
 
         var socialSkills = system switch
         {
+            RulesetSystem.Dnd5e => Dnd5eSocialSkills,
             RulesetSystem.Pathfinder2e => Pf2eSocialSkills,
-            _ => Dnd5eSocialSkills
+            _ => throw new NotSupportedException($"No social skill set defined for ruleset system '{system}'.")
         };
 
         return !string.IsNullOrWhiteSpace(skillName) && socialSkills.Contains(skillName.Trim());

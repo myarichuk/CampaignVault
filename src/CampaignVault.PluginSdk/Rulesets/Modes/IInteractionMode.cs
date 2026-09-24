@@ -24,6 +24,36 @@ public interface IInteractionMode
     IReadOnlyList<string> CompatibleSystems { get; }
 
     IModeStateMachine StateMachine { get; }
+
+    /// <summary>
+    /// How this mode claims its participants' actions while it is active. Defaults to
+    /// <see cref="ModeParticipantClaim.Independent"/>, so modes written against 0.2.0 keep their behavior.
+    /// </summary>
+    ModeParticipantClaim ParticipantClaim => ModeParticipantClaim.Independent;
+}
+
+/// <summary>
+/// Action discipline for a mode's participants: which activity a character's actions belong to while the
+/// mode is active. The host enforces the mode-vs-mode rule at mode entry; the combat-side rules are
+/// declared now and enforced by later hosts.
+/// </summary>
+public enum ModeParticipantClaim
+{
+    /// <summary>Own clock, no coupling to other modes or combat (out-of-combat crafting).</summary>
+    Independent = 0,
+
+    /// <summary>
+    /// The character acts in this mode and in combat, and a mode action costs the character's combat action
+    /// (crafting a makeshift grenade mid-fight). Combat-budget charging is not enforced yet.
+    /// </summary>
+    Shared = 1,
+
+    /// <summary>
+    /// The character acts only here (astral projection: the mind leaves, the body stays). No other mode may
+    /// hold the same participant while this one is active. Skipping the body's combat turn is not enforced yet;
+    /// mark the body with a condition on entry so combat rules treat it as helpless.
+    /// </summary>
+    Exclusive = 2
 }
 
 /// <summary>

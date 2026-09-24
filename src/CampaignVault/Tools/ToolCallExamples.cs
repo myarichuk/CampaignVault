@@ -11,8 +11,8 @@ internal static class ToolCallExamples
     private static readonly IReadOnlyDictionary<string, ToolCallExample> Registry = BuildRegistry();
 
     /// <summary>
-    /// Top-level tool parameters that are siblings of the wrapped entity payload, not part of it —
-    /// excluded when repairing a flattened upsert_* call so they stay bound as separate MCP arguments.
+    /// Top-level tool parameters that are siblings of take_turn's 'request' payload, not part of it —
+    /// excluded when rewrapping a flattened call so they stay bound as separate MCP arguments.
     /// </summary>
     private static readonly HashSet<string> SiblingParameterKeys = new(StringComparer.Ordinal) { "campaignName" };
 
@@ -27,7 +27,7 @@ internal static class ToolCallExamples
         Registry.TryGetValue(toolName, out example!);
 
     /// <summary>
-    /// Rewrites known wrong parameter names and upsert wrapper shapes before MCP binding.
+    /// Rewrites known wrong parameter names and flattened take_turn shapes before MCP binding.
     /// </summary>
     public static bool TryNormalize(string toolName, JsonObject arguments, out IReadOnlyList<string> rewrites)
     {
@@ -39,43 +39,6 @@ internal static class ToolCallExamples
         }
 
         var modified = false;
-
-        if (example.LegacyWrapperKey is { } legacyKey &&
-            example.WrapperKey is { } wrapperKey &&
-            arguments.TryGetPropertyValue(legacyKey, out var legacyNode) &&
-            legacyNode is not null &&
-            !arguments.ContainsKey(wrapperKey))
-        {
-            arguments[wrapperKey] = legacyNode.DeepClone();
-            arguments.Remove(legacyKey);
-            applied.Add($"{legacyKey}→{wrapperKey}");
-            modified = true;
-        }
-
-        if (example.AllowFlattenedWrapper &&
-            example.WrapperKey is { } wrapKey &&
-            !arguments.ContainsKey(wrapKey) &&
-            example.FlattenedFieldDetector?.Invoke(arguments) == true)
-        {
-            // Only the entity's own fields get wrapped — sibling tool parameters (campaignName)
-            // stay at the top level, since they're bound as separate MCP arguments, not part of
-            // the entity payload.
-            var wrapped = new JsonObject();
-            foreach (var prop in arguments.ToList())
-            {
-                if (SiblingParameterKeys.Contains(prop.Key))
-                {
-                    continue;
-                }
-
-                wrapped[prop.Key] = prop.Value?.DeepClone();
-                arguments.Remove(prop.Key);
-            }
-
-            arguments[wrapKey] = wrapped;
-            applied.Add($"flattened→{wrapKey}");
-            modified = true;
-        }
 
         foreach (var (canonical, aliases) in example.Synonyms)
         {
@@ -429,10 +392,6 @@ internal static class ToolCallExamples
         public required string ToolName { get; init; }
         public IReadOnlyDictionary<string, string[]> Synonyms { get; init; } =
             new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-        public string? WrapperKey { get; init; }
-        public string? LegacyWrapperKey { get; init; }
-        public bool AllowFlattenedWrapper { get; init; }
-        public Func<JsonObject, bool>? FlattenedFieldDetector { get; init; }
         public string? DeserializationHint { get; init; }
         public required JsonObject ArgumentsTemplate { get; init; }
 
@@ -576,8 +535,6 @@ internal static class ToolCallExamples
                     }
                     """)!.AsObject(),
             },
-            // Dead upsert_* tools (upsert_character, location, item, creature, faction, quest, lore, rumor,
-            // plot_thread, spell, feat) are removed from this registry (Phase 3.6). Use world_build batch instead.
         };
     }
 }

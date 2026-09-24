@@ -9,6 +9,16 @@ metadata:
 
 You are persisting changes to the world: events, character state, items, relationships, quests, locations, and factions. All in-play mutations go through **`take_turn`** — pass `changes[]` + `narrative`, and the response echoes fresh summaries of every touched entity (no re-query needed).
 
+## Skill Ownership (canonical homes — pointers elsewhere defer here)
+
+`dnd-world-change`: mutation syntax, batching, required fields, delta/refresh. `dnd-bundling`: which types cohere in one beat. `dnd-combat`: turn order, action types, spell components. `dnd-exploration`: location hierarchy, travel/rest, PoI-vs-Location, encounter cleanup. `dnd-narration`: prose craft only. `dnd-npc-interaction`: psychology, memory, initiative. `dnd-social`: checks, DCs, modifiers. `dnd-campaign-events`: pressure, quests, rumors, factions, time. `dnd-world-building`: seeding. On conflict, the owning skill wins — never restate another skill's rule inline.
+
+## No-Op Rule (diagnosis is read-only)
+
+Self-diagnose with queries only (`get_entity`, `search_world`, `recall_history`, `get_help`, `get_commit_schema`, `get_rules_reference`). Never call `take_turn` to inspect — every `take_turn` commits (time tick, pressure eval, refresh) even with trivial `changes[]`. `includeWorldState`/`includeParty` verify a fix already sent; they are full rebuilds, not status polls.
+
+`narrative` is a short factual summary for the engine's event log — never the in-character text shown to the player. Tool-call efficiency governs call shape/count only; it never shortens prose.
+
 ## Atomic Turn Discipline
 
 **Every narrative beat ends with a same-turn `take_turn` before the player responds.** The take_turn is the period at the end of every sentence.
@@ -30,7 +40,12 @@ You are persisting changes to the world: events, character state, items, relatio
 | Narrative | `event`, `rumor` | Record dialogue, actions, discoveries |
 | Character State | `character_update`, `mood`, `knowledge_update` | Appearance, mood, memory |
 | Needs/Attributes | `need`, `attribute` | Open-ended narrative drives and stats — see below |
-| Relationships | `relationship`, `engagement_relation`, `spatial_position` | Social bonds, proximity, restraint |
+| Relationships | `relationship`, `engagement_relation`, `spatial_position` | Numeric bonds, lasting states, tactical spacing — disambiguated below |
+
+**`relationship` vs `engagement_relation` vs `faction_state`:** `relationship` = numeric opinion delta (-100..100, needs explicit `reason`) between two characters — a successful check never moves it by itself. `engagement_relation` = lasting physical/social state (verb + `category`; e.g. grappling/Physical, persuaded/Social) — commit explicitly except grapple/escape-grapple `ruleset_action`, which auto-applies one (engine rejects a redundant manual pair in the same batch — hard fail). `faction_state` (plural via `faction_state`, singular via `faction_reputation`) = faction-level stance/reputation, not character opinion. `spatial_position` = tactical spacing only, never a substitute for either.
+
+**Never pair `ruleset_action` with a manual `hp`/`status`/`engagement_relation` on the same character** — damage, conditions, and grapple engagement auto-apply (engine hard-fails the batch as a duplicate). Commit those $types only for unrelated adjustments (different character, or a second commit).
+**Auto-logging:** `status` and Physical/Medical `engagement_relation` self-log (no paired `event`). Everything else that matters narratively (`ruleset_action` incl. HP-only damage, Social/Attention/Proximity relations) needs its own `event`.
 | NPC Behavior | `npc_initiative_nudge` | Prime a specific NPC to act/speak next based on something they just witnessed (see `dnd-npc-interaction`'s NPC Initiative section) — the engine's own scheduler can't judge a specific narrative beat the way you can. |
 | Inventory | `item`, `item_update`, `item_equip`, `item_unequip`, `item_use` | Carry/drop/equip items |
 | Conditions | `status`, `status_remove` | Apply/end named conditions |
@@ -60,7 +75,7 @@ Call `get_commit_schema` for the machine-readable field list per $type.
 
 Three separate extension points exist for narrative state that isn't one of the named fields above. They are NOT interchangeable — picking the wrong one silently drops the value from the surface that should show it.
 
-- **`need`** (`$type: "need"`) — pushes `characterId`/`need`/`delta` into that character's `NeedsProfile.ActiveNeeds`. The name is unrestricted; invent any narrative-appropriate need (`paranoia`, `bloodlust`, `homesickness`). Only the core four (`hunger`, `thirst`, `tiredness`, `social_drive`) auto-tick from `minutesElapsed`/`advance_world` — an invented need moves **only** when you explicitly commit a `need` change for it, so if a need should track ongoing time pressure (not just discrete events), either give it an `accumulationRate` once (below) or push it yourself every turn it's relevant. Needs surface to you via `take_turn`'s `KnownNeeds` and participate in delta-mode "significant mover" filtering — this is the bag to use for anything you want the player-facing need list to show.
+- **`need`** (`$type: "need"`) — pushes `characterId`/`need`/`delta` into that character's `NeedsProfile.ActiveNeeds`. The name is unrestricted; invent any narrative-appropriate need (`paranoia`, `bloodlust`, `homesickness`, `stress`, `fatigue`). Only the core four (`hunger`, `thirst`, `tiredness`, `social_drive`) auto-tick from `minutesElapsed`/`advance_world` — an invented need moves **only** when you explicitly commit a `need` change for it, so if a need should track ongoing time pressure (not just discrete events), either give it an `accumulationRate` once (below) or push it yourself every turn it's relevant. A prose-only tracked bar dies at the session boundary/compaction; a committed `need` survives. Needs surface to you via `take_turn`'s `KnownNeeds` and participate in delta-mode "significant mover" filtering — this is the bag to use for anything you want the player-facing need list to show.
 - **`attribute`** (`$type: "attribute"`) — pushes `characterId`/`attribute`/`value`(+`isDelta`) into `SystemStats.Attributes`, a float bag clamped 0–100 (e.g. `corruption`, `reputation`, `fear`, `debt_pressure`). Never surfaces in `KnownNeeds` and is not part of the needs-accumulation sweep — use this for a persistent narrative score you'll reference in prose or pressure checks, not for anything meant to read like a need.
 - **`character_update.systemStats.traits`** — a `Dictionary<string,string>` inside `character_update`'s `systemStats` object (`SystemStats.Traits`), for open-ended string facts that don't fit a float (categorical tags, freeform descriptors). Example:
   ```json
@@ -88,6 +103,8 @@ The first `need` establishes `bladder` drifting at 20/day with no immediate push
 
 Never create entities through take_turn changes — there are no `_create` $types. Use `world_build` (batch: characters, locations, items, factions, quests, rumors, plotThreads, creatures, spells, feats, lore, needDescriptors), even for a single new entity (a one-item batch is fine). It reports a merge (not a duplicate) if the id already exists.
 
+**Seed before you name.** Never narrate a named actor into existence: before giving someone a name, a voice, or an action distinct from the crowd, check the response's `KnownCharacterIds` (take_turn) / `SeededNpcIds` (scene view, same IDs as `PresentNPCs[].Id`). Missing? `world_build` them (a `chars[]` entry, `keepAlive: true` if worth keeping) *before or in the same batch as* the narration — never after. Unnamed background stays unnamed (`ambientCrowd` flavor needs no ID). A `world_build`'d name you then reference that still fails means the ID doesn't exist server-side — `search_world` before retrying, don't re-narrate.
+
 **Before calling world_build**, run the world-building seeding checklist in `dnd-world-building` — especially the 6-step location depth + plot thread enrichment check, and its item-template/tag lookup step. A missed district, missing PoIs, or unfilled clues are gaps that surface as a broken `get_entity` or a flat narration later.
 
 **Plot thread clues must materialize as real items or NPCs:** If a clue references a physical object, seed it as an `items[]` entry. The clue's `involvedEntityIds` must include the item ID so `get_entity` on the item surfaces clue context. Tag the item: `tags: ["clue:plot-threads/..."]`. Without this, the party searches the world and finds nothing.
@@ -113,6 +130,7 @@ Atomic all-or-nothing; if any change fails, the entire batch rolls back — **no
 - `quest_progress` — must also include `objectiveIndex` or `objectiveName`; there's no default, and omitting both hard-fails the change (and the whole batch with it).
 - `rest.intendedHours` — always set explicitly (positive number)
 - `event.locationId` — never put location ID inside `involved`
+- `engagement_relation.category` — always set (Physical/Medical/Social/Attention/Proximity); omitted unrecognized verbs default to Social/Soft (no travel gate — verified in `EngagementRelationCatalog.InferCategory`; Physical is only for catalog-marked blocking verbs)
 - `knowledge_update.sourceEventIds` — required when `source` is `Witnessed` or `Experienced` (the character was directly there). Pass a client-chosen `eventId` on the paired `event`/`ruleset_action` change in the *same* batch and reference it here — the engine won't hand back a mid-batch ID for reuse, so you must pre-choose one. `Heard`/`Told` (secondhand/rumor) don't need this.
 
 ## Don't Let a Roll's Outcome Evaporate
@@ -138,15 +156,13 @@ Time accumulates and immediately nudges hunger/thirst/tiredness. Rest/travel cha
 
 Example: Don't use take_turn changes to rewrite a character's entire Psychology. Use `character_update` for narrow tags/mood, or `world_build` if you're restructuring Psychology deeply.
 
-## Bundled Refresh (why you never re-query)
+**Delta-mode nulls mean "unchanged," not "gone."** On a `mode: delta` turn, auto-refreshed scenes/NPCs omit appearance, gear, behavioralSummary, local rumors, Psychology, and Memory that didn't change — expect to already have them from the last full reseed. Only trust an omission as "gone" after a fresh `get_entity`. When memory/psychology may be stale (gap, resume), add `memoriesOnlyCharacterId` (memory only — cheapest) or `fullDetailCharacterId` to the next `take_turn` instead of assuming.
 
-`take_turn`'s response includes fresh summaries for touched NPCs (cap 6) and scenes (cap 3), plus opt-ins: `includeParty`, `includeWorldState`, `fullDetailCharacterId`, `fullDetailLocationId`, `extraCharacterIds`/`extraLocationIds`. If an expected section comes back null, check the response's `warnings` array.
+`take_turn` echoes touched-entity summaries automatically (cap 6 NPCs / 3 scenes); extend with opt-ins on the SAME call instead of a follow-up query: `includeParty: true` (the only `take_turn` channel for a PC's actual need values — never narrate one unfetched), `includeWorldState: true` (full world-state rebuild every time — reserve for pressure/verification, never a default), `fullDetailCharacterId`/`fullDetailLocationId` (one deep dossier), `extraCharacterIds`/`extraLocationIds` (untouched entities). Standalone reads with no mutation use `get_entity`. If an expected section comes back null, check the response's `warnings` array.
 
-Two of those opt-ins are easy to misuse in opposite directions:
-- **`includeParty`** — PCs are deliberately excluded from the auto-refreshed NPC bundle (they travel via `Party`/`PartyDelta` instead), so this is the *only* `take_turn` channel for a PC's actual need values. Skipping it entirely to save a call means you never actually know a PC's hunger/thirst/tiredness — don't narrate or track a number you haven't fetched.
-- **`includeWorldState`** — this triggers a full world-state rebuild (rumors, quests, factions, recent events, pressure evaluation) every time it's set, regardless of mode. Reserve it for when pressure/verification/new-location context actually matters, not as a default on every call — setting it reflexively is exactly the kind of unneeded-cost habit this file's bundling discipline is trying to prevent elsewhere.
+Don't set `forceFullReseed: true` unless context was just compacted or a fresh session started — the engine already decides `mode: full` vs `delta` each turn, and a same-location activity/PoI update stays delta-eligible on its own.
 
-## Checklist
+## Checklist (per-beat — scene/session tiers live in `dnd-narration` / `dnd-campaign-events`)
 
 - [ ] Did I narrate a beat? → `take_turn` before player responds
 - [ ] Is this dialogue? → `event` with Conversation category + all speakers in `involved`

@@ -146,6 +146,10 @@ public class TurnResult
         "physical/visual changed this turn.")]
     public List<string>? PhysicalStateNudges { get; set; }
 
+    [Description("Plugin reactions that broke this turn: what failed, what already landed, and how to fix it. " +
+        "The rest of the turn was saved. Null when none.")]
+    public List<string>? PluginFaults { get; set; }
+
     [Description("Character guidance hints collected this turn (rules/pattern nudges from guidance contributors, " +
         "e.g. first-commit quickstart, rest/travel patterns). Separate from PhysicalStateNudges, which carries " +
         "physical/visual state only. Null when no characters surfaced this turn, when guidance is disabled " +

@@ -35,8 +35,7 @@ internal static partial class McpToolErrorFilter
             catch (Exception ex) when (TryUnwrapJsonException(ex, out var jsonEx))
             {
                 var toolName = request.Params?.Name ?? "unknown";
-                var source = TryGetEntityPayloadElement(request.Params, toolName);
-                var enrichedMessage = ModelEnumErrorHints.Enrich(jsonEx, source);
+                var enrichedMessage = ModelEnumErrorHints.Enrich(jsonEx, null);
 
                 if (ToolCallExamples.TryGet(toolName, out _))
                 {
@@ -58,9 +57,9 @@ internal static partial class McpToolErrorFilter
             ("create_campaign", "name") =>
                 "Provide a unique campaign slug (spaces become hyphens). Pass campaignName on subsequent tool calls.",
             ("create_campaign", "initialSystem") =>
-                "Use a RulesetSystem value: Dnd5e, Pathfinder2e, or Narrative.",
+                $"Use a ruleset system id: {RulesetSystem.Dnd5e}, {RulesetSystem.Pathfinder2e}, or {RulesetSystem.Narrative} (plugins may add more).",
             ("take_turn", "changes") =>
-                "Pass an array of world-change objects in request.changes; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
+                "Pass an array of world-change objects in request.changes; each item needs a '$type' field (e.g. event, hp, activity). Consult your dnd-* skills for verbs, or call get_commit_schema(type: \"<$type>\") for one type's fields.",
             ("take_turn", "narrative") =>
                 "Provide a short summary of what happened for the event log (required when changes are present).",
             ("get_entity", "entityId") =>
@@ -112,26 +111,6 @@ internal static partial class McpToolErrorFilter
 
     internal static string BuildMissingParamMessage(string toolName, string paramName) =>
         BuildMissingParamResponse(toolName, paramName).Summary;
-
-    /// <summary>
-    /// Locates the JsonElement holding the entity/payload argument (e.g. the "location" object
-    /// on upsert_location) so <see cref="ModelEnumErrorHints"/> can echo back the offending value,
-    /// not just the list of valid enum names.
-    /// </summary>
-    private static JsonElement? TryGetEntityPayloadElement(CallToolRequestParams? requestParams, string toolName)
-    {
-        if (requestParams?.Arguments is null)
-        {
-            return null;
-        }
-
-        if (!ToolCallExamples.TryGet(toolName, out var example) || example.WrapperKey is null)
-        {
-            return null;
-        }
-
-        return requestParams.Arguments.TryGetValue(example.WrapperKey, out var element) ? element : null;
-    }
 
     internal static bool TryUnwrapJsonException(Exception ex, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out JsonException? jsonException)
     {

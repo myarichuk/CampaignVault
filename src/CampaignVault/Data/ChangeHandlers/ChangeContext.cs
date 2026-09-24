@@ -1,3 +1,6 @@
+using System.Text.Json;
+using CampaignVault.Data.Events;
+using CampaignVault.Events;
 using CampaignVault.Models;
 using Raven.Client.Documents.Session;
 
@@ -20,7 +23,106 @@ public sealed class ChangeContext : IChangeContext
     public IReadOnlyDictionary<string, Quest> Quests => _quests;
     public ILogger Logger { get; }
     public CombatEncounter? ActiveCombat { get; }
-    public ModeEncounter? ActiveMode { get; internal set; }
+
+    private readonly List<DomainEvent> _pendingEvents = [];
+
+    /// <summary>Source prefix of whoever is running right now; set by the dispatcher around each handler call.</summary>
+    internal string EventSource { get; set; } = CoreEvents.Source;
+
+    /// <summary>Depth stamped on events published right now; the dispatcher raises it during event delivery.</summary>
+    internal int EventDepth { get; set; }
+
+    public void Publish(string topic, object? data = null)
+    {
+        if (!CoreEvents.IsOwnedBy(topic, EventSource))
+        {
+            Logger.LogWarning(
+                "Rejected domain event '{Topic}' from '{Source}': a source may only publish under its own prefix '{Source}.'",
+                topic, EventSource, EventSource);
+            return;
+        }
+
+        DomainEvent domainEvent;
+        try
+        {
+            domainEvent = DomainEvent.Create(topic, data) with { Source = EventSource, Depth = EventDepth };
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException)
+        {
+            Logger.LogWarning(ex, "Rejected domain event '{Topic}' from '{Source}': payload is not JSON-serializable", topic, EventSource);
+            return;
+        }
+
+        _pendingEvents.Add(domainEvent);
+    }
+
+    internal List<DomainEvent> TakePendingEvents()
+    {
+        var taken = _pendingEvents.ToList();
+        _pendingEvents.Clear();
+        return taken;
+    }
+
+    internal void DiscardPendingEvents() => _pendingEvents.Clear();
+
+    /// <summary>Position in the pending-event queue; pass to <see cref="TruncatePendingEvents"/> to drop what came after.</summary>
+    internal int PendingEventMark => _pendingEvents.Count;
+
+    /// <summary>Drops events published after <paramref name="mark"/> (by a reaction that then faulted).</summary>
+    internal void TruncatePendingEvents(int mark)
+    {
+        if (mark >= 0 && mark < _pendingEvents.Count)
+        {
+            _pendingEvents.RemoveRange(mark, _pendingEvents.Count - mark);
+        }
+    }
+
+    /// <summary>Queues a core-sourced event directly (the dispatcher's own events, e.g. plugin faults).</summary>
+    internal void EnqueueCoreEvent(string topic, object? data, int depth) =>
+        _pendingEvents.Add(DomainEvent.Create(topic, data) with { Source = CoreEvents.Source, Depth = depth });
+
+    /// <summary>Reaction faults this commit (isolated or not), for the take_turn response.</summary>
+    internal List<PluginFault> PluginFaults { get; } = [];
+
+    /// <summary>Follow-up changes domain-event subscribers applied this commit, in order.</summary>
+    internal List<WorldChange> ReactionChanges { get; } = [];
+
+    private readonly Dictionary<string, ModeEncounter> _activeModes = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Most recently entered active mode (legacy single-mode view of <see cref="ActiveModes"/>).</summary>
+    public ModeEncounter? ActiveMode { get; private set; }
+
+    public IReadOnlyDictionary<string, ModeEncounter> ActiveModes => _activeModes;
+
+    internal void EnterMode(ModeEncounter encounter)
+    {
+        _activeModes[encounter.ModeId] = encounter;
+        ActiveMode = encounter;
+    }
+
+    internal void ExitMode(string modeId)
+    {
+        _activeModes.Remove(modeId);
+        if (ActiveMode != null && string.Equals(ActiveMode.ModeId, modeId, StringComparison.OrdinalIgnoreCase))
+        {
+            ActiveMode = _activeModes.Values.FirstOrDefault();
+        }
+    }
+
+    private void SeedActiveModes(ModeEncounter? activeMode, IEnumerable<ModeEncounter>? activeModes)
+    {
+        foreach (var encounter in activeModes ?? [])
+        {
+            _activeModes[encounter.ModeId] = encounter;
+        }
+
+        if (activeMode != null)
+        {
+            _activeModes[activeMode.ModeId] = activeMode;
+        }
+
+        ActiveMode = activeMode ?? _activeModes.Values.FirstOrDefault();
+    }
     public CampaignConfig? Config { get; }
 
     /// <inheritdoc />
@@ -69,7 +171,7 @@ public sealed class ChangeContext : IChangeContext
     private readonly List<string> _physicalStateNudges;
     private readonly List<string> _entityCollisions = [];
     private readonly List<string> _committedIds = [];
-    private bool _hasFailure;
+    private int _failureCount;
     private readonly Dictionary<string, Character> _characters;
     private readonly Dictionary<string, Item> _items;
     private readonly Dictionary<string, Location> _locations;
@@ -93,7 +195,8 @@ public sealed class ChangeContext : IChangeContext
         ModeEncounter? activeMode = null,
         string? campaignName = null,
         CampaignConfig? config = null,
-        List<string>? physicalStateNudges = null)
+        List<string>? physicalStateNudges = null,
+        IEnumerable<ModeEncounter>? activeModes = null)
     {
         Session = session ?? throw new ArgumentNullException(nameof(session));
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -109,7 +212,7 @@ public sealed class ChangeContext : IChangeContext
         _physicalStateNudges = physicalStateNudges ?? [];
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
-        ActiveMode = activeMode;
+        SeedActiveModes(activeMode, activeModes);
         CampaignName = campaignName;
         Config = config;
         InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -133,7 +236,8 @@ public sealed class ChangeContext : IChangeContext
         ModeEncounter? activeMode = null,
         string? campaignName = null,
         CampaignConfig? config = null,
-        List<string>? physicalStateNudges = null)
+        List<string>? physicalStateNudges = null,
+        IEnumerable<ModeEncounter>? activeModes = null)
     {
         Session = sessionForTests!;
         _characters = characters ?? throw new ArgumentNullException(nameof(characters));
@@ -149,7 +253,7 @@ public sealed class ChangeContext : IChangeContext
         _physicalStateNudges = physicalStateNudges ?? [];
         Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         ActiveCombat = activeCombat;
-        ActiveMode = activeMode;
+        SeedActiveModes(activeMode, activeModes);
         CampaignName = campaignName;
         Config = config;
         InvolvedEntities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -195,10 +299,16 @@ public sealed class ChangeContext : IChangeContext
     /// </summary>
     public void RecordFailure()
     {
-        _hasFailure = true;
+        _failureCount++;
     }
 
-    internal bool HasFailure => _hasFailure;
+    internal bool HasFailure => _failureCount > 0;
+
+    /// <summary>Failures recorded so far; a reaction compares before/after to detect its own failure.</summary>
+    internal int FailureCount => _failureCount;
+
+    /// <summary>Forgets failures recorded after <paramref name="count"/> (an isolated reaction fault).</summary>
+    internal void ResetFailureCount(int count) => _failureCount = Math.Min(_failureCount, Math.Max(0, count));
 
     /// <summary>
     /// Records that a create-style change (e.g. character_create) resolved to an ID that already

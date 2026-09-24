@@ -1397,6 +1397,7 @@ public class ResourceChange : WorldChange
 /// Emitted by ResourceRecoveryRule during advance_world; not intended for LLM commit use.
 /// </summary>
 [Description("Simulation-internal: acknowledges resource-pool recovery after a rest. Not for LLM use.")]
+[EngineOnly]
 public class RestRecoveryAck : WorldChange
 {
     [JsonPropertyName("characterId")]
@@ -1552,6 +1553,7 @@ public class ItemUse : WorldChange
 /// the item's fate is still decided by the LLM via a follow-up archive_entity/item_transfer/item_update.
 /// </summary>
 [Description("Simulation-internal: marks an ambient item's expiry as surfaced to the DM. Not for LLM use.")]
+[EngineOnly]
 public class ItemPersistenceSurfaced : WorldChange
 {
     [JsonPropertyName("itemId")]
@@ -1564,6 +1566,7 @@ public class ItemPersistenceSurfaced : WorldChange
 /// Maps memory entry key to (newSalience, newUrgency, evict) tuples for batch memory mutation.
 /// </summary>
 [Description("Simulation-internal: adjusts or evicts character memory saliencies/urgencies. Not for LLM use.")]
+[EngineOnly]
 public class MemoryDecay : WorldChange
 {
     [JsonPropertyName("characterId")]
@@ -1583,6 +1586,7 @@ public class MemoryDecay : WorldChange
 /// only because of which tool the DM happened to use.
 /// </summary>
 [Description("Simulation-internal: rolls for a random encounter over elapsed ambient time at a location. Not for LLM use — RestChange/TravelChange already roll for their own spans.")]
+[EngineOnly]
 public class AmbientEncounterCheck : WorldChange
 {
     [JsonPropertyName("locationId")]

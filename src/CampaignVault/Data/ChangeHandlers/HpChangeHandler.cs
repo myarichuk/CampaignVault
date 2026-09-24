@@ -1,4 +1,5 @@
 using System.Linq;
+using CampaignVault.Events;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -48,8 +49,35 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
         }
 
         var damageTaken = hp.Delta < 0 ? -hp.Delta : 0;
+        var hpBefore = character.CurrentHp;
         character.CurrentHp = Math.Clamp(character.CurrentHp + hp.Delta, 0, character.MaxHp);
         ctx.RecordMessage($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {character.CurrentHp}/{character.MaxHp})");
+
+        // Published on requested damage, not actual loss: a body already at 0 HP can still be hit (death
+        // saves in 5e, an astral projector's abandoned body, ...).
+        if (damageTaken > 0)
+        {
+            var actorId = FindAttackerId(ctx, character.Id);
+            ctx.Publish(CoreEvents.CharacterDamaged, new Dictionary<string, object?>
+            {
+                [CoreEvents.Fields.CharacterId] = character.Id,
+                [CoreEvents.Fields.Amount] = damageTaken,
+                [CoreEvents.Fields.HpLost] = hpBefore - character.CurrentHp,
+                [CoreEvents.Fields.CurrentHp] = character.CurrentHp,
+                [CoreEvents.Fields.MaxHp] = character.MaxHp,
+                [CoreEvents.Fields.ActorId] = actorId
+            });
+
+            if (hpBefore > 0 && character.CurrentHp == 0)
+            {
+                ctx.Publish(CoreEvents.CharacterDowned, new Dictionary<string, object?>
+                {
+                    [CoreEvents.Fields.CharacterId] = character.Id,
+                    [CoreEvents.Fields.MaxHp] = character.MaxHp,
+                    [CoreEvents.Fields.ActorId] = actorId
+                });
+            }
+        }
 
         // Concentration break check: DC = max(10, half damage taken), save vs DC (CON for 5e, Fortitude for PF2e).
         if (damageTaken > 0 && character.SystemStats?.StatusEffects != null)
@@ -77,6 +105,23 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
         }
 
         return ChangeHandlerResult.Ok;
+    }
+
+    /// <summary>
+    /// The actor of the top-level ruleset_action that targets this character, if that is what we are inside.
+    /// Only at event depth 0: during event delivery BatchIndex still points at the original change, so a
+    /// plugin's reaction damage would otherwise be credited to the original attacker.
+    /// </summary>
+    private static string? FindAttackerId(ChangeContext ctx, string characterId)
+    {
+        if (ctx.EventDepth != 0 || ctx.Batch is not { } batch || ctx.BatchIndex < 0 || ctx.BatchIndex >= batch.Count)
+        {
+            return null;
+        }
+
+        return batch[ctx.BatchIndex] is RulesetAction ra && ra.TargetIds.Contains(characterId, StringComparer.OrdinalIgnoreCase)
+            ? ra.CharacterId
+            : null;
     }
 
     private static (int Modifier, string SaveLabel) GetConcentrationSaveModifier(SystemExtension stats)

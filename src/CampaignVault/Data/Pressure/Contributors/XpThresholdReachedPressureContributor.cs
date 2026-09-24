@@ -27,6 +27,11 @@ public sealed class XpThresholdReachedPressureContributor : IPressureContributor
             return []; // Milestone doesn't use XP thresholds
         }
 
+        if (!XpThresholdCalculator.HasXpTable(activeSystem) && customThresholds is not { Count: > 0 })
+        {
+            return []; // No XP table for this system (e.g. Narrative) and no custom thresholds
+        }
+
         var characters = await PressureQueryHelper.QueryCombatantCharactersAsync(ctx.Session, ctx.CampaignName, 50, ct);
         var pressures = new List<WorldPressureItem>();
 

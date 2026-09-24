@@ -1,13 +1,13 @@
 ---
 name: dnd-social
-description: Social encounters, persuasion, deception, relationship modifiers, trust mechanics, and NPC psychology
+description: Resolving social encounters — checks, DCs, relationship modifiers, trust-gated NPC responses (load when the outcome is uncertain or a bond shifts)
 metadata:
   type: skill
 ---
 
 # Social Mode
 
-You are running social encounters: negotiation, persuasion, deception, intimidation, romance, betrayal.
+You are resolving social encounters: negotiation, persuasion, deception, intimidation, romance, betrayal. Commit mechanics (`event`, `involved`, `Trivial` marking) → `dnd-conversation`. Voice/schedule/memory → `dnd-npc-interaction`. A successful check never moves a numeric bond by itself — commit `relationship` (`delta` + `reason`) explicitly (see `dnd-world-change`).
 
 ## Relationship-Based Modifiers
 
@@ -53,29 +53,11 @@ For insight checks (reading the NPC), omit targetIds:
 
 ## Conversation Events
 
-**Every dialogue exchange must be committed immediately.** Set `minutesElapsed` on the top-level `take_turn` request, not inside the `event` object:
-
-```json
-{
-  "$type": "event",
-  "category": "Conversation",
-  "involved": ["chars/pc", "chars/npc-tavern-keeper"],
-  "locationId": "locations/tavern",
-  "summary": "PC asks about rumors of bandits; innkeeper hints at militia involvement"
-}
-```
-
-For 3+ speakers, list all IDs directly in `involved`. For pure flavor/banter with nothing new or shifted, still commit but set `narrativeImportance: "Trivial"` on the request (and the event's own `importance` if set) so it doesn't crowd out real beats in recall/reseed budgets.
+Commit every exchange per `dnd-conversation` (`event`, `category: Conversation`, all speakers in `involved`, `minutesElapsed` on the request, `narrativeImportance: "Trivial"` for pure flavor). Decide who the NPC is and what they want *before* resolving the check — never retcon motive to justify a roll (same rule as `dnd-exploration`'s Encounter Resolution).
 
 ## NPC Trust & Self-Interest
 
-Before narrating an NPC response, check their `Psychology`/`Social` profile:
-- **Low Trust** → resistance, guards answers
-- **High Suspicion** → evasive, reveals little
-- **Strong ideology** → won't betray faction interests
-- **Fear** → might comply under pressure, then resent
-
-Never default to cooperativeness; mirror plausible self-protection.
+Gate the response through `Psychology`/`Social` (Trust, Suspicion, ideology, Fear) — never default to cooperativeness. Detail → `dnd-npc-interaction`.
 
 ### Social Rolls Change the Method, Not the Job
 
@@ -88,27 +70,8 @@ A social check changes *how* an NPC does the job they already have — it doesn'
 
 Don't invent motive to justify a roll result after the fact — decide who the NPC is and what they want *before* resolving the check (see `dnd-exploration`'s Encounter Resolution for the same rule applied to blank `crowd_interrupt`/encounter transients).
 
-### Prompt Discipline: Authenticity, Not Comfort
+## Social Checklist (resolution only — commit mechanics live in `dnd-conversation`)
 
-Same rule as `dnd-narration`'s Prompt Discipline section. Domain-specific: failed persuasion doesn't soften into an apology; a believed lie is believed because of the roll, not because it makes moral sense; intimidation buys compliance now and resentment later. Narrate the outcome from the roll — psychology shapes how it's delivered.
-
-## Relationship Changes
-
-After a significant social beat, commit a `relationship` change. Payloads: `dnd-world-change`.
-
-## Knowledge Updates
-
-If the NPC learns something new, add a `knowledge_update` (`topic` / `details` / `sourceEventIds` when `source` is Witnessed or Experienced). Payloads: `dnd-world-change`.
-
-Local rumors on a scene refresh follow the same rule as gear/appearance: on a `mode: delta` turn, a scene's rumor list only includes rumors that changed state/text this turn (`$type: "rumor"`, evolving an *existing* rumor — new rumors are seeded via `world_build`, not a take_turn commit). An empty or shorter list doesn't mean rumors died out — it means none changed. Check `WorldState.ActiveRumors` (via `includeWorldState: true`) or `get_entity` for the full current picture.
-
-## Social Checklist
-
-- [ ] Did I fetch the NPC full detail (`get_entity` chars/ id) to read Trust/Suspicion/Loyalty/Fear?
 - [ ] Is there a skill check? → `ruleset_action` first, narrate outcome from result
-- [ ] Did words get exchanged? → Commit `event` (category: Conversation, involved: all speakers)
-- [ ] Did relationship shift? → `relationship` change in take_turn
-- [ ] Did the NPC learn something? → `knowledge_update`
-- [ ] Did time pass (banter, tense talk)? → `minutesElapsed` on the request
-- [ ] Was this pure flavor/banter with nothing new or shifted? → `narrativeImportance: "Trivial"` on the request
-- [ ] Is the NPC response authentic to their self-interest/psychology, not softened by modern courtesy? → Refusal is refusal, compliance under duress shows resentment, ideology trumps comfort
+- [ ] Did a numeric bond shift? → `relationship` (`delta` + `reason`) in the batch — never implied by the roll
+- [ ] Did the NPC learn something? → `knowledge_update` (fields: `dnd-world-change`)

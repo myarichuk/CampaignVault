@@ -34,7 +34,9 @@ public sealed record PressureContext(
     IReadOnlyList<string>? PartyCharacterIds = null,
     /// <summary>When set (e.g. advance_world), enables world-scope ambient crowd refresh reminders.</summary>
     int? DaysAdvanced = null,
-    bool DisableCooldowns = false
+    bool DisableCooldowns = false,
+    /// <summary>Changes committed by this turn (take_turn only). Edge-trigger input for guidance contributors.</summary>
+    IReadOnlyList<WorldChange>? AppliedChanges = null
 );
 
 public interface IPressureContributor

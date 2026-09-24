@@ -1,5 +1,6 @@
 using Autofac;
 using System.Reflection;
+using CampaignVault.Data.Events;
 using CampaignVault.Plugins;
 using CampaignVault.Schema;
 using Microsoft.Extensions.Logging;
@@ -35,6 +36,7 @@ public class CampaignVaultModule : Autofac.Module
     {
         var mainAssembly = Assembly.GetExecutingAssembly();
         var assemblies = new List<Assembly> { mainAssembly };
+        var eventSources = PluginEventSources.CoreOnly;
 
         // Load plugin assemblies from the plugin directory
         if (_pluginDirectory != null && Directory.Exists(_pluginDirectory))
@@ -42,6 +44,21 @@ public class CampaignVaultModule : Autofac.Module
             var plugins = PluginAssemblyLoader.LoadPluginsFromDirectory(_pluginDirectory, _pluginLogger);
             var pluginAssemblies = plugins.Select(p => p.Assembly).ToList();
             assemblies.AddRange(pluginAssemblies);
+
+            eventSources = new PluginEventSources(plugins.Select(p =>
+                (p.Assembly, p.Manifest?.Id, (IReadOnlyList<string>)(p.Manifest?.Publishes ?? []))));
+
+            // Prefix ownership is "topic starts with {id}.", so plugin "astral" could publish "astral.body.*"
+            // even if a plugin with id "astral.body" is installed. Rare; surface it rather than guess.
+            foreach (var source in eventSources.PluginSources)
+            {
+                foreach (var nested in eventSources.PluginSources.Where(o => o.StartsWith(source + ".", StringComparison.Ordinal)))
+                {
+                    _pluginLogger.LogWarning(
+                        "Plugin id '{Source}' is a dotted prefix of plugin id '{Nested}': '{Source}' can publish events under '{Nested}.'",
+                        source, nested, source, nested);
+                }
+            }
 
             PluginDataRoots.Additional = plugins
                 .SelectMany(p => p.RulesetDataRoots)
@@ -76,6 +93,7 @@ public class CampaignVaultModule : Autofac.Module
             }
         }
 
+        builder.RegisterInstance(eventSources).AsSelf().SingleInstance();
         ConventionRegistration.Register(builder, assemblies, _rulesetDataDirectory);
     }
 

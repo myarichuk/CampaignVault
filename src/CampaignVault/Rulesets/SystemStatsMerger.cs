@@ -58,7 +58,8 @@ public static class SystemStatsMerger
     {
         _ when type == typeof(Dnd5eExtension) => RulesetSystem.Dnd5e,
         _ when type == typeof(Pf2eExtension) => RulesetSystem.Pathfinder2e,
-        _ => RulesetSystem.Dnd5e
+        _ => throw new NotSupportedException(
+            $"Cannot infer a ruleset system from stats type '{type.Name}'; pass the campaign's active system explicitly.")
     };
 
     public static bool TryValidateRuleset(SystemExtension stats, string activeSystem, out string? error)

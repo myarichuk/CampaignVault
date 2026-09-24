@@ -16,18 +16,35 @@ public record CommitTypeSchema(
 
 internal static class CommitSchemaRegistry
 {
+    private const int IndexSummaryMaxChars = 60;
+
     /// <summary>
-    /// Type + category + one-line summary only, no fields/side-effects/example — for the unfiltered
+    /// Type + category + a clipped one-line summary, no fields/side-effects/example — for the unfiltered
     /// call so a caller isn't forced to pay for every variant's full schema just to see what exists.
+    /// Engine-only verbs and mode-scoped plugin verbs are omitted; the latter stay resolvable via type=.
     /// </summary>
     public static IReadOnlyList<CommitTypeSchema> GetIndex() =>
         CommitSchemaModel.Variants
-            .Select(v => new CommitTypeSchema(v.Discriminator, v.Category, v.Summary, [], [], false, [], []))
+            .Where(v => !v.IsEngineOnly && v.ModeId is null)
+            .Select(v => new CommitTypeSchema(v.Discriminator, v.Category, ClipSummary(v.Summary), [], [], false, [], []))
             .ToList();
+
+    internal static string ClipSummary(string summary)
+    {
+        var text = summary.Trim();
+        var stop = text.IndexOf(". ", StringComparison.Ordinal);
+        if (stop >= 0)
+            text = text[..(stop + 1)];
+        if (text.Length <= IndexSummaryMaxChars)
+            return text;
+
+        var cut = text.LastIndexOf(' ', IndexSummaryMaxChars);
+        return text[..(cut > 0 ? cut : IndexSummaryMaxChars)].TrimEnd(',', ';', ':', ' ') + "…";
+    }
 
     public static IReadOnlyList<CommitTypeSchema> GetAll(string? category = null, string? type = null)
     {
-        var variants = CommitSchemaModel.Variants;
+        IEnumerable<CommitVariantModel> variants = CommitSchemaModel.Variants.Where(v => !v.IsEngineOnly);
 
         // Filter by type if specified
         if (!string.IsNullOrWhiteSpace(type))
