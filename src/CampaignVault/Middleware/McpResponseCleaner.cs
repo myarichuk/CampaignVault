@@ -93,19 +93,7 @@ internal static class McpResponseCleaner
             // over what can be a very large payload.
             var text = cleaned.ToJsonString(ContentSerializerOptions);
 
-            // Injected after the real serialization (so it estimates the payload the client actually
-            // receives, truncation/delta-trims included) rather than computed per-DTO — every tool
-            // response shares this one wire-format seam regardless of which of the dozens of response
-            // types produced it. Char-count/4 is the standard rough heuristic for English/JSON text
-            // against GPT-family tokenizers; "rough" is the point — an LLM client budgeting context
-            // doesn't need exact BPE counts, just an order-of-magnitude cost signal without a real
-            // tokenizer dependency. Only meaningful for an object payload (every tool response here is
-            // one); left off array/scalar payloads.
-            if (cleaned is JsonObject topLevel)
-            {
-                topLevel["tokensEst"] = (int)Math.Ceiling(text.Length / 4.0);
-                text = topLevel.ToJsonString(ContentSerializerOptions);
-            }
+            // tokensEst was dropped (nothing read it); the estimate cost ~2.5k chars per session.
 
             result.Content = [new TextContentBlock { Text = text }];
             result.StructuredContent = IncludeStructuredContent

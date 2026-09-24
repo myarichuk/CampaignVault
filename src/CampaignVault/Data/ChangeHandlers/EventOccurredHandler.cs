@@ -96,7 +96,7 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
         // choices, so "is this novel" adds no DM value. Also avoids an extra query per event on hot
         // simulation paths (e.g. TransientEvictionRule emitting many Departure events per AdvanceWorld tick).
         if (ev.Category is not (EventCategory.Departure or EventCategory.Timeskip or EventCategory.Simulation
-            or EventCategory.SceneInterrupt or EventCategory.Test))
+            or EventCategory.SceneInterrupt or EventCategory.Test or EventCategory.Travel or EventCategory.Arrival))
         {
             var (similarity, noveltyHint) = await EventNoveltyAdvisor.ScoreAsync(ctx, e, ct);
             e.NoveltyScore = similarity;

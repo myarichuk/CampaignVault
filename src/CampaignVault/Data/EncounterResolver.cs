@@ -68,7 +68,9 @@ public class EncounterResolver
             var hoursInBucket = Math.Min(bucketSizeHours, totalHours - hoursPassed);
             hoursPassed += hoursInBucket;
 
-            if (_nextDouble() < modifiedChance)
+            // F1: a partial bucket (a 15-minute hop) carries a proportional share of the chance, not the full 6-hour one.
+            var bucketChance = modifiedChance * (hoursInBucket / bucketSizeHours);
+            if (_nextDouble() < bucketChance)
             {
                 interrupted = true;
 

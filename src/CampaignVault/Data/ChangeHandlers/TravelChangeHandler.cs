@@ -7,6 +7,11 @@ public class TravelChangeHandler : IWorldChangeHandler
 {
     private readonly EncounterResolver _resolver;
 
+    /// <summary>Outcome of a group move, shared by every traveler with the same origin and destination in one commit.</summary>
+    private sealed record GroupOutcome(bool Interrupted, double HoursTraveled);
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<IChangeContext, Dictionary<string, GroupOutcome>> GroupOutcomes = new();
+
     public TravelChangeHandler(EncounterResolver resolver)
     {
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
@@ -87,21 +92,45 @@ public class TravelChangeHandler : IWorldChangeHandler
                 $"No LocationExit from {origin} to {tc.DestinationLocationId}, and travelCostHoursOverride was not supplied. Add an exit on the origin, or pass travelCostHoursOverride.");
         }
 
-        var (interrupted, hoursTraveled, deltas, narratives) = await _resolver.EvaluateAsync(
-            ctx,
-            character,
-            destination,
-            totalHours,
-            6, // bucket size 6 hours
-            encounterRiskModifier,
-            "Travel",
-            terrain,
-            spawnLocationId: character.CurrentLocationId);
+        // F1/F2: travelers in one batch that share an origin and destination move as a group: the first
+        // one rolls the encounter and advances the clock once; the rest reuse that outcome. No more
+        // per-traveler rolls (accidental party splits) or per-traveler clock advances.
+        var groupKey = $"{fromLocationId}|{tc.DestinationLocationId}";
+        var outcomes = GroupOutcomes.GetOrCreateValue(context);
+        var isFollower = outcomes.TryGetValue(groupKey, out var shared);
+        bool interrupted;
+        double hoursTraveled;
+        List<WorldChange> deltas;
+        List<string> narratives;
+        if (isFollower)
+        {
+            interrupted = shared!.Interrupted;
+            hoursTraveled = shared.HoursTraveled;
+            deltas = [];
+            narratives = [];
+        }
+        else
+        {
+            (interrupted, hoursTraveled, deltas, narratives) = await _resolver.EvaluateAsync(
+                ctx,
+                character,
+                destination,
+                totalHours,
+                6, // bucket size 6 hours
+                encounterRiskModifier,
+                "Travel",
+                terrain,
+                spawnLocationId: character.CurrentLocationId);
+            outcomes[groupKey] = new GroupOutcome(interrupted, hoursTraveled);
+        }
 
         // Apply partial time costs
         if (hoursTraveled > 0)
         {
-            time.AdvanceHours(hoursTraveled);
+            if (!isFollower)
+            {
+                time.AdvanceHours(hoursTraveled);
+            }
 
             // Travel marches at a higher tiredness rate than ordinary ambient decay. Dispatched
             // directly here (rather than left to the day-tick's ambient sweep) so travel keeps its
@@ -136,7 +165,7 @@ public class TravelChangeHandler : IWorldChangeHandler
                 CharacterId = tc.CharacterId,
                 NewLocationId = tc.DestinationLocationId,
                 UpdateLocation = true,
-                NewActivity = tc.Narrative ?? "Traveling",
+                NewActivity = tc.Narrative ?? "Arrived", // F3: not "Traveling" once there
                 Reason = "Travel complete"
             }, ct);
 
@@ -181,6 +210,11 @@ public class TravelChangeHandler : IWorldChangeHandler
         }
         else
         {
+            if (isFollower)
+            {
+                return ChangeHandlerResult.Ok; // the group's interruption was reported once, by its first traveler
+            }
+
             ctx.RecordMessage($"Travel interrupted: {string.Join(" ", narratives)}");
 
             await ctx.Dispatcher.DispatchMutationAsync(ctx, new EventOccurred
