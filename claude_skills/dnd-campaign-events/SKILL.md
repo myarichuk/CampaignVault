@@ -26,7 +26,7 @@ Whenever a response carries `WorldPressure` (start_session, a scene fetch via ge
 }
 ```
 
-Include the suggested resolution in the same `take_turn` batch **and always pass `includeWorldState: true`** to verify the warning is resolved. After the response, **check `WorldPressure` again** — still listed means the fix didn't land; investigate, don't defer. Without `includeWorldState: true` the response carries no WorldPressure, so an unverified "fix" is unconfirmed. 5+ unresolved warnings cap progress; `get_help topic=world-pressure` drains the backlog.
+Include the suggested resolution in the same `take_turn` batch **and always pass `includeWorldState: true`** to verify the warning is resolved. After the response, **check `WorldPressure` again** — still listed means the fix didn't land; investigate, don't defer. Without `includeWorldState: true` the response carries no WorldPressure, so an unverified "fix" is unconfirmed. 5+ unresolved warnings cap progress; `lookup kind=help topic=world-pressure` drains the backlog.
 
 ```json
 {

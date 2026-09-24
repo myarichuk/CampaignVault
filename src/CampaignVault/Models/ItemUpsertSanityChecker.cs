@@ -31,7 +31,7 @@ public static class ItemUpsertSanityChecker
             nudges.Add(
                 $"NARRATIVE PROMPT: '{item.Id}' set definitionName:'{item.DefinitionName}' but no matching ItemDefinition " +
                 "was found for the campaign's active system — the item was created from your explicit fields only. " +
-                "Check the name via get_rules_reference (kind:'items'), or ignore if a custom item was intended.");
+                "Check the name via lookup (kind:'items'), or ignore if a custom item was intended.");
         }
 
         if (item.TwoHanded == true && (zones == null || !zones.Contains(EquipZones.MainHand, StringComparer.OrdinalIgnoreCase)))
@@ -64,7 +64,7 @@ public static class ItemUpsertSanityChecker
             nudges.Add(
                 $"NARRATIVE PROMPT: '{item.Id}' is Armor/Held-slot but its Properties use none of the recognized defense keys " +
                 "(acBonus, warmth, speedModifier, armorType, dexCap, dexCapSource, stacksWithArmor) — if this item is meant to " +
-                "affect AC/warmth/movement, check the key names via get_help; otherwise ignore.");
+                "affect AC/warmth/movement, check the key names via lookup kind=help; otherwise ignore.");
         }
 
         return nudges;

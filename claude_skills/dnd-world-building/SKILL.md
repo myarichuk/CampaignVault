@@ -24,7 +24,7 @@ You are seeding new content via `world_build` — session 0, arrival in a new se
 9. **rumors** — seed sparingly; most should emerge from play, not a pre-written list.
 10. **needDescriptors** — human-readable explanations for any custom needs your NPCs track.
 
-For the exact field-level schema and a full copy-paste JSON example, call `get_help topic=world-building` — this skill covers the *process*, that tool call covers the *syntax*.
+For the exact field-level schema and a full copy-paste JSON example, call `lookup kind=help topic=world-building` — this skill covers the *process*, that tool call covers the *syntax*.
 
 ## World-Building Seeding Checklist (Mandatory Rigor)
 
@@ -68,8 +68,8 @@ When seeding a new area, apply these layers in order. **Any missing layer is a g
 Items aren't restricted to weapons/armor — `coreCategory` plus the open `properties`/`tags` bag cover outfits, tools, consumables, and artifacts uniformly, and `coreCategory` and equip `equipZones`/`equipLayer` are open strings, not a fixed list — a plugin pack may define its own (e.g. `category: Jewelry`, zones like `septum`/`anklet`).
 
 **Before hand-typing an item's fields, check whether it's already a known template:**
-1. `get_rules_reference` kind:'items' (filter by `itemNameQuery`/`itemCategory`/`itemTag`) — if a matching template exists (SRD or a homebrew/plugin pack), set `definitionName` on the `items[]` entry instead of typing out `coreCategory`/`tags`/`properties`/equip fields by hand. Anything you *also* set explicitly on that same entry still overrides the template.
-2. If no template fits and you're inventing tags for a homebrew item, check `get_rules_reference` kind:'item_tags' first — reuse an existing tag (e.g. `exotic`) instead of a near-duplicate (`rare`), or the `itemTag` filter above silently stops matching it.
+1. `lookup` kind:'items' (filter by `query`/`category`/`tag`) — if a matching template exists (SRD or a homebrew/plugin pack), set `definitionName` on the `items[]` entry instead of typing out `coreCategory`/`tags`/`properties`/equip fields by hand. Anything you *also* set explicitly on that same entry still overrides the template.
+2. If no template fits and you're inventing tags for a homebrew item, check `lookup` kind:'item_tags' first — reuse an existing tag (e.g. `exotic`) instead of a near-duplicate (`rare`), or the `itemTag` filter above silently stops matching it.
 
 ## Checklist
 

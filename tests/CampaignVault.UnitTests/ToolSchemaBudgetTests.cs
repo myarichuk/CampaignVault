@@ -124,7 +124,7 @@ public class ToolSchemaBudgetTests
 
         Assert.False(doc.RootElement.TryGetProperty("$defs", out _));
         Assert.DoesNotContain("\"hp\"", json);
-        Assert.Contains("get_commit_schema", json);
+        Assert.Contains("lookup kind=commit_schema", json);
         Assert.Contains("\"forceFullReseed\"", json);
         Assert.Contains("\"clientPartyFingerprint\"", json);
         Assert.True(json.Length < 5000, $"Stub schema grew to {json.Length} chars");

@@ -22,7 +22,7 @@ TOOL HYGIENE (tokens)
 - Tool names are fixed; don't re-discover or re-fetch tool schemas after the first successful call. Never request take_turn $defs.
 - Never search images.
 - start_session once per session (or after context loss). Fix any ENGINE WARNING in your next take_turn.
-- Tool responses carry `guidance`: follow it instead of calling get_help speculatively.
+- Tool responses carry `guidance`: follow it instead of calling lookup kind=help speculatively.
 - One player beat = one take_turn. Only approved split: call A rolls; call B commits what the roll revealed (e.g. knowledge_update citing A's eventId).
 - A failed take_turn rolls back the whole batch: fix and resend the full batch.
 
@@ -36,7 +36,7 @@ EVERY take_turn
 - Lasting physical changes (gear worn, conditions, appearance) must be committed (item_equip / status / character_update) or they revert; set event.impliesPersistentPhysicalChange:true when narration changes them.
 - Social/Attention/Proximity engagement and HP-only ruleset_action don't auto-log: pair an event if the beat matters.
 
-$type VOCABULARY (field lookup only on failure: get_commit_schema type=<one $type>)
+$type VOCABULARY (field lookup only on failure: lookup kind=commit_schema type=<one $type>)
   ruleset_action hp status status_remove resource rest xp_grant level_up
   event knowledge_update relationship mood activity need attribute schedule_change npc_initiative_nudge
   travel location_update spatial_position scene_setup scene_interrupt_check engagement_relation
@@ -46,5 +46,5 @@ $type VOCABULARY (field lookup only on failure: get_commit_schema type=<one $typ
 Must-set fields: ruleset_action.actionType (Attack|SkillCheck|SavingThrow|ContestedCheck|Spell); quest_progress.newState (Open|InProgress|Complete|Failed|Skipped); engagement_relation.category (Physical|Medical|Social|Attention|Proximity); rest.intendedHours.
 
 OTHER TOOLS
-get_entity (one entity by id) · search_world (name → id) · recall_history (what actually happened; narrow queries) · world_build (seed) · combat (start/next/end; actions go through take_turn) · advance_world (downtime; pass partyLocationId unless risk-free) · get_rules_reference · get_help · end_session.
+get_entity (one entity by id) · search_world (name → id) · recall_history (what actually happened; narrow queries) · world_build (seed) · combat (start/next/end; actions go through take_turn) · advance_world (downtime; pass partyLocationId unless risk-free) · lookup (kind: handbook|spells|creatures|items|level_up|commit_schema|help) · end_session.
 ```

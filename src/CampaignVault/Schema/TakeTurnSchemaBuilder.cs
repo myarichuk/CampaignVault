@@ -11,7 +11,7 @@ internal static class TakeTurnSchemaBuilder
 {
     internal const string StubChangesDescription =
         "World changes to commit. Every item needs '$type'. Verbs and their fields are NOT listed here — consult your " +
-        "CampaignVault skills. If unsure or a change fails, call get_commit_schema (no args = index of $types; type='<one $type>' = its fields). " +
+        "CampaignVault skills. If unsure or a change fails, call lookup kind=commit_schema (no args = index of $types; type='<one $type>' = its fields). " +
         "Send sparse objects: $type plus only the fields you mean, no nulls.";
 
     public static JsonElement Build(JsonSerializerOptions options, ToolSchemaMode mode = ToolSchemaMode.Full)
@@ -174,7 +174,7 @@ internal static class TakeTurnSchemaBuilder
         // Build the worldChange anyOf with all variants
         // Hot-tier variants get full schema, cold-tier get minimal
         var anyOf = new JsonArray();
-        // Same visibility as the get_commit_schema index: engine-only verbs are never authored by the
+        // Same visibility as the lookup kind=commit_schema index: engine-only verbs are never authored by the
         // model, and mode-scoped plugin verbs are looked up on demand once their mode is enabled.
         var variants = CommitSchemaModel.Variants.Where(v => !v.IsEngineOnly && v.ModeId is null);
 
@@ -207,7 +207,7 @@ internal static class TakeTurnSchemaBuilder
         var summary = TruncateDescription(variant.Summary, 60);
         if (!variant.IsHotTier)
         {
-            summary = $"{summary} (field details: get_commit_schema type='{variant.Discriminator}')";
+            summary = $"{summary} (field details: lookup kind=commit_schema type='{variant.Discriminator}')";
         }
 
         var def = new JsonObject
@@ -227,7 +227,7 @@ internal static class TakeTurnSchemaBuilder
 
         // Hot-tier variants (used on nearly every turn) get full per-field descriptions inline.
         // Cold-tier variants keep field names/types (needed to construct a valid payload) but drop
-        // descriptions — get_commit_schema already exists as an on-demand lookup for rarely-used
+        // descriptions — lookup kind=commit_schema already exists as an on-demand lookup for rarely-used
         // types, so this text is a recurring tools/list cost for guidance that's rarely read.
         foreach (var field in variant.Fields)
         {

@@ -12,7 +12,7 @@ namespace CampaignVault.Models;
 /// The LLM must include the exact <c>$type</c> discriminator so the server knows which concrete change to apply.
 /// Mix as many different change kinds as needed in a single call for atomicity.
 /// </summary>
-[Description("REQUIRED: every WorldChange object MUST include '$type'. Hot path: hp, activity, event, travel, rest, ruleset_action, knowledge_update, item, status, status_remove, character_update, location_update, quest_progress. Full list: get_commit_schema. Mix freely in one take_turn batch.")]
+[Description("REQUIRED: every WorldChange object MUST include '$type'. Hot path: hp, activity, event, travel, rest, ruleset_action, knowledge_update, item, status, status_remove, character_update, location_update, quest_progress. Full list: lookup kind=commit_schema. Mix freely in one take_turn batch.")]
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(HpChange), "hp")]
 [JsonDerivedType(typeof(ItemTransfer), "item")]
@@ -223,7 +223,7 @@ public class StatusChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = null!;
 
-    [Description("[Preferred] Structured StatusEffect: name, category, optional conditionName/affectedPart/statModifiers, and expiresAtDay/expiresAtRound (omit both for permanent). See get_commit_schema type=status for the full field reference.")]
+    [Description("[Preferred] Structured StatusEffect: name, category, optional conditionName/affectedPart/statModifiers, and expiresAtDay/expiresAtRound (omit both for permanent). See lookup kind=commit_schema type=status for the full field reference.")]
     [JsonPropertyName("effect")]
     public StatusEffect? Effect { get; set; }
 
@@ -267,7 +267,7 @@ public class EventOccurred : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EventCategory Category { get; set; } = EventCategory.Unresolved;
 
-    [Description("Character IDs of everyone who participated. REQUIRED when category is 'Conversation'. Field name is 'involved', not 'participants'. See get_commit_schema type=event.")]
+    [Description("Character IDs of everyone who participated. REQUIRED when category is 'Conversation'. Field name is 'involved', not 'participants'. See lookup kind=commit_schema type=event.")]
     [JsonPropertyName("involved")]
     public List<string>? Involved { get; set; }
 
@@ -303,7 +303,7 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("importance")]
     public MemoryImportance? Importance { get; set; }
 
-    [Description("Deliberate (explicit player act, locks in importance) or Passive (ambient, decays naturally). Omit for Passive. See get_commit_schema type=event.")]
+    [Description("Deliberate (explicit player act, locks in importance) or Passive (ambient, decays naturally). Omit for Passive. See lookup kind=commit_schema type=event.")]
     [JsonPropertyName("recordingMode")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RecordingMode? RecordingMode { get; set; }
@@ -709,7 +709,7 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("reactionTrigger")]
     public string? ReactionTrigger { get; set; }
 
-    [Description("Resolver-specific parameters (dc, bonus, damageDice, save, resolution, etc.) — see get_commit_schema type=ruleset_action for the full key reference per ruleset. Engine auto-applies hp deltas; don't duplicate with a separate hp commit.")]
+    [Description("Resolver-specific parameters (dc, bonus, damageDice, save, resolution, etc.) — see lookup kind=commit_schema type=ruleset_action for the full key reference per ruleset. Engine auto-applies hp deltas; don't duplicate with a separate hp commit.")]
     [JsonPropertyName("parameters")]
     [JsonConverter(typeof(FlexibleStringDictionaryConverter))]
     public Dictionary<string, string> Parameters { get; set; } = [];
@@ -862,7 +862,7 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("currentHp")]
     public int? CurrentHp { get; set; }
 
-    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See get_commit_schema for the field list.")]
+    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See lookup kind=commit_schema for the field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
 
@@ -902,7 +902,7 @@ public class LevelUpChange : WorldChange
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
 
-    [Description("Level-up choices to record, keyed by choice key from get_rules_reference kind:'level_up' (e.g. 'subclass': 'battleMaster', 'fightingStyle': 'archery', 'asiOrFeat': 'greatWeaponMaster'). For PF2e feat budgets with no enumerated catalog, use keys like 'classFeat'/'skillFeat'/'generalFeat'/'ancestryFeat' with a free-text feat name. Appended to the character's choice history — does not overwrite earlier picks, so repeatable choices (feats at multiple levels) are all kept.")]
+    [Description("Level-up choices to record, keyed by choice key from lookup kind:'level_up' (e.g. 'subclass': 'battleMaster', 'fightingStyle': 'archery', 'asiOrFeat': 'greatWeaponMaster'). For PF2e feat budgets with no enumerated catalog, use keys like 'classFeat'/'skillFeat'/'generalFeat'/'ancestryFeat' with a free-text feat name. Appended to the character's choice history — does not overwrite earlier picks, so repeatable choices (feats at multiple levels) are all kept.")]
     [JsonPropertyName("choices")]
     public Dictionary<string, string>? Choices { get; set; }
 
@@ -1066,7 +1066,7 @@ public class ItemUpdate : WorldChange
     [JsonPropertyName("coreCategory")]
     public string? CoreCategory { get; set; }
 
-    [Description("Temporary tags to add (e.g. 'muddy', 'wet'). Convention for open-carry/concealed display: tag the container, not the contents. See get_commit_schema type=item_update.")]
+    [Description("Temporary tags to add (e.g. 'muddy', 'wet'). Convention for open-carry/concealed display: tag the container, not the contents. See lookup kind=commit_schema type=item_update.")]
     [JsonPropertyName("tagsToAdd")]
     public List<string>? TagsToAdd { get; set; }
 
@@ -1098,7 +1098,7 @@ public class ItemUpdate : WorldChange
     [JsonPropertyName("ambientExpiresAtDay")]
     public float? AmbientExpiresAtDay { get; set; }
 
-    [Description("Create or update a durable, examine-able detail on this item (scratches, stains, secret compartments) — not temporary tags or narrative flavor. See get_commit_schema type=item_update for the full field reference.")]
+    [Description("Create or update a durable, examine-able detail on this item (scratches, stains, secret compartments) — not temporary tags or narrative flavor. See lookup kind=commit_schema type=item_update for the full field reference.")]
     [JsonPropertyName("upsertItemDetail")]
     public ItemDetailUpsertRequest? UpsertItemDetail { get; set; }
 
@@ -1132,7 +1132,7 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
-    [Description("DM-only guidance for narrating/adjudicating this detail (suggested DC, discovery conditions, ongoing effects). Never shown to players. See get_commit_schema type=item_update for examples.")]
+    [Description("DM-only guidance for narrating/adjudicating this detail (suggested DC, discovery conditions, ongoing effects). Never shown to players. See lookup kind=commit_schema type=item_update for examples.")]
     [JsonPropertyName("intent")]
     public string? Intent { get; set; }
 
@@ -1140,7 +1140,7 @@ public class ItemDetailUpsertRequest
     [JsonPropertyName("origin")]
     public ItemDetailOrigin? Origin { get; set; }
 
-    [Description("Optional id of whatever this detail is currently physically anchored to (location/item/character) — purely descriptive, not engine-enforced. Pass \"\" to clear once freed. See get_commit_schema type=item_update.")]
+    [Description("Optional id of whatever this detail is currently physically anchored to (location/item/character) — purely descriptive, not engine-enforced. Pass \"\" to clear once freed. See lookup kind=commit_schema type=item_update.")]
     [JsonPropertyName("tetheredToId")]
     public string? TetheredToId { get; set; }
 
@@ -1192,7 +1192,7 @@ public class CharacterUpdate : WorldChange
     [JsonPropertyName("isPartyCompanion")]
     public bool? IsPartyCompanion { get; set; }
 
-    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See get_commit_schema type=character_update for the field list.")]
+    [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See lookup kind=commit_schema type=character_update for the field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
 
@@ -1383,7 +1383,7 @@ public class ResourceChange : WorldChange
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
 
-    [Description("Spell template name when spending spell_slots_* (e.g. 'fireball'). Enables slot-level validation via the spell registry (get_rules_reference kind:'spells').")]
+    [Description("Spell template name when spending spell_slots_* (e.g. 'fireball'). Enables slot-level validation via the spell registry (lookup kind:'spells').")]
     [JsonPropertyName("spellName")]
     public string? SpellName { get; set; }
 
@@ -1475,7 +1475,7 @@ public class CampaignUpdateChange : WorldChange
     [JsonPropertyName("narrativeFocus")]
     public List<string>? NarrativeFocus { get; set; }
 
-    [Description("Full replacement list of enabled interaction-mode IDs (e.g. ['crafting', 'astral_combat', 'lewd_encounter']) — see mode_transition. Pass every mode ID you want enabled; this replaces the whole list, it does not append. Only registered mode plugins can be enabled — see get_commit_schema for mode_transition, or the server's plugin catalog for what's installed.")]
+    [Description("Full replacement list of enabled interaction-mode IDs (e.g. ['crafting', 'astral_combat', 'lewd_encounter']) — see mode_transition. Pass every mode ID you want enabled; this replaces the whole list, it does not append. Only registered mode plugins can be enabled — see lookup kind=commit_schema for mode_transition, or the server's plugin catalog for what's installed.")]
     [JsonPropertyName("enabledModeIds")]
     public List<string>? EnabledModeIds { get; set; }
 

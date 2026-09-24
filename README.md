@@ -53,7 +53,7 @@ For detailed setup, deployment, and configuration: [INSTALLATION.md](./INSTALLAT
 | Find something | `search_world` — keyword search across everything |
 | Advance time | `advance_world` — days pass, simulation rules fire, world evolves |
 
-For the full tool list and patterns, call `get_help` inside a campaign (built-in DM manual with examples).
+For the full tool list and patterns, call `lookup kind=help` inside a campaign (built-in DM manual with examples).
 
 ---
 
@@ -92,13 +92,13 @@ CampaignVault assumes your LLM client **loads the skills in [`claude_skills/`](.
 
 | Mode | What tools/list advertises | Use when |
 |------|----------------------------|----------|
-| `Stub` (default) | The request envelope, plus `changes[]` items that only require `$type`. Verbs/fields are **not** listed; the description tells the model to consult its skills and call `get_commit_schema` (no args = index, `type=X` = one verb's fields). ~300 tokens. | Normal operation with skills loaded |
+| `Stub` (default) | The request envelope, plus `changes[]` items that only require `$type`. Verbs/fields are **not** listed; the description tells the model to consult its skills and call `lookup kind=commit_schema` (no args = index, `type=X` = one verb's fields). ~300 tokens. | Normal operation with skills loaded |
 | `Full` | A `$defs` entry per `$type` (~7k tokens). | Clients with no skill mechanism, or debugging schemas |
 
 **Why Stub is the default:**
 - **Cost.** The full schema reprinted on every connector discovery cost ~7k tokens per beat, most of it verbs a campaign never uses (plugin verbs included).
 - **Staleness.** Some clients (e.g. Grok Web) cache tool schemas. A cached full schema goes wrong when plugins or fields change; a constant stub can never be stale.
-- **One source of truth.** Skills describe the verbs; `get_commit_schema` returns live server truth on demand; the server validates every commit regardless.
+- **One source of truth.** Skills describe the verbs; `lookup kind=commit_schema` returns live server truth on demand; the server validates every commit regardless.
 
 ---
 
@@ -123,7 +123,7 @@ CampaignVault assumes your LLM client **loads the skills in [`claude_skills/`](.
 5. Advance time: /advance_world to trigger simulation and pressure
 ```
 
-See `get_help` for full patterns and copy-paste examples.
+See `lookup kind=help` for full patterns and copy-paste examples.
 
 ---
 

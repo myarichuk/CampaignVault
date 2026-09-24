@@ -59,12 +59,12 @@ internal static class EntitySeedingAdvisor
 
             case "item":
                 sb.AppendLine("**To seed an item:**");
-                sb.AppendLine("1. Check `get_rules_reference` kind:'items' for a matching template first — if found, set `definitionName` instead of typing fields by hand.");
+                sb.AppendLine("1. Check `lookup` kind:'items' for a matching template first — if found, set `definitionName` instead of typing fields by hand.");
                 sb.AppendLine("2. Otherwise use `world_build` to create it with:");
                 sb.AppendLine("   - `name`, `description`, `coreCategory` (Weapon/Armor/Clothing/etc., or your own)");
                 sb.AppendLine("   - `equipZones`, `equipLayer`, `capacity` (if equippable or a container)");
                 sb.AppendLine("   - `holderId` (owning character/location, required)");
-                sb.AppendLine("   - `tags` — check `get_rules_reference` kind:'item_tags' first to reuse an existing tag");
+                sb.AppendLine("   - `tags` — check `lookup` kind:'item_tags' first to reuse an existing tag");
                 sb.AppendLine("3. Link it to a clue in a `plotThread` if it's narrative-critical");
                 sb.AppendLine("4. Use `get_entity(itemId)` to fetch it before interacting");
                 sb.AppendLine();
@@ -117,7 +117,7 @@ internal static class EntitySeedingAdvisor
                 sb.AppendLine("2. Reference SACRED RULES rule 4 (Mutations) for structure");
                 sb.AppendLine("3. Use `get_entity(id)` after seeding to load and interact");
                 sb.AppendLine();
-                sb.AppendLine("**References:** get_help topic=tools, dnd-world-change skill, recommended-system-prompt.md");
+                sb.AppendLine("**References:** lookup kind=help topic=tools, dnd-world-change skill, recommended-system-prompt.md");
                 break;
         }
 

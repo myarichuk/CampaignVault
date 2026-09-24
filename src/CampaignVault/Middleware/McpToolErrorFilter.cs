@@ -59,7 +59,7 @@ internal static partial class McpToolErrorFilter
             ("create_campaign", "initialSystem") =>
                 $"Use a ruleset system id: {RulesetSystem.Dnd5e}, {RulesetSystem.Pathfinder2e}, or {RulesetSystem.Narrative} (plugins may add more).",
             ("take_turn", "changes") =>
-                "Pass an array of world-change objects in request.changes; each item needs a '$type' field (e.g. event, hp, activity). Consult your dnd-* skills for verbs, or call get_commit_schema(type: \"<$type>\") for one type's fields.",
+                "Pass an array of world-change objects in request.changes; each item needs a '$type' field (e.g. event, hp, activity). Consult your dnd-* skills for verbs, or call lookup(kind: \"commit_schema\", type: \"<$type>\") for one type's fields.",
             ("take_turn", "narrative") =>
                 "Provide a short summary of what happened for the event log (required when changes are present).",
             ("get_entity", "entityId") =>
@@ -75,15 +75,15 @@ internal static partial class McpToolErrorFilter
             ("combat", "combatantIds") =>
                 "action:'start' requires combatantIds — an array of character IDs participating in combat.",
             ("world_build", "batch") =>
-                "Pass an object with one or more arrays: locations, factions, creatures, spells, feats, characters, items, quests, plotThreads, lore, rumors, needDescriptors. Each array uses the same field shape as its live-play commit type (e.g. characters[] entries mirror character_update fields). See get_help topic=world-building.",
+                "Pass an object with one or more arrays: locations, factions, creatures, spells, feats, characters, items, quests, plotThreads, lore, rumors, needDescriptors. Each array uses the same field shape as its live-play commit type (e.g. characters[] entries mirror character_update fields). See lookup kind=help topic=world-building.",
             ("world_build", "campaignName") =>
                 "Pass the campaign slug (e.g. dragon-heist). Call list_campaigns to discover slugs.",
-            ("get_rules_reference", "kind") =>
-                "Pass 'handbook', 'spells' (requires className), or 'creatures'.",
+            ("lookup", "kind") =>
+                "Pass one of: handbook, spells (requires className), creatures, items, item_tags, level_up (requires characterId), commit_schema, help.",
             ("end_session", "recapText") =>
                 "Provide an LLM-authored recap of key events and outcomes from the session.",
             _ =>
-                $"Call get_help (topic=tools for the full catalog) for the expected argument names and examples."
+                $"Call lookup with kind=help, topic=tools for the full catalog and expected argument names."
         };
 
         if (ToolCallExamples.TryGet(toolName, out _))

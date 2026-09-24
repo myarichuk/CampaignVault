@@ -61,7 +61,7 @@ public class WorldStateView
     /// <summary>
     /// Lightweight session-0 signal: how much of the world has been seeded so far, plus a short
     /// list of obvious gaps. Set by GetWorldState; never blocks — a fresh campaign just shows all
-    /// zeros and a longer gap list. See get_help topic=world-building for the seeding guide.
+    /// zeros and a longer gap list. See lookup kind=help topic=world-building for the seeding guide.
     /// </summary>
     public SeedCoverageSummary? SeedCoverage { get; set; }
 

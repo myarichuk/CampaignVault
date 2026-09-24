@@ -321,5 +321,5 @@ If you're developing the authoring UI, it connects via gRPC on port `50051` (or 
 
 1. **Start locally** — Get familiar with campaign creation and session flow
 2. **Read the system prompt** — Understand how to guide the LLM for best results
-3. **Call `get_help`** — Inside a campaign, the built-in DM manual has patterns and examples
+3. **Call `lookup kind=help`** — Inside a campaign, the built-in DM manual has patterns and examples
 4. **Deploy to Fly.io** — When ready for persistent, remote play

@@ -28,7 +28,7 @@ the main repository for the full plugin architecture, trust model, and quick-sta
   does not yet deduplicate across turns, so fire on an edge (a `ModeTransitionChange` entering your mode
   just landed), not on a level.
 - Set `[PluginWorldChange("my_verb", ModeId = "my_mode")]` on verbs that only make sense inside your
-  interaction mode. They drop out of the `get_commit_schema` index but still resolve with `type=`;
+  interaction mode. They drop out of the `lookup kind=commit_schema` index but still resolve with `type=`;
   pair that with a guidance hint on mode entry so the model gets the schema when it needs it.
 
 - Several modes can be active at once. Look up your own encounter with

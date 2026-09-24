@@ -15,7 +15,7 @@ You are persisting changes to the world: events, character state, items, relatio
 
 ## No-Op Rule (diagnosis is read-only)
 
-Self-diagnose with queries only (`get_entity`, `search_world`, `recall_history`, `get_help`, `get_commit_schema`, `get_rules_reference`). Never call `take_turn` to inspect — every `take_turn` commits (time tick, pressure eval, refresh) even with trivial `changes[]`. `includeWorldState`/`includeParty` verify a fix already sent; they are full rebuilds, not status polls.
+Self-diagnose with queries only (`get_entity`, `search_world`, `recall_history`, `lookup`). Never call `take_turn` to inspect — every `take_turn` commits (time tick, pressure eval, refresh) even with trivial `changes[]`. `includeWorldState`/`includeParty` verify a fix already sent; they are full rebuilds, not status polls.
 
 `narrative` is a short factual summary for the engine's event log — never the in-character text shown to the player. Tool-call efficiency governs call shape/count only; it never shortens prose.
 
@@ -56,7 +56,7 @@ Self-diagnose with queries only (`get_entity`, `search_world`, `recall_history`,
 { "$type": "item", "itemId": "items/gold-coin", "toHolderId": "chars/lyra" }
 ```
 
-For a brand-new item (loot that didn't exist yet), create it via `world_build`'s `items[]` first, then transfer if needed. If it matches a known template, set `definitionName` (check via `get_rules_reference` kind:`items`) instead of typing out category/tags/properties/equip fields by hand — any of those you also set explicitly on the same entry still override the template.
+For a brand-new item (loot that didn't exist yet), create it via `world_build`'s `items[]` first, then transfer if needed. If it matches a known template, set `definitionName` (check via `lookup` kind:`items`) instead of typing out category/tags/properties/equip fields by hand — any of those you also set explicitly on the same entry still override the template.
 | Combat/Mechanics | `ruleset_action`, `status`, `hp`, `resource` | Dice rolls, HP, spell slots |
 
 **Persistent physical state (gear worn, conditions, lasting appearance changes) needs a commit, or it silently reverts next scene** — same failure mode as the item-pickup warning above. Putting on a gifted item → `item_equip`; cutting someone's bonds, ending a condition → `status_remove` (not just narration — "still bound" a few beats later is this bug); a scar or new outfit that should stick → `character_update`'s appearance fields; gear destroyed/dissolved/lost → `item_unequip`/`item_update`/`archive_entity`.
@@ -69,7 +69,7 @@ Set `event.impliesPersistentPhysicalChange: true` on the paired `event` whenever
 **`location_update.description` is static prose** — independent of `currentState`/`pointOfInterestDetails` and never auto-rewritten. If a state change would make the old description contradict canon (e.g. a body removed from a scene, a fire put out), explicitly resend a new `description` in the same `location_update`, or `get_entity` will keep surfacing the stale text.
 | Campaign | `campaign_update` | Narrative focus tags (full replacement list) |
 
-Call `get_commit_schema` for the machine-readable field list per $type.
+Call `lookup kind=commit_schema` for the machine-readable field list per $type.
 
 ## Needs, Attributes & Traits — the open-ended bags
 

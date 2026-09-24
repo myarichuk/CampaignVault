@@ -163,13 +163,13 @@ public class ItemUpsertRequest
     [Description("Omit to preserve the item's existing category (on update) or derive it from definitionName's template (on create, falling back to \"Other\" if neither is set). Provide to set/override explicitly.")]
     public string? CoreCategory { get; set; }
 
-    [Description("Omit to preserve existing tags; provide to replace wholesale. Open-carry/concealed convention: tag the container, not contents. See get_commit_schema type=item_update.")]
+    [Description("Omit to preserve existing tags; provide to replace wholesale. Open-carry/concealed convention: tag the container, not contents. See lookup kind=commit_schema type=item_update.")]
     public List<string>? Tags { get; set; }
 
     [Description("Omit to preserve the item's existing properties. Provide to replace them wholesale.")]
     public Dictionary<string, object>? Properties { get; set; }
 
-    [Description("Creation-only: seeds this new item's Category/Tags/Properties/equip fields from a RulesetData ItemDefinition template of this name (looked up via get_rules_reference kind:'items' against the campaign's active system). Any of those fields you also set explicitly on this same request override the template's values. Ignored (not re-applied) on an existing item. A back-reference only — Properties is copied at creation time, so the item keeps working even if the defining pack is later removed.")]
+    [Description("Creation-only: seeds this new item's Category/Tags/Properties/equip fields from a RulesetData ItemDefinition template of this name (looked up via lookup kind:'items' against the campaign's active system). Any of those fields you also set explicitly on this same request override the template's values. Ignored (not re-applied) on an existing item. A back-reference only — Properties is copied at creation time, so the item keeps working even if the defining pack is later removed.")]
     public string? DefinitionName { get; set; }
 
     [Description("Set true to hide this item from default search/scene results (soft delete). Omit to preserve the existing value on update.")]
@@ -214,7 +214,7 @@ public class ItemUpsertRequest
     [Description("Short narrative description of how this item reads on the wearer. Purely descriptive; never affects mechanics. Omit to preserve the existing value on update.")]
     public string? AppearanceNote { get; set; }
 
-    [Description("Optional durable details to seed on a NEW item only (ignored if the item already exists — use item_update's upsertItemDetail for existing items). id/participants are ignored here (no in-fiction moment yet); follow up with item_update if you need a participant memory push. See get_commit_schema type=item_update.")]
+    [Description("Optional durable details to seed on a NEW item only (ignored if the item already exists — use item_update's upsertItemDetail for existing items). id/participants are ignored here (no in-fiction moment yet); follow up with item_update if you need a participant memory push. See lookup kind=commit_schema type=item_update.")]
     public List<ItemDetailUpsertRequest>? ItemDetails { get; set; }
 
     public string? CampaignName { get; set; }

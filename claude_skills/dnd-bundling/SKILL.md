@@ -9,7 +9,7 @@ metadata:
 
 **Context**: `take_turn` handles all mutations atomically with bundled auto-refresh (caps/opt-ins: `dnd-world-change`). No separate commit tool exists — `take_turn` with changes[] is the one mutation pattern. Mutation syntax, required fields, auto-apply/auto-log rules → `dnd-world-change` (canonical); this skill decides *which* types cohere in one beat.
 
-**Tool schema (Stub mode, the default):** `take_turn`'s advertised schema deliberately does NOT list `$type` verbs or fields — these skills are the source of truth. Cache the `campaignvault___*` tool names after the first successful call; do not re-run `search_connected_tools` or re-request the schema each beat. Send sparse objects (`$type` + the fields you mean, no nulls). If a `$type` is unfamiliar or a commit fails, call `get_commit_schema` (no args = index; `type=<one $type>` = its fields) instead of guessing.
+**Tool schema (Stub mode, the default):** `take_turn`'s advertised schema deliberately does NOT list `$type` verbs or fields — these skills are the source of truth. Cache the `campaignvault___*` tool names after the first successful call; do not re-run `search_connected_tools` or re-request the schema each beat. Send sparse objects (`$type` + the fields you mean, no nulls). If a `$type` is unfamiliar or a commit fails, call `lookup kind=commit_schema` (no args = index; `type=<one $type>` = its fields) instead of guessing.
 
 ## Core Principle: Bundling Cohesion
 
@@ -25,7 +25,7 @@ Auto-apply/auto-log (which pairs are redundant vs. required) → `dnd-world-chan
 
 **1. One narrative beat?** No (distinct events separated by a decision/round) → separate `take_turn` per beat. Yes → #2.
 **2. Does the outcome change state?** No → bare `event` or `ruleset_action`. Yes → #3.
-**3. How many types?** All of them, in ONE changes[] array. Worked examples: `get_help topic=patterns`.
+**3. How many types?** All of them, in ONE changes[] array. Worked examples: `lookup kind=help topic=patterns`.
 
 ## Common Bundling Patterns
 
@@ -130,6 +130,6 @@ Use `take_turn` with ruleset_action (no separate attack tool exists):
 ]
 ```
 
-| **Unsure about bundling** | Inspect first (`get_entity` / `get_commit_schema`) — never a speculative `take_turn` (see `dnd-world-change` No-Op Rule) |
+| **Unsure about bundling** | Inspect first (`get_entity` / `lookup kind=commit_schema`) — never a speculative `take_turn` (see `dnd-world-change` No-Op Rule) |
 
-For bundling decisions, use this decision tree, `get_help topic=patterns`, and `get_commit_schema`.
+For bundling decisions, use this decision tree, `lookup kind=help topic=patterns`, and `lookup kind=commit_schema`.

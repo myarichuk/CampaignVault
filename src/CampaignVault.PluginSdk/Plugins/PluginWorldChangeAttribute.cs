@@ -11,7 +11,7 @@ public sealed class PluginWorldChangeAttribute : Attribute
 
     /// <summary>
     /// Optional <c>IInteractionMode.ModeId</c> this verb belongs to. Mode-scoped verbs are left out
-    /// of the get_commit_schema index (they stay resolvable via type=) so campaigns that never enable the mode don't pay for them.
+    /// of the lookup kind=commit_schema index (they stay resolvable via type=) so campaigns that never enable the mode don't pay for them.
     /// </summary>
     public string? ModeId { get; init; }
 

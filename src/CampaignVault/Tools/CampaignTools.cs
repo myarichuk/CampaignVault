@@ -63,7 +63,7 @@ public class CampaignTools(
         {
             return await ToolArgumentErrors.Missing<CommitResult>(
                 "changes",
-                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call get_help for copy-paste patterns.",
+                "Pass an array of world-change objects; each item needs a '$type' field (e.g. event, hp, activity). Call lookup kind=help for copy-paste patterns.",
                 toolName: "take_turn");
         }
 

@@ -7,7 +7,7 @@ namespace CampaignVault.Tools;
 /// <summary>
 /// Help topics for focused, paginated manual sections.
 /// Large topical sections (patterns, combat, spells, world-pressure, visual-sandbox, quickstart) are now
-/// delivered as push-based guidance hints on tool responses instead of via get_help, reducing speculative
+/// delivered as push-based guidance hints on tool responses instead of via lookup kind=help, reducing speculative
 /// pull-based fetching. This enum carries only session-0 procedural guidance, reference, and FAQ.
 /// </summary>
 internal enum HelpTopic
@@ -44,8 +44,7 @@ internal enum HelpTopic
 [McpServerToolType]
 public class MetaTools : IMcpServerTool
 {
-    [ToolCategory("System")]
-    [McpServerTool(UseStructuredContent = true)]
+    // Served through lookup(kind: "commit_schema"); no longer an MCP tool of its own.
     [Description("Field lookup for take_turn changes[] $types. type='<one $type>' returns its fields; no args returns the index. Call only when unsure or after a change failed, not every turn. Lasting item wear (scratches, stains, hidden compartments): item_update.upsertItemDetail.")]
     public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
         [Description("Optional filter over change $type categories: Combat, Narrative, World, PlotThread. Omit (with type also omitted) to get an index of all types (name+category+summary only, no field lists).")]
@@ -72,13 +71,12 @@ public class MetaTools : IMcpServerTool
     {
         var tools = ToolCatalog.GetByCategory(category);
         var summary = string.IsNullOrWhiteSpace(category)
-            ? $"Returned {tools.Count} tools across all categories. Call get_help for usage patterns."
+            ? $"Returned {tools.Count} tools across all categories. Call lookup kind=help for usage patterns."
             : $"Returned {tools.Count} tools in category '{category.Trim()}'.";
         return Task.FromResult(new ToolResult<IReadOnlyList<ToolCatalogEntry>>(true, tools, summary));
     }
 
-    [ToolCategory("System")]
-    [McpServerTool(UseStructuredContent = true)]
+    // Served through lookup(kind: "help"); no longer an MCP tool of its own.
     [Description("Reference lookup. Guidance arrives on tool responses; don't call this speculatively. Topics: onboarding, world-building, commit-enum, tools, take-turn-modes, faq.")]
     public Task<ToolResult<string>> GetHelp(
         [Description("Optional topic (see tool description).")]
@@ -111,7 +109,7 @@ public class MetaTools : IMcpServerTool
 
             HelpTopic.TakeTurnModes => DmHelpManual.TakeTurnModesSection,
 
-            _ => "Reference lookup only. The server pushes what you need automatically on tool responses under `guidance`; follow it and don't call get_help speculatively. For session-0 setup: try topic=onboarding or topic=world-building. For reference: topic=commit-enum or topic=tools. Guidance on patterns, combat, spells, world-pressure, and sandbox is delivered on tool responses — do not fetch those sections here."
+            _ => "Reference lookup only. The server pushes what you need automatically on tool responses under `guidance`; follow it and don't call lookup kind=help speculatively. For session-0 setup: try topic=onboarding or topic=world-building. For reference: topic=commit-enum or topic=tools. Guidance on patterns, combat, spells, world-pressure, and sandbox is delivered on tool responses — do not fetch those sections here."
         };
     }
 }

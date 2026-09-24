@@ -58,9 +58,9 @@ When calling `take_turn`, each change in the array must specify a `$type` discri
 - All `$type` values are strings (exact case-sensitive match).
 - `characterId`, `locationId`, `questId`, etc. are required where indicated — omitting them will hard-fail the batch.
 - Omitting a field that is optional means the engine preserves its current value (no blank-out).
-- Some `$type`s have automatic side effects (marked in `get_commit_schema`) — do not duplicate them in a single batch (e.g., do not include both `rest` and a separate `hp` for HP recovery; `rest` auto-applies).
+- Some `$type`s have automatic side effects (marked in `lookup kind=commit_schema`) — do not duplicate them in a single batch (e.g., do not include both `rest` and a separate `hp` for HP recovery; `rest` auto-applies).
 
-For more details, call `get_commit_schema` (optional category filter: Combat, Narrative, World, PlotThread).
+For more details, call `lookup kind=commit_schema` (optional category filter: Combat, Narrative, World, PlotThread).
 ";
 
     internal const string FaqSection = @"# FAQ & Laziness Traps
@@ -125,7 +125,7 @@ For more details, call `get_commit_schema` (optional category filter: Combat, Na
 
 ## When to use it vs going straight to `create_campaign`
 
-**Use onboarding** when the user's opening message is short/vague (""let's start a new campaign"", ""set up a D&D game for me"") and you don't yet know the ruleset, tone, or starting point. Call `start_campaign_onboarding(campaignName)`, then `submit_onboarding_answer` for each question it returns, then `finalize_campaign_onboarding` once it reports `ready_to_build` — that call creates the locked `Campaign` doc (system, narrative focus, starting lore/year) from the collected answers. Follow it with `world_build` as usual (see `get_help topic=world-building`).
+**Use onboarding** when the user's opening message is short/vague (""let's start a new campaign"", ""set up a D&D game for me"") and you don't yet know the ruleset, tone, or starting point. Call `start_campaign_onboarding(campaignName)`, then `submit_onboarding_answer` for each question it returns, then `finalize_campaign_onboarding` once it reports `ready_to_build` — that call creates the locked `Campaign` doc (system, narrative focus, starting lore/year) from the collected answers. Follow it with `world_build` as usual (see `lookup kind=help topic=world-building`).
 
 **Skip straight to `create_campaign` + `world_build`** when the user has ALREADY given you the substance in their own words — a plot outline, a PC character sheet, a named antagonist, an inciting incident, a specific ruleset. Onboarding's questions only collect abstract preference flags (system/tone/era/solo-vs-party/plot-source); it has no field for verbatim content like a full stat block or a named villain. Re-asking questions the user already answered unprompted is a laziness trap, not thoroughness — extract the ruleset/tone/era straight from what they gave you, call `create_campaign` with it, then seed the PCs/antagonist/plot via `world_build` directly. If they mentioned some things but left real gaps (e.g. gave you a plot but not a ruleset), ask only about the gaps in plain conversation, or run onboarding only for the unanswered questions — don't restart the full Q&A sequence over information already on the table.
 
@@ -138,7 +138,7 @@ Seeding a fresh campaign — the starting region, key NPCs, opening quest — is
 
 ## Before you seed
 
-0. If the user hasn't told you the ruleset/tone/setting yet, consider the guided `start_campaign_onboarding` flow first instead of guessing — see `get_help topic=onboarding` for when it's worth it vs going straight to step 1 below.
+0. If the user hasn't told you the ruleset/tone/setting yet, consider the guided `start_campaign_onboarding` flow first instead of guessing — see `lookup kind=help topic=onboarding` for when it's worth it vs going straight to step 1 below.
 1. `create_campaign` — pass `initialSystem` (locks the ruleset immediately; bootstrap HP/AC derivation for `world_build`'s `characters[]` depends on it) and `narrativeFocus` (steers `importance` defaults on later `event` changes; update later via a `campaign_update` change in take_turn). Skip this step if `finalize_campaign_onboarding` already created the campaign.
 
 ## systemStats (required for combat-capable NPCs)
@@ -155,7 +155,7 @@ Combat-capable NPCs MUST have `systemStats` matching the campaign's active rules
 2. **factions** — any powers already active in the region.
 3. **creatures / spells / feats** — only if this campaign has homebrew content; skip otherwise.
 4. **characters** — PCs first (`isPc: true`), then the handful of named NPCs the opening scene actually needs. Don't pre-create a whole cast — most NPCs should stay ambient (`ambientCrowd` on the location) until the party interacts with them.
-5. **items** — starting gear, set `holderId` to the owning character. **Characters have no inline equipment fields** — a guard, soldier, crime boss, or any combat-capable NPC you seed in step 4 is unarmed/unarmored until you ALSO give them a matching `items[]` entry here in the SAME batch. It's easy to seed a rich cast of NPCs and forget this step entirely since nothing about the character record itself hints at it — `world_build` emits a non-blocking warning per newly-seeded character with no items[] entry (in this batch or already on file) specifically to catch that. For common gear, check `get_rules_reference` kind:'items' first and set `definitionName` instead of typing out category/tags/properties/equip fields by hand.
+5. **items** — starting gear, set `holderId` to the owning character. **Characters have no inline equipment fields** — a guard, soldier, crime boss, or any combat-capable NPC you seed in step 4 is unarmed/unarmored until you ALSO give them a matching `items[]` entry here in the SAME batch. It's easy to seed a rich cast of NPCs and forget this step entirely since nothing about the character record itself hints at it — `world_build` emits a non-blocking warning per newly-seeded character with no items[] entry (in this batch or already on file) specifically to catch that. For common gear, check `lookup` kind:'items' first and set `definitionName` instead of typing out category/tags/properties/equip fields by hand.
 6. **quests** — the opening hook, if you have one ready.
 7. **plotThreads** — DM-only scaffolding for arcs you're seeding in advance.
 8. **lore** — background/history entries worth being searchable.
@@ -188,6 +188,6 @@ Forward references are fine — a quest's `giverId` pointing at a character earl
 
 Call `start_session` — its world state's `seedCoverage` block reports counts (locations, PC characters, factions, open quests, active plot threads) plus a short `gaps` hint list (e.g. ""no PC characters yet"", ""starting location has no climateZone""). Use it to spot what's still missing before you start the session; the gaps shrink as you seed more.
 
-For the full field-level schema of each entity kind, see `get_help topic=commit-enum` for enum values, or inspect the `world_build` tool's own input schema (every field mirrors what `character_update`/`location_update`/etc. accept during play).
+For the full field-level schema of each entity kind, see `lookup kind=help topic=commit-enum` for enum values, or inspect the `world_build` tool's own input schema (every field mirrors what `character_update`/`location_update`/etc. accept during play).
 ";
 }

@@ -1,7 +1,7 @@
 namespace CampaignVault.Tools;
 
 /// <summary>
-/// Shared MCP parameter descriptions — single source for tool schemas and get_help alignment.
+/// Shared MCP parameter descriptions — single source for tool schemas and lookup kind=help alignment.
 /// </summary>
 internal static class ToolParameterDescriptions
 {

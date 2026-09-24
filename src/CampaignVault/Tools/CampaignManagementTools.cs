@@ -207,8 +207,50 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
         }, saveChanges: false);
     }
 
-    [ToolCategory("Campaign management")]
+    [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
+    [Description(
+        "Reference lookup by kind. Rules: handbook, spells (className, level), creatures (query, levelMin/levelMax), items (query, category, tag), item_tags, level_up (characterId). Templates only; place live instances with world_build. " +
+        "Engine: commit_schema (type='<one $type>' = its fields; none = index), help (topic: onboarding, world-building, commit-enum, tools, take-turn-modes, faq). Responses already carry guidance: don't call speculatively.")]
+    public async Task<ToolResult<object>> Lookup(
+        [Description("See tool description.")] string kind,
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
+        [Description("commit_schema: one $type.")] string? type = null,
+        [Description("help: topic.")] string? topic = null,
+        [Description("spells: class, e.g. 'Wizard'.")] string? className = null,
+        [Description("spells: level (0 = cantrip).")] int? level = null,
+        [Description("Name substring (creatures, items).")] string? query = null,
+        [Description("items: item category; commit_schema: Combat|Narrative|World|PlotThread.")] string? category = null,
+        [Description("items: tag.")] string? tag = null,
+        [Description("creatures: min level.")] int? levelMin = null,
+        [Description("creatures: max level.")] int? levelMax = null,
+        [Description("level_up: character id.")] string? characterId = null,
+        [Description("Page offset.")] int offset = 0,
+        [Description("Page size (default 40, max 100).")] int? limit = null)
+    {
+        var normalizedKind = kind?.Trim().ToLowerInvariant();
+        switch (normalizedKind)
+        {
+            case "commit_schema":
+                return Box(await new MetaTools().GetCommitSchema(category, type));
+            case "help":
+                return Box(await new MetaTools().GetHelp(topic));
+        }
+
+        if (string.IsNullOrWhiteSpace(campaignName))
+        {
+            return await ToolArgumentErrors.Missing<object>(
+                "campaignName",
+                "Pass campaignName (the campaign slug).",
+                toolName: "lookup");
+        }
+
+        return await GetRulesReference(campaignName, normalizedKind ?? "", className, level,
+            nameQuery: query, levelMin: levelMin, levelMax: levelMax, offset: offset, limit: limit,
+            characterId: characterId, itemNameQuery: query, itemCategory: category, itemTag: tag);
+    }
+
+    // Served through lookup(kind: <rules kind>); no longer an MCP tool of its own.
     [Description(
         "Ruleset reference lookup by 'kind': handbook (classes/races/feats/conditions), spells (className required; filter by level), creatures (stat-block templates), items (item templates), item_tags, level_up (characterId required; then commit one level_up change). Templates only: place live instances with world_build.")]
     public async Task<ToolResult<object>> GetRulesReference(
@@ -249,7 +291,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                     return await ToolArgumentErrors.Missing<object>(
                         "className",
                         "kind:'spells' requires className (e.g. 'Wizard'). Get valid class names from kind:'handbook'.",
-                        toolName: "get_rules_reference");
+                        toolName: "lookup");
                 }
                 return Box(await GetSpells(className, campaignName, level, offset, limit));
             case "creatures":
@@ -260,7 +302,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                     return await ToolArgumentErrors.Missing<object>(
                         "characterId",
                         "kind:'level_up' requires characterId (e.g. 'chars/hero-123').",
-                        toolName: "get_rules_reference");
+                        toolName: "lookup");
                 }
                 return Box(await GetPendingLevelUpChoices(characterId, campaignName));
             case "items":
@@ -269,7 +311,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 return Box(await GetItemTags(campaignName));
             default:
                 return new ToolResult<object>(false, Error: ToolErrors.InvalidArgument,
-                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', 'creatures', 'items', 'item_tags', or 'level_up'.");
+                    Summary: $"Unknown kind '{kind}'. Use 'handbook', 'spells', 'creatures', 'items', 'item_tags', 'level_up', 'commit_schema', or 'help'.");
         }
     }
 

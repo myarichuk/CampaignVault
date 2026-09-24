@@ -24,7 +24,7 @@ This section is for someone installing a plugin *someone else wrote*. If you're 
 **Steps:**
 1. Extract the package into your CampaignVault install directory, preserving its layout — a data-only pack drops files under `RulesetData/<system>/...`; a code plugin drops a folder under `Plugins/<PluginName>/` containing `plugin.json` + the `.dll` (see [Directory Structure](#directory-structure)).
 2. Restart the MCP host process (or the Docker container) so it re-scans `Plugins/` and `RulesetData/`.
-3. Verify it loaded: check startup logs for `Loaded plugin assembly: ...` (code plugins) or call `get_rules_reference(kind: 'items' | 'spells' | ...)` / `get_config` and confirm the new system, content, or `campaignOptions`-declared keys show up.
+3. Verify it loaded: check startup logs for `Loaded plugin assembly: ...` (code plugins) or call `lookup(kind: 'items' | 'spells' | ...)` / `get_config` and confirm the new system, content, or `campaignOptions`-declared keys show up.
 4. If nothing shows up, see [Troubleshooting](#troubleshooting) below (`"Failed to load plugin assembly"`, `"DLL loads but module is not registered"`, `"YAML data not loading"`).
 
 Uninstalling: delete the plugin's folder/files and restart. Data-only content simply stops resolving; any campaign `SystemOptions` keys the plugin had defaulted are left as-is on existing campaigns (they were copied into the campaign's config, not referenced live).
@@ -90,7 +90,7 @@ Plugins/
 
 `plugin.json` fields: `id`, `displayName`, `version`, `minEngineVersion` (host skips on mismatch — no boot crash), optional `modeIds`, `rulesetDataRoots` (default `./RulesetData`), `skillsPath` (default `./skills`, log-only), optional `campaignOptions` (declares house-rule config keys and their defaults — see [Campaign Option Defaults](#campaign-option-defaults) below).
 
-**Custom `$type`:** annotate with `[PluginWorldChange("my_verb")]`. Handler **dispatch** already works via `WorldChangeDispatcher.FindHandler`'s `ShouldHandle` fallback. JSON wire deserialization and `get_commit_schema` require the type registry (seeded from core `[JsonDerivedType]` + plugin attributes at load). Discriminator collisions fail fast at registration.
+**Custom `$type`:** annotate with `[PluginWorldChange("my_verb")]`. Handler **dispatch** already works via `WorldChangeDispatcher.FindHandler`'s `ShouldHandle` fallback. JSON wire deserialization and `lookup kind=commit_schema` require the type registry (seeded from core `[JsonDerivedType]` + plugin attributes at load). Discriminator collisions fail fast at registration.
 
 **ALC / type identity:** the host resolves `CampaignVault.PluginSdk` from `AssemblyLoadContext.Default` for plugin ALCs. Dropping a second Sdk.dll in the plugin folder is skipped with a warning.
 
@@ -418,7 +418,7 @@ public class CraftingStepChangeHandler : IWorldChangeHandler
 { "$type": "mode_transition", "modeId": "crafting", "action": "enter", "locationId": "locations/forge", "participantIds": ["chars/pc1"] }
 ```
 
-`get_commit_schema` documents both `campaign_update` and `mode_transition` in full (required fields, examples) — call it if you need the exact shape.
+`lookup kind=commit_schema` documents both `campaign_update` and `mode_transition` in full (required fields, examples) — call it if you need the exact shape.
 
 ---
 

@@ -76,7 +76,7 @@ This plugin provides meticulously researched medieval weapon definitions spannin
 
 3. Create a campaign with system `dnd5e` (or update an existing one).
 
-4. New weapons appear in `get_rules_reference(kind:'items')` with prefix `medieval_*`.
+4. New weapons appear in `lookup(kind:'items')` with prefix `medieval_*`.
 
 ## Usage in Campaigns
 

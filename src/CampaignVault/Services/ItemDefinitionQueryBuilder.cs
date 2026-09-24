@@ -51,7 +51,7 @@ public static class ItemDefinitionQueryBuilder
 
         if (page.Offset + page.Limit < page.TotalCount)
         {
-            parts.Add($"Call get_rules_reference with kind:'items', offset={page.Offset + page.Limit} for the next page.");
+            parts.Add($"Call lookup with kind:'items', offset={page.Offset + page.Limit} for the next page.");
         }
 
         return string.Join(" ", parts);

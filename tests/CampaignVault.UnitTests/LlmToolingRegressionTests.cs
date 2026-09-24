@@ -243,8 +243,8 @@ public class LlmToolingRegressionTests
     {
         var expected = new[]
         {
-            "advance_world", "combat", "create_campaign", "end_session", "finalize_campaign_onboarding", "get_commit_schema",
-            "get_config", "get_entity", "get_help", "get_rules_reference", "list_campaigns",
+            "advance_world", "combat", "create_campaign", "end_session", "finalize_campaign_onboarding",
+            "get_config", "get_entity", "list_campaigns", "lookup",
             "recall_history", "search_world", "start_campaign_onboarding", "start_session", "submit_onboarding_answer", "take_turn", "world_build",
         };
 
@@ -343,13 +343,13 @@ public class LlmToolingRegressionTests
 
     /// <summary>
     /// Regression guard for ItemDetails discoverability wording: routes an LLM DM from the
-    /// top-level tools it reads first (commit, get_commit_schema) toward
+    /// top-level tools it reads first (take_turn) toward
     /// item_update's upsertItemDetail using natural trigger words, without already knowing the
     /// field name. UpsertItem was retired to world_build in Phase A of tool-surface reduction.
     /// See itemdetails-tooling-analysis follow-up.
     /// </summary>
     [Theory]
-    [InlineData(typeof(MetaTools), nameof(MetaTools.GetCommitSchema), "upsertItemDetail")]
+    [InlineData(typeof(MutationTools), nameof(MutationTools.TakeTurn), "upsertItemDetail")]
     public void ToolDescriptions_ContainItemDetailsDiscoverabilityTriggerWords(Type toolType, string methodName, string expectedSubstring)
     {
         var method = toolType

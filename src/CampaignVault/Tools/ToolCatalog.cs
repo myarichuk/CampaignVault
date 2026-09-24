@@ -27,7 +27,7 @@ internal static class ToolCatalog
     }
 
     /// <summary>
-    /// Markdown tool index grouped by category — single source for get_help and list_tools alignment.
+    /// Markdown tool index grouped by category — single source for lookup kind=help and list_tools alignment.
     /// </summary>
     public static string FormatHelpIndex()
     {

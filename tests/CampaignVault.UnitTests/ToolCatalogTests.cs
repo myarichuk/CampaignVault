@@ -15,7 +15,7 @@ public class ToolCatalogTests
         Assert.Contains("start_session", index, StringComparison.Ordinal);
         Assert.Contains("get_entity", index, StringComparison.Ordinal);
         Assert.Contains("combat", index, StringComparison.Ordinal);
-        Assert.Contains("get_rules_reference", index, StringComparison.Ordinal);
+        Assert.Contains("lookup", index, StringComparison.Ordinal);
         Assert.Contains("### Session & exploration", index, StringComparison.Ordinal);
     }
 }

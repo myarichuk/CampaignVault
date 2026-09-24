@@ -841,10 +841,10 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         // Consolidated surface: ~15 public tools; the catalog must only list registered ones.
         Assert.True(result.Data!.Count >= 14);
         Assert.DoesNotContain(result.Data, t => t.Category == "Other");
-        Assert.Contains(result.Data, t => t.Name == "get_help" && t.Category == "System");
+        Assert.Contains(result.Data, t => t.Name == "lookup" && t.Category == "System");
         Assert.Contains(result.Data, t => t.Name == "get_entity" && t.Category == "Deep dives");
         Assert.DoesNotContain(result.Data, t => t.Name == "commit");
-        Assert.DoesNotContain(result.Data, t => t.Name == "list_tools"); // absorbed into get_help topic=tools
+        Assert.DoesNotContain(result.Data, t => t.Name == "list_tools"); // absorbed into lookup kind=help topic=tools
         Assert.DoesNotContain(result.Data, t => t.Name == "get_quest_details"); // absorbed into get_entity
     }
 
@@ -859,7 +859,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.NotNull(result.Data);
         Assert.All(result.Data!, t => Assert.Equal("Combat & rulesets", t.Category));
         Assert.Contains(result.Data, t => t.Name == "combat");
-        Assert.DoesNotContain(result.Data, t => t.Name == "get_help");
+        Assert.DoesNotContain(result.Data, t => t.Name == "lookup");
     }
 
     [Fact]

@@ -474,7 +474,7 @@ internal static class ToolCallExamples
                     + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points/gold; validates spell level, and spending below 0 HARD-FAILS the commit (\"Insufficient <pool> for <name>: has X, needs Y.\") — grants above max still clamp silently. Eligible pools recover immediately on rest completion, not on a later advance_world. "
                     + "RUMORS: create with world_build (rumors[]: id, regionLocationId, subject, text); evolve an existing one with $type rumor (rumorId, newState). "
                     + "Engine auto-applies hp from ruleset_action — no duplicate hp commits. "
-                    + "See get_help → Ruleset Actions for copy-paste JSON.",
+                    + "See lookup kind=help → Ruleset Actions for copy-paste JSON.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
@@ -519,7 +519,7 @@ internal static class ToolCallExamples
                     + "entity created later in the same batch are allowed (non-blocking warning only). "
                     + "IMPORTANT: Combat NPCs MUST have systemStats.$system='dnd5e'/'pf2e' with abilities (strength, dexterity, etc.). "
                     + "Add Attributes (morale, willpower, corruption, etc.) to enrich NPCs narratively and mechanically. "
-                    + "See get_help topic=world-building for a full copy-paste example.",
+                    + "See lookup kind=help topic=world-building for a full copy-paste example.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {

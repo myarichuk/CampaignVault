@@ -8,7 +8,7 @@ namespace CampaignVault.Tests;
 public class McpToolErrorFilterTests
 {
     [Theory]
-    [InlineData("take_turn", "changes", "get_commit_schema")]
+    [InlineData("take_turn", "changes", "commit_schema")]
     [InlineData("create_campaign", "initialSystem", "dnd5e")]
     [InlineData("get_entity", "entityId", "search_world")]
     [InlineData("combat", "action", "start")]

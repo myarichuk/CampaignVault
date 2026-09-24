@@ -24,7 +24,7 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("Batch-create/update entities (locations, factions, characters, items, quests, plotThreads, worldEvents, lore, rumors, creatures, spells, feats) in one atomic call, dispatched in dependency order; one failure rolls back the batch. Max 100 entries. Seed any person or place before naming it in narration.\n\nHARD CONSTRAINTS: (1) combat-capable NPCs need systemStats for the campaign's ruleset. (2) characters[] has no gear fields: equipment is a separate items[] entry in the SAME batch with holderId set.\n\nFull example and per-ruleset systemStats: get_help topic=world-building.")]
+    [Description("Batch-create/update entities (locations, factions, characters, items, quests, plotThreads, worldEvents, lore, rumors, creatures, spells, feats) in one atomic call, dispatched in dependency order; one failure rolls back the batch. Max 100 entries. Seed any person or place before naming it in narration.\n\nHARD CONSTRAINTS: (1) combat-capable NPCs need systemStats for the campaign's ruleset. (2) characters[] has no gear fields: equipment is a separate items[] entry in the SAME batch with holderId set.\n\nFull example and per-ruleset systemStats: lookup kind=help topic=world-building.")]
     public Task<ToolResult<WorldBuildResult>> WorldBuild(
         [Description("Entities to create/update, grouped by kind. Every array is optional.")]
         WorldBuildBatch batch,
@@ -395,7 +395,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). This is the only tool that creates a new item. Pass definitionName to seed a NEW item's category/tags/properties/equip fields from a RulesetData ItemDefinition template (see get_rules_reference kind:'items') instead of typing them all out — any of those fields you also set explicitly on this same request override the template's values. Pass itemDetails to seed persistent, granular state at creation — scratches, stains, secret compartments, existing damage or wear — instead of issuing separate item_update commits afterward. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale [itemDetails and definitionName are the exception — both are creation-only and ignored (not replaced/merged/re-applied) when the item already exists]. During play, use commit's item_update (tags/state) or item_update's upsertItemDetail (persistent damage/wear/hidden features) for incremental changes to an existing item.")]
+        "WORLD BUILDER TOOL: Create or update an item (weapon, key, document, etc.). This is the only tool that creates a new item. Pass definitionName to seed a NEW item's category/tags/properties/equip fields from a RulesetData ItemDefinition template (see lookup kind:'items') instead of typing them all out — any of those fields you also set explicitly on this same request override the template's values. Pass itemDetails to seed persistent, granular state at creation — scratches, stains, secret compartments, existing damage or wear — instead of issuing separate item_update commits afterward. Omitted fields are preserved: on an existing item, omitting tags/distinctiveFeatures/properties keeps the stored value; providing one replaces it wholesale [itemDetails and definitionName are the exception — both are creation-only and ignored (not replaced/merged/re-applied) when the item already exists]. During play, use commit's item_update (tags/state) or item_update's upsertItemDetail (persistent damage/wear/hidden features) for incremental changes to an existing item.")]
     internal Task<ToolResult<Item>> UpsertItem(
         [Description("The item to create or update. Strongly typed.")]
         ItemUpsertRequest item,
@@ -419,7 +419,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew creature stat-block template. These are reusable reference templates (distinct from live NPC/monster instances, which use world_build's characters[]). Homebrew creatures override SRD creatures by name when queried via get_rules_reference (kind:'creatures'). Omitted fields are preserved: on an existing creature, omitting skills/abilities keeps the stored value; providing one replaces it wholesale.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew creature stat-block template. These are reusable reference templates (distinct from live NPC/monster instances, which use world_build's characters[]). Homebrew creatures override SRD creatures by name when queried via lookup (kind:'creatures'). Omitted fields are preserved: on an existing creature, omitting skills/abilities keeps the stored value; providing one replaces it wholesale.")]
     internal Task<ToolResult<CustomCreature>> UpsertCreature(
         [Description("The creature to create or update. Strongly typed.")]
         CustomCreatureUpsertRequest creature,
@@ -479,7 +479,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew spell. Overrides SRD spells by name when queried via get_rules_reference (kind:'spells'). Omitted fields are preserved: on an existing spell, omitting classes keeps the stored value; providing one replaces it wholesale. Set verbal/somatic/material explicitly — the engine gates this spell against Gagged/Silenced/bound-hands/missing-focus conditions using these flags, and an unset flag is treated as no requirement.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew spell. Overrides SRD spells by name when queried via lookup (kind:'spells'). Omitted fields are preserved: on an existing spell, omitting classes keeps the stored value; providing one replaces it wholesale. Set verbal/somatic/material explicitly — the engine gates this spell against Gagged/Silenced/bound-hands/missing-focus conditions using these flags, and an unset flag is treated as no requirement.")]
     internal Task<ToolResult<CustomSpell>> UpsertSpell(
         [Description("The spell to create or update. Strongly typed.")]
         CustomSpellUpsertRequest spell,
@@ -496,7 +496,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via get_rules_reference (kind:'handbook'). If this feat passively waives a spell-component requirement (like War Caster), set castingWaivers.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via lookup (kind:'handbook'). If this feat passively waives a spell-component requirement (like War Caster), set castingWaivers.")]
     internal Task<ToolResult<CustomFeat>> UpsertFeat(
         [Description("The feat to create or update. Strongly typed.")]
         CustomFeatUpsertRequest feat,
