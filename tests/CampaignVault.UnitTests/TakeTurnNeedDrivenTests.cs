@@ -7,6 +7,7 @@ using CampaignVault.Data;
 using CampaignVault.Data.Context;
 using CampaignVault.Models;
 using CampaignVault.Tools;
+using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -138,6 +139,68 @@ public class TakeTurnNeedDrivenTests : IClassFixture<RavenDBFixture>
 
         var changed = await TalkToFenn();
         Assert.Equal("gruff, suspicious", Assert.Single(changed.Data!.Cards!, c => c.Id == m.FennId).Traits);
+    }
+
+    [Fact]
+    public async Task SmallRelationshipMoves_DoNotResendTheCard_ATierCrossingIsAContextLine()
+    {
+        var m = await SeedMarketAsync();
+        var arrival = await m.Tools.TakeTurn(new TakeTurnRequest { FullDetailLocationId = m.LocId }, m.Slug);
+        Assert.Contains(arrival.Data!.Cards!, c => c.Id == m.OdaId);
+
+        Task<ToolResult<TurnResult>> Warm(int delta) => m.Tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new RelationshipChange { CharacterId = m.OdaId, TargetId = m.PcId, Delta = delta, Reason = "A kind word." },
+                new EventOccurred { Summary = "Tamsin chats with Oda.", Category = EventCategory.Conversation, Involved = [m.PcId, m.OdaId] }
+            ],
+            Narrative = "Tamsin and Oda trade news."
+        }, m.Slug);
+
+        var small = await Warm(2); // 65 -> 67, still friendly
+        Assert.True(small.Success, small.Summary);
+        Assert.DoesNotContain(small.Data!.Cards ?? [], c => c.Id == m.OdaId);
+        Assert.DoesNotContain(small.Data.Context ?? [], l => l.Contains("now regards"));
+
+        var crossing = await Warm(15); // 67 -> 82, trusted friend
+        Assert.DoesNotContain(crossing.Data!.Cards ?? [], c => c.Id == m.OdaId);
+        Assert.Contains(crossing.Data.Context!, l => l.Contains("Oda now regards Tamsin as trusted friend"));
+    }
+
+    /// <summary>Items stored before Item.Hidden existed have no such field. The !Hidden filters (card gear,
+    /// search) must still see them, or real campaigns would lose every item on the wire.</summary>
+    [Fact]
+    public async Task HiddenFilter_KeepsItemsStoredBeforeTheFieldExisted()
+    {
+        var slug = "hidden-legacy-" + Guid.NewGuid().ToString("N")[..8];
+        var holderId = $"chars/{slug}-fenn";
+        var itemId = $"items/{slug}-rope";
+        var ct = TestContext.Current.CancellationToken;
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Item { Id = itemId, Name = "Rope", HolderId = holderId, CampaignName = slug }, ct);
+            await session.SaveChangesAsync(ct);
+        }
+
+        var collection = _fixture.Store.Conventions.FindCollectionName(typeof(Item));
+        var patch = await _fixture.Store.Operations.SendAsync(new Raven.Client.Documents.Operations.PatchByQueryOperation(
+            $"from '{collection}' where id() = '{itemId}' update {{ delete this.Hidden; }}"), token: ct);
+        await patch.WaitForCompletionAsync(TimeSpan.FromSeconds(10));
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var stillHasField = await session.Advanced
+                .AsyncRawQuery<Item>($"from '{collection}' where id() = '{itemId}' and exists(Hidden)")
+                .CountAsync(ct);
+            Assert.Equal(0, stillHasField); // the document really is legacy-shaped now
+
+            var visible = await session.Query<Item>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+                .Where(i => i.HolderId == holderId && !i.IsArchived && i.Hidden != true)
+                .ToListAsync(ct);
+            Assert.Single(visible);
+        }
     }
 
     [Fact]

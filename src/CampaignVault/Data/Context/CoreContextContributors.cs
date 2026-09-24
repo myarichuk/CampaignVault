@@ -219,7 +219,8 @@ internal sealed class SearchContextContributor : IContextContributor
         }
 
         var fixtures = await turn.Session.Query<Item>()
-            .Where(i => i.HolderId == turn.PartyLocationId && !i.IsArchived && !i.Hidden)
+            // `!= true`, not `!Hidden`: Raven skips documents saved before the field existed for `Hidden == false`.
+            .Where(i => i.HolderId == turn.PartyLocationId && !i.IsArchived && i.Hidden != true)
             .Take(MaxItems)
             .ToListAsync(ct);
         if (fixtures.Count == 0)

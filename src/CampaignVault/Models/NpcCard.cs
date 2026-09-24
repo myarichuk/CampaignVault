@@ -16,6 +16,8 @@ namespace CampaignVault.Models;
 public record NpcCard(
     string Id,
     string Name,
+    /// <summary>Mood as of this card (not part of the hash: mood changes travel in npcs[] and rosters).</summary>
+    string? Mood = null,
     string? Traits = null,
     string? Wants = null,
     string? Fears = null,
@@ -37,8 +39,12 @@ public record NpcCard(
     /// travel elsewhere (roster, context lines), so they must not force a resend.</summary>
     public string StableHash()
     {
-        var text = string.Join("|", Traits, Wants, Fears, Stance, Notes, Appearance,
-            Stats?.ArmorClass, Stats?.Level, Gear,
+        // Stance moves on ordinary beats (a +2 after a chat) and a tier crossing has its own context line
+        // (RelationshipTierContextContributor), so it stays out; so do item counts (an arrow shot). A new
+        // or lost item is news. The card's display keeps the numbers.
+        var gearNames = Gear == null ? null : System.Text.RegularExpressions.Regex.Replace(Gear, @" x\d+", "");
+        var text = string.Join("|", Traits, Wants, Fears, Notes, Appearance,
+            Stats?.ArmorClass, Stats?.Level, gearNames,
             NeedNotes == null ? null : string.Join(",", NeedNotes.OrderBy(kv => kv.Key).Select(kv => kv.Key + "=" + kv.Value)));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..12];
     }
@@ -103,6 +109,7 @@ internal static class NpcCardFactory
         return new NpcCard(
             npc.Id,
             npc.Name,
+            Mood: string.IsNullOrWhiteSpace(psych.CurrentMood) ? null : psych.CurrentMood,
             Traits: Join(psych.Traits),
             Wants: Join(psych.Wants),
             Fears: Join(psych.Fears),

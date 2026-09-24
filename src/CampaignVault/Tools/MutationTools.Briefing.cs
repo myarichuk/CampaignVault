@@ -190,7 +190,8 @@ public partial class MutationTools
 
         var npcIds = npcs.Select(n => n.Id).ToList();
         var held = await ctx.Session.Query<Item>()
-            .Where(i => i.HolderId.In(npcIds) && !i.IsArchived && !i.Hidden)
+            // `!= true`, not `!Hidden`: Raven skips documents saved before the field existed for `Hidden == false`.
+            .Where(i => i.HolderId.In(npcIds) && !i.IsArchived && i.Hidden != true)
             .ToListAsync();
 
         var cards = new List<NpcCard>();
@@ -206,7 +207,7 @@ public partial class MutationTools
             }
 
             ctx.Cursor.DeliveredCardHashes[npc.Id] = hash;
-            if (card != new NpcCard(card.Id, card.Name))
+            if (card with { Mood = null } != new NpcCard(card.Id, card.Name))
             {
                 cards.Add(card); // A card with nothing beyond id and name tells the model nothing.
             }
