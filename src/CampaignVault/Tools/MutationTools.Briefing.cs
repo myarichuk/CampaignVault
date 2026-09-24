@@ -208,12 +208,15 @@ public partial class MutationTools
             .Where(i => i.HolderId.In(npcIds) && !i.IsArchived && i.Hidden != true)
             .ToListAsync();
 
+        var modeParticipants = await LoadActiveModeParticipantsAsync(ctx);
+
         var cards = new List<NpcCard>();
         foreach (var npc in npcs)
         {
             var card = NpcCardFactory.Build(npc, party,
                 held.Where(i => i.HolderId.Equals(npc.Id, StringComparison.OrdinalIgnoreCase)).ToList(),
-                MemoriesForThisBeat(ctx, npc));
+                MemoriesForThisBeat(ctx, npc),
+                modeParticipants);
             var hash = card.StableHash();
             if (ctx.Cursor.DeliveredCardHashes.TryGetValue(npc.Id, out var sent) && sent == hash)
             {
@@ -228,6 +231,24 @@ public partial class MutationTools
         }
 
         return cards;
+    }
+
+    /// <summary>Every campaign-enabled mode id mapped to the character IDs currently active in that mode's
+    /// encounter (empty set if the mode is enabled but has no active encounter right now). One point-read
+    /// per enabled mode — EnabledModeIds is normally 0-2 entries, not a scan. Feeds NpcCardFactory.Build's
+    /// SystemExtension.Traits gate so a plugin's mode-only traits don't ride every card on every turn.</summary>
+    private async Task<Dictionary<string, HashSet<string>>> LoadActiveModeParticipantsAsync(TurnContext ctx)
+    {
+        var result = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var modeId in ctx.Config.EnabledModeIds)
+        {
+            var encounter = await ctx.Session.LoadAsync<ModeEncounter>(_keys.ModeCurrent(ctx.Campaign, modeId));
+            result[modeId] = encounter is { IsActive: true }
+                ? encounter.Participants.Select(p => p.CharacterId).ToHashSet(StringComparer.OrdinalIgnoreCase)
+                : [];
+        }
+
+        return result;
     }
 
     /// <summary>A card's two memories are the ones this beat is about when the narrative has an embedding;

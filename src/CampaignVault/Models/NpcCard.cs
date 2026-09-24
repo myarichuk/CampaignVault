@@ -19,6 +19,11 @@ public record NpcCard(
     /// <summary>Mood as of this card (not part of the hash: mood changes travel in npcs[] and rosters).</summary>
     string? Mood = null,
     string? Traits = null,
+    /// <summary>SystemExtension.Traits entries, filtered by the "&lt;modeId&gt;.&lt;name&gt;" convention:
+    /// unprefixed keys (or keys whose prefix isn't a currently-enabled mode) always ride; a prefixed key
+    /// rides only while this NPC is an active participant in that mode's encounter. Kept token-cheap —
+    /// most turns carry no active mode, so this is usually null.</summary>
+    string? SystemTraits = null,
     string? Wants = null,
     string? Fears = null,
     /// <summary>How the NPC regards each party member they have an opinion of, e.g. "Tamsin: friendly (65)".</summary>
@@ -43,7 +48,7 @@ public record NpcCard(
         // (RelationshipTierContextContributor), so it stays out; so do item counts (an arrow shot). A new
         // or lost item is news. The card's display keeps the numbers.
         var gearNames = Gear == null ? null : System.Text.RegularExpressions.Regex.Replace(Gear, @" x\d+", "");
-        var text = string.Join("|", Traits, Wants, Fears, Notes, Appearance,
+        var text = string.Join("|", Traits, SystemTraits, Wants, Fears, Notes, Appearance,
             Stats?.ArmorClass, Stats?.Level, gearNames,
             NeedNotes == null ? null : string.Join(",", NeedNotes.OrderBy(kv => kv.Key).Select(kv => kv.Key + "=" + kv.Value)));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..12];
@@ -60,11 +65,16 @@ internal static class NpcCardFactory
     /// <param name="party">Party members (for stance and names).</param>
     /// <param name="heldItems">Items the NPC holds.</param>
     /// <param name="preferredMemories">Memories already ranked relevant to this moment; falls back to salience.</param>
+    /// <param name="modeParticipants">Every campaign-enabled mode id mapped to the character IDs currently
+    /// active in that mode's encounter (empty set if the mode is enabled but has no active encounter).
+    /// Gates SystemExtension.Traits entries prefixed "&lt;modeId&gt;.&lt;name&gt;"; null/empty treats every
+    /// prefixed trait as gated-and-hidden, same as an enabled-but-inactive mode.</param>
     public static NpcCard Build(
         Character npc,
         IReadOnlyList<Character> party,
         IReadOnlyList<Item> heldItems,
-        IReadOnlyList<MemoryNode>? preferredMemories = null)
+        IReadOnlyList<MemoryNode>? preferredMemories = null,
+        IReadOnlyDictionary<string, HashSet<string>>? modeParticipants = null)
     {
         var psych = npc.Psychology ?? new PsychologyProfile();
 
@@ -119,6 +129,7 @@ internal static class NpcCardFactory
             Stance: stance.Count > 0 ? string.Join("; ", stance) : null,
             Notes: string.IsNullOrWhiteSpace(notes) ? null : notes,
             Appearance: string.IsNullOrWhiteSpace(npc.CurrentAppearance) ? null : npc.CurrentAppearance,
+            SystemTraits: JoinSystemTraits(npc, modeParticipants),
             Stats: NpcStatLine.From(npc.SystemStats),
             Gear: gear.Count > 0 ? string.Join(", ", gear) : null,
             PressingNeeds: pressing.Count > 0 ? pressing : null,
@@ -135,4 +146,38 @@ internal static class NpcCardFactory
 
     private static string? Join(List<string>? values) =>
         values is { Count: > 0 } ? string.Join(", ", values.Where(v => !string.IsNullOrWhiteSpace(v))) : null;
+
+    /// <summary>Joins the SystemExtension.Traits entries visible to this NPC right now. A key follows the
+    /// plugin namespacing convention "&lt;modeId&gt;.&lt;name&gt;" (e.g. "crafting.tool_quality"); a dotted
+    /// key is mode-gated and rides only while this NPC is an active participant in that mode's encounter.
+    /// An unprefixed key (no plugin claims it) always rides.</summary>
+    private static string? JoinSystemTraits(Character npc, IReadOnlyDictionary<string, HashSet<string>>? modeParticipants)
+    {
+        var traits = npc.SystemStats?.Traits;
+        if (traits is not { Count: > 0 })
+        {
+            return null;
+        }
+
+        var visible = traits
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Value) && IsSystemTraitVisible(kv.Key, npc.Id, modeParticipants))
+            .Select(kv => $"{kv.Key}={kv.Value}")
+            .ToList();
+
+        return visible.Count > 0 ? string.Join(", ", visible) : null;
+    }
+
+    private static bool IsSystemTraitVisible(string key, string npcId, IReadOnlyDictionary<string, HashSet<string>>? modeParticipants)
+    {
+        var dot = key.IndexOf('.');
+        if (dot <= 0)
+        {
+            return true; // unprefixed: no plugin mode claims this key, so it's a core trait
+        }
+
+        var modeId = key[..dot];
+        return modeParticipants != null
+            && modeParticipants.TryGetValue(modeId, out var participants)
+            && participants.Contains(npcId);
+    }
 }
