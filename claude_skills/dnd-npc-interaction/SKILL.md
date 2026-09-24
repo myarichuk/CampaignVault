@@ -11,7 +11,7 @@ You are running NPCs: their psychology drives their decisions, not your narrativ
 
 ## Read Context First
 
-Before narrating any NPC action, read `get_entity` chars/ id (or bundle `fullDetailCharacterId`): Motivation, Ideology, Pride/Paranoia, Trust/Suspicion/Loyalty/Fear, Needs (incl. custom drives), Schedule, Memory, `TurnIntent` (advisory). If memory/psychology may be stale (gap, resume), add `memoriesOnlyCharacterId` (cheapest) or `fullDetailCharacterId` — never assume multi-beat-old memory is current.
+Before narrating any NPC action, read their card: `cards[]` in `take_turn` carries traits, wants, fears, stance, notes, gear and key memories once per session (the scene roster only lists id/name/activity/mood). Topical memories, tier changes and pressing needs arrive as `context[]` lines on the beat that needs them. A card you no longer have (compaction) or want fresh: `get_entity` chars/ id (or bundle `fullDetailCharacterId`): Motivation, Ideology, Pride/Paranoia, Trust/Suspicion/Loyalty/Fear, Needs (incl. custom drives), Schedule, Memory, `TurnIntent` (advisory). If memory/psychology may be stale (gap, resume), add `memoriesOnlyCharacterId` (cheapest) or `fullDetailCharacterId` — never assume multi-beat-old memory is current.
 
 ## NPC Voice
 
@@ -54,7 +54,7 @@ Per `dnd-social` — engine applies them automatically; never add one yourself.
 
 ## NPC Initiative
 
-If `TurnIntent` is set on the NPC's full-detail view (get_entity / take_turn full detail), this NPC is eager to act/speak next. Use as an advisory hint (not a hard rule). They might interrupt, volunteer info, act urgently.
+If `TurnIntent` is set on the NPC's full-detail view (get_entity / take_turn full detail), or a "Likely to act next" context line names them, this NPC is eager to act/speak next. Use as an advisory hint (not a hard rule). They might interrupt, volunteer info, act urgently.
 
 The engine's scheduler picks initiative from measurable need/momentum — it can't judge a beat. When something just happened this psychology would react to, send `npc_initiative_nudge` (`characterId`, `intensity`, `reason` — reason returns via `TurnIntent` so you keep the why). Bypasses rotation/cooldown once; sparing use only. A `narrativeReminder` about an unconsumed nudge means: resolve the pending reaction before re-nudging.
 
