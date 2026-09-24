@@ -179,7 +179,7 @@ public class CampaignTools(
     public Task<ToolResult<Campaign>> CreateCampaign(string name, string system, string? displayName = null) =>
         management.CreateCampaign(name, system, displayName);
 
-    public Task<ToolResult<List<Campaign>>> ListCampaigns() => management.ListCampaigns();
+    public Task<ToolResult<List<CampaignSummaryView>>> ListCampaigns() => management.ListCampaigns();
     public Task<ToolResult<CampaignContextView>> GetCurrentCampaign(string campaignName) =>
         management.GetCurrentCampaign(campaignName);
 

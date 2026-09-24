@@ -124,3 +124,21 @@ Source: Grok's report after Session 1 (courtyard → Dock Ward → Harband Count
 - **`includeParty` projection**: a compact party view (hp/slots/gold/needs/AC/location) instead of full summaries. Needs a query-layer projection per CLAUDE.md.
 - **Test infra**: `CleanupOldTestDirectories` should only delete dirs older than N hours, so parallel runs stop killing each other.
 - Plugin verb scoping (`lewd_*`): out of scope, the plugin is out of date.
+
+## Session-1 audit, round 2 (connectors + lookup)
+
+Tool definitions ride along on **every model call** (not once per session), so each connector should expose only what its job needs. Live compact-JSON sizes of `tools/list`:
+
+| Route | Tools | Chars | vs. 51,853 baseline |
+|---|---|---|---|
+| `/` (all) | 16 | 20,545 | −60% |
+| `/play` | 10 | 15,953 | −69% |
+| `/build` | 10 | 11,639 | −78% |
+
+- [x] R1 `lookup(kind=...)` replaces `get_rules_reference` + `get_commit_schema` + `get_help` (3,626 → 1,956 chars).
+- [x] R2 `/play` and `/build` routes (`ToolProfiles`, filtered per session via `ConfigureSessionOptions`).
+- [x] R3 Stateful HTTP by default, `MCP_STATELESS=1` opts out. No token effect; buys session ids (clients can cache tools/list) and server push. Escaping middleware no longer buffers the GET event stream.
+- [x] R4 `list_campaigns` projects to `CampaignSummaryView` in the query: was 35,221 chars for 7 campaigns (24k of `initiativeSurfaced`), now ~1k.
+- [x] Schema cache: PostConfigure runs per session, so take_turn/world_build schemas are now built once.
+
+Next candidates: stub `world_build` in `/play` (3.2k → ~1k); measure `start_session` / `take_turn` / `includeParty` responses on a real campaign.

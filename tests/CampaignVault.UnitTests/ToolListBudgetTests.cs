@@ -67,8 +67,8 @@ public class ToolListBudgetTests
     {
         var names = BuildOptions().ToolCollection!.Select(t => t.ProtocolTool.Name).ToHashSet();
 
-        Assert.Empty(names.Where(n => !ToolProfiles.PlayTools.Contains(n) && !ToolProfiles.BuildTools.Contains(n)));
-        Assert.Empty(ToolProfiles.PlayTools.Concat(ToolProfiles.BuildTools).Where(n => !names.Contains(n)));
+        Assert.DoesNotContain(names, n => !ToolProfiles.PlayTools.Contains(n) && !ToolProfiles.BuildTools.Contains(n));
+        Assert.DoesNotContain(ToolProfiles.PlayTools.Concat(ToolProfiles.BuildTools), n => !names.Contains(n));
         Assert.Equal(ToolProfile.All, ToolProfiles.FromPath("/"));
         Assert.Null(ToolProfiles.Filter(null, ToolProfile.Play));
     }

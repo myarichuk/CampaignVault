@@ -216,6 +216,16 @@ public class SceneView
 /// Lightweight summary of a scene for quick lookups (get_scene_summary).
 /// Slices the heavier SceneView to essentials: location, NPCs, rumors, and a binary combat flag.
 /// </summary>
+/// <summary>list_campaigns row: just what picking a campaign needs. The meta doc also carries engine
+/// bookkeeping (initiative/pressure cooldowns) that ran to ~5k chars per campaign.</summary>
+public class CampaignSummaryView
+{
+    public string Name { get; set; } = null!;
+    public string DisplayName { get; set; } = null!;
+    public string System { get; set; } = null!;
+    public DateTime CreatedAt { get; set; }
+}
+
 public class SceneSummaryView
 {
     public LocationDetailView Location { get; set; } = null!;

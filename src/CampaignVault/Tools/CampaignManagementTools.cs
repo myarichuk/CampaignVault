@@ -195,15 +195,22 @@ Example: create_campaign(""dragon-heist"", ""dnd5e"", ""Waterdeep: Dragon Heist"
     [Description(@"CAMPAIGN TOOL: Lists all existing campaigns (campaigns/*/meta documents only).
 Useful for discovering existing worlds. Pass the slug as campaignName on subsequent calls. Read-only, no side effects
 — call it once to discover/confirm a slug, not repeatedly. A campaignName already known does not need re-discovery.")]
-    public Task<ToolResult<List<Campaign>>> ListCampaigns()
+    public Task<ToolResult<List<CampaignSummaryView>>> ListCampaigns()
     {
         return ExecuteAsync(async session =>
         {
             var campaigns = await session.Query<Campaign>()
                 .Where(c => c.Id.StartsWith("campaigns/") && c.Id.EndsWith("/meta"))
+                .Select(c => new CampaignSummaryView
+                {
+                    Name = c.Name,
+                    DisplayName = c.DisplayName,
+                    System = c.System,
+                    CreatedAt = c.CreatedAt
+                })
                 .ToListAsync();
 
-            return new ToolResult<List<Campaign>>(true, campaigns, $"Found {campaigns.Count} campaign(s).");
+            return new ToolResult<List<CampaignSummaryView>>(true, campaigns, $"Found {campaigns.Count} campaign(s).");
         }, saveChanges: false);
     }
 

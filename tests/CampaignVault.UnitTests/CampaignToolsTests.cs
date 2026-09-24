@@ -7,6 +7,7 @@ using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Tools;
 using ModelContextProtocol.Server;
+using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -827,6 +828,33 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             Assert.False(string.IsNullOrWhiteSpace(category), $"Missing [ToolCategory] on {method.Name}");
             Assert.NotEqual("Other", category);
         }
+    }
+
+    [Fact]
+    public async Task ListCampaigns_ReturnsSummaryRowsOnly()
+    {
+        var tools = CreateTools();
+        var slug = "list-summary-test-" + Guid.NewGuid().ToString("N")[..8];
+        await tools.CreateCampaign(slug, RulesetSystem.Dnd5e, "List Summary Test");
+
+        // Warm the collection query's index so the tool's (non-waiting) query sees the new meta doc.
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await session.Query<Campaign>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(15)))
+                .Where(c => c.Id.StartsWith("campaigns/") && c.Id.EndsWith("/meta"))
+                .ToListAsync();
+        }
+
+        var result = await tools.ListCampaigns();
+
+        Assert.True(result.Success);
+        var row = Assert.Single(result.Data!, c => c.Name == slug);
+        Assert.Equal("List Summary Test", row.DisplayName);
+        Assert.Equal(RulesetSystem.Dnd5e, row.System);
+        var json = System.Text.Json.JsonSerializer.Serialize(result.Data);
+        Assert.DoesNotContain("InitiativeSurfaced", json);
+        Assert.DoesNotContain("PressureCooldowns", json);
     }
 
     [Fact]
