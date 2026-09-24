@@ -29,11 +29,11 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
         string entityId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
-        [Description("Locations only: set true if the party is physically entering or spending time at the location (prevents transient-NPC cleanup).")]
+        [Description("Locations: true if the party is here (keeps transient NPCs).")]
         bool partyPresent = false,
-        [Description("Locations only: return the Description untruncated instead of the default capped copy. Use after a prior get_entity call on this location reports descriptionTruncated=true.")]
+        [Description("Locations: full Description, after a response reported descriptionTruncated.")]
         bool fullDescription = false,
-        [Description("Locations only: return one named PointOfInterestDetails entry (case-insensitive) untruncated. Use after a prior get_entity call reports it in truncatedPointsOfInterest.")]
+        [Description("Locations: one point of interest in full, after it was listed in truncatedPointsOfInterest.")]
         string? detailPoi = null)
     {
         if (string.IsNullOrWhiteSpace(entityId))

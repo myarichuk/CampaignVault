@@ -2913,13 +2913,9 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "Skip uneventful downtime and run world simulation. Use hours (e.g. 8) or days + resultingHour. Pass partyLocationId to roll encounter checks for the span; omit only for a risk-free skip." +
-        "rumor decay, faction/plot evolution, transient GC) — for a multi-day skip (training montage, downtime between " +
-        "arcs, a journey already narrated as uneventful) use days+timeOfDay; for an overnight rest or partial-day span " +
-        "use hours instead (e.g. hours:8) and the engine derives the resulting day/timeOfDay for you — no manual day " +
-        "math needed. Pass partyLocationId to get the same encounter/ambient-crowd checks travel/rest get for that " +
-        "span (recommended whenever the span carries any real risk — resting somewhere unsafe, a dangerous overnight, " +
-        "an unescorted journey); omit it for a guaranteed-safe skip with no interruption chance. Requires campaignName.")]
+        "Skip uneventful downtime and run world simulation (rumors, factions, plots). Use hours (e.g. 8) for a night " +
+        "or part of a day, or days + resultingHour for longer. Pass partyLocationId to roll encounter checks for the " +
+        "span; omit it only for a risk-free skip.")]
     public Task<ToolResult<AdvanceResult>> AdvanceWorld(
         [Description("Summary of the rest, travel, or downtime activity.")]
         string narrative,

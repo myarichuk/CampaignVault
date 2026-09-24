@@ -1,0 +1,19 @@
+# ngrok Traffic Policy for exposing CampaignVault (used by scripts/tunnel.sh).
+#
+# One tunnel serves both connectors, since they are paths on the same port:
+#   https://<your-domain>/play    live play (10 tools)
+#   https://<your-domain>/build   campaign creation + seeding (10 tools)
+#
+# Everything else, including "/" (every tool), is answered here with 404 and never reaches
+# the server. "/" is an installer/local URL; a remote model should only ever see /play or /build.
+# Auth is still the server's job: run it with BEARER_TOKEN set (tunnel.sh refuses otherwise).
+on_http_request:
+  - expressions:
+      - "!(req.url.path in ['/play', '/play/', '/build', '/build/', '/health'])"
+    actions:
+      - type: custom-response
+        config:
+          status_code: 404
+          headers:
+            content-type: text/plain
+          body: "Not exposed. MCP connectors: /play (running a game) and /build (creating a campaign)."

@@ -25,6 +25,13 @@ internal static partial class McpToolErrorFilter
             {
                 return await next(request, cancellationToken);
             }
+            catch (McpException ex) when (ex.Message.StartsWith("Unknown tool", StringComparison.Ordinal))
+            {
+                // /play and /build serve a subset; say where the tool lives instead of a bare protocol error
+                var available = request.Server.ServerOptions.ToolCollection?.Select(t => t.ProtocolTool.Name).ToList() ?? [];
+                return ToErrorResult(
+                    CampaignVault.Schema.ToolProfiles.UnknownToolMessage(request.Params?.Name ?? "unknown", available), null);
+            }
             catch (ArgumentException ex) when (MissingParamRegex().IsMatch(ex.Message))
             {
                 var paramName = MissingParamRegex().Match(ex.Message).Groups[1].Value;

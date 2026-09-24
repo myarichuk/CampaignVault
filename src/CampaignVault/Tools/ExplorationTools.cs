@@ -309,10 +309,10 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
     [Description("Search past events (ground truth, unlike an NPC's subjective memories). Filter by locationId and/or involvedCharacterId. Use narrow queries.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
-        [Description("The keyword or phrase to search for in historical events. Optional if filtering purely by locationId/involvedCharacterId.")] string query = "",
+        [Description("Keyword or phrase. Optional when filtering by id.")] string query = "",
         [Description("Max events (default 5).")] int? limit = null,
-        [Description("Optional. Only return events at this location ID (or with this ID among relatedLocationIds).")] string? locationId = null,
-        [Description("Optional. Only return events where this character ID appears in 'involved' — i.e. ground-truth presence, not subjective memory.")] string? involvedCharacterId = null)
+        [Description("Only events at (or related to) this location.")] string? locationId = null,
+        [Description("Only events this character was actually present for.")] string? involvedCharacterId = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));

@@ -142,3 +142,16 @@ Tool definitions ride along on **every model call** (not once per session), so e
 - [x] Schema cache: PostConfigure runs per session, so take_turn/world_build schemas are now built once.
 
 Next candidates: stub `world_build` in `/play` (3.2k → ~1k); measure `start_session` / `take_turn` / `includeParty` responses on a real campaign.
+
+## Round 3 (2026-09-24): /play stubs, tunnel
+
+Live, compact JSON: `/` 19,528 · `/play` 12,497 (was 15,953) · `/build` 11,399.
+
+- `/play` serves its own `world_build` definition (`ToolProfiles.SlimTool`, a `DelegatingMcpServerTool`): short description and a `batch` object stub, no `$defs` (was 13 `$defs`, 3.2k chars; now ~0.9k). Calls go to the same tool; `/` and `/build` keep the full schema. Field detail: `dnd-world-building` skill, `lookup kind=help topic=world-building`.
+- Stub check (`PlayTools_AreRealStubs`): no `/play` tool has `$defs`; `take_turn` `changes[].items` is `{ $type }`, no anyOf/oneOf.
+- `advance_world` description: dropped a spliced, stale tail (~550 chars). `get_entity` / `recall_history` parameter text tightened.
+- Unknown tool on a connector: one line, e.g. `unknown tool 'create_campaign' on /play; it is on /build (campaign setup). Tell the user; don't search for tools. This connector: ...`. System prompt pins `/play` and says the same.
+- `lookup kind=commit_schema` with no type returns a 4.4k-char index of `$type` names, not `$defs`; with `type=` ~0.6k.
+- `scripts/tunnel.sh` + `ngrok/traffic-policy.yml`: one tunnel, only `/play`, `/build`, `/health` pass; refuses to expose a server without `BEARER_TOKEN`.
+
+Why not 6–8k on `/play`: what's left is parameter schemas the model needs to call the tools correctly (take_turn's refresh flags are 2.4k and carry the fingerprint/includeParty rules). The next saving is the client caching tools/list (stateful sessions), not more stubbing.

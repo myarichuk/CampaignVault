@@ -43,30 +43,24 @@ The server listens on `http://localhost:5275` by default.
 
 ### Option 1: ngrok (Temporary / Testing)
 
-Use ngrok to expose your local server for quick testing before permanent deployment.
+Use ngrok to reach your local server from a web client (Grok Web, claude.ai) before a permanent deployment. One tunnel serves both connectors, since `/play` and `/build` are paths on the same port.
 
 ```bash
-# 1. Start your local server (see above)
+# 1. Once: brew install ngrok && ngrok config add-authtoken <token>
 
-# 2. Download and run ngrok
-ngrok http 5275
+# 2. Start the server WITH a token (a tunnel is public)
+export BEARER_TOKEN=$(openssl rand -hex 24)
+dotnet run -c Debug --project src/CampaignVault/
 
-# 3. ngrok prints a public URL like: https://abc123.ngrok.io
-
-# 4. In your LLM connector, use that URL
+# 3. In another terminal (same BEARER_TOKEN exported, so the URLs print ready to paste)
+scripts/tunnel.sh
+#   play connector : https://<id>.ngrok-free.app/play?token=...
+#   build connector: https://<id>.ngrok-free.app/build?token=...
 ```
 
-**To add authentication:**
+`scripts/tunnel.sh` refuses to start if the server answers without a token (`ALLOW_OPEN=1` overrides). Set `NGROK_URL` to a reserved ngrok domain to keep connector URLs stable between runs. `ngrok/traffic-policy.yml` only lets `/play`, `/build` and `/health` through; `/` (every tool) gets a 404 from ngrok and never reaches the server.
 
-```bash
-docker run -p 5275:5275 \
-  -e BEARER_TOKEN=your-secure-token \
-  -e CAMPAIGN_DB_PATH=/app/data \
-  -v campaign_data:/app/data \
-  campaignvault:latest
-```
-
-Then pass the token in LLM connector headers: `Authorization: Bearer your-secure-token`
+Clients that can set headers should send `Authorization: Bearer <token>` instead of `?token=`.
 
 ---
 
@@ -149,7 +143,7 @@ Tool definitions are sent to the model on every call, so each connector should e
 | `http://localhost:5275/build` | create_campaign, list_campaigns, get_config, onboarding (3), world_build, get_entity, search_world, lookup | Creating and seeding a campaign |
 | `http://localhost:5275/` | everything | Older clients; one connector for both |
 
-A call to a tool outside the connector's set fails as an unknown tool. `/play` is ~16k chars of tool definitions vs ~21k for `/`.
+A call to a tool outside the connector's set fails with a one-line error naming the connector that has it. `/play` is ~12.5k chars of tool definitions (its `world_build` is a stub; the field detail is in the `dnd-world-building` skill), `/build` ~11.4k, `/` ~19.5k. Give a model `/play` or `/build`; `/` is for installers and single-connector local clients.
 
 ### Campaign Scoping
 
@@ -170,7 +164,7 @@ Authentication is **optional** and only enabled when `BEARER_TOKEN` is set.
 ### Token Behavior
 
 - If `BEARER_TOKEN` is **not set**, the server accepts all requests (convenient for local dev)
-- If `BEARER_TOKEN` **is set**, all requests except `/` and `/health` must present a valid token
+- If `BEARER_TOKEN` **is set**, all requests except `/health` must present a valid token (that includes the MCP endpoints `/`, `/play` and `/build`)
 - Tokens are **case-sensitive** and compared using timing-safe comparison
 
 ### Supported Methods
@@ -199,7 +193,7 @@ https://your-app.example.com/?token=your-secure-token-here
 | Environment | Approach | Notes |
 |---|---|---|
 | Local dev | Don't set `BEARER_TOKEN` | Fastest iteration |
-| Testing via ngrok | Low-privilege token or ngrok `--basic-auth` | Never use production token |
+| Testing via ngrok | `scripts/tunnel.sh` with a throwaway `BEARER_TOKEN` | Never use production token |
 | Production | `Authorization: Bearer` header | Query parameter only as last resort |
 
 ### Best Practices

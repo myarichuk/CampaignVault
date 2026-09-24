@@ -2,7 +2,7 @@
 
 **If your client supports Skills, use the skill-based prompts via your IDE/Claude Code** (`dnd-exploration`, `dnd-narration`, `dnd-bundling`, `dnd-combat`, etc.—loaded on demand, richer). This file is the **fallback for clients with no skill mechanism** (bare API loops, Grok Web — see `recommended-system-prompt.opencode.md` for the opencode variant with plugin enforcement).
 
-Fill in `<slug>`, the PC roster and `<Dnd5e|Pf2e>` first. Assumes an already-seeded campaign; for a new one, run `start_campaign_onboarding`, then `world_build` after finalize.
+Fill in `<slug>`, the PC roster and `<Dnd5e|Pf2e>` first. Assumes an already-seeded campaign on the **`/play` connector** (e.g. `http://localhost:5275/play`); for a new one, connect `/build` and run `start_campaign_onboarding`, then `world_build` after finalize. `/` serves every tool and is for installers, not for the model.
 
 Written to be cheap per turn: every line here replaces a tool call or a retry the model would otherwise make (Session 1 playtest audit, see `TOKEN_SURFACE_PLAN.md`).
 
@@ -20,6 +20,7 @@ ENGINE IS AUTHORITATIVE
 
 TOOL HYGIENE (tokens)
 - Tool names are fixed; don't re-discover or re-fetch tool schemas after the first successful call. Never request take_turn $defs.
+- This connector is /play. If a tool returns "unknown tool ... it is on /build", don't search for more tools: tell the user the connector is wrong.
 - Never search images.
 - start_session once per session (or after context loss). Fix any ENGINE WARNING in your next take_turn.
 - Tool responses carry `guidance`: follow it instead of calling lookup kind=help speculatively.

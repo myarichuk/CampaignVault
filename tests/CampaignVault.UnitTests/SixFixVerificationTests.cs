@@ -8,6 +8,7 @@ using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Services;
 using Microsoft.Extensions.Logging.Abstractions;
+using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -242,15 +243,17 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             await session.SaveChangesAsync();
         }
 
-        var indexWaitStart = DateTime.UtcNow;
-        while ((DateTime.UtcNow - indexWaitStart).TotalSeconds < 10)
+        // Wait on the same (auto-)indexes GetParty queries; its held-items query doesn't wait for staleness.
+        using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var stats = _fixture.Store.Maintenance.Send(new Raven.Client.Documents.Operations.GetStatisticsOperation());
-            if (stats.Indexes.Any(x => x.Name == "Character/Search" && x.IsStale == false))
-            {
-                break;
-            }
-            await Task.Delay(100);
+            await session.Query<Character>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
+                .Where(c => c.CampaignName == campaignName && (c.IsPc || c.IsPartyCompanion))
+                .ToListAsync();
+            await session.Query<Item>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
+                .Where(i => i.HolderId == pcId && !i.IsArchived)
+                .ToListAsync();
         }
 
         var result = await tools.GetParty(campaignName);
