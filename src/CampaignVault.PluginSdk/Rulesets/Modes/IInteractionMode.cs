@@ -50,8 +50,8 @@ public enum ModeParticipantClaim
 
     /// <summary>
     /// The character acts only here (astral projection: the mind leaves, the body stays). No other mode may
-    /// hold the same participant while this one is active. Skipping the body's combat turn is not enforced yet;
-    /// mark the body with a condition on entry so combat rules treat it as helpless.
+    /// hold the same participant while this one is active, and combat skips the body's turn (it can still be
+    /// targeted; subscribe to <c>core.character_damaged.v1</c> to react).
     /// </summary>
     Exclusive = 2
 }

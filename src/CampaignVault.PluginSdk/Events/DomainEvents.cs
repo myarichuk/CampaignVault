@@ -174,7 +174,8 @@ public static class CoreEvents
     /// <summary>
     /// A plugin's reaction faulted. Fields: pluginId, handler, topic, stage (handler_threw, follow_up_failed,
     /// depth_capped), changeType, message, fixHint, appliedChangeTypes (follow-ups that landed before the
-    /// fault), commitKept. Never published for a fault while handling this topic.
+    /// fault), commitKept. Delivered after all other reactions, at depth 0, and only when the turn is saved; a
+    /// fault raised by a listener of this topic is reported but not republished.
     /// </summary>
     public const string PluginFaulted = "core.plugin_faulted.v1";
 

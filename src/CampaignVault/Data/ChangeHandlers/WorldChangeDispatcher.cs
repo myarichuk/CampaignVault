@@ -385,6 +385,13 @@ public sealed class WorldChangeDispatcher(
 
             // Engine steps above can dispatch child mutations (e.g. ambient damage) that publish events.
             await DeliverDomainEventsAsync(context);
+            await DeliverFaultEventsAsync(context);
+
+            // A FailCommit reaction to a post-loop or fault event can still fail the batch here.
+            if (context.HasFailure)
+            {
+                overallSuccess = false;
+            }
         }
 
         context.DiscardPendingEvents();
@@ -462,6 +469,11 @@ public sealed class WorldChangeDispatcher(
         }
 
         await DeliverDomainEventsAsync(context);
+        if (!context.HasFailure)
+        {
+            await DeliverFaultEventsAsync(context);
+        }
+
         context.DiscardPendingEvents();
 
         var success = !context.HasFailure;
@@ -1056,20 +1068,21 @@ public sealed class WorldChangeDispatcher(
     }
 
     /// <summary>
-    /// Records a fault for the response and publishes <see cref="CoreEvents.PluginFaulted"/>, except for a fault
-    /// raised while handling that topic itself (a broken fault listener must not feed on its own faults).
+    /// Records a fault for the response and queues <see cref="CoreEvents.PluginFaulted"/> for the fault phase
+    /// (<see cref="DeliverFaultEventsAsync"/>). Faults raised during the fault phase are reported only, so a
+    /// broken fault listener can never feed on its own faults.
     /// </summary>
-    private void RecordFault(ChangeContext context, DomainEvent cause, PluginFault fault)
+    private static void RecordFault(ChangeContext context, DomainEvent cause, PluginFault fault)
     {
         context.PluginFaults.Add(fault);
         context.RecordMessage(fault.Describe());
 
-        if (string.Equals(cause.Topic, CoreEvents.PluginFaulted, StringComparison.OrdinalIgnoreCase))
+        if (context.InFaultPhase)
         {
             return;
         }
 
-        context.EnqueueCoreEvent(CoreEvents.PluginFaulted, new Dictionary<string, object?>
+        context.PendingFaultEvents.Add(DomainEvent.Create(CoreEvents.PluginFaulted, new Dictionary<string, object?>
         {
             [CoreEvents.Fields.PluginId] = fault.PluginId,
             [CoreEvents.Fields.Handler] = fault.Handler,
@@ -1080,7 +1093,36 @@ public sealed class WorldChangeDispatcher(
             [CoreEvents.Fields.FixHint] = fault.FixHint,
             [CoreEvents.Fields.AppliedChangeTypes] = fault.AppliedChangeTypes,
             [CoreEvents.Fields.CommitKept] = fault.CommitKept
-        }, cause.Depth + 1);
+        }) with { Source = CoreEvents.Source, Depth = 0 });
+    }
+
+    /// <summary>
+    /// Fault phase: delivers the plugin_faulted events collected during normal delivery, at depth 0 so fault
+    /// listeners get the full depth budget. Faults raised by fault listeners are reported, not republished.
+    /// </summary>
+    private async Task DeliverFaultEventsAsync(ChangeContext context)
+    {
+        if (context.PendingFaultEvents.Count == 0)
+        {
+            return;
+        }
+
+        context.DiscardPendingEvents();
+        foreach (var faultEvent in context.PendingFaultEvents)
+        {
+            context.EnqueueCoreEvent(faultEvent.Topic, faultEvent.Data, depth: 0);
+        }
+
+        context.PendingFaultEvents.Clear();
+        context.InFaultPhase = true;
+        try
+        {
+            await DeliverDomainEventsAsync(context);
+        }
+        finally
+        {
+            context.InFaultPhase = false;
+        }
     }
 
     /// <summary>

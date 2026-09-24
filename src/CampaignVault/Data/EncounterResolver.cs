@@ -31,7 +31,8 @@ public class EncounterResolver
             int userModifier,
             string contextType, // "Travel" or "Rest"
             string? terrain = null,
-            string? spawnLocationId = null)
+            string? spawnLocationId = null,
+            string? eventContext = null)
     {
         var deltas = new List<WorldChange>();
         var narratives = new List<string>();
@@ -111,7 +112,7 @@ public class EncounterResolver
                 });
 
                 // Every caller dispatches these deltas when interrupted, so the encounter is real by commit end.
-                PublishInterrupted(context, character, spawnId, contextType, category, transientId);
+                PublishInterrupted(context, character, spawnId, eventContext ?? contextType, category, transientId);
                 break;
             }
         }

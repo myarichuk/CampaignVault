@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using CampaignVault.Data;
+using CampaignVault.Events;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Modes;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Server;
 using Raven.Client.Documents.Session;
@@ -12,15 +14,18 @@ namespace CampaignVault.Tools;
 public class CombatTools : CampaignToolBase, IMcpServerTool
 {
     private readonly IRulesetModuleSelector _rulesetSelector;
+    private readonly IInteractionModeSelector? _modeSelector;
 
     public CombatTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
         IRulesetModuleSelector rulesetSelector,
-        ILogger<CombatTools>? logger = null)
+        ILogger<CombatTools>? logger = null,
+        IInteractionModeSelector? modeSelector = null)
         : base(repository, keys, logger)
     {
         _rulesetSelector = rulesetSelector;
+        _modeSelector = modeSelector;
     }
 
     [ToolCategory("Combat & rulesets")]
@@ -93,6 +98,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                     Error: $"Combat already active at {existing.LocationId} (round {existing.Round}). " +
                            "Call combat(action: 'end') to abandon, or pass overwriteActive:true to force restart.");
             }
+            var abandonedRound = existing?.IsActive == true ? existing.Round : (int?)null;
             var uniqueIds = combatantIds.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
 
@@ -159,7 +165,8 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             encounter.LocationId = locationId;
             encounter.Round = 1;
             encounter.Combatants = combatants;
-            encounter.ActiveTurnId = combatants.FirstOrDefault()?.CharacterId;
+            var heldElsewhere = await FindExclusivelyHeldAsync(session, effective);
+            encounter.ActiveTurnId = combatants.FirstOrDefault(c => !heldElsewhere.ContainsKey(c.CharacterId))?.CharacterId;
             encounter.IsActive = true;
 
             await session.StoreAsync(encounter, encounter.Id);
@@ -170,7 +177,34 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 summary += $" Dropped {droppedForZeroHp.Count} combatant(s) with 0 or negative HP: {string.Join(", ", droppedForZeroHp)}.";
             }
 
-            return new ToolResult<CombatEncounterView>(true, CombatEncounterView.From(encounter), summary);
+            List<(string, object?)> events = [];
+            if (abandonedRound is { } oldRound)
+            {
+                // overwriteActive abandons a live encounter: close it for subscribers before the new one starts.
+                events.Add((CoreEvents.CombatEnded, new Dictionary<string, object?>
+                {
+                    [CoreEvents.Fields.EncounterId] = encounter.Id,
+                    [CoreEvents.Fields.Round] = oldRound,
+                    [CoreEvents.Fields.Reason] = "overwritten"
+                }));
+            }
+
+            events.AddRange(
+            [
+                (CoreEvents.CombatStarted, new Dictionary<string, object?>
+                {
+                    [CoreEvents.Fields.EncounterId] = encounter.Id,
+                    [CoreEvents.Fields.LocationId] = encounter.LocationId,
+                    [CoreEvents.Fields.CombatantIds] = combatants.Select(c => c.CharacterId).ToList(),
+                    [CoreEvents.Fields.Round] = encounter.Round
+                })
+            ]);
+            if (encounter.ActiveTurnId != null)
+            {
+                events.Add(TurnStarted(encounter, newRound: true));
+            }
+
+            return await PublishCombatEventsAsync(session, effective, events, validCharacters, encounter, summary);
         });
     }
 
@@ -216,13 +250,19 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
 
             var expiredMessages = new List<string>();
 
+            // A combatant held by an Exclusive interaction mode (astral projection, ...) acts only there: skip
+            // its combat turn. It stays in the encounter and can still be targeted.
+            var heldElsewhere = await FindExclusivelyHeldAsync(session, effective);
+
             // Find next who hasn't acted and is alive
             CombatantState? GetNextAliveUnacted() => encounter.Combatants.FirstOrDefault(c =>
                 !c.HasActedThisRound &&
+                !heldElsewhere.ContainsKey(c.CharacterId) &&
                 characters.TryGetValue(c.CharacterId, out var character) && character != null &&
                 character.CurrentHp > 0);
 
             var next = GetNextAliveUnacted();
+            var startedNewRound = false;
 
             if (next == null)
             {
@@ -234,6 +274,10 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                     encounter.IsActive = false;
                     encounter.ActiveTurnId = null;
                     await session.StoreAsync(encounter, encounter.Id);
+                    // Reactions are best-effort here: the encounter is over either way, so a FailCommit fault
+                    // does not keep a combat of corpses alive. Faults still show in the log and summary.
+                    await _repository.PublishEventsAsync(new CampaignSession(session, effective),
+                        [CombatEnded(encounter, "no_combatants_standing")], characters.Values.Where(c => c != null)!, encounter);
                     await session.SaveChangesAsync();
                     return new ToolResult<CombatEncounterView>(false, CombatEncounterView.From(encounter),
                         Error: "CombatEnded",
@@ -241,6 +285,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 }
 
                 // New round
+                startedNewRound = true;
                 encounter.Round++;
                 foreach (var c in encounter.Combatants)
                 {
@@ -276,13 +321,29 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             }
             await session.StoreAsync(encounter, encounter.Id);
 
-            var summary = $"Advanced to turn of {encounter.ActiveTurnId} (Round {encounter.Round}).";
+            var summary = encounter.ActiveTurnId is null
+                ? $"No combatant can act this round (Round {encounter.Round}): everyone standing is held by an exclusive mode."
+                : $"Advanced to turn of {encounter.ActiveTurnId} (Round {encounter.Round}).";
+            var skipped = heldElsewhere
+                .Where(h => encounter.Combatants.Any(c => string.Equals(c.CharacterId, h.Key, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+            if (skipped.Count > 0)
+            {
+                summary += " Skipped (held by an exclusive mode): " +
+                           string.Join(", ", skipped.Select(h => $"{h.Key} in '{h.Value}'")) + ".";
+            }
             if (expiredMessages.Count > 0)
             {
                 summary += " " + string.Join(" ", expiredMessages);
             }
 
-            return new ToolResult<CombatEncounterView>(true, CombatEncounterView.From(encounter), summary);
+            if (encounter.ActiveTurnId is null)
+            {
+                return new ToolResult<CombatEncounterView>(true, CombatEncounterView.From(encounter), summary);
+            }
+
+            return await PublishCombatEventsAsync(session, effective,
+                [TurnStarted(encounter, newRound: startedNewRound)], characters.Values.Where(c => c != null)!, encounter, summary);
         });
     }
 
@@ -352,8 +413,82 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 summary += " " + string.Join(" ", expiredMessages);
             }
 
-            return new ToolResult<CombatEncounterView>(true, CombatEncounterView.From(encounter), summary);
+            return await PublishCombatEventsAsync(session, effective, [CombatEnded(encounter, "ended")],
+                characters.Values.Where(c => c != null)!, encounter, summary);
         });
+    }
+
+    private static (string, object?) TurnStarted(CombatEncounter encounter, bool newRound) =>
+        (CoreEvents.CombatTurnStarted, new Dictionary<string, object?>
+        {
+            [CoreEvents.Fields.EncounterId] = encounter.Id,
+            [CoreEvents.Fields.Round] = encounter.Round,
+            [CoreEvents.Fields.CharacterId] = encounter.ActiveTurnId,
+            [CoreEvents.Fields.NewRound] = newRound
+        });
+
+    private static (string, object?) CombatEnded(CombatEncounter encounter, string reason) =>
+        (CoreEvents.CombatEnded, new Dictionary<string, object?>
+        {
+            [CoreEvents.Fields.EncounterId] = encounter.Id,
+            [CoreEvents.Fields.Round] = encounter.Round,
+            [CoreEvents.Fields.Reason] = reason
+        });
+
+    /// <summary>
+    /// Publishes combat lifecycle events and folds the outcome into the tool result: reaction messages and
+    /// fault lines join the summary; a FailCommit fault fails the call, so nothing is saved.
+    /// </summary>
+    private async Task<ToolResult<CombatEncounterView>> PublishCombatEventsAsync(
+        IAsyncDocumentSession session,
+        string effective,
+        IReadOnlyList<(string Topic, object? Data)> events,
+        IEnumerable<Character> characters,
+        CombatEncounter encounter,
+        string summary)
+    {
+        var published = await _repository.PublishEventsAsync(new CampaignSession(session, effective), events, characters, encounter);
+        if (published.Summary.Count > 0)
+        {
+            summary += " " + string.Join(" ", published.Summary);
+        }
+
+        return published.Success
+            ? new ToolResult<CombatEncounterView>(true, CombatEncounterView.From(encounter), summary)
+            : new ToolResult<CombatEncounterView>(false, Error: "PluginFault",
+                Summary: "NOT SAVED: a plugin reaction that must succeed failed. " + summary);
+    }
+
+    /// <summary>Character id → mode id, for every participant of an active mode whose claim is Exclusive.</summary>
+    private async Task<Dictionary<string, string>> FindExclusivelyHeldAsync(IAsyncDocumentSession session, string effective)
+    {
+        var held = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (_modeSelector is null)
+        {
+            return held;
+        }
+
+        var config = await session.LoadAsync<CampaignConfig>(_keys.Config(effective));
+        foreach (var modeId in config?.EnabledModeIds ?? [])
+        {
+            if (_modeSelector.TryGetMode(modeId)?.ParticipantClaim != ModeParticipantClaim.Exclusive)
+            {
+                continue;
+            }
+
+            var mode = await session.LoadAsync<ModeEncounter>(_keys.ModeCurrent(effective, modeId));
+            if (mode is not { IsActive: true })
+            {
+                continue;
+            }
+
+            foreach (var participant in mode.Participants)
+            {
+                held.TryAdd(participant.CharacterId, modeId);
+            }
+        }
+
+        return held;
     }
 
     internal Task<ToolResult<object>> GetCombat(

@@ -87,9 +87,18 @@ public sealed class ChangeContext : IChangeContext
         }
     }
 
-    /// <summary>Queues a core-sourced event directly (the dispatcher's own events, e.g. plugin faults).</summary>
+    /// <summary>Queues a core-sourced event directly (the dispatcher's own events, e.g. combat lifecycle).</summary>
     internal void EnqueueCoreEvent(string topic, object? data, int depth) =>
         _pendingEvents.Add(DomainEvent.Create(topic, data) with { Source = CoreEvents.Source, Depth = depth });
+
+    /// <summary>
+    /// plugin_faulted events wait here until normal delivery is done, then go out at depth 0 in a separate
+    /// fault phase, so a fault near the depth cap still reaches its listeners.
+    /// </summary>
+    internal List<DomainEvent> PendingFaultEvents { get; } = [];
+
+    /// <summary>True while fault events are delivered; faults raised then are reported but not republished.</summary>
+    internal bool InFaultPhase { get; set; }
 
     /// <summary>Reaction faults this commit (isolated or not), for the take_turn response.</summary>
     internal List<PluginFault> PluginFaults { get; } = [];

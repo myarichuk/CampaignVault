@@ -930,9 +930,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         result.CommittedIds = commitResult.CommittedIds;
         result.NarrativeReminder = commitResult.NarrativeReminder;
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
-        result.PluginFaults = commitResult.PluginFaults is { Count: > 0 } faults
-            ? faults.Select(f => f.Describe()).ToList()
-            : null;
+        // Plugin faults need no field of their own: each one is already a "PLUGIN FAULT ..." line in Summary.
         ctx.AppliedChanges = changes.Concat(commitResult.ReactionChanges).Concat(commitResult.AmbientDeltas).ToList();
         ctx.AmbientChanges = commitResult.AmbientDeltas;
         ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
