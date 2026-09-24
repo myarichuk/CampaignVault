@@ -148,6 +148,30 @@ public class TurnCursor
     /// only identical-to-last may drop).</summary>
     [JsonPropertyName("lastSurfacedPressureKeys")]
     public List<string>? LastSurfacedPressureKeys { get; set; }
+
+    /// <summary>T6 delivery ledger: NPC ID → NpcCard.StableHash() of the card last sent this session. A
+    /// card is resent only when its stable fields change. Cleared with the rest of the ledger on every
+    /// Full response (start_session, forceFullReseed, the reseed interval, drift), since the client may
+    /// have lost it.</summary>
+    [JsonPropertyName("deliveredCardHashes")]
+    public Dictionary<string, string> DeliveredCardHashes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>T6 delivery ledger: keys of context lines (memories pushed, tier crossings, gold, ...) sent this session.</summary>
+    [JsonPropertyName("deliveredContextKeys")]
+    public List<string> DeliveredContextKeys { get; set; } = [];
+
+    /// <summary>T6 delivery ledger: locations whose description (and DM-only secrets) were sent this session.</summary>
+    [JsonPropertyName("briefedLocationIds")]
+    public List<string> BriefedLocationIds { get; set; } = [];
+
+    /// <summary>Forget what this session has been sent: the next cards, context lines and location
+    /// descriptions go out again.</summary>
+    public void ClearDeliveryLedger()
+    {
+        DeliveredCardHashes.Clear();
+        DeliveredContextKeys.Clear();
+        BriefedLocationIds.Clear();
+    }
 }
 
 /// <summary>A pending, not-yet-consumed NpcInitiativeNudge — see

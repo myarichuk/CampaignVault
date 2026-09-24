@@ -76,6 +76,17 @@ public class Item : ICampaignScopedEntity, IArchivable
     /// <summary>Whether this item is currently worn/wielded. Set only via item_equip/item_unequip.</summary>
     public bool IsEquipped { get; set; }
 
+    /// <summary>Concealed (a key under a loose floorboard): kept out of scene payloads until found. The
+    /// engine un-hides it when an Investigation/Perception check or passive Perception at its location
+    /// meets <see cref="DiscoverDc"/>.</summary>
+    public bool Hidden { get; set; }
+
+    /// <summary>DC to find this item while <see cref="Hidden"/>. Null = found only when the DM says so.</summary>
+    public int? DiscoverDc { get; set; }
+
+    /// <summary>A trap on this item (a needle in the lock, a poisoned drawer), fired when it is taken or opened.</summary>
+    public Hazard? Hazard { get; set; }
+
     /// <summary>When true and this item occupies MainHand, it also occupies OffHand (blocks shields/other off-hand items).</summary>
     public bool TwoHanded { get; set; }
 

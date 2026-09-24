@@ -669,9 +669,9 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.True(seed.Success, seed.Summary);
         Assert.Equal(TurnMode.Full, seed.Data!.Mode);
         Assert.DoesNotContain(seed.Data.Npcs ?? [], n => n.CharacterId == companionId);
-        var seedScenePc = Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
-        Assert.NotNull(seedScenePc.EquippedItems);
-        Assert.NotEmpty(seedScenePc.EquippedItems!);
+        // T6: the full scene lists the companion on the roster; gear rides the card, once per session.
+        Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.Contains("*Dagger", Assert.Single(seed.Data.Cards!, c => c.Id == companionId).Gear);
 
         // Call 2: Delta, nothing touches the companion's gear/stats this turn -> stripped.
         var untouched = await Refresh([new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery, Involved = [companionId] }]);
@@ -688,9 +688,9 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.True(touched.Success, touched.Summary);
         Assert.Equal(TurnMode.Delta, touched.Data!.Mode);
         Assert.DoesNotContain(touched.Data.Npcs ?? [], n => n.CharacterId == companionId);
-        var touchedScenePc = Assert.Single(touched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
-        Assert.NotNull(touchedScenePc.CarriedItems);
-        Assert.NotEmpty(touchedScenePc.CarriedItems!);
+        // T6: the unequip changes the card's gear line, so the card is resent (and the row doesn't repeat it).
+        Assert.Single(touched.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
+        Assert.Equal("Dagger", Assert.Single(touched.Data.Cards!, c => c.Id == companionId).Gear);
     }
 
     /// <summary>
@@ -1323,9 +1323,10 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             Narrative = "The NPC is overwhelmed with gratitude."
         }, slug);
         Assert.True(escalated.Success, escalated.Summary);
-        Assert.Equal(TurnMode.Full, escalated.Data!.Mode);
+        // T6: a tier crossing no longer forces a full reseed; it is one context line.
+        Assert.Equal(TurnMode.Delta, escalated.Data!.Mode);
+        Assert.Contains(escalated.Data.Context ?? [], l => l.Contains("now regards PC as acquainted"));
 
-        // Escalation resets the cursor, so the immediately following turn is Delta again.
         var afterEscalation = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
         Assert.Equal(TurnMode.Delta, afterEscalation.Data!.Mode);
     }
@@ -1715,7 +1716,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.Equal(TurnMode.Full, seed.Data!.Mode);
         var seedNpc = Assert.Single(seed.Data.Npcs ?? [], n => n.CharacterId == companionId);
         Assert.NotNull(seedNpc.CurrentAppearance);
-        Assert.NotNull(seedNpc.BehavioralSummary);
+        Assert.Null(seedNpc.BehavioralSummary); // T6: never sent from take_turn
 
         var untouched = await tools.TakeTurn(new TakeTurnRequest
         {
@@ -1736,7 +1737,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         }, slug);
         Assert.Equal(TurnMode.Delta, touched.Data!.Mode);
         var touchedNpc = Assert.Single(touched.Data.Npcs ?? [], n => n.CharacterId == companionId);
-        Assert.NotNull(touchedNpc.BehavioralSummary);
+        Assert.Null(touchedNpc.BehavioralSummary);
         Assert.Equal("elated", touchedNpc.CurrentMood);
     }
 
@@ -1818,8 +1819,10 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.True(seed.Success, seed.Summary);
         Assert.Equal(TurnMode.Full, seed.Data!.Mode);
         var seedPresence = Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
-        Assert.NotNull(seedPresence.CurrentAppearance);
-        Assert.NotNull(seedPresence.CurrentActivity); // BehavioralSummary is no longer on scene cards (A1)
+        Assert.NotNull(seedPresence.CurrentActivity);
+        // T6: looks ride the card (sent once per session), not the roster row.
+        Assert.Null(seedPresence.CurrentAppearance);
+        Assert.Equal("Travel-worn but cheerful", Assert.Single(seed.Data.Cards!, c => c.Id == companionId).Appearance);
 
         var untouched = await Refresh([new EventOccurred { Summary = "Idle chatter.", Category = EventCategory.Discovery, Involved = [companionId] }]);
         Assert.True(untouched.Success, untouched.Summary);
@@ -2236,13 +2239,13 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             ExtraLocationIds = [locId]
         }, slug);
 
-        // Full (first-ever call): both descriptors present.
+        // Full (first-ever call): both custom descriptors ride the companion's card (T6), not the roster row.
         var seed = await Refresh();
         Assert.True(seed.Success, seed.Summary);
         Assert.Equal(TurnMode.Full, seed.Data!.Mode);
-        var seedPresence = Assert.Single(seed.Data.Scenes!.Single(s => s.Location.Id == locId).PresentNPCs, n => n.Id == companionId);
-        Assert.Contains("hunger", seedPresence.NeedDescriptors.Keys);
-        Assert.Contains("boredom", seedPresence.NeedDescriptors.Keys);
+        var seedCard = Assert.Single(seed.Data.Cards!, c => c.Id == companionId);
+        Assert.Contains("hunger", seedCard.NeedNotes!.Keys);
+        Assert.Contains("boredom", seedCard.NeedNotes!.Keys);
 
         // Delta: only hunger moved >= the significance threshold this turn -> only hunger's descriptor
         // should ride along, same filter KnownNeeds already gets.
@@ -2618,9 +2621,10 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
         Assert.True(moved.Success, moved.Summary);
         Assert.Equal(TurnMode.Delta, moved.Data!.Mode);
-        var sourceScene = Assert.Single(moved.Data.Scenes ?? [], s => s.Location.Id == locAId);
+        // T6: the source scene is refetched, but the only change there is a party member leaving a place
+        // no party member remains in (the party's own move), so it carries no news and is dropped.
+        Assert.DoesNotContain(moved.Data.Scenes ?? [], s => s.Location.Id == locAId);
         var destScene = Assert.Single(moved.Data.Scenes ?? [], s => s.Location.Id == locBId);
-        Assert.DoesNotContain(sourceScene.PresentNPCs, n => n.Id == moverId);
         Assert.Contains(destScene.PresentNPCs, n => n.Id == moverId);
     }
 

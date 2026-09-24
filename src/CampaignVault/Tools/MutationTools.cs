@@ -1,3 +1,4 @@
+using CampaignVault.Data.Context;
 using System.ComponentModel;
 using System.Collections.Concurrent;
 using System.Threading.RateLimiting;
@@ -14,11 +15,12 @@ using Raven.Client.Documents.Session;
 namespace CampaignVault.Tools;
 
 [McpServerToolType]
-public class MutationTools : CampaignToolBase, IMcpServerTool
+public partial class MutationTools : CampaignToolBase, IMcpServerTool
 {
     private readonly IPressureManager _pressureManager;
     private readonly IPressureOrchestrator _pressureOrchestrator;
     private readonly IGuidanceOrchestrator _guidanceOrchestrator;
+    private readonly IContextOrchestrator _contextOrchestrator;
     private readonly INpcBehaviorSynthesizer _behaviorSynthesizer;
 
     // Keyed per-campaign so commits in one campaign never throttle another. Bounded so a
@@ -146,9 +148,11 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
         IPressureOrchestrator pressureOrchestrator,
         IGuidanceOrchestrator guidanceOrchestrator,
         INpcBehaviorSynthesizer behaviorSynthesizer,
+        IContextOrchestrator contextOrchestrator,
         ILogger<MutationTools>? logger = null)
         : base(repository, keys, logger)
     {
+        _contextOrchestrator = contextOrchestrator;
         _pressureManager = pressureManager;
         _pressureOrchestrator = pressureOrchestrator;
         _guidanceOrchestrator = guidanceOrchestrator;
@@ -165,6 +169,13 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
 
         /// <summary>Set when an HP-only fingerprint mismatch asks for the party block instead of a reseed.</summary>
         public bool PartyResyncRequested { get; set; }
+
+        /// <summary>Embedding of this turn's narrative (the logged SceneCommit event); drives T6 memory matching.</summary>
+        public float[]? NarrativeVector { get; set; }
+
+        /// <summary>Location ID → the NPC IDs whose roster changed (arrived or left) since that scene was last
+        /// surfaced, filled when a scene is refetched. Lets the briefing drop a refetched scene with no news.</summary>
+        public Dictionary<string, HashSet<string>> RosterChangesByLocationId { get; } = new(StringComparer.OrdinalIgnoreCase);
         public string Campaign { get; } = campaign;
         public IAsyncDocumentSession Session { get; } = session;
         public TurnResult Result { get; } = new();
@@ -383,6 +394,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             await IncludeFullNpcDetailAsync(ctx);
             await IncludeMemoriesOnlyAsync(ctx);
             await IncludeFullSceneDetailAsync(ctx);
+            await BriefAsync(ctx);
             await RefreshPartyFingerprintAsync(ctx);
             await CollectCharacterGuidanceAsync(ctx);
 
@@ -848,14 +860,8 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                     }
                     break;
 
-                case RelationshipChange rel when ctx.RelationshipBaselines.TryGetValue(
-                    (rel.CharacterId, rel.TargetId), out var before):
-                    var after = Math.Clamp(before + rel.Delta, -100, 100);
-                    if (CrossedBand(before, after, 40))
-                    {
-                        return true;
-                    }
-                    break;
+                // A relationship tier crossing used to force a full reseed; it is now one context line
+                // (RelationshipTierContextContributor), which is all the model needed from it.
 
                 case PlotThreadProgress ptp when Math.Abs(ptp.TensionDelta ?? 0) >= 25 || ptp.NewState != null:
                     return true;
@@ -864,9 +870,6 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
         return false;
     }
-
-    private static bool CrossedBand(int before, int after, int bandSize) =>
-        before / bandSize != after / bandSize;
 
     /// <summary>True when the character's pre-commit location (see TurnContext.LocationBaselines) differs
     /// from the new location this change applies. Missing baseline (shouldn't happen — populated by
@@ -982,6 +985,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         };
 
         await _repository.LogEventAsync(ctx.Session, sceneEvent, ctx.Campaign);
+        ctx.NarrativeVector = sceneEvent.SemanticVector;
 
         // Calculate novelty score after event is persisted with semantic vector
         var (similarity, noveltyHint) = await EventNoveltyAdvisor.ScoreAsync(
@@ -1572,10 +1576,10 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 eq.Equals(holder, characterId),
             ItemEquip ie => eq.Equals(ie.CharacterId, characterId),
             ItemUnequip iu => eq.Equals(iu.CharacterId, characterId),
-            HpChange hp => eq.Equals(hp.CharacterId, characterId),
+            // HP and resource pools aren't on the wire stat line (AC, level, attributes, traits) and don't
+            // move gear; the commit summary already reports them. Statuses can modify AC, so they count.
             StatusChange sc => eq.Equals(sc.CharacterId, characterId),
             StatusRemove sr => eq.Equals(sr.CharacterId, characterId),
-            ResourceChange rc => eq.Equals(rc.CharacterId, characterId),
             LevelUpChange lc => eq.Equals(lc.CharacterId, characterId),
             CharacterUpdate cu => cu.SystemStats != null && eq.Equals(cu.CharacterId, characterId),
             // SkillCheck/SavingThrow/ContestedCheck/OpposedCheck are pure rolls — both ruleset resolvers
@@ -1584,7 +1588,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             // Attack/Spell/UseItem/Recovery can (damage, healing, resource/status changes), so those
             // still count.
             RulesetAction { ActionType: RulesetActionType.SkillCheck or RulesetActionType.SavingThrow
-                or RulesetActionType.ContestedCheck or RulesetActionType.OpposedCheck } => false,
+                or RulesetActionType.ContestedCheck or RulesetActionType.OpposedCheck or RulesetActionType.Attack } => false,
             RulesetAction ra => eq.Equals(ra.CharacterId, characterId) || ra.TargetIds.Any(t => eq.Equals(t, characterId)),
             CharacterCreate cc => eq.Equals(cc.CharacterId, characterId),
             _ => false
@@ -2103,8 +2107,11 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                             })
                             .ToList();
 
-                        ctx.Cursor.SurfacedPresentNpcIdsByLocationId[locationId] =
-                            summary.PresentNPCs.Select(n => n.Id).ToList();
+                        var currentIds = new HashSet<string>(summary.PresentNPCs.Select(n => n.Id), StringComparer.OrdinalIgnoreCase);
+                        var rosterChanges = new HashSet<string>(currentIds, StringComparer.OrdinalIgnoreCase);
+                        rosterChanges.SymmetricExceptWith(priorPresentIds);
+                        ctx.RosterChangesByLocationId[locationId] = rosterChanges;
+                        ctx.Cursor.SurfacedPresentNpcIdsByLocationId[locationId] = currentIds.ToList();
                         if (ShouldStripUnchangedLocationDetail(ctx, locationId))
                         {
                             summary.Location = ApplyLocationDeltaTrim(summary.Location);

@@ -980,10 +980,8 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(result.Data!.Committed);
         Assert.Equal(1, result.Data.ChangesProcessed);
 
-        // Assert: auto-refresh contains updated NPC
-        Assert.NotNull(result.Data.Npcs);
-        Assert.Single(result.Data.Npcs);
-        Assert.Equal(charId, result.Data.Npcs[0].CharacterId);
+        // Assert: the first commit involving the NPC briefs it (T6: a card, once per session)
+        Assert.Contains(result.Data.Cards ?? [], c => c.Id == charId);
     }
 
     [Fact]
@@ -1261,10 +1259,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(turnResult.Success);
         Assert.True(turnResult.Data!.Committed);
 
-        // Both paths should show reduced HP in the response
-        Assert.NotNull(turnResult.Data.Npcs);
-        var npcSummary = turnResult.Data.Npcs.FirstOrDefault(n => n.CharacterId == charId2);
-        Assert.NotNull(npcSummary);
+        // Both paths should show the NPC in the response (T6: a card on first involvement) and the HP in the summary
+        Assert.Contains(turnResult.Data.Cards ?? [], c => c.Id == charId2);
+        Assert.Contains(turnResult.Data.Summary, s => s.Contains("now 15/20"));
 
         // Verify HP reduction persisted in both paths
         var confirmationResult = await tools.GetNpcContext(charId2);

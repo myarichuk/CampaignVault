@@ -39,7 +39,15 @@ public static class RelationshipModifierHelper
             }
         }
 
-        // Band thresholds per design doc: ≥80→+5, 60–79→+3, 40–59→+1, -39..39→0, -59..-40→-1, -79..-60→-3, ≤-80→-5
+        return Band(relationshipScore);
+    }
+
+    /// <summary>The narrative tier name for a relationship score ("friendly", "distrustful", ...).</summary>
+    public static string TierName(int score) => Band(score).Label;
+
+    // Band thresholds per design doc: ≥80→+5, 60–79→+3, 40–59→+1, -39..39→0, -59..-40→-1, -79..-60→-3, ≤-80→-5
+    private static (int Modifier, string Label) Band(int relationshipScore)
+    {
         return relationshipScore switch
         {
             >= 80 => (5, "trusted friend"),

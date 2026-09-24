@@ -72,9 +72,11 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
     /// carry ~2 scenes against the full's ~1 and sit just above the gate. The travel scenario gets
     /// its own ratio below rather than weakening the shared gate.
     /// </summary>
-    // Raised from 0.65 to 0.72 when the lean scene NPC cards shrank the full snapshot (571 vs ~700 tokens);
-    // the delta did not grow. TAKE_TURN_PLAN.md T6 (need-driven deltas) should bring this back down.
-    private const double MaxDeltaShareOfFull = 0.72;
+    // T6 made the full snapshot a lean roster (id/name/activity/mood per NPC; the rest moved to once-per-
+    // session cards, which are not "state" here). A delta scene is that same roster at best, so the ratio
+    // now only guards against a delta re-sending more than a full snapshot. The absolute ceilings and the
+    // realistic-NPC budgets (ArrivalAndBeat_RealisticNpcs_StayWithinBudget) carry the size guarantee.
+    private const double MaxDeltaShareOfFull = 1.0;
 
     /// <summary>
     /// Travel-only delta ratio: P1-4 departure-side refetch means each genuine transition turn
@@ -83,7 +85,7 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
     /// scene NPC card projection and the need-legend fix shrank the full snapshot (252 tokens); the delta itself
     /// did not grow (~288). T6 should bring this back down.
     /// </summary>
-    private const double MaxTravelDeltaShareOfFull = 1.25;
+    private const double MaxTravelDeltaShareOfFull = 1.0;
 
     public TokenBudgetMeasurementTests(RavenDBFixture fixture, ITestOutputHelper output)
     {
@@ -183,6 +185,8 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
         {
             _output.WriteLine($"    {property,-28} ~{tokens}");
         }
+
+        _output.WriteLine($"[{scenario}] turn {turn.TurnNumber} json: {turn.Json}");
     }
 
     [Fact]

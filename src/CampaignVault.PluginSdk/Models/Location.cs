@@ -22,6 +22,9 @@ public class Location : ICampaignScopedEntity, IArchivable
     public string? ParentLocationId { get; set; }
     
     public List<LocationExit> Exits { get; set; } = [];
+
+    /// <summary>Traps and dangers in the location itself (a collapsing floor), fired on entering.</summary>
+    public List<Hazard> Hazards { get; set; } = [];
     
     /// <summary>LEGACY (points of interest are retired). Kept only so MigratePointsOfInterestToFixtures can read and clear
     /// old documents; nothing else reads or writes it. Remove once every deployment has run the migration.</summary>
@@ -138,8 +141,59 @@ public record LocationExit(
     double? TravelCostHours = 0,
     string? Terrain = null,
     string? EncounterHint = null,
-    bool OneWay = false
+    bool OneWay = false,
+    /// <summary>A secret door or passage: kept out of scene payloads until found (a check or passive
+    /// Perception at this location meeting DiscoverDc, or the party using it).</summary>
+    bool Hidden = false,
+    int? DiscoverDc = null,
+    /// <summary>DM-only: who hid it and why, how it is found. Never shown as scene text.</summary>
+    string? Intent = null,
+    /// <summary>A trap on this exit, fired when someone travels through it.</summary>
+    Hazard? Hazard = null
 )
 {
     public LocationExit() : this(null!, null!) { }
+}
+
+/// <summary>
+/// A trap or danger on an exit, an item or a location. Minimal by design: the engine tracks whether it
+/// was spotted or disarmed and fires it on its trigger; the DM resolves the effect with a ruleset_action
+/// (usually a SavingThrow at <see cref="SaveDc"/>), since the save and damage belong to the rules module.
+/// </summary>
+public record Hazard
+{
+    /// <summary>Short name, unique on its host (e.g. "needle trap", "loose flagstone").</summary>
+    public string Name { get; init; } = null!;
+
+    /// <summary>"enter" (exits and locations: passing through / arriving) or "take" (items: taking or opening it).</summary>
+    public string Trigger { get; init; } = "enter";
+
+    /// <summary>Perception/Investigation DC to spot it. Null: it is only spotted when the DM says so.</summary>
+    public int? DetectDc { get; init; }
+
+    /// <summary>DC for a check whose parameters name it as "disarm" to make it safe.</summary>
+    public int? DisarmDc { get; init; }
+
+    /// <summary>What happens when it fires, e.g. "2d10 piercing, DC 13 Dex save for half".</summary>
+    public string Effect { get; init; } = null!;
+
+    /// <summary>Save DC the DM should roll against when it fires (the ruleset_action SavingThrow's dc).</summary>
+    public int? SaveDc { get; init; }
+
+    /// <summary>Save ability or skill, e.g. "Dexterity".</summary>
+    public string? SaveAbility { get; init; }
+
+    public bool Detected { get; init; }
+    public bool Disarmed { get; init; }
+
+    /// <summary>A fired one-shot trap stays spent.</summary>
+    public bool Spent { get; init; }
+
+    /// <summary>Re-arms after firing (a pressure plate) instead of staying spent (a gas cloud).</summary>
+    public bool Rearms { get; init; }
+
+    /// <summary>DM-only: who set it, why, what it guards.</summary>
+    public string? Intent { get; init; }
+
+    public bool IsLive => !Disarmed && !Spent;
 }

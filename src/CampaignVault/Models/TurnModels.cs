@@ -159,6 +159,15 @@ public class TurnResult
     [Description("Bundled fresh NPC summaries for entities in InvolvedEntities (if autoRefreshInvolved=true) or ExtraCharacterIds. Capped at 6 NPCs.")]
     public List<NpcSummaryView>? Npcs { get; set; }
 
+    [Description("NPC cards (traits, wants, fears, stance toward the party, stats, gear, pressing needs, key memories), each sent " +
+        "once per session: on arrival for NPCs in the spotlight, and on the first commit that involves anyone else. Scene rosters carry " +
+        "only id/name/activity/mood; keep a card in mind for the rest of the session. get_entity returns everything.")]
+    public List<NpcCard>? Cards { get; set; }
+
+    [Description("One-line facts this beat needs, pushed once per session: a memory the topic brings up, a relationship tier " +
+        "crossing, a pressing need, the party's gold on a trade, passive Perception on a stealth roll, what a searched room holds.")]
+    public List<string>? Context { get; set; }
+
     [Description("Bundled fresh scene summaries for entities in InvolvedEntities (if autoRefreshInvolved=true) or ExtraLocationIds. Capped at 3 scenes.")]
     public List<SceneSummaryView>? Scenes { get; set; }
 
@@ -208,18 +217,6 @@ public class TurnResult
         "Not currently used for gap detection server-side — informational, for logging/debugging state sync issues.")]
     public long WorldSequence { get; set; }
 
-    [Description("Flat list of every character ID actually seeded in the backend and surfaced anywhere in this response " +
-        "(Npcs, Party/PartyDelta, and any embedded Scenes[].PresentNPCs) — the exact set of people who exist right now. " +
-        "Before narrating any named character speaking or acting, check they're in this list (or fetch them via get_entity " +
-        "if unsure); if they aren't, call world_build to create/promote them BEFORE narrating them as real — never let a " +
-        "named actor appear in the story without a matching commit.")]
-    public List<string> KnownCharacterIds =>
-        (Npcs?.Select(n => n.CharacterId) ?? [])
-        .Concat(PartyDelta?.Select(p => p.EntityId) ?? [])
-        .Concat(Party?.Select(p => p.Id) ?? [])
-        .Concat(Scenes?.SelectMany(s => s.PresentNPCs.Select(n => n.Id)) ?? [])
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToList();
 }
 
 /// <summary>
