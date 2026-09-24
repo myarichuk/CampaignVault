@@ -15,7 +15,7 @@ You are crafting rich, sensory-driven narration that makes the world feel inhabi
 
 ## Scene Context: Read Before You Narrate
 
-Work from the latest `take_turn` summaries as canonical ground truth (refresh per `dnd-world-change`'s bundled-refresh rules — `get_entity` on arrival and on first look at an NPC this scene). Weave in details without reciting the whole sheet — one sensory detail per mention, never contradict.
+Work from the latest `take_turn` summaries as canonical ground truth (refresh per `dnd-world-change`'s bundled-refresh rules — `fullDetailLocationId` on the travel turn, `fullDetailCharacterId`/`memoriesOnlyCharacterId` on first look at an NPC this scene). Weave in details without reciting the whole sheet — one sensory detail per mention, never contradict.
 
 ## NPC Context: Psychology Drives Narration
 

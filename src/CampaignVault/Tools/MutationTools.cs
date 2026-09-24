@@ -248,22 +248,11 @@ public class MutationTools : CampaignToolBase, IMcpServerTool
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
     [Description(
-        @"UNIFIED TURN TOOL: Call this at the end of any narrative beat (combat, conversation, discovery) for atomic mutations + bundled fresh state in one round-trip.
+        @"UNIFIED TURN TOOL: one call per narrative beat — commits changes[] atomically (any failure rolls back the whole batch) and returns fresh state for touched entities. Commit first, then narrate.
 
-🚨 *** CRITICAL CONSTRAINT: MUST HAVE EITHER CHANGES OR A REFRESH PARAM *** 🚨
-You MUST pass EITHER (1) Changes with a Narrative summary, OR (2) at least one refresh parameter (includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, memoriesOnlyCharacterId, or fullDetailLocationId). Passing neither (empty call with no refresh param) will be rejected. This prevents wasted no-op calls.
+Pass changes[] + narrative, and/or a refresh param (includeParty, includeWorldState, extraCharacterIds, extraLocationIds, fullDetailCharacterId, memoriesOnlyCharacterId, fullDetailLocationId); a call with neither is rejected. Every change needs '$type'.
 
-Every change in changes[] MUST include '$type' (see WorldChange). Missing '$type' fails the batch.
-
-One take_turn call carries optional mutations (Changes+Narrative) and optional refresh params, and returns the commit outcome + fresh entity summaries in one response — no separate query-before/query-after calls needed.
-
-AUTO-REFRESH (default on): response includes lightweight summaries of entities touched by the commit, capped at 6 NPCs / 3 scenes (explicit extraCharacterIds/extraLocationIds served first). Opt out with autoRefreshInvolved: false for bulk/seeding commits.
-
-FULL/DELTA MODE: see 'mode' in the response. mode=delta (the common case) returns PartyDelta/WorldStateDelta — only what changed, not full state. Use get_entity, includeParty/includeWorldState, or forceFullReseed=true to get anything a delta didn't cover; check 'querySuggestions' in the response for concrete follow-ups. Full mode-mechanics reference: get_help topic=take-turn-modes.
-
-DRIFT PROTECTION (narrow by design): 'partyFingerprint' covers party HP + location only ('charId:hp/maxHp@locationId'), NOT NPC/need/memory/rumor drift — those are covered by the periodic full reseed (~40 turns) + integrity pressure, not by this hash. Echo it back unchanged as clientPartyFingerprint on your next call; a mismatch (or an omitted echo, which is never a mismatch) means you may have missed a prior HP/location delta — the server forces a resync and flags it. An absent PartyDelta on a quiet turn likewise means 'no party change worth surfacing', not 'no party'.
-
-Pure queries (no Changes): omit Changes, provide at least one refresh param instead. Check 'warnings' in the response for anything that couldn't be assembled.")]
+Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + location, and a mismatch forces a resync. So set includeParty only when party HP/slots/gold/needs/AC/gear changed, and use fullDetailLocationId on the travel turn instead of a separate get_entity. ruleset_action auto-applies its damage/healing and grapple; don't also send hp for it. Utility-spell statuses are yours to commit in the same batch. Delta-mode mechanics: get_help topic=take-turn-modes.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
         [Description("Bundled turn request: MUST contain EITHER (1) Changes with Narrative, OR (2) at least one refresh parameter. Passing neither will be rejected. Mutations: Changes+Narrative. Refresh params: AutoRefreshInvolved (default true), ExtraCharacterIds, ExtraLocationIds, IncludeWorldState, IncludeParty, FullDetailCharacterId, MemoriesOnlyCharacterId, FullDetailLocationId.")]
         TakeTurnRequest request,
@@ -2588,9 +2577,26 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
                 markVisited: false, fullDescription: true, fullPointOfInterestDetails: true);
             if (scene != null)
             {
+                // Parity with get_entity's scene view, so arriving via travel + fullDetailLocationId
+                // doesn't need a follow-up get_entity for location ENGINE WARNINGs or plot threads.
+                // Runs before the PC strip below: scene contributors (e.g. location integrity) need
+                // PCs in the roster, same as get_entity.
+                var time = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+                var config = ctx.Config ?? await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+                var scenePressure = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.Scene, new PressureContext(
+                    ctx.Campaign, time, config, ctx.Session, Scene: scene, RequestedLocationId: locationId, PartyPresent: true));
+                if (scenePressure.Count > 0)
+                {
+                    scene.ScenePressure = PressureManager.ToDisplayStrings(scenePressure).ToList();
+                }
+
                 // PCs ride along internally (recognition hints / faction-reputation lookups need
                 // them), but they're not NPCs and their state already travels via Party/PartyDelta.
                 scene.PresentNPCs = scene.PresentNPCs.Where(n => !n.IsPc).ToList();
+                var threads = await _repository.GetPlotThreadsReferencingEntityAsync(ctx.Session, locationId, ctx.Campaign);
+                scene.AssociatedPlotThreads = threads
+                    .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+                    .ToList();
                 ctx.Result.FullScene = scene;
             }
             else
@@ -2909,7 +2915,7 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "TIME PASSAGE FOR SAFE/UNEVENTFUL DOWNTIME: Fast-forwards the world clock and runs simulation rules (needs, " +
+        "Skip uneventful downtime and run world simulation. Use hours (e.g. 8) or days + resultingHour. Pass partyLocationId to roll encounter checks for the span; omit only for a risk-free skip." +
         "rumor decay, faction/plot evolution, transient GC) — for a multi-day skip (training montage, downtime between " +
         "arcs, a journey already narrated as uneventful) use days+timeOfDay; for an overnight rest or partial-day span " +
         "use hours instead (e.g. hours:8) and the engine derives the resulting day/timeOfDay for you — no manual day " +
@@ -2921,13 +2927,13 @@ Pure queries (no Changes): omit Changes, provide at least one refresh param inst
         string narrative,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
-        [Description("Number of whole days to skip for a multi-day time jump. Omit when using 'hours' instead — set one or the other, not both.")]
+        [Description("Whole days to skip (use with resultingHour; not with hours).")]
         int days = 0,
-        [Description("Resulting hour of day (0-23, e.g. 6 for dawn, 12 for noon, 20 for evening). Required when using 'days'. Omit when using 'hours' — derived automatically.")]
+        [Description("Resulting hour 0-23 when using days.")]
         int? resultingHour = null,
-        [Description("Alternative to days/resultingHour: hours to fast-forward from the CURRENT time (e.g. 8 for sleeping through the night, 4 for a half-day trek). The engine computes the resulting hour for you. Mutually exclusive with days/resultingHour.")]
+        [Description("Hours to fast-forward from now (e.g. 8 for a night's sleep).")]
         int? hours = null,
-        [Description("Location ID where the party is spending this span. When provided, the engine rolls the same encounter check rest/travel commits get for the elapsed time, and surfaces ambient-crowd/recently-departed pressure for that location. Omit for a guaranteed-safe skip.")]
+        [Description("Where the party spends the span; enables encounter checks. Omit for a safe skip.")]
         string? partyLocationId = null)
     {
         if (hours.HasValue)

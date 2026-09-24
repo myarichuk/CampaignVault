@@ -286,7 +286,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("UNIFIED SEARCH: Hybrid keyword + semantic search across characters, lore, locations, rumors, factions, quests, events, and items (campaign-scoped plus shared-universe entities with no CampaignName). Each match is { entityType, match: <summary> } — entityType disambiguates types that share field names (e.g. character/location/faction/item all have 'name'). Summaries are lean, not full documents; use get_entity with the matched id for full detail (chars/, locations/, factions/, quests/, items/ — rumors and lore have no get_entity route, so their summaries already include full text). Requires campaignName.")]
+    [Description("Search entities by name or phrase (characters, locations, lore, rumors, factions, quests, events, items). Returns lean summaries; use get_entity with the id for full detail.")]
     public Task<ToolResult<UnifiedSearchResult>> SearchWorld(
         [Description("The keyword or phrase to search for.")] string query,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
@@ -306,11 +306,11 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("HISTORY RECALL (GROUND TRUTH): Hybrid keyword + semantic search over past events for the active campaign slug, optionally filtered by locationId and/or involvedCharacterId. Use this to check what ACTUALLY happened — e.g. 'was Bob a witness to the robbery' — as distinct from an NPC's full-detail view (get_entity with a chars/ id), which returns what the NPC subjectively believes/remembers (and may have drifted from the truth). Use to remember prior sessions or plot points.")]
+    [Description("Search past events (ground truth, unlike an NPC's subjective memories). Filter by locationId and/or involvedCharacterId. Use narrow queries.")]
     public Task<ToolResult<IEnumerable<Event>>> RecallHistory(
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("The keyword or phrase to search for in historical events. Optional if filtering purely by locationId/involvedCharacterId.")] string query = "",
-        [Description("Maximum number of events to return. Defaults to the campaign's recall event budget (CampaignConfig.EventContextBudgetRecall, 5 unless configured).")] int? limit = null,
+        [Description("Max events (default 5).")] int? limit = null,
         [Description("Optional. Only return events at this location ID (or with this ID among relatedLocationIds).")] string? locationId = null,
         [Description("Optional. Only return events where this character ID appears in 'involved' — i.e. ground-truth presence, not subjective memory.")] string? involvedCharacterId = null)
     {

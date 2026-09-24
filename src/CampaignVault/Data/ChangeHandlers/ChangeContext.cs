@@ -32,6 +32,16 @@ public sealed class ChangeContext : IChangeContext
     /// <summary>Depth stamped on events published right now; the dispatcher raises it during event delivery.</summary>
     internal int EventDepth { get; set; }
 
+    /// <summary>&gt; 0 while a ruleset_action's own side-effect mutations are being dispatched.</summary>
+    internal int AutoApplyDepth { get; set; }
+
+    /// <summary>
+    /// Status effects added in this batch, keyed "characterId|name" → true when the engine added it
+    /// (a ruleset_action side effect), false when the LLM sent it. Lets StatusChangeHandler collapse the
+    /// same effect arriving from both origins without blocking deliberate stacking from one origin.
+    /// </summary>
+    internal Dictionary<string, bool> BatchStatusOrigins { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public void Publish(string topic, object? data = null)
     {
         if (!CoreEvents.IsOwnedBy(topic, EventSource))

@@ -87,13 +87,15 @@ public class ToolSchemaBudgetTests
     {
         var schema = TakeTurnSchemaBuilder.Build(JsonOptions);
         var json = schema.GetRawText();
-        var variantCount = CommitSchemaModel.Variants.Count;
+        var visible = CommitSchemaModel.Variants.Where(v => !v.IsEngineOnly && v.ModeId is null).ToList();
 
-        // Rough check: each variant should appear at least in $defs
-        // Count "$type" discriminator consts - should be at least as many as variants
+        // Every model-authorable variant gets a $type const in $defs; engine-only / mode verbs don't.
         var typeConstCount = System.Text.RegularExpressions.Regex.Matches(json, "\"const\":").Count;
-        Assert.True(typeConstCount >= variantCount,
-            $"Expected at least {variantCount} $type discriminators, found {typeConstCount}");
+        Assert.Equal(visible.Count, typeConstCount);
+        foreach (var hidden in CommitSchemaModel.Variants.Where(v => v.IsEngineOnly || v.ModeId is not null))
+        {
+            Assert.DoesNotContain($"\"const\":\"{hidden.Discriminator}\"", json);
+        }
     }
 
     private static string[] RequiredOf(JsonDocument doc, string def) =>

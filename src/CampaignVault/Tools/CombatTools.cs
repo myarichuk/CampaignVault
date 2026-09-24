@@ -25,12 +25,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMBAT CONTROL: Single tool for the combat lifecycle, dispatched by 'action':
-- action:'start' — begin an encounter: requires locationId + combatantIds (array of character IDs); rolls initiative via the active ruleset and establishes turn order. Pass overwriteActive:true to abandon a stuck encounter and restart.
-- action:'next' — advance to the next combatant (new round when everyone has acted; expires round-based effects; skips dead combatants). Optional expectedActiveTurnId guards against double-advancing.
-- action:'end' — end the encounter: clears round-based status effects, recovers encounter-end resource pools.
-- action:'status' — read-only: the active encounter (location, round, whose turn), or 'no active combat'.
-Combat ACTIONS (attacks, spells, checks) are NOT here — commit them via take_turn with a ruleset_action change; the engine enforces turn order and action economy against this encounter. Requires campaignName.")]
+    [Description("Combat lifecycle by 'action': start (locationId + combatantIds; rolls initiative), next (advance turn), end, status (read-only). Attacks/spells/checks are NOT here: commit them as ruleset_action via take_turn.")]
     public Task<ToolResult<object>> Combat(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,

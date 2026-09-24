@@ -5,9 +5,8 @@ namespace CampaignVault.Tools;
 /// </summary>
 internal static class ToolParameterDescriptions
 {
-    public const string CampaignNameRequired =
-        "Campaign slug (e.g. 'dragon-heist'; engine canonicalizes spaces to hyphens). Required on every campaign-scoped tool call.";
+    // Repeated on every campaign-scoped tool in tools/list — keep it short.
+    public const string CampaignNameRequired = "Campaign slug, e.g. 'dragon-heist'.";
 
-    public const string CampaignSlugRequired =
-        "Campaign slug (e.g. 'dragon-heist'). Slugs are canonicalized: spaces/underscores become hyphens, lowercase.";
+    public const string CampaignSlugRequired = "Campaign slug, e.g. 'dragon-heist' (lowercased, spaces become hyphens).";
 }

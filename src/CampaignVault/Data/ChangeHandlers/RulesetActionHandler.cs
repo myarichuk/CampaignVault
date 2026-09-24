@@ -107,9 +107,17 @@ public sealed class RulesetActionHandler(
             return ChangeHandlerResult.Failure(msg);
         }
 
-        foreach (var mutation in output.Mutations)
+        ctx.AutoApplyDepth++;
+        try
         {
-            await ctx.Dispatcher.DispatchMutationAsync(ctx, mutation, ct);
+            foreach (var mutation in output.Mutations)
+            {
+                await ctx.Dispatcher.DispatchMutationAsync(ctx, mutation, ct);
+            }
+        }
+        finally
+        {
+            ctx.AutoApplyDepth--;
         }
 
         return string.IsNullOrWhiteSpace(output.Result.Narrative)

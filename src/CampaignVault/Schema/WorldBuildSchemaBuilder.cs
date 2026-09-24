@@ -11,12 +11,10 @@ internal static class WorldBuildSchemaBuilder
 {
     public static JsonElement Build(JsonSerializerOptions options)
     {
-        static JsonObject Item(string def, string description) => new()
-        {
-            ["type"] = "array",
-            ["items"] = new JsonObject { ["$ref"] = $"#/$defs/{def}" },
-            ["description"] = description
-        };
+        // Per-array descriptions are left out: dispatch order is stated once in the tool description.
+        static JsonObject Item(string def, string? description) => description is null
+            ? new() { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = $"#/$defs/{def}" } }
+            : new() { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = $"#/$defs/{def}" }, ["description"] = description };
 
         static JsonObject Obj(params (string Name, string Type)[] fields)
         {
@@ -48,18 +46,18 @@ internal static class WorldBuildSchemaBuilder
 
         var batchProperties = new JsonObject
         {
-            ["locations"] = Item("location", "Locations to create or update. Dispatched first (parentLocationId/exits target other locations in this same array)."),
-            ["factions"] = Item("faction", "Factions to create or update. Dispatched after locations (territoryLocationIds may reference them)."),
-            ["creatures"] = Item("creature", "Homebrew creature stat-block templates to create or update."),
-            ["spells"] = Item("spell", "Homebrew spells to create or update."),
-            ["feats"] = Item("feat", "Homebrew feats/perks to create or update."),
-            ["characters"] = Item("character", "Characters/NPCs to create or update. Dispatched after locations/factions (currentLocationId may reference them). Bootstrap (HP/defense derivation) runs per element."),
-            ["items"] = Item("item", "Items to create or update. Dispatched after characters (holderId may reference a character just created in this batch)."),
-            ["quests"] = Item("quest", "Quests to create or update. Dispatched after characters/locations/factions (giverId/relatedLocationIds/relatedFactionIds may reference them)."),
-            ["plotThreads"] = Item("plotThread", "Plot threads to create or update. Dispatched after characters/locations/factions/quests (involvedEntityIds may reference them)."),
-            ["worldEvents"] = Item("worldEvent", "World events to create or update. Dispatched after plot threads (effects/conditions may reference them)."),
-            ["lore"] = Item("lore", "Lore entries to create or update."),
-            ["rumors"] = Item("rumor", "Rumors to create or update."),
+            ["locations"] = Item("location", null),
+            ["factions"] = Item("faction", null),
+            ["creatures"] = Item("creature", null),
+            ["spells"] = Item("spell", null),
+            ["feats"] = Item("feat", null),
+            ["characters"] = Item("character", null),
+            ["items"] = Item("item", null),
+            ["quests"] = Item("quest", null),
+            ["plotThreads"] = Item("plotThread", null),
+            ["worldEvents"] = Item("worldEvent", null),
+            ["lore"] = Item("lore", null),
+            ["rumors"] = Item("rumor", null),
             ["needDescriptors"] = new JsonObject
             {
                 ["type"] = "object",
@@ -78,12 +76,12 @@ internal static class WorldBuildSchemaBuilder
                 {
                     ["type"] = "object",
                     ["properties"] = batchProperties,
-                    ["description"] = "Batch of entities to create/update, grouped by kind. Each array is optional — include only the kinds you're seeding in this call."
+                    ["description"] = "Entities to create/update, grouped by kind. Every array is optional."
                 },
                 ["campaignName"] = new JsonObject
                 {
                     ["type"] = "string",
-                    ["description"] = "Campaign name (required)"
+                    ["description"] = "Campaign slug."
                 }
             },
             ["required"] = new JsonArray("batch", "campaignName")

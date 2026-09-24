@@ -24,13 +24,9 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"WORLD BUILDER TOOL: Batch-create/update entities of any kind in one atomic call. Primary tool for initial world seeding (""session 0"") — locations, factions, characters, items, quests, and more in a single round-trip. Each field is an optional, fully-typed array; include only the kinds you're seeding. Dispatched in a fixed dependency order (locations, factions, creatures/spells/feats, characters, items, quests, plotThreads, lore, rumors, needDescriptors) within one atomic save — a hard validation failure rolls back the ENTIRE batch and reports which entry failed. Capped at 100 total entries; split larger seeds into multiple calls.
-
-HARD CONSTRAINTS: (1) combat-capable NPCs MUST have systemStats matching the campaign's active ruleset, or they cannot fight/check/track attributes. (2) `characters[]` has no weapon/armor/gear fields — equipment is always a SEPARATE `items[]` entry in the SAME batch with `holderId` set, or the NPC is unarmed/unarmored.
-
-See get_help topic=world-building for the full copy-paste example, per-ruleset systemStats fields, and recommended seeding order.")]
+    [Description("Batch-create/update entities (locations, factions, characters, items, quests, plotThreads, worldEvents, lore, rumors, creatures, spells, feats) in one atomic call, dispatched in dependency order; one failure rolls back the batch. Max 100 entries. Seed any person or place before naming it in narration.\n\nHARD CONSTRAINTS: (1) combat-capable NPCs need systemStats for the campaign's ruleset. (2) characters[] has no gear fields: equipment is a separate items[] entry in the SAME batch with holderId set.\n\nFull example and per-ruleset systemStats: get_help topic=world-building.")]
     public Task<ToolResult<WorldBuildResult>> WorldBuild(
-        [Description("Batch of entities to create/update, grouped by kind. Each array is optional — include only the kinds you're seeding in this call.")]
+        [Description("Entities to create/update, grouped by kind. Every array is optional.")]
         WorldBuildBatch batch,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)

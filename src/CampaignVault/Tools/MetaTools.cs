@@ -46,7 +46,7 @@ public class MetaTools : IMcpServerTool
 {
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"COMMIT SCHEMA: Returns machine-readable metadata for the $type discriminators used inside take_turn's changes[] array — required fields, side effects, and co-commit hints. Call this once at session start or when unsure which $type to use — e.g. for scratches, stains, secret compartments, or other lasting item damage/wear, look at item_update's upsertItemDetail. Filter by category to reduce output. NOTE: individual $type entries don't expose their own minutesElapsed in this schema — use the top-level take_turn request's minutesElapsed field to nudge hunger/thirst/tiredness during an ordinary scene without waiting for rest/advance_world; it applies to the first eligible change in the batch.")]
+    [Description("Field lookup for take_turn changes[] $types. type='<one $type>' returns its fields; no args returns the index. Call only when unsure or after a change failed, not every turn. Lasting item wear (scratches, stains, hidden compartments): item_update.upsertItemDetail.")]
     public Task<ToolResult<IReadOnlyList<CommitTypeSchema>>> GetCommitSchema(
         [Description("Optional filter over change $type categories: Combat, Narrative, World, PlotThread. Omit (with type also omitted) to get an index of all types (name+category+summary only, no field lists).")]
         string? category = null,
@@ -79,9 +79,9 @@ public class MetaTools : IMcpServerTool
 
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"REFERENCE LOOKUP. The server pushes what you need automatically on tool responses under `guidance`; follow it and do not call this speculatively. For session-0 setup questions, pass topic: 'onboarding' (guided Q&A — start_campaign_onboarding) or 'world-building' (seeding order). For quick reference: 'commit-enum' (valid $type discriminators), 'tools' (MCP tool catalog), or 'take-turn-modes' (take_turn full/delta mode + drift-protection reference). Guidance on patterns, combat, spells, world-pressure, and item tracking is delivered proactively on tool responses — do not fetch those sections via get_help.")]
+    [Description("Reference lookup. Guidance arrives on tool responses; don't call this speculatively. Topics: onboarding, world-building, commit-enum, tools, take-turn-modes, faq.")]
     public Task<ToolResult<string>> GetHelp(
-        [Description("Optional help topic: 'onboarding' (guided session-0 Q&A), 'world-building' (session-0 seeding order + world_build example), 'commit-enum' (valid change $type discriminators), 'tools' (full MCP tool catalog), 'take-turn-modes' (take_turn full/delta mode mechanics + drift protection), or 'faq' (laziness traps + tips). Omit to get reference-lookup status. Guidance on patterns, combat, spells, world-pressure, and sandbox is delivered on tool responses under `guidance` — do not call get_help for those.")]
+        [Description("Optional topic (see tool description).")]
         string? topic = null)
     {
         var content = GetHelpContent(topic);

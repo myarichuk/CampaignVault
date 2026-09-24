@@ -34,24 +34,24 @@ internal static class TakeTurnSchemaBuilder
             ["narrative"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "Narrative summary of what happened (1-2 sentences; longer text is truncated at ~500 chars before it's stored as the event log entry)."
+                ["description"] = "One-sentence summary, stored as the event log entry (truncated at ~500 chars)."
             },
             ["minutesElapsed"] = new JsonObject
             {
                 ["type"] = "integer",
-                ["description"] = "Batch duration in minutes, applied to the first eligible change if none already has its own. Ignored for rest/travel changes."
+                ["description"] = "Batch duration in minutes (ignored for rest/travel)."
             },
             ["narrativeImportance"] = new JsonObject
             {
                 ["type"] = "string",
                 ["enum"] = new JsonArray("Trivial", "Important", "Core"),
-                ["description"] = "Override this turn's event importance (default Important). Use Trivial for flavor/banter beats."
+                ["description"] = "Default Important; Trivial for banter."
             },
             ["autoRefreshInvolved"] = new JsonObject
             {
                 ["type"] = "boolean",
                 ["default"] = true,
-                ["description"] = "Auto-refresh entities touched by changes"
+                ["description"] = "Refresh entities touched by changes."
             },
             ["extraCharacterIds"] = new JsonObject
             {
@@ -69,50 +69,50 @@ internal static class TakeTurnSchemaBuilder
             {
                 ["type"] = "boolean",
                 ["default"] = false,
-                ["description"] = "Include full Party member summaries"
+                ["description"] = "Full PC summaries. Only when HP/slots/gold/needs/AC/gear changed."
             },
             ["includeWorldState"] = new JsonObject
             {
                 ["type"] = "boolean",
                 ["default"] = false,
-                ["description"] = "Include WorldState in response. Expensive — pressure evaluation + serialization run even when the delta suppresses unchanged Time/pressure; use when pressure/verification actually matters."
+                ["description"] = "Include WorldState. Expensive; only when pressure matters."
             },
             ["partyLocationId"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "Location ID for WorldState scoping and the capped NPC initiative/memory candidate pool"
+                ["description"] = "PC location after this beat."
             },
             ["fullDetailCharacterId"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "NPC ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
+                ["description"] = "One NPC in full detail."
             },
             ["memoriesOnlyCharacterId"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "NPC ID to fetch ONLY Psychology.Memories for — cheaper than fullDetailCharacterId when you just need to check/refresh memory. Skip if already using fullDetailCharacterId for the same NPC this turn."
+                ["description"] = "One NPC's memories only (cheaper than fullDetailCharacterId)."
             },
             ["fullDetailLocationId"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "Location ID to fetch in full detail instead of summary. Use sparingly; only one full detail per call."
+                ["description"] = "One location in full detail (use on the travel turn instead of get_entity)."
             },
             ["forceFullReseed"] = new JsonObject
             {
                 ["type"] = "boolean",
                 ["default"] = false,
-                ["description"] = "Force a full-detail response (Party/WorldState instead of PartyDelta/WorldStateDelta) and reset the reseed counter. Use after your own context was compacted/summarized."
+                ["description"] = "Full Party/WorldState instead of deltas. Only after your context was compacted."
             },
             ["leanMode"] = new JsonObject
             {
                 ["type"] = "boolean",
                 ["default"] = false,
-                ["description"] = "Only meaningful when the response ends up delta mode. Caps NPC KnownNeeds at the top 2 movers this turn instead of every need that moved >= 2 points. Useful for long multi-NPC scenes."
+                ["description"] = "Delta mode: cap NPC needs at the top 2 movers."
             },
             ["clientPartyFingerprint"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "Echo back the previous response's narrow partyFingerprint (party HP/location only — NPC/need/memory drift is covered by reseed + integrity pressure, not this hash) unchanged, so the server can detect HP/location drift and force a resync if it doesn't match. Omit if you don't have a prior value (never treated as a mismatch)."
+                ["description"] = "Last response's partyFingerprint, unchanged. Omit if none."
             }
         };
 
@@ -174,7 +174,9 @@ internal static class TakeTurnSchemaBuilder
         // Build the worldChange anyOf with all variants
         // Hot-tier variants get full schema, cold-tier get minimal
         var anyOf = new JsonArray();
-        var variants = CommitSchemaModel.Variants;
+        // Same visibility as the get_commit_schema index: engine-only verbs are never authored by the
+        // model, and mode-scoped plugin verbs are looked up on demand once their mode is enabled.
+        var variants = CommitSchemaModel.Variants.Where(v => !v.IsEngineOnly && v.ModeId is null);
 
         foreach (var variant in variants.OrderBy(v => v.Discriminator))
         {

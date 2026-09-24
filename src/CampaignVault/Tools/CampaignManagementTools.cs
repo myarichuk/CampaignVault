@@ -96,17 +96,17 @@ Example: create_campaign(""dragon-heist"", ""dnd5e"", ""Waterdeep: Dragon Heist"
         string initialSystem,
         [Description("Optional human-friendly display name.")]
         string? displayName = null,
-        [Description("Optional free-text tags describing the kind(s) of story this campaign tells (e.g. ['political intrigue'], ['dungeon crawl'], ['horror investigation']). Steers how the LLM should judge event importance on commit — see the Narrative Focus section in get_help. Update later with take_turn's campaign_update change ($type: campaign_update, narrativeFocus: [...]).")]
+        [Description("Optional story tags, e.g. ['political intrigue']. Steers event importance.")]
         List<string>? narrativeFocus = null,
-        [Description("Optional lore epoch/era name (e.g. 'First Age', 'Current Era'). Defaults to 'Current Era'.")]
+        [Description("Optional era name (default 'Current Era').")]
         string? loreEpoch = null,
-        [Description("Optional starting year in lore (e.g. 1492). Defaults to 1492.")]
+        [Description("Optional start year (default 1492).")]
         int? loreYear = null,
-        [Description("Optional starting month (1-12). Defaults to 1.")]
+        [Description("Optional start month 1-12 (default 1).")]
         int? loreMonth = null,
-        [Description("Optional starting day (1-30). Defaults to 1.")]
+        [Description("Optional start day 1-30 (default 1).")]
         int? loreDay = null,
-        [Description("Optional starting hour of day (0-23, e.g. 6=dawn, 12=noon, 20=evening). Defaults to 6 (dawn).")]
+        [Description("Optional start hour 0-23 (default 6).")]
         int? loreHour = null)
     {
         string normalized;
@@ -210,14 +210,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        @"RULES REFERENCE: Single lookup tool for ruleset reference data, dispatched by 'kind':
-- kind:'handbook' — classes, races, backgrounds, feats, conditions for the campaign's active ruleset. Call before world_build (characters[]) or when applying typed conditionName values.
-- kind:'spells' — spell metadata (level, concentration, casting time). REQUIRES className (e.g. 'Wizard'); level filter strongly recommended (0 = cantrip); paginated via offset/limit (default 40/page). Use these spell names in resource commits (spellName) for slot validation.
-- kind:'creatures' — creature stat-block *templates* (SRD + campaign homebrew merged, homebrew wins by name), filtered by nameQuery/levelMin/levelMax, paginated. Templates only — use world_build (characters[]) to place a live instance.
-- kind:'level_up' — read-only lookup of the choices a character faces at their next level (subclass, fighting style, ASI/feat, invocations, PF2e feat budget). REQUIRES characterId. No session is created — talk through the choices with the player, then commit a single 'level_up' change via take_turn with the answers in 'choices'/'abilityScoreIncreases'.
-- kind:'items' — item/equipment *templates* (weapons, armor, outfits, tools, artifacts — anything, via Category + an open Properties bag), filtered by nameQuery/category/tag, paginated. Templates only — use world_build (items[]) to place a live instance in a campaign.
-- kind:'item_tags' — the distinct set of tags already used across item templates for the campaign's active system. Check this (or filter kind:'items' by name) before inventing a new tag for a homebrew item — reusing an existing tag (e.g. 'exotic') instead of a near-duplicate ('rare') keeps kind:'items' itemTag filtering useful.
-Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData/{system}/ YAML appear automatically. Requires campaignName.")]
+        "Ruleset reference lookup by 'kind': handbook (classes/races/feats/conditions), spells (className required; filter by level), creatures (stat-block templates), items (item templates), item_tags, level_up (characterId required; then commit one level_up change). Templates only: place live instances with world_build.")]
     public async Task<ToolResult<object>> GetRulesReference(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
@@ -233,7 +226,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
         int? levelMin = null,
         [Description("creatures only: maximum level filter.")]
         int? levelMax = null,
-        [Description("spells/creatures: pagination offset (default 0). Use response.pagination.hasMore for next page.")]
+        [Description("Pagination offset (default 0).")]
         int offset = 0,
         [Description("spells/creatures: page size (default 40, max 100).")]
         int? limit = null,
@@ -241,7 +234,7 @@ Homebrew authored via world_build (spells[]/feats[]/creatures[]) and RulesetData
         string? characterId = null,
         [Description("items only: item name substring filter.")]
         string? itemNameQuery = null,
-        [Description("items only: category filter. Built-in values: Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other — a plugin item pack may also define its own (e.g. 'Jewelry').")]
+        [Description("items only: category (Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other).")]
         string? itemCategory = null,
         [Description("items only: tag filter (e.g. 'exotic', 'kara-tur').")]
         string? itemTag = null)

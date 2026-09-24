@@ -170,6 +170,13 @@ public class SceneView
     public List<WorldPressureItem> WorldPressureItems { get; set; } = [];
 
     /// <summary>
+    /// Scene-scoped pressure display strings, set only when this scene rides on take_turn as FullScene
+    /// (get_entity sends the same content via ToolResult.WorldPressure instead). Lets the travel turn's
+    /// fullDetailLocationId replace the arrival get_entity without losing location ENGINE WARNINGs.
+    /// </summary>
+    public List<string>? ScenePressure { get; set; }
+
+    /// <summary>
     /// Narrative hints for PCs who would recognize features in this location based on their skills/background.
     /// E.g., "Valen (ranger, Survival +5) would likely notice: the wolf tracks circling the campsite are too orderly to be natural."
     /// Purely read-time guidance; no persisted state. Empty if no PC skills/background match location features.

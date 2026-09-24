@@ -23,17 +23,9 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
     [ToolCategory("Deep dives")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        @"ENTITY DEEP DIVE: Fetch ONE entity in full detail by its exact ID — the entity type is inferred from the ID prefix:
-- 'chars/…' → full NPC context (psychology, social, needs, behavior synthesis, held items, recent interactions)
-- 'locations/…' → full scene (present NPCs, items, climate, local rumors, pressures; pass partyPresent:true when the party is physically there)
-- 'factions/…' → full faction document (stances, influence, territory)
-- 'quests/…' → full quest document (objectives, deadlines, rewards)
-- 'items/…' → full item document (including persistent ItemDetails: scratches, secret compartments, damage/wear)
-- 'plot-threads/…' → full plot thread (clues, foreshadowing, DM notes); pass the literal id 'plot-threads' to list all active threads
-Character/quest/plot-thread DM-only content (notes/DmNotes) is returned inside a 'gmOnly' envelope — that's backstage material for your own pacing/tension judgment, never something to narrate verbatim or treat as already known to the player character.
-Use search_world first when you only know a name, not the ID. To bundle a full-detail fetch WITH a mutation in one round-trip, use take_turn's fullDetailCharacterId/fullDetailLocationId instead. Requires campaignName.")]
+        "Fetch one entity in full by exact ID; type comes from the prefix (chars/, locations/, factions/, quests/, items/, plot-threads/; 'plot-threads' alone lists active threads). 'gmOnly' content is backstage, never narrate it. Only know a name? search_world first. Entering a room? Use take_turn's fullDetailLocationId on the travel turn instead.")]
     public async Task<ToolResult<object>> GetEntity(
-        [Description("Exact entity ID with type prefix, e.g. 'chars/valen', 'locations/rusty-nail', 'quests/rats_01', 'factions/thieves-guild', 'items/battle-worn-sword', 'plot-threads/guild-infiltration' — or the literal 'plot-threads' to list all active threads.")]
+        [Description("Exact ID, e.g. 'chars/valen', 'locations/rusty-nail'.")]
         string entityId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,

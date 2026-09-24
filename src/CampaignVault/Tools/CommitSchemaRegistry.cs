@@ -4,11 +4,11 @@ namespace CampaignVault.Tools;
 
 public record CommitTypeSchema(
     string Type,
-    string Category,
+    string? Category,
     string Description,
     string[] RequiredFields,
     string[] OptionalFields,
-    bool HasSideEffects,
+    bool? HasSideEffects,
     string[] SideEffects,
     string[] CoCommitHints,
     string? Example = null
@@ -26,7 +26,12 @@ internal static class CommitSchemaRegistry
     public static IReadOnlyList<CommitTypeSchema> GetIndex() =>
         CommitSchemaModel.Variants
             .Where(v => !v.IsEngineOnly && v.ModeId is null)
-            .Select(v => new CommitTypeSchema(v.Discriminator, v.Category, ClipSummary(v.Summary), [], [], false, [], []))
+            .Select(v => new CommitTypeSchema(
+                v.Discriminator,
+                // Nulls are dropped on the wire: no 'Uncategorized' filler and no hasSideEffects flag
+                // (the index doesn't compute side effects, so a constant false was wrong as well as noise).
+                v.Category == "Uncategorized" ? null : v.Category,
+                ClipSummary(v.Summary), [], [], null, [], []))
             .ToList();
 
     internal static string ClipSummary(string summary)

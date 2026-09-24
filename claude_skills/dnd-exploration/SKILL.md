@@ -104,9 +104,9 @@ Travel can trigger random encounters. Engine resolves and returns encounter NPC/
 ## Location Transitions & Plot Threads
 
 After arriving at a location:
-1. Call `get_entity` with the location id (partyPresent: true) to read location state + any NPCs/creatures present
-2. Check `AssociatedPlotThreads`: Dormant → weave one foreshadowing hook; Active → surface a clue/NPC hint; Climax → immediate consequences
-3. Check `WorldPressure` for location-specific ENGINE WARNINGs (missing clue entities, unvisited transients) — fix per `dnd-campaign-events`
+1. Put `fullDetailLocationId` on the same `take_turn` that commits the travel: `fullScene` returns location state, NPCs/creatures present and `associatedPlotThreads`. Don't spend a separate `get_entity` call on a room you're entering.
+2. Check `associatedPlotThreads`: Dormant → weave one foreshadowing hook; Active → surface a clue/NPC hint; Climax → immediate consequences
+3. Check `fullScene.scenePressure` for location-specific ENGINE WARNINGs (missing clue entities, unvisited transients) — fix per `dnd-campaign-events`
 4. Narrate arrival sensory details
 
 **Lazy Seeding on Arrival:** If the location or its parent district/building isn't yet seeded, an ENGINE WARNING will nudge you — seed it (`dnd-world-building` checklist) before continuing.
@@ -163,7 +163,7 @@ Travel and rest advance time via their own hour fields (not `minutesElapsed` —
 - [ ] Is this a local move (same location, safe)? → `activity`
 - [ ] Is this a real journey (distance, danger)? → `travel` with encounterRiskModifier
 - [ ] Is this an overnight span with stakes? → `rest`, or `advance_world` with `partyLocationId` set so it still rolls for interruptions
-- [ ] Did I fetch the scene (`get_entity` locations/ id, partyPresent: true) after arrival?
+- [ ] Did the travel `take_turn` carry `fullDetailLocationId` for the destination?
 - [ ] Is there a check (Perception, Investigation, Survival)? → `ruleset_action` first
 - [ ] Did I narrate sensory outcome from the roll?
 - [ ] Did time pass? → `minutesElapsed` on the request (rest/travel use their own hour fields instead)

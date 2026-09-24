@@ -28,12 +28,7 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
     [ToolCategory("Session & exploration")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        @"KICKOFF TOOL — CALL ONCE AT SESSION START (or after a reconnect/summarization gap), never per turn. One round-trip returns everything needed to begin play:
-- session record + recap of the last session
-- campaign context (ruleset system, narrative focus, party roster hint, last event)
-- authoritative world state: time, scoped rumors/quests/factions, recent events, WorldPressure (resolve any ENGINE WARNING immediately), and seedCoverage (entity counts + gaps — check right after world_build)
-- the full party roster with equipped/carried items
-Opens a new session, or resumes the already-open one (resumed:true) — safe to call again after context loss. partyLocationId is optional; omit if unknown and derive it from recent events. During play, refresh state via take_turn instead of re-calling this.")]
+        "Call once at session start (or after a reconnect/context loss), never per turn. Returns recap, campaign context, world state, WorldPressure (fix ENGINE WARNINGs immediately) and the party roster. Resumes an open session. During play refresh via take_turn.")]
     public Task<ToolResult<SessionStartView>> StartSession(
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("Optional session title/number.")] string? title = null,

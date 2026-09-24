@@ -4,7 +4,7 @@ namespace CampaignVault.Tools;
 
 /// <summary>
 /// Detects the one double-application pattern the DM manual repeatedly and explicitly warns
-/// against: a `ruleset_action` in the same commit batch as a manual `hp`/`status`/
+/// against: a `ruleset_action` in the same commit batch as a manual `hp`/
 /// `engagement_relation` change targeting the same character it already auto-applies to.
 /// Deliberately scoped to only this pattern — other side-effect-marked $types (rest, travel,
 /// quest_progress, plot_thread_clue) declare "event" as a side effect, but the manual actively
@@ -40,9 +40,9 @@ internal static class SideEffectDuplicationGuard
                     case HpChange hp when affected.Contains(hp.CharacterId):
                         return $"'ruleset_action' ({action.ActionName}) on {action.CharacterId} already auto-applies 'hp' to {hp.CharacterId} — " +
                                $"remove the separate hp change for {hp.CharacterId} (or split it into a second commit if it's an unrelated adjustment).";
-                    case StatusChange sc when affected.Contains(sc.CharacterId):
-                        return $"'ruleset_action' ({action.ActionName}) on {action.CharacterId} already auto-applies 'status' to {sc.CharacterId} — " +
-                               $"remove the separate status change for {sc.CharacterId} (or split it into a second commit if it's an unrelated adjustment).";
+                    // No StatusChange case: StatusChangeHandler collapses a status the action auto-applied
+                    // and the LLM restated into one effect, and an unrelated status on the same character is
+                    // legitimate — rejecting it rolled back whole batches (Mage Armor + status, Session 1).
                     case EngagementRelationChange erc when affected.Contains(erc.CharacterId) || affected.Contains(erc.TargetId):
                         return $"'ruleset_action' ({action.ActionName}) on {action.CharacterId} already auto-applies 'engagement_relation' — " +
                                $"remove the separate engagement_relation change between {erc.CharacterId} and {erc.TargetId} (or split it into a second commit if it's an unrelated adjustment).";

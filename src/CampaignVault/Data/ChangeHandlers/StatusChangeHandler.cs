@@ -97,6 +97,31 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
             };
         }
 
+        // Same effect from both origins in one batch (the LLM restates the status a spell's ruleset_action
+        // already auto-applied, or vice versa) collapses to one effect instead of stacking or failing the
+        // batch. The engine's copy wins: it carries the mechanics. Deliberate stacking from a single origin
+        // (two separate Bleeding wounds) is untouched. Checked before the concentration break so a collapse
+        // never reports the effect as "broken" by itself.
+        var isAuto = ctx.AutoApplyDepth > 0;
+        var originKey = $"{add.CharacterId}|{effect.Name.Trim()}";
+        if (ctx.BatchStatusOrigins.TryGetValue(originKey, out var firstWasAuto) && firstWasAuto != isAuto)
+        {
+            var existingIndex = character.SystemStats.StatusEffects.FindLastIndex(e =>
+                string.Equals(e.Name?.Trim(), effect.Name.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (existingIndex >= 0)
+            {
+                if (isAuto)
+                {
+                    character.SystemStats.StatusEffects[existingIndex] = effect;
+                }
+
+                context.RecordMessage($"'{effect.Name}' on {add.CharacterId} is already applied by the ruleset action in this batch; kept one copy.");
+                return ChangeHandlerResult.Ok;
+            }
+        }
+
+        ctx.BatchStatusOrigins.TryAdd(originKey, isAuto);
+
         // A character can only concentrate on one effect at a time — casting a new
         // concentration effect breaks whatever it was previously concentrating on.
         if (effect.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase))
