@@ -15,6 +15,14 @@ internal static class McpSchemaInstaller
     private static readonly Lazy<JsonElement> WorldBuildSchema = new(() => WorldBuildSchemaBuilder.Build(SchemaJsonOptions));
     private static readonly JsonElement MinimalOutputSchema = JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone();
 
+    // Hand-written: the reflection schema for SessionHandoff (nullable unions, per-field descriptions,
+    // escaped non-ASCII) cost ~2.1k chars on every tools/list. The handoff's fields and caps ride in the
+    // tool description instead (full guide: lookup kind=help topic=sessions). recapText is deliberately
+    // not advertised: it still binds as a deprecated alias for older prompts.
+    private static readonly JsonElement EndSessionSchema = JsonDocument.Parse("""
+        {"type":"object","properties":{"campaignName":{"type":"string"},"handoff":{"type":"object"},"checkpoint":{"type":"boolean"}},"required":["campaignName","handoff"]}
+        """).RootElement.Clone();
+
     public static IServiceCollection AddCampaignVaultToolSchemas(this IServiceCollection services)
     {
         services.AddOptions<McpServerOptions>().PostConfigure<IConfiguration>((options, configuration) =>
@@ -32,6 +40,11 @@ internal static class McpSchemaInstaller
             if (options.ToolCollection?.TryGetPrimitive("world_build", out var worldBuildTool) == true)
             {
                 worldBuildTool.ProtocolTool.InputSchema = WorldBuildSchema.Value;
+            }
+
+            if (options.ToolCollection?.TryGetPrimitive("end_session", out var endSessionTool) == true)
+            {
+                endSessionTool.ProtocolTool.InputSchema = EndSessionSchema;
             }
 
             // Reflection-derived OutputSchemas are pure response-shape scaffolding (~17k chars across

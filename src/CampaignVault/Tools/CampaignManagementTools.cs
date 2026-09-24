@@ -218,7 +218,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
     [McpServerTool(UseStructuredContent = true)]
     [Description(
         "Reference lookup by kind. Rules: handbook, spells (className, level), creatures (query, levelMin/levelMax), items (query, category, tag), item_tags, level_up (characterId). Templates only; place live instances with world_build. " +
-        "Engine: commit_schema (type='<one $type>' = its fields; none = index), help (topic: onboarding, world-building, commit-enum, tools, take-turn-modes, faq). Responses already carry guidance: don't call speculatively.")]
+        "Engine: commit_schema (type='<one $type>' = its fields; none = index), help (topic: onboarding, world-building, commit-enum, tools, take-turn-modes, sessions, faq). Responses already carry guidance: don't call speculatively.")]
     public async Task<ToolResult<object>> Lookup(
         [Description("See tool description.")] string kind,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,

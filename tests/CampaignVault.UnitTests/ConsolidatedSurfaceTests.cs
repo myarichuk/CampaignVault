@@ -36,10 +36,12 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
         Assert.True(first.Success, first.Summary);
         Assert.False(first.Data!.Resumed);
         Assert.Equal(1, first.Data.SessionNumber);
-        Assert.Equal("No prior sessions.", first.Data.LastSessionRecap);
-        Assert.NotNull(first.Data.WorldState);
-        Assert.NotNull(first.Data.WorldState.SeedCoverage);
+        Assert.Null(first.Data.Handoff);
+        // seedCoverage rides along only while gaps remain; shared-canon entities from other tests can close them.
+        Assert.True(first.Data.SeedCoverage is null || first.Data.SeedCoverage.Gaps.Count > 0);
         Assert.NotNull(first.Data.Campaign);
+        Assert.False(string.IsNullOrEmpty(first.Data.Time));
+        Assert.False(string.IsNullOrEmpty(first.Data.PartyFingerprint));
 
         // Calling again with the session still open resumes instead of erroring — the kickoff
         // must survive a reconnect/context-loss mid-session.
@@ -183,6 +185,6 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
         var session = TestCampaignToolsFactory.CreateTool<SessionTools>(_fixture);
         var kickoff = await session.StartSession(slug);
         Assert.True(kickoff.Success, kickoff.Summary);
-        Assert.Contains("political intrigue", kickoff.Data!.Campaign!.Campaign.NarrativeFocus);
+        Assert.Contains("political intrigue", kickoff.Data!.Campaign.NarrativeFocus!);
     }
 }

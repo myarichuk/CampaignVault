@@ -1210,7 +1210,7 @@ public class CharacterUpdate : WorldChange
 }
 
 [NarrativeOnly]
-[Description("Record what a character knows about a topic, with an importance weight.")]
+[Description("Record what a character knows about a topic, with an importance weight. source=Witnessed/Experienced needs sourceEventIds: set eventId on the paired event change and cite it.")]
 public class KnowledgeUpdate : WorldChange
 {
     [Description("ID of the character whose memory is updating.")]

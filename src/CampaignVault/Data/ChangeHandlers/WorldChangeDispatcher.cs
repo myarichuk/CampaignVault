@@ -309,12 +309,18 @@ public sealed class WorldChangeDispatcher(
             context.InvolvedEntities.Add(id);
         }
 
+        // Summary lines written by changes that applied cleanly. On a rolled-back batch they would read
+        // as if they persisted ("Event logged (id: ...)"), so they are dropped below.
+        var succeededMessageRanges = new List<(int Start, int End)>();
+
         // 2. Process each change in caller-supplied order
         for (var changeIndex = 0; changeIndex < changes.Length; changeIndex++)
         {
             var change = changes[changeIndex];
             context.Batch = changes;
             context.BatchIndex = changeIndex;
+            var messageStart = summary.Count;
+            var failuresBefore = context.FailureCount;
             try
             {
                 var chosen = FindHandler(change);
@@ -353,6 +359,10 @@ public sealed class WorldChangeDispatcher(
                 {
                     await NotifyObserversAsync(change, context);
                     await DeliverDomainEventsAsync(context);
+                    if (context.FailureCount == failuresBefore)
+                    {
+                        succeededMessageRanges.Add((messageStart, summary.Count));
+                    }
                 }
             }
             catch (Exception ex)
@@ -403,7 +413,7 @@ public sealed class WorldChangeDispatcher(
         {
             Success = overallSuccess,
             ChangesProcessed = changes.Length,
-            Summary = summary,
+            Summary = overallSuccess ? summary : DropSucceededLines(summary, succeededMessageRanges),
             InvolvedEntities = context.InvolvedEntities.ToList(),
             EntityCollisions = context.EntityCollisions.ToList(),
             CommittedIds = context.CommittedIds.ToList(),
@@ -1202,5 +1212,33 @@ public sealed class WorldChangeDispatcher(
         {
             chosen.ExtractInvolvedEntities(change, characterIds, locationIds, factionIds, questIds, itemIds, allInvolvedIds);
         }
+    }
+
+    /// <summary>
+    /// For a rolled-back batch: drops the per-change success lines (they describe writes that never
+    /// persisted) but keeps any WARNING/ERROR line, and says how many changes were otherwise fine.
+    /// </summary>
+    internal static List<string> DropSucceededLines(List<string> summary, List<(int Start, int End)> succeededRanges)
+    {
+        if (succeededRanges.Count == 0)
+        {
+            return summary;
+        }
+
+        var kept = new List<string>(summary.Count);
+        for (var i = 0; i < summary.Count; i++)
+        {
+            var line = summary[i];
+            var fromSucceededChange = succeededRanges.Any(r => i >= r.Start && i < r.End);
+            if (!fromSucceededChange
+                || line.StartsWith("WARNING", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
+            {
+                kept.Add(line);
+            }
+        }
+
+        kept.Add($"({succeededRanges.Count} other change(s) validated but were rolled back with the batch; nothing they reported was saved.)");
+        return kept;
     }
 }

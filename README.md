@@ -46,7 +46,8 @@ For detailed setup, deployment, and configuration: [INSTALLATION.md](./INSTALLAT
 
 | Goal | Tool |
 |------|------|
-| Start a session | `start_session` — time, active quests, NPCs in crisis, pressures |
+| Start a session | `start_session` — last session's handoff, party from the DB, time, active quests, pressures |
+| End a session | `end_session` — store a handoff (story so far, open threads, NPC stances) for the next `start_session`; `checkpoint: true` keeps the session open |
 | Explore a scene | `get_entity` on a location ID — people, items, rumors, combat |
 | Understand an NPC | `get_entity` on a character ID — psychology, memories, mood, pressures |
 | Resolve an action | `take_turn` — HP changes, item transfers, time passing, all atomic |

@@ -27,6 +27,12 @@ TOOL HYGIENE (tokens)
 - One player beat = one take_turn. Only approved split: call A rolls; call B commits what the roll revealed (e.g. knowledge_update citing A's eventId).
 - A failed take_turn rolls back the whole batch: fix and resend the full batch.
 
+SESSIONS
+- start_session returns your last handoff plus party[] from the DB. The DB wins over the handoff for HP, location, gear and conditions. Then take_turn with fullDetailLocationId=<PC locationId> (the summary names it).
+- A PC's full memories: take_turn memoriesOnlyCharacterId. They are not in start_session.
+- Session end: end_session handoff {storySoFar ≤800: fold the previous one with this session; lastSession ≤600; openThreads ≤6; npcsInPlay [{id, stance}] ≤8; partyIntent; tone}. Write it for a DM who remembers nothing.
+- Before your context is compacted, or midway through a long session: the same call with checkpoint:true.
+
 EVERY take_turn
 - request.narrative: one sentence. request.clientPartyFingerprint: last partyFingerprint (omit only if you have none). request.partyLocationId: PC location after this beat.
 - includeParty only when PC HP/slots/gold/needs/AC/gear changed or you are about to narrate PC needs. The fingerprint already tracks HP + location.

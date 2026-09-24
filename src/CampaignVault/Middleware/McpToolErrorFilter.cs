@@ -87,8 +87,8 @@ internal static partial class McpToolErrorFilter
                 "Pass the campaign slug (e.g. dragon-heist). Call list_campaigns to discover slugs.",
             ("lookup", "kind") =>
                 "Pass one of: handbook, spells (requires className), creatures, items, item_tags, level_up (requires characterId), commit_schema, help.",
-            ("end_session", "recapText") =>
-                "Provide an LLM-authored recap of key events and outcomes from the session.",
+            ("end_session", "handoff") =>
+                "Pass handoff: { lastSession (required), storySoFar, openThreads[], npcsInPlay[{id, stance}], partyIntent, tone }. See lookup kind=help topic=sessions.",
             _ =>
                 $"Call lookup with kind=help, topic=tools for the full catalog and expected argument names."
         };
@@ -104,8 +104,8 @@ internal static partial class McpToolErrorFilter
             ("get_entity", "entityId") => "get_entity(\"chars/innkeeper\")",
             ("combat", "locationId") or ("combat", "combatantIds") =>
                 "combat(action: \"start\", locationId: \"locations/tavern\", combatantIds: [\"chars/hero\"])",
-            ("end_session", "recapText") =>
-                "end_session(campaignName: \"dragon-heist\", recapText: \"The party cleared the cellar and negotiated a truce with the goblins.\")",
+            ("end_session", "handoff") =>
+                "end_session(campaignName: \"dragon-heist\", handoff: { lastSession: \"Cleared the cellar; truce with the goblins.\", storySoFar: \"...\", openThreads: [\"Who hired the goblins\"] })",
             _ => null
         };
 

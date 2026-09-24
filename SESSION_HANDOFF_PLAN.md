@@ -67,18 +67,28 @@ Over a cap: reject with the overage per field (one retry, cheap), not silent tru
 
 ## Tasks
 
-- [ ] H1. `SessionHandoff` record on `SessionLog.SessionRecord` (+ `Checkpoint` slot). `end_session` params: `handoff`, `checkpoint`; `recapText` alias. Caps and id validation → structured error.
-- [ ] H2. `SessionStartView` v2: posture-only campaign, compact `PartySessionView` built in the query (projection, per CLAUDE.md, not `[JsonIgnore]`), handoff, fingerprint, filled-in scene hint.
-- [ ] H3. Fallback digest when no handoff exists.
-- [ ] H4. Prompts and skills: system prompt END OF SESSION block (what to write, fold `storySoFar`), checkpoint before compaction, `memoriesOnlyCharacterId` for the PC's full memory when needed. Update `end_session` description (it rides in `tools/list`; keep it ≤300 chars, detail in `lookup kind=help topic=sessions`).
-- [ ] H5. Tests: handoff round-trip, caps, unknown-NPC rejection, checkpoint resume, fallback digest, `start_session` size budget (≤3.5k for 2 PCs regardless of session count), engine facts from the DB even when the handoff contradicts them.
-- [ ] H6. Replay the scratch script: before/after table. Then one played session with a real model (Grok on `/play` via `scripts/tunnel.sh`) to judge handoff quality. Tests can't.
-- [ ] H7. Full suite green.
+- [x] H1. `SessionHandoff` on `SessionLog.SessionRecord` (+ `HandoffIsCheckpoint`, `HandoffWrittenAtUtc`). `end_session(campaignName, handoff, checkpoint)`; `recapText` binds as an alias for `lastSession`. Caps and NPC-id validation reject with per-field overage and close matches; nothing is saved on rejection. An omitted `storySoFar` keeps the previous fold.
+- [x] H2. `SessionStartView` v2: `handoff`, posture-only `campaign` (+ narrativeFocus, systemOptions), `time`, `activeQuests`, `seedCoverage` only while gaps remain, compact `PartySessionView` (item names projected in the query), `partyFingerprint`, and a summary that names `take_turn fullDetailLocationId=<PC location>`. `start_session` also primes the turn cursor: the next `take_turn` is a full reseed (a new conversation has no delta baseline, and delta mode sends already-surfaced NPCs as stubs), and the kickoff fingerprint is stored so echoing it isn't drift.
+- [x] H3. `SessionDigestBuilder`: latest legacy recap + importance-ranked recent events, hard cap 1.5k. Used when no handoff exists, or when a later session closed without one.
+- [x] H4. `lookup kind=help topic=sessions`; SESSIONS block in `recommended-system-prompt.md`; STARTUP/SESSION END in the opencode prompt; README. `end_session` gets a hand-written wire schema (`McpSchemaInstaller`, 625 chars vs 2.1k reflected) so `/play` stays within its 13k budget. opencode plugin reads `campaign.slug` from the new payload.
+- [x] H5. `SessionHandoffTests` (11): round-trip, caps, required lastSession, unknown NPC with suggestions, checkpoint resume and overwrite, recapText alias + storySoFar carry-over, legacy digest, DB-over-handoff engine facts, size budget (<=3.5k for 2 PCs over 5 sessions, flat within 100 chars), first take_turn Full with no false drift, rolled-back take_turn summary.
+- [x] H6 (replay). Scratch replay on an empty DB, `harbor-lantern-3`, same script with handoffs: see table below.
+- [ ] H6 (real model). One played session with Grok on `/play` via `scripts/tunnel.sh` to judge handoff quality. Left to Michael: tests can't judge prose.
+- [x] H7. Unit suite 1,572 passed / 0 failed / 2 skipped (pre-existing skips); integration project 4 skipped (pre-existing, env-gated); opencode plugin 29/29.
 
-## Also found
+**After (2026-09-24, scratch replay):**
 
-- A rolled-back `take_turn` still says `Event logged (id: …)` under "NO CHANGES WERE SAVED". The model may cite an event that doesn't exist. Suppress per-change success lines when the batch rolls back.
-- `take_turn` memory beats: `source: Witnessed` requires a client `eventId` on the paired event. That's correct, but it's a common first-try failure; worth a line in the `knowledge_update` commit_schema summary.
+| After session | 0 | 1 | 2 | 3 |
+|---|---|---|---|---|
+| `start_session` before | 6,321 | 9,440 | 12,125 | 13,502 |
+| `start_session` after | 2,215 | 2,738 | 2,895 | 2,947 |
+
+Session 3 composition: handoff 1,020, party 567 (both members), worldPressure 463, campaign 238, seedCoverage 157, time 48, fingerprint 79. The 2,738 → 2,947 creep is the script growing `storySoFar` toward its 800 cap; the worst case with every handoff field at its cap is about 3.3k of handoff plus about 1.5k of the rest.
+
+## Also found (done)
+
+- [x] A rolled-back `take_turn` no longer echoes the success lines of changes that validated (`Event logged (id: …)`). `WorldChangeDispatcher` drops them, keeps WARNING/ERROR lines, and adds one "rolled back with the batch" note.
+- [x] `knowledge_update`'s schema summary now says `source=Witnessed/Experienced` needs `sourceEventIds` citing an `eventId` on the paired event.
 
 ## Measurement data policy
 

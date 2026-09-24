@@ -22,6 +22,15 @@ describe("extractCampaignInfo", () => {
     expect(info).toEqual({ slug: "dragonheist", ruleset: "Dnd5e", rosterIds: ["chars/valen", "chars/mira"] });
   });
 
+  it("extracts slug/ruleset/roster from the flat start_session v2 payload", () => {
+    const payload = {
+      campaign: { slug: "dragonheist", displayName: "Dragon Heist", system: "Dnd5e", pcs: [], companions: [] },
+      party: [{ id: "chars/valen", name: "Valen", hp: "12/12" }, { id: "chars/mira", name: "Mira", hp: "9/9" }],
+    };
+    const info = extractCampaignInfo(payload);
+    expect(info).toEqual({ slug: "dragonheist", ruleset: "Dnd5e", rosterIds: ["chars/valen", "chars/mira"] });
+  });
+
   it("reads party[].id and falls back to ActiveSystem for older payloads", () => {
     const payload = {
       campaign: {

@@ -9,6 +9,43 @@ namespace CampaignVault.Tools;
 /// </summary>
 internal static class DmHelpManual
 {
+    internal const string SessionsSection = @"# Session lifecycle
+
+## start_session (once per session, or after a reconnect/context loss)
+
+Returns a flat-size kickoff, not a world dump:
+- `handoff` — what you wrote at the last `end_session` (or checkpoint). Narrative memory only.
+- `recentDigest` — a capped server digest, only when no handoff exists (older campaign, or end_session was never called).
+- `campaign` (posture), `time`, `activeQuests`, `seedCoverage` (only while seeding gaps remain), top-level `worldPressure`.
+- `party[]` — straight from the DB: hp, ac, level, locationId, conditions, equipped/carried item names, `highNeeds` (≥60), `memoryCount` and `keyMemories` (top topics).
+- `partyFingerprint` — echo it as `clientPartyFingerprint` on your first take_turn.
+
+**The DB wins.** If the handoff says the party rested at the tavern but `party[].locationId` says the lighthouse, the lighthouse is true. Never narrate HP, location, gear or conditions from the handoff.
+
+Next call: `take_turn` with `fullDetailLocationId=<the PC's locationId>` (the summary names it). That first take_turn is a full reseed automatically. Need a PC's full memories? `take_turn memoriesOnlyCharacterId=<id>`. Full sheet? `get_entity`.
+
+## end_session (when the session ends)
+
+Write the handoff the way you would summarize a conversation before compaction — for a DM who remembers nothing:
+
+| field | cap | what |
+|---|---|---|
+| `storySoFar` | 800 | Rolling summary of the whole campaign. **Fold** the previous `storySoFar` (from start_session) together with this session: compress older beats, keep what still matters. Don't just append. Omit it and the previous one is kept unchanged. |
+| `lastSession` | 600 | Required. What happened this session. |
+| `openThreads` | 6 × 120 | Unresolved hooks and questions, in your words. |
+| `npcsInPlay` | 8 × {id, stance ≤80} | NPCs who matter next session and where they stand. Ids must exist (use search_world). |
+| `partyIntent` | 200 | What the players said they'd do next. |
+| `tone` | 120 | Optional voice note (pacing, genre, lines not to cross). |
+
+Over a cap or an unknown NPC id rejects the whole call with the overage per field — nothing is saved; shorten and resend. `recapText` still works as an alias for `lastSession`.
+
+Don't restate engine facts (HP, exact gear, conditions): the next start_session reads those from the DB. Do record what only you know: motives, promises, suspicions, what the players seem to want.
+
+## Checkpoints
+
+`end_session(..., checkpoint: true)` stores the same handoff but keeps the session open. Call it before your own context is compacted or summarized, or midway through a long session. A resumed `start_session` returns the newest checkpoint; the final `end_session` overwrites it.
+";
+
     internal const string TakeTurnModesSection = @"# take_turn Full/Delta Mode Reference
 
 `take_turn`'s response carries a `mode` field ('Full' or 'Delta') that the server picks automatically to save tokens on most calls.

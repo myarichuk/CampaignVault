@@ -550,9 +550,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
             .ToListAsync();
 
-        return string.Join(",", party
-            .OrderBy(c => c.Id, StringComparer.Ordinal)
-            .Select(c => $"{c.Id}:{c.CurrentHp}/{c.MaxHp}@{c.CurrentLocationId ?? "?"}"));
+        return PartyFingerprint.Compute(party);
     }
 
     /// <summary>

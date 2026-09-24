@@ -38,7 +38,11 @@ internal enum HelpTopic
 
     /// <summary>take_turn full/delta mode mechanics, reseed triggers, and drift-protection fingerprint reference.</summary>
     [Description("take_turn full/delta mode reference")]
-    TakeTurnModes
+    TakeTurnModes,
+
+    /// <summary>Session lifecycle: start_session payload, end_session handoff fields/caps, checkpoints before compaction.</summary>
+    [Description("Session lifecycle: start_session, end_session handoff, checkpoints")]
+    Sessions
 }
 
 [McpServerToolType]
@@ -77,7 +81,7 @@ public class MetaTools : IMcpServerTool
     }
 
     // Served through lookup(kind: "help"); no longer an MCP tool of its own.
-    [Description("Reference lookup. Guidance arrives on tool responses; don't call this speculatively. Topics: onboarding, world-building, commit-enum, tools, take-turn-modes, faq.")]
+    [Description("Reference lookup. Guidance arrives on tool responses; don't call this speculatively. Topics: onboarding, world-building, commit-enum, tools, take-turn-modes, sessions, faq.")]
     public Task<ToolResult<string>> GetHelp(
         [Description("Optional topic (see tool description).")]
         string? topic = null)
@@ -108,6 +112,8 @@ public class MetaTools : IMcpServerTool
             HelpTopic.Tools => "## MCP Tool Catalog\n\n" + ToolCatalog.FormatHelpIndex(),
 
             HelpTopic.TakeTurnModes => DmHelpManual.TakeTurnModesSection,
+
+            HelpTopic.Sessions => DmHelpManual.SessionsSection,
 
             _ => "Reference lookup only. The server pushes what you need automatically on tool responses under `guidance`; follow it and don't call lookup kind=help speculatively. For session-0 setup: try topic=onboarding or topic=world-building. For reference: topic=commit-enum or topic=tools. Guidance on patterns, combat, spells, world-pressure, and sandbox is delivered on tool responses — do not fetch those sections here."
         };

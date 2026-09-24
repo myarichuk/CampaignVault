@@ -23,7 +23,18 @@ public class SessionLog : ICampaignScopedEntity
         public string? InWorldStartTimeOfDay { get; set; }
         public int? InWorldEndDay { get; set; }
         public string? InWorldEndTimeOfDay { get; set; }
+        /// <summary>Legacy free-text recap. end_session now stores <see cref="Handoff"/>; its recapText
+        /// alias lands in Handoff.LastSession. Kept for sessions ended before the handoff existed.</summary>
         public string? RecapText { get; set; }
         public bool IsOpen { get; set; }
+
+        /// <summary>Model-authored handoff written by end_session (or by a mid-session checkpoint while
+        /// the session is still open). Narrative only — start_session always reads engine facts from the DB.</summary>
+        public SessionHandoff? Handoff { get; set; }
+
+        /// <summary>True while <see cref="Handoff"/> is a checkpoint on a still-open session.</summary>
+        public bool HandoffIsCheckpoint { get; set; }
+
+        public DateTime? HandoffWrittenAtUtc { get; set; }
     }
 }

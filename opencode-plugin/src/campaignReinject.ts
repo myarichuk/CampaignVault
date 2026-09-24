@@ -19,7 +19,9 @@ export function extractCampaignInfo(payload: unknown): CampaignInfo | null {
   const inner = campaignObj ? pick(campaignObj, "campaign", "Campaign") : undefined;
   const innerObj = inner && typeof inner === "object" ? (inner as Record<string, unknown>) : campaignObj;
 
-  const slug = pick(innerObj, "name", "Name");
+  // start_session v2 sends a flat campaign posture ({ slug, system, ... }); older payloads nested the
+  // raw campaign doc ({ campaign: { name, system } }).
+  const slug = pick(innerObj, "slug", "Slug", "name", "Name");
   if (typeof slug !== "string" || slug.length === 0) return null;
 
   const ruleset = pick(innerObj, "System", "system", "ActiveSystem", "activeSystem");

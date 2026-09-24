@@ -224,7 +224,10 @@ public class WorldChangeDispatcherTests
             _ => Task.CompletedTask);
 
         Assert.False(result.Success); // because MoodChange is unhandled
-        Assert.Contains("HP handled (fake)", result.Summary);
+        // The HP change applied cleanly but was rolled back with the batch: its success line would read
+        // as persisted, so it is replaced by a rolled-back note.
+        Assert.DoesNotContain("HP handled (fake)", result.Summary);
+        Assert.Contains(result.Summary, s => s.Contains("rolled back with the batch"));
         Assert.Contains(result.Summary, s => s.Contains("Unhandled change type: MoodChange"));
     }
 
