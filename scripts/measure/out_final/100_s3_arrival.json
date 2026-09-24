@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 78: arrival.",
+   "partyLocationId": "locations/lighthouse",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/harbor,chars/tamsin:20/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/lighthouse"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/lighthouse"
+    }
+   ],
+   "fullDetailLocationId": "locations/lighthouse"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/f125f795-36a5-436e-b9f3-a01a2ce56379\",\"events/37a7cc58-8fb7-4465-804d-a8d399ba671a\"],\"context\":[\"Likely to act next: Sera the Baker (chars/sera).\"],\"fullScene\":{\"location\":{\"id\":\"locations/lighthouse\",\"name\":\"Lighthouse\",\"description\":\"The lighthouse of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true}],\"recentEventSummaries\":[{\"summary\":\"S3 beat 78: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"summary\":\"S2 beat 47: includeParty.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/s2-e31\",\"summary\":\"The party regroups on the stairs.\",\"category\":\"Unresolved\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Lighthouse. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/lighthouse,chars/tamsin:20/21@locations/lighthouse\",\"worldSequence\":68},\"summary\":\"Committed 2 changes.\"}"
+}

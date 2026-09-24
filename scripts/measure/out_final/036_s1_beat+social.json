@@ -1,0 +1,36 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 28: beat+social.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/tavern,chars/tamsin:21/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s1-e18",
+     "summary": "Captain Rhel trades gossip about the smugglers (s1).",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/rhel"
+     ],
+     "locationId": "locations/tavern"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/rhel",
+     "newMood": "amused"
+    },
+    {
+     "$type": "relationship",
+     "characterId": "chars/rhel",
+     "targetId": "chars/tamsin",
+     "reason": "Captain Rhel trades gossip about the smugglers (s1).",
+     "delta": 3
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":3,\"summary\":[\"Novel beat (0.33): new info \u2192 Important/Core memory, maybe a plot_thread.\",\"Relationship from chars/rhel to chars/tamsin is now 3 (clamped -100 to 100).\"],\"committedIds\":[\"events/s1-e18\"],\"npcs\":[{\"characterId\":\"chars/rhel\",\"name\":\"Captain Rhel\",\"currentMood\":\"amused\"}],\"cards\":[{\"id\":\"chars/rhel\",\"name\":\"Captain Rhel\",\"mood\":\"amused\",\"stance\":\"Tamsin: neutral (3)\",\"notes\":\"Captain Rhel knows something about the dark lighthouse.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}}}],\"context\":[\"Likely to act next: Marta the Innkeeper (chars/marta).\"],\"worldSequence\":25},\"summary\":\"Committed 3 changes.\"}"
+}

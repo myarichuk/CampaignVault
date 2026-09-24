@@ -1,0 +1,29 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 3: beat+social.",
+   "partyLocationId": "locations/bell-square",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/bell-square,chars/tamsin:21/21@locations/bell-square",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s1-e2",
+     "summary": "Tamsin asks Sera the Baker about the dark lamp (s1).",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/sera"
+     ],
+     "locationId": "locations/bell-square"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/sera",
+     "newMood": "curious"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/s1-e2\"],\"npcs\":[{\"characterId\":\"chars/sera\",\"name\":\"Sera the Baker\",\"currentMood\":\"curious\"}],\"cards\":[{\"id\":\"chars/sera\",\"name\":\"Sera the Baker\",\"mood\":\"curious\",\"notes\":\"Sera the Baker knows something about the dark lighthouse.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}}}],\"worldSequence\":2},\"summary\":\"Committed 2 changes.\"}"
+}

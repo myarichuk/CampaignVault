@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 83: arrival.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/harbor,chars/tamsin:20/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/warehouse"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/warehouse"
+    }
+   ],
+   "fullDetailLocationId": "locations/warehouse"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/cfb7bc05-51a2-4d3f-b5cf-90accf0d07e1\",\"events/ca69b85b-412f-4843-b9c2-9c9fa074f527\"],\"narrativeReminder\":\"Echoes a recent event (0.97): Trivial or no knowledge_update.\",\"cards\":[{\"id\":\"chars/vess\",\"name\":\"Vess\",\"mood\":\"Content\",\"traits\":\"patient, dry humor, keeps promises\",\"wants\":\"a quiet season, the lamp relit\",\"fears\":\"the sea at night, debt\",\"stance\":\"Tamsin: neutral (\u200e-10)\",\"notes\":\"Vess knows something about the dark lighthouse. Grew up in town; owes the chapel a favor and never talks about the storm of '09.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}},\"gear\":\"Oil Ledger\"}],\"fullScene\":{\"location\":{\"id\":\"locations/warehouse\",\"name\":\"Warehouse\",\"description\":\"The warehouse of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/vess\",\"name\":\"Vess\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/thug-a\",\"name\":\"Knife Thug\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Knife Thug knows something about the dark lighthouse. Grew up in town; owes the\u2026\"},{\"id\":\"chars/thug-b\",\"name\":\"Club Thug\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Club Thug knows something about the dark lighthouse. Grew up in town; owes the\u2026\"}],\"recentEventSummaries\":[{\"summary\":\"S3 beat 83: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"summary\":\"S2 beat 58: includeParty.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"id\":\"events/s2-e39\",\"summary\":\"Bandaging after the fight.\",\"category\":\"Unresolved\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Warehouse. \"},\"partyFingerprint\":\"chars/bram:14/24@locations/warehouse,chars/tamsin:20/21@locations/warehouse\",\"worldSequence\":73},\"summary\":\"Committed 2 changes.\"}"
+}

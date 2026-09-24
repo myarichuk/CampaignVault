@@ -1,0 +1,36 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 98: beat+social.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/tavern,chars/tamsin:17/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s3-e64",
+     "summary": "Old Jory trades gossip about the smugglers (s3).",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/old-jory"
+     ],
+     "locationId": "locations/tavern"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/old-jory",
+     "newMood": "amused"
+    },
+    {
+     "$type": "relationship",
+     "characterId": "chars/old-jory",
+     "targetId": "chars/tamsin",
+     "reason": "Old Jory trades gossip about the smugglers (s3).",
+     "delta": 3
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":3,\"summary\":[\"Relationship from chars/old-jory to chars/tamsin is now 9 (clamped -100 to 100).\"],\"committedIds\":[\"events/s3-e64\"],\"npcs\":[{\"characterId\":\"chars/old-jory\",\"name\":\"Old Jory\",\"currentMood\":\"amused\"}],\"context\":[\"Likely to act next: Bram (chars/bram).\"],\"worldSequence\":87},\"summary\":\"Committed 3 changes.\"}"
+}

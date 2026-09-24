@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 27: arrival.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/bell-square,chars/tamsin:21/21@locations/bell-square",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/tavern"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/tavern"
+    }
+   ],
+   "fullDetailLocationId": "locations/tavern"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/5e84695d-85d0-46b0-8dbd-f503bdf8963e\",\"events/c124de27-56f4-48dc-b195-f3a5bc3eac98\"],\"narrativeReminder\":\"Echoes a recent event (0.94): Trivial or no knowledge_update.\",\"fullScene\":{\"location\":{\"id\":\"locations/tavern\",\"name\":\"Tavern\",\"description\":\"The tavern of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/bell-square\",\"description\":\"Path to the bell square\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/rhel\",\"name\":\"Captain Rhel\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Captain Rhel knows something about the dark lighthouse.\"},{\"id\":\"chars/marta\",\"name\":\"Marta the Innkeeper\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Marta the Innkeeper knows something about the dark lighthouse.\"},{\"id\":\"chars/old-jory\",\"name\":\"Old Jory\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Old Jory knows something about the dark lighthouse.\"},{\"id\":\"chars/lute-girl\",\"name\":\"Ilsa the Lutist\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Ilsa the Lutist knows something about the dark lighthouse.\"}],\"recentEventSummaries\":[{\"summary\":\"S1 beat 27: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Tavern. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/tavern,chars/tamsin:21/21@locations/tavern\",\"worldSequence\":24},\"summary\":\"Committed 2 changes.\"}"
+}

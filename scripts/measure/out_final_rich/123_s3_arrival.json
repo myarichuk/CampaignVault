@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 93: arrival.",
+   "partyLocationId": "locations/harbor",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/warehouse,chars/tamsin:17/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/harbor"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/harbor"
+    }
+   ],
+   "fullDetailLocationId": "locations/harbor"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/2678c621-4da7-419a-b40c-d8ad465ed0af\",\"events/92e49ecd-2c37-4c02-8b6e-99d4e6d6f771\"],\"fullScene\":{\"location\":{\"id\":\"locations/harbor\",\"name\":\"Harbor\",\"description\":\"(described earlier this session)\",\"type\":\"District\",\"exits\":[{\"targetLocationId\":\"locations/bell-square\",\"description\":\"Path to the bell square\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/lighthouse\",\"description\":\"Path to the lighthouse\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/warehouse\",\"description\":\"Path to the warehouse\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/oda\",\"name\":\"Oda the Harbormaster\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/fenn\",\"name\":\"Fenn the Netmender\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/dock-guard\",\"name\":\"Dock Guard Hal\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Dock Guard Hal knows something about the dark lighthouse. Grew up in town; owes\u2026\"}],\"lastKnownTravel\":\"Travel: Bram traveled to Harbor. \"},\"partyFingerprint\":\"chars/bram:14/24@locations/harbor,chars/tamsin:17/21@locations/harbor\",\"worldSequence\":82},\"summary\":\"Committed 2 changes.\"}"
+}

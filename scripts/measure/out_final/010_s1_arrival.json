@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 10: arrival.",
+   "partyLocationId": "locations/lighthouse",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/harbor,chars/tamsin:21/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/lighthouse"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/lighthouse"
+    }
+   ],
+   "fullDetailLocationId": "locations/lighthouse"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/79c31708-c409-4719-a800-ce8f5081eee3\",\"events/f2734ad2-aac3-4727-b0d1-57418e043eed\"],\"context\":[\"Likely to act next: Pim the Lamplighter (chars/pim).\"],\"fullScene\":{\"location\":{\"id\":\"locations/lighthouse\",\"name\":\"Lighthouse\",\"description\":\"The lighthouse of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true}],\"recentEventSummaries\":[{\"summary\":\"S1 beat 10: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Lighthouse. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/lighthouse,chars/tamsin:21/21@locations/lighthouse\",\"worldSequence\":8},\"summary\":\"Committed 2 changes.\"}"
+}

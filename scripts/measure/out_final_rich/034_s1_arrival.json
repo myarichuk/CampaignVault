@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 26: arrival.",
+   "partyLocationId": "locations/bell-square",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/harbor,chars/tamsin:20/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/bell-square"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/bell-square"
+    }
+   ],
+   "fullDetailLocationId": "locations/bell-square"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/39a766aa-21c5-4f04-bcbf-6f16afb14a01\",\"events/cf3d9ab3-c2af-47a4-94f0-fefbbade2d42\"],\"narrativeReminder\":\"Echoes a recent event (0.92): Trivial or no knowledge_update.\",\"fullScene\":{\"location\":{\"id\":\"locations/bell-square\",\"name\":\"Bell Square\",\"description\":\"(described earlier this session)\",\"type\":\"District\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/tavern\",\"description\":\"Path to the tavern\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/chapel\",\"description\":\"Path to the chapel\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/pim\",\"name\":\"Pim the Lamplighter\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/sera\",\"name\":\"Sera the Baker\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"}],\"lastKnownTravel\":\"Travel: Bram traveled to Bell Square. \"},\"partyFingerprint\":\"chars/bram:21/24@locations/bell-square,chars/tamsin:20/21@locations/bell-square\",\"worldSequence\":23},\"summary\":\"Committed 2 changes.\"}"
+}

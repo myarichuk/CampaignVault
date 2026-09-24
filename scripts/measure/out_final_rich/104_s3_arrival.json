@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 82: arrival.",
+   "partyLocationId": "locations/harbor",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/lighthouse,chars/tamsin:20/21@locations/lighthouse",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/harbor"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/harbor"
+    }
+   ],
+   "fullDetailLocationId": "locations/harbor"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/405280c0-6385-44b7-b423-0ca919ead634\",\"events/165deb20-6867-4459-9fd9-41e7d98968ad\"],\"context\":[\"Likely to act next: Pim the Lamplighter (chars/pim).\"],\"fullScene\":{\"location\":{\"id\":\"locations/harbor\",\"name\":\"Harbor\",\"description\":\"(described earlier this session)\",\"type\":\"District\",\"exits\":[{\"targetLocationId\":\"locations/bell-square\",\"description\":\"Path to the bell square\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/lighthouse\",\"description\":\"Path to the lighthouse\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/warehouse\",\"description\":\"Path to the warehouse\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/oda\",\"name\":\"Oda the Harbormaster\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/fenn\",\"name\":\"Fenn the Netmender\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/dock-guard\",\"name\":\"Dock Guard Hal\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Dock Guard Hal knows something about the dark lighthouse. Grew up in town; owes\u2026\"}],\"lastKnownTravel\":\"Travel: Bram traveled to Harbor. \"},\"partyFingerprint\":\"chars/bram:14/24@locations/harbor,chars/tamsin:20/21@locations/harbor\",\"worldSequence\":72},\"summary\":\"Committed 2 changes.\"}"
+}

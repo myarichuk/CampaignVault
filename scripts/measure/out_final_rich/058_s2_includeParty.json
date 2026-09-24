@@ -1,0 +1,24 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 47: includeParty.",
+   "partyLocationId": "locations/lighthouse",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/lighthouse,chars/tamsin:20/21@locations/lighthouse",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s2-e31",
+     "summary": "The party regroups on the stairs.",
+     "involvedEntityIds": [
+      "chars/tamsin"
+     ],
+     "locationId": "locations/lighthouse"
+    }
+   ],
+   "includeParty": true
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":1,\"summary\":[\"Novel beat (0.13): new info \u2192 Important/Core memory, maybe a plot_thread.\"],\"committedIds\":[\"events/s2-e31\"],\"partyDelta\":[{\"entityId\":\"chars/bram\",\"name\":\"Bram\",\"initiative\":{\"behavioralTension\":11}}],\"worldSequence\":41},\"summary\":\"Committed 1 changes.\"}"
+}

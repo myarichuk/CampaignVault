@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 94: arrival.",
+   "partyLocationId": "locations/bell-square",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/harbor,chars/tamsin:20/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/bell-square"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/bell-square"
+    }
+   ],
+   "fullDetailLocationId": "locations/bell-square"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/ab03fc69-e0c6-4b11-9120-9f850f9951eb\",\"events/432055a5-ca21-4e0d-ba90-b65daeaaecad\"],\"narrativeReminder\":\"Echoes a recent event (0.95): Trivial or no knowledge_update.\",\"fullScene\":{\"location\":{\"id\":\"locations/bell-square\",\"name\":\"Bell Square\",\"description\":\"(described earlier this session)\",\"type\":\"District\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/tavern\",\"description\":\"Path to the tavern\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/chapel\",\"description\":\"Path to the chapel\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/pim\",\"name\":\"Pim the Lamplighter\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Pim the Lamplighter knows something about the dark lighthouse.\"},{\"id\":\"chars/sera\",\"name\":\"Sera the Baker\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Sera the Baker knows something about the dark lighthouse.\"}],\"lastKnownTravel\":\"Travel: Bram traveled to Bell Square. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/bell-square,chars/tamsin:20/21@locations/bell-square\",\"worldSequence\":83},\"summary\":\"Committed 2 changes.\"}"
+}

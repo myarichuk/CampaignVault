@@ -1,0 +1,33 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 77: skill check.",
+   "partyLocationId": "locations/harbor",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/harbor,chars/tamsin:20/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/tamsin",
+     "actionType": "SkillCheck",
+     "actionName": "Investigation",
+     "parameters": {
+      "skill": "Investigation",
+      "dc": "13"
+     }
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s3-e50",
+     "summary": "Tamsin studies the tar marks on the pier.",
+     "involvedEntityIds": [
+      "chars/tamsin"
+     ],
+     "locationId": "locations/harbor"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Investigation (Investigation): Failure. Rolled 12 vs DC 13. [12] = 12\",\"Novel beat (0.32): new info \u2192 Important/Core memory, maybe a plot_thread.\"],\"committedIds\":[\"events/s3-e50\"],\"context\":[\"Likely to act next: Bram (chars/bram).\"],\"worldSequence\":67},\"summary\":\"Committed 2 changes.\"}"
+}

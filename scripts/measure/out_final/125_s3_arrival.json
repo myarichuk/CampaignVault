@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 95: arrival.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/bell-square,chars/tamsin:20/21@locations/bell-square",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/tavern"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/tavern"
+    }
+   ],
+   "fullDetailLocationId": "locations/tavern"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/6ce1a6a8-7365-4a0f-9344-c55c9b429a7b\",\"events/5676b7b0-d81f-4eb6-bfcf-64c94a89e841\"],\"narrativeReminder\":\"Echoes a recent event (0.95): Trivial or no knowledge_update.\",\"fullScene\":{\"location\":{\"id\":\"locations/tavern\",\"name\":\"Tavern\",\"description\":\"(described earlier this session)\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/bell-square\",\"description\":\"Path to the bell square\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/rhel\",\"name\":\"Captain Rhel\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/marta\",\"name\":\"Marta the Innkeeper\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/old-jory\",\"name\":\"Old Jory\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/lute-girl\",\"name\":\"Ilsa the Lutist\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Ilsa the Lutist knows something about the dark lighthouse.\"}],\"lastKnownTravel\":\"Travel: Bram traveled to Tavern. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/tavern,chars/tamsin:20/21@locations/tavern\",\"worldSequence\":84},\"summary\":\"Committed 2 changes.\"}"
+}

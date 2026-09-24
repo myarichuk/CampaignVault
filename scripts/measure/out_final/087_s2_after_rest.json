@@ -1,0 +1,23 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 67: after rest.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/tavern,chars/tamsin:20/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s2-e44",
+     "summary": "Morning chowder at the tavern.",
+     "involvedEntityIds": [
+      "chars/tamsin"
+     ],
+     "locationId": "locations/tavern"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":1,\"summary\":[\"Novel beat (0.44): new info \u2192 Important/Core memory, maybe a plot_thread.\"],\"committedIds\":[\"events/s2-e44\"],\"scenes\":[{\"location\":{\"id\":\"locations/tavern\",\"name\":\"Tavern\",\"description\":\"The tavern of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/bell-square\",\"description\":\"Path to the bell square\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/rhel\",\"name\":\"Captain Rhel\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/marta\",\"name\":\"Marta the Innkeeper\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/old-jory\",\"name\":\"Old Jory\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/lute-girl\",\"name\":\"Ilsa the Lutist\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Ilsa the Lutist knows something about the dark lighthouse.\"}],\"activeCombat\":false}],\"partyFingerprint\":\"chars/bram:24/24@locations/tavern,chars/tamsin:20/21@locations/tavern\",\"worldSequence\":59},\"summary\":\"Committed 1 changes.\"}"
+}

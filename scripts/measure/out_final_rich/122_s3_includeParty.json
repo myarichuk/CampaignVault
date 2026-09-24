@@ -1,0 +1,24 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 92: includeParty.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/warehouse,chars/tamsin:17/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s3-e61",
+     "summary": "Bandaging after the fight.",
+     "involvedEntityIds": [
+      "chars/tamsin"
+     ],
+     "locationId": "locations/warehouse"
+    }
+   ],
+   "includeParty": true
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":1,\"summary\":[\"Novel beat (0.34): new info \u2192 Important/Core memory, maybe a plot_thread.\"],\"committedIds\":[\"events/s3-e61\"],\"partyDelta\":[{\"entityId\":\"chars/bram\",\"name\":\"Bram\",\"initiative\":{\"behavioralTension\":9}}],\"worldSequence\":81},\"summary\":\"Committed 1 changes.\"}"
+}

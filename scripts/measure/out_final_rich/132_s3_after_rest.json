@@ -1,0 +1,23 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 101: after rest.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/tavern,chars/tamsin:17/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s3-e66",
+     "summary": "Morning chowder at the tavern.",
+     "involvedEntityIds": [
+      "chars/tamsin"
+     ],
+     "locationId": "locations/tavern"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":1,\"summary\":[\"Novel beat (0.44): new info \u2192 Important/Core memory, maybe a plot_thread.\"],\"committedIds\":[\"events/s3-e66\"],\"guidanceHints\":[\"Use travel and rest to advance time \u2014 hunger/thirst/social_drive accrue automatically for the hours spent, and the full state-decay tick (memories fade, rumors age, transient NPCs evict, climate exposure, faction/plot evolution) fires immediately afterward, regardless of whether the hours crossed midnight. Natural pacing between major scenes. Custom needs you've invented (e.g. 'homesickness', 'bloodlust') never move on their own \u2014 the engine doesn't know their meaning \u2014 so commit an explicit need change for them yourself when a long journey or rest narratively warrants it. Example: {\\\"$type\\\": \\\"travel\\\", \\\"characterId\\\": \\\"chars/grog\\\", \\\"destinationLocationId\\\": \\\"locs/capital-gate\\\"}\"],\"scenes\":[{\"location\":{\"id\":\"locations/tavern\",\"name\":\"Tavern\",\"description\":\"The tavern of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/bell-square\",\"description\":\"Path to the bell square\",\"travelCostHours\":0.25}],\"lastVisitedDay\":1},\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/rhel\",\"name\":\"Captain Rhel\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/marta\",\"name\":\"Marta the Innkeeper\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/old-jory\",\"name\":\"Old Jory\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/lute-girl\",\"name\":\"Ilsa the Lutist\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Ilsa the Lutist knows something about the dark lighthouse. Grew up in town;\u2026\"}],\"activeCombat\":false}],\"partyFingerprint\":\"chars/bram:14/24@locations/tavern,chars/tamsin:17/21@locations/tavern\",\"worldSequence\":89},\"summary\":\"Committed 1 changes.\"}"
+}

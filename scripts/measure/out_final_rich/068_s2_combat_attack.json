@@ -1,0 +1,34 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 54: combat attack.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/warehouse,chars/tamsin:20/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/bram",
+     "actionType": "Attack",
+     "actionName": "Mace",
+     "targetIds": [
+      "chars/thug-b"
+     ]
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s2-e35",
+     "summary": "Exchange 3: steel in the salt dust.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/thug-a",
+      "chars/thug-b"
+     ],
+     "locationId": "locations/warehouse"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Mace vs Club Thug: Missed. Attack 9 vs AC 12. [9] = 9\",\"Echoes a recent event (0.95): Trivial or no knowledge_update.\"],\"committedIds\":[\"events/s2-e35\"],\"cards\":[{\"id\":\"chars/thug-b\",\"name\":\"Club Thug\",\"mood\":\"Content\",\"traits\":\"patient, dry humor, keeps promises\",\"wants\":\"a quiet season, the lamp relit\",\"fears\":\"the sea at night, debt\",\"notes\":\"Club Thug knows something about the dark lighthouse. Grew up in town; owes the chapel a favor and never talks about the storm of '09.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}}}],\"worldSequence\":47},\"summary\":\"Committed 2 changes.\"}"
+}

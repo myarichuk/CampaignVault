@@ -1,0 +1,8 @@
+{
+ "tool": "combat",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "action": "next"
+ },
+ "text": "{\"success\":true,\"data\":{\"locationId\":\"locations/warehouse\",\"round\":1,\"combatants\":[{\"characterId\":\"chars/bram\",\"initiative\":17.1,\"hasActedThisRound\":true,\"actionBudget\":{\"action\":0,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/tamsin\",\"initiative\":16.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/thug-b\",\"initiative\":13.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/thug-a\",\"initiative\":10.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true}],\"activeTurnId\":\"chars/tamsin\",\"isActive\":true},\"summary\":\"Advanced to turn of chars/tamsin (Round 1).\"}"
+}

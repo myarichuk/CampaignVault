@@ -1,0 +1,34 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 52: combat attack.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/warehouse,chars/tamsin:20/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/tamsin",
+     "actionType": "Attack",
+     "actionName": "Shortsword",
+     "targetIds": [
+      "chars/thug-a"
+     ]
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s2-e33",
+     "summary": "Exchange 1: steel in the salt dust.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/thug-a",
+      "chars/thug-b"
+     ],
+     "locationId": "locations/warehouse"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Shortsword vs Knife Thug: Missed. Attack 8 vs AC 12. [8] = 8\",\"Novel beat (0.31): new info \u2192 Important/Core memory, maybe a plot_thread.\"],\"committedIds\":[\"events/s2-e33\"],\"cards\":[{\"id\":\"chars/thug-a\",\"name\":\"Knife Thug\",\"mood\":\"Content\",\"traits\":\"patient, dry humor, keeps promises\",\"wants\":\"a quiet season, the lamp relit\",\"fears\":\"the sea at night, debt\",\"notes\":\"Knife Thug knows something about the dark lighthouse. Grew up in town; owes the chapel a favor and never talks about the storm of '09.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}}}],\"context\":[\"Likely to act next: Bram (chars/bram).\"],\"worldSequence\":45},\"summary\":\"Committed 2 changes.\"}"
+}

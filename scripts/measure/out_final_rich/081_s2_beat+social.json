@@ -1,0 +1,36 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 62: beat+social.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/tavern,chars/tamsin:20/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s2-e40",
+     "summary": "Captain Rhel trades gossip about the smugglers (s2).",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/rhel"
+     ],
+     "locationId": "locations/tavern"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/rhel",
+     "newMood": "amused"
+    },
+    {
+     "$type": "relationship",
+     "characterId": "chars/rhel",
+     "targetId": "chars/tamsin",
+     "reason": "Captain Rhel trades gossip about the smugglers (s2).",
+     "delta": 3
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":3,\"summary\":[\"Novel beat (0.38): new info \u2192 Important/Core memory, maybe a plot_thread.\",\"Relationship from chars/rhel to chars/tamsin is now 6 (clamped -100 to 100).\"],\"committedIds\":[\"events/s2-e40\"],\"npcs\":[{\"characterId\":\"chars/rhel\",\"name\":\"Captain Rhel\",\"currentMood\":\"amused\"}],\"context\":[\"Likely to act next: Marta the Innkeeper (chars/marta).\"],\"worldSequence\":55},\"summary\":\"Committed 3 changes.\"}"
+}

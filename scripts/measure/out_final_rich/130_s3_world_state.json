@@ -1,0 +1,13 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 100: world state.",
+   "partyLocationId": "locations/tavern",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/tavern,chars/tamsin:17/21@locations/tavern",
+   "includeWorldState": true
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":false,\"changesProcessed\":0,\"context\":[\"Likely to act next: Bram (chars/bram).\"],\"worldStateDelta\":{\"time\":{\"epoch\":\"Current Era\",\"year\":1492,\"month\":1,\"day\":1,\"hour\":22,\"totalDaysElapsed\":0,\"formattedDate\":\"Day 1, Month 1, Year 1492 (Current Era) \u2014 Dusk\"},\"pressureUnchanged\":true},\"worldSequence\":88},\"summary\":\"State refreshed.\"}"
+}

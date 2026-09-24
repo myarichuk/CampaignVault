@@ -1,0 +1,34 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S2 beat 53: combat attack.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/warehouse,chars/tamsin:20/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/thug-a",
+     "actionType": "Attack",
+     "actionName": "Knife",
+     "targetIds": [
+      "chars/tamsin"
+     ]
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s2-e34",
+     "summary": "Exchange 2: steel in the salt dust.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/thug-a",
+      "chars/thug-b"
+     ],
+     "locationId": "locations/warehouse"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Knife vs Tamsin: Missed. Attack 12 vs AC 14. [12] = 12\",\"Echoes a recent event (0.96): Trivial or no knowledge_update.\"],\"committedIds\":[\"events/s2-e34\"],\"context\":[\"Likely to act next: Bram (chars/bram).\"],\"worldSequence\":46},\"summary\":\"Committed 2 changes.\"}"
+}

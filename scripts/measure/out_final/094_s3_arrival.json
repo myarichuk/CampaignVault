@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 72: arrival.",
+   "partyLocationId": "locations/harbor",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/bell-square,chars/tamsin:20/21@locations/bell-square",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/harbor"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/harbor"
+    }
+   ],
+   "fullDetailLocationId": "locations/harbor"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/9508c01e-1334-4f31-b2a7-460985eb5232\",\"events/9f0cedb8-d952-473f-a422-e806aa0889a3\"],\"narrativeReminder\":\"Echoes a recent event (0.95): Trivial or no knowledge_update.\",\"cards\":[{\"id\":\"chars/oda\",\"name\":\"Oda the Harbormaster\",\"mood\":\"Content\",\"stance\":\"Tamsin: neutral (10)\",\"notes\":\"Oda the Harbormaster knows something about the dark lighthouse.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}}}],\"fullScene\":{\"location\":{\"id\":\"locations/harbor\",\"name\":\"Harbor\",\"description\":\"The harbor of a small fishing town; salt, tar and gulls.\",\"type\":\"District\",\"exits\":[{\"targetLocationId\":\"locations/bell-square\",\"description\":\"Path to the bell square\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/lighthouse\",\"description\":\"Path to the lighthouse\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/warehouse\",\"description\":\"Path to the warehouse\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/oda\",\"name\":\"Oda the Harbormaster\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\"},{\"id\":\"chars/fenn\",\"name\":\"Fenn the Netmender\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Fenn the Netmender knows something about the dark lighthouse.\"},{\"id\":\"chars/dock-guard\",\"name\":\"Dock Guard Hal\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Dock Guard Hal knows something about the dark lighthouse.\"}],\"recentEventSummaries\":[{\"summary\":\"S3 beat 72: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"summary\":\"S2 beat 59: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Harbor. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/harbor,chars/tamsin:20/21@locations/harbor\",\"worldSequence\":63},\"summary\":\"Committed 2 changes.\"}"
+}

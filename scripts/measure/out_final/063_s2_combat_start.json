@@ -1,0 +1,15 @@
+{
+ "tool": "combat",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "action": "start",
+  "locationId": "locations/warehouse",
+  "combatantIds": [
+   "chars/tamsin",
+   "chars/bram",
+   "chars/thug-a",
+   "chars/thug-b"
+  ]
+ },
+ "text": "{\"success\":true,\"data\":{\"locationId\":\"locations/warehouse\",\"round\":1,\"combatants\":[{\"characterId\":\"chars/thug-b\",\"initiative\":16.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/tamsin\",\"initiative\":13.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/bram\",\"initiative\":10.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true},{\"characterId\":\"chars/thug-a\",\"initiative\":4.1,\"hasActedThisRound\":false,\"actionBudget\":{\"action\":1,\"bonus\":1},\"reactionAvailable\":true}],\"activeTurnId\":\"chars/thug-b\",\"isActive\":true},\"summary\":\"Combat started at locations/warehouse with 4 combatants.\"}"
+}

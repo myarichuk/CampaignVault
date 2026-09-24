@@ -1,0 +1,34 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 20: combat attack.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/warehouse,chars/tamsin:21/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/thug-b",
+     "actionType": "Attack",
+     "actionName": "Club",
+     "targetIds": [
+      "chars/bram"
+     ]
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s1-e13",
+     "summary": "Exchange 3: steel in the salt dust.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/thug-a",
+      "chars/thug-b"
+     ],
+     "locationId": "locations/warehouse"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Club vs Bram: Missed. Attack 8 vs AC 16. [8] = 8\",\"Echoes a recent event (0.95): Trivial or no knowledge_update.\"],\"committedIds\":[\"events/s1-e13\"],\"worldSequence\":17},\"summary\":\"Committed 2 changes.\"}"
+}

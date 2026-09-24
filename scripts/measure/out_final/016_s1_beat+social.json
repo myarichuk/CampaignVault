@@ -1,0 +1,36 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 16: beat+social.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/warehouse,chars/tamsin:21/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "event",
+     "eventId": "events/s1-e10",
+     "summary": "Vess denies everything, too quickly.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/vess"
+     ],
+     "locationId": "locations/warehouse"
+    },
+    {
+     "$type": "mood",
+     "characterId": "chars/vess",
+     "newMood": "hostile"
+    },
+    {
+     "$type": "relationship",
+     "characterId": "chars/vess",
+     "targetId": "chars/tamsin",
+     "reason": "Vess denies everything, too quickly.",
+     "delta": -5
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":3,\"summary\":[\"Novel beat (0.17): new info \u2192 Important/Core memory, maybe a plot_thread.\",\"Relationship from chars/vess to chars/tamsin is now \u200e-5 (clamped -100 to 100).\"],\"committedIds\":[\"events/s1-e10\"],\"npcs\":[{\"characterId\":\"chars/vess\",\"name\":\"Vess\",\"currentMood\":\"hostile\"}],\"cards\":[{\"id\":\"chars/vess\",\"name\":\"Vess\",\"mood\":\"hostile\",\"stance\":\"Tamsin: neutral (\u200e-5)\",\"notes\":\"Vess knows something about the dark lighthouse.\",\"stats\":{\"armorClass\":12,\"level\":2,\"attributes\":{\"passivePerception\":11}},\"gear\":\"Oil Ledger\"}],\"context\":[\"Likely to act next: Knife Thug (chars/thug-a).\"],\"worldSequence\":14},\"summary\":\"Committed 3 changes.\"}"
+}

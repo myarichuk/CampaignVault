@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 15: arrival.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:24/24@locations/harbor,chars/tamsin:21/21@locations/harbor",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/warehouse"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/warehouse"
+    }
+   ],
+   "fullDetailLocationId": "locations/warehouse"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/378be5fa-22db-449a-94c8-b89100a9f7f2\",\"events/48951624-9c3f-4ef6-b3f9-53d51f70f745\"],\"narrativeReminder\":\"Echoes a recent event (0.94): Trivial or no knowledge_update.\",\"fullScene\":{\"location\":{\"id\":\"locations/warehouse\",\"name\":\"Warehouse\",\"description\":\"The warehouse of a small fishing town; salt, tar and gulls.\",\"type\":\"Building\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/vess\",\"name\":\"Vess\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Vess knows something about the dark lighthouse. Grew up in town; owes the\u2026\"},{\"id\":\"chars/thug-a\",\"name\":\"Knife Thug\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Knife Thug knows something about the dark lighthouse. Grew up in town; owes the\u2026\"},{\"id\":\"chars/thug-b\",\"name\":\"Club Thug\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Club Thug knows something about the dark lighthouse. Grew up in town; owes the\u2026\"}],\"recentEventSummaries\":[{\"summary\":\"S1 beat 15: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Warehouse. \"},\"partyFingerprint\":\"chars/bram:24/24@locations/warehouse,chars/tamsin:21/21@locations/warehouse\",\"worldSequence\":13},\"summary\":\"Committed 2 changes.\"}"
+}

@@ -1,0 +1,25 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S3 beat 71: arrival.",
+   "partyLocationId": "locations/bell-square",
+   "clientPartyFingerprint": "chars/bram:14/24@locations/tavern,chars/tamsin:20/21@locations/tavern",
+   "changes": [
+    {
+     "$type": "travel",
+     "characterId": "chars/tamsin",
+     "destinationLocationId": "locations/bell-square"
+    },
+    {
+     "$type": "travel",
+     "characterId": "chars/bram",
+     "destinationLocationId": "locations/bell-square"
+    }
+   ],
+   "fullDetailLocationId": "locations/bell-square"
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Full\",\"committed\":true,\"changesProcessed\":2,\"committedIds\":[\"events/9d661b2c-d500-49ad-a798-0e63d0bc6389\",\"events/5916abfc-ed0d-4742-9590-251998d44308\"],\"fullScene\":{\"location\":{\"id\":\"locations/bell-square\",\"name\":\"Bell Square\",\"description\":\"The bell square of a small fishing town; salt, tar and gulls.\",\"type\":\"District\",\"exits\":[{\"targetLocationId\":\"locations/harbor\",\"description\":\"Path to the harbor\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/tavern\",\"description\":\"Path to the tavern\",\"travelCostHours\":0.25},{\"targetLocationId\":\"locations/chapel\",\"description\":\"Path to the chapel\",\"travelCostHours\":0.25}],\"lastVisitedDay\":0},\"isLocationAnchored\":true,\"presentNPCs\":[{\"id\":\"chars/bram\",\"name\":\"Bram\",\"currentActivity\":\"Arrived\",\"currentMood\":\"Content\",\"isPartyCompanion\":true},{\"id\":\"chars/pim\",\"name\":\"Pim the Lamplighter\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Pim the Lamplighter knows something about the dark lighthouse. Grew up in town;\u2026\"},{\"id\":\"chars/sera\",\"name\":\"Sera the Baker\",\"currentActivity\":\"Idle at default location\",\"currentMood\":\"Content\",\"notes\":\"Sera the Baker knows something about the dark lighthouse. Grew up in town; owes\u2026\"}],\"recentEventSummaries\":[{\"summary\":\"S3 beat 71: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0},{\"summary\":\"S2 beat 60: arrival.\",\"category\":\"SceneCommit\",\"dayLogged\":0}],\"lastKnownTravel\":\"Travel: Bram traveled to Bell Square. \"},\"partyFingerprint\":\"chars/bram:14/24@locations/bell-square,chars/tamsin:20/21@locations/bell-square\",\"worldSequence\":62},\"summary\":\"Committed 2 changes.\"}"
+}

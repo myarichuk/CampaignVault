@@ -1,0 +1,34 @@
+{
+ "tool": "take_turn",
+ "args": {
+  "campaignName": "saltmarsh-bell",
+  "request": {
+   "narrative": "S1 beat 22: combat attack.",
+   "partyLocationId": "locations/warehouse",
+   "clientPartyFingerprint": "chars/bram:21/24@locations/warehouse,chars/tamsin:20/21@locations/warehouse",
+   "changes": [
+    {
+     "$type": "ruleset_action",
+     "characterId": "chars/tamsin",
+     "actionType": "Attack",
+     "actionName": "Shortsword",
+     "targetIds": [
+      "chars/thug-a"
+     ]
+    },
+    {
+     "$type": "event",
+     "eventId": "events/s1-e15",
+     "summary": "Exchange 5: steel in the salt dust.",
+     "involvedEntityIds": [
+      "chars/tamsin",
+      "chars/thug-a",
+      "chars/thug-b"
+     ],
+     "locationId": "locations/warehouse"
+    }
+   ]
+  }
+ },
+ "text": "{\"success\":true,\"data\":{\"mode\":\"Delta\",\"committed\":true,\"changesProcessed\":2,\"summary\":[\"Shortsword vs Knife Thug: Missed. Attack 4 vs AC 12. [4] = 4\",\"Echoes a recent event (0.93): Trivial or no knowledge_update.\"],\"committedIds\":[\"events/s1-e15\"],\"context\":[\"Likely to act next: Bram (chars/bram).\"],\"worldSequence\":19},\"summary\":\"Committed 2 changes.\"}"
+}
