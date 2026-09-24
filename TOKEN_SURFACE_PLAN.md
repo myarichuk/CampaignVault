@@ -155,3 +155,73 @@ Live, compact JSON: `/` 19,528 · `/play` 12,497 (was 15,953) · `/build` 11,399
 - `scripts/tunnel.sh` + `ngrok/traffic-policy.yml`: one tunnel, only `/play`, `/build`, `/health` pass; refuses to expose a server without `BEARER_TOKEN`.
 
 Why not 6–8k on `/play`: what's left is parameter schemas the model needs to call the tools correctly (take_turn's refresh flags are 2.4k and carry the fingerprint/includeParty rules). The next saving is the client caching tools/list (stateful sessions), not more stubbing.
+
+## Round 4 (investigation, 2026-09-24): per-call response payloads
+
+Tool definitions are cacheable; tool *results* stay in the conversation and compound. Measured live on a copy of the local DB (worktree server, `/play`, compact JSON chars). Nothing below is implemented yet.
+
+### Measurements
+
+| Call | maeves-quest (1 session) | lyras-journey (long) |
+|---|---|---|
+| `take_turn` commit beat (one `event`) | 1,222 | 1,794 |
+| `take_turn` skill check | 792 | |
+| `take_turn` + `fullDetailLocationId` (arrival) | 7,329 (1 NPC) | 14,040 (6 NPCs) |
+| `take_turn` + `fullDetailCharacterId` | 7,120 | 8,095 |
+| `take_turn` `includeParty` Full (1 PC) | 6,524 (party) | 20,034 |
+| `start_session` | 12,352 | 31,163 (isekai-college 34,864) |
+| `get_entity` PC | 12,751 | 23,921 |
+| `get_entity` NPC / location | 7,890 / 5,511 | |
+| `search_world "Quill"` (18 hits) | 4,700 | |
+| `recall_history` | 2,546 | 2,598 |
+| `advance_world` 8h | 1,738 | |
+| `combat` start/next/end/status | 228–524 | |
+
+`take_turn` definition: 3.6k (description 1.0k, `changes` 0.5k, 15 params ~1.6k). Already tight; ~300 more by dropping rules the system prompt repeats. Low priority.
+
+### Where the chars go, ranked by (size × frequency), with accuracy risk
+
+**Every turn**
+1. **Guidance hint repeats forever** (lyras: 697 chars on *every* take_turn, pure queries included: the travel/rest hint). `GuidanceOrchestrator` reads `GuidanceLedger` but nothing writes it. Fix: record delivery after the response is built (key per session, so a new session re-teaches once). ~700/turn, ~28k per 40 turns. Risk: none; hints are designed to fire once.
+2. **Commit echo duplicates** (~30% of a 1.2k beat):
+   - novelty hint emitted twice: once in `summary[]` for the event, once as `narrativeReminder` for `narrative` (~230);
+   - `"Event logged (id: …)"` repeats `committedIds` (~65);
+   - `knownCharacterIds` repeats `npcs[].characterId` when nothing else surfaced (~40);
+   - `rateLimitTokensRemaining` every turn (Grok misread it as a token budget): send only when low;
+   - envelope `summary: "World updated with N changes and fresh state echoed."` + `tokensEst`;
+   - unrounded floats (`behavioralTension: 13.65999984741211`, needs `25.284723`): round to int / 1 dp.
+   - `narrativeReminder` "combat/status changes but no event" fires on every skill check (~150), contradicting the prompt's "pair an event if the beat matters".
+   Risk: none; all duplicates or precision noise.
+
+**Arrival / full-detail turns** (`fullScene`, get_entity location; scales with NPC count, ~1.4k per NPC)
+3. Per NPC: `needDescriptors` (~256, static definitions of stress/fatigue, repeated per NPC *and* in a scene-level `needDescriptorLegend` ~400); `behavioralSummary` (~240, restates currentActivity + mood + last event); engine internals in `systemStats` (`willpower`, `morale`, `temperature`, `warmthRating`, `movementModifier`). `seededNpcIds` repeats `presentNPCs[].id`. Fix: descriptors once per session for custom needs only; drop the rest in the projection (query layer, per CLAUDE.md). ~40% of a scene. Risk: low; keep AC/level/HP in systemStats.
+4. `scenePressure` templates: the POI "SUGGESTION" carries a ~800-char two-change example; the discovery "NARRATIVE PROMPT" suggests generic text ("disturbed terrain, overturned stones") for a counting-house. Fix: one line each, template via `lookup kind=help`. Risk: low.
+
+**Session start / reseed / PC detail** (unbounded growth)
+5. **PC `psychology.memories` shipped whole** in `start_session`, Full `includeParty` and `get_entity`: 12–14k on long campaigns and growing every session; keyed by topic with `topic` repeated inside. `get_entity` also sends `relevantMemories` (1.5k), a subset of the same data. Fix: top-N by salience + `memoryCount`, full set via `memoriesOnlyCharacterId`. ~10k+ per call. Risk: **medium**: the model loses low-salience PC memories from view; the count + pointer mitigates. Needs a played-session check.
+6. **`start_session` ships the raw campaign doc**: `initiativeSurfaced` 2–11k, `pressureCooldowns`, `recentInitiativeSlotNpcIds` (engine bookkeeping, same leak `list_campaigns` had in R4). Fix: summary projection. Risk: none.
+   Also: its hint says "call get_entity with that location ID" (contradicts the prompt; the PC's `currentLocationId` is already known). Say "take_turn fullDetailLocationId=<id>" with the id filled in.
+7. `get_entity` NPC `recentInteractions` 3.7–4.2k (10 events with UUID ids and `involved` lists). Cap at 5, drop `involved` and default `category`. ~2k. Risk: low.
+
+**Other tools**
+8. `advance_world`: `worldPressure` repeats `simulatorEvents` (7 "memory fading" lines, ~700); `newTime` carries `id`, `lastUpdated`, `unsimulatedHours`. Risk: none.
+9. `search_world`: 18 hits for "Quill", most unrelated (semantic noise). Cap ~8 or score threshold. Risk: low.
+10. `recall_history`: per entry `timestamp`, `sessionId`, `noveltyScore`, `campaignName`. ~120/entry. Risk: none.
+
+### Functional bugs found while measuring (not token-only)
+
+- **F1 Fire Bolt did nothing.** `ruleset_action` `Spell` with `targetIds` and no `parameters`, in active combat → `SpellResolutionHelper.InferMode` falls to `Utility` → "Utility spell cast outside combat", no roll, action consumed. Fix: infer attack/save/damage from the SRD spell entry, or fail with a fix hint when `targetIds` is set and the mode is Utility.
+- **F2 Component warning on every spell** (~290): `RulesetActionHandler` flags any status with no `ConditionName` (Mage Armor) as a possible component blocker, on every cast. Fix: warn once per status, or only for statuses whose name/tags look restrictive.
+- **F3** Skill checks trigger the "combat/status changes but no event" reminder (see 2).
+
+### Proposed order
+
+- [ ] P1 Guidance ledger write (item 1) + commit echo dedup (item 2). Every turn, zero accuracy risk.
+- [ ] P2 `start_session` campaign projection + corrected hint (item 6).
+- [ ] P3 Scene/NPC projection (items 3, 4, 7).
+- [ ] P4 PC memory top-N (item 5): behind a played-session check.
+- [ ] P5 advance_world / search_world / recall_history (items 8–10).
+- [ ] P6 F1–F2.
+- [ ] Each phase: response-size tests pinned like `ToolListBudgetTests`, full suite green.
+
+Open question: turn mix (commit beats vs arrivals vs full-detail) per session, from the event log, to confirm the ranking.
