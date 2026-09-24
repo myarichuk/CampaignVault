@@ -93,9 +93,53 @@ After all levers, arrivals are about **2.1k in both sessions** (7.1k and 8.1k be
 
 Not simulated: the Round 4 guidance-hint repeat (item 1; no guidance hint fired in the scratch run) and `fullDetailCharacterId` (4k, growing, one call per session here).
 
+## Need-driven responses (beyond the trims)
+
+Today every turn echoes state that happens to be nearby. The next step is for each turn to answer only "what does the model need for *this* beat?", plus a per-session ledger so nothing it already has gets re-sent. Pull stays available for everything else (`fullDetailCharacterId`, `includeParty`, `includeWorldState`, `recall_history`).
+
+The order is commit, then narrate (system prompt: "Commit via take_turn, then narrate"), so anything a commit returns arrives before the prose for that beat. The catch is that the model authors the NPC's reaction (mood, knowledge, relationship) *in* the commit, so the card has to arrive one step earlier than the first commit that involves the NPC.
+
+**Offline simulation** (`scripts/measure/take_turn_needs.py`, starting from the trims minus A2/C3). Scratch NPCs have no traits, so every card gets a synthetic ~120-char traits/wants/fears set:
+
+| | S1 | S2 |
+|---|---|---|
+| Baseline | 86.2k | 106.5k |
+| Trims A–D | 35.1k | 40.1k |
+| N1: roster + cards on arrival, once per session | 25.0k (−71%) | 28.1k (−74%) |
+| N2: roster on arrival, card on first commit involving the NPC | 25.4k | 28.1k |
+
+Arrivals go to 1.0–1.3k and beats to 0.4–0.7k; a first-contact beat costs about +250 in N2. Totals are close because the script talks to most NPCs present. In real play, crowds are mostly never engaged, which favors N2, but N2 has the timing problem above.
+
+**Recommended shape (N3 hybrid):**
+- **Scene:** a roster line per NPC: `"Oda the Harbormaster [chars/oda]: nervous, mending nets | <note ≤80>"`. Description and events on the first visit this session only; pressure and plot threads always.
+- **Cards** (traits, wants, fears, mood, relationship to the PC, AC/level, needs ≥60, top memories) are sent once per session:
+  - on arrival, for *spotlight* NPCs: quest/plot-linked, active initiative, non-zero relationship with the party, or `keepAlive`;
+  - on the first commit that involves any other NPC. Prompt guidance: open a first contact with an approach beat (event only) and author reactions after the card arrives.
+- **Anticipated memories, not routine ones:** on a commit involving NPC X (or the PC on a knowledge beat), match the event summary against X's memories by semantic vector (`MemoryNode` has one; `EventNoveltyAdvisor` already embeds summaries). Push ≤2 memories above a similarity threshold that haven't been delivered this session. That's the "Oda remembers Tamsin asked about the ledger yesterday" moment, sent only when the topic comes up.
+- **Other edge triggers, one line each and only on the crossing:**
+  - relationship tier change;
+  - a need crossing 60;
+  - combat start (combatant AC/HP roster, once);
+  - an NPC or item linked to an open quest objective.
+- **Echo:** `npcs[]` only for involved NPCs whose mood or activity changed. No bystander tension echoes and no party entries (the fingerprint/`partyDelta` covers them).
+- **Ledger:** keys on `TurnCursor` (`card:<id>@<hash>`, `mem:<id>`, `loc:<id>`), generalizing the existing `SurfacedMemoryHintTopicsByEntityId`. Cleared by `start_session`, `forceFullReseed` and the reseed interval. The opencode plugin should send `forceFullReseed` after it compacts, since the model loses the cards then.
+
+Risk: medium, since a stale ledger means a model without the card. Mitigations: roster lines always name everyone, a card changes hash when the NPC changes, and the clearing triggers above. Replaces A2.
+
 ## Functional bugs found while measuring
 
-- **F1 Party splits on travel.** Each traveler rolls its own encounter (`TravelChangeHandler` → `_resolver.EvaluateAsync` per change). Twice in 3 sessions, even on 15-minute hops, one member was "interrupted" and the other arrived alone. The model sees one summary line; from there every travel fails with "No LocationExit from <other location>". Fix: treat all travel changes in one batch with the same destination as one group, with one roll and a shared outcome.
+- **F1 Accidental party splits on travel.** Losing a party member can be a good feature: rare, with a stated reason (dense fog, a storm, a night crossing of a marsh). Today it isn't that feature; it's an accident:
+  - Each traveler rolls its own encounter (`TravelChangeHandler` → `_resolver.EvaluateAsync` per change).
+  - `EncounterResolver` rolls each 6-hour bucket at the full chance, even when it is partial, so a 15-minute hop through town rolls like a 6-hour road.
+  - There is no weather or visibility state, so nothing gives a split a reason.
+
+  In 3 sessions, one member was "interrupted" twice; the other arrived alone. The model got one generic line, and from there every travel failed with "No LocationExit from <other location>".
+
+  Fix:
+  - Group same-destination travel changes in a batch into one party move: one roll, shared outcome.
+  - Prorate the chance for partial buckets.
+  - Make separation an explicit, rare outcome of that roll. Gate it on a reason: wilderness terrain, night, or an optional model-supplied `hazard` on travel ("dense fog"). Never on in-town exits.
+  - Report it plainly: `"SEPARATED: Bram lost the party in the fog; he is at <route/origin>. Reunite by traveling there or waiting."` The lost member lands somewhere findable, not silently at the old location.
 - **F2 Party travel advances the clock once per traveler.** `time.AdvanceHours(hoursTraveled)` runs per change. Verified: a 1-hour exit, PC plus companion, went 06:00 → 08:00. Fix: advance once per group (same grouping as F1).
 - **F3 The companion's activity stays "Traveling" after arrival** (`NewActivity = tc.Narrative ?? "Traveling"`). Seen in every later scene card. Fix: "Arrived" / keep the prior activity.
 - **F4 `needDescriptors` repeat on every NPC** instead of the scene legend `SceneNpcPresenceFactory` describes. Check how descriptors get stamped onto NPC docs (world_build defaults?) and filter out the campaign-wide keys.
@@ -108,8 +152,8 @@ Not simulated: the Round 4 guidance-hint repeat (item 1; no guidance hint fired 
 - [ ] T2 **Scene chrome, events, pressure** (A4, A5, A6, F5). `SceneView`, `SceneVulnerabilityPressureContributor`, `SceneVulnerabilityHeuristics`; example text moves to `lookup kind=help`.
 - [ ] T3 **Beat trims** (C1, C2, D1). `EventNoveltyAdvisor` (skip engine-generated events, one per turn), commit echo, `McpResponseCleaner` `tokensEst`. Also Round 4 item 1 (guidance ledger write), since that path is being touched anyway.
 - [ ] T4 **Reseed correctness** (B1, F6). `advance_world` returns and stores `partyFingerprint`; HP-only drift sends `partyDelta`, location drift stays Full.
-- [ ] T5 **Travel bugs** (F1, F2, F3). Group same-destination travel changes in one batch.
-- [ ] T6 **Seen-NPC stubs** (A2). Card hashes on `TurnCursor`, cleared by `start_session` (`PrimeTurnCursorAsync`), `forceFullReseed` and the reseed interval. Last, because it's the only lever with medium risk and the smallest saving after T1.
+- [ ] T5 **Travel** (F1, F2, F3). Party move as one group: one roll, one clock advance. Prorated buckets. Separation as a rare outcome that needs a reason (optional `hazard`), reported explicitly.
+- [ ] T6 **Need-driven responses** (N3, replaces A2). Delivery ledger on `TurnCursor`; roster lines; spotlight cards on arrival; first-commit briefing; semantic memory push ≤2; edge-trigger lines; echo only for changed, involved NPCs. Prompt: open a first contact with an approach beat. Plugin: `forceFullReseed` after compaction. Done after T1–T4 so the card format is settled.
 - [ ] T7 Response-size budget tests like `ToolListBudgetTests`: arrival, beat, after-rest; plus the full suite green.
 - [ ] T8 Rerun `scripts/measure/take_turn_replay.py` and compare against this page.
 - [ ] T9 (user) One played session on `/play`: does the DM still use NPC stats, memories and pressure correctly with the lean cards?
@@ -122,5 +166,6 @@ Skipped: C3 fingerprint hash (small, and loses a readable readout).
 - `take_turn_replay.py`: scratch world plus 3 scripted sessions; writes `out/`.
 - `take_turn_breakdown.py <s1|s2>`: field composition.
 - `take_turn_whatif.py <s1|s2>`: the lever table above.
+- `take_turn_needs.py <s1|s2> [turn N1|N2]`: the need-driven simulation.
 
 It only talks to a server you start on an empty `CAMPAIGN_DB_PATH`. Session 3 of the replay will stay unreliable until F1 is fixed.
