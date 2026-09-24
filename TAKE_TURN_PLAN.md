@@ -126,6 +126,35 @@ Arrivals go to 1.0–1.3k and beats to 0.4–0.7k; a first-contact beat costs ab
 
 Risk: medium, since a stale ledger means a model without the card. Mitigations: roster lines always name everyone, a card changes hash when the NPC changes, and the clearing triggers above. Replaces A2.
 
+### Context contributors: generalizing beyond conversation
+
+Conversation → psychology + memories is one case of a general rule: **the commit's change types say what the beat is about, so they say what context the next prose needs.** Build it the way pressure is built. Each `IContextContributor` watches the applied changes (and the refresh flags) and offers a small item keyed for the ledger. The turn assembles items under a budget of about 800 chars; overflow becomes one pointer line ("more: fullDetailCharacterId chars/oda"). Plugins register contributors through the SDK, as they do guidance contributors, so a crafting mode can push recipe state on `crafting_step`.
+
+| Beat (detected from) | Pushed once, or when it changes | Not pushed |
+|---|---|---|
+| First contact / conversation (`event` with NPC, `mood`, `relationship`) | Card: traits, wants, fears, stance toward PC, relationship tier, faction and party standing; ≤2 topic-matched memories; rumors the NPC holds that match the topic | Stats, needs < 60 |
+| Trade (`item` transfer, gold, `UseItem` on a merchant) | Party gold; the merchant's carried items (names, prices if set) | Merchant psychology beyond mood |
+| Search / investigate (`SkillCheck` Investigation/Perception at a location) | Persisted details of this location, items held by the location (hidden ones on success), plot threads anchored here | Roster |
+| Stealth (`SkillCheck` Stealth) | Passive Perception of present NPCs, lighting/time | Cards |
+| Spell (`ruleset_action` Spell) | Caster's remaining slots, concentration | |
+| Combat (`combat start`, attacks) | Combatant AC/HP/conditions roster once, turn order; after that only changes | Memories, cards |
+| Knowledge / recall (`knowledge_update` on the PC, lore question) | Topic-matched PC memories and lore entries (≤2 each) | |
+| Quest-linked entity touched | Objective state line | |
+| Travel / arrival | Roster, first-visit description, spotlight cards, pressure | Revisit description, events |
+| Rest (`advance_world`, rest) | HP/slots restored, needs crossing thresholds, overnight events | |
+
+Mostly this *moves* chars from every turn to the turns that use them. Its value is accuracy as much as size: the trade beat gets gold without an `includeParty`, and the stealth beat gets passive Perception without a `get_entity`.
+
+### Points of interest: materialize on use, don't pre-seed
+
+Probe (same street with and without 6 POI names): the arrival goes from **1,362 to 3,228 chars**. The names cost 130. The rest is a ~1.1k "these PoIs have no materialized details… use location_update" SUGGESTION on every arrival at that location. It lists the placeholders, includes a JSON example, and has a doubled `SUGGESTION: SUGGESTION:` prefix.
+
+A POI name without details adds nothing the location description doesn't ("a market street of vendors: fish, barrels, herbs, candles"). It also nudges the model to reuse those exact names instead of answering the player. What matters is **consistency after something is narrated**: the alchemist the PC visited must still be there next time. Proposal:
+- **Improvise, then persist on use.** "I look for an alchemist" → the model decides from the description and the settlement's size, narrates, and persists only if the party engages: `location_update` POI with details, or a child location plus an NPC if they go in. The next visit shows it, because it now has details.
+- **A POI exists on the wire only if it has details**, from prep (authored module content: the notice board's posters, the hidden trapdoor) or from play. Names-only placeholders are ignored by the scene and the nag. `world_build` stays compatible.
+- **Drop the per-arrival materialize nag.** The rule moves to the prompt and `lookup help` ("persist places and objects the party interacts with"). The "promote a used PoI to a child location" suggestion stays, since it fires on real use.
+- **Optional: an existence oracle.** For questions where "is there one?" is genuinely uncertain, the model sets a likelihood (likely/even/unlikely from town size and context) and the engine rolls. This keeps the DM from always saying yes, the same honesty `ruleset_action` gives rolls. Worth a played test before building.
+
 ## Functional bugs found while measuring
 
 - **F1 Accidental party splits on travel.** Losing a party member can be a good feature: rare, with a stated reason (dense fog, a storm, a night crossing of a marsh). Today it isn't that feature; it's an accident:
@@ -153,7 +182,8 @@ Risk: medium, since a stale ledger means a model without the card. Mitigations: 
 - [ ] T3 **Beat trims** (C1, C2, D1). `EventNoveltyAdvisor` (skip engine-generated events, one per turn), commit echo, `McpResponseCleaner` `tokensEst`. Also Round 4 item 1 (guidance ledger write), since that path is being touched anyway.
 - [ ] T4 **Reseed correctness** (B1, F6). `advance_world` returns and stores `partyFingerprint`; HP-only drift sends `partyDelta`, location drift stays Full.
 - [ ] T5 **Travel** (F1, F2, F3). Party move as one group: one roll, one clock advance. Prorated buckets. Separation as a rare outcome that needs a reason (optional `hazard`), reported explicitly.
-- [ ] T6 **Need-driven responses** (N3, replaces A2). Delivery ledger on `TurnCursor`; roster lines; spotlight cards on arrival; first-commit briefing; semantic memory push ≤2; edge-trigger lines; echo only for changed, involved NPCs. Prompt: open a first contact with an approach beat. Plugin: `forceFullReseed` after compaction. Done after T1–T4 so the card format is settled.
+- [ ] T5b **POIs** (materialize on use): details-only POIs on the wire, drop the unmaterialized-PoI nag (and its doubled prefix), prompt/help rule. Existence oracle only after a played test.
+- [ ] T6 **Need-driven responses** (N3 + context contributors table, replaces A2). Delivery ledger on `TurnCursor`; roster lines; spotlight cards on arrival; first-commit briefing; semantic memory push ≤2; edge-trigger lines; echo only for changed, involved NPCs. Prompt: open a first contact with an approach beat. Plugin: `forceFullReseed` after compaction. Done after T1–T4 so the card format is settled.
 - [ ] T7 Response-size budget tests like `ToolListBudgetTests`: arrival, beat, after-rest; plus the full suite green.
 - [ ] T8 Rerun `scripts/measure/take_turn_replay.py` and compare against this page.
 - [ ] T9 (user) One played session on `/play`: does the DM still use NPC stats, memories and pressure correctly with the lean cards?
