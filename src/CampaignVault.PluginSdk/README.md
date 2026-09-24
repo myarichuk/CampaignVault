@@ -27,7 +27,7 @@ the main repository for the full plugin architecture, trust model, and quick-sta
   turn committed). The host namespaces your hint keys, admits at most one plugin hint per response, and
   delivers each key once per session (again after `RepeatAfterDays`, or in a new session); still, fire on
   an edge (a `ModeTransitionChange` entering your mode just landed), not on a level.
-- Implement `IPluginContextContributor` to push one-line facts the next prose needs on the beat that uses
+- (0.4.0) Implement `IPluginContextContributor` to push one-line facts the next prose needs on the beat that uses
   them (recipe state on your crafting verb, a meter on your mode's action). It receives a Raven-free
   `IContextTurn` (campaign, committed changes, involved entity IDs, party IDs, the party's location) after
   every committed take_turn. Each `PluginContextItem` key is namespaced and delivered once per session, so
@@ -72,7 +72,20 @@ the main repository for the full plugin architecture, trust model, and quick-sta
 
 All of this is additive; plugins built against 0.2.0 keep working.
 
+## Hidden content and hazards (0.4.0)
+
+- `LocationExit`, `Item` and `ItemDetail` gain `Hidden` and `DiscoverDc`; exits also gain `Intent`. Hidden
+  entries stay off the wire until a Perception/Investigation check (or passive Perception on arrival)
+  meets the DC, or the party uses or takes them.
+- New `Hazard` (name, trigger enter/take, detect/disarm DC, effect, save DC/ability, intent) on exits,
+  items and `Location.Hazards`; the host sets detected/disarmed/spent. New world-change fields:
+  `addHazard` on a location update, `hazard` and `hidden`/`discoverDc` on item and upsert changes.
+- `IPluginContextContributor` (see above) is new in this version.
+
 ## Breaking Changes
+
+**0.4.0** — `CampaignConfig.PointOfInterestDetailCharCap` is removed: points of interest are now ordinary
+fixture items (the host migrates existing data on startup). Drop any reference to it.
 
 **0.2.0** — `ItemCategory`, `EquipZone`, and `EquipLayer` are no longer enums. They're now open
 string-constants classes (`ItemCategories`, `EquipZones`, `EquipLayers`) so item packs can define
