@@ -93,6 +93,12 @@ their own categories/zones via YAML alone. `Item.CoreCategory`/`EquipLayer` are 
 `string?`, and `Item.EquipZones` is `List<string>`. Update any code referencing the old enum
 members (e.g. `ItemCategory.Weapon` → `ItemCategories.Weapon`).
 
+## Traits migration (0.5.0)
+
+- New `IPluginTraitsUpgrader`: migrate your own `SystemStats.Traits` keys (rename, reshape, retire) when
+  your trait schema changes. The host runs it once per character on load; keep `TryUpgrade` idempotent
+  and return `true` only when you changed something.
+
 ## License
 
 PolyForm Noncommercial 1.0.0 — see the bundled `LICENSE` file.

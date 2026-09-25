@@ -74,7 +74,7 @@ Restart MCP. Campaigns can now use `my_ruleset` with custom rules.
 Out-of-tree plugins should **PackageReference `CampaignVault.PluginSdk` only** (public nuget.org when published; local feed for development). Do **not** ProjectReference the host, do **not** ship `CampaignVault.PluginSdk.dll` beside your plugin, and do **not** rely on `InternalsVisibleTo`.
 
 ```xml
-<PackageReference Include="CampaignVault.PluginSdk" Version="0.4.0" />
+<PackageReference Include="CampaignVault.PluginSdk" Version="0.5.0" />
 ```
 
 Layout when installing into a host:
