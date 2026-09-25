@@ -22,6 +22,12 @@ public static class CanonicalId
     public const string Creatures = "creatures/";
     public const string WorldEvents = "world-events/";
 
+    private static readonly string[] AllCanonicalPrefixes =
+    [
+        Characters, Locations, Items, Factions, Quests, Rumors, Lore,
+        PlotThreads, Spells, Feats, Creatures, WorldEvents
+    ];
+
     private static readonly (string Alias, string Canonical)[] Aliases =
     [
         ("characters/", Characters),
@@ -57,10 +63,14 @@ public static class CanonicalId
     /// IDs and known aliases are rewritten as in <see cref="NormalizeAlias"/>. A truly bare ID with
     /// no slash at all (e.g. "grog") has <paramref name="canonicalPrefix"/> prepended — the kind is
     /// unambiguous here, so this closes the ambiguity instead of leaving a malformed ID stored.
-    /// Anything else that already contains a slash (a different known entity prefix like
-    /// "locations/grog", or an arbitrary pre-existing convention this helper doesn't know about) is
-    /// left untouched — coercing it could silently mask a real mismatch or mangle a valid ID into a
-    /// double-prefixed string, which is worse than leaving the ambiguity in place.
+    /// An ID that already carries a *different* known canonical prefix (e.g. "chars/grog" passed in
+    /// for an Item) is rejected rather than stored as-is: RavenDB document IDs are globally unique
+    /// per database regardless of collection, so silently storing an Item under a Character's ID
+    /// would overwrite that Character document at the storage layer — or, if the ID is already
+    /// tracked under its real type in the same session, surface later as an opaque RavenDB
+    /// "expected type X but got Y" crash deep in an unrelated query. An arbitrary slash-containing ID
+    /// this helper doesn't recognize at all (some other convention) is still left untouched — only a
+    /// collision with a *known* prefix is rejected.
     /// </summary>
     public static string Normalize(string? id, string canonicalPrefix)
     {
@@ -80,6 +90,18 @@ public static class CanonicalId
             return aliased;
         }
 
-        return id.Contains('/') ? id : canonicalPrefix + id;
+        foreach (var known in AllCanonicalPrefixes)
+        {
+            if (!known.Equals(canonicalPrefix, StringComparison.OrdinalIgnoreCase)
+                && aliased.StartsWith(known, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException(
+                    $"ID '{id}' carries the '{known}' prefix but is being stored as a '{canonicalPrefix}' entity. " +
+                    "Refusing to store under a foreign-kind ID — this would collide with (and can silently overwrite) " +
+                    $"an existing '{known}' document at that same ID. Use a '{canonicalPrefix}' ID instead.");
+            }
+        }
+
+        return aliased.Contains('/') ? aliased : canonicalPrefix + aliased;
     }
 }

@@ -96,6 +96,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
             new RulesetAction
             {
                 ActionType = RulesetActionType.Attack,
+                ActionName = "Attack",
                 CharacterId = heroId,
                 TargetIds = [goblinId],
                 Parameters = new Dictionary<string, string>

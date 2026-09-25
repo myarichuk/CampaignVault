@@ -126,6 +126,12 @@ Atomic all-or-nothing; if any change fails, the entire batch rolls back — **no
 ## Required Fields (never rely on defaults)
 
 - `ruleset_action.actionType` — "Attack", "Spell", "SkillCheck", etc.
+- `ruleset_action.actionName` — free-text label (weapon/spell/skill name, e.g. `Prestidigitation`, `Investigation`, `longsword`); omitting it is now a hard schema reject, not a silent null.
+- `ruleset_action` for a Spell also needs `parameters.resolution` (e.g. `utility`); for a SkillCheck, `parameters.dc`, `parameters.resolution: check`. Example pair:
+  ```json
+  { "$type": "ruleset_action", "characterId": "chars/pc", "actionName": "Prestidigitation", "actionType": "Spell", "parameters": { "resolution": "utility" } }
+  { "$type": "ruleset_action", "characterId": "chars/pc", "actionName": "Investigation", "actionType": "SkillCheck", "parameters": { "dc": 12, "resolution": "check" } }
+  ```
 - `quest_progress.newState` — `Open`, `InProgress`, `Complete`, `Failed`, `Skipped`
 - `quest_progress` — must also include `objectiveIndex` or `objectiveName`; there's no default, and omitting both hard-fails the change (and the whole batch with it).
 - `rest.intendedHours` — always set explicitly (positive number)
@@ -170,4 +176,4 @@ Don't set `forceFullReseed: true` unless context was just compacted or a fresh s
 - [ ] Is time passing (banter, rest, travel)? → `minutesElapsed` on the top-level request (rest/travel use their own hour fields instead)
 - [ ] Did a character level up or cast a spell? → Include `ruleset_action` or `resource` spend
 - [ ] Are multiple changes happening at once? → Batch them in one `take_turn` changes array
-- [ ] Did I send all required fields? → Check actionType, newState, intendedHours, locationId
+- [ ] Did I send all required fields? → Check actionType, actionName, newState, intendedHours, locationId

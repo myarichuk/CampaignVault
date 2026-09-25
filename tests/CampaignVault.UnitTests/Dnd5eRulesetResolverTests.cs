@@ -219,6 +219,7 @@ public class Dnd5eRulesetResolverTests
             CharacterId = "char1",
             TargetIds = ["char2"],
             ActionType = RulesetActionType.Attack,
+            ActionName = "Attack",
             Parameters = new Dictionary<string, string> { ["bonus"] = "not_a_number" }
         };
 
@@ -242,7 +243,8 @@ public class Dnd5eRulesetResolverTests
         {
             CharacterId = "char1",
             TargetIds = ["char2"],
-            ActionType = RulesetActionType.Attack
+            ActionType = RulesetActionType.Attack,
+            ActionName = "Attack"
         };
 
         var output = await resolver.ResolveAsync(context, action);
