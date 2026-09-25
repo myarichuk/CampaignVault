@@ -262,8 +262,7 @@ public record FactionPresenceSummary(
 public record NpcStatLine(
     int? ArmorClass = null,
     int? Level = null,
-    Dictionary<string, float>? Attributes = null,
-    Dictionary<string, string>? Traits = null)
+    Dictionary<string, float>? Attributes = null)
 {
     public static NpcStatLine? From(SystemExtension? stats)
     {
@@ -281,8 +280,7 @@ public record NpcStatLine(
             .ToDictionary(kv => kv.Key, kv => kv.Value);
         return new NpcStatLine(
             ac, level,
-            attributes is { Count: > 0 } a ? a : null,
-            stats.Traits is { Count: > 0 } t ? t : null);
+            attributes is { Count: > 0 } a ? a : null);
     }
 }
 

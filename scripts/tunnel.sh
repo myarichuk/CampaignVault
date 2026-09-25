@@ -52,14 +52,19 @@ for _ in $(seq 1 20); do
 done
 [ -n "$public" ] || { echo "ngrok started but no public URL appeared on :4040." >&2; exit 1; }
 
+# Build the optional lines outside the heredoc: macOS bash 3.2 misparses quotes inside ${..:+..} there.
 suffix=""
-[ -n "${BEARER_TOKEN:-}" ] && suffix="?token=$BEARER_TOKEN"
+token_note=""
+if [ -n "${BEARER_TOKEN:-}" ]; then
+  suffix="?token=$BEARER_TOKEN"
+  token_note="  (?token= is for clients that can't set headers, e.g. Grok Web; prefer Authorization: Bearer)"
+fi
 cat <<EOF
 
 CampaignVault is public at $public (only /play, /build, /health pass; / is blocked)
   play connector : $public/play$suffix
   build connector: $public/build$suffix
-${BEARER_TOKEN:+  (?token= is for clients that can't set headers, e.g. Grok Web; prefer Authorization: Bearer)}
+$token_note
 Ctrl-C stops the tunnel; the server keeps running.
 EOF
 
