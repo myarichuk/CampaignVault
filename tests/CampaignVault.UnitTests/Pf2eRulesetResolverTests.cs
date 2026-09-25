@@ -164,7 +164,7 @@ public class Pf2eRulesetResolverTests
     {
         var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());
         var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "actions", 3 } } };
-        var action = new RulesetAction { CharacterId = "test-char", ActionType = RulesetActionType.Attack };
+        var action = new RulesetAction { CharacterId = "test-char", ActionName = "Attack", ActionType = RulesetActionType.Attack };
 
         var ok = resolver.TryConsumeActionSlot(state, action, out var error);
 
@@ -182,6 +182,7 @@ public class Pf2eRulesetResolverTests
         {
             CharacterId = "test-char",
             ActionType = RulesetActionType.Attack,
+            ActionName = "Attack",
             Parameters = new Dictionary<string, string> { { "actionCost", "2" } }
         };
 
@@ -200,6 +201,7 @@ public class Pf2eRulesetResolverTests
         {
             CharacterId = "test-char",
             ActionType = RulesetActionType.Attack,
+            ActionName = "Attack",
             Parameters = new Dictionary<string, string> { { "actionCost", "2" } }
         };
 
@@ -215,7 +217,7 @@ public class Pf2eRulesetResolverTests
     {
         var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());
         var state = new CombatantState { CharacterId = "test-char", ActionBudget = new Dictionary<string, int> { { "actions", 0 } } };
-        var action = new RulesetAction { CharacterId = "test-char", ActionType = RulesetActionType.Attack, IsReaction = true };
+        var action = new RulesetAction { CharacterId = "test-char", ActionName = "Attack", ActionType = RulesetActionType.Attack, IsReaction = true };
 
         var ok = resolver.TryConsumeActionSlot(state, action, out var error);
 

@@ -678,9 +678,9 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("targetIds")]
     public List<string> TargetIds { get; set; } = [];
 
-    [Description("Free-text action label: weapon name, spell name, or skill (e.g. longsword, Fireball, Detect Magic). Attacks: match heldItems for auto weapon merge.")]
+    [Description("REQUIRED (no default; omitting fails the commit). Free-text action label: weapon name, spell name, or skill (e.g. longsword, Fireball, Detect Magic). Attacks: match heldItems for auto weapon merge.")]
     [JsonPropertyName("actionName")]
-    public string ActionName { get; set; } = null!;
+    public required string ActionName { get; set; }
 
     [Description("REQUIRED (no default; omitting fails the commit). Attack, Spell, SkillCheck, SavingThrow, ContestedCheck (alias OpposedCheck), UseItem, or Recovery.")]
     [JsonPropertyName("actionType")]

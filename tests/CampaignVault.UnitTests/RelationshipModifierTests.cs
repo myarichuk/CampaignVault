@@ -104,6 +104,7 @@ public class RelationshipModifierTests
         var action = new RulesetAction
         {
             ActionType = RulesetActionType.SkillCheck,
+            ActionName = skill,
             Parameters = new Dictionary<string, string> { { "skill", skill } }
         };
 

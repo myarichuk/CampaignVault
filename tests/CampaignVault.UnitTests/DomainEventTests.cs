@@ -341,7 +341,7 @@ public class DomainEventTests
 
         var result = await Dispatch(
             [fakeRuleset, new HpChangeHandler(Substitute.For<IRollService>())], [subscriber],
-            new RulesetAction { ActionType = RulesetActionType.Attack, CharacterId = "chars/firelord", TargetIds = ["chars/aang"] });
+            new RulesetAction { ActionType = RulesetActionType.Attack, ActionName = "Attack", CharacterId = "chars/firelord", TargetIds = ["chars/aang"] });
 
         Assert.True(result.Success);
         var damaged = Assert.Single(subscriber.Received);
