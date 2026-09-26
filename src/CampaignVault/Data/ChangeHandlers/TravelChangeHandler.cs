@@ -40,8 +40,11 @@ public class TravelChangeHandler : IWorldChangeHandler
 
         if (character.SystemStats?.EngagementRelations != null)
         {
+            // A hard engagement (grappled, chained) pins the character unless whoever it binds them to travels to the
+            // same place in this same commit: a captor dragging a captive, a coffle walking together.
             var blocks = character.SystemStats.EngagementRelations
                 .Where(EngagementRelationCatalog.BlocksTravel)
+                .Where(r => !HasCoTravelInBatch(r.TargetId, tc.DestinationLocationId, ctx))
                 .ToList();
             if (blocks.Any())
             {
@@ -349,11 +352,11 @@ public class TravelChangeHandler : IWorldChangeHandler
     }
 
     /// <summary>
-    /// Clears engagement relations left over from the departure location. Any relation still on the
-    /// character at this point is guaranteed non-Hard (Hard relations already blocked travel above),
-    /// so this only ever resolves Social/Attention/Proximity engagements — conversations, being watched,
-    /// standing close to someone — that no longer make sense once the character has left. A relation is
-    /// kept only if its target ends up at the same destination (i.e. they traveled together).
+    /// Clears engagement relations left over from the departure location. A Hard relation still on the character
+    /// here is one whose target travels along in this batch (Hard relations otherwise blocked travel above), so it is
+    /// kept; this mostly resolves Social/Attention/Proximity engagements — conversations, being watched, standing
+    /// close to someone — that no longer make sense once the character has left. A relation is kept only if its
+    /// target ends up at the same destination (i.e. they traveled together).
     /// </summary>
     private static async Task ClearStaleEngagementsAsync(
         Character character, string destinationLocationId, IChangeContext context, CancellationToken ct)

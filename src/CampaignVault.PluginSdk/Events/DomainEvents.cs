@@ -131,6 +131,13 @@ public static class CoreEvents
     public const string ModeExited = "core.mode_exited.v1";
 
     /// <summary>
+    /// A mode encounter advanced to the next participant's turn (<c>mode_transition action=turn</c>). Fields: modeId,
+    /// encounterId, characterId (whose turn starts), round, newRound. Not published when the advance completes
+    /// the encounter — <see cref="ModeExited"/> fires instead.
+    /// </summary>
+    public const string ModeTurnStarted = "core.mode_turn_started.v1";
+
+    /// <summary>
     /// A character was dealt damage (published even at 0 HP: a downed body can still be hit). Fields:
     /// characterId, amount (requested), hpLost (actual), currentHp, maxHp, actorId (only when a top-level
     /// ruleset_action by that actor targeted this character).
@@ -182,7 +189,7 @@ public static class CoreEvents
     /// <summary>Every topic core publishes.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
-        ModeEntered, ModeExited, CharacterDamaged, CharacterDowned, Traveled, Rested, EncounterInterrupted,
+        ModeEntered, ModeExited, ModeTurnStarted, CharacterDamaged, CharacterDowned, Traveled, Rested, EncounterInterrupted,
         EventLogged, CombatStarted, CombatTurnStarted, CombatEnded, PluginFaulted
     ];
 

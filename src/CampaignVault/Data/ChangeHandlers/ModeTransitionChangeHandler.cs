@@ -65,10 +65,12 @@ public sealed class ModeTransitionChangeHandler(
         {
             case "enter":
                 return await EnterAsync(mode, mt, ctx, encounterId, ct);
+            case "turn":
+                return await TurnAsync(mode, ctx, encounterId, ct);
             case "exit":
                 return await ExitAsync(ctx, encounterId, ct);
             default:
-                return ChangeHandlerResult.Failure($"Unknown mode_transition action '{mt.Action}'. Expected 'enter' or 'exit'.");
+                return ChangeHandlerResult.Failure($"Unknown mode_transition action '{mt.Action}'. Expected 'enter', 'turn' or 'exit'.");
         }
     }
 
@@ -99,6 +101,13 @@ public sealed class ModeTransitionChangeHandler(
             return ChangeHandlerResult.Failure(claimConflict);
         }
 
+        var participants = await LoadParticipantsAsync(ctx, mt.ParticipantIds, ct);
+        var entryError = mode.ValidateEntry(mt.ParticipantIds, participants, context);
+        if (!string.IsNullOrWhiteSpace(entryError))
+        {
+            return ChangeHandlerResult.Failure(entryError);
+        }
+
         var encounter = mode.StateMachine.CreateEncounter(mt.LocationId, mt.ParticipantIds);
         encounter.Id = encounterId;
         encounter.ModeId = mt.ModeId;
@@ -115,6 +124,28 @@ public sealed class ModeTransitionChangeHandler(
             [CoreEvents.Fields.ParticipantIds] = encounter.Participants.Select(p => p.CharacterId).ToList()
         });
         return ChangeHandlerResult.Ok;
+    }
+
+    private static async Task<IReadOnlyDictionary<string, Character>> LoadParticipantsAsync(
+        ChangeContext ctx, IReadOnlyList<string> ids, CancellationToken ct)
+    {
+        var found = new Dictionary<string, Character>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in ids.Where(i => !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (ctx.Characters.TryGetValue(id, out var loaded) && loaded != null)
+            {
+                found[id] = loaded;
+                continue;
+            }
+
+            var fromSession = await ctx.Session.LoadAsync<Character>(id, ct);
+            if (fromSession != null)
+            {
+                found[id] = fromSession;
+            }
+        }
+
+        return found;
     }
 
     /// <summary>
@@ -150,10 +181,50 @@ public sealed class ModeTransitionChangeHandler(
         return null;
     }
 
-    private static async Task<ChangeHandlerResult> ExitAsync(IChangeContext context, string encounterId, CancellationToken ct)
+    private static async Task<ChangeHandlerResult> TurnAsync(
+        IInteractionMode mode, ChangeContext ctx, string encounterId, CancellationToken ct)
+    {
+        var existing = ctx.ActiveModes.TryGetValue(mode.ModeId, out var active)
+            ? active
+            : await ctx.Session.LoadAsync<ModeEncounter>(encounterId, ct);
+        if (existing is null || !existing.IsActive)
+        {
+            return ChangeHandlerResult.Failure("No active encounter for this mode to advance.");
+        }
+
+        var roundBefore = existing.Round;
+        if (!mode.StateMachine.AdvanceTurn(existing))
+        {
+            return ChangeHandlerResult.Failure($"Mode '{mode.ModeId}' could not advance its turn.");
+        }
+
+        if (mode.StateMachine.IsComplete(existing, out var outcome))
+        {
+            if (!string.IsNullOrWhiteSpace(outcome))
+            {
+                ctx.RecordMessage(outcome);
+            }
+
+            return await ExitAsync(ctx, encounterId, ct, existing);
+        }
+
+        ctx.RecordMessage($"Mode '{existing.ModeId}' round {existing.Round}: {existing.ActiveTurnId}'s turn.");
+        ctx.Publish(CoreEvents.ModeTurnStarted, new Dictionary<string, object?>
+        {
+            [CoreEvents.Fields.ModeId] = existing.ModeId,
+            [CoreEvents.Fields.EncounterId] = existing.Id,
+            [CoreEvents.Fields.CharacterId] = existing.ActiveTurnId,
+            [CoreEvents.Fields.Round] = existing.Round,
+            [CoreEvents.Fields.NewRound] = existing.Round != roundBefore
+        });
+        return ChangeHandlerResult.Ok;
+    }
+
+    private static async Task<ChangeHandlerResult> ExitAsync(
+        IChangeContext context, string encounterId, CancellationToken ct, ModeEncounter? known = null)
     {
         var ctx = (ChangeContext)context;
-        var existing = await ctx.Session.LoadAsync<ModeEncounter>(encounterId, ct);
+        var existing = known ?? await ctx.Session.LoadAsync<ModeEncounter>(encounterId, ct);
         if (existing is null || !existing.IsActive)
         {
             return ChangeHandlerResult.Failure("No active encounter for this mode to exit.");

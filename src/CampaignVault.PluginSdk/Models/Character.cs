@@ -59,6 +59,12 @@ public class Character : ICampaignScopedEntity
     /// Mutually exclusive with <see cref="IsPc"/>.
     /// </summary>
     public bool IsPartyCompanion { get; set; }
+
+    /// <summary>
+    /// Life stage the fiction means (child, adolescent, adult, elder). Unspecified until set. Once a minor,
+    /// never relabelled adult by a commit — see <see cref="LifeStageRules.TryChange"/>.
+    /// </summary>
+    public LifeStage LifeStage { get; set; } = LifeStage.Unspecified;
     
     public Schedule? Schedule { get; set; }
 

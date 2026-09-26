@@ -66,6 +66,12 @@ internal sealed class CharacterManager : ICharacterManager
             existing.KeepAlive = character.KeepAlive;
             existing.IsPc = character.IsPc;
             existing.IsPartyCompanion = character.IsPartyCompanion;
+            if (!LifeStageRules.TryChange(existing.LifeStage, character.LifeStage, out var stage, out var stageError))
+            {
+                throw new ArgumentException(stageError);
+            }
+
+            existing.LifeStage = stage;
             existing.LastUpdated = DateTime.UtcNow;
             existing.CampaignName = effectiveCampaignName;
             result = existing;
@@ -93,6 +99,7 @@ internal sealed class CharacterManager : ICharacterManager
                 KeepAlive = character.KeepAlive,
                 IsPc = character.IsPc,
                 IsPartyCompanion = character.IsPartyCompanion,
+                LifeStage = character.LifeStage,
                 LastUpdated = DateTime.UtcNow,
                 CampaignName = effectiveCampaignName,
             };

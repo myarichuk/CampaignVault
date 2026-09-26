@@ -485,6 +485,17 @@ public record ResourcePoolTemplate : RulesetTemplate
     public bool? FeatGrantedOnly { get; set; }
 
     /// <summary>
+    /// When true, the pool's owner (usually a plugin) manages Max and Current: the initializer creates the pool once if
+    /// it is missing (even at a max of 0) and afterwards leaves it exactly as it is on character updates and level-ups.
+    /// </summary>
+    [JsonPropertyName("ownerManaged")]
+    public bool? OwnerManaged { get; set; }
+
+    /// <summary>Current value of a newly created pool: <c>max</c> (default) or <c>zero</c> (a meter that fills up).</summary>
+    [JsonPropertyName("startsAt")]
+    public string? StartsAt { get; set; }
+
+    /// <summary>
     /// Merge two templates: child fields win; parent fills gaps.
     /// Used by RulesetTemplateResolver during YAML inheritance resolution.
     /// </summary>
@@ -502,6 +513,8 @@ public record ResourcePoolTemplate : RulesetTemplate
                 ? child.ApplicableClasses
                 : parent.ApplicableClasses,
             FeatGrantedOnly = child.FeatGrantedOnly ?? parent.FeatGrantedOnly,
+            OwnerManaged = child.OwnerManaged ?? parent.OwnerManaged,
+            StartsAt = child.StartsAt ?? parent.StartsAt,
         };
 
         if (parent.LevelToMaxMap?.Count > 0)

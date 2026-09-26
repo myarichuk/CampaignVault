@@ -1,3 +1,4 @@
+using CampaignVault.Plugins;
 using CampaignVault.Data.Migrations;
 using CampaignVault.Rulesets;
 using Raven.Client.Documents.Indexes;
@@ -58,6 +59,7 @@ public static class RavenStartup
         IDocumentStore documentStore,
         ILoggerFactory loggerFactory,
         IReadOnlyCollection<string>? claimedTraitPrefixes = null,
+        IEnumerable<IPluginCampaignOptionsUpgrader>? campaignOptionsUpgraders = null,
         CancellationToken ct = default)
     {
         var logger = loggerFactory.CreateLogger(nameof(RavenStartup));
@@ -112,6 +114,11 @@ public static class RavenStartup
             {
                 logger.LogInformation("✓ SystemStats type validation: no degraded characters found");
             }
+
+            // Plugin-owned campaign option renames (e.g. a retired option mapped onto its replacements).
+            var optionsUpgrade = new UpgradePluginCampaignOptions(documentStore, campaignOptionsUpgraders, logger);
+            var optionsUpgraded = await optionsUpgrade.ExecuteAsync(ct);
+            logger.LogInformation("✓ Plugin campaign options upgrade: {Count} document(s) changed", optionsUpgraded);
 
             // Advisory-only: flag SystemStats.Traits key prefixes with no loaded plugin claiming them
             // (a "missing master" — data is left untouched, never deleted, until the plugin returns).

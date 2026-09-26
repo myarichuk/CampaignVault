@@ -1,3 +1,4 @@
+using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 
 namespace CampaignVault.Rulesets.Modes;
@@ -30,6 +31,18 @@ public interface IInteractionMode
     /// <see cref="ModeParticipantClaim.Independent"/>, so modes written against 0.2.0 keep their behavior.
     /// </summary>
     ModeParticipantClaim ParticipantClaim => ModeParticipantClaim.Independent;
+
+    /// <summary>
+    /// Optional veto at mode entry, after the host's enablement, compatibility and claim checks.
+    /// <paramref name="participantIds"/> is the request as sent; <paramref name="loaded"/> holds every participant
+    /// the host could load, keyed by id (case-insensitive) — a requested id missing from it could not be loaded.
+    /// Return a message to refuse entry; null or blank allows it. Defaults to allow, so modes written against
+    /// 0.5.0 keep their behavior.
+    /// </summary>
+    string? ValidateEntry(
+        IReadOnlyList<string> participantIds,
+        IReadOnlyDictionary<string, Character> loaded,
+        IChangeContext context) => null;
 }
 
 /// <summary>

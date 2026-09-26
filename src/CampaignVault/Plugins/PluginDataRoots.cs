@@ -7,4 +7,7 @@ public static class PluginDataRoots
 
     /// <summary>Flattened plugin-declared campaign option schema (for get_config / help surfaces).</summary>
     public static IReadOnlyList<PluginCampaignOption> DeclaredCampaignOptions { get; set; } = [];
+
+    /// <summary>Mode IDs plugins declared <c>playerOnlyModeIds</c>: only the player switches them on or off.</summary>
+    public static IReadOnlyCollection<string> PlayerOnlyModeIds { get; set; } = [];
 }

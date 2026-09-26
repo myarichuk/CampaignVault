@@ -72,6 +72,11 @@ public class CampaignVaultModule : Autofac.Module
                 .Select(g => g.Last())
                 .ToList();
 
+            PluginDataRoots.PlayerOnlyModeIds = plugins
+                .SelectMany(p => p.Manifest?.PlayerOnlyModeIds ?? [])
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             // Trait-key prefixes ("<pluginId>." or "<modeId>.") a loaded plugin can claim — read at
             // startup by PluginTraitsUpgradeRunner.WarnOnOrphanedTraitPrefixesAsync to flag prefixes
             // in the data that no loaded plugin owns anymore.

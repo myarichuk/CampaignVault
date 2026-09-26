@@ -23,6 +23,14 @@ public sealed class PluginManifest
     [JsonPropertyName("modeIds")]
     public List<string> ModeIds { get; set; } = [];
 
+    /// <summary>
+    /// Modes (a subset of <see cref="ModeIds"/>) only the player may switch on or off. <c>campaign_update</c> changes
+    /// their membership in EnabledModeIds only with <c>playerRequest</c> and as the only change in its commit, the
+    /// same rule as player-only campaign options.
+    /// </summary>
+    [JsonPropertyName("playerOnlyModeIds")]
+    public List<string> PlayerOnlyModeIds { get; set; } = [];
+
     [JsonPropertyName("rulesetDataRoots")]
     public List<string> RulesetDataRoots { get; set; } = [];
 
@@ -124,4 +132,12 @@ public sealed class PluginCampaignOption
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }
+
+    /// <summary>
+    /// The human player owns this setting (content limits, narration style). campaign_update changes it only when
+    /// the commit quotes the player's request in <c>playerRequest</c> and is the only change in its batch, so an
+    /// in-story commit can never loosen it on the side.
+    /// </summary>
+    [JsonPropertyName("playerOnly")]
+    public bool PlayerOnly { get; set; }
 }

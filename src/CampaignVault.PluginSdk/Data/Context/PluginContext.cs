@@ -31,6 +31,20 @@ public interface IContextTurn
 
     /// <summary>The PC's current location, when known.</summary>
     string? PartyLocationId { get; }
+
+    /// <summary>The campaign's config (enabled modes, SystemOptions). Null on hosts before 0.7.0.</summary>
+    CampaignConfig? Config => null;
+
+    /// <summary>Campaign time after the commit, for clocks a plugin keeps (hours since X). Null on hosts before 0.7.0.</summary>
+    CampaignTime? Time => null;
+
+    /// <summary>
+    /// Loads a character by ID for reading, e.g. one of <see cref="PartyCharacterIds"/> or
+    /// <see cref="InvolvedEntityIds"/>. Read-only: the turn is already committed, so do not mutate what this
+    /// returns. Null when the character doesn't exist, or on hosts before 0.7.0.
+    /// </summary>
+    Task<Character?> LoadCharacterAsync(string characterId, CancellationToken ct = default) =>
+        Task.FromResult<Character?>(null);
 }
 
 /// <param name="Key">Delivery key: the same key is not sent twice in a session.</param>

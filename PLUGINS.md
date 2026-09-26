@@ -88,7 +88,7 @@ Plugins/
     skills/               # optional LLM-client sidecar; host logs path only, does not load/inject
 ```
 
-`plugin.json` fields: `id`, `displayName`, `version`, `minEngineVersion` (host skips on mismatch — no boot crash), optional `modeIds`, `rulesetDataRoots` (default `./RulesetData`), `skillsPath` (default `./skills`, log-only), optional `campaignOptions` (declares house-rule config keys and their defaults — see [Campaign Option Defaults](#campaign-option-defaults) below).
+`plugin.json` fields: `id`, `displayName`, `version`, `minEngineVersion` (host skips on mismatch — no boot crash), optional `modeIds`, optional `playerOnlyModeIds` (modes only the player may enable or disable: a `campaign_update` that switches one must quote the player in `playerRequest` and be alone in its commit), `rulesetDataRoots` (default `./RulesetData`), `skillsPath` (default `./skills`, log-only), optional `campaignOptions` (declares house-rule config keys and their defaults — see [Campaign Option Defaults](#campaign-option-defaults) below).
 
 **Custom `$type`:** annotate with `[PluginWorldChange("my_verb")]`. Handler **dispatch** already works via `WorldChangeDispatcher.FindHandler`'s `ShouldHandle` fallback. JSON wire deserialization and `lookup kind=commit_schema` require the type registry (seeded from core `[JsonDerivedType]` + plugin attributes at load). Discriminator collisions fail fast at registration.
 
@@ -98,7 +98,7 @@ Plugins/
 
 **Adult / optional content:** belongs in separate repos referencing PluginSdk; the main repo ships only neutral samples (e.g. `plugins/CraftingMode`).
 
-**Compatibility:** host engine version is `0.2.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
+**Compatibility:** host engine version is `0.7.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
 
 In-tree reference: `plugins/CraftingMode` (mode id `crafting`, `$type` `crafting_step`).
 
@@ -246,7 +246,9 @@ Its actual verbs (e.g. a `CraftingStepChange` WorldChange + handler) are ordinar
 - A mode must be explicitly enabled per campaign (`CampaignConfig.EnabledModeIds`, set via the `campaign_update` commit type) before it can be entered — being loaded (DLL present) is necessary but not sufficient.
 - Entering/exiting is a single commit type, `mode_transition` (`ModeId`, `Action: "enter"|"exit"`, `LocationId`, `ParticipantIds`), validated against registration → enablement → `CompatibleSystems`, in that order.
 - Actual dice rolls (skill checks, saves) should delegate to the campaign's already-active `IRulesetModule.Actions` via `RulesetActionType.SkillCheck`/`SavingThrow`/etc. rather than reimplementing them — a mode plugin never needs to know 5e math vs. PF2e math.
-- Mode-specific character stats live in the existing `SystemExtension.Attributes`/`ResourcePools` dictionaries — no core model changes needed to add e.g. `Attributes["AstralAttunement"]`.
+- **Action budget is enforced by the host.** For a verb whose `[PluginWorldChange(ModeId = "...")]` names your mode, while that mode has an active encounter, the dispatcher calls `TryConsumeActionSlot` on the actor's participant state (the change's `ActorId`, else `CharacterId`, else the encounter's `ActiveTurnId`) before the handler runs, and refunds the slot if the handler fails or throws. A refusal fails the commit with your `errorReason`. Refill slots in `AdvanceTurn`.
+- Mode-specific character stats live in the existing `SystemExtension.Attributes`/`ResourcePools` dictionaries — no core model changes needed to add e.g. `Attributes["AstralAttunement"]`. A pool your plugin manages itself (a meter that starts empty, a max you compute) should set `ownerManaged: true` in its `pools/` template: core creates it once and never refills, resizes or re-derives it afterwards. `startsAt: zero` creates it at 0 instead of full.
+- A Physical, Hard `EngagementRelation` (e.g. a prisoner chained to a guard) blocks the holder's `travel`, unless its target travels to the same destination in the same commit — so a chained group moves together.
 - Mode-specific string facts go in `SystemExtension.Traits` (`Dictionary<string,string>`) — the same closed-set caveat as above applies: you cannot add your own `[JsonDerivedType]` to `SystemExtension`, only write keys into the base class's shared `Traits` dictionary. **Key convention: `"<modeId>.<name>"`** (e.g. `"crafting.tool_quality"`), for two reasons at once — it namespaces your keys against every other plugin writing into the same dictionary, and it is what gates the entry onto `NpcCard.SystemTraits`. A prefixed key only rides an NPC's card while that NPC is an active participant in your mode's `ModeEncounter` (checked at `BuildUndeliveredCardsAsync` time, not the point of write) — this keeps mode-only facts from costing tokens on every `take_turn` when nobody is in the mode. An unprefixed key (no `.`) always rides; use that only for facts genuinely relevant outside your mode.
 
 **When to use:**
@@ -650,7 +652,8 @@ they never drift apart.
 ✅ Add custom `ISimulationRule` (simulation event handlers)
 ✅ Add custom `IPressureContributor` (world pressure sources)
 ✅ Add custom `IGuidanceContributor` (proactive guidance hints)
-✅ Add `IPluginContextContributor` (one-line facts pushed on the take_turn beat that needs them, once per session)
+✅ Add `IPluginContextContributor` (one-line facts pushed on the take_turn beat that needs them, once per session; `IContextTurn` exposes `Config`, `Time` and `LoadCharacterAsync` for characters outside the party)
+✅ Add `IPluginCampaignOptionsUpgrader` (migrate your own campaign option keys at host startup; see [Migrating Your Own Campaign Options](#migrating-your-own-campaign-options))
 ✅ Add `IPluginTraitsUpgrader` (migrate your own `SystemExtension.Traits` keys — rename, reshape, or retire — when you change your own trait schema; see [Migrating Your Own Traits Schema](#migrating-your-own-traits-schema) below)
 ✅ Add custom `IWorldChangeHandler` (react to player actions)
 ✅ Add custom `IWorldChangeObserver` (post-commit, non-failing, cross-cutting hooks — e.g. a trauma-triggered "inner voice" reactor that watches every mutation without owning any of them)
@@ -972,6 +975,20 @@ public class CraftingTraitsUpgrader : IPluginTraitsUpgrader
 
 **Orphaned prefixes ("missing master").** If a plugin is later uninstalled, its trait keys don't get deleted — there's no upgrader instance to call, since none is loaded, so those keys simply sit inert in the data (same as a Skyrim plugin's records when its master `.esp` isn't loaded: present, unresolved, untouched). At startup the host scans every character's `Traits` keys and logs one warning per `"<prefix>."` that no currently loaded plugin's id or `modeIds` claims — a single summary line per orphaned prefix, not per character, so a retired plugin with hundreds of affected characters doesn't flood the log. Reinstalling the plugin resumes normal upgrades on the next load; the data was never lost.
 
+## Migrating Your Own Campaign Options
+
+The same idea for `SystemOptions` (house rules and player settings you declared under `campaignOptions`):
+
+```csharp
+public interface IPluginCampaignOptionsUpgrader
+{
+    string PluginId { get; }
+    bool TryUpgrade(IDictionary<string, string> systemOptions);
+}
+```
+
+The host runs every registered upgrader once per startup, as a data migration, over each campaign's `Campaign.SystemOptions` and `CampaignConfig.SystemOptions`, and saves only when one returns `true`. Rules match the traits upgrader: touch only your own keys, be idempotent, return `false` on current data. Never overwrite a key the player already set — a retired option should only fill in its replacement when that replacement is absent. A throwing upgrader is logged and skipped.
+
 ---
 
 ## FAQ
@@ -1033,5 +1050,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** `IPluginTraitsUpgrader` (SystemExtension.Traits schema migration)
-**Plugin API version:** 1.2 (adds `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)
+**Last updated:** engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
+**Plugin API version:** 1.3 (adds `IPluginCampaignOptionsUpgrader` and the 0.7.0 hooks above; 1.2 added `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)

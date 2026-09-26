@@ -822,6 +822,10 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("isPc")]
     public bool IsPc { get; set; }
 
+    [Description("child | adolescent | adult | elder. Set it for every named character. A minor can never later be changed to adult.")]
+    [JsonPropertyName("lifeStage")]
+    public LifeStage LifeStage { get; set; }
+
     [Description("True for NPC companions on the party roster. Requires campaign context; mutually exclusive with isPc.")]
     [JsonPropertyName("isPartyCompanion")]
     public bool IsPartyCompanion { get; set; }
@@ -1196,6 +1200,10 @@ public class CharacterUpdate : WorldChange
     [JsonPropertyName("isPartyCompanion")]
     public bool? IsPartyCompanion { get; set; }
 
+    [Description("child | adolescent | adult | elder. A character recorded as a minor cannot be changed to adult.")]
+    [JsonPropertyName("lifeStage")]
+    public LifeStage? LifeStage { get; set; }
+
     [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See lookup kind=commit_schema type=character_update for the field list.")]
     [JsonPropertyName("systemStats")]
     public SystemExtension? SystemStats { get; set; }
@@ -1479,13 +1487,17 @@ public class CampaignUpdateChange : WorldChange
     [JsonPropertyName("narrativeFocus")]
     public List<string>? NarrativeFocus { get; set; }
 
-    [Description("Full replacement list of enabled interaction-mode IDs (e.g. ['crafting', 'astral_combat', 'lewd_encounter']) — see mode_transition. Pass every mode ID you want enabled; this replaces the whole list, it does not append. Only registered mode plugins can be enabled — see lookup kind=commit_schema for mode_transition, or the server's plugin catalog for what's installed.")]
+    [Description("Full replacement list of enabled interaction-mode IDs (e.g. ['crafting', 'astral_combat', 'lewd_encounter']) — see mode_transition. Pass every mode ID you want enabled; this replaces the whole list, it does not append. Only registered mode plugins can be enabled — see lookup kind=commit_schema for mode_transition, or the server's plugin catalog for what's installed. Switching a player-only mode on or off needs playerRequest and a commit of its own.")]
     [JsonPropertyName("enabledModeIds")]
     public List<string>? EnabledModeIds { get; set; }
 
-    [Description("House-rule / plugin campaign options to MERGE into SystemOptions (e.g. {\"intimacyTone\": \"grimdark\"}). Only listed keys are written; existing keys are left alone. Plugin-declared keys appear in plugin.json campaignOptions.")]
+    [Description("House-rule / plugin campaign options to MERGE into SystemOptions (e.g. {\"someOption\": \"value\"}). Only listed keys are written; existing keys are left alone. Plugin-declared keys appear in plugin.json campaignOptions. Keys a plugin marks playerOnly also need playerRequest and must be the only change in the commit.")]
     [JsonPropertyName("systemOptions")]
     public Dictionary<string, string>? SystemOptions { get; set; }
+
+    [Description("Required when systemOptions touches a player-owned key, or enabledModeIds switches a player-only mode: the human player's own words asking for the change, quoted. Never invent it; only send it when the player asked.")]
+    [JsonPropertyName("playerRequest")]
+    public string? PlayerRequest { get; set; }
 }
 
 /// <summary>
@@ -1638,7 +1650,7 @@ public class ModeTransitionChange : WorldChange
     [JsonPropertyName("modeId")]
     public string ModeId { get; set; } = null!;
 
-    [Description("'enter' starts a new ModeEncounter at locationId with participantIds; 'exit' ends the active one.")]
+    [Description("'enter' starts a new ModeEncounter at locationId with participantIds; 'turn' advances the active one to the next participant's turn (ending it if the mode says it is complete); 'exit' ends it.")]
     [JsonPropertyName("action")]
     public string Action { get; set; } = "enter";
 

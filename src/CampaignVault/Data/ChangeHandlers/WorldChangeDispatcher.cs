@@ -5,6 +5,7 @@ using CampaignVault.Events;
 using CampaignVault.Models;
 using CampaignVault.Plugins;
 using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Modes;
 using CampaignVault.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Raven.Client.Documents.Session;
@@ -36,7 +37,8 @@ public sealed class WorldChangeDispatcher(
     IRollService? rollService = null,
     IEnumerable<IDomainEventHandler>? eventHandlers = null,
     PluginEventSources? eventSources = null,
-    IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null)
+    IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null,
+    IInteractionModeSelector? modeSelector = null)
 {
     /// <summary>
     /// Events at this depth are dropped instead of delivered: batch change (0) → reaction (1) → reaction (2)
@@ -55,6 +57,7 @@ public sealed class WorldChangeDispatcher(
     private readonly BackgroundDefinitionProvider? _backgroundProvider = backgroundProvider;
     private readonly IRollService? _rollService = rollService;
     private readonly IReadOnlyList<IPluginTraitsUpgrader> _traitsUpgraders = traitsUpgraders?.ToList() ?? [];
+    private readonly IInteractionModeSelector? _modeSelector = modeSelector;
 
     private readonly Dictionary<Type, IWorldChangeHandler> _handlersByChangeType = BuildHandlerDictionary(handlers ?? []);
 
@@ -85,6 +88,70 @@ public sealed class WorldChangeDispatcher(
         }
 
         return dict;
+    }
+
+    /// <summary>
+    /// A mode-scoped plugin verb (<see cref="PluginWorldChangeAttribute.ModeId"/>) spends the acting participant's
+    /// action budget through the mode's own <see cref="IModeStateMachine.TryConsumeActionSlot"/>, which decides what
+    /// costs an action. The actor is the change's <c>ActorId</c>, else its <c>CharacterId</c>, else whoever's turn it
+    /// is. Returns a refund to call if the change then fails; sets <paramref name="error"/> when no slot is left.
+    /// Top-level batch changes only: engine follow-ups (event reactions) never spend a participant's action.
+    /// </summary>
+    private Action? ChargeModeActionSlot(WorldChange change, IChangeContext context, out string? error)
+    {
+        error = null;
+        if (_modeSelector is null)
+        {
+            return null;
+        }
+
+        var modeId = change.GetType().GetCustomAttribute<PluginWorldChangeAttribute>()?.ModeId;
+        if (string.IsNullOrWhiteSpace(modeId) ||
+            !context.ActiveModes.TryGetValue(modeId, out var encounter) || !encounter.IsActive ||
+            _modeSelector.TryGetMode(modeId) is not { } mode)
+        {
+            return null; // No active encounter: the verb's own handler reports that.
+        }
+
+        var actorId = ActorIdOf(change) ?? encounter.ActiveTurnId;
+        var participant = encounter.Participants.FirstOrDefault(p =>
+            string.Equals(p.CharacterId, actorId, StringComparison.OrdinalIgnoreCase));
+        if (participant is null)
+        {
+            return null; // Not a participant: the handler reports that too.
+        }
+
+        var before = new Dictionary<string, int>(participant.ActionBudget);
+        if (!mode.StateMachine.TryConsumeActionSlot(participant, change, out var reason))
+        {
+            error = $"{reason ?? "No action left this turn."} ({participant.CharacterId} in '{modeId}', round {encounter.Round}; " +
+                    $"it is {encounter.ActiveTurnId}'s turn. Move on with mode_transition action=turn.)";
+            return null;
+        }
+
+        return () =>
+        {
+            participant.ActionBudget.Clear();
+            foreach (var (key, value) in before)
+            {
+                participant.ActionBudget[key] = value;
+            }
+        };
+    }
+
+    private static string? ActorIdOf(WorldChange change)
+    {
+        foreach (var name in new[] { "ActorId", "CharacterId" })
+        {
+            if (change.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance) is { } property &&
+                property.PropertyType == typeof(string) &&
+                property.GetValue(change) is string id && !string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -337,14 +404,32 @@ public sealed class WorldChangeDispatcher(
                 }
 
                 ChangeHandlerResult result;
-                try
+                var refundActionSlot = ChargeModeActionSlot(change, context, out var slotError);
+                if (slotError is not null)
                 {
-                    result = await RunAsSourceAsync(context, chosen, () => chosen.ApplyAsync(change, context));
+                    result = ChangeHandlerResult.Failure(slotError);
                 }
-                catch (ArgumentNullException ex)
+                else
                 {
-                    _logger.LogWarning(ex, "ArgumentNullException during handler application");
-                    result = ChangeHandlerResult.Failure($"A required property is missing on {change.GetType().Name}.");
+                    try
+                    {
+                        result = await RunAsSourceAsync(context, chosen, () => chosen.ApplyAsync(change, context));
+                    }
+                    catch (ArgumentNullException ex)
+                    {
+                        _logger.LogWarning(ex, "ArgumentNullException during handler application");
+                        result = ChangeHandlerResult.Failure($"A required property is missing on {change.GetType().Name}.");
+                    }
+                    catch
+                    {
+                        refundActionSlot?.Invoke();
+                        throw;
+                    }
+
+                    if (!result.Success)
+                    {
+                        refundActionSlot?.Invoke();
+                    }
                 }
 
                 if (result.Message is not null)

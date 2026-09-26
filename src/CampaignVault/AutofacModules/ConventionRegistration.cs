@@ -73,6 +73,7 @@ internal static class ConventionRegistration
             RegisterCollection<IContextContributor>(builder, assembly);
             RegisterCollection<IPluginContextContributor>(builder, assembly);
             RegisterCollection<IPluginTraitsUpgrader>(builder, assembly);
+            RegisterCollection<IPluginCampaignOptionsUpgrader>(builder, assembly);
             RegisterCollection<IDomainEventHandler>(builder, assembly);
             RegisterCollection<INpcInitiativeSignalProvider>(builder, assembly);
             RegisterCollection<IRulesetModule>(builder, assembly);

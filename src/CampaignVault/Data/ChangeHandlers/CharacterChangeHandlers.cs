@@ -68,6 +68,13 @@ public class CharacterCreateHandler : IWorldChangeHandler
                 existing.KeepAlive = cc.KeepAlive;
             }
 
+            if (!LifeStageRules.TryChange(existing.LifeStage, cc.LifeStage, out var mergedStage, out var stageError))
+            {
+                return ChangeHandlerResult.Failure(stageError!);
+            }
+
+            existing.LifeStage = mergedStage;
+
             if (cc.IsPc || cc.IsPartyCompanion || existing.IsPc || existing.IsPartyCompanion)
             {
                 var mergedIsPc = cc.IsPc || existing.IsPc;
@@ -168,6 +175,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
             KeepAlive = cc.KeepAlive || cc.IsPc || cc.IsPartyCompanion,
             IsPc = cc.IsPc,
             IsPartyCompanion = cc.IsPartyCompanion,
+            LifeStage = cc.LifeStage,
             Schedule = cc.Schedule,
             Psychology = cc.Psychology ?? new PsychologyProfile(),
             ClassLevel = cc.ClassLevel,
@@ -501,6 +509,16 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             && CampaignEntityVisibility.TryGetInvisibilityReason(character, ctx.CampaignName, out var hidden))
         {
             return ChangeHandlerResult.Failure(hidden);
+        }
+
+        if (cu.LifeStage is { } requestedStage)
+        {
+            if (!LifeStageRules.TryChange(character.LifeStage, requestedStage, out var stage, out var stageError))
+            {
+                return ChangeHandlerResult.Failure(stageError!);
+            }
+
+            character.LifeStage = stage;
         }
 
         var appearanceBefore = character.CurrentAppearance;

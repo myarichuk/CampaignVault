@@ -216,7 +216,7 @@ var mcpServerBuilder = builder.Services.AddMcpServer(options =>
     options.ServerInfo = new Implementation
     {
         Name = "CampaignVault",
-        Version = "0.2.0"
+        Version = "0.7.0"
     };
 });
 
@@ -256,7 +256,9 @@ var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 // Data migrations: handle schema upgrades, format conversions, repairs.
 // stdout carries the JSON-RPC channel in MCP_STDIO mode, so startup status goes to stderr.
 Console.Error.WriteLine("[Startup] Running data migrations...");
-await RavenStartup.RunDataMigrationsAsync(documentStore, loggerFactory, PluginTraitsClaims.Claimed);
+await RavenStartup.RunDataMigrationsAsync(
+    documentStore, loggerFactory, PluginTraitsClaims.Claimed,
+    app.Services.GetServices<IPluginCampaignOptionsUpgrader>());
 Console.Error.WriteLine("[Startup] Data migrations complete ✓\n");
 
 // Semantic vector bootstrap: repair any entities missing embeddings

@@ -28,6 +28,7 @@ public sealed class ContextTurn : IContextTurn
     public required IReadOnlyList<Character> Party { get; init; }
     public IReadOnlyList<string> PartyCharacterIds => Party.Select(p => p.Id).ToList();
     public string? PartyLocationId { get; init; }
+    public CampaignTime? Time { get; init; }
 
     /// <summary>NPC IDs present in the scenes this response carries.</summary>
     public IReadOnlyList<string> PresentNpcIds { get; init; } = [];
@@ -41,6 +42,33 @@ public sealed class ContextTurn : IContextTurn
 
     /// <summary>Memory lines already carried by a card in this response, so recall doesn't repeat them.</summary>
     public IReadOnlySet<string> MemoryLinesInCards { get; init; } = new HashSet<string>();
+
+    /// <summary>
+    /// Party members come from <see cref="Party"/>; anyone else is loaded from the session. A character this call
+    /// loads fresh is evicted again, so a plugin that mutates it by mistake cannot persist the change.
+    /// </summary>
+    public async Task<Character?> LoadCharacterAsync(string characterId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(characterId))
+        {
+            return null;
+        }
+
+        var member = Party.FirstOrDefault(p => string.Equals(p.Id, characterId, StringComparison.OrdinalIgnoreCase));
+        if (member is not null)
+        {
+            return member;
+        }
+
+        var wasLoaded = Session.Advanced.IsLoaded(characterId);
+        var character = await Session.LoadAsync<Character>(characterId, ct);
+        if (character is not null && !wasLoaded)
+        {
+            Session.Advanced.Evict(character);
+        }
+
+        return character;
+    }
 }
 
 public interface IContextOrchestrator

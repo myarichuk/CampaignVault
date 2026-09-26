@@ -146,10 +146,18 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
             return false;
 
         var maxValue = DeriveMaxValue(template, levelForMax);
+        var existing = existingPools.GetValueOrDefault(poolName);
+        if (template.OwnerManaged == true)
+        {
+            // The owner sets Max/Current (e.g. a meter derived from other stats); create once, never rebuild.
+            desiredPools[poolName] = existing ?? BuildPool(template, Math.Max(0, maxValue), null);
+            return true;
+        }
+
         if (maxValue <= 0)
             return false;
 
-        desiredPools[poolName] = BuildPool(template, maxValue, existingPools.GetValueOrDefault(poolName));
+        desiredPools[poolName] = BuildPool(template, maxValue, existing);
         return true;
     }
 
@@ -235,7 +243,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         {
             return new ResourcePool
             {
-                Current = maxValue,
+                Current = string.Equals(template.StartsAt, "zero", StringComparison.OrdinalIgnoreCase) ? 0 : maxValue,
                 Max = maxValue,
                 Recovery = recovery,
                 LastRecoveredDay = 0

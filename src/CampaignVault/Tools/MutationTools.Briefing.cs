@@ -108,6 +108,7 @@ public partial class MutationTools
                 var memoryLinesInCards = new HashSet<string>(cards.SelectMany(c => c.Memories ?? []));
                 var turn = new ContextTurn
                 {
+                    Time = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign)),
                     Session = ctx.Session,
                     CampaignName = ctx.Campaign,
                     Config = ctx.Config,

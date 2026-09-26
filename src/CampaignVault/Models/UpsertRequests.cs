@@ -37,6 +37,9 @@ public class CharacterUpsertRequest
 
     public bool IsPartyCompanion { get; set; }
 
+    [Description("child | adolescent | adult | elder. Omit to preserve. A character recorded as a minor cannot be changed to adult.")]
+    public LifeStage LifeStage { get; set; }
+
     public Schedule? Schedule { get; set; }
 
     public string? CurrentLocationId { get; set; }
