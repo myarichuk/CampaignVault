@@ -3,7 +3,7 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: deadly_aim
 system: pf2e
-prerequisite: weapon
+prerequisite: weapon specialization
 mechanicalSummary: You aim for your prey’s weak spots, making your shot more challenging but dealing more damage if you hit.
 extraPools: []
 classes: [ranger]

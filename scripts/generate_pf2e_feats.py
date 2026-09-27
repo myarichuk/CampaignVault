@@ -35,11 +35,6 @@ KNOWN_CLASSES = {
     "psychic", "exemplar", "gunslinger", "summoner",
 }
 
-PREREQ_RE = re.compile(
-    r"Prerequisites?\s+(.*?)\s*(?:Trigger|Frequency|Cost|Requirements?|Range|Area|Effect|Special|---|$)",
-    re.IGNORECASE,
-)
-
 
 def kebab_to_snake(name: str) -> str:
     return name.replace("-", "_")
@@ -71,7 +66,7 @@ def fetch_aon_feats() -> list[dict]:
                 ]
             }
         },
-        "_source": ["name", "level", "trait", "summary", "text"],
+        "_source": ["name", "level", "trait", "summary", "prerequisite"],
     }
     result = fetch_json(AON_SEARCH_URL, json.dumps(query).encode("utf-8"))
     return [hit["_source"] for hit in result["hits"]["hits"]]
@@ -83,11 +78,8 @@ def feat_classes(feat: dict) -> list[str]:
 
 
 def feat_prerequisite(feat: dict) -> str | None:
-    text = feat.get("text") or ""
-    match = PREREQ_RE.search(text)
-    if not match:
-        return None
-    prereq = match.group(1).strip().rstrip(".")
+    prereq = (feat.get("prerequisite") or "").strip().rstrip(".")
+    prereq = re.sub(r"[_*](.+?)[_*]", r"\1", prereq)
     return prereq or None
 
 

@@ -3,7 +3,6 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: general_training
 system: pf2e
-prerequisite: you meet
 mechanicalSummary: Your adaptability manifests in your mastery of a range of useful abilities.
 extraPools: []
 level: 1

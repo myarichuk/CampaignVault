@@ -1,5 +1,6 @@
 Never start overlapping or background builds. Run one build at a time, wait for it to complete, and never schedule wakeups to poll slow builds. If a build hangs, stop and ask the user.
 Always verify a full green test suite before marking work complete; do not declare success on build-only. Explicitly report any remaining test failures (including pre-existing ones) and get confirmation.
+Known environment gap: fresh containers without `git-lfs` installed leave `models/embedding/model.onnx` as an unfetched LFS pointer stub, failing both `LocalEmbeddingServiceTests` tests with an `InvalidProtobuf` error. This is unrelated to application code — install `git-lfs` and run `git lfs pull` to fix, or treat those two failures as pre-existing/environmental when git-lfs isn't available.
 When implementing a phased/multi-stage plan, enumerate every phase up front and check each one off before claiming completion — do not skip stages.
 This is a .NET/C# codebase. Never use C# reserved keywords (e.g. 'fixed') as identifiers, and watch nullable reference types and variable shadowing to avoid build breaks.
 Prefer query-layer/index-based filtering over [JsonIgnore] attributes or in-memory filtering when stripping fields from DTOs.

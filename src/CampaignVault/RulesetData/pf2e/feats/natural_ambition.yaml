@@ -3,7 +3,6 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: natural_ambition
 system: pf2e
-prerequisite: you meet
 mechanicalSummary: You were raised to be ambitious and always reach for the stars, leading you to progress quickly in your chosen field.
 extraPools: []
 level: 1

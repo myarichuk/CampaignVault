@@ -3,6 +3,7 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: basic_hunter_s_trick
 system: pf2e
+prerequisite: Ranger Dedication
 mechanicalSummary: You gain a 1st- or 2nd-level ranger feat.
 extraPools: []
 level: 4
