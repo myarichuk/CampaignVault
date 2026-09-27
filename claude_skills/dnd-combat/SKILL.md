@@ -42,6 +42,8 @@ Only bundle multiple actors into one `take_turn` when they're genuinely simultan
 }
 ```
 
+**Cantrip damage scales with caster level, not spell level — nothing validates `damageDice` against it** (no SpellDefinition carries damage data; the engine only soft-warns for the SRD attack-roll cantrips below). Get the tier from the caster's actual character level, not a guess: **1d[die]** at levels 1-4, **2d[die]** at 5-10, **3d[die]** at 11-16, **4d[die]** at 17-20 — same tier count for every scaling cantrip, only the die size differs: Fire Bolt/Ray of Frost/Chill Touch d10/d8/d8, Poison Spray d12. No ability modifier is ever added to cantrip damage (only to the attack roll).
+
 **Fireball** (save, all targets):
 ```json
 {
