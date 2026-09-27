@@ -229,13 +229,50 @@ public partial class MutationTools
             }
 
             ctx.Cursor.DeliveredCardHashes[npc.Id] = hash;
-            if (card with { Mood = null } != new NpcCard(card.Id, card.Name))
+            var trimmed = SuppressFieldsCoveredByFullDetail(ctx, card);
+            if (trimmed with { Mood = null } != new NpcCard(trimmed.Id, trimmed.Name))
             {
-                cards.Add(card); // A card with nothing beyond id and name tells the model nothing.
+                cards.Add(trimmed); // A card with nothing beyond id and name tells the model nothing.
             }
         }
 
         return cards;
+    }
+
+    /// <summary>Two other sections of this same take_turn response can already carry a full
+    /// CharacterDetailView for this NPC — fullDetailCharacterId's FullNpcContext, or includeParty's Party
+    /// (party companions are always in the spotlight, see SpotlightIdsAsync's caller). Psychology/Social
+    /// ride on CharacterDetailView unconditionally in both cases, so Mood/Traits/Wants/Fears/Stance/
+    /// Appearance/Memories are pure duplication whenever either is present this turn — the card's ledger
+    /// hash still records the untrimmed card, so a later turn without the full-detail pull sends the
+    /// complete card. Needs/SystemStats/gear are duplicated too, but only when the full-detail view
+    /// actually carries them: FullNpcContext gates that behind includeCombatDetail (a "doorway glance"
+    /// fullDetailCharacterId with includeCombatDetail:false omits them, so the card stays the only place
+    /// they exist this turn), while Party's CharacterDetailView.From always includes them.</summary>
+    private static NpcCard SuppressFieldsCoveredByFullDetail(TurnContext ctx, NpcCard card)
+    {
+        var hasPartyDetail = ctx.Result.Party?.Any(p => p.Id.Equals(card.Id, StringComparison.OrdinalIgnoreCase)) == true;
+        var hasFullContext = string.Equals(ctx.Result.FullNpcContext?.Character?.Id, card.Id, StringComparison.OrdinalIgnoreCase);
+        if (!hasPartyDetail && !hasFullContext)
+        {
+            return card;
+        }
+
+        var trimmed = card with
+        {
+            Mood = null,
+            Traits = null,
+            Wants = null,
+            Fears = null,
+            Stance = null,
+            Appearance = null,
+            Memories = null
+        };
+
+        var includeCombatDetail = hasPartyDetail || (ctx.Request?.IncludeCombatDetail ?? false);
+        return includeCombatDetail
+            ? trimmed with { Stats = null, Gear = null, PressingNeeds = null, NeedNotes = null }
+            : trimmed;
     }
 
     /// <summary>Every campaign-enabled mode id mapped to the character IDs currently active in that mode's
@@ -322,7 +359,19 @@ public partial class MutationTools
             npc.BehavioralSummary = null; // Restated mood + activity + the last event; never needed.
             if (requested.Contains(npc.CharacterId))
             {
-                kept.Add(npc); // Asked for by name: never filtered.
+                // Asked for by name: the row itself is never filtered (never dropped). But a card sent
+                // this same turn, or already delivered earlier this session, already carries looks/gear/
+                // pressing needs for this NPC — repeating them here is pure duplication regardless of
+                // why the row is being echoed.
+                if (cardedIds.Contains(npc.CharacterId) || ctx.Cursor.DeliveredCardHashes.ContainsKey(npc.CharacterId))
+                {
+                    npc.CurrentAppearance = null;
+                    npc.Equipped = null;
+                    npc.Carried = null;
+                    npc.KnownNeeds = [];
+                }
+
+                kept.Add(npc);
                 continue;
             }
 

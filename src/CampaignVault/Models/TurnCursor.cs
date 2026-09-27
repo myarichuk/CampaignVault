@@ -164,6 +164,13 @@ public class TurnCursor
     [JsonPropertyName("briefedLocationIds")]
     public List<string> BriefedLocationIds { get; set; } = [];
 
+    /// <summary>Delivery ledger for SceneView.NeedDescriptorLegend: "key=text" markers already sent this
+    /// session, on any scene (Full or Delta). The legend is campaign-wide, near-static text, so once a
+    /// key/text pair has gone out it is dropped from every later scene until the text itself changes (a
+    /// changed value is a new marker, so it resends). Cleared with the rest of the ledger.</summary>
+    [JsonPropertyName("surfacedNeedLegendKeys")]
+    public List<string> SurfacedNeedLegendKeys { get; set; } = [];
+
     /// <summary>Set by start_session: a new conversation has none of the once-per-session deliveries, so the
     /// next take_turn clears the ledger. (A Full forced by advance_world is not a context loss and keeps it.)</summary>
     [JsonPropertyName("ledgerResetPending")]
@@ -176,6 +183,7 @@ public class TurnCursor
         DeliveredCardHashes.Clear();
         DeliveredContextKeys.Clear();
         BriefedLocationIds.Clear();
+        SurfacedNeedLegendKeys.Clear();
     }
 }
 

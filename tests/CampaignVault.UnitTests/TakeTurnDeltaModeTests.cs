@@ -3096,4 +3096,314 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 n => n.StartsWith("[GUIDANCE]", StringComparison.Ordinal));
         }
     }
+
+    /// <summary>
+    /// Regression guard: SceneAssembler.BuildNeedLegend rebuilds NeedDescriptorLegend fresh on every
+    /// scene assembly, so a FullScene fetch (fullDetailLocationId) used to resend the same campaign-wide
+    /// descriptor text every time — even on a plain revisit with nothing changed. It must go out once
+    /// per session and then drop until the text itself changes.
+    /// </summary>
+    [Fact]
+    public async Task NeedDescriptorLegend_SentOnceAcrossFullSceneFetches_ThenSuppressedUntilChanged()
+    {
+        var slug = NewSlug("legend");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-square";
+        var npcId = $"chars/{slug}-npc";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Square" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = npcId,
+                Name = "NPC",
+                CurrentLocationId = locId,
+                MaxHp = 10,
+                CurrentHp = 10,
+                Needs = new NeedsProfile { ActiveNeeds = new() { ["stress"] = 40f } }
+            });
+            await session.SaveChangesAsync();
+        }
+
+        Task<ToolResult<TurnResult>> Arrive() => tools.TakeTurn(new TakeTurnRequest
+        {
+            FullDetailLocationId = locId
+        }, slug);
+
+        var first = await Arrive();
+        Assert.True(first.Success, first.Summary);
+        Assert.NotNull(first.Data!.FullScene);
+        Assert.True(first.Data.FullScene!.NeedDescriptorLegend.ContainsKey("stress"));
+
+        // Same location, same descriptor text: already sent this session, so it's dropped.
+        var second = await Arrive();
+        Assert.True(second.Success, second.Summary);
+        Assert.Empty(second.Data!.FullScene!.NeedDescriptorLegend);
+    }
+
+    /// <summary>
+    /// Regression guard: fullDetailCharacterId with includeCombatDetail=true and a card built for the
+    /// same NPC in the same response used to duplicate the entire card (Traits/Wants/Fears/Mood/Stance/
+    /// Appearance/Memories ride unconditionally on CharacterDetailView.Psychology/Social; Stats/Gear/
+    /// PressingNeeds ride too once includeCombatDetail is true). Once every card field is covered by
+    /// FullNpcContext, the card must not appear at all — but the ledger still records delivery, so a
+    /// later plain turn doesn't resend the full card either.
+    /// </summary>
+    [Fact]
+    public async Task Card_IsFullySuppressed_WhenFullNpcContextIncludesCombatDetail()
+    {
+        var slug = NewSlug("carddedup-full");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var npcId = $"chars/{slug}-npc";
+        var daggerId = $"items/{slug}-dagger";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = npcId,
+                Name = "Oda",
+                MaxHp = 10,
+                CurrentHp = 10,
+                CurrentAppearance = "Grizzled",
+                Psychology = new PsychologyProfile { Traits = ["Gruff"], Wants = ["Coin"], CurrentMood = "Wary" },
+                Needs = new NeedsProfile { ActiveNeeds = new() { ["hunger"] = 90f } }
+            });
+            await repo.UpsertItemAsync(cs, new ItemUpsertRequest
+            {
+                Id = daggerId,
+                Name = "Dagger",
+                Description = "A plain dagger.",
+                HolderId = npcId,
+                CoreCategory = ItemCategories.Weapon,
+                EquipZones = [EquipZones.Accessory],
+                EquipLayer = EquipLayers.Held,
+                IsEquipped = true
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new EventOccurred { Summary = "Oda greets the party.", Category = EventCategory.Conversation, Involved = [npcId] }],
+            Narrative = "Oda greets the party.",
+            FullDetailCharacterId = npcId,
+            IncludeCombatDetail = true
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.NotNull(result.Data!.FullNpcContext);
+        Assert.Equal(npcId, result.Data.FullNpcContext!.Character.Id);
+        // Every field a card would carry is already covered by FullNpcContext (includeCombatDetail:true
+        // pulls Needs/SystemStats/gear too), so no card rides alongside it.
+        Assert.DoesNotContain(result.Data.Cards ?? [], c => c.Id == npcId);
+    }
+
+    /// <summary>
+    /// Regression guard, the flag-dependent half of the same fix: fullDetailCharacterId WITHOUT
+    /// includeCombatDetail omits Needs/SystemStats/Equipped/Carried from FullNpcContext (a "doorway
+    /// glance"), so the card must keep Stats/Gear/PressingNeeds — they exist nowhere else this turn —
+    /// while still dropping Traits/Wants/Fears/Mood/Stance/Appearance/Memories, which ride unconditionally
+    /// on FullNpcContext.Character.Psychology/Social regardless of the flag.
+    /// </summary>
+    [Fact]
+    public async Task Card_KeepsGearAndNeeds_ButDropsPsychology_WhenFullNpcContextOmitsCombatDetail()
+    {
+        var slug = NewSlug("carddedup-glance");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var npcId = $"chars/{slug}-npc";
+        var daggerId = $"items/{slug}-dagger";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = npcId,
+                Name = "Oda",
+                MaxHp = 10,
+                CurrentHp = 10,
+                CurrentAppearance = "Grizzled",
+                Psychology = new PsychologyProfile { Traits = ["Gruff"], Wants = ["Coin"], CurrentMood = "Wary" },
+                Needs = new NeedsProfile { ActiveNeeds = new() { ["hunger"] = 90f } }
+            });
+            await repo.UpsertItemAsync(cs, new ItemUpsertRequest
+            {
+                Id = daggerId,
+                Name = "Dagger",
+                Description = "A plain dagger.",
+                HolderId = npcId,
+                CoreCategory = ItemCategories.Weapon,
+                EquipZones = [EquipZones.Accessory],
+                EquipLayer = EquipLayers.Held,
+                IsEquipped = true
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new EventOccurred { Summary = "Oda greets the party.", Category = EventCategory.Conversation, Involved = [npcId] }],
+            Narrative = "Oda greets the party.",
+            FullDetailCharacterId = npcId
+            // IncludeCombatDetail omitted (default false): a doorway glance.
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.NotNull(result.Data!.FullNpcContext);
+        Assert.Empty(result.Data.FullNpcContext!.Character.Needs?.ActiveNeeds ?? []);
+        Assert.Null(result.Data.FullNpcContext.Character.SystemStats);
+
+        var card = Assert.Single(result.Data.Cards ?? [], c => c.Id == npcId);
+        Assert.Null(card.Traits);
+        Assert.Null(card.Wants);
+        Assert.Null(card.Mood);
+        Assert.Null(card.Appearance);
+        Assert.Contains("*Dagger", card.Gear);
+        Assert.NotNull(card.PressingNeeds);
+        Assert.True(card.PressingNeeds!.ContainsKey("hunger"));
+    }
+
+    /// <summary>
+    /// Regression guard for the includeParty companion counterpart of the same fix: a party companion is
+    /// always in the card spotlight (SpotlightIdsAsync's caller), and IncludeParty's Full branch always
+    /// builds a full CharacterDetailView (includeCombatDetail:true equivalent) for every party member —
+    /// so a live companion used to get the full Psychology/Social/Needs/SystemStats/gear twice in the same
+    /// response, once via Party and once via the card.
+    /// </summary>
+    [Fact]
+    public async Task Card_IsFullySuppressed_WhenCompanionAlsoRidesIncludeParty()
+    {
+        var slug = NewSlug("carddedup-party");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-camp";
+        var companionId = $"chars/{slug}-comp";
+        var daggerId = $"items/{slug}-dagger";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Camp" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = companionId,
+                Name = "Companion",
+                IsPartyCompanion = true,
+                CurrentLocationId = locId,
+                MaxHp = 10,
+                CurrentHp = 10,
+                CurrentAppearance = "Travel-worn",
+                Psychology = new PsychologyProfile { Traits = ["Loyal"], Wants = ["Peace"], CurrentMood = "Content" },
+                Needs = new NeedsProfile { ActiveNeeds = new() { ["hunger"] = 90f } }
+            });
+            await repo.UpsertItemAsync(cs, new ItemUpsertRequest
+            {
+                Id = daggerId,
+                Name = "Dagger",
+                Description = "A plain dagger.",
+                HolderId = companionId,
+                CoreCategory = ItemCategories.Weapon,
+                EquipZones = [EquipZones.Accessory],
+                EquipLayer = EquipLayers.Held,
+                IsEquipped = true
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            FullDetailLocationId = locId,
+            IncludeParty = true,
+            ForceFullReseed = true
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.Contains(result.Data!.Party ?? [], p => p.Id == companionId);
+        // Party already carries the full CharacterDetailView (Psychology/Social/Needs/SystemStats), so
+        // nothing is left for a card to add.
+        Assert.DoesNotContain(result.Data.Cards ?? [], c => c.Id == companionId);
+    }
+
+    /// <summary>
+    /// Regression guard for the extraCharacterIds bypass: "asked for by name" guaranteed the row stays in
+    /// Npcs[], but it also skipped the carded-field trim entirely, so a card and its explicitly requested
+    /// npcs[] echo duplicated appearance/gear/needs in the same response. The row must still always be
+    /// kept; only the card-covered fields are stripped.
+    /// </summary>
+    [Fact]
+    public async Task ExtraCharacterIds_StripsCardCoveredFields_ButKeepsTheRow()
+    {
+        var slug = NewSlug("extraiddedup");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var npcId = $"chars/{slug}-npc";
+        var daggerId = $"items/{slug}-dagger";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = npcId,
+                Name = "Oda",
+                MaxHp = 10,
+                CurrentHp = 10,
+                CurrentAppearance = "Travel-worn",
+                Needs = new NeedsProfile { ActiveNeeds = new() { ["hunger"] = 90f } }
+            });
+            await repo.UpsertItemAsync(cs, new ItemUpsertRequest
+            {
+                Id = daggerId,
+                Name = "Dagger",
+                Description = "A plain dagger.",
+                HolderId = npcId,
+                CoreCategory = ItemCategories.Weapon,
+                EquipZones = [EquipZones.Accessory],
+                EquipLayer = EquipLayers.Held,
+                IsEquipped = true
+            });
+            await session.SaveChangesAsync();
+        }
+
+        // No ExtraLocationIds/location touched: if the NPC's scene rode along too,
+        // DedupeNpcsCoveredByScenes would remove the Npcs[] row entirely (already covered by the scene
+        // roster), leaving nothing for this fix to trim. Being involved (not present in a scene) is what
+        // puts this NPC in both cardIds and npcCandidates here — a party companion doesn't work for this:
+        // it's deliberately excluded from "involved" (it rides in party sections instead), so it can only
+        // reach cardIds via scene presence, which would trip that same dedupe.
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new EventOccurred { Summary = "Oda chats with the party.", Category = EventCategory.Conversation, Involved = [npcId] }],
+            Narrative = "Oda chats with the party.",
+            ExtraCharacterIds = [npcId]
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.Null(result.Data!.Scenes);
+        var card = Assert.Single(result.Data.Cards ?? [], c => c.Id == npcId);
+        Assert.Contains("*Dagger", card.Gear);
+
+        var npcEcho = Assert.Single(result.Data.Npcs ?? [], n => n.CharacterId == npcId);
+        Assert.Null(npcEcho.CurrentAppearance);
+        Assert.Null(npcEcho.Equipped);
+        Assert.Null(npcEcho.Carried);
+        Assert.Empty(npcEcho.KnownNeeds);
+    }
 }
