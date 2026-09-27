@@ -1,5 +1,6 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Rulesets.Contributors;
@@ -90,6 +91,18 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         List<WorldChange> mutations, 
         CancellationToken ct)
     {
+        // Multi-instance spells (Magic Missile darts, Scorching Ray rays) fan out over instances,
+        // not listed targets. Every other action keeps the one-attack-per-listed-target loop below.
+        var spell = action.ActionType == RulesetActionType.Spell ? LookupSpell(action) : null;
+        if (spell?.DamageIsPool == true)
+        {
+            return ResolverResult.Fail("UnresolvableMechanic", BuildPoolDamageError(action));
+        }
+        if (spell != null && HasInstanceData(spell))
+        {
+            return await ResolveMultiInstanceAttackAsync(action, spell, context, actorStats, mutations, ct);
+        }
+
         var targets = AttackTargetHelper.SelectTargets(action);
         if (targets.Count == 0)
         {
@@ -100,7 +113,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         for (var i = 0; i < targets.Count; i++)
         {
             var result = await ResolveAttackAgainstTargetAsync(
-                action, targets[i], context, actorStats, mutations, ct);
+                action, targets[i], context, actorStats, mutations, ct, spell);
             if (!result.Success)
             {
                 return result;
@@ -118,7 +131,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         IChangeContext context,
         Dnd5eExtension actorStats,
         List<WorldChange> mutations,
-        CancellationToken ct)
+        CancellationToken ct,
+        SpellDefinition? spell = null,
+        string? damageDiceOverride = null)
     {
         if (!context.Characters.TryGetValue(targetId, out var target))
         {
@@ -152,7 +167,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
 
-        var damageDice = action.Parameters.GetValueOrDefault("damageDice", "1d4");
+        var damageDice = damageDiceOverride ?? action.Parameters.GetValueOrDefault("damageDice", "1d4");
         
         var damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db) && !int.TryParse(db, out damageBonus))
@@ -163,29 +178,50 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         damageBonus = ApplyAllModifiers(actorStats, damageBonus, "DamageRoll");
 
         var mechanic = GetMechanicFromAction(action);
+        var requiresAttackRoll = spell?.RequiresAttackRoll ?? true;
 
-        var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = mechanic }, ct);
+        var attackRoll = requiresAttackRoll
+            ? await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = mechanic }, ct)
+            : null;
         var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
 
         var isHit = false;
-        var isCrit = attackRoll.HasCritical;
+        var isCrit = attackRoll is { HasCritical: true };
 
-        if (isCrit)
+        if (!requiresAttackRoll)
+        {
+            // Auto-hit spell (Magic Missile): no attack roll and no crit — damage always applies.
+            isHit = true;
+        }
+        else if (isCrit)
         {
             isHit = true;
         }
-        else if (attackRoll.HasComplication)
+        else if (attackRoll is { HasComplication: true })
         {
             isHit = false;
         }
-        else if (attackRoll.Result >= ac)
+        else if (attackRoll is { Result: var attackTotal } && attackTotal >= ac)
         {
             isHit = true;
         }
 
         if (!isHit)
         {
-            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
+            // Auto-hit spells always hit, so an attack roll exists on every path that reaches here.
+            var attackDetail = $"Attack {attackRoll!.Result} vs AC {ac}. {attackRoll.Summary}";
+            if (spell?.OnMiss == MissBehavior.Half)
+            {
+                // Acid Arrow shape: a miss still splashes half the (already rolled) initial damage.
+                var splashDamage = ApplyTargetDamageReduction(
+                    (int)Math.Floor(damageRoll.Result / 2.0), targetStats, action.DamageType);
+                if (splashDamage > 0)
+                {
+                    mutations.Add(new HpChange { CharacterId = targetId, Delta = -splashDamage });
+                }
+                return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed, but the acid still splashes for {splashDamage} damage. {attackDetail}");
+            }
+            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. {attackDetail}");
         }
 
         var finalDamage = damageRoll.Result;
@@ -197,17 +233,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             critMsg = $" CRITICAL HIT! Added {critDmg.Result} extra damage.";
         }
 
-        var damageType = action.DamageType ?? "Physical";
-
-        var drKey = targetStats.DamageResistances.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
-        var flatDr = drKey != null && targetStats.DamageResistances.TryGetValue(drKey, out var dr) ? dr : 0;
-
-        if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
-        {
-            finalDamage = (int)Math.Floor(finalDamage * multiplier);
-        }
-
-        finalDamage = Math.Max(0, finalDamage - flatDr);
+        finalDamage = ApplyTargetDamageReduction(finalDamage, targetStats, action.DamageType);
 
         mutations.Add(new HpChange
         {
@@ -215,15 +241,430 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Delta = -finalDamage
         });
 
+        var tickMsg = spell?.DelayedTick != null
+            ? EmitDelayedTick(action, spell, targetId, target.Name, mutations)
+            : "";
+
         var damageWarning = BuildSpellDamageWarning(action, damageDice, actorStats.Level);
 
-        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}{damageWarning}");
+        var attackSegment = attackRoll != null ? $"(Attack {attackRoll.Result} vs AC {ac})" : "(auto-hit)";
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. {attackSegment}.{critMsg}{tickMsg}{damageWarning}");
+    }
+
+    private SpellDefinition? LookupSpell(RulesetAction action)
+    {
+        if (_spellDefinitionProvider == null)
+        {
+            return null;
+        }
+
+        var slug = NormalizeSpellSlug(action.ActionName);
+        return _spellDefinitionProvider.TryGet(System, slug, out var spell) ? spell : null;
+    }
+
+    private static bool HasInstanceData(SpellDefinition spell) =>
+        spell.InstanceCountAtSlotLevel is { Count: > 0 }
+        || spell.InstanceCountAtCharacterLevel is { Count: > 0 };
+
+    private static bool HasPoolData(SpellDefinition spell) =>
+        spell.DamagePools is { Count: > 0 } pools && pools.Values.All(p => p is { Count: > 0 });
+
+    /// <summary>One multi-pool cast's derived shape: per-pool dice plus any upcast bonus.</summary>
+    private sealed record PoolCastShape(
+        List<(string Type, string Dice)> Pools,
+        string? BonusDice,
+        int BonusLevels,
+        string? BonusPool);
+
+    /// <summary>
+    /// Matches the caller's summed damage total against the spell's per-slot totals to infer which
+    /// slot level was cast (the spend itself is a separate ResourceChange the resolver can't see).
+    /// Null when nothing matches — callers fall back to the base slot.
+    /// </summary>
+    private static int? MatchSummedTier(SpellDefinition spell, string? sentDamageDice)
+    {
+        if (sentDamageDice is null || spell.DamageAtSlotLevel is not { Count: > 0 } summed)
+        {
+            return null;
+        }
+
+        var normalized = NormalizeDice(sentDamageDice);
+        foreach (var candidate in summed.OrderBy(kv => kv.Key))
+        {
+            if (string.Equals(NormalizeDice(candidate.Value), normalized, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate.Key;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Emits the synthetic residue effect scheduling a delayed damage tick (Acid Arrow's "2d4 at
+    /// the end of its next turn"). Only called on a hit — RequiresInitialHit spells never schedule
+    /// on a miss. Returns the narrative clause describing the scheduled tick ("" if none).
+    /// </summary>
+    private static string EmitDelayedTick(
+        RulesetAction action, SpellDefinition spell, string targetId, string targetName, List<WorldChange> mutations)
+    {
+        var tick = spell.DelayedTick;
+        if (tick?.DiceExpressionAtSlotLevel is not { Count: > 0 } diceBySlot)
+        {
+            return "";
+        }
+
+        action.Parameters.TryGetValue("damageDice", out var sent);
+        var slot = MatchSummedTier(spell, sent) ?? diceBySlot.Keys.Min();
+        var dice = diceBySlot.TryGetValue(slot, out var resolved) ? resolved : diceBySlot[diceBySlot.Keys.Min()];
+        mutations.Add(new StatusChange
+        {
+            CharacterId = targetId,
+            Effect = new StatusEffect
+            {
+                Name = "AcidArrowResidue",
+                Category = "Condition",
+                PendingDamage = new PendingEffectDamage
+                {
+                    DiceExpression = dice,
+                    DamageType = tick.DamageType ?? spell.DamageType ?? "acid",
+                },
+                ExpiresAtOwnTurnStart = true,
+                AppliedBy = "system/combat-resolver",
+                RecoveryHint = "Fades after dealing its delayed damage at the start of the target's next turn.",
+            },
+        });
+        return $" Acid clings to {targetName} ({dice} at the start of their next turn).";
+    }
+
+    /// <summary>
+    /// Applies the target's damage-type multiplier and flat damage reduction, shared by the hit
+    /// and miss-splash paths so both agree on mitigation.
+    /// </summary>
+    private static int ApplyTargetDamageReduction(int damage, Dnd5eExtension targetStats, string? actionDamageType)
+    {
+        var damageType = actionDamageType ?? "Physical";
+
+        var drKey = targetStats.DamageResistances.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
+        var flatDr = drKey != null && targetStats.DamageResistances.TryGetValue(drKey, out var dr) ? dr : 0;
+
+        if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
+        {
+            damage = (int)Math.Floor(damage * multiplier);
+        }
+
+        return Math.Max(0, damage - flatDr);
+    }
+
+    /// <summary>
+    /// Resolves one attack roll + damage roll per damage *instance* (Magic Missile dart, Scorching
+    /// Ray ray, Eldritch Blast beam) instead of one per listed target. Instance count and
+    /// per-instance dice come from the spell's overlay data, not the caller's damageDice — this is
+    /// the one place a multi-instance spell's damage is derived, not caller-sent, because count +
+    /// per-instance dice are two numbers damageDice's one string can't express. Escape hatches:
+    /// attackCount/shots/etc. overrides the derived count, instanceDamageDice overrides the
+    /// per-instance dice.
+    /// </summary>
+    private async Task<ResolverResult> ResolveMultiInstanceAttackAsync(
+        RulesetAction action,
+        SpellDefinition spell,
+        IChangeContext context,
+        Dnd5eExtension actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        var (instanceCount, perInstanceDice) = ResolveInstanceShape(action, spell, actorStats.Level);
+        if (TryGetParameter(action.Parameters, out var countRaw, "attackCount", "shots", "rateOfFire", "attacks")
+            && int.TryParse(countRaw, out var explicitCount) && explicitCount > 0)
+        {
+            instanceCount = explicitCount;
+        }
+        if (TryGetParameter(action.Parameters, out var diceOverride, "instanceDamageDice")
+            && !string.IsNullOrWhiteSpace(diceOverride))
+        {
+            perInstanceDice = diceOverride;
+        }
+
+        var instances = AttackTargetHelper.DistributeInstances(action.TargetIds, instanceCount);
+        if (instances.Count == 0)
+        {
+            return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
+        }
+
+        var narratives = new List<string>();
+        foreach (var targetId in instances)
+        {
+            var result = await ResolveAttackAgainstTargetAsync(
+                action, targetId, context, actorStats, mutations, ct, spell, perInstanceDice);
+            if (!result.Success)
+            {
+                return result;
+            }
+
+            narratives.Add(result.Narrative);
+        }
+
+        return ResolverResult.Ok(string.Join(" | ", narratives));
+    }
+
+    private static (int Count, string Dice) ResolveInstanceShape(
+        RulesetAction action, SpellDefinition spell, int? casterLevel)
+    {
+        if (spell.InstanceCountAtCharacterLevel is { Count: > 0 } byChar
+            && spell.PerInstanceDamageAtCharacterLevel is { Count: > 0 } charDice)
+        {
+            var tier = byChar.Keys.Where(l => l <= (casterLevel ?? 1)).DefaultIfEmpty(byChar.Keys.Min()).Max();
+            var dice = charDice.TryGetValue(tier, out var tierDice) ? tierDice : charDice[charDice.Keys.Min()];
+            return (byChar[tier], dice);
+        }
+
+        if (spell.InstanceCountAtSlotLevel is { Count: > 0 } bySlot
+            && spell.PerInstanceDamageAtSlotLevel is { Count: > 0 } slotDice)
+        {
+            // The resolver has no slot-level signal (the slot spend is a separate ResourceChange),
+            // so infer the tier from the caller's summed total — the same value the old single-roll
+            // shape sent ("5d4+5" matches slot 3's total, resolving 5 darts). Falls back to the
+            // base slot when nothing matches (e.g. the caller already sent per-instance dice).
+            action.Parameters.TryGetValue("damageDice", out var sent);
+            var slot = MatchSummedTier(spell, sent) ?? bySlot.Keys.Min();
+
+            var count = bySlot.TryGetValue(slot, out var resolvedCount) ? resolvedCount : bySlot[bySlot.Keys.Min()];
+            var dice = slotDice.TryGetValue(slot, out var resolvedDice) ? resolvedDice : slotDice[slotDice.Keys.Min()];
+            return (count, dice);
+        }
+
+        return (1, action.Parameters.GetValueOrDefault("damageDice", "1d4"));
     }
 
     /// <summary>
     /// Ability abbreviation → full name, as dnd5eapi.co's spell "dc.dc_type.index" carries it (e.g.
     /// "dex"), for comparing against the caller's ruleset_action.parameters.save (e.g. "Dexterity").
     /// </summary>
+    /// <summary>
+    /// Canonical composite dice: splits on '+', combines like-sided terms and flat modifiers,
+    /// sorts by die sides, rejoins. "20d6+20d6" and "40d6" both become "40d6"; "2d8+4d6" and
+    /// "4d6+2d8" both become "4d6+2d8" — so pool order and pre-combined totals never false-warn.
+    /// Anything unparseable falls back to whitespace-stripped comparison.
+    /// </summary>
+    private static string CanonicalizeCompositeDice(string dice)
+    {
+        var countsBySides = new SortedDictionary<int, int>();
+        var flat = 0;
+        foreach (var rawTerm in dice.Split('+'))
+        {
+            var term = rawTerm.Trim();
+            var match = RegularExpressions.Regex.Match(term, @"^(\d+)[dD](\d+)([+-]\d+)?$");
+            if (match.Success)
+            {
+                var sides = int.Parse(match.Groups[2].Value);
+                countsBySides.TryGetValue(sides, out var count);
+                countsBySides[sides] = count + int.Parse(match.Groups[1].Value);
+                if (match.Groups[3].Success)
+                {
+                    flat += int.Parse(match.Groups[3].Value);
+                }
+                continue;
+            }
+            if (int.TryParse(term, out var flatTerm))
+            {
+                flat += flatTerm;
+                continue;
+            }
+            return NormalizeDice(dice);
+        }
+
+        var result = string.Join("+", countsBySides.Select(kv => $"{kv.Value}d{kv.Key}"));
+        if (flat > 0)
+        {
+            result += (result.Length > 0 ? "+" : "") + flat;
+        }
+        else if (flat < 0)
+        {
+            result += flat;
+        }
+        return result.Length > 0 ? result : NormalizeDice(dice);
+    }
+
+    /// <summary>Scales NdX dice by a level count ("1d6" x 2 = "2d6"); unparseable input passes through.</summary>
+    private static string ScaleDice(string dice, int levels)
+    {
+        var match = RegularExpressions.Regex.Match(dice.Trim(), @"^(\d+)[dD](\d+)$");
+        if (!match.Success || levels < 1)
+        {
+            return dice;
+        }
+        return $"{int.Parse(match.Groups[1].Value) * levels}d{match.Groups[2].Value}";
+    }
+
+    /// <summary>
+    /// Per-slot canonical damage totals for a multi-pool spell: every pool's dice plus any upcast
+    /// bonus levels, canonicalized. The caster's upcast choice never changes the total (addition
+    /// commutes), so each slot maps to exactly one accepted string.
+    /// </summary>
+    private static Dictionary<int, string> PoolTotalsBySlot(SpellDefinition spell)
+    {
+        var pools = spell.DamagePools!;
+        var slots = pools.First().Value.Keys;
+        var baseSlot = slots.Min();
+        var totals = new Dictionary<int, string>();
+        foreach (var slot in slots)
+        {
+            var terms = pools
+                .Select(p => p.Value.TryGetValue(slot, out var poolDice) ? poolDice : p.Value[p.Value.Keys.Min()])
+                .ToList();
+            if (spell.UpcastChoice?.BonusDicePerSlot is string bonus && slot > baseSlot)
+            {
+                for (var i = 0; i < slot - baseSlot; i++)
+                {
+                    terms.Add(bonus);
+                }
+            }
+            totals[slot] = CanonicalizeCompositeDice(string.Join("+", terms));
+        }
+        return totals;
+    }
+
+    /// <summary>
+    /// Matches the caller's summed damage total against the spell's per-slot pool totals to infer
+    /// which slot level was cast. Falls back to the base slot when nothing matches.
+    /// </summary>
+    private static int InferPoolSlot(SpellDefinition spell, string? sentDamageDice)
+    {
+        var totals = PoolTotalsBySlot(spell);
+        if (sentDamageDice != null)
+        {
+            var canonical = CanonicalizeCompositeDice(sentDamageDice);
+            foreach (var (slot, total) in totals.OrderBy(kv => kv.Key))
+            {
+                if (string.Equals(total, canonical, StringComparison.OrdinalIgnoreCase))
+                {
+                    return slot;
+                }
+            }
+        }
+        return totals.Keys.Min();
+    }
+
+    /// <summary>
+    /// Derives a multi-pool cast's per-pool dice (and any upcast bonus) from spell data. The slot
+    /// comes from the caller's summed total when it matches a known tier, else the base slot —
+    /// same inference rule as multi-instance, since the slot spend is invisible here. The upcast
+    /// bonus pool comes from the action's upcastPool parameter (null when missing or unknown,
+    /// which the narrative notes without blocking).
+    /// </summary>
+    private static PoolCastShape ResolvePoolShape(RulesetAction action, SpellDefinition spell)
+    {
+        var pools = spell.DamagePools!;
+        action.Parameters.TryGetValue("damageDice", out var sent);
+        var slot = InferPoolSlot(spell, sent);
+        var baseSlot = pools.First().Value.Keys.Min();
+        var resolved = pools
+            .Select(p => (p.Key, p.Value.TryGetValue(slot, out var poolDice) ? poolDice : p.Value[p.Value.Keys.Min()]))
+            .ToList();
+        if (spell.UpcastChoice?.BonusDicePerSlot is not string bonus || slot <= baseSlot)
+        {
+            return new PoolCastShape(resolved, null, 0, null);
+        }
+        string? chosen = null;
+        if (action.Parameters.TryGetValue("upcastPool", out var choice))
+        {
+            chosen = resolved.Select(p => p.Key).FirstOrDefault(t => string.Equals(t, choice, StringComparison.OrdinalIgnoreCase));
+        }
+        return new PoolCastShape(resolved, bonus, slot - baseSlot, chosen);
+    }
+
+    /// <summary>
+    /// Rolls each damage pool separately (correct variance and per-type narrative), sums with any
+    /// upcast bonus, then applies the save result to the total — "half as much damage" halves the
+    /// sum, not each pool. Mirrors TryApplySaveDamageAsync's half-on-save math and single HpChange.
+    /// </summary>
+    private static async Task<(int Damage, string Detail)> ApplyPoolSaveDamageAsync(
+        RulesetAction action,
+        PoolCastShape shape,
+        string targetId,
+        bool saved,
+        List<WorldChange> mutations,
+        IRollService rollService,
+        CancellationToken ct)
+    {
+        var parts = new List<string>();
+        var total = 0;
+        foreach (var (type, dice) in shape.Pools)
+        {
+            var poolRoll = await rollService.RollAsync(new RollRequest
+            {
+                Tag = "spell-damage",
+                Expression = dice,
+                Mechanic = DiceMechanic.Standard,
+            }, ct);
+            total += poolRoll.Result;
+            parts.Add($"{poolRoll.Result} {type}");
+        }
+        if (shape.BonusDice != null)
+        {
+            var bonusTotal = 0;
+            for (var i = 0; i < shape.BonusLevels; i++)
+            {
+                var bonusRoll = await rollService.RollAsync(new RollRequest
+                {
+                    Tag = "spell-damage",
+                    Expression = shape.BonusDice,
+                    Mechanic = DiceMechanic.Standard,
+                }, ct);
+                bonusTotal += bonusRoll.Result;
+            }
+            total += bonusTotal;
+            parts.Add(shape.BonusPool != null ? $"{bonusTotal} upcast {shape.BonusPool}" : $"{bonusTotal} upcast");
+        }
+
+        if (action.Parameters.TryGetValue("damageBonus", out var db) && int.TryParse(db, out var damageBonus))
+        {
+            total += damageBonus;
+        }
+
+        var halfOnSave = ResolveHalfOnSave(action.Parameters);
+        var damage = saved && halfOnSave ? (int)Math.Floor(total / 2.0) : saved ? 0 : total;
+        if (damage > 0)
+        {
+            mutations.Add(new HpChange { CharacterId = targetId, Delta = -damage });
+        }
+        return (damage, $" ({string.Join(" + ", parts)})");
+    }
+
+    /// <summary>
+    /// Multi-pool spells (Ice Storm, Meteor Swarm, Flame Strike) accept the caller's summed total
+    /// in any pool order, pre-combined or composite ("40d6", "20d6+20d6", "2d8+4d6" all match) —
+    /// canonicalized before comparison. Warns only when no known slot tier matches. On the save
+    /// path damage was derived from pool data; anywhere else it was applied as sent.
+    /// </summary>
+    private static string BuildMultiPoolDamageWarning(
+        RulesetAction action, string damageDice, SpellDefinition spell, bool damageDerived)
+    {
+        var totals = PoolTotalsBySlot(spell);
+        var canonical = CanonicalizeCompositeDice(damageDice);
+        if (totals.Values.Any(t => string.Equals(t, canonical, StringComparison.OrdinalIgnoreCase)))
+        {
+            return "";
+        }
+
+        var pools = spell.DamagePools!;
+        var baseSlot = pools.First().Value.Keys.Min();
+        var known = string.Join("; ", totals.OrderBy(kv => kv.Key).Select(kv =>
+        {
+            var parts = pools
+                .Select(p => $"{(p.Value.TryGetValue(kv.Key, out var poolDice) ? poolDice : p.Value[p.Value.Keys.Min()])} {p.Key}")
+                .ToList();
+            if (spell.UpcastChoice?.BonusDicePerSlot is string bonus && kv.Key > baseSlot)
+            {
+                parts.Add($"{ScaleDice(bonus, kv.Key - baseSlot)} upcast (your choice of pool)");
+            }
+            return $"slot {kv.Key}: {string.Join(" + ", parts)}";
+        }));
+        var suffix = damageDerived ? "damage was resolved from pool data" : "damage was applied as sent";
+        return $" [WARNING] '{action.ActionName}' damageDice '{damageDice}' doesn't match any known multi-pool total ({known}) " +
+               $"— {suffix}, but check the slot level cast.";
+    }
+
     private static readonly Dictionary<string, string> AbilityAbbreviations = new(StringComparer.OrdinalIgnoreCase)
     {
         ["str"] = "Strength",
@@ -255,7 +696,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     /// ResourceChange, not this RulesetAction), so those are checked against "matches any known
     /// tier" rather than "matches the caster's specific level" the way cantrips are.
     /// </summary>
-    private string BuildSpellDamageWarning(RulesetAction action, string damageDice, int? casterLevel)
+    private string BuildSpellDamageWarning(RulesetAction action, string damageDice, int? casterLevel, bool damageDerived = false)
     {
         if (action.ActionType != RulesetActionType.Spell || _spellDefinitionProvider == null)
         {
@@ -269,6 +710,16 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         var normalizedDice = NormalizeDice(damageDice);
+
+        if (HasInstanceData(spell))
+        {
+            return BuildMultiInstanceDamageWarning(action, damageDice, normalizedDice, spell);
+        }
+
+        if (HasPoolData(spell))
+        {
+            return BuildMultiPoolDamageWarning(action, damageDice, spell, damageDerived);
+        }
 
         if ((spell.Level ?? -1) == 0 && spell.DamageAtCharacterLevel is { Count: > 0 } byCharacterLevel)
         {
@@ -291,6 +742,96 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         return "";
+    }
+
+    /// <summary>
+    /// Multi-instance spells (Magic Missile, Scorching Ray, Eldritch Blast) accept EITHER the
+    /// caller's summed total ("3d4+3" — the pre-multi-instance caller shape, still used for slot
+    /// inference) OR per-instance dice ("1d4+1", e.g. from a split-aware caller). Warns only when
+    /// neither matches. Unlike the flat-tier check, damage here is resolved from per-instance
+    /// data, not applied as sent.
+    /// </summary>
+    private static string BuildMultiInstanceDamageWarning(
+        RulesetAction action, string damageDice, string normalizedDice, SpellDefinition spell)
+    {
+        var accepted = new List<string>();
+        if (spell.DamageAtSlotLevel is { Count: > 0 } summed)
+        {
+            accepted.AddRange(summed.Values);
+        }
+        if (spell.DamageAtCharacterLevel is { Count: > 0 } summedCantrip)
+        {
+            accepted.AddRange(summedCantrip.Values);
+        }
+        if (spell.PerInstanceDamageAtSlotLevel is { Count: > 0 } perSlot)
+        {
+            accepted.AddRange(perSlot.Values);
+        }
+        if (spell.PerInstanceDamageAtCharacterLevel is { Count: > 0 } perChar)
+        {
+            accepted.AddRange(perChar.Values);
+        }
+
+        if (accepted.Any(v => string.Equals(NormalizeDice(v), normalizedDice, StringComparison.OrdinalIgnoreCase)))
+        {
+            return "";
+        }
+
+        var known = string.Join(", ", accepted.Distinct().OrderBy(v => v, StringComparer.OrdinalIgnoreCase));
+        return $" [WARNING] '{action.ActionName}' damageDice '{damageDice}' matches neither a known spell total nor a per-instance value ({known}) " +
+               "— damage was resolved from per-instance data, but check the slot level cast.";
+    }
+
+    /// <summary>
+    /// Pool-shaped damage (Sleep's HP-affect pool) can never be resolved as HP damage — failing
+    /// loud here beats silently dealing the pool as damage.
+    /// </summary>
+    private static string BuildPoolDamageError(RulesetAction action)
+    {
+        action.Parameters.TryGetValue("damageDice", out var sent);
+        var pool = string.IsNullOrWhiteSpace(sent) ? "an HP-affect pool" : $"an HP-affect pool ({sent})";
+        return $"Error: '{action.ActionName}' rolls {pool}, not HP damage — the engine cannot resolve " +
+            "pool-based spells. Roll the pool and narrate who is affected instead.";
+    }
+
+    /// <summary>Effective half-on-save flag: true unless the caller explicitly disabled it.</summary>
+    private static bool ResolveHalfOnSave(Dictionary<string, string> parameters) =>
+        !parameters.TryGetValue("halfOnSave", out var halfStr)
+        || halfStr.Equals("true", StringComparison.OrdinalIgnoreCase)
+        || halfStr == "1";
+
+    /// <summary>
+    /// dnd5e only. Spells whose SaveSuccess is "none" (Sacred Flame, Disintegrate, ...) deal no
+    /// damage on a successful save — but halfOnSave defaults to true, so a caller that omits it
+    /// silently deals half damage on a save. Soft warning only, same pattern as the
+    /// damage/save-ability checks.
+    /// </summary>
+    private string BuildSpellHalfOnSaveWarning(RulesetAction action)
+    {
+        if (action.ActionType != RulesetActionType.Spell || _spellDefinitionProvider == null)
+        {
+            return "";
+        }
+
+        // No damage dice, no damage at stake: a pure control spell must not warn.
+        if (!action.Parameters.ContainsKey("damageDice"))
+        {
+            return "";
+        }
+
+        var spell = LookupSpell(action);
+        if (!string.Equals(spell?.SaveSuccess, "none", StringComparison.OrdinalIgnoreCase))
+        {
+            return "";
+        }
+
+        if (!ResolveHalfOnSave(action.Parameters))
+        {
+            return "";
+        }
+
+        return $" [WARNING] '{action.ActionName}' deals no damage on a successful save, " +
+            "but halfOnSave is true (the default) — damage was applied as sent, but pass halfOnSave=false.";
     }
 
     /// <summary>dnd5e only, mirrors BuildSpellDamageWarning's soft-warning approach for the saving-throw ability.</summary>
@@ -444,6 +985,14 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         List<WorldChange> mutations, 
         CancellationToken ct)
     {
+        // Pool-shaped damage can never resolve as HP damage, even when a caller names the spell
+        // on a single-save action. (Normal single saves name the ability, so this is a no-op for them.)
+        var spell = LookupSpell(action);
+        if (spell?.DamageIsPool == true)
+        {
+            return ResolverResult.Fail("UnresolvableMechanic", BuildPoolDamageError(action));
+        }
+
         if (!action.Parameters.TryGetValue("dc", out var dcStr) || !int.TryParse(dcStr, out var dc))
         {
             return ResolverResult.Fail("InvalidParameter", "Error: Saving throw requires a 'dc' parameter.");
@@ -483,6 +1032,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         List<WorldChange> mutations,
         CancellationToken ct)
     {
+        var spell = LookupSpell(action);
+        if (spell?.DamageIsPool == true)
+        {
+            return ResolverResult.Fail("UnresolvableMechanic", BuildPoolDamageError(action));
+        }
+
         var targets = AttackTargetHelper.SelectTargets(action);
         if (targets.Count == 0)
         {
@@ -497,6 +1052,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         var saveName = action.Parameters.GetValueOrDefault("save", "Dexterity");
         var narratives = new List<string>();
+        var poolSpell = spell != null && HasPoolData(spell) ? spell : null;
+        var poolShape = poolSpell != null ? ResolvePoolShape(action, poolSpell) : null;
 
         foreach (var targetId in targets)
         {
@@ -523,18 +1080,34 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             }, ct);
 
             var isSuccess = outcome.Result >= dc;
-            var damage = await TryApplySaveDamageAsync(action, targetId, isSuccess, mutations, _rollService, ct);
+            int damage;
+            string damageDetail;
+            if (poolShape != null)
+            {
+                (damage, damageDetail) = await ApplyPoolSaveDamageAsync(
+                    action, poolShape, targetId, isSuccess, mutations, _rollService, ct);
+            }
+            else
+            {
+                damage = await TryApplySaveDamageAsync(action, targetId, isSuccess, mutations, _rollService, ct);
+                damageDetail = "";
+            }
             narratives.Add(
                 $"{action.ActionName} vs {target.Name}: {(isSuccess ? "Saved" : "Failed")} ({saveName} {outcome.Result} vs DC {dc})"
-                + (damage > 0 ? $" — {damage} damage." : "."));
+                + (damage > 0 ? $" — {damage} damage{damageDetail}." : "."));
         }
 
         var saveTypeWarning = BuildSpellSaveTypeWarning(action, saveName);
         var damageWarning = action.Parameters.TryGetValue("damageDice", out var saveDamageDice)
-            ? BuildSpellDamageWarning(action, saveDamageDice, actorStats.Level)
+            ? BuildSpellDamageWarning(action, saveDamageDice, actorStats.Level, poolSpell != null)
+            : "";
+        var halfOnSaveWarning = BuildSpellHalfOnSaveWarning(action);
+
+        var upcastNote = poolShape is { BonusDice: not null, BonusPool: null }
+            ? $" [WARNING] '{action.ActionName}' upcast bonus has no chosen pool — pass upcastPool={string.Join("/", poolShape.Pools.Select(p => p.Type))} to attribute it (damage total is unaffected)."
             : "";
 
-        return ResolverResult.Ok(string.Join(" | ", narratives) + saveTypeWarning + damageWarning);
+        return ResolverResult.Ok(string.Join(" | ", narratives) + saveTypeWarning + damageWarning + halfOnSaveWarning + upcastNote);
     }
 
     protected override async Task<ResolverResult> ResolveSpellUtilityAsync(
@@ -630,9 +1203,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Mechanic = DiceMechanic.Standard,
         }, ct);
 
-        var halfOnSave = !action.Parameters.TryGetValue("halfOnSave", out var halfStr)
-            || halfStr.Equals("true", StringComparison.OrdinalIgnoreCase)
-            || halfStr == "1";
+        var halfOnSave = ResolveHalfOnSave(action.Parameters);
 
         var damage = saved && halfOnSave
             ? (int)Math.Floor(damageRoll.Result / 2.0)

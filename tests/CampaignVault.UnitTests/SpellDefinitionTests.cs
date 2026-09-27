@@ -332,6 +332,155 @@ public class SpellDefinitionTests
         Assert.Equal(3, character.SystemStats.ResourcePools["test_pool"].Current);
     }
 
+    [Fact]
+    public void Overlay_MagicMissile_HasInstanceData()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("magic_missile", out var missile));
+        Assert.False(missile.RequiresAttackRoll ?? true);
+        Assert.NotNull(missile.InstanceCountAtSlotLevel);
+        Assert.Equal(3, missile.InstanceCountAtSlotLevel[1]);
+        Assert.Equal(11, missile.InstanceCountAtSlotLevel[9]);
+        Assert.Equal("1d4+1", missile.PerInstanceDamageAtSlotLevel![9]);
+        // API's pre-summed total is kept as-is for reference.
+        Assert.Equal("3d4 + 3", missile.DamageAtSlotLevel![1]);
+    }
+
+    [Fact]
+    public void Overlay_ScorchingRay_HasPerRayData()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("scorching_ray", out var ray));
+        Assert.Null(ray.RequiresAttackRoll);
+        Assert.Equal(3, ray.InstanceCountAtSlotLevel![2]);
+        Assert.Equal(10, ray.InstanceCountAtSlotLevel[9]);
+        Assert.Equal("2d6", ray.PerInstanceDamageAtSlotLevel![2]);
+    }
+
+    [Fact]
+    public void Overlay_EldritchBlast_HasCharacterLevelInstances()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("eldritch_blast", out var blast));
+        Assert.Equal(1, blast.InstanceCountAtCharacterLevel![1]);
+        Assert.Equal(2, blast.InstanceCountAtCharacterLevel[5]);
+        Assert.Equal(3, blast.InstanceCountAtCharacterLevel[11]);
+        Assert.Equal(4, blast.InstanceCountAtCharacterLevel[17]);
+        Assert.Equal("1d10", blast.PerInstanceDamageAtCharacterLevel![17]);
+    }
+
+    [Fact]
+    public void Overlay_AcidArrow_HasMissAndDelayedTick()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("acid_arrow", out var arrow));
+        Assert.Equal(MissBehavior.Half, arrow.OnMiss);
+        Assert.NotNull(arrow.DelayedTick);
+        Assert.Equal(DelayedTickTrigger.EndOfTargetNextTurn, arrow.DelayedTick.TriggerAt);
+        Assert.True(arrow.DelayedTick.RequiresInitialHit);
+        Assert.Equal("acid", arrow.DelayedTick.DamageType);
+        Assert.Equal("2d4", arrow.DelayedTick.DiceExpressionAtSlotLevel![2]);
+        Assert.Equal("9d4", arrow.DelayedTick.DiceExpressionAtSlotLevel[9]);
+    }
+
+    [Fact]
+    public void Overlay_Fireball_HasNoShapeData()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("fireball", out var fireball));
+        Assert.Null(fireball.InstanceCountAtSlotLevel);
+        Assert.Null(fireball.PerInstanceDamageAtSlotLevel);
+        Assert.Null(fireball.RequiresAttackRoll);
+        Assert.Null(fireball.OnMiss);
+        Assert.Null(fireball.DelayedTick);
+        Assert.Null(fireball.DamageIsPool);
+        Assert.Null(fireball.DamagePools);
+        Assert.Null(fireball.UpcastChoice);
+    }
+
+    [Fact]
+    public void Overlay_Sleep_MarksPoolDamage()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("sleep", out var sleep));
+        Assert.True(sleep.DamageIsPool);
+        // The pool table itself is untouched API data.
+        Assert.Equal("5d8", sleep.DamageAtSlotLevel![1]);
+    }
+
+    [Fact]
+    public void Pools_IceStorm_HasApiDamagePools()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("ice_storm", out var storm));
+        Assert.NotNull(storm.DamagePools);
+        Assert.Equal(2, storm.DamagePools.Count);
+        Assert.Equal("2d8", storm.DamagePools["bludgeoning"][4]);
+        Assert.Equal("7d8", storm.DamagePools["bludgeoning"][9]);
+        Assert.Equal("4d6", storm.DamagePools["cold"][4]);
+        Assert.Equal("4d6", storm.DamagePools["cold"][9]);
+        Assert.Null(storm.UpcastChoice);
+        // Flat first-entry table is kept as-is for narrative/reference only.
+        Assert.Equal("2d8", storm.DamageAtSlotLevel![4]);
+    }
+
+    [Fact]
+    public void Pools_MeteorSwarm_HasApiDamagePools()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("meteor_swarm", out var swarm));
+        Assert.NotNull(swarm.DamagePools);
+        Assert.Equal(2, swarm.DamagePools.Count);
+        Assert.Equal("20d6", swarm.DamagePools["fire"][9]);
+        Assert.Equal("20d6", swarm.DamagePools["bludgeoning"][9]);
+        Assert.Null(swarm.UpcastChoice);
+    }
+
+    [Fact]
+    public void Overlay_FlameStrike_HasDamagePoolsAndUpcastChoice()
+    {
+        var spells = Spells.GetSpellsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(spells.TryGetValue("flame_strike", out var strike));
+        Assert.NotNull(strike.DamagePools);
+        Assert.Equal(2, strike.DamagePools.Count);
+        Assert.Equal("4d6", strike.DamagePools["fire"][5]);
+        Assert.Equal("4d6", strike.DamagePools["fire"][9]);
+        Assert.Equal("4d6", strike.DamagePools["radiant"][5]);
+        Assert.NotNull(strike.UpcastChoice);
+        Assert.Equal("1d6", strike.UpcastChoice.BonusDicePerSlot);
+    }
+
+    [Fact]
+    public void Merge_ChildPoolsWin_OverParent()
+    {
+        var parent = new SpellDefinition { Name = "base" };
+        var child = new SpellDefinition
+        {
+            Name = "sub",
+            Inherits = ["base"],
+            DamagePools = new Dictionary<string, Dictionary<int, string>>
+            {
+                ["fire"] = new() { [9] = "20d6" },
+            },
+            UpcastChoice = new UpcastPoolChoice { BonusDicePerSlot = "1d6" },
+        };
+
+        var merged = SpellDefinition.Merge(child, parent);
+
+        Assert.NotNull(merged.DamagePools);
+        Assert.Equal("20d6", merged.DamagePools["fire"][9]);
+        Assert.Equal("1d6", merged.UpcastChoice!.BonusDicePerSlot);
+    }
+
     private static Character MakeWizardWithSlots() =>
         new()
         {

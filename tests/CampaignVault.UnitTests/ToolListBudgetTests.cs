@@ -21,7 +21,9 @@ namespace CampaignVault.Tests;
 public class ToolListBudgetTests(ITestOutputHelper output)
 {
     private const int ToolListCharBudget = 21_000;
-    private const int PlayCharBudget = 13_000;
+    // Raised from 13_000 for take_turn's includeCombatDetail parameter + descriptions:
+    // deliberate surface growth, not a regression. Keep the tripwire tight — bump in 100s, not 1000s.
+    private const int PlayCharBudget = 13_100;
     private const int BuildCharBudget = 12_500;
 
     private static McpServerOptions BuildOptions()

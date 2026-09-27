@@ -102,4 +102,37 @@ public class StatusEffect
         "Omit for narrative-only effects (wounds, mood, environmental states).")]
     [JsonPropertyName("conditionName")]
     public string? ConditionName { get; set; }
+
+    /// <summary>
+    /// Damage rolled and applied when this effect expires (instead of just being removed).
+    /// Engine-authored (e.g. Acid Arrow's delayed tick); the LLM DM never sets this by hand.
+    /// </summary>
+    [JsonPropertyName("pendingDamage")]
+    public PendingEffectDamage? PendingDamage { get; set; }
+
+    /// <summary>
+    /// Relative expiry: the effect expires the next time its owner's own turn starts in combat
+    /// (checked by combat turn advancement), as an alternative to the absolute
+    /// <see cref="ExpiresAtRound"/>. Needed for "end of target's next turn" effects, which can't
+    /// be expressed as a single absolute round number when caster and target act in different
+    /// initiative slots.
+    /// </summary>
+    [JsonPropertyName("expiresAtOwnTurnStart")]
+    public bool ExpiresAtOwnTurnStart { get; set; }
+}
+
+/// <summary>
+/// Engine-authored damage attached to a <see cref="StatusEffect"/> via
+/// <see cref="StatusEffect.PendingDamage"/>: rolled and applied when the effect expires
+/// (e.g. Acid Arrow's delayed tick) instead of the effect just being removed.
+/// </summary>
+public class PendingEffectDamage
+{
+    /// <summary>Dice expression rolled when the effect expires (e.g. "2d4").</summary>
+    [JsonPropertyName("diceExpression")]
+    public string DiceExpression { get; set; } = null!;
+
+    /// <summary>Damage type label for the narrative (e.g. "acid").</summary>
+    [JsonPropertyName("damageType")]
+    public string? DamageType { get; set; }
 }

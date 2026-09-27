@@ -14,3 +14,4 @@ damageAtSlotLevel:
   1: 5d8
 areaOfEffectType: sphere
 areaOfEffectSize: 20
+damageIsPool: true

@@ -1,0 +1,163 @@
+# Hand-authored shape metadata for dnd5e SRD 5.1 damage spells whose rules don't
+# fit the engine's single-roll / single-target model. NEVER regenerated from an
+# API — merged into the generated spell YAMLs verbatim by generate_spells.py
+# (overlay fields only ever ADD shape keys; API-derived dice are untouched).
+#
+# Evidentiary standard: every entry cites the exact SRD rules text backing it.
+# No entry without a quote. Audit source: full read of every damage!=null spell
+# in www.dnd5eapi.co/api/spells (66 spells; index has 319 total).
+#
+# Audit verdicts for spells considered and DELIBERATELY excluded:
+# - acid-splash (1-2 targets, one save each), chain-lightning (1 bolt/target):
+#   the save path already loops over caller-listed targetIds; no shape data needed.
+# - Repeat-attack buffs (arcane-sword, spiritual-weapon, flame-blade,
+#   vampiric-touch, call-lightning, sunbeam, heat-metal, faithful-hound):
+#   each resolution is single-instance; repeats are separate actions. Simple.
+# - Multi-POOL single instance: BUILT (damagePools shape). A re-audit against the
+#   live API (2026-09) showed ice-storm and meteor-swarm DO carry both pools
+#   upstream — the generator just dropped every entry after the first, so it now
+#   emits damagePools from the API verbatim. Only flame-strike keeps an overlay
+#   entry: its upcast dice are unparseable upstream ("4d6 OR 5d6", failing the
+#   generator's dice gate by design) and its upcast needs the caster's-choice
+#   shape the API's one string can't express.
+# - phantasmal-killer ("at the start of each of the target's turns ... save or
+#   take 4d10"): RECURRING save-or-damage, not Acid Arrow's single delayed tick.
+#   Flagged as the likely second DelayedTick shape; needs enum + scheduling
+#   work beyond this plan, so noted here, not built here.
+# - prismatic-spray (d8 random table), storm-of-vengeance (staged rounds),
+#   delayed-blast-fireball (accumulating pool), sleep (HP pool, not damage):
+#   separate shapes/gaps, each needs its own follow-up, not speculative work now.
+# - disintegrate: API carries no upcast table despite higher-level text;
+#   upstream data gap, out of scope.
+
+magic_missile:
+  # "You create three glowing darts of magical force. Each dart hits a creature
+  # of your choice that you can see within range. A dart deals 1d4 + 1 force
+  # damage to its target. The darts all strike simultaneously, and you can
+  # direct them to hit one creature or several."
+  # HIGHER: "the spell creates one more dart for each slot level above 1st."
+  requiresAttackRoll: false
+  instanceCountAtSlotLevel:
+    1: 3
+    2: 4
+    3: 5
+    4: 6
+    5: 7
+    6: 8
+    7: 9
+    8: 10
+    9: 11
+  perInstanceDamageAtSlotLevel:
+    1: 1d4+1
+    2: 1d4+1
+    3: 1d4+1
+    4: 1d4+1
+    5: 1d4+1
+    6: 1d4+1
+    7: 1d4+1
+    8: 1d4+1
+    9: 1d4+1
+
+scorching_ray:
+  # "You create three rays of fire and hurl them at targets within range. You
+  # can hurl them at one target or several."
+  # "Make a ranged spell attack for each ray. On a hit, the target takes 2d6
+  # fire damage."
+  # HIGHER: "you create one additional ray for each slot level above 2nd."
+  instanceCountAtSlotLevel:
+    2: 3
+    3: 4
+    4: 5
+    5: 6
+    6: 7
+    7: 8
+    8: 9
+    9: 10
+  perInstanceDamageAtSlotLevel:
+    2: 2d6
+    3: 2d6
+    4: 2d6
+    5: 2d6
+    6: 2d6
+    7: 2d6
+    8: 2d6
+    9: 2d6
+
+eldritch_blast:
+  # "On a hit, the target takes 1d10 force damage. The spell creates more than
+  # one beam when you reach higher levels: two beams at 5th level, three beams
+  # at 11th level, and four beams at 17th level. You can direct the beams at
+  # the same target or at different ones. Make a separate attack roll for
+  # each beam."
+  instanceCountAtCharacterLevel:
+    1: 1
+    5: 2
+    11: 3
+    17: 4
+  perInstanceDamageAtCharacterLevel:
+    1: 1d10
+    5: 1d10
+    11: 1d10
+    17: 1d10
+
+acid_arrow:
+  # "Make a ranged spell attack against the target. On a hit, the target takes
+  # 4d4 acid damage immediately and 2d4 acid damage at the end of its next
+  # turn. On a miss, the arrow splashes the target with acid for half as much
+  # of the initial damage and no damage at the end of its next turn."
+  # HIGHER: "the damage (both initial and later) increases by 1d4 for each
+  # slot level above 2nd." — so the delayed tick scales per slot, not flat.
+  onMiss: half
+  delayedTick:
+    damageType: acid
+    triggerAt: endOfTargetNextTurn
+    requiresInitialHit: true
+    diceExpressionAtSlotLevel:
+      2: 2d4
+      3: 3d4
+      4: 4d4
+      5: 5d4
+      6: 6d4
+      7: 7d4
+      8: 8d4
+      9: 9d4
+
+sleep:
+  # "This spell sends creatures into a magical slumber. Roll 5d8; the total is
+  # how many hit points of creatures this spell can affect."
+  # The damage table is an HP-affect pool, not HP damage — resolving it through
+  # the damage paths would silently deal 5d8 damage. The resolver fails loud
+  # on this flag instead. (Sleep is the only SRD spell with a typeless,
+  # pool-shaped damage entry; prismatic-spray's typeless 10d6 IS hp damage.)
+  damageIsPool: true
+
+flame_strike:
+  # "A vertical column of divine fire roars down from the heavens in a location
+  # you specify. Each creature in a 10-foot-radius, 40-foot-high cylinder
+  # centered on a point within range must make a dexterity saving throw. A
+  # creature takes 4d6 fire damage and 4d6 radiant damage on a failed save, or
+  # half as much damage on a successful one."
+  # HIGHER: "When you cast this spell using a spell slot of 6th level or
+  # higher, the fire damage or the radiant damage (your choice) increases by
+  # 1d6 for each slot level above 5th."
+  # API gap (verified live 2026-09): damage[] carries both pools but every
+  # upcast entry is unparseable ("4d6 OR 5d6"), so the generator's dice gate
+  # skips API pools and this overlay supplies corrected base pools verbatim;
+  # the per-slot bonus lives in upcastChoice because the choice of pool is a
+  # per-cast decision no static table can express. (Quotes above are the API's
+  # own desc/higher_level text, matching SRD 5.1.)
+  damagePools:
+    fire:
+      5: 4d6
+      6: 4d6
+      7: 4d6
+      8: 4d6
+      9: 4d6
+    radiant:
+      5: 4d6
+      6: 4d6
+      7: 4d6
+      8: 4d6
+      9: 4d6
+  upcastChoice:
+    bonusDicePerSlot: 1d6

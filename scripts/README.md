@@ -45,6 +45,31 @@ pf2e spell damage validation is out of scope engine-side (see
 Can run either half only, e.g. from a Python shell: `generate_dnd5e()` or
 `generate_pf2e()` — useful if only one source API is reachable.
 
+### `spell_damage_overlay.yaml` (hand-authored, never regenerated)
+
+The one exception to "nothing there is hand-authored": `generate_dnd5e()`
+merges this file's entries into the generated dnd5e spell YAMLs verbatim
+after parsing the API data. It carries **shape metadata** for the ~half-dozen
+SRD spells whose rules don't fit the engine's single-roll model and that no
+API field describes — multi-instance counts (`instanceCountAtSlotLevel` +
+`perInstanceDamageAtSlotLevel`, e.g. Magic Missile's darts), auto-hit
+(`requiresAttackRoll: false`), HP-affect pools (`damageIsPool`, Sleep),
+miss splash (`onMiss: half`) + delayed ticks (`delayedTick`, Acid Arrow), and
+multi-pool damage (`damagePools` + `upcastChoice`, Flame Strike).
+
+Overlay fields only ever ADD keys; API-derived dice are untouched (a
+collision fails the regen loudly). The one partial exception is Flame
+Strike's `damagePools`: its API upcast entries are unparseable ("4d6 OR 5d6")
+so the generator's dice gate skips API pools and the overlay supplies
+corrected base pools — still additive, since the flat table keeps the raw
+API strings for reference. Ice Storm's and Meteor Swarm's pools need no
+overlay entry at all: both pools come straight from the API.
+
+Evidentiary standard: every entry cites the exact SRD rules text backing it —
+no entry without a quote. After any regen, diff-review: every file except the
+overlay-flagged spells (plus any new `damagePools` the API grew) must be
+byte-identical to before.
+
 ## `generate_pf2e_feats.py`
 
 ```

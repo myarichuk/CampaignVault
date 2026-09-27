@@ -21,3 +21,18 @@ saveType: dex
 saveSuccess: half
 areaOfEffectType: cylinder
 areaOfEffectSize: 40
+damagePools:
+  fire:
+    5: 4d6
+    6: 4d6
+    7: 4d6
+    8: 4d6
+    9: 4d6
+  radiant:
+    5: 4d6
+    6: 4d6
+    7: 4d6
+    8: 4d6
+    9: 4d6
+upcastChoice:
+  bonusDicePerSlot: 1d6

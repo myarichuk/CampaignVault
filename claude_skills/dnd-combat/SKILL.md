@@ -56,6 +56,19 @@ Only bundle multiple actors into one `take_turn` when they're genuinely simultan
 }
 ```
 
+**Multi-pool saves** (Ice Storm, Meteor Swarm, Flame Strike) deal two typed pools at once — send the summed total and the engine rolls each pool separately:
+```json
+{
+  "$type": "ruleset_action",
+  "characterId": "chars/druid",
+  "targetIds": ["chars/ogre"],
+  "actionType": "Spell",
+  "actionName": "Ice Storm",
+  "parameters": { "resolution": "save", "dc": 15, "save": "Dexterity", "damageDice": "2d8+4d6" }
+}
+```
+Pool order and pre-combining don't matter (`4d6+2d8`, `40d6` for Meteor Swarm all match). One pool alone (`2d8`) warns — that's the old flat-table half-total, not the spell's real damage. Flame Strike cast above 5th adds `upcastPool` naming which pool grows: `"damageDice": "9d6", "upcastPool": "radiant"` (fire or radiant, your choice per the spell).
+
 **Healing Word** (heal):
 ```json
 {

@@ -15,3 +15,13 @@ damageAtCharacterLevel:
   5: 1d10
   11: 1d10
   17: 1d10
+instanceCountAtCharacterLevel:
+  1: 1
+  5: 2
+  11: 3
+  17: 4
+perInstanceDamageAtCharacterLevel:
+  1: 1d10
+  5: 1d10
+  11: 1d10
+  17: 1d10

@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DND5E_DIR = ROOT / "src/CampaignVault/RulesetData/dnd5e/spells"
 PF2E_DIR = ROOT / "src/CampaignVault/RulesetData/pf2e/spells"
+OVERLAY_PATH = ROOT / "scripts" / "spell_damage_overlay.yaml"
 
 DND5E_HEADER = (
     "# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0\n"
@@ -45,6 +46,12 @@ TRADITION_TO_CLASSES = {
 CLASS_TRAITS = {"bard", "witch", "cleric", "druid", "wizard"}
 
 GP_COST_RE = re.compile(r"([\d,]+)\s*gp", re.IGNORECASE)
+
+# Parseable single-pool dice (mirrors DefaultRollService's NdX±M shape). Gates
+# API-derived damagePools: every pool of a multi-entry spell must match, or no
+# pools are emitted and the spell stays overlay-supplied (flame-strike's
+# "4d6 OR 5d6" upcast entries fail this gate by design).
+DICE_VALUE_RE = re.compile(r"^\d+d\d+\s*([+-]\s*\d+)?$", re.IGNORECASE)
 
 
 def kebab_to_snake(name: str) -> str:
@@ -96,6 +103,50 @@ def write_spell(path: Path, header: str, body: dict) -> None:
         lines.append(f"areaOfEffectType: {yaml_quote(body['areaOfEffectType'])}")
     if body.get("areaOfEffectSize") is not None:
         lines.append(f"areaOfEffectSize: {body['areaOfEffectSize']}")
+    for key in ("instanceCountAtSlotLevel", "instanceCountAtCharacterLevel"):
+        table = body.get(key)
+        if table:
+            lines.append(f"{key}:")
+            for level in sorted(table):
+                lines.append(f"  {level}: {table[level]}")
+    for key in ("perInstanceDamageAtSlotLevel", "perInstanceDamageAtCharacterLevel"):
+        table = body.get(key)
+        if table:
+            lines.append(f"{key}:")
+            for level in sorted(table):
+                lines.append(f"  {level}: {yaml_quote(table[level])}")
+    pools = body.get("damagePools")
+    if pools:
+        lines.append("damagePools:")
+        for pool in pools:
+            lines.append(f"  {yaml_quote(pool)}:")
+            for level in sorted(pools[pool]):
+                lines.append(f"    {level}: {yaml_quote(pools[pool][level])}")
+    choice = body.get("upcastChoice")
+    if choice:
+        lines.append("upcastChoice:")
+        if choice.get("bonusDicePerSlot"):
+            lines.append(f"  bonusDicePerSlot: {yaml_quote(choice['bonusDicePerSlot'])}")
+    if body.get("requiresAttackRoll") is not None:
+        lines.append(f"requiresAttackRoll: {'true' if body['requiresAttackRoll'] else 'false'}")
+    if body.get("damageIsPool") is not None:
+        lines.append(f"damageIsPool: {'true' if body['damageIsPool'] else 'false'}")
+    if body.get("onMiss"):
+        lines.append(f"onMiss: {body['onMiss']}")
+    tick = body.get("delayedTick")
+    if tick:
+        lines.append("delayedTick:")
+        if tick.get("damageType"):
+            lines.append(f"  damageType: {yaml_quote(tick['damageType'])}")
+        if tick.get("triggerAt"):
+            lines.append(f"  triggerAt: {tick['triggerAt']}")
+        if tick.get("requiresInitialHit") is not None:
+            lines.append(f"  requiresInitialHit: {'true' if tick['requiresInitialHit'] else 'false'}")
+        dice_table = tick.get("diceExpressionAtSlotLevel")
+        if dice_table:
+            lines.append("  diceExpressionAtSlotLevel:")
+            for level in sorted(dice_table):
+                lines.append(f"    {level}: {yaml_quote(dice_table[level])}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -125,6 +176,186 @@ def parse_gp_cost(text: str) -> float | None:
         return None
 
 
+# Overlay schema (scripts/spell_damage_overlay.yaml). The overlay is hand-authored
+# YAML but this script stays stdlib-only like every other generator here, so it
+# parses the file's small controlled subset directly: 2-space-indented nested
+# maps, scalar leaves, `#` comments. Anything outside this schema fails loudly.
+OVERLAY_BOOL_KEYS = {"requiresAttackRoll", "damageIsPool"}
+OVERLAY_STR_KEYS = {"onMiss"}
+OVERLAY_INT_TABLE_KEYS = {"instanceCountAtSlotLevel", "instanceCountAtCharacterLevel"}
+OVERLAY_STR_TABLE_KEYS = {"perInstanceDamageAtSlotLevel", "perInstanceDamageAtCharacterLevel"}
+OVERLAY_TICK_SCALAR_TYPES = {"damageType": "str", "triggerAt": "str", "requiresInitialHit": "bool"}
+OVERLAY_TICK_TABLE_KEYS = {"diceExpressionAtSlotLevel"}
+OVERLAY_POOL_KEYS = {"damagePools"}
+OVERLAY_CHOICE_KEYS = {"upcastChoice"}
+OVERLAY_CHOICE_STR_KEYS = {"bonusDicePerSlot"}
+VALID_ON_MISS = {"none", "half"}
+VALID_TRIGGER_AT = {"endOfTargetNextTurn"}
+
+
+def _strip_overlay_comment(line: str) -> str:
+    in_single = in_double = False
+    for i, ch in enumerate(line):
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "#" and not in_single and not in_double:
+            return line[:i]
+    return line
+
+
+def _parse_overlay_scalar(text: str, kind: str, where: str):
+    text = text.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in ("'", '"'):
+        text = text[1:-1]
+    if kind == "bool":
+        if text == "true":
+            return True
+        if text == "false":
+            return False
+        raise ValueError(f"{where}: expected true/false, got {text!r}")
+    if kind == "int":
+        try:
+            return int(text)
+        except ValueError:
+            raise ValueError(f"{where}: expected int, got {text!r}") from None
+    return text
+
+
+def load_damage_overlay() -> dict[str, dict]:
+    """Parse scripts/spell_damage_overlay.yaml into {slug: {camelCaseKey: value}}."""
+    if not OVERLAY_PATH.exists():
+        return {}
+    overlay: dict[str, dict] = {}
+    slug: str | None = None
+    section: str | None = None
+    tick_table: str | None = None
+    pool_name: str | None = None
+    for lineno, raw in enumerate(OVERLAY_PATH.read_text(encoding="utf-8").splitlines(), 1):
+        line = _strip_overlay_comment(raw).rstrip()
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        if indent % 2 or indent > 6:
+            raise ValueError(f"{OVERLAY_PATH.name}:{lineno}: bad indent (use 2 spaces/level)")
+        content = line.strip()
+        where = f"{OVERLAY_PATH.name}:{lineno}"
+        if indent == 0:
+            if not content.endswith(":"):
+                raise ValueError(f"{where}: expected 'slug:'")
+            slug = content[:-1].strip()
+            if not slug or slug in overlay:
+                raise ValueError(f"{where}: bad or duplicate slug {slug!r}")
+            overlay[slug] = {}
+            section = tick_table = pool_name = None
+        elif indent == 2:
+            if slug is None:
+                raise ValueError(f"{where}: entry before any slug")
+            key, _, value = content.partition(":")
+            key, value = key.strip(), value.strip()
+            section = tick_table = pool_name = None
+            if key in OVERLAY_BOOL_KEYS:
+                overlay[slug][key] = _parse_overlay_scalar(value, "bool", where)
+            elif key in OVERLAY_STR_KEYS:
+                overlay[slug][key] = _parse_overlay_scalar(value, "str", where)
+            elif key in OVERLAY_INT_TABLE_KEYS | OVERLAY_STR_TABLE_KEYS | {"delayedTick"} | OVERLAY_POOL_KEYS | OVERLAY_CHOICE_KEYS:
+                if value:
+                    raise ValueError(f"{where}: {key!r} takes nested entries, not an inline value")
+                overlay[slug][key] = {}
+                section = key
+            else:
+                raise ValueError(f"{where}: unknown overlay key {key!r}")
+        elif indent == 4:
+            if slug is None or section is None:
+                raise ValueError(f"{where}: nested entry outside a mapping")
+            key, _, value = content.partition(":")
+            key, value = key.strip(), value.strip()
+            tick_table = pool_name = None
+            if section in OVERLAY_POOL_KEYS:
+                if value:
+                    raise ValueError(f"{where}: pool {key!r} takes nested slot entries, not an inline value")
+                if not key or key in overlay[slug][section]:
+                    raise ValueError(f"{where}: bad or duplicate pool {key!r}")
+                overlay[slug][section][key] = {}
+                pool_name = key
+            elif section in OVERLAY_CHOICE_KEYS:
+                if key not in OVERLAY_CHOICE_STR_KEYS:
+                    raise ValueError(f"{where}: unknown upcastChoice key {key!r}")
+                overlay[slug][section][key] = _parse_overlay_scalar(value, "str", where)
+            elif section in OVERLAY_INT_TABLE_KEYS:
+                overlay[slug][section][_parse_overlay_scalar(key, "int", where)] = (
+                    _parse_overlay_scalar(value, "int", where))
+            elif section in OVERLAY_STR_TABLE_KEYS:
+                overlay[slug][section][_parse_overlay_scalar(key, "int", where)] = (
+                    _parse_overlay_scalar(value, "str", where))
+            elif section == "delayedTick":
+                if key in OVERLAY_TICK_SCALAR_TYPES:
+                    overlay[slug][section][key] = _parse_overlay_scalar(
+                        value, OVERLAY_TICK_SCALAR_TYPES[key], where)
+                elif key in OVERLAY_TICK_TABLE_KEYS:
+                    if value:
+                        raise ValueError(f"{where}: {key!r} takes nested entries, not an inline value")
+                    overlay[slug][section][key] = {}
+                    tick_table = key
+                else:
+                    raise ValueError(f"{where}: unknown delayedTick key {key!r}")
+            else:
+                raise ValueError(f"{where}: nested entry under scalar {section!r}")
+        else:  # indent == 6
+            key, _, value = content.partition(":")
+            if slug is not None and section == "delayedTick" and tick_table is not None:
+                overlay[slug][section][tick_table][_parse_overlay_scalar(key.strip(), "int", where)] = (
+                    _parse_overlay_scalar(value, "str", where))
+            elif slug is not None and section in OVERLAY_POOL_KEYS and pool_name is not None:
+                overlay[slug][section][pool_name][_parse_overlay_scalar(key.strip(), "int", where)] = (
+                    _parse_overlay_scalar(value, "str", where))
+            else:
+                raise ValueError(f"{where}: nested entry outside diceExpressionAtSlotLevel or damagePools")
+    for name, entry in overlay.items():
+        if "onMiss" in entry and entry["onMiss"] not in VALID_ON_MISS:
+            raise ValueError(f"{name}: onMiss must be one of {sorted(VALID_ON_MISS)}")
+        for count_key, dice_key in (("instanceCountAtSlotLevel", "perInstanceDamageAtSlotLevel"),
+                                    ("instanceCountAtCharacterLevel", "perInstanceDamageAtCharacterLevel")):
+            if count_key in entry:
+                missing = set(entry[count_key]) - set(entry.get(dice_key, {}))
+                if missing:
+                    raise ValueError(f"{name}: {count_key} levels {sorted(missing)} lack {dice_key}")
+                if any(v < 1 for v in entry[count_key].values()):
+                    raise ValueError(f"{name}: {count_key} counts must be >= 1")
+        tick = entry.get("delayedTick")
+        if tick:
+            if tick.get("triggerAt") not in VALID_TRIGGER_AT:
+                raise ValueError(f"{name}: triggerAt must be one of {sorted(VALID_TRIGGER_AT)}")
+            if not tick.get("diceExpressionAtSlotLevel"):
+                raise ValueError(f"{name}: delayedTick needs diceExpressionAtSlotLevel")
+        pools = entry.get("damagePools")
+        if pools:
+            if len(pools) < 2:
+                raise ValueError(f"{name}: damagePools needs at least 2 pools")
+            slot_sets = [set(slots) for slots in pools.values()]
+            if not slot_sets[0] or any(s != slot_sets[0] for s in slot_sets):
+                raise ValueError(f"{name}: damagePools pools must share identical non-empty slot levels")
+        choice = entry.get("upcastChoice")
+        if choice:
+            if "damagePools" not in entry:
+                raise ValueError(f"{name}: upcastChoice needs damagePools")
+            bonus = choice.get("bonusDicePerSlot")
+            if not bonus or not re.fullmatch(r"\d+d\d+", bonus, re.IGNORECASE):
+                raise ValueError(f"{name}: bonusDicePerSlot must be NdX, got {bonus!r}")
+    return overlay
+
+
+def apply_damage_overlay(slug: str, body: dict, overlay: dict[str, dict]) -> None:
+    entry = overlay.get(slug)
+    if not entry:
+        return
+    for key, value in entry.items():
+        if key in body:
+            raise ValueError(f"overlay for {slug!r} collides with API-derived key {key!r}")
+        body[key] = value
+
+
 def parse_dnd5e_mechanics(detail: dict) -> dict:
     """Pull damage/save/heal/AoE off the already-fetched dnd5eapi.co spell detail JSON.
     Confirmed live: damage is always keyed by slot level for leveled spells, even
@@ -144,6 +375,27 @@ def parse_dnd5e_mechanics(detail: dict) -> dict:
         by_char = entry.get("damage_at_character_level")
         if by_char:
             result["damageAtCharacterLevel"] = {int(k): v for k, v in by_char.items()}
+
+        if len(damage_entries) > 1:
+            # Multi-pool spell (SRD audit 2026-09: exactly ice-storm, meteor-swarm,
+            # flame-strike — all additive "takes X and Y" shapes). Emit every pool
+            # verbatim, but only when each pool is slot-keyed with roller-parseable
+            # dice; anything else (flame-strike's "4d6 OR 5d6") skips API pools and
+            # stays overlay-supplied via apply_damage_overlay's no-collision rule.
+            pools: dict[str, dict[int, str]] = {}
+            for pool_entry in damage_entries:
+                pool_type = (pool_entry.get("damage_type") or {}).get("index")
+                pool_by_slot = pool_entry.get("damage_at_slot_level")
+                if not pool_type or not pool_by_slot or pool_type in pools:
+                    pools = {}
+                    break
+                if not all(isinstance(dice, str) and DICE_VALUE_RE.match(dice)
+                           for dice in pool_by_slot.values()):
+                    pools = {}
+                    break
+                pools[pool_type] = {int(k): v for k, v in pool_by_slot.items()}
+            if pools:
+                result["damagePools"] = pools
 
     dc = detail.get("dc")
     if dc:
@@ -171,6 +423,7 @@ def generate_dnd5e() -> int:
     index = fetch_json("https://www.dnd5eapi.co/api/spells")
     spells = index["results"]
     DND5E_DIR.mkdir(parents=True, exist_ok=True)
+    overlay = load_damage_overlay()
 
     def load_spell(entry: dict) -> tuple[str, dict]:
         detail = fetch_json(f"https://www.dnd5eapi.co{entry['url']}")
@@ -192,6 +445,8 @@ def generate_dnd5e() -> int:
             "materialCost": parse_gp_cost(material_text) if material_text else None,
             "materialConsumed": bool(material_text and "consum" in material_text.lower()),
             **parse_dnd5e_mechanics(detail),
+            # Private: raw multi-entry count for the pools notice below; popped before write.
+            "_damageEntryCount": len(detail.get("damage") or []),
         }
 
     generated: dict[str, dict] = {}
@@ -199,9 +454,17 @@ def generate_dnd5e() -> int:
         futures = {pool.submit(load_spell, e): e for e in spells}
         for i, future in enumerate(as_completed(futures), 1):
             slug, body = future.result()
+            damage_entry_count = body.pop("_damageEntryCount", 0)
+            if damage_entry_count > 1 and "damagePools" not in body and "damagePools" not in overlay.get(slug, {}):
+                print(f"  dnd5e: {slug} has multi-entry damage but no clean pools and no overlay — flat first-entry only")
+            apply_damage_overlay(slug, body, overlay)
             generated[slug] = body
             if i % 50 == 0:
                 print(f"  dnd5e: {i}/{len(spells)}")
+
+    unused = sorted(set(overlay) - set(generated))
+    if unused:
+        raise ValueError(f"overlay entries match no API spell: {', '.join(unused)}")
 
     for path in DND5E_DIR.glob("*.yaml"):
         path.unlink()

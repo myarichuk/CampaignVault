@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Autofac;
+using CampaignVault.Data;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 using CampaignVault.Tools;
 using Raven.Client.Documents;
 using Xunit;
@@ -405,6 +409,140 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
             var alice = await session.LoadAsync<Character>(c1);
             Assert.Equal(5, alice.SystemStats.ResourcePools["encounter_pool"].Current);
             Assert.Contains("encounter_pool", endResult.Summary);
+        }
+    }
+
+    [Fact]
+    public async Task NextTurn_OwnTurnStartEffect_AppliesPendingDamageOnce()
+    {
+        // Full turn-advance wiring for delayed ticks (e.g. Acid Arrow's residue): the seeded
+        // effect fires when Bob's turn starts, dealing the rolled damage and removing itself.
+        var store = _store;
+        var rolls = new FakeRollService();
+        // Initiative/derivation rolls may also draw from this service depending on container
+        // wiring — over-queue so the tick deterministically rolls 6 wherever it lands.
+        for (var i = 0; i < 30; i++)
+        {
+            rolls.NextRolls.Enqueue(new RollOutcome { Result = 6, Summary = "Rolled 6" });
+        }
+        var tools = TestCampaignToolsFactory.Create(_fixture, rollService: rolls);
+        var c1 = "char1_" + Guid.NewGuid();
+        var c2 = "char2_" + Guid.NewGuid();
+        var loc = "loc1_" + Guid.NewGuid();
+        var campaign = "camp_" + Guid.NewGuid();
+
+        using (var session = store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 20, MaxHp = 20 });
+            await session.StoreAsync(new Character
+            {
+                Id = c2,
+                Name = "Bob",
+                CurrentHp = 20,
+                MaxHp = 20,
+                SystemStats = new Dnd5eExtension
+                {
+                    StatusEffects =
+                    [
+                        new StatusEffect
+                        {
+                            Name = "AcidArrowResidue",
+                            Category = "Condition",
+                            PendingDamage = new PendingEffectDamage { DiceExpression = "2d4", DamageType = "acid" },
+                            ExpiresAtOwnTurnStart = true,
+                            AppliedBy = "system/combat-resolver",
+                        }
+                    ]
+                }
+            });
+            await session.SaveChangesAsync();
+        }
+
+        await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
+
+        // Initiative order is random, but after two advances Bob has started a turn exactly once
+        // in either order — and the tick fires exactly once, when his turn starts.
+        var first = await tools.NextTurn(campaignName: campaign);
+        Assert.True(first.Success, $"NextTurn failed. Error: {first.Error}, Summary: {first.Summary}");
+        var second = await tools.NextTurn(campaignName: campaign);
+        Assert.True(second.Success, $"NextTurn failed. Error: {second.Error}, Summary: {second.Summary}");
+
+        Assert.Contains("dealt 6 acid damage", first.Summary + " " + second.Summary);
+        var tickRolls = rolls.RecordedRequests.Where(r => r.Tag == "delayed-tick").ToList();
+        Assert.Single(tickRolls);
+        Assert.Equal("2d4", tickRolls[0].Expression);
+
+        using (var session = store.OpenAsyncSession())
+        {
+            var bob = await session.LoadAsync<Character>(c2);
+            Assert.Equal(14, bob.CurrentHp);
+            Assert.Empty(bob.SystemStats.StatusEffects);
+        }
+    }
+
+    [Fact]
+    public async Task StartCombat_OverwriteActive_ClearsAbandonedEffectsAndFiresTicks()
+    {
+        // Force-restarting abandons the live encounter: its round-based effects are cleared and
+        // pending own-turn damage resolves now, instead of leaking into the fresh encounter.
+        // (CombatTools is built directly because the facade has no overwriteActive seam.)
+        var store = _store;
+        var rolls = new FakeRollService();
+        for (var i = 0; i < 30; i++)
+        {
+            rolls.NextRolls.Enqueue(new RollOutcome { Result = 6, Summary = "Rolled 6" });
+        }
+        var repo = _fixture.CreateRepository();
+        var combat = new CombatTools(repo, _fixture.Container.Resolve<CampaignDocumentKeys>(),
+            _fixture.Container.Resolve<IRulesetModuleSelector>(), rollService: rolls);
+        var c1 = "char1_" + Guid.NewGuid();
+        var c2 = "char2_" + Guid.NewGuid();
+        var loc = "loc1_" + Guid.NewGuid();
+        var campaign = "camp_" + Guid.NewGuid();
+
+        using (var session = store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 20, MaxHp = 20 });
+            await session.StoreAsync(new Character
+            {
+                Id = c2,
+                Name = "Bob",
+                CurrentHp = 20,
+                MaxHp = 20,
+                SystemStats = new Dnd5eExtension
+                {
+                    StatusEffects =
+                    [
+                        new StatusEffect
+                        {
+                            Name = "AcidArrowResidue",
+                            Category = "Condition",
+                            PendingDamage = new PendingEffectDamage { DiceExpression = "2d4", DamageType = "acid" },
+                            ExpiresAtOwnTurnStart = true,
+                            AppliedBy = "system/combat-resolver",
+                        },
+                        new StatusEffect { Name = "Haste", Category = "Buff", ExpiresAtRound = 5 }
+                    ]
+                }
+            });
+            await session.SaveChangesAsync();
+        }
+
+        var first = await combat.StartCombat(loc, [c1, c2], campaign);
+        Assert.True(first.Success, $"StartCombat failed. Error: {first.Error}, Summary: {first.Summary}");
+        var restart = await combat.StartCombat(loc, [c1, c2], campaign, overwriteActive: true);
+        Assert.True(restart.Success, $"Overwrite failed. Error: {restart.Error}, Summary: {restart.Summary}");
+
+        Assert.Contains("dealt 6 acid damage", restart.Summary);
+        Assert.Contains("Cleared effect 'Haste'", restart.Summary);
+        var tickRolls = rolls.RecordedRequests.Where(r => r.Tag == "delayed-tick").ToList();
+        Assert.Single(tickRolls);
+
+        using (var session = store.OpenAsyncSession())
+        {
+            var bob = await session.LoadAsync<Character>(c2);
+            Assert.Equal(14, bob.CurrentHp);
+            Assert.Empty(bob.SystemStats.StatusEffects);
         }
     }
 }

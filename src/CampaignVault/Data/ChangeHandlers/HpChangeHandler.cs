@@ -124,7 +124,8 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
             : null;
     }
 
-    private static (int Modifier, string SaveLabel) GetConcentrationSaveModifier(SystemExtension stats)
+    /// <summary>Shared with DelayedTickProcessor so turn-start tick damage breaks concentration identically.</summary>
+    internal static (int Modifier, string SaveLabel) GetConcentrationSaveModifier(SystemExtension stats)
     {
         if (stats is Dnd5eExtension dnd5e)
         {

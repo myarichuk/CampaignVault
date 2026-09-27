@@ -20,3 +20,17 @@ damageAtSlotLevel:
   7: 9d4
   8: 10d4
   9: 11d4
+onMiss: half
+delayedTick:
+  damageType: acid
+  triggerAt: endOfTargetNextTurn
+  requiresInitialHit: true
+  diceExpressionAtSlotLevel:
+    2: 2d4
+    3: 3d4
+    4: 4d4
+    5: 5d4
+    6: 6d4
+    7: 7d4
+    8: 8d4
+    9: 9d4

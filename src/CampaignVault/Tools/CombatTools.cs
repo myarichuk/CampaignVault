@@ -17,6 +17,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
     private readonly IRulesetModuleSelector _rulesetSelector;
     private readonly IInteractionModeSelector? _modeSelector;
     private readonly IEnumerable<IPluginTraitsUpgrader> _traitsUpgraders;
+    private readonly IRollService? _rollService;
 
     public CombatTools(
         CampaignRepository repository,
@@ -24,12 +25,14 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
         IRulesetModuleSelector rulesetSelector,
         ILogger<CombatTools>? logger = null,
         IInteractionModeSelector? modeSelector = null,
-        IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null)
+        IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null,
+        IRollService? rollService = null)
         : base(repository, keys, logger)
     {
         _rulesetSelector = rulesetSelector;
         _modeSelector = modeSelector;
         _traitsUpgraders = traitsUpgraders ?? [];
+        _rollService = rollService;
     }
 
     [ToolCategory("Combat & rulesets")]
@@ -103,6 +106,32 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                            "Call combat(action: 'end') to abandon, or pass overwriteActive:true to force restart.");
             }
             var abandonedRound = existing?.IsActive == true ? existing.Round : (int?)null;
+            var abandonedMessages = new List<string>();
+            var abandonedTickEvents = new List<(string Topic, object? Data)>();
+            if (existing?.IsActive == true)
+            {
+                // overwriteActive abandons a live encounter: its combat-scoped effects don't survive
+                // into the fresh encounter (absolute round numbers are meaningless there), so clear
+                // round-based effects and resolve pending own-turn damage now, like EndCombat does.
+                var oldIds = existing.Combatants
+                    .Select(c => c.CharacterId)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                var oldCharacters = await session.LoadAsync<Character>(oldIds);
+                foreach (var abandoned in oldCharacters.Values.Where(c => c != null)!)
+                {
+                    abandonedTickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(abandoned, _rollService, abandonedMessages));
+                    if (abandoned.SystemStats?.StatusEffects != null)
+                    {
+                        var stale = abandoned.SystemStats.StatusEffects.Where(e => e.ExpiresAtRound.HasValue).ToList();
+                        foreach (var effect in stale)
+                        {
+                            abandoned.SystemStats.StatusEffects.Remove(effect);
+                            abandonedMessages.Add($"Cleared effect '{effect.Name}' on '{abandoned.Name}' from the abandoned encounter.");
+                        }
+                    }
+                }
+            }
             var uniqueIds = combatantIds.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             var loadedCharacters = await session.LoadAsync<Character>(uniqueIds);
 
@@ -180,11 +209,16 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             {
                 summary += $" Dropped {droppedForZeroHp.Count} combatant(s) with 0 or negative HP: {string.Join(", ", droppedForZeroHp)}.";
             }
+            if (abandonedMessages.Count > 0)
+            {
+                summary += " " + string.Join(" ", abandonedMessages);
+            }
 
             List<(string, object?)> events = [];
             if (abandonedRound is { } oldRound)
             {
                 // overwriteActive abandons a live encounter: close it for subscribers before the new one starts.
+                events.AddRange(abandonedTickEvents);
                 events.Add((CoreEvents.CombatEnded, new Dictionary<string, object?>
                 {
                     [CoreEvents.Fields.EncounterId] = encounter.Id,
@@ -253,6 +287,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             }
 
             var expiredMessages = new List<string>();
+            var tickEvents = new List<(string Topic, object? Data)>();
 
             // A combatant held by an Exclusive interaction mode (astral projection, ...) acts only there: skip
             // its combat turn. It stays in the encounter and can still be targeted.
@@ -265,27 +300,48 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 characters.TryGetValue(c.CharacterId, out var character) && character != null &&
                 character.CurrentHp > 0);
 
+            bool AnyoneAlive() => encounter.Combatants.Any(c =>
+                characters.TryGetValue(c.CharacterId, out var character) && character != null &&
+                character.CurrentHp > 0);
+
+            async Task<ToolResult<CombatEncounterView>> EndCombatNoSurvivorsAsync()
+            {
+                encounter.IsActive = false;
+                encounter.ActiveTurnId = null;
+                await session.StoreAsync(encounter, encounter.Id);
+                // Reactions are best-effort here: the encounter is over either way, so a FailCommit fault
+                // does not keep a combat of corpses alive. Faults still show in the log and summary.
+                await _repository.PublishEventsAsync(new CampaignSession(session, effective),
+                    [.. tickEvents, CombatEnded(encounter, "no_combatants_standing")], characters.Values.Where(c => c != null)!, encounter);
+                await session.SaveChangesAsync();
+                return new ToolResult<CombatEncounterView>(false, CombatEncounterView.From(encounter),
+                    Error: "CombatEnded",
+                    Summary: "No valid and alive combatants remain. Combat has ended or cannot proceed.");
+            }
+
+            // Own-turn-start effects (e.g. Acid Arrow's delayed tick) resolve for the upcoming
+            // turn-taker BEFORE the normal pick, so a lethal tick is absorbed by the pick/wrap
+            // flow below (the dead are skipped). The current actor is excluded: its turn is
+            // ending, not starting.
+            var upcomingId = encounter.Combatants
+                .Where(c => !string.Equals(c.CharacterId, encounter.ActiveTurnId, StringComparison.OrdinalIgnoreCase))
+                .Where(c => !c.HasActedThisRound && !heldElsewhere.ContainsKey(c.CharacterId))
+                .Select(c => c.CharacterId)
+                .FirstOrDefault(id => characters.TryGetValue(id, out var upcoming) && upcoming != null && upcoming.CurrentHp > 0);
+            if (upcomingId != null && characters.TryGetValue(upcomingId, out var upcomingCharacter) && upcomingCharacter != null)
+            {
+                tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(upcomingCharacter, _rollService, expiredMessages));
+            }
+
             var next = GetNextAliveUnacted();
             var startedNewRound = false;
 
             if (next == null)
             {
                 // Verify if anyone is actually alive
-                if (!encounter.Combatants.Any(c =>
-                        characters.TryGetValue(c.CharacterId, out var character) && character != null &&
-                        character.CurrentHp > 0))
+                if (!AnyoneAlive())
                 {
-                    encounter.IsActive = false;
-                    encounter.ActiveTurnId = null;
-                    await session.StoreAsync(encounter, encounter.Id);
-                    // Reactions are best-effort here: the encounter is over either way, so a FailCommit fault
-                    // does not keep a combat of corpses alive. Faults still show in the log and summary.
-                    await _repository.PublishEventsAsync(new CampaignSession(session, effective),
-                        [CombatEnded(encounter, "no_combatants_standing")], characters.Values.Where(c => c != null)!, encounter);
-                    await session.SaveChangesAsync();
-                    return new ToolResult<CombatEncounterView>(false, CombatEncounterView.From(encounter),
-                        Error: "CombatEnded",
-                        Summary: "No valid and alive combatants remain. Combat has ended or cannot proceed.");
+                    return await EndCombatNoSurvivorsAsync();
                 }
 
                 // New round
@@ -310,6 +366,24 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                         {
                             effects.Remove(effect);
                             expiredMessages.Add($"Expired effect '{effect.Name}' on '{character.Name}'.");
+                        }
+                    }
+                }
+
+                // Post-wrap: the freshly picked `next` never saw the pre-pick peek (it ran before
+                // the wrap, when everyone had acted). Resolve its turn-start effects now; a lethal
+                // tick passes the turn on, ending combat if nobody remains.
+                if (next != null && characters.TryGetValue(next.CharacterId, out var wrapped) && wrapped != null)
+                {
+                    tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(wrapped, _rollService, expiredMessages));
+                    if (wrapped.CurrentHp <= 0)
+                    {
+                        // No acted-flag: the HP filter already skips the corpse on re-pick, and an
+                        // unmarked corpse healed later this round stays pickable (legacy convention).
+                        next = GetNextAliveUnacted();
+                        if (next == null && !AnyoneAlive())
+                        {
+                            return await EndCombatNoSurvivorsAsync();
                         }
                     }
                 }
@@ -347,7 +421,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             }
 
             return await PublishCombatEventsAsync(session, effective,
-                [TurnStarted(encounter, newRound: startedNewRound)], characters.Values.Where(c => c != null)!, encounter, summary);
+                [.. tickEvents, TurnStarted(encounter, newRound: startedNewRound)], characters.Values.Where(c => c != null)!, encounter, summary);
         });
     }
 
@@ -373,6 +447,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 session, characters, effective, _keys, traitsUpgraders: _traitsUpgraders, logger: _logger);
 
             var expiredMessages = new List<string>();
+            var tickEvents = new List<(string Topic, object? Data)>();
 
             // Clear all round-based status effects when combat ends.
             // This implements "until end of combat" semantics for effects created with ExpiresAtRound.
@@ -380,6 +455,10 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             // Note: This is intentionally aggressive — all round-tied effects are removed on combat end.
             foreach (var character in characters.Values.Where(c => c != null))
             {
+                // Own-turn-start effects never get another turn start once combat ends — resolve any
+                // pending damage now rather than leaking the effects into a later encounter.
+                tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(character, _rollService, expiredMessages));
+
                 if (character.SystemStats?.StatusEffects != null)
                 {
                     var effects = character.SystemStats.StatusEffects;
@@ -417,7 +496,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 summary += " " + string.Join(" ", expiredMessages);
             }
 
-            return await PublishCombatEventsAsync(session, effective, [CombatEnded(encounter, "ended")],
+            return await PublishCombatEventsAsync(session, effective, [.. tickEvents, CombatEnded(encounter, "ended")],
                 characters.Values.Where(c => c != null)!, encounter, summary);
         });
     }
