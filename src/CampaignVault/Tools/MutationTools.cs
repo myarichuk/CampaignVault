@@ -1938,6 +1938,45 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     }
 
     /// <summary>
+    /// SceneAssembler.BuildNeedLegend rebuilds NeedDescriptorLegend fresh on every scene assembly — Full
+    /// or Delta, arrival or revisit — even though the text (campaign-wide need descriptors, e.g. what
+    /// "stress"/"fatigue" mean) is near-static for a session. Drop any key/text pair already sent this
+    /// session; keep (and record) anything new or changed. Applies to both Full and Delta scenes: a
+    /// genuinely new/edited descriptor (e.g. world_build adding a custom need mid-session) still goes
+    /// out, unlike the old Delta-only unconditional wipe this replaces.
+    /// </summary>
+    private static void ApplyNeedLegendDeltaTrim(TurnContext ctx, SceneView scene) =>
+        scene.NeedDescriptorLegend = TrimNeedLegend(ctx, scene.NeedDescriptorLegend);
+
+    /// <inheritdoc cref="ApplyNeedLegendDeltaTrim(TurnContext, SceneView)"/>
+    private static void ApplyNeedLegendDeltaTrim(TurnContext ctx, SceneSummaryView scene) =>
+        scene.NeedDescriptorLegend = TrimNeedLegend(ctx, scene.NeedDescriptorLegend);
+
+    private static Dictionary<string, string> TrimNeedLegend(TurnContext ctx, Dictionary<string, string> legend)
+    {
+        if (legend.Count == 0)
+        {
+            return legend;
+        }
+
+        var sent = ctx.Cursor.SurfacedNeedLegendKeys;
+        var toSend = new Dictionary<string, string>();
+        foreach (var (key, text) in legend)
+        {
+            var marker = key + "=" + text;
+            if (sent.Contains(marker))
+            {
+                continue;
+            }
+
+            toSend[key] = text;
+            sent.Add(marker);
+        }
+
+        return toSend;
+    }
+
+    /// <summary>
     /// Trims a scene's LocationDetailView (already an immutable wire-record, detached from the tracked
     /// RavenDB entity via LocationDetailView.From — no risk of the trim being mistaken for real data and
     /// persisted) for a delta turn that didn't touch this location: id/name/type/parent/danger/faction
@@ -2242,13 +2281,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                             summary.Location = ApplyLocationDeltaTrim(summary.Location);
                         }
                         summary.LocalRumors = ApplyRumorDeltaTrim(ctx, summary.LocalRumors);
-                        if (ctx.Mode == TurnMode.Delta)
-                        {
-                            // Campaign-wide legend text (what "stress"/"fatigue" mean) doesn't change
-                            // turn to turn — the client already has it from the last full reseed or a
-                            // prior delta scene.
-                            summary.NeedDescriptorLegend = [];
-                        }
+                        ApplyNeedLegendDeltaTrim(ctx, summary);
                         result.Scenes.Add(summary);
                     }
                     else
@@ -2749,6 +2782,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                     .. threads
                         .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
                 ];
+                ApplyNeedLegendDeltaTrim(ctx, scene);
                 ctx.Result.FullScene = scene;
             }
             else

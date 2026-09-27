@@ -1,6 +1,6 @@
 ---
 name: dnd-narration
-description: Rich scene narration, sensory detail, prose quality, and mechanics-first discipline
+description: Rich scene narration, sensory detail, prose quality, and mechanics-first discipline (load before narrating any beat — unlike combat/social/travel this doesn't turn off, so re-check it's loaded each scene, not just once per session)
 metadata:
   type: skill
 ---

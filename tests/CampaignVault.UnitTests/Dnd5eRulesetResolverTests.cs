@@ -206,6 +206,103 @@ public class Dnd5eRulesetResolverTests
     }
 
     [Fact]
+    public async Task ResolveSkillCheck_NoSkillParameter_DerivesSkillFromActionName()
+    {
+        // Regression: ResolveSkillCheckAsync used to default an omitted "skill" parameter to the
+        // literal string "Strength", so any check committed the documented way (actionName carries
+        // the skill; no redundant parameters.skill) silently rolled against the wrong ability.
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 12, Summary = "Rolled 12" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character
+        {
+            Id = "char1",
+            SystemStats = new Dnd5eExtension
+            {
+                Strength = 20, // ability-mod fallback for "Strength" would be +5
+                SkillModifiers = new Dictionary<string, int> { { "Investigation", 3 } }
+            }
+        };
+
+        var context = CreateContext(actor);
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            ActionType = RulesetActionType.SkillCheck,
+            ActionName = "Investigation",
+            Parameters = new Dictionary<string, string> { ["dc"] = "15" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Equal(3, rollService.RecordedRequests[0].Bonus);
+        Assert.Contains("Investigation", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_Spell_WrongCantripTier_WarnsButStillApplies()
+    {
+        // Regression: nothing validates parameters.damageDice against the caster's level (fire_bolt.yaml
+        // carries no damage data at all), so an LLM caller can send the level-11-16 tier ("3d10") for a
+        // level-1 caster and the engine applies it silently, with a narrative that reads as entirely
+        // correct. Damage still applies as sent (soft warning only, matching SpellSlotValidator's
+        // CantripWarning pattern) - this test locks in that the warning fires and damage is unaffected.
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 27, HasCritical = false, HasComplication = false, Summary = "Rolled 27" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 20, Summary = "Rolled 20" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 1 } };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            TargetIds = ["char2"],
+            ActionType = RulesetActionType.Spell,
+            ActionName = "Fire Bolt",
+            Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "9", ["damageDice"] = "3d10" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Single(output.Mutations);
+        var hpChange = Assert.IsType<HpChange>(output.Mutations[0]);
+        Assert.Equal(-20, hpChange.Delta);
+        Assert.Contains("Hit for 20 damage", output.Result.Narrative);
+        Assert.Contains("[WARNING]", output.Result.Narrative);
+        Assert.Contains("should scale to 1d10", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_Spell_CorrectCantripTier_NoWarning()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 7, Summary = "Rolled 7" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 1 } };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            TargetIds = ["char2"],
+            ActionType = RulesetActionType.Spell,
+            ActionName = "Fire Bolt",
+            Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "9", ["damageDice"] = "1d10" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.DoesNotContain("[WARNING]", output.Result.Narrative);
+    }
+
+    [Fact]
     public async Task ResolveAttack_InvalidBonus_ReturnsError()
     {
         var rollService = new FakeRollService();

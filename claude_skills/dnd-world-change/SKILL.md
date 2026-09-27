@@ -126,11 +126,11 @@ Atomic all-or-nothing; if any change fails, the entire batch rolls back — **no
 ## Required Fields (never rely on defaults)
 
 - `ruleset_action.actionType` — "Attack", "Spell", "SkillCheck", etc.
-- `ruleset_action.actionName` — free-text label (weapon/spell/skill name, e.g. `Prestidigitation`, `Investigation`, `longsword`); omitting it is now a hard schema reject, not a silent null.
-- `ruleset_action` for a Spell also needs `parameters.resolution` (e.g. `utility`); for a SkillCheck, `parameters.dc`, `parameters.resolution: check`. Example pair:
+- `ruleset_action.actionName` — free-text label (weapon/spell/skill name, e.g. `Prestidigitation`, `Investigation`, `longsword`); omitting it is now a hard schema reject, not a silent null. For a `SkillCheck`, `actionName` IS the skill — the resolver uses it directly (case-insensitive) to look up the ability/proficiency, so don't also duplicate it into `parameters.skill` (that key exists only as an override for the rare case where the check should roll under a *different* skill than the label names).
+- `ruleset_action` for a Spell also needs `parameters.resolution` (e.g. `utility`); for a SkillCheck, only `parameters.dc` — `resolution` is a Spell-only field and is silently ignored on a SkillCheck. Example pair:
   ```json
   { "$type": "ruleset_action", "characterId": "chars/pc", "actionName": "Prestidigitation", "actionType": "Spell", "parameters": { "resolution": "utility" } }
-  { "$type": "ruleset_action", "characterId": "chars/pc", "actionName": "Investigation", "actionType": "SkillCheck", "parameters": { "dc": 12, "resolution": "check" } }
+  { "$type": "ruleset_action", "characterId": "chars/pc", "actionName": "Investigation", "actionType": "SkillCheck", "parameters": { "dc": 12 } }
   ```
 - `quest_progress.newState` — `Open`, `InProgress`, `Complete`, `Failed`, `Skipped`
 - `quest_progress` — must also include `objectiveIndex` or `objectiveName`; there's no default, and omitting both hard-fails the change (and the whole batch with it).

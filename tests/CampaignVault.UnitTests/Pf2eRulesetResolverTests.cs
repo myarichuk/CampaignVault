@@ -126,6 +126,45 @@ public class Pf2eRulesetResolverTests
     }
 
     [Fact]
+    public async Task ResolveSkillCheckAsync_NoSkillParameter_DerivesSkillFromActionName()
+    {
+        // Regression: an omitted "skill" parameter used to default to the literal string "Strength",
+        // so a check committed the documented way (actionName carries the skill; no redundant
+        // parameters.skill) silently rolled against the wrong ability.
+        var mockRollService = Substitute.For<IRollService>();
+        mockRollService.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RollOutcome { Result = 12, Summary = "Rolled 12" }));
+
+        var resolver = new Pf2eRulesetResolver(mockRollService);
+
+        var actor = new Character
+        {
+            Id = "test-char",
+            SystemStats = new Pf2eExtension
+            {
+                StrengthMod = 5, // ability-mod fallback for "Strength" would be +5
+                SkillModifiers = new Dictionary<string, int> { { "Perception", 2 } }
+            }
+        };
+        var context = CreateContext(actor);
+
+        var action = new RulesetAction
+        {
+            CharacterId = "test-char",
+            ActionType = RulesetActionType.SkillCheck,
+            ActionName = "Perception",
+            Parameters = new Dictionary<string, string> { { "dc", "15" } }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        await mockRollService.Received(1).RollAsync(
+            Arg.Is<RollRequest>(req => req.Bonus == 2),
+            Arg.Any<CancellationToken>());
+        Assert.Contains("Perception", output.Result.Narrative);
+    }
+
+    [Fact]
     public async Task ResolveSkillCheckAsync_NoDcParameterAndNoSpellDc_StillFails()
     {
         var resolver = new Pf2eRulesetResolver(Substitute.For<IRollService>());

@@ -4,6 +4,7 @@ using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Rulesets.Contributors;
 using CampaignVault.Services;
+using RegularExpressions = System.Text.RegularExpressions;
 
 namespace CampaignVault.Rulesets;
 
@@ -211,7 +212,61 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Delta = -finalDamage
         });
 
-        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}");
+        var cantripWarning = BuildCantripDamageWarning(action, damageDice, actorStats.Level);
+
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}{cantripWarning}");
+    }
+
+    /// <summary>
+    /// Nothing in the engine validates ruleset_action.parameters.damageDice against the caster's actual
+    /// level — no SpellDefinition YAML carries damage dice (fire_bolt.yaml has none), so an LLM caller
+    /// guessing the wrong cantrip-scaling tier (e.g. "3d10" — the level 11-16 tier — for a level 1
+    /// caster) rolls and applies real, unvalidated damage with a narrative that reads as entirely
+    /// correct ("Attack 27 vs AC 12"). Soft warning only, consistent with SpellSlotValidator's
+    /// CantripWarning: known SRD attack-roll cantrips only (not full damage-dice validation, which
+    /// would need to special-case homebrew/plugin spells this table can't know about).
+    /// </summary>
+    private static readonly Dictionary<string, string> KnownAttackCantripDamageDie = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Fire Bolt"] = "d10",
+        ["Ray of Frost"] = "d8",
+        ["Chill Touch"] = "d8",
+        ["Poison Spray"] = "d12",
+    };
+
+    private static int ExpectedCantripDiceCount(int casterLevel) => casterLevel switch
+    {
+        >= 17 => 4,
+        >= 11 => 3,
+        >= 5 => 2,
+        _ => 1
+    };
+
+    private static string BuildCantripDamageWarning(RulesetAction action, string damageDice, int? casterLevel)
+    {
+        if (action.ActionType != RulesetActionType.Spell
+            || !KnownAttackCantripDamageDie.TryGetValue(action.ActionName, out var expectedDie))
+        {
+            return "";
+        }
+
+        var match = RegularExpressions.Regex.Match(
+            damageDice.Trim(), @"^(\d+)d(\d+)", RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success || !int.TryParse(match.Groups[1].Value, out var diceCount))
+        {
+            return "";
+        }
+
+        var actualDie = "d" + match.Groups[2].Value;
+        var expectedCount = ExpectedCantripDiceCount(casterLevel ?? 1);
+
+        if (!string.Equals(actualDie, expectedDie, StringComparison.OrdinalIgnoreCase) || diceCount != expectedCount)
+        {
+            return $" [WARNING] '{action.ActionName}' at caster level {casterLevel ?? 1} should scale to " +
+                   $"{expectedCount}{expectedDie}, not {damageDice} — damage was applied as sent, but check the cantrip-scaling tier.";
+        }
+
+        return "";
     }
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(
@@ -226,7 +281,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Skill check requires a 'dc' parameter.");
         }
 
-        var skillName = action.Parameters.GetValueOrDefault("skill", "Strength");
+        var skillName = action.Parameters.GetValueOrDefault("skill", action.ActionName);
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
 
